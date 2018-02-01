@@ -1,0 +1,77 @@
+licenses(["notice"])  # Apache 2.0
+
+exports_files(["LICENSE"])
+
+cc_library(
+    name = "source_position",
+    srcs = ["source_position.cc"],
+    hdrs = ["source_position.h"],
+    deps = [
+        "@com_google_api_expr//:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf_lite",
+    ],
+)
+
+cc_library(
+    name = "ast_visitor",
+    hdrs = [
+        "ast_visitor.h",
+    ],
+    deps = [
+        ":source_position",
+        "@com_google_absl//absl/strings",
+        "@com_google_api_expr//:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "ast_visitor_base",
+    hdrs = [
+        "ast_visitor_base.h",
+    ],
+    deps = [
+        ":ast_visitor",
+        "@com_google_api_expr//:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "ast_traverse",
+    srcs = [
+        "ast_traverse.cc",
+    ],
+    hdrs = [
+        "ast_traverse.h",
+    ],
+    deps = [
+        ":ast_visitor",
+        ":source_position",
+        "@com_google_absl//absl/strings",
+        "@com_google_api_expr//:syntax_cc_proto",
+        "@com_google_glog//:glog",
+    ],
+)
+
+cc_test(
+    name = "ast_traverse_test",
+    srcs = [
+        "ast_traverse_test.cc",
+    ],
+    deps = [
+        ":ast_traverse",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "source_position_test",
+    size = "small",
+    srcs = [
+        "source_position_test.cc",
+    ],
+    deps = [
+        ":source_position",
+        "@com_google_api_expr//:syntax_cc_proto",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
