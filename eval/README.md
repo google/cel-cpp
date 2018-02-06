@@ -37,14 +37,24 @@ copybara third_party/cel/cpp/copy.bara.sky piper_to_empty_gob --init-history --f
 
 You can only export from a submitted CL.
 
+Normally this will figure out the last Git commit to use as a parent, if not, you will need to specify the last Git commit in the target repo using soemthing of the form `--change_request_parent=1e691bba39375ffa639c832b313b74d1660251bb`
+
 To be on the safe side you might want to test first with
 `--git-destination-skip-push`
 
+`cd` to an up-to-date git client of the repo
 ```sh
 export CL=11111111
-copybara third_party/cel/cpp/copy.bara.sky piper_to_gob ${CL} --git-destination-push=cl-${CL} --git-destination-fetch=cl-${CL}
+git checkout master
+git checkout -b cl-${CL}
+git push origin cl-${CL}
 ```
 (where 11111111 is a submitted CL)
+
+In a google3 directory:
+```sh
+copybara third_party/cel/cpp/copy.bara.sky piper_to_gob ${CL} --git-destination-push=cl-${CL} --git-destination-fetch=cl-${CL}
+```
 
 ### Testing export
 

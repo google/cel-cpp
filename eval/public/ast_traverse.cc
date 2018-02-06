@@ -2,8 +2,8 @@
 
 #include <glog/logging.h>
 #include "syntax.pb.h"
-#include "public/ast_traverse.h"
-#include "public/source_position.h"
+#include "eval/public/ast_traverse.h"
+#include "eval/public/source_position.h"
 
 namespace google {
 namespace api {

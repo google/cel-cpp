@@ -1,7 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_H_
 
-#include "public/source_position.h"
+#include "eval/public/source_position.h"
 #include "syntax.pb.h"
 
 namespace google {
