@@ -1,5 +1,5 @@
 #include "syntax.pb.h"
-#include "eval/public/source_position.h"
+#include "public/source_position.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
