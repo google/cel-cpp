@@ -1,13 +1,19 @@
 http_archive(
-    name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.5.1",
-    urls = ["https://github.com/google/protobuf/archive/v3.5.1.zip"],
-)
-
-http_archive(
     name = "com_google_absl",
     strip_prefix = "abseil-cpp-master",
     urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
+)
+
+http_archive(
+    name = "com_google_protobuf",
+    strip_prefix = "protobuf-3.5.0",
+    urls = ["https://github.com/google/protobuf/archive/v3.5.0.zip"],
+)
+
+http_archive(
+    name = "com_google_protobuf_javalite",
+    strip_prefix = "protobuf-javalite",
+    urls = ["https://github.com/google/protobuf/archive/javalite.zip"],
 )
 
 http_archive(
@@ -17,18 +23,19 @@ http_archive(
 )
 
 http_archive(
-     name = "com_google_api_expr",
-     urls = ["https://github.com/eobrain/cel-spec/archive/v0.0.2.zip"],
-     strip_prefix = "cel-spec-0.0.2/proto/v1",
+     name = "com_google_cel_spec",
+     urls = ["https://github.com/google/cel-spec/archive/master.zip"],
+     strip_prefix = "cel-spec-master",
 )
 
+# Google RE2 (Regular Expression) C++ Library
 http_archive(
-     name = "com_google_glog",
-     urls = ["https://github.com/eobrain/glog/archive/v0.3.6-bazel.eobrain.zip"],
-     strip_prefix = "glog-0.3.6-bazel.eobrain",
+    name = "com_googlesource_code_re2",
+    strip_prefix = "re2-master",
+    urls = ["https://github.com/google/re2/archive/master.zip"],
 )
 
-# Needed by glog (copied from its WORKSPACE)
+# gflags
 http_archive(
     name = "com_github_gflags_gflags",
     sha256 = "6e16c8bc91b1310a44f3965e616383dbda48f83e8c1eaa2370a215057b00cabe",
@@ -38,3 +45,90 @@ http_archive(
         "https://github.com/gflags/gflags/archive/77592648e3f3be87d6c7123eb81cbad75f9aef5a.tar.gz",
     ],
 )
+
+# glog
+http_archive(
+    name = "com_google_glog",
+    sha256 = "1ee310e5d0a19b9d584a855000434bb724aa744745d5b8ab1855c85bff8a8e21",
+    strip_prefix = "glog-028d37889a1e80e8a07da1b8945ac706259e5fd8",
+    urls = [
+        "https://mirror.bazel.build/github.com/google/glog/archive/028d37889a1e80e8a07da1b8945ac706259e5fd8.tar.gz",
+        "https://github.com/google/glog/archive/028d37889a1e80e8a07da1b8945ac706259e5fd8.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "com_google_googleapis",
+    url = "https://github.com/googleapis/googleapis/archive/master.zip",
+    strip_prefix = "googleapis-master/",
+    build_file_content = """
+proto_library(
+    name = 'rpc_status',
+    srcs = ['google/rpc/status.proto'],
+    deps = [
+        '@com_google_protobuf//:any_proto',
+        '@com_google_protobuf//:empty_proto',
+    ],
+    visibility = ['//visibility:public'],
+)
+
+proto_library(
+    name = 'rpc_code',
+    srcs = ['google/rpc/code.proto'],
+    visibility = ['//visibility:public'],
+)
+
+proto_library(
+    name = 'type_money',
+    srcs = ['google/type/money.proto'],
+    visibility = ['//visibility:public'],
+)
+
+proto_library(
+    name = 'expr_v1beta1',
+    srcs = [
+        'google/api/expr/v1beta1/eval.proto',
+        'google/api/expr/v1beta1/value.proto',
+        ],
+    deps = [
+        ':rpc_status',
+        '@com_google_protobuf//:any_proto',
+        '@com_google_protobuf//:struct_proto',
+    ],
+    visibility = ['//visibility:public'],
+)
+
+cc_proto_library(
+    name = 'cc_rpc_status',
+    deps = [':rpc_status'],
+    visibility = ['//visibility:public'],
+)
+
+cc_proto_library(
+    name = 'cc_rpc_code',
+    deps = [':rpc_code'],
+    visibility = ['//visibility:public'],
+)
+
+cc_proto_library(
+    name = 'cc_type_money',
+    deps = [':type_money'],
+    visibility = ['//visibility:public'],
+)
+
+cc_proto_library(
+    name = 'cc_expr_v1beta1',
+    deps = [':expr_v1beta1'],
+    visibility = ['//visibility:public'],
+)
+"""
+)
+
+http_archive(
+    name = "io_bazel_rules_go",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.12.0/rules_go-0.12.0.tar.gz",
+    sha256 = "c1f52b8789218bb1542ed362c4f7de7052abcf254d865d96fb7ba6d44bc15ee3",
+)
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+go_rules_dependencies()
+go_register_toolchains()
