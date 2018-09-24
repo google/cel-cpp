@@ -95,7 +95,7 @@ std::size_t HashImpl(const T& value, specialize_for<typename T::Hasher>) {
 
 // Specialization for enums.
 template <typename T>
-specialize_ift<std::is_enum<T>, std::size_t> HashImpl(T&& v) {
+std::size_t HashImpl(T&& v, specialize_ift<std::is_enum<T>>) {
   return Hash(static_cast<typename std::underlying_type<T>::type>(v));
 }
 
