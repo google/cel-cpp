@@ -6,8 +6,8 @@ http_archive(
 
 http_archive(
     name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.5.0",
-    urls = ["https://github.com/google/protobuf/archive/v3.5.0.zip"],
+    strip_prefix = "protobuf-3.5.1",
+    urls = ["https://github.com/google/protobuf/archive/v3.5.1.zip"],
 )
 
 http_archive(
