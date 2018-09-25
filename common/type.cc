@@ -10,7 +10,7 @@ namespace expr {
 namespace {
 
 constexpr const std::size_t kBasicTypeNamesSize = 10;
-const auto* kBasicTypeNames = new std::array<std::string, kBasicTypeNamesSize>{
+const auto* kBasicTypeNames = new std::array<std::string, kBasicTypeNamesSize>({
     "null_type",  // kNull
     "bool",       // kBool
     "int",        // kInt
@@ -21,7 +21,7 @@ const auto* kBasicTypeNames = new std::array<std::string, kBasicTypeNamesSize>{
     "type",       // kType
     "map",        // kMap
     "list",       // kList
-};
+});
 
 static_assert(kBasicTypeNamesSize ==
                   static_cast<int>(BasicTypeValue::DO_NOT_USE),

@@ -184,23 +184,10 @@ cc_library(
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
-    data = [
-        "@com_google_cel_spec//testdata",
-    ],
     deps = [
         ":converters",
         ":value",
         "@com_google_absl//absl/memory",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "cel_operators",
-    srcs = [
-        "cel_operators.cc",
-    ],
-    hdrs = [
-        "cel_operators.h",
     ],
 )

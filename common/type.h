@@ -137,10 +137,10 @@ class Type final {
   inline EnumType enum_type() const { return absl::get<EnumType>(data_); }
   inline ObjectType object_type() const { return absl::get<ObjectType>(data_); }
 
-  constexpr inline bool operator==(const Type& rhs) const {
+  inline bool operator==(const Type& rhs) const {
     return data_ == rhs.data_;
   }
-  constexpr inline bool operator!=(const Type& rhs) const {
+  inline bool operator!=(const Type& rhs) const {
     return data_ != rhs.data_;
   }
 

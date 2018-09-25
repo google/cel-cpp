@@ -33,8 +33,8 @@ class UnnamedEnumValue final : public internal::RefCountable {
  public:
   ~UnnamedEnumValue() = default;
 
-  inline constexpr int32_t value() const { return value_; }
-  inline constexpr EnumType type() const { return type_; }
+  inline int32_t value() const { return value_; }
+  inline EnumType type() const { return type_; }
 
   std::string ToString() const;
 
