@@ -1,3 +1,6 @@
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
 http_archive(
     name = "com_google_absl",
     strip_prefix = "abseil-cpp-master",
@@ -5,9 +8,64 @@ http_archive(
 )
 
 http_archive(
+    name = "bazel_skylib",
+    strip_prefix = "bazel-skylib-0.6.0",
+    urls = ["https://github.com/bazelbuild/bazel-skylib/archive/0.6.0.zip"],
+)
+
+http_archive(
+    name = "com_github_madler_zlib",
+    build_file_content = """
+cc_library(
+    name = "z",
+    srcs = [
+        "adler32.c",
+        "compress.c",
+        "crc32.c",
+        "deflate.c",
+        "infback.c",
+        "inffast.c",
+        "inflate.c",
+        "inftrees.c",
+        "trees.c",
+        "uncompr.c",
+        "zutil.c",
+    ],
+    hdrs = [
+        "crc32.h",
+        "deflate.h",
+        "gzguts.h",
+        "inffast.h",
+        "inffixed.h",
+        "inflate.h",
+        "inftrees.h",
+        "trees.h",
+        "zconf.h",
+        "zlib.h",
+        "zutil.h",
+    ],
+    includes = [
+        ".",
+    ],
+    linkstatic = 1,
+    visibility = [
+        "//visibility:public",
+    ],
+)""",
+    sha256 = "6d4d6640ca3121620995ee255945161821218752b551a1a180f4215f7d124d45",
+    strip_prefix = "zlib-cacf7f1d4e3d44d871b605da3b647f07d718623f",
+    url = "https://github.com/madler/zlib/archive/cacf7f1d4e3d44d871b605da3b647f07d718623f.tar.gz",
+)
+
+bind(
+    name = "zlib",
+    actual = "@com_github_madler_zlib//:z",
+)
+
+http_archive(
     name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.5.1",
-    urls = ["https://github.com/google/protobuf/archive/v3.5.1.zip"],
+    strip_prefix = "protobuf-3.7.0",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.7.0.zip"],
 )
 
 http_archive(
@@ -17,15 +75,15 @@ http_archive(
 )
 
 http_archive(
-     name = "com_google_googletest",
-     urls = ["https://github.com/google/googletest/archive/master.zip"],
-     strip_prefix = "googletest-master",
+    name = "com_google_googletest",
+    strip_prefix = "googletest-master",
+    urls = ["https://github.com/google/googletest/archive/master.zip"],
 )
 
 http_archive(
-     name = "com_google_cel_spec",
-     urls = ["https://github.com/google/cel-spec/archive/master.zip"],
-     strip_prefix = "cel-spec-master",
+    name = "com_google_cel_spec",
+    strip_prefix = "cel-spec-master",
+    urls = ["https://github.com/google/cel-spec/archive/master.zip"],
 )
 
 # Google RE2 (Regular Expression) C++ Library
@@ -57,78 +115,48 @@ http_archive(
     ],
 )
 
-new_http_archive(
+# Required to use embedded BUILD.bazel file in googleapis/google/rpc
+git_repository(
+    name = "io_grpc_grpc_java",
+    remote = "https://github.com/grpc/grpc-java.git",
+    tag = "v1.13.1",
+)
+
+http_archive(
     name = "com_google_googleapis",
-    url = "https://github.com/googleapis/googleapis/archive/master.zip",
-    strip_prefix = "googleapis-master/",
     build_file_content = """
-proto_library(
-    name = 'rpc_status',
-    srcs = ['google/rpc/status.proto'],
-    deps = [
-        '@com_google_protobuf//:any_proto',
-        '@com_google_protobuf//:empty_proto',
-    ],
-    visibility = ['//visibility:public'],
-)
-
-proto_library(
-    name = 'rpc_code',
-    srcs = ['google/rpc/code.proto'],
-    visibility = ['//visibility:public'],
-)
-
-proto_library(
-    name = 'type_money',
-    srcs = ['google/type/money.proto'],
-    visibility = ['//visibility:public'],
-)
-
-proto_library(
-    name = 'expr_v1beta1',
-    srcs = [
-        'google/api/expr/v1beta1/eval.proto',
-        'google/api/expr/v1beta1/value.proto',
-        ],
-    deps = [
-        ':rpc_status',
-        '@com_google_protobuf//:any_proto',
-        '@com_google_protobuf//:struct_proto',
-    ],
-    visibility = ['//visibility:public'],
-)
-
 cc_proto_library(
     name = 'cc_rpc_status',
-    deps = [':rpc_status'],
+    deps = ['//google/rpc:status_proto'],
     visibility = ['//visibility:public'],
 )
-
 cc_proto_library(
     name = 'cc_rpc_code',
-    deps = [':rpc_code'],
+    deps = ['//google/rpc:code_proto'],
     visibility = ['//visibility:public'],
 )
-
 cc_proto_library(
     name = 'cc_type_money',
-    deps = [':type_money'],
+    deps = ['//google/type:money_proto'],
     visibility = ['//visibility:public'],
 )
-
 cc_proto_library(
     name = 'cc_expr_v1beta1',
-    deps = [':expr_v1beta1'],
+    deps = ['//google/api/expr/v1beta1:eval_proto'],
     visibility = ['//visibility:public'],
 )
-"""
+""",
+    strip_prefix = "googleapis-980cdfa876e54b1db4395617e14037612af25466",
+    urls = ["https://github.com/googleapis/googleapis/archive/980cdfa876e54b1db4395617e14037612af25466.tar.gz"],
 )
 
 http_archive(
     name = "io_bazel_rules_go",
-    url = "https://github.com/bazelbuild/rules_go/releases/download/0.12.0/rules_go-0.12.0.tar.gz",
-    sha256 = "c1f52b8789218bb1542ed362c4f7de7052abcf254d865d96fb7ba6d44bc15ee3",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.16.7/rules_go-0.16.7.tar.gz",
 )
+
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+
 go_rules_dependencies()
+
 go_register_toolchains()
