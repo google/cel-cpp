@@ -137,12 +137,8 @@ class Type final {
   inline EnumType enum_type() const { return absl::get<EnumType>(data_); }
   inline ObjectType object_type() const { return absl::get<ObjectType>(data_); }
 
-  inline bool operator==(const Type& rhs) const {
-    return data_ == rhs.data_;
-  }
-  inline bool operator!=(const Type& rhs) const {
-    return data_ != rhs.data_;
-  }
+  inline bool operator==(const Type& rhs) const { return data_ == rhs.data_; }
+  inline bool operator!=(const Type& rhs) const { return data_ != rhs.data_; }
 
   /** The hash code for this value. */
   inline std::size_t hash_code() const { return internal::Hash(data_); }

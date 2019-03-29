@@ -5,6 +5,7 @@
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/util/message_differencer.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -107,7 +108,7 @@ class Struct final : public Map {
 
 expr::Value BuildMapFor(const google::protobuf::Struct* struct_value,
                         ParentRef parent) {
-  std::unordered_map<expr::Value, expr::Value> result;
+  absl::node_hash_map<expr::Value, expr::Value> result;
   for (const auto& field : struct_value->fields()) {
     result.emplace(Value::ForString(field.first, parent),
                    ValueFor(&field.second, parent));
@@ -118,7 +119,7 @@ expr::Value BuildMapFor(const google::protobuf::Struct* struct_value,
 }
 
 expr::Value BuildMapFrom(google::protobuf::Struct&& struct_value) {
-  std::unordered_map<expr::Value, expr::Value> result;
+  absl::node_hash_map<expr::Value, expr::Value> result;
   for (auto& fields : *struct_value.mutable_fields()) {
     result.emplace(Value::FromString(fields.first),
                    ValueFrom(std::move(fields.second)));
@@ -127,7 +128,7 @@ expr::Value BuildMapFrom(google::protobuf::Struct&& struct_value) {
 }
 
 expr::Value BuildMapFrom(const google::protobuf::Struct& struct_value) {
-  std::unordered_map<expr::Value, expr::Value> result;
+  absl::node_hash_map<expr::Value, expr::Value> result;
   for (const auto& fields : struct_value.fields()) {
     result.emplace(Value::FromString(fields.first), ValueFrom(fields.second));
   }

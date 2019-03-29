@@ -2,6 +2,7 @@
 #define THIRD_PARTY_CEL_CPP_COMMON_ERROR_H_
 
 #include "google/rpc/status.pb.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/types/span.h"
 #include "internal/hash_util.h"
 #include "internal/proto_util.h"
@@ -13,8 +14,8 @@ namespace expr {
 /** A CEL Error. */
 class Error {
  public:
-  using ErrorData = std::unordered_set<google::rpc::Status, internal::Hasher,
-                                       internal::DefaultProtoEqual>;
+  using ErrorData = absl::node_hash_set<google::rpc::Status, internal::Hasher,
+                                        internal::DefaultProtoEqual>;
 
   explicit Error(const google::rpc::Status& error);
   explicit Error(absl::Span<const google::rpc::Status* const> errors);

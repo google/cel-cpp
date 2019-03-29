@@ -2,6 +2,7 @@
 
 #include "google/protobuf/reflection.h"
 #include "google/protobuf/util/message_differencer.h"
+#include "absl/container/node_hash_map.h"
 #include "common/macros.h"
 #include "internal/map_impl.h"
 #include "internal/proto_util.h"
@@ -207,7 +208,7 @@ class MessageObject final : public Object {
                     const google::protobuf::Message* msg) const {
     // Proto maps are represented by a repeated message with two fields
     // (key and value)
-    std::unordered_map<expr::Value, expr::Value> result;
+    absl::node_hash_map<expr::Value, expr::Value> result;
     const google::protobuf::Reflection* refl = msg->GetReflection();
     for (int index = 0; index < refl->FieldSize(*msg, field); ++index) {
       const auto& entry = refl->GetRepeatedMessage(*msg, field, index);

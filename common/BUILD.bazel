@@ -65,6 +65,7 @@ cc_library(
         "//internal:cel_printer",
         "//internal:hash_util",
         "//internal:proto_util",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/types:span",
         "@com_google_googleapis//:cc_rpc_code",
         "@com_google_googleapis//:cc_rpc_status",
