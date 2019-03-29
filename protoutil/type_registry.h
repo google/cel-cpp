@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "absl/container/node_hash_map.h"
 #include "common/parent_ref.h"
 #include "common/type.h"
 #include "common/value.h"
@@ -192,8 +193,8 @@ class TypeRegistry {
     std::function<Value(EnumType, int32_t)> from_ctor;
   };
 
-  std::unordered_map<ObjectType, ObjectRegistryEntry> object_registry_;
-  std::unordered_map<EnumType, EnumRegistryEntry> enum_registry_;
+  absl::node_hash_map<ObjectType, ObjectRegistryEntry> object_registry_;
+  absl::node_hash_map<EnumType, EnumRegistryEntry> enum_registry_;
 
   Value ValueFromUnregistered(std::unique_ptr<google::protobuf::Message> value) const;
   Value ValueForUnregistered(const google::protobuf::Message* value,

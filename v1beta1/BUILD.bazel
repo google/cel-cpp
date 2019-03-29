@@ -24,6 +24,7 @@ cc_library(
         "//internal:proto_util",
         "//internal:status_util",
         "//protoutil:type_registry",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//:cc_expr_v1beta1",
         "@com_google_googleapis//:cc_rpc_code",

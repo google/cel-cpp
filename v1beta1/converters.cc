@@ -4,6 +4,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
+#include "absl/container/node_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "common/converters.h"
 #include "common/macros.h"
@@ -205,7 +206,7 @@ using ListValueOwned = ListValue<internal::OwnedPtr>;
 
 expr::Value BuildMapFor(const v1beta1::MapValue* map_value, ParentRef parent,
                         const TypeRegistry* registry) {
-  std::unordered_map<expr::Value, expr::Value> result;
+  absl::node_hash_map<expr::Value, expr::Value> result;
   for (const auto& entry : map_value->entries()) {
     result.emplace(ValueFor(&entry.key(), parent, registry),
                    ValueFor(&entry.value(), parent, registry));
@@ -217,7 +218,7 @@ expr::Value BuildMapFor(const v1beta1::MapValue* map_value, ParentRef parent,
 
 expr::Value BuildMapFrom(v1beta1::MapValue&& map_value,
                          const TypeRegistry* registry) {
-  std::unordered_map<expr::Value, expr::Value> result;
+  absl::node_hash_map<expr::Value, expr::Value> result;
   for (v1beta1::MapValue::Entry& entry : *map_value.mutable_entries()) {
     result.emplace(
         ValueFrom(absl::WrapUnique(entry.release_key()), registry),
@@ -228,7 +229,7 @@ expr::Value BuildMapFrom(v1beta1::MapValue&& map_value,
 
 expr::Value BuildMapFrom(const v1beta1::MapValue& map_value,
                          const TypeRegistry* registry) {
-  std::unordered_map<expr::Value, expr::Value> result;
+  absl::node_hash_map<expr::Value, expr::Value> result;
   for (auto& entry : map_value.entries()) {
     result.emplace(ValueFrom(entry.key(), registry),
                    ValueFrom(entry.value(), registry));

@@ -46,6 +46,7 @@ cc_test(
     srcs = ["handle_test.cc"],
     deps = [
         ":handle",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -191,6 +192,7 @@ cc_library(
         ":status_util",
         "//common:macros",
         "//common:value",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )
 
@@ -274,6 +276,7 @@ cc_library(
         ":port",
         ":specialize",
         "@com_github_gflags_gflags//:gflags",
+        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_glog//:glog",

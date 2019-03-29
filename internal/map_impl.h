@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_MAP_IMPL_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_MAP_IMPL_H_
 
+#include "absl/container/node_hash_map.h"
 #include "common/macros.h"
 #include "common/value.h"
 
@@ -12,7 +13,7 @@ namespace internal {
 /** A simple Value -> Value map implementation. */
 class MapImpl final : public Map {
  public:
-  explicit MapImpl(std::unordered_map<Value, Value>&& value)
+  explicit MapImpl(absl::node_hash_map<Value, Value>&& value)
       : value_(std::move(value)) {}
 
   inline std::size_t size() const override { return value_.size(); }
@@ -27,7 +28,7 @@ class MapImpl final : public Map {
   Value GetImpl(const Value& key) const override;
 
  private:
-  std::unordered_map<Value, Value> value_;
+  absl::node_hash_map<Value, Value> value_;
 };
 
 template <Value::Kind KeyKind, Value::Kind ValueKind, typename T,

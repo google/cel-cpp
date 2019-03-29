@@ -1,6 +1,7 @@
 #include "internal/handle.h"
 
 #include "gtest/gtest.h"
+#include "absl/container/node_hash_set.h"
 
 namespace google {
 namespace api {
@@ -41,7 +42,7 @@ TEST(Handle, Operators) {
 }
 
 TEST(Handle, Hash) {
-  std::unordered_set<IntHandle, IntHandle::Hasher> handles;
+  absl::node_hash_set<IntHandle, IntHandle::Hasher> handles;
   handles.emplace(1);
   handles.insert(IntHandle(1));
   handles.emplace(2);

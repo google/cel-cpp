@@ -124,7 +124,7 @@ using is_numeric = or_t<is_int<T>, is_uint<T>, is_float<T>>;
 
 // Containers define a "value_type" and "iterator".
 // Note: The full spec can be found at
-// http://en.cppreference.com/w/cpp/concept/Container
+// https://en.cppreference.com/w/cpp/named_req/Container
 template <typename T, typename = specialize>
 struct is_container : public std::false_type {};
 template <typename T>
