@@ -5,7 +5,7 @@
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/util/message_differencer.h"
-#include "absl/container/node_hash_set.h"
+#include "absl/container/node_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
