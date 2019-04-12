@@ -21,7 +21,6 @@ class Error {
   explicit Error(absl::Span<const google::rpc::Status* const> errors);
   explicit Error(absl::Span<const google::rpc::Status> errors);
 
-  // TODO(issues/5): Improve the return type.
   const ErrorData& errors() const;
 
   bool operator==(const Error& rhs) const;
@@ -35,7 +34,6 @@ class Error {
    *
    * Format may change, and computation may be expensive.
    */
-  // TODO(issues/5): Make the output stable and rename to ToString().
   std::string ToDebugString() const;
 
  private:

@@ -75,7 +75,6 @@ inline Value ValueFrom(const google::protobuf::StringValue& value) {
   return Value::FromString(value.value());
 }
 inline Value ValueFrom(const google::protobuf::BytesValue& value) {
-  // TODO(issues/5): Consider adding native support for cords
   return Value::FromBytes(std::string(value.value()));
 }
 

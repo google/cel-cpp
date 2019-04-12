@@ -1,0 +1,169 @@
+#ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
+#define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
+
+#include "eval/public/activation.h"
+#include "eval/public/cel_expression.h"
+#include "eval/public/cel_value.h"
+#include "google/api/expr/v1alpha1/syntax.pb.h"
+
+namespace google {
+namespace api {
+namespace expr {
+namespace runtime {
+
+// Forward declaration of ExecutionFrame, to resolve circular dependency.
+class ExecutionFrame;
+
+// Class Expression represents single execution step.
+class ExpressionStep {
+ public:
+  virtual ~ExpressionStep() {}
+
+  // Performs actual evaluation.
+  // Values are passed between Expression objects via ValueStack, which is
+  // supplied with context.
+  // Also, Expression gets values supplied by caller though Activation
+  // interface.
+  // ExpressionStep instances can in specific cases
+  // modify execution order(perform jumps).
+  virtual util::Status Evaluate(ExecutionFrame* context) const = 0;
+
+  // Returns corresponding expression object
+  // Useful for error scenarios where information from Expr object is needed to
+  // create CelError.
+  virtual const google::api::expr::v1alpha1::Expr* expr() const = 0;
+
+  // Returns if the execution step comes from AST.
+  virtual bool ComesFromAst() const = 0;
+};
+
+// CelValue stack.
+// Implementation is based on vector to allow passing parameters from
+// stack as Span<>.
+using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;
+
+// CelValue stack.
+// Implementation is based on vector to allow passing parameters from
+// stack as Span<>.
+class ValueStack {
+ public:
+  ValueStack() = default;
+
+  // Stack size.
+  int size() const { return stack_.size(); }
+
+  // Check that stack has enough elements.
+  bool HasEnough(int size) const { return stack_.size() >= size; }
+
+  // Gets the last size elements of the stack.
+  // Checking that stack has enough elements is caller's responsibility.
+  // Please note that calls to Push may invalidate returned Span object.
+  absl::Span<const CelValue> GetSpan(int size) const {
+    return absl::Span<const CelValue>(stack_.data() + stack_.size() - size,
+                                      size);
+  }
+
+  // Peeks the last element of the stack.
+  // Checking that stack is not empty is caller's responsibility.
+  const CelValue& Peek() const { return stack_.back(); }
+
+  // Clears the last size elements of the stack.
+  // Checking that stack has enough elements is caller's responsibility.
+  void Pop(int size) { stack_.resize(stack_.size() - size); }
+
+  // Put element on the top of the stack.
+  void Push(const CelValue& value) { stack_.push_back(value); }
+
+  // Replace element on the top of the stack.
+  // Checking that stack is not empty is caller's responsibility.
+  void PopAndPush(const CelValue& value) { stack_.back() = value; }
+
+  // Preallocate stack.
+  void Reserve(int size) { stack_.reserve(size); }
+
+ private:
+  std::vector<CelValue> stack_;
+};
+
+// ExecutionFrame provides context for expression evaluation.
+// The lifecycle of the object is bound to CelExpression Evaluate(...) call.
+class ExecutionFrame {
+ public:
+  // flat is the flattened sequence of execution steps that will be evaluated.
+  // activation provides bindings between parameter names and values.
+  // arena serves as allocation manager during the expression evaluation.
+  ExecutionFrame(const ExecutionPath* flat, const Activation& activation,
+                 google::protobuf::Arena* arena)
+      : pc_(0), execution_path_(flat), activation_(activation), arena_(arena) {
+    // Reserve space on stack to minimize reallocations
+    // on stack resize.
+    value_stack_.Reserve(flat->size());
+  }
+
+  // Returns next expression to evaluate.
+  const ExpressionStep* Next();
+
+  // Intended for use only in conditionals.
+  util::Status JumpTo(int offset) {
+    int new_pc = pc_ + offset;
+    if (new_pc < 0 || new_pc > execution_path_->size()) {
+      return util::MakeStatus(google::rpc::Code::INTERNAL,
+                          absl::StrCat("Jump address out of range: position: ",
+                                       pc_, ",offset: ", offset,
+                                       ", range: ", execution_path_->size()));
+    }
+    pc_ = new_pc;
+    return util::OkStatus();
+  }
+
+  ValueStack& value_stack() { return value_stack_; }
+
+  google::protobuf::Arena* arena() { return arena_; }
+
+  // Returns reference to Activation
+  const Activation& activation() const { return activation_; }
+
+  // Returns reference to iter_vars
+  std::map<std::string, CelValue>& iter_vars() { return iter_vars_; }
+
+ private:
+  int pc_;  // pc_ - Program Counter. Current position on execution path.
+  const ExecutionPath* execution_path_;
+  const Activation& activation_;
+  ValueStack value_stack_;
+  google::protobuf::Arena* arena_;
+  std::map<std::string, CelValue> iter_vars_;  // variables declared in the frame.
+};
+
+// Implementation of the CelExpression that utilizes flattening
+// of the expression tree.
+class CelExpressionFlatImpl : public CelExpression {
+ public:
+  // Constructs CelExpressionFlatImpl instance.
+  // root_expr represents the root of AST tree;
+  // path is flat execution path that is based upon
+  // flattened AST tree.
+  CelExpressionFlatImpl(const google::api::expr::v1alpha1::Expr* root_expr,
+                        ExecutionPath path)
+      : root_(root_expr), path_(std::move(path)) {}
+
+  // Implementation of CelExpression evaluate method.
+  util::StatusOr<CelValue> Evaluate(const Activation& activation,
+                                    google::protobuf::Arena* arena) const override;
+
+  // Implementation of CelExpression trace method.
+  util::StatusOr<CelValue> Trace(const Activation& activation,
+                                 google::protobuf::Arena* arena,
+                                 CelEvaluationListener callback) const override;
+
+ private:
+  const google::api::expr::v1alpha1::Expr* root_;
+  const ExecutionPath path_;
+};
+
+}  // namespace runtime
+}  // namespace expr
+}  // namespace api
+}  // namespace google
+
+#endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_

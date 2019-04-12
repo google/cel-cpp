@@ -102,7 +102,7 @@ TEST_P(ValueTest, RoundTrip_For) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     UniqueValues, ValueTest,
     ::testing::ValuesIn(
         testutil::ReadTestData("unique_values").test_values().values()),
@@ -124,7 +124,7 @@ TEST_P(UniqueValueTest, NotEqual) {
     }
   }
 }
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     All, UniqueValueTest,
     ::testing::ValuesIn(testutil::AllPairs(
         testutil::ReadTestData("unique_values").test_values())),

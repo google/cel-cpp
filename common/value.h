@@ -351,8 +351,6 @@ class List : public Container {
   /** Returns the value at the given index, or an error. */
   virtual Value Get(std::size_t index) const = 0;
 
-  // TODO(issues/5): Add iterator support.
-
   /**
    * Calls the provided function with every element in the list, in order.
    *
@@ -425,8 +423,6 @@ class Map : public Container {
   template <typename T>
   ForEachReturnType<void, T(const Value&, const Value&)> ForEach(
       T&& call) const;
-
-  // TODO(issues/5): Add iterator or visitor support.
 
   bool operator==(const Map& rhs) const;
   inline bool operator!=(const Map& rhs) const { return !(*this == rhs); }

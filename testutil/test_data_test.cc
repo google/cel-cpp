@@ -47,7 +47,7 @@ TEST_P(UniqueValuesTest, NotEquivalent) {
   ExpectEquivalent(false, GetParam().first, GetParam().second);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     UniqueValues, UniqueValuesTest,
     ::testing::ValuesIn(AllPairs(ReadTestData("unique_values").test_values())),
     TestDataParamName());
@@ -84,7 +84,7 @@ TEST_P(TestValueTest, Equivalent) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     UniqueValues, TestValueTest,
     ::testing::ValuesIn(ReadTestData("unique_values").test_values().values()),
     TestDataParamName());

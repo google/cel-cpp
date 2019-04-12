@@ -1,0 +1,55 @@
+# This package contains code
+# that compiles Expr object into evaluatable CelExpression
+package(
+    default_visibility = ["//eval:__subpackages__"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+exports_files(["LICENSE"])
+
+cc_library(
+    name = "flat_expr_builder",
+    srcs = [
+        "flat_expr_builder.cc",
+    ],
+    hdrs = [
+        "flat_expr_builder.h",
+    ],
+    deps = [
+        "//eval/eval:comprehension_step",
+        "//eval/eval:const_value_step",
+        "//eval/eval:create_list_step",
+        "//eval/eval:create_struct_step",
+        "//eval/eval:evaluator_core",
+        "//eval/eval:function_step",
+        "//eval/eval:ident_step",
+        "//eval/eval:jump_step",
+        "//eval/eval:logic_step",
+        "//eval/eval:select_step",
+        "//eval/public:ast_traverse",
+        "//eval/public:ast_visitor",
+        "//eval/public:cel_builtins",
+        "//eval/public:cel_expression",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//:cc_rpc_code",
+    ],
+)
+
+cc_test(
+    name = "flat_expr_builder_test",
+    srcs = [
+        "flat_expr_builder_test.cc",
+    ],
+    deps = [
+        ":flat_expr_builder",
+        "//eval/proto:cc_cel_error",
+        "//eval/public:builtin_func_registrar",
+        "//eval/testutil:cc_test_message_proto",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

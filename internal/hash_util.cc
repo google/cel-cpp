@@ -16,18 +16,14 @@ std::size_t HashImpl(const google::rpc::Status& value, specialize) {
 }
 
 std::size_t HashImpl(absl::string_view value, specialize) {
-  // TODO(issues/5): Don't copy the string, use a better hash function,
-  // and cache the result.
   return StdHash(std::string(value));
 }
 
 std::size_t HashImpl(absl::Duration value, specialize) {
-  // TODO(issues/5): Is this really the best way to hash the value?
   return StdHash(absl::ToInt64Nanoseconds(value));
 }
 
 std::size_t HashImpl(absl::Time value, specialize) {
-  // TODO(issues/5): Is this really the best way to hash the value?
   return StdHash(absl::ToUnixNanos(value));
 }
 

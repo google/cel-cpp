@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package google.api.expr.runtime;
+
+option cc_enable_arenas = true;
+
+// Message representing errors
+// during CEL evaluation.
+message CelError {
+  // Error code.
+  Code code = 1;
+
+  // Error message.
+  string message = 2;
+
+  // Position in original CEL expression where error occurred.
+  int32 position = 3;
+
+  // Codes for error classification.
+  enum Code {
+    CODE_UNSPECIFIED = 0;      // Code not set.
+    UNKNOWN = 1;               // Unknown/generic error.
+    NO_SUCH_FIELD = 2;         // Field is absent.
+    NO_MATCHING_OVERLOAD = 3;  // Unable to find function overload.
+    INVALID_ARGUMENT = 4;      // invalid_argument
+    NO_SUCH_KEY = 5;           // Key is absent.
+  }
+}

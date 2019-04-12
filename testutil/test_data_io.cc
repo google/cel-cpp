@@ -145,7 +145,7 @@ TestData ReadTestData(absl::string_view test_name) {
   }
 
   // Die with the error for the first file.
-  LOG(FATAL) << status.ShortDebugString();
+  GOOGLE_LOG(FATAL) << status.ShortDebugString();
 }
 
 std::string TestDataParamName::operator()(

@@ -158,7 +158,7 @@ TestData UniqueValues() {
 
 void WriteData() {
   auto status = WriteTestData("unique_values", UniqueValues());
-  CHECK(status.code() == google::rpc::Code::OK) << status.ShortDebugString();
+  GOOGLE_CHECK(status.code() == google::rpc::Code::OK) << status.ShortDebugString();
 }
 
 }  // namespace testutil

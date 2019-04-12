@@ -22,6 +22,4 @@
       return return_if_status_error_status;                              \
   } while (false)
 
-// TODO(issues/5): Add an ASSIGN_OR_RETURN like macro.
-
 #endif  // THIRD_PARTY_CEL_CPP_COMMON_CEL_MACROS_H_
