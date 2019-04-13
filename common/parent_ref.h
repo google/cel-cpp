@@ -111,7 +111,6 @@ class SharedValue : public internal::RefCountable {
    */
   template <typename T>
   static const T* cast_if(const SharedValue* value) {
-    // TODO(issues/5): Consider alternatives to dynamic_cast.
     return dynamic_cast<const T*>(value);
   }
 

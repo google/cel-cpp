@@ -115,13 +115,11 @@ TEST_P(ValueTest, SelfEqual) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     UniqueValues, ValueTest,
     ::testing::ValuesIn(
         testutil::ReadTestData("unique_values").test_values().values()),
     testutil::TestDataParamName());
-
-// TODO(issues/5): Add tests for all message field variations.
 
 class UniqueValueTest
     : public ::testing::TestWithParam<std::pair<TestValue, TestValue>> {
@@ -144,7 +142,7 @@ TEST_P(UniqueValueTest, NotEqual) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     All, UniqueValueTest,
     ::testing::ValuesIn(testutil::AllPairs(
         testutil::ReadTestData("unique_values").test_values())),

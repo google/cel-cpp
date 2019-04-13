@@ -60,7 +60,6 @@ struct StaticDownCastHelper<std::unique_ptr<T>> {
 };
 
 // Default impl returns true if the types are the same.
-// TODO(issues/5): Consider supporting RTT down casting cases.
 template <typename T, typename U, typename = specialize>
 struct RepresentableAsHelper {
   static constexpr bool check(const U&) {
@@ -115,7 +114,6 @@ absl::optional<T> copy_if(const F& value) {
 }
 
 /** Converts a pointer to an absl::optional value. */
-// TODO(issues/5): Consider supporting RTT down casting cases.
 template <typename T>
 absl::optional<T> copy_if(const T* value) {
   return copy_if<T, const T*>(value);

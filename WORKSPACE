@@ -81,6 +81,12 @@ http_archive(
 )
 
 http_archive(
+    name = "com_google_googlebench",
+    strip_prefix = "benchmark-master",
+    urls = ["https://github.com/google/benchmark/archive/master.zip"],
+)
+
+http_archive(
     name = "com_google_cel_spec",
     strip_prefix = "cel-spec-master",
     urls = ["https://github.com/google/cel-spec/archive/master.zip"],
@@ -88,7 +94,7 @@ http_archive(
 
 # Google RE2 (Regular Expression) C++ Library
 http_archive(
-    name = "com_googlesource_code_re2",
+    name = "com_google_re2",
     strip_prefix = "re2-master",
     urls = ["https://github.com/google/re2/archive/master.zip"],
 )
@@ -141,22 +147,39 @@ cc_proto_library(
     visibility = ['//visibility:public'],
 )
 cc_proto_library(
+    name = 'cc_expr_v1alpha1',
+    deps = ['//google/api/expr/v1alpha1:syntax_proto'],
+    visibility = ['//visibility:public'],
+)
+cc_proto_library(
     name = 'cc_expr_v1beta1',
     deps = ['//google/api/expr/v1beta1:eval_proto'],
     visibility = ['//visibility:public'],
 )
 """,
-    strip_prefix = "googleapis-980cdfa876e54b1db4395617e14037612af25466",
-    urls = ["https://github.com/googleapis/googleapis/archive/980cdfa876e54b1db4395617e14037612af25466.tar.gz"],
+    strip_prefix = "googleapis-9a02c5acecb43f38fae4fa52c6420f21c335b888",
+    urls = ["https://github.com/googleapis/googleapis/archive/9a02c5acecb43f38fae4fa52c6420f21c335b888.tar.gz"],
 )
 
 http_archive(
     name = "io_bazel_rules_go",
-    url = "https://github.com/bazelbuild/rules_go/releases/download/0.16.7/rules_go-0.16.7.tar.gz",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.18.0/rules_go-0.18.0.tar.gz",
+    sha256 = "301c8b39b0808c49f98895faa6aa8c92cbd605ab5ad4b6a3a652da33a1a2ba2e",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
-
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 go_rules_dependencies()
-
 go_register_toolchains()
+
+http_archive(
+    name = "com_google_api_codegen",
+    urls = ["https://github.com/googleapis/gapic-generator/archive/96c3c5a4c8397d4bd29a6abce861547a271383e1.zip"],
+    strip_prefix = "gapic-generator-96c3c5a4c8397d4bd29a6abce861547a271383e1",
+    sha256 = "c8ff36df84370c3a0ffe141ec70c3633be9b5f6cc9746b13c78677e9d5566915",
+)
+
+#
+# java_gapic artifacts runtime dependencies (gax-java)
+# @unused
+# buildozer: disable=load
+load("@com_google_api_codegen//rules_gapic/java:java_gapic_repositories.bzl", "java_gapic_repositories")

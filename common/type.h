@@ -81,8 +81,6 @@ class EnumType
 /**
  * An unrecognized type.
  */
-// TODO(issues/5): Consider interning these into a static set so that they
-// can a pointer can be used as an ID like the other type values.
 class UnrecognizedType final {
  public:
   explicit UnrecognizedType(absl::string_view full_name);

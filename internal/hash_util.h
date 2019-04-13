@@ -126,9 +126,9 @@ ABSL_MUST_USE_RESULT std::size_t HashPair(F&& first, S&& second) {
   size_t h1 = Hash(first);
   size_t h2 = Hash(second);
   if (std::is_integral<F>::value) {
-    // We want to avoid GoodFastHash({x, y}) == 0 for common values of {x, y}.
+    // We want to avoid absl::Hash({x, y}) == 0 for common values of {x, y}.
     // hash<X> is the identity function for integral types X, so without this,
-    // GoodFastHash({0, 0}) would be 0.
+    // absl::Hash({0, 0}) would be 0.
     h1 += kIntegralTypeOffset;
   }
   return MixHash(h1, h2);

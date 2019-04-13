@@ -415,7 +415,7 @@ TEST_P(ValueTest, HashCode) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     Inlined, ValueTest,
     ::testing::Values(
         ValueTestCase::ForInline(Value::NullValue(), BasicTypeValue::kNull,
@@ -444,7 +444,7 @@ INSTANTIATE_TEST_CASE_P(
         ValueTestCase::ForInline(Value::FromUnknown(Id(1)), "Unknown{Id(1)}",
                                  "Unknown{Id(1)}")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     NonInlined, ValueTest,
     ::testing::Values(
         ValueTestCase::ForNonInline(Value::ForString("hi"),
@@ -489,7 +489,7 @@ INSTANTIATE_TEST_CASE_P(
                                     BasicTypeValue::kType, "type(\"bad type\")",
                                     "type")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     NonValue, ValueTest,
     ::testing::Values(
         ValueTestCase::ForNonValue(
