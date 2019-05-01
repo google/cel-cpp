@@ -94,6 +94,28 @@ class BuiltinsTest : public ::testing::Test {
         << operation << " for " << CelValue::TypeName(ref.type());
   }
 
+  // Helper method. Looks up in registry and tests for no matching equality
+  // overload.
+  void TestNoMatchingEqualOverload(const CelValue& ref, const CelValue& other) {
+    CelValue eq_value;
+    ASSERT_NO_FATAL_FAILURE(
+        PerformRun(builtin::kEqual, {}, {ref, other}, &eq_value));
+    ASSERT_TRUE(eq_value.IsError())
+        << " for " << CelValue::TypeName(ref.type()) << " and "
+        << CelValue::TypeName(other.type());
+    EXPECT_THAT(eq_value.ErrorOrDie()->code(),
+                Eq(CelError_Code_NO_MATCHING_OVERLOAD));
+
+    CelValue ineq_value;
+    ASSERT_NO_FATAL_FAILURE(
+        PerformRun(builtin::kInequal, {}, {ref, other}, &ineq_value));
+    ASSERT_TRUE(ineq_value.IsError())
+        << " for " << CelValue::TypeName(ref.type()) << " and "
+        << CelValue::TypeName(other.type());
+    EXPECT_THAT(ineq_value.ErrorOrDie()->code(),
+                Eq(CelError_Code_NO_MATCHING_OVERLOAD));
+  }
+
   // Helper method. Looks up in registry and tests Type conversions.
   void TestTypeConverts(absl::string_view operation, const CelValue& ref,
                         int64_t result) {
@@ -352,6 +374,20 @@ TEST_F(BuiltinsTest, TestDurationComparisons) {
   TestComparisonsForType(CelValue::Type::kDuration,
                          CelValue::CreateDuration(&ref),
                          CelValue::CreateDuration(&lesser));
+}
+
+// Test Equality/Non-Equality operation for messages
+TEST_F(BuiltinsTest, TestNullMessageEqual) {
+  CelValue ref = CelValue::CreateNull();
+  Expr call;
+  call.mutable_call_expr()->set_function("test");
+  CelValue value = CelValue::CreateMessage(&call, &arena_);
+  TestComparison(builtin::kEqual, ref, ref, true);
+  TestComparison(builtin::kInequal, ref, ref, false);
+  TestComparison(builtin::kEqual, value, ref, false);
+  TestComparison(builtin::kInequal, value, ref, true);
+  TestComparison(builtin::kEqual, ref, value, false);
+  TestComparison(builtin::kInequal, ref, value, true);
 }
 
 // Test Arithmetical operations for Timestamp and Duration
@@ -781,6 +817,37 @@ TEST_F(BuiltinsTest, ListIndex) {
   }
 }
 
+// Test Equality/Non-Equality operation for lists
+TEST_F(BuiltinsTest, TestListEqual) {
+  const FakeList kList0({});
+  const FakeList kList1({CelValue::CreateInt64(1), CelValue::CreateInt64(2)});
+  const FakeList kList2({CelValue::CreateInt64(1), CelValue::CreateInt64(3)});
+  const FakeList kList3({CelValue::CreateInt64(1), CelValue::CreateInt64(2),
+                         CelValue::CreateInt64(3)});
+
+  std::vector<CelValue> values;
+  values.push_back(CelValue::CreateList(&kList0));
+  values.push_back(CelValue::CreateList(&kList1));
+  values.push_back(CelValue::CreateList(&kList2));
+  values.push_back(CelValue::CreateList(&kList3));
+
+  for (int i = 0; i < values.size(); i++) {
+    for (int j = 0; j < values.size(); j++) {
+      if (i == j) {
+        TestComparison(builtin::kEqual, values[i], values[j], true);
+        TestComparison(builtin::kInequal, values[i], values[j], false);
+      } else {
+        TestComparison(builtin::kInequal, values[i], values[j], true);
+        TestComparison(builtin::kEqual, values[i], values[j], false);
+      }
+    }
+  }
+
+  const FakeList kList({CelValue::CreateInt64(1), CelValue::CreateBool(true)});
+  TestNoMatchingEqualOverload(CelValue::CreateList(&kList1),
+                              CelValue::CreateList(&kList));
+}
+
 // Test map index access function
 TEST_F(BuiltinsTest, MapInt64Index) {
   constexpr int64_t kValues[] = {3, -4, 5, -6};
@@ -881,6 +948,84 @@ TEST_F(BuiltinsTest, MapBoolIndex) {
                    &result_value));
     ASSERT_TRUE(result_value.IsInt64());
     EXPECT_THAT(result_value.Int64OrDie(), Eq(i));
+  }
+}
+
+// Test Equality/Non-Equality operation for maps
+TEST_F(BuiltinsTest, TestMapEqual) {
+  const FakeInt64Map kMap0({});
+  const FakeInt64Map kMap1({{0, CelValue::CreateInt64(0)}});
+  const FakeInt64Map kMap2({{0, CelValue::CreateInt64(1)}});
+  const FakeInt64Map kMap3(
+      {{0, CelValue::CreateInt64(0)}, {1, CelValue::CreateInt64(1)}});
+
+  std::vector<CelValue> values;
+  values.push_back(CelValue::CreateMap(&kMap0));
+  values.push_back(CelValue::CreateMap(&kMap1));
+  values.push_back(CelValue::CreateMap(&kMap2));
+  values.push_back(CelValue::CreateMap(&kMap3));
+
+  for (int i = 0; i < values.size(); i++) {
+    for (int j = 0; j < values.size(); j++) {
+      if (i == j) {
+        TestComparison(builtin::kEqual, values[i], values[j], true);
+        TestComparison(builtin::kInequal, values[i], values[j], false);
+      } else {
+        TestComparison(builtin::kInequal, values[i], values[j], true);
+        TestComparison(builtin::kEqual, values[i], values[j], false);
+      }
+    }
+  }
+
+  const FakeInt64Map kMap({{0, CelValue::CreateBool(true)}});
+  TestNoMatchingEqualOverload(CelValue::CreateMap(&kMap1),
+                              CelValue::CreateMap(&kMap));
+}
+
+TEST_F(BuiltinsTest, TestNestedEqual) {
+  const std::string test = "testvalue";
+  Duration dur;
+  dur.set_seconds(2);
+  dur.set_nanos(1);
+  Timestamp ts;
+  ts.set_seconds(100);
+  ts.set_nanos(100);
+  const FakeInt64Map kMap({{0, CelValue::CreateBool(true)}});
+
+  const FakeList kList1({CelValue::CreateBool(true)});
+  const FakeList kList2({CelValue::CreateInt64(12)});
+  const FakeList kList3({CelValue::CreateUint64(13)});
+  const FakeList kList4({CelValue::CreateDouble(14)});
+  const FakeList kList5({CelValue::CreateString(&test)});
+  const FakeList kList6({CelValue::CreateBytes(&test)});
+  const FakeList kList7({CelValue::CreateNull()});
+  const FakeList kList8({CelValue::CreateDuration(&dur)});
+  const FakeList kList9({CelValue::CreateTimestamp(&ts)});
+  const FakeList kList10({CelValue::CreateList(&kList1)});
+  const FakeList kList11({CelValue::CreateMap(&kMap)});
+
+  std::vector<CelValue> values;
+  values.push_back(CelValue::CreateList(&kList1));
+  values.push_back(CelValue::CreateList(&kList2));
+  values.push_back(CelValue::CreateList(&kList3));
+  values.push_back(CelValue::CreateList(&kList4));
+  values.push_back(CelValue::CreateList(&kList5));
+  values.push_back(CelValue::CreateList(&kList6));
+  values.push_back(CelValue::CreateList(&kList7));
+  values.push_back(CelValue::CreateList(&kList8));
+  values.push_back(CelValue::CreateList(&kList9));
+  values.push_back(CelValue::CreateList(&kList10));
+  values.push_back(CelValue::CreateList(&kList11));
+
+  for (int i = 0; i < values.size(); i++) {
+    for (int j = 0; j < values.size(); j++) {
+      if (i == j) {
+        TestComparison(builtin::kEqual, values[i], values[j], true);
+        TestComparison(builtin::kInequal, values[i], values[j], false);
+      } else {
+        TestNoMatchingEqualOverload(values[i], values[j]);
+      }
+    }
   }
 }
 

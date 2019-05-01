@@ -25,14 +25,18 @@ namespace {
 
 // Comparison template functions
 template <class Type>
-bool Inequal(Arena* arena, Type t1, Type t2) {
-  return (t1 != t2);
+CelValue Inequal(Arena* arena, Type t1, Type t2) {
+  return CelValue::CreateBool(t1 != t2);
 }
 
 template <class Type>
-bool Equal(Arena* arena, Type t1, Type t2) {
-  return (t1 == t2);
+CelValue Equal(Arena* arena, Type t1, Type t2) {
+  return CelValue::CreateBool(t1 == t2);
 }
+
+// Forward declaration of the generic equality operator
+template <>
+CelValue Equal(Arena* arena, CelValue t1, CelValue t2);
 
 template <class Type>
 bool LessThan(Arena* arena, Type t1, Type t2) {
@@ -56,13 +60,13 @@ bool GreaterThanOrEqual(Arena* arena, Type t1, Type t2) {
 
 // Duration comparison specializations
 template <>
-bool Inequal(Arena* arena, const Duration* t1, const Duration* t2) {
-  return operator!=(*t1, *t2);
+CelValue Inequal(Arena* arena, const Duration* t1, const Duration* t2) {
+  return CelValue::CreateBool(operator!=(*t1, *t2));
 }
 
 template <>
-bool Equal(Arena* arena, const Duration* t1, const Duration* t2) {
-  return operator==(*t1, *t2);
+CelValue Equal(Arena* arena, const Duration* t1, const Duration* t2) {
+  return CelValue::CreateBool(operator==(*t1, *t2));
 }
 
 template <>
@@ -87,13 +91,13 @@ bool GreaterThanOrEqual(Arena* arena, const Duration* t1, const Duration* t2) {
 
 // Timestamp comparison specializations
 template <>
-bool Inequal(Arena* arena, const Timestamp* t1, const Timestamp* t2) {
-  return operator!=(*t1, *t2);
+CelValue Inequal(Arena* arena, const Timestamp* t1, const Timestamp* t2) {
+  return CelValue::CreateBool(operator!=(*t1, *t2));
 }
 
 template <>
-bool Equal(Arena* arena, const Timestamp* t1, const Timestamp* t2) {
-  return operator==(*t1, *t2);
+CelValue Equal(Arena* arena, const Timestamp* t1, const Timestamp* t2) {
+  return CelValue::CreateBool(operator==(*t1, *t2));
 }
 
 template <>
@@ -117,19 +121,169 @@ bool GreaterThanOrEqual(Arena* arena, const Timestamp* t1,
   return operator>=(*t1, *t2);
 }
 
+// Message specializations
+template <>
+CelValue Inequal(Arena* arena, const google::protobuf::Message* t1,
+                 const google::protobuf::Message* t2) {
+  if (t1 == nullptr) {
+    return CelValue::CreateBool(t2 != nullptr);
+  }
+  if (t2 == nullptr) {
+    return CelValue::CreateBool(true);
+  }
+  return CreateErrorValue(arena, "no_matching_overload",
+                          CelError::Code::CelError_Code_NO_MATCHING_OVERLOAD);
+}
+
+template <>
+CelValue Equal(Arena* arena, const google::protobuf::Message* t1,
+               const google::protobuf::Message* t2) {
+  if (t1 == nullptr) {
+    return CelValue::CreateBool(t2 == nullptr);
+  }
+  if (t2 == nullptr) {
+    return CelValue::CreateBool(false);
+  }
+  return CreateErrorValue(arena, "no_matching_overload",
+                          CelError::Code::CelError_Code_NO_MATCHING_OVERLOAD);
+}
+
+// Equality specialization for lists
+template <>
+CelValue Equal(Arena* arena, const CelList* t1, const CelList* t2) {
+  int index_size = t1->size();
+  if (t2->size() != index_size) {
+    return CelValue::CreateBool(false);
+  }
+
+  for (int i = 0; i < index_size; i++) {
+    CelValue e1 = (*t1)[i];
+    CelValue e2 = (*t2)[i];
+    const CelValue eq = Equal<CelValue>(arena, e1, e2);
+    if (eq.IsBool()) {
+      if (!eq.BoolOrDie()) {
+        return CelValue::CreateBool(false);
+      }
+    } else {
+      // propagate errors
+      return eq;
+    }
+  }
+
+  return CelValue::CreateBool(true);
+}
+
+template <>
+CelValue Inequal(Arena* arena, const CelList* t1, const CelList* t2) {
+  const CelValue eq = Equal<const CelList*>(arena, t1, t2);
+  if (eq.IsBool()) {
+    return CelValue::CreateBool(!eq.BoolOrDie());
+  }
+  return eq;
+}
+
+// Equality specialization for maps
+template <>
+CelValue Equal(Arena* arena, const CelMap* t1, const CelMap* t2) {
+  if (t1->size() != t2->size()) {
+    return CelValue::CreateBool(false);
+  }
+
+  const CelList* keys = t1->ListKeys();
+  for (int i = 0; i < keys->size(); i++) {
+    CelValue key = (*keys)[i];
+    CelValue v1 = (*t1)[key].value();
+    absl::optional<CelValue> v2 = (*t2)[key];
+    if (!v2.has_value()) {
+      return CelValue::CreateBool(false);
+    }
+    const CelValue eq = Equal<CelValue>(arena, v1, v2.value());
+    if (eq.IsBool()) {
+      if (!eq.BoolOrDie()) {
+        return CelValue::CreateBool(false);
+      }
+    } else {
+      // propagate errors
+      return eq;
+    }
+  }
+
+  return CelValue::CreateBool(true);
+}
+
+template <>
+CelValue Inequal(Arena* arena, const CelMap* t1, const CelMap* t2) {
+  const CelValue eq = Equal<const CelMap*>(arena, t1, t2);
+  if (eq.IsBool()) {
+    return CelValue::CreateBool(!eq.BoolOrDie());
+  }
+  return eq;
+}
+
+// Generic equality for CEL values
+template <>
+CelValue Equal(Arena* arena, CelValue t1, CelValue t2) {
+  if (t1.type() != t2.type()) {
+    return CreateErrorValue(arena, "no_matching_overload",
+                            CelError::Code::CelError_Code_NO_MATCHING_OVERLOAD);
+  }
+  switch (t1.type()) {
+    case CelValue::Type::kBool:
+      return Equal<bool>(arena, t1.BoolOrDie(), t2.BoolOrDie());
+    case CelValue::Type::kInt64:
+      return Equal<int64_t>(arena, t1.Int64OrDie(), t2.Int64OrDie());
+    case CelValue::Type::kUint64:
+      return Equal<uint64_t>(arena, t1.Uint64OrDie(), t2.Uint64OrDie());
+    case CelValue::Type::kDouble:
+      return Equal<double>(arena, t1.DoubleOrDie(), t2.DoubleOrDie());
+    case CelValue::Type::kString:
+      return Equal<CelValue::StringHolder>(arena, t1.StringOrDie(),
+                                           t2.StringOrDie());
+    case CelValue::Type::kBytes:
+      return Equal<CelValue::BytesHolder>(arena, t1.BytesOrDie(),
+                                          t2.BytesOrDie());
+    case CelValue::Type::kMessage:
+      return Equal<const google::protobuf::Message*>(arena, t1.MessageOrDie(),
+                                           t2.MessageOrDie());
+    case CelValue::Type::kDuration:
+      return Equal<const Duration*>(arena, t1.DurationOrDie(),
+                                    t2.DurationOrDie());
+    case CelValue::Type::kTimestamp:
+      return Equal<const Timestamp*>(arena, t1.TimestampOrDie(),
+                                     t2.TimestampOrDie());
+    case CelValue::Type::kList:
+      return Equal<const CelList*>(arena, t1.ListOrDie(), t2.ListOrDie());
+    case CelValue::Type::kMap:
+      return Equal<const CelMap*>(arena, t1.MapOrDie(), t2.MapOrDie());
+    default:
+      break;
+  }
+  return CreateErrorValue(arena, "no_matching_overload",
+                          CelError::Code::CelError_Code_NO_MATCHING_OVERLOAD);
+}
+
 // Helper method
+//
+// Registers all equality functions for template parameters type.
+template <class Type>
+util::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
+  // Inequality
+  util::Status status =
+      FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
+          builtin::kInequal, false, Inequal<Type>, registry);
+  if (!util::IsOk(status)) return status;
+
+  // Equality
+  status = FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
+      builtin::kEqual, false, Equal<Type>, registry);
+  return status;
+}
+
 // Registers all comparison functions for template parameter type.
 template <class Type>
 util::Status RegisterComparisonFunctionsForType(
     CelFunctionRegistry* registry) {
-  // Inequality
-  util::Status status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
-      builtin::kInequal, false, Inequal<Type>, registry);
-  if (!util::IsOk(status)) return status;
-
-  // Equality
-  status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
-      builtin::kEqual, false, Equal<Type>, registry);
+  util::Status status = RegisterEqualityFunctionsForType<Type>(registry);
   if (!util::IsOk(status)) return status;
 
   // Less than
@@ -608,6 +762,15 @@ util::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry) {
   if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<const Timestamp*>(registry);
+  if (!util::IsOk(status)) return status;
+
+  status = RegisterEqualityFunctionsForType<const google::protobuf::Message*>(registry);
+  if (!util::IsOk(status)) return status;
+
+  status = RegisterEqualityFunctionsForType<const CelList*>(registry);
+  if (!util::IsOk(status)) return status;
+
+  status = RegisterEqualityFunctionsForType<const CelMap*>(registry);
   if (!util::IsOk(status)) return status;
 
   // Logical AND

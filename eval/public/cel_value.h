@@ -254,37 +254,35 @@ class CelValue {
     return GetValueOrDie<const CelError *>(Type::kError);
   }
 
-  const bool IsNull() const {
-    return value_.template Visit<bool>(NullCheckOp());
-  }
+  bool IsNull() const { return value_.template Visit<bool>(NullCheckOp()); }
 
-  const bool IsBool() const { return value_.is<bool>(); }
+  bool IsBool() const { return value_.is<bool>(); }
 
-  const bool IsInt64() const { return value_.is<int64_t>(); }
+  bool IsInt64() const { return value_.is<int64_t>(); }
 
-  const bool IsUint64() const { return value_.is<uint64_t>(); }
+  bool IsUint64() const { return value_.is<uint64_t>(); }
 
-  const bool IsDouble() const { return value_.is<double>(); }
+  bool IsDouble() const { return value_.is<double>(); }
 
-  const bool IsString() const { return value_.is<StringHolder>(); }
+  bool IsString() const { return value_.is<StringHolder>(); }
 
-  const bool IsBytes() const { return value_.is<BytesHolder>(); }
+  bool IsBytes() const { return value_.is<BytesHolder>(); }
 
-  const bool IsMessage() const { return value_.is<const google::protobuf::Message *>(); }
+  bool IsMessage() const { return value_.is<const google::protobuf::Message *>(); }
 
-  const bool IsDuration() const {
+  bool IsDuration() const {
     return value_.is<const google::protobuf::Duration *>();
   }
 
-  const bool IsTimestamp() const {
+  bool IsTimestamp() const {
     return value_.is<const google::protobuf::Timestamp *>();
   }
 
-  const bool IsList() const { return value_.is<const CelList *>(); }
+  bool IsList() const { return value_.is<const CelList *>(); }
 
-  const bool IsMap() const { return value_.is<const CelMap *>(); }
+  bool IsMap() const { return value_.is<const CelMap *>(); }
 
-  const bool IsError() const { return value_.is<const CelError *>(); }
+  bool IsError() const { return value_.is<const CelError *>(); }
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
@@ -325,7 +323,7 @@ class CelValue {
 
   struct NullCheckOp {
     template <typename T>
-    bool operator()(const T &t) const {
+    bool operator()(const T &) const {
       return false;
     }
 
