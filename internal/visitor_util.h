@@ -150,7 +150,8 @@ template <typename R>
 struct BadAccessVisitor {
   template <typename... Args>
   R operator()(Args&&...) {
-    return absl::variant_internal::TypedThrowBadVariantAccess<R>();
+    // Throw bad_variant_access without using `throw` keyword.
+    return absl::get<0>(absl::variant<R, int>(absl::in_place_index<1>, 1));
   }
 };
 

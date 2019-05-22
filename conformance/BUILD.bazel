@@ -1,0 +1,55 @@
+# Description
+#   Implementation of the conformance test server
+
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+licenses(["notice"])  # Apache 2.0
+
+cc_binary(
+    name = "server",
+    testonly = 1,
+    srcs = ["server.cc"],
+    deps = [
+        "//eval/eval:container_backed_list_impl",
+        "//eval/eval:container_backed_map_impl",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//:cc_checked_v1alpha1",
+        "@com_google_googleapis//:cc_conformance_service",
+        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+sh_test(
+    name = "simple",
+    srcs = ["@com_google_cel_spec//tests:conftest.sh"],
+    args = [
+        "$(location @com_google_cel_spec//tests/simple:simple_test)",
+        "--server=$(location @com_google_cel_go//server/main:cel_server)",
+        "--eval_server=$(location :server)",
+        "$(location @com_google_cel_spec//tests/simple:testdata/basic.textproto)",
+        "$(location @com_google_cel_spec//tests/simple:testdata/comparisons.textproto)",
+        # Requires qualified bindings error message relaxation
+        #"$(location @com_google_cel_spec//tests/simple:testdata/fields.textproto)",
+        # Requires change in 1.0/0 result
+        # "$(location @com_google_cel_spec//tests/simple:testdata/fp_math.textproto)",
+        "$(location @com_google_cel_spec//tests/simple:testdata/integer_math.textproto)",
+        "$(location @com_google_cel_spec//tests/simple:testdata/plumbing.textproto)",
+    ],
+    data = [
+        ":server",
+        "@com_google_cel_go//server/main:cel_server",
+        "@com_google_cel_spec//tests/simple:simple_test",
+        "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
+        "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
+        "@com_google_cel_spec//tests/simple:testdata/fields.textproto",
+        "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
+        "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
+        "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
+    ],
+)

@@ -1,7 +1,10 @@
 # This package contains implementation of expression evaluator
 # internals.
 package(
-    default_visibility = ["//eval:__subpackages__"],
+    default_visibility = [
+        "//conformance:__subpackages__",
+        "//eval:__subpackages__",
+    ],
 )
 
 licenses(["notice"])  # Apache 2.0
