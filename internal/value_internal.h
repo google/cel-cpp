@@ -334,7 +334,8 @@ template <typename T, typename N>
 T BaseValue::BaseTypeHelper<T, N>::get(const ValueData& data) {
   const N& value = BaseTypeHelper<N>::get(data);
   if (!representable_as<T>(value)) {
-    absl::variant_internal::ThrowBadVariantAccess();
+    // Throw bad_variant_access without using `throw` keyword.
+    return absl::get<0>(absl::variant<T, int>(absl::in_place_index<1>, 1));
   }
   return T(value);
 }
@@ -350,7 +351,8 @@ template <typename T>
 const T& BaseValue::BaseTypeHelper<T, SharedValue>::get(const ValueData& data) {
   const T* value = get_if(&data);
   if (value == nullptr) {
-    absl::variant_internal::ThrowBadVariantAccess();
+    // Throw bad_variant_access without using `throw` keyword.
+    return *absl::get<0>(absl::variant<T*, int>(absl::in_place_index<1>, 1));
   }
   return *value;
 }

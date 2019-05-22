@@ -86,10 +86,12 @@ http_archive(
     urls = ["https://github.com/google/benchmark/archive/master.zip"],
 )
 
+CEL_SPEC_SHA="9cdb3682ba04109d2e03d9b048986bae113bf36f"
 http_archive(
     name = "com_google_cel_spec",
-    strip_prefix = "cel-spec-master",
-    urls = ["https://github.com/google/cel-spec/archive/master.zip"],
+    strip_prefix = "cel-spec-" + CEL_SPEC_SHA,
+    urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_SHA + ".zip"],
+    sha256 = "3172c95fc80d200948beb790806f881530c4e639469fa054eb8b6286cbbec7d3",
 )
 
 # Google RE2 (Regular Expression) C++ Library
@@ -152,8 +154,49 @@ cc_proto_library(
     visibility = ['//visibility:public'],
 )
 cc_proto_library(
+    name = 'cc_eval_v1alpha1',
+    deps = ['//google/api/expr/v1alpha1:eval_proto'],
+    visibility = ['//visibility:public'],
+)
+cc_proto_library(
+    name = 'cc_checked_v1alpha1',
+    deps = ['//google/api/expr/v1alpha1:checked_proto'],
+    visibility = ['//visibility:public'],
+)
+cc_proto_library(
     name = 'cc_expr_v1beta1',
     deps = ['//google/api/expr/v1beta1:eval_proto'],
+    visibility = ['//visibility:public'],
+)
+
+# gRPC dependencies
+load("@com_github_grpc_grpc//bazel:generate_cc.bzl", "generate_cc")
+generate_cc(
+    name = "_conformance_service_proto",
+    srcs = [
+        "//google/api/expr/v1alpha1:conformance_service_proto",
+    ],
+    well_known_protos = True,
+)
+generate_cc(
+    name = "_conformance_service_grpc",
+    srcs = [
+        "//google/api/expr/v1alpha1:conformance_service_proto",
+    ],
+    well_known_protos = True,
+    plugin = "@com_github_grpc_grpc//:grpc_cpp_plugin",
+)
+cc_library(
+    name = "cc_conformance_service",
+    srcs = ["_conformance_service_proto", "_conformance_service_grpc"],
+    hdrs = ["_conformance_service_proto", "_conformance_service_grpc"],
+    deps = [
+        ":cc_checked_v1alpha1",
+        ":cc_expr_v1alpha1",
+        ":cc_eval_v1alpha1",
+        "@com_github_grpc_grpc//:grpc++_codegen_proto",
+        "//external:protobuf",
+    ],
     visibility = ['//visibility:public'],
 )
 """,
@@ -163,13 +206,11 @@ cc_proto_library(
 
 http_archive(
     name = "io_bazel_rules_go",
-    url = "https://github.com/bazelbuild/rules_go/releases/download/0.18.0/rules_go-0.18.0.tar.gz",
-    sha256 = "301c8b39b0808c49f98895faa6aa8c92cbd605ab5ad4b6a3a652da33a1a2ba2e",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.18.5/rules_go-0.18.5.tar.gz",
+    sha256 = "a82a352bffae6bee4e95f68a8d80a70e87f42c4741e6a448bec11998fcc82329",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-go_rules_dependencies()
-go_register_toolchains()
 
 http_archive(
     name = "com_google_api_codegen",
@@ -183,3 +224,40 @@ http_archive(
 # @unused
 # buildozer: disable=load
 load("@com_google_api_codegen//rules_gapic/java:java_gapic_repositories.bzl", "java_gapic_repositories")
+
+# cel-go dependencies:
+http_archive(
+    name = "bazel_gazelle",
+    urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.17.0/bazel-gazelle-0.17.0.tar.gz"],
+    sha256 = "3c681998538231a2d24d0c07ed5a7658cb72bfb5fd4bf9911157c0e9ac6a2687",
+)
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+git_repository(
+  name = "com_google_cel_go",
+  remote = "https://github.com/google/cel-go.git",
+  tag = "v0.2.0",
+)
+go_repository(
+  name = "org_golang_google_genproto",
+  build_file_proto_mode = "disable",
+  commit = "bd91e49a0898e27abb88c339b432fa53d7497ac0",
+  importpath = "google.golang.org/genproto",
+)
+go_repository(
+  name = "com_github_antlr",
+  tag = "4.7.2",
+  importpath = "github.com/antlr/antlr4",
+)
+go_rules_dependencies()
+go_register_toolchains()
+gazelle_dependencies()
+
+# gRPC dependencies:
+git_repository(
+    name = "com_github_grpc_grpc",
+    remote = "https://github.com/grpc/grpc.git",
+    commit = "7741e806a213cba63c96234f16d712a8aa101a49", # v1.20.1
+    shallow_since = "1556224604 -0700",
+)
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
