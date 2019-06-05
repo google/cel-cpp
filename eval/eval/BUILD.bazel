@@ -69,7 +69,7 @@ cc_library(
         "//eval/public:cel_function",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -88,7 +88,7 @@ cc_library(
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -102,7 +102,7 @@ cc_test(
     deps = [
         ":const_value_step",
         ":evaluator_core",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -123,7 +123,7 @@ cc_library(
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -138,7 +138,7 @@ cc_test(
         ":create_list_step",
         ":evaluator_core",
         "//eval/testutil:cc_test_message_proto",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -158,7 +158,7 @@ cc_library(
         ":field_access",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -176,7 +176,7 @@ cc_test(
         "//eval/testutil:cc_test_message_proto",
         "//testutil:util",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -194,7 +194,7 @@ cc_library(
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -208,7 +208,7 @@ cc_test(
         ":evaluator_core",
         "//eval/compiler:flat_expr_builder",
         "//eval/public:builtin_func_registrar",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -224,7 +224,7 @@ cc_library(
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -241,7 +241,7 @@ cc_library(
         "//eval/public:cel_status",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_rpc_code",
+        "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -337,7 +337,7 @@ cc_test(
         ":evaluator_core",
         ":function_step",
         "//eval/public:cel_function_adapter",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -356,7 +356,7 @@ cc_library(
         "//eval/public:activation",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -369,7 +369,7 @@ cc_test(
     deps = [
         ":evaluator_core",
         ":ident_step",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -388,7 +388,7 @@ cc_library(
         "//eval/public:activation",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -407,7 +407,7 @@ cc_library(
         "//eval/public:cel_function",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -428,7 +428,7 @@ cc_library(
         "//eval/public:activation",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -445,7 +445,7 @@ cc_test(
         ":select_step",
         "//eval/testutil:cc_test_message_proto",
         "//testutil:util",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -32,8 +32,8 @@ cc_library(
         "//eval/public:cel_builtins",
         "//eval/public:cel_expression",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
-        "@com_google_googleapis//:cc_rpc_code",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc:code_cc_proto",
     ],
 )
 
@@ -48,7 +48,7 @@ cc_test(
         "//eval/public:builtin_func_registrar",
         "//eval/testutil:cc_test_message_proto",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
