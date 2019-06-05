@@ -69,12 +69,6 @@ http_archive(
 )
 
 http_archive(
-    name = "com_google_protobuf_javalite",
-    strip_prefix = "protobuf-javalite",
-    urls = ["https://github.com/google/protobuf/archive/javalite.zip"],
-)
-
-http_archive(
     name = "com_google_googletest",
     strip_prefix = "googletest-master",
     urls = ["https://github.com/google/googletest/archive/master.zip"],
@@ -123,85 +117,20 @@ http_archive(
     ],
 )
 
-# Required to use embedded BUILD.bazel file in googleapis/google/rpc
-git_repository(
-    name = "io_grpc_grpc_java",
-    remote = "https://github.com/grpc/grpc-java.git",
-    tag = "v1.13.1",
-)
-
+GOOGLEAPIS_SHA = "4f3516a6f96dac182973a3573ff5117e8e4f76c7"
 http_archive(
     name = "com_google_googleapis",
-    build_file_content = """
-cc_proto_library(
-    name = 'cc_rpc_status',
-    deps = ['//google/rpc:status_proto'],
-    visibility = ['//visibility:public'],
-)
-cc_proto_library(
-    name = 'cc_rpc_code',
-    deps = ['//google/rpc:code_proto'],
-    visibility = ['//visibility:public'],
-)
-cc_proto_library(
-    name = 'cc_type_money',
-    deps = ['//google/type:money_proto'],
-    visibility = ['//visibility:public'],
-)
-cc_proto_library(
-    name = 'cc_expr_v1alpha1',
-    deps = ['//google/api/expr/v1alpha1:syntax_proto'],
-    visibility = ['//visibility:public'],
-)
-cc_proto_library(
-    name = 'cc_eval_v1alpha1',
-    deps = ['//google/api/expr/v1alpha1:eval_proto'],
-    visibility = ['//visibility:public'],
-)
-cc_proto_library(
-    name = 'cc_checked_v1alpha1',
-    deps = ['//google/api/expr/v1alpha1:checked_proto'],
-    visibility = ['//visibility:public'],
-)
-cc_proto_library(
-    name = 'cc_expr_v1beta1',
-    deps = ['//google/api/expr/v1beta1:eval_proto'],
-    visibility = ['//visibility:public'],
+    strip_prefix = "googleapis-" + GOOGLEAPIS_SHA,
+    urls = ["https://github.com/googleapis/googleapis/archive/" + GOOGLEAPIS_SHA + ".tar.gz"],
+    sha256 = "5d185318b4e6b2675336ca2391d99d0adaae5ed88f721f6f02978b152cc8d29f",
 )
 
-# gRPC dependencies
-load("@com_github_grpc_grpc//bazel:generate_cc.bzl", "generate_cc")
-generate_cc(
-    name = "_conformance_service_proto",
-    srcs = [
-        "//google/api/expr/v1alpha1:conformance_service_proto",
-    ],
-    well_known_protos = True,
-)
-generate_cc(
-    name = "_conformance_service_grpc",
-    srcs = [
-        "//google/api/expr/v1alpha1:conformance_service_proto",
-    ],
-    well_known_protos = True,
-    plugin = "@com_github_grpc_grpc//:grpc_cpp_plugin",
-)
-cc_library(
-    name = "cc_conformance_service",
-    srcs = ["_conformance_service_proto", "_conformance_service_grpc"],
-    hdrs = ["_conformance_service_proto", "_conformance_service_grpc"],
-    deps = [
-        ":cc_checked_v1alpha1",
-        ":cc_expr_v1alpha1",
-        ":cc_eval_v1alpha1",
-        "@com_github_grpc_grpc//:grpc++_codegen_proto",
-        "//external:protobuf",
-    ],
-    visibility = ['//visibility:public'],
-)
-""",
-    strip_prefix = "googleapis-9a02c5acecb43f38fae4fa52c6420f21c335b888",
-    urls = ["https://github.com/googleapis/googleapis/archive/9a02c5acecb43f38fae4fa52c6420f21c335b888.tar.gz"],
+load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
+switched_rules_by_language(
+    name = "com_google_googleapis_imports",
+    cc = True,
+    go = True,
+    grpc = True,
 )
 
 http_archive(
@@ -211,19 +140,6 @@ http_archive(
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-
-http_archive(
-    name = "com_google_api_codegen",
-    urls = ["https://github.com/googleapis/gapic-generator/archive/96c3c5a4c8397d4bd29a6abce861547a271383e1.zip"],
-    strip_prefix = "gapic-generator-96c3c5a4c8397d4bd29a6abce861547a271383e1",
-    sha256 = "c8ff36df84370c3a0ffe141ec70c3633be9b5f6cc9746b13c78677e9d5566915",
-)
-
-#
-# java_gapic artifacts runtime dependencies (gax-java)
-# @unused
-# buildozer: disable=load
-load("@com_google_api_codegen//rules_gapic/java:java_gapic_repositories.bzl", "java_gapic_repositories")
 
 # cel-go dependencies:
 http_archive(
@@ -253,11 +169,12 @@ go_register_toolchains()
 gazelle_dependencies()
 
 # gRPC dependencies:
-git_repository(
+GRPC_SHA = "7569ba7a66a2b4dd93b04ad355cc401d06285ee7" # v1.21.0
+http_archive(
     name = "com_github_grpc_grpc",
-    remote = "https://github.com/grpc/grpc.git",
-    commit = "7741e806a213cba63c96234f16d712a8aa101a49", # v1.20.1
-    shallow_since = "1556224604 -0700",
+    strip_prefix = "grpc-" + GRPC_SHA,
+    urls = ["https://github.com/grpc/grpc/archive/" + GRPC_SHA + ".tar.gz"],
+    sha256 = "e4864910b1127d2c05162df97986214874505e33cebfe6c9e36ca7eda4c6ad14",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()

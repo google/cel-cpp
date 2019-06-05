@@ -18,9 +18,9 @@ cc_binary(
         "//eval/public:cel_expr_builder_factory",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//:cc_checked_v1alpha1",
-        "@com_google_googleapis//:cc_conformance_service",
-        "@com_google_googleapis//:cc_expr_v1alpha1",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:conformance_service_cc_grpc",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
