@@ -1,9 +1,10 @@
-dist: bionic
+dist: xenial
 
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - llvm-toolchain-xenial-8
     packages:
       - wget
       - pkg-config
