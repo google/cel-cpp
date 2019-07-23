@@ -4,7 +4,7 @@
 #include "eval/eval/field_access.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/strings/substitute.h"
-#include "google/rpc/code.pb.h"
+#include "base/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -26,17 +26,16 @@ class CreateStructStepForMessage : public ExpressionStepBase {
     const FieldDescriptor* field;
   };
 
-  CreateStructStepForMessage(const google::api::expr::v1alpha1::Expr* expr,
-                             const Descriptor* descriptor,
+  CreateStructStepForMessage(int64_t expr_id, const Descriptor* descriptor,
                              std::vector<FieldEntry> entries)
-      : ExpressionStepBase(expr),
+      : ExpressionStepBase(expr_id),
         descriptor_(descriptor),
         entries_(std::move(entries)) {}
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  util::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  cel_base::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
   const Descriptor* descriptor_;
   std::vector<FieldEntry> entries_;
@@ -44,18 +43,18 @@ class CreateStructStepForMessage : public ExpressionStepBase {
 
 class CreateStructStepForMap : public ExpressionStepBase {
  public:
-  CreateStructStepForMap(const google::api::expr::v1alpha1::Expr* expr, int entry_count)
-      : ExpressionStepBase(expr), entry_count_(entry_count) {}
+  CreateStructStepForMap(int64_t expr_id, int entry_count)
+      : ExpressionStepBase(expr_id), entry_count_(entry_count) {}
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  util::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  cel_base::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
   int entry_count_;
 };
 
-util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
+::cel_base::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
                                                       CelValue* result) const {
   int entries_size = entries_.size();
 
@@ -70,16 +69,15 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
   if (msg == nullptr) {
     *result = CreateErrorValue(
         frame->arena(),
-        absl::Substitute("Failed to create message $0", descriptor_->name()),
-        CelError::Code::CelError_Code_UNKNOWN);
-    return util::OkStatus();
+        absl::Substitute("Failed to create message $0", descriptor_->name()));
+    return ::cel_base::OkStatus();
   }
 
   int index = 0;
   for (const auto& entry : entries_) {
     const CelValue& arg = args[index++];
 
-    util::Status status = util::OkStatus();
+    ::cel_base::Status status = ::cel_base::OkStatus();
 
     if (entry.field->is_map()) {
       constexpr int kKeyField = 1;
@@ -87,7 +85,7 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
       const CelMap* cel_map;
       if (!arg.GetValue<const CelMap*>(&cel_map) || cel_map == nullptr) {
-        status = util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, absl::Substitute(
+        status = cel_base::InvalidArgumentError(absl::Substitute(
             "Failed to create message $0, field $1: value is not CelMap",
             descriptor_->name(), entry.field->name()));
         break;
@@ -96,7 +94,7 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
       auto entry_descriptor = entry.field->message_type();
 
       if (entry_descriptor == nullptr) {
-        status = util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
+        status = cel_base::InvalidArgumentError(
             absl::Substitute("Failed to create message $0, field $1: failed to "
                              "find map entry descriptor",
                              descriptor_->name(), entry.field->name()));
@@ -109,14 +107,14 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
           entry_descriptor->FindFieldByNumber(kValueField);
 
       if (key_field_descriptor == nullptr) {
-        status = util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
+        status = cel_base::InvalidArgumentError(
             absl::Substitute("Failed to create message $0, field $1: failed to "
                              "find key field descriptor",
                              descriptor_->name(), entry.field->name()));
         break;
       }
       if (value_field_descriptor == nullptr) {
-        status = util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
+        status = cel_base::InvalidArgumentError(
             absl::Substitute("Failed to create message $0, field $1: failed to "
                              "find value field descriptor",
                              descriptor_->name(), entry.field->name()));
@@ -129,7 +127,7 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
         auto value = (*cel_map)[key];
         if (!value.has_value()) {
-          status = util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, absl::Substitute(
+          status = cel_base::InvalidArgumentError(absl::Substitute(
               "Failed to create message $0, field $1: Error serializing CelMap",
               descriptor_->name(), entry.field->name()));
           break;
@@ -137,12 +135,12 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
         Message* entry_msg = msg->GetReflection()->AddMessage(msg, entry.field);
         status = SetValueToSingleField(key, key_field_descriptor, entry_msg);
-        if (!util::IsOk(status)) {
+        if (!status.ok()) {
           break;
         }
         status = SetValueToSingleField(value.value(), value_field_descriptor,
                                        entry_msg);
-        if (!util::IsOk(status)) {
+        if (!status.ok()) {
           break;
         }
       }
@@ -154,55 +152,53 @@ util::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
             frame->arena(),
             absl::Substitute(
                 "Failed to create message $0: value $1 is not CelList",
-                descriptor_->name(), entry.field->name()),
-            CelError::Code::CelError_Code_UNKNOWN);
-        return util::OkStatus();
+                descriptor_->name(), entry.field->name()));
+        return ::cel_base::OkStatus();
       }
 
       for (int i = 0; i < cel_list->size(); i++) {
         status = AddValueToRepeatedField((*cel_list)[i], entry.field, msg);
-        if (!util::IsOk(status)) break;
+        if (!status.ok()) break;
       }
     } else {
       status = SetValueToSingleField(arg, entry.field, msg);
     }
 
-    if (!util::IsOk(status)) {
+    if (!status.ok()) {
       *result = CreateErrorValue(
           frame->arena(),
           absl::Substitute("Failed to create message $0: reason $1",
-                           descriptor_->name(), status.message()),
-          CelError::Code::CelError_Code_UNKNOWN);
-      return util::OkStatus();
+                           descriptor_->name(), status.ToString()));
+      return ::cel_base::OkStatus();
     }
   }
 
   *result = CelValue::CreateMessage(msg, frame->arena());
 
-  return util::OkStatus();
+  return ::cel_base::OkStatus();
 }
 
-util::Status CreateStructStepForMessage::Evaluate(
+::cel_base::Status CreateStructStepForMessage::Evaluate(
     ExecutionFrame* frame) const {
   if (frame->value_stack().size() < entries_.size()) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL,
+    return cel_base::Status(cel_base::StatusCode::kInternal,
                         "CreateStructStepForMessage: stack undeflow");
   }
 
   CelValue result;
 
-  util::Status status = DoEvaluate(frame, &result);
-  if (!util::IsOk(status)) {
+  ::cel_base::Status status = DoEvaluate(frame, &result);
+  if (!status.ok()) {
     return status;
   }
 
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(result);
 
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
-util::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
+::cel_base::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
                                                   CelValue* result) const {
   absl::Span<const CelValue> args =
       frame->value_stack().GetSpan(2 * entry_count_);
@@ -218,10 +214,9 @@ util::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
           map_entries.data(), map_entries.size()));
 
   if (cel_map == nullptr) {
-    *result = CreateErrorValue(frame->arena(), "Failed to create map",
-                               CelError::Code::CelError_Code_UNKNOWN);
+    *result = CreateErrorValue(frame->arena(), "Failed to create map");
 
-    return util::OkStatus();
+    return ::cel_base::OkStatus();
   }
 
   *result = CelValue::CreateMap(cel_map.get());
@@ -229,33 +224,33 @@ util::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
   // Pass object ownership to Arena.
   frame->arena()->Own(cel_map.release());
 
-  return util::OkStatus();
+  return ::cel_base::OkStatus();
 }
 
-util::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
+::cel_base::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < 2 * entry_count_) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL,
+    return cel_base::Status(cel_base::StatusCode::kInternal,
                         "CreateStructStepForMap: stack undeflow");
   }
 
   CelValue result;
 
-  util::Status status = DoEvaluate(frame, &result);
-  if (!util::IsOk(status)) {
+  ::cel_base::Status status = DoEvaluate(frame, &result);
+  if (!status.ok()) {
     return status;
   }
 
   frame->value_stack().Pop(2 * entry_count_);
   frame->value_stack().Push(result);
 
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 }  // namespace
 
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
-    const google::api::expr::v1alpha1::Expr* expr) {
+    int64_t expr_id) {
   if (!create_struct_expr->message_name().empty()) {
     // Make message-creating step.
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
@@ -265,31 +260,31 @@ util::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
             create_struct_expr->message_name());
 
     if (desc == nullptr) {
-      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
+      return cel_base::InvalidArgumentError(
           "Error configuring message creation: message descriptor not found");
     }
 
     for (const auto& entry : create_struct_expr->entries()) {
       if (entry.field_key().empty()) {
-        return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
+        return cel_base::InvalidArgumentError(
             "Error configuring message creation: field name missing");
       }
 
       const FieldDescriptor* field_desc =
           desc->FindFieldByName(entry.field_key());
       if (field_desc == nullptr) {
-        return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
+        return cel_base::InvalidArgumentError(
             "Error configuring message creation: field name not found");
       }
       entries.push_back({field_desc});
     }
 
     return absl::WrapUnique<ExpressionStep>(
-        new CreateStructStepForMessage(expr, desc, std::move(entries)));
+        new CreateStructStepForMessage(expr_id, desc, std::move(entries)));
   } else {
     // Make map-creating step.
-    return absl::WrapUnique<ExpressionStep>(
-        new CreateStructStepForMap(expr, create_struct_expr->entries_size()));
+    return absl::WrapUnique<ExpressionStep>(new CreateStructStepForMap(
+        expr_id, create_struct_expr->entries_size()));
   }
 }
 

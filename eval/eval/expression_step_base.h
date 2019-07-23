@@ -10,22 +10,21 @@ namespace runtime {
 
 class ExpressionStepBase : public ExpressionStep {
  public:
-  explicit ExpressionStepBase(const google::api::expr::v1alpha1::Expr* expr,
-                              bool comes_from_ast = true)
-      : expr_(expr), comes_from_ast_(comes_from_ast) {}
+  explicit ExpressionStepBase(int64_t expr_id, bool comes_from_ast = true)
+      : id_(expr_id), comes_from_ast_(comes_from_ast) {}
 
   // Non-copyable
   ExpressionStepBase(const ExpressionStepBase&) = delete;
   ExpressionStepBase& operator=(const ExpressionStepBase&) = delete;
 
-  // Returns corresponding expression object
-  const google::api::expr::v1alpha1::Expr* expr() const override { return expr_; }
+  // Returns corresponding expression object ID.
+  int64_t id() const override { return id_; }
 
   // Returns if the execution step comes from AST.
   bool ComesFromAst() const override { return comes_from_ast_; }
 
  private:
-  const google::api::expr::v1alpha1::Expr* expr_;
+  int64_t id_;
   bool comes_from_ast_;
 };
 

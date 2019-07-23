@@ -3,7 +3,7 @@
 #
 # Uses the namespace google::api::expr::testutil.
 
-package(default_visibility = ["//:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -29,6 +29,7 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/api/expr/v1beta1:eval_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1beta1:value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -44,7 +45,7 @@ cc_library(
     ],
     deps = [
         "//internal:status_util",
-        "@com_github_gflags_gflags//:gflags",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
@@ -52,7 +53,7 @@ cc_library(
         "@com_google_glog//:glog",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/rpc:status_cc_proto",
-        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
         "@com_google_re2//:re2",
     ],
@@ -72,7 +73,6 @@ cc_binary(
         ":test_data_util",
         "//common:type",
         "//internal:proto_util",
-        "@com_github_gflags_gflags//:gflags",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_glog//:glog",
@@ -92,7 +92,7 @@ cc_test(
         ":test_data_util",
         "//testutil:test_data_io",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1beta1:eval_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1beta1:value_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -103,9 +103,8 @@ cc_library(
         "util.h",
     ],
     deps = [
-        "@com_github_gflags_gflags//:gflags",
         "@com_google_glog//:glog",
-        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

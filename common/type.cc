@@ -6,6 +6,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 namespace {
 
@@ -112,6 +113,7 @@ const std::string& Type::ToString() const {
   return absl::visit(ToStringVisitor(), data_);
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

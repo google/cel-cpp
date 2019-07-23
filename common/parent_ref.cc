@@ -3,6 +3,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 absl::optional<RefProvider> SharedValue::SelfRefProvider() const {
   if (!owns_value()) {
@@ -16,6 +17,7 @@ absl::optional<RefProvider> SharedValue::SelfRefProvider() const {
   return RefProvider(this);
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

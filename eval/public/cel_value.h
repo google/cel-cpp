@@ -23,14 +23,16 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "eval/proto/cel_error.pb.h"
 #include "eval/public/cel_value_internal.h"
-#include "eval/public/cel_status_or.h"
+#include "internal/proto_util.h"
+#include "base/statusor.h"
 
 namespace google {
 namespace api {
 namespace expr {
 namespace runtime {
+
+using CelError = cel_base::Status;
 
 class CelList;
 class CelMap;
@@ -53,6 +55,8 @@ class CelValue {
     // passing pointers conveys the message that the reference to string is kept
     // in the constructed holder object.
     explicit StringHolderBase(const std::string *str) : value_(*str) {}
+
+    explicit StringHolderBase(absl::string_view other) : value_(other) {}
 
     absl::string_view value() const { return value_; }
 
@@ -82,7 +86,6 @@ class CelValue {
     }
 
    private:
-    explicit StringHolderBase(absl::string_view other) : value_(other) {}
     absl::string_view value_;
   };
 
@@ -96,9 +99,8 @@ class CelValue {
   using ValueHolder =
       internal::ValueHolder<bool, int64_t, uint64_t, double, StringHolder,
                             BytesHolder, const google::protobuf::Message *,
-                            const google::protobuf::Duration *,
-                            const google::protobuf::Timestamp *,
-                            const CelList *, const CelMap *, const CelError *>;
+                            absl::Duration, absl::Time, const CelList *,
+                            const CelMap *, const CelError *>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -115,8 +117,8 @@ class CelValue {
     kString = IndexOf<StringHolder>::value,
     kBytes = IndexOf<BytesHolder>::value,
     kMessage = IndexOf<const google::protobuf::Message *>::value,
-    kDuration = IndexOf<const google::protobuf::Duration *>::value,
-    kTimestamp = IndexOf<const google::protobuf::Timestamp *>::value,
+    kDuration = IndexOf<absl::Duration>::value,
+    kTimestamp = IndexOf<absl::Time>::value,
     kList = IndexOf<const CelList *>::value,
     kMap = IndexOf<const CelMap *>::value,
     kError = IndexOf<const CelError *>::value,
@@ -148,6 +150,10 @@ class CelValue {
 
   static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
 
+  static CelValue CreateString(absl::string_view value) {
+    return CelValue(StringHolder(value));
+  }
+
   static CelValue CreateString(const std::string *str) {
     return CelValue(StringHolder(str));
   }
@@ -165,12 +171,18 @@ class CelValue {
                                 google::protobuf::Arena *arena);
 
   static CelValue CreateDuration(const google::protobuf::Duration *value) {
+    return CelValue(expr::internal::DecodeDuration(*value));
+  }
+
+  static CelValue CreateDuration(absl::Duration value) {
     return CelValue(value);
   }
 
   static CelValue CreateTimestamp(const google::protobuf::Timestamp *value) {
-    return CelValue(value);
+    return CelValue(expr::internal::DecodeTime(*value));
   }
+
+  static CelValue CreateTimestamp(absl::Time value) { return CelValue(value); }
 
   static CelValue CreateList(const CelList *value) {
     CheckNullPointer(value, Type::kList);
@@ -224,16 +236,16 @@ class CelValue {
     return GetValueOrDie<const google::protobuf::Message *>(Type::kMessage);
   }
 
-  // Returns stored const Duration * value.
-  // Fails if stored value type is not const Duration *.
-  const google::protobuf::Duration *DurationOrDie() const {
-    return GetValueOrDie<const google::protobuf::Duration *>(Type::kDuration);
+  // Returns stored duration value.
+  // Fails if stored value type is not duration.
+  const absl::Duration DurationOrDie() const {
+    return GetValueOrDie<absl::Duration>(Type::kDuration);
   }
 
-  // Returns stored const Timestamp * value.
-  // Fails if stored value type is not const Timestamp *.
-  const google::protobuf::Timestamp *TimestampOrDie() const {
-    return GetValueOrDie<const google::protobuf::Timestamp *>(Type::kTimestamp);
+  // Returns stored timestamp value.
+  // Fails if stored value type is not timestamp.
+  const absl::Time TimestampOrDie() const {
+    return GetValueOrDie<absl::Time>(Type::kTimestamp);
   }
 
   // Returns stored const CelList * value.
@@ -270,13 +282,9 @@ class CelValue {
 
   bool IsMessage() const { return value_.is<const google::protobuf::Message *>(); }
 
-  bool IsDuration() const {
-    return value_.is<const google::protobuf::Duration *>();
-  }
+  bool IsDuration() const { return value_.is<absl::Duration>(); }
 
-  bool IsTimestamp() const {
-    return value_.is<const google::protobuf::Timestamp *>();
-  }
+  bool IsTimestamp() const { return value_.is<absl::Time>(); }
 
   bool IsList() const { return value_.is<const CelList *>(); }
 
@@ -328,14 +336,6 @@ class CelValue {
     }
 
     bool operator()(const google::protobuf::Message *arg) const { return arg == nullptr; }
-
-    bool operator()(const google::protobuf::Timestamp *arg) const {
-      return arg == nullptr;
-    }
-
-    bool operator()(const google::protobuf::Duration *arg) const {
-      return arg == nullptr;
-    }
   };
 
   // Constructs CelValue wrapping value supplied as argument.
@@ -404,8 +404,16 @@ class CelMap {
 // parsed from. -1, if the position can not be determined.
 CelValue CreateErrorValue(
     google::protobuf::Arena *arena, absl::string_view message,
-    CelError::Code error_code = CelError::Code::CelError_Code_UNKNOWN,
+    cel_base::StatusCode error_code = cel_base::StatusCode::kUnknown,
     int position = -1);
+
+CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena);
+bool CheckNoMatchingOverloadError(CelValue value);
+
+CelValue CreateNoSuchFieldError(google::protobuf::Arena *arena);
+
+CelValue CreateNoSuchKeyError(google::protobuf::Arena *arena, absl::string_view key);
+bool CheckNoSuchKeyError(CelValue value);
 
 }  // namespace runtime
 }  // namespace expr

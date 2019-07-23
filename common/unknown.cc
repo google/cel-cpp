@@ -4,6 +4,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 Unknown::Unknown(Id id) { ids_.insert(id); }
 
@@ -25,6 +26,7 @@ std::string Unknown::ToString() const {
   return printer("Unknown", ids_);
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

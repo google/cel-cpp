@@ -389,11 +389,11 @@ TestValue NewValue(absl::Time value, absl::string_view name) {
   return result;
 }
 
-testdata::TestValue NewValue(const expr::Type& type) {
+testdata::TestValue NewValue(const common::Type& type) {
   TestValue result;
   result.add_expr(type.ToString());
 
-  v1beta1::ValueTo(Value::FromType(type), result.add_v1beta1());
+  v1beta1::ValueTo(common::Value::FromType(type), result.add_v1beta1());
   return result;
 }
 

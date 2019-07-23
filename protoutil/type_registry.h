@@ -39,7 +39,7 @@ namespace protoutil {
  * concrete message types. For example:
  *
  *     // Register a (1)-style constructor function.
- *     GOOGLE_CHECK(reg.RegisterConstructor<google::type::Money>(
+ *     CHECK(reg.RegisterConstructor<google::type::Money>(
  *         [](const google::type::Money& value) {
  *           ...
  *         }));
@@ -50,7 +50,7 @@ namespace protoutil {
  *       Money(google::type::Money&& value);
  *     };
  *     // Register both Money constructors and set the default value to 'null'.
- *     GOOGLE_CHECK(2 == reg.RegisterClass<google::type::Money, Money>();
+ *     CHECK(2 == reg.RegisterClass<google::type::Money, Money>();
  *
  * Not all constructor types need to be registered:
  *  - If the underlying protobuf message is never needed by the returned
@@ -81,44 +81,48 @@ namespace protoutil {
 class TypeRegistry {
  public:
   /** Set the default value, returned when a protobuf field is unset. */
-  bool RegisterDefault(const ObjectType& object_type,
-                       const Value& default_value);
+  bool RegisterDefault(const common::ObjectType& object_type,
+                       const common::Value& default_value);
 
   /** Set the default value, returned when a protobuf field is unset. */
   template <typename ProtoType>
-  bool RegisterDefault(const Value& default_value) {
-    return RegisterDefault(ObjectType(ProtoType::descriptor()), default_value);
+  bool RegisterDefault(const common::Value& default_value) {
+    return RegisterDefault(common::ObjectType(ProtoType::descriptor()),
+                           default_value);
   }
 
   /** Register a copy constructor callable for the given object_type. */
   bool RegisterConstructor(
-      const ObjectType& object_type,
-      std::function<Value(const google::protobuf::Message&)> from_ctor);
+      const common::ObjectType& object_type,
+      std::function<common::Value(const google::protobuf::Message&)> from_ctor);
 
   /** Register a move constructor callable for the given object_type. */
-  bool RegisterConstructor(const ObjectType& object_type,
-                           std::function<Value(google::protobuf::Message&&)> from_ctor);
+  bool RegisterConstructor(
+      const common::ObjectType& object_type,
+      std::function<common::Value(google::protobuf::Message&&)> from_ctor);
 
   /** Register an owned ptr constructor callable for the given object_type. */
   bool RegisterConstructor(
-      const ObjectType& object_type,
-      std::function<Value(std::unique_ptr<google::protobuf::Message>)> from_ctor);
+      const common::ObjectType& object_type,
+      std::function<common::Value(std::unique_ptr<google::protobuf::Message>)> from_ctor);
 
   /** Register an unowned ptr constructor callable for the given object_type. */
   bool RegisterConstructor(
-      const ObjectType& object_type,
-      std::function<Value(const google::protobuf::Message*)> for_ctor);
+      const common::ObjectType& object_type,
+      std::function<common::Value(const google::protobuf::Message*)> for_ctor);
 
   /** Register a view constructor callable for the given object_type when
    * owned by a parent container. */
   bool RegisterConstructor(
-      const ObjectType& object_type,
-      std::function<Value(const google::protobuf::Message*, const RefProvider&)>
+      const common::ObjectType& object_type,
+      std::function<common::Value(const google::protobuf::Message*,
+                                  const common::RefProvider&)>
           for_ctor);
 
   /** Register a copy constructor callable for the given enum_type. */
-  bool RegisterConstructor(const EnumType& enum_type,
-                           std::function<Value(EnumType, int32_t)> from_ctor);
+  bool RegisterConstructor(
+      const common::EnumType& enum_type,
+      std::function<common::Value(common::EnumType, int32_t)> from_ctor);
 
   /**
    * Register a constructor for a concrete protobuf message.
@@ -155,51 +159,55 @@ class TypeRegistry {
    * @returns The number of constructors successfully registered.
    */
   template <typename ProtoType, typename Impl>
-  std::size_t RegisterClass(const Value& default_value) {
-    RegisterDefault(ObjectType::For<ProtoType>(), default_value);
+  std::size_t RegisterClass(const common::Value& default_value) {
+    RegisterDefault(common::ObjectType::For<ProtoType>(), default_value);
     return RegisterClass<ProtoType, Impl>();
   }
 
   /** Return the default value for the given default_instance */
-  Value GetDefault(const google::protobuf::Message* default_msg) const;
+  common::Value GetDefault(const google::protobuf::Message* default_msg) const;
 
   /** Return a value created from the given message. */
-  Value ValueFrom(const google::protobuf::Message& value) const;
+  common::Value ValueFrom(const google::protobuf::Message& value) const;
   /** Return a value created from the given message. */
-  Value ValueFrom(google::protobuf::Message&& value) const;
+  common::Value ValueFrom(google::protobuf::Message&& value) const;
   /** Return a value created from the given message. */
-  Value ValueFrom(std::unique_ptr<google::protobuf::Message> value) const;
+  common::Value ValueFrom(std::unique_ptr<google::protobuf::Message> value) const;
   /** Return a value created for the given message. */
-  Value ValueFor(const google::protobuf::Message* value,
-                 ParentRef parent = NoParent()) const;
+  common::Value ValueFor(const google::protobuf::Message* value,
+                         common::ParentRef parent = common::NoParent()) const;
 
   /** Return a value crated from the given enum value */
-  Value ValueFrom(const EnumType& type, int32_t value) const;
+  common::Value ValueFrom(const common::EnumType& type, int32_t value) const;
 
  private:
   struct ObjectRegistryEntry {
-    Value default_value = Value::FromUnknown(Id(-1));
-    std::function<Value(const google::protobuf::Message&)> from_ctor;
-    std::function<Value(google::protobuf::Message&&)> from_move_ctor;
-    std::function<Value(std::unique_ptr<google::protobuf::Message>)> from_ptr_ctor;
-    std::function<Value(const google::protobuf::Message*)> for_ctor;
-    std::function<Value(const google::protobuf::Message*, const RefProvider&)>
+    common::Value default_value = common::Value::FromUnknown(common::Id(-1));
+    std::function<common::Value(const google::protobuf::Message&)> from_ctor;
+    std::function<common::Value(google::protobuf::Message&&)> from_move_ctor;
+    std::function<common::Value(std::unique_ptr<google::protobuf::Message>)>
+        from_ptr_ctor;
+    std::function<common::Value(const google::protobuf::Message*)> for_ctor;
+    std::function<common::Value(const google::protobuf::Message*,
+                                const common::RefProvider&)>
         for_pnt_ctor;
   };
 
   struct EnumRegistryEntry {
-    std::function<Value(EnumType, int32_t)> from_ctor;
+    std::function<common::Value(common::EnumType, int32_t)> from_ctor;
   };
 
-  absl::node_hash_map<ObjectType, ObjectRegistryEntry> object_registry_;
-  absl::node_hash_map<EnumType, EnumRegistryEntry> enum_registry_;
+  absl::node_hash_map<common::ObjectType, ObjectRegistryEntry> object_registry_;
+  absl::node_hash_map<common::EnumType, EnumRegistryEntry> enum_registry_;
 
-  Value ValueFromUnregistered(std::unique_ptr<google::protobuf::Message> value) const;
-  Value ValueForUnregistered(const google::protobuf::Message* value,
-                             RefProvider parent = NoParent()) const;
-  Value ValueFromAny(const google::protobuf::Any& value) const;
+  common::Value ValueFromUnregistered(
+      std::unique_ptr<google::protobuf::Message> value) const;
+  common::Value ValueForUnregistered(
+      const google::protobuf::Message* value,
+      common::RefProvider parent = common::NoParent()) const;
+  common::Value ValueFromAny(const google::protobuf::Any& value) const;
 
-  ObjectRegistryEntry GetCalls(const ObjectType& type) const;
+  ObjectRegistryEntry GetCalls(const common::ObjectType& type) const;
 };
 
 namespace type_registry_internal {
@@ -211,7 +219,7 @@ using internal::static_down_cast;
 
 // Wrap a callable, casting the first argument from M to T.
 template <typename C, typename T, typename M, typename... Args>
-std::function<Value(M, Args...)> WrapCall(C call) {
+std::function<common::Value(M, Args...)> WrapCall(C call) {
   return [call](M value, Args&&... args) {
     return call(static_down_cast<T>(std::forward<M>(value)),
                 std::forward<Args>(args)...);
@@ -220,17 +228,18 @@ std::function<Value(M, Args...)> WrapCall(C call) {
 
 // Wrap a constructor, casting the first argument from M to T.
 template <typename C, typename T, typename M, typename... Args>
-std::function<Value(M, Args...)> WrapCtor(
+std::function<common::Value(M, Args...)> WrapCtor(
     specialize_for<decltype(C(inst_of<T>(), inst_of<Args>()...))>) {
   return [](M value, Args&&... args) {
-    return Value::MakeObject<C>(static_down_cast<T, M>(std::forward<M>(value)),
-                                std::forward<Args>(args)...);
+    return common::Value::MakeObject<C>(
+        static_down_cast<T, M>(std::forward<M>(value)),
+        std::forward<Args>(args)...);
   };
 }
 
 // No constructor specialization found, return nullptr.
 template <typename C, typename T, typename M, typename... Args>
-std::function<Value(M, Args...)> WrapCtor(general) {
+std::function<common::Value(M, Args...)> WrapCtor(general) {
   return nullptr;
 }
 
@@ -242,14 +251,14 @@ using reg_if =
 template <typename ProtoType, typename C>
 reg_if<C, const ProtoType&> Register(TypeRegistry* registry, C call) {
   return registry->RegisterConstructor(
-      ObjectType(ProtoType::descriptor()),
+      common::ObjectType(ProtoType::descriptor()),
       WrapCall<C, const ProtoType&, const google::protobuf::Message&>(call));
 }
 
 template <typename ProtoType, typename C>
 reg_if<C, std::unique_ptr<ProtoType>> Register(TypeRegistry* registry, C call) {
   return registry->RegisterConstructor(
-      ObjectType(ProtoType::descriptor()),
+      common::ObjectType(ProtoType::descriptor()),
       WrapCall<C, std::unique_ptr<ProtoType>, std::unique_ptr<google::protobuf::Message>>(
           call));
 }
@@ -257,17 +266,17 @@ reg_if<C, std::unique_ptr<ProtoType>> Register(TypeRegistry* registry, C call) {
 template <typename ProtoType, typename C>
 reg_if<C, const ProtoType*> Register(TypeRegistry* registry, C call) {
   return registry->RegisterConstructor(
-      ObjectType(ProtoType::descriptor()),
+      common::ObjectType(ProtoType::descriptor()),
       WrapCall<C, const ProtoType*, const google::protobuf::Message*>(call));
 }
 
 template <typename ProtoType, typename C>
-reg_if<C, const ProtoType*, const RefProvider&> Register(TypeRegistry* registry,
-                                                         C call) {
+reg_if<C, const ProtoType*, const common::RefProvider&> Register(
+    TypeRegistry* registry, C call) {
   return registry->RegisterConstructor(
-      ObjectType(ProtoType::descriptor()),
-      WrapCall<C, const ProtoType*, const google::protobuf::Message*, const RefProvider&>(
-          call));
+      common::ObjectType(ProtoType::descriptor()),
+      WrapCall<C, const ProtoType*, const google::protobuf::Message*,
+               const common::RefProvider&>(call));
 }
 
 }  // namespace type_registry_internal
@@ -294,10 +303,12 @@ std::size_t TypeRegistry::RegisterClass() {
   auto for_ctor = type_registry_internal::WrapCtor<Impl, const ProtoType*,
                                                    const google::protobuf::Message*>(
       internal::specialize());
-  auto for_pnt_ctor = type_registry_internal::WrapCtor<
-      Impl, const ProtoType*, const google::protobuf::Message*, const RefProvider&>(
-      internal::specialize());
-  ObjectType type(ProtoType::descriptor());
+  auto for_pnt_ctor =
+      type_registry_internal::WrapCtor<Impl, const ProtoType*,
+                                       const google::protobuf::Message*,
+                                       const common::RefProvider&>(
+          internal::specialize());
+  common::ObjectType type(ProtoType::descriptor());
   std::size_t successes = 0;
   if (from_ctor != nullptr && RegisterConstructor(type, from_ctor)) {
     ++successes;

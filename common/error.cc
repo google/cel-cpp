@@ -6,6 +6,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 Error::Error(const google::rpc::Status& error) { errors_.insert(error); }
 
@@ -59,6 +60,7 @@ std::string Error::ToDebugString() const {
                               codes, internal::SetJoinPolicy::kValueDelim)});
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

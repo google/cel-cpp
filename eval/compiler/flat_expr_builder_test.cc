@@ -6,7 +6,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_split.h"
-#include "eval/proto/cel_error.pb.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/testutil/test_message.pb.h"
 namespace google {
@@ -21,6 +21,7 @@ using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::FieldMask;
 using testing::Eq;
+using testing::Not;
 
 class ConcatFunction : public CelFunction {
  public:
@@ -31,10 +32,10 @@ class ConcatFunction : public CelFunction {
         "concat", false, {CelValue::Type::kString, CelValue::Type::kString}};
   }
 
-  util::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (args.size() != 2) {
-      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
+      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
                           "Bad arguments number");
     }
 
@@ -46,7 +47,7 @@ class ConcatFunction : public CelFunction {
 
     *result = CelValue::CreateString(concatenated);
 
-    return util::OkStatus();
+    return cel_base::OkStatus();
   }
 };
 
@@ -66,10 +67,10 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
 
   auto register_status =
       builder.GetRegistry()->Register(absl::make_unique<ConcatFunction>());
-  ASSERT_TRUE(util::IsOk(register_status));
+  ASSERT_TRUE(register_status.ok());
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -81,7 +82,7 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   google::protobuf::Arena arena;
 
   auto eval_status = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   CelValue result = eval_status.ValueOrDie();
 
@@ -95,15 +96,15 @@ class RecorderFunction : public CelFunction {
   explicit RecorderFunction(const std::string& name, int* count)
       : CelFunction(Descriptor{name, false, {}}), count_(count) {}
 
-  util::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (!args.empty()) {
-      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
+      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
                           "Bad arguments number");
     }
     (*count_)++;
     *result = CelValue::CreateBool(true);
-    return util::OkStatus();
+    return cel_base::OkStatus();
   }
 
   int* count_;
@@ -129,21 +130,21 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
 
   auto register_status1 = builder.GetRegistry()->Register(
       absl::make_unique<RecorderFunction>("recorder1", &count1));
-  ASSERT_TRUE(util::IsOk(register_status1));
+  ASSERT_TRUE(register_status1.ok());
   auto register_status2 = builder.GetRegistry()->Register(
       absl::make_unique<RecorderFunction>("recorder2", &count2));
-  ASSERT_TRUE(util::IsOk(register_status2));
+  ASSERT_TRUE(register_status2.ok());
 
   // Shortcircuiting on.
   auto build_status_on = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status_on));
+  ASSERT_TRUE(build_status_on.ok());
 
   auto cel_expr_on = std::move(build_status_on.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto eval_status_on = cel_expr_on->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status_on));
+  ASSERT_TRUE(eval_status_on.ok());
 
   EXPECT_THAT(count1, Eq(1));
   EXPECT_THAT(count2, Eq(0));
@@ -151,7 +152,7 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   // Shortcircuiting off.
   builder.set_shortcircuiting(false);
   auto build_status_off = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status_off));
+  ASSERT_TRUE(build_status_off.ok());
 
   auto cel_expr_off = std::move(build_status_off.ValueOrDie());
 
@@ -159,7 +160,7 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   count2 = 0;
 
   auto eval_status_off = cel_expr_off->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status_off));
+  ASSERT_TRUE(eval_status_off.ok());
 
   EXPECT_THAT(count1, Eq(1));
   EXPECT_THAT(count2, Eq(1));
@@ -192,32 +193,32 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
   int count = 0;
   auto register_status = builder.GetRegistry()->Register(
       absl::make_unique<RecorderFunction>("loop_step", &count));
-  ASSERT_TRUE(util::IsOk(register_status));
+  ASSERT_TRUE(register_status.ok());
 
   // Shortcircuiting on.
   auto build_status_on = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status_on));
+  ASSERT_TRUE(build_status_on.ok());
 
   auto cel_expr_on = std::move(build_status_on.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto eval_status_on = cel_expr_on->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status_on));
+  ASSERT_TRUE(eval_status_on.ok());
 
   EXPECT_THAT(count, Eq(0));
 
   // Shortcircuiting off.
   builder.set_shortcircuiting(false);
   auto build_status_off = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status_off));
+  ASSERT_TRUE(build_status_off.ok());
 
   auto cel_expr_off = std::move(build_status_off.ValueOrDie());
 
   count = 0;
 
   auto eval_status_off = cel_expr_off->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status_off));
+  ASSERT_TRUE(eval_status_off.ok());
 
   EXPECT_THAT(count, Eq(3));
 }
@@ -265,17 +266,17 @@ TEST(FlatExprBuilderTest, MapComprehension) {
                                       &expr);
 
   FlatExprBuilder builder;
-  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder.GetRegistry())));
+  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(result_or));
+  ASSERT_TRUE(result_or.ok());
   CelValue result = result_or.ValueOrDie();
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());
@@ -352,17 +353,17 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
                                       &expr);
 
   FlatExprBuilder builder;
-  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder.GetRegistry())));
+  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(result_or));
+  ASSERT_TRUE(result_or.ok());
   CelValue result = result_or.ValueOrDie();
   ASSERT_TRUE(result.IsError());
 }
@@ -427,20 +428,21 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
                                       &expr);
 
   FlatExprBuilder builder;
-  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder.GetRegistry())));
+  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(result_or));
+  ASSERT_TRUE(result_or.ok());
   CelValue result = result_or.ValueOrDie();
   ASSERT_TRUE(result.IsError());
-  EXPECT_THAT(result.ErrorOrDie()->message(), Eq("no_matching_overload"));
+  EXPECT_THAT(result.ErrorOrDie()->message(),
+              Eq("No matching overloads found"));
 }
 
 TEST(FlatExprBuilderTest, UnknownSupportTest) {
@@ -463,7 +465,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   FlatExprBuilder builder;
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -475,7 +477,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
 
   auto eval_status = cel_expr->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
   CelValue result = eval_status.ValueOrDie();
 
   ASSERT_TRUE(result.IsInt64());
@@ -485,7 +487,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   mask.add_paths("message.message_value.int32_value");
   activation.set_unknown_paths(mask);
   eval_status = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
   result = eval_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
 
@@ -493,7 +495,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   mask.add_paths("message.message_value");
   activation.set_unknown_paths(mask);
   eval_status = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
   result = eval_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
 }
@@ -522,7 +524,7 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   builder.addResolvableEnum(TestMessage::TestEnum_descriptor());
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -530,8 +532,131 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   Activation activation;
   auto eval_status = cel_expr->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
   CelValue result = eval_status.ValueOrDie();
+
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, ContainerStringFormat) {
+  Expr expr;
+  SourceInfo source_info;
+
+  expr.mutable_ident_expr()->set_name("ident");
+
+  FlatExprBuilder builder;
+  builder.set_container("");
+  {
+    auto build_status = builder.CreateExpression(&expr, &source_info);
+    ASSERT_TRUE(build_status.ok());
+  }
+
+  builder.set_container("random.namespace");
+  {
+    auto build_status = builder.CreateExpression(&expr, &source_info);
+    ASSERT_TRUE(build_status.ok());
+  }
+
+  // Leading '.'
+  builder.set_container(".random.namespace");
+  {
+    auto build_status = builder.CreateExpression(&expr, &source_info);
+    ASSERT_FALSE(build_status.status().ok());
+  }
+
+  // Trailing '.'
+  builder.set_container("random.namespace.");
+  {
+    auto build_status = builder.CreateExpression(&expr, &source_info);
+    ASSERT_FALSE(build_status.status().ok());
+  }
+}
+
+void EvalExpressionWithEnum(absl::string_view enum_name,
+                            absl::string_view container, CelValue* result) {
+  TestMessage message;
+
+  Expr expr;
+  SourceInfo source_info;
+
+  std::vector<std::string> enum_name_parts = absl::StrSplit(enum_name, '.');
+  Expr* cur_expr = &expr;
+
+  for (int i = enum_name_parts.size() - 1; i > 0; i--) {
+    auto select_expr = cur_expr->mutable_select_expr();
+    select_expr->set_field(enum_name_parts[i]);
+    cur_expr = select_expr->mutable_operand();
+  }
+
+  cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
+
+  FlatExprBuilder builder;
+  builder.addResolvableEnum(TestMessage::TestEnum_descriptor());
+  builder.addResolvableEnum(TestEnum_descriptor());
+  builder.set_container(std::string(container));
+
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_TRUE(build_status.ok());
+  auto cel_expr = std::move(build_status.ValueOrDie());
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  auto eval_status = cel_expr->Evaluate(activation, &arena);
+
+  ASSERT_TRUE(eval_status.ok());
+  *result = eval_status.ValueOrDie();
+}
+
+TEST(FlatExprBuilderTest, ShortEnumResolution) {
+  CelValue result;
+  // Test resolution of "<EnumName>.<EnumValue>".
+  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
+      "TestEnum.TEST_ENUM_1", "google.api.expr.runtime.TestMessage", &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, FullEnumNameWithContainerResolution) {
+  CelValue result;
+  // Fully qualified name should work.
+  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
+      "google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_1",
+      "very.random.Namespace", &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, SameShortNameEnumResolution) {
+  CelValue result;
+
+  // This precondition validates that
+  // TestMessage::TestEnum::TEST_ENUM1 and TestEnum::TEST_ENUM1 are compiled and
+  // linked in and their values are different.
+  ASSERT_TRUE(static_cast<int>(TestEnum::TEST_ENUM_1) !=
+              static_cast<int>(TestMessage::TEST_ENUM_1));
+  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
+      "TestEnum.TEST_ENUM_1", "google.api.expr.runtime.TestMessage", &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+
+  // TEST_ENUM3 is present in google.api.expr.runtime.TestEnum, is absent in
+  // google.api.expr.runtime.TestMessage.TestEnum.
+  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
+      "TestEnum.TEST_ENUM_3", "google.api.expr.runtime.TestMessage", &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestEnum::TEST_ENUM_3));
+
+  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
+      "TestEnum.TEST_ENUM_1", "google.api.expr.runtime", &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestEnum::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, PartialQualifiedEnumResolution) {
+  CelValue result;
+  ASSERT_NO_FATAL_FAILURE(EvalExpressionWithEnum(
+      "runtime.TestMessage.TestEnum.TEST_ENUM_1", "google.api.expr", &result));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));

@@ -16,17 +16,17 @@ using google::protobuf::Message;
 using google::protobuf::FieldDescriptor;
 using google::protobuf::Descriptor;
 
-util::Status CreateValueFromField(const google::protobuf::Message* msg,
+cel_base::Status CreateValueFromField(const google::protobuf::Message* msg,
                                   const FieldDescriptor* field_desc,
                                   google::protobuf::Arena* arena, CelValue* result) {
   if (field_desc->is_map()) {
     *result = CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
         arena, msg, field_desc, arena));
-    return util::OkStatus();
+    return cel_base::OkStatus();
   } else if (field_desc->is_repeated()) {
     *result = CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
         arena, msg, field_desc, arena));
-    return util::OkStatus();
+    return cel_base::OkStatus();
   } else {
     return CreateValueFromSingleField(msg, field_desc, arena, result);
   }
@@ -34,7 +34,7 @@ util::Status CreateValueFromField(const google::protobuf::Message* msg,
 
 }  // namespace
 
-util::Status BindProtoToActivation(const Message* message, Arena* arena,
+::cel_base::Status BindProtoToActivation(const Message* message, Arena* arena,
                                      Activation* activation) {
   // TODO(issues/24): Improve the utilities to bind dynamic values as well.
   const Descriptor* desc = message->GetDescriptor();
@@ -49,14 +49,14 @@ util::Status BindProtoToActivation(const Message* message, Arena* arena,
     }
 
     auto status = CreateValueFromField(message, field_desc, arena, &value);
-    if (!util::IsOk(status)) {
+    if (!status.ok()) {
       return status;
     }
 
     activation->InsertValue(field_desc->name(), value);
   }
 
-  return util::OkStatus();
+  return ::cel_base::OkStatus();
 }
 
 }  // namespace runtime

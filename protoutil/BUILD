@@ -34,7 +34,6 @@ cc_test(
         "//common:value",
         "//internal:ref_countable",
         "//testutil:util",
-        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_googleapis//google/type:money_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",

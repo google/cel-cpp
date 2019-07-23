@@ -49,12 +49,12 @@ TEST(EndToEndTest, SimpleOnePlusOne) {
   std::unique_ptr<CelExpressionBuilder> builder = CreateCelExpressionBuilder();
 
   // Builtin registration.
-  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
+  ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry()).ok());
 
   // Create CelExpression from AST (Expr object).
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
 
-  ASSERT_TRUE(util::IsOk(cel_expression_status));
+  ASSERT_TRUE(cel_expression_status.ok());
 
   auto cel_expression = std::move(cel_expression_status.ValueOrDie());
 
@@ -68,7 +68,7 @@ TEST(EndToEndTest, SimpleOnePlusOne) {
   // Run evaluation.
   auto eval_status = cel_expression->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   CelValue result = eval_status.ValueOrDie();
 
@@ -133,12 +133,12 @@ TEST(EndToEndTest, EmptyStringCompare) {
   std::unique_ptr<CelExpressionBuilder> builder = CreateCelExpressionBuilder();
 
   // Builtin registration.
-  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
+  ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry()).ok());
 
   // Create CelExpression from AST (Expr object).
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
 
-  ASSERT_TRUE(util::IsOk(cel_expression_status));
+  ASSERT_TRUE(cel_expression_status.ok());
 
   auto cel_expression = std::move(cel_expression_status.ValueOrDie());
 
@@ -158,7 +158,7 @@ TEST(EndToEndTest, EmptyStringCompare) {
   // Run evaluation.
   auto eval_status = cel_expression->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   CelValue result = eval_status.ValueOrDie();
 

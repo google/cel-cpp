@@ -31,7 +31,7 @@ namespace runtime {
 //  "name", with string value of "John Doe"
 //  "age", with int value of 42.
 //
-util::Status BindProtoToActivation(const google::protobuf::Message* message,
+::cel_base::Status BindProtoToActivation(const google::protobuf::Message* message,
                                      google::protobuf::Arena* arena,
                                      Activation* activation);
 

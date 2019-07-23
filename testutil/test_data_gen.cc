@@ -150,15 +150,16 @@ TestData UniqueValues() {
                    NewMapValue("foo", "bar", "hi", "bye")},
                   "multiple_orderings");
 
-  add_val = NewValue(expr::BasicType(expr::BasicTypeValue::kInt));
-  add_val = NewValue(expr::Type("google.protobuf.Duration"));
-  add_val = NewValue(expr::Type("unknown.type"));
+  add_val =
+      NewValue(expr::common::BasicType(expr::common::BasicTypeValue::kInt));
+  add_val = NewValue(expr::common::Type("google.protobuf.Duration"));
+  add_val = NewValue(expr::common::Type("unknown.type"));
   return values;
 }
 
 void WriteData() {
   auto status = WriteTestData("unique_values", UniqueValues());
-  GOOGLE_CHECK(status.code() == google::rpc::Code::OK) << status.ShortDebugString();
+  CHECK(status.code() == google::rpc::Code::OK) << status.ShortDebugString();
 }
 
 }  // namespace testutil

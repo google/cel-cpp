@@ -11,7 +11,7 @@
 #include "eval/eval/container_backed_map_impl.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
-#include "eval/public/cel_status_or.h"
+#include "base/statusor.h"
 
 
 using ::grpc::Status;
@@ -114,13 +114,15 @@ void ExportValue(const CelValue& result, v1alpha1::Value* out) {
       break;
     }
     case CelValue::Type::kDuration: {
-      auto msg = result.DurationOrDie();
-      out->mutable_object_value()->PackFrom(*msg);
+      google::protobuf::Duration duration;
+      expr::internal::EncodeDuration(result.DurationOrDie(), &duration);
+      out->mutable_object_value()->PackFrom(duration);
       break;
     }
     case CelValue::Type::kTimestamp: {
-      auto msg = result.TimestampOrDie();
-      out->mutable_object_value()->PackFrom(*msg);
+      google::protobuf::Timestamp timestamp;
+      expr::internal::EncodeTime(result.TimestampOrDie(), &timestamp);
+      out->mutable_object_value()->PackFrom(timestamp);
       break;
     }
     case CelValue::Type::kList: {
@@ -210,7 +212,7 @@ class ConformanceServiceImpl final
     out = *expr;
     auto cel_expression_status = builder_->CreateExpression(&out, &source_info);
 
-    if (!util::IsOk(cel_expression_status)) {
+    if (!cel_expression_status.ok()) {
       return Status(StatusCode::INTERNAL,
                     std::string(cel_expression_status.status().message()));
     }
@@ -224,7 +226,7 @@ class ConformanceServiceImpl final
     }
 
     auto eval_status = cel_expression->Evaluate(activation, &arena);
-    if (!util::IsOk(eval_status)) {
+    if (!eval_status.ok()) {
       return Status(StatusCode::INTERNAL,
                     std::string(eval_status.status().message()));
     }
@@ -234,7 +236,7 @@ class ConformanceServiceImpl final
       *response->mutable_result()
            ->mutable_error()
            ->add_errors()
-           ->mutable_message() = result.ErrorOrDie()->message();
+           ->mutable_message() = std::string(result.ErrorOrDie()->message());
     } else {
       ExportValue(result, response->mutable_result()->mutable_value());
     }
@@ -246,9 +248,21 @@ class ConformanceServiceImpl final
 };
 
 int RunServer(std::string server_address) {
-  std::unique_ptr<CelExpressionBuilder> builder = CreateCelExpressionBuilder();
+  google::protobuf::Arena arena;
+  InterpreterOptions options;
+  options.partial_string_match = true;
+
+  const char* enable_constant_folding =
+      getenv("CEL_CPP_ENABLE_CONSTANT_FOLDING");
+  if (enable_constant_folding != nullptr) {
+    options.constant_folding = true;
+    options.constant_arena = &arena;
+  }
+
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreateCelExpressionBuilder(options);
   auto register_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  if (!util::IsOk(register_status)) {
+  if (!register_status.ok()) {
     return 1;
   }
 

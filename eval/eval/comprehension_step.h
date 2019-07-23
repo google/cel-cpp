@@ -16,12 +16,12 @@ namespace runtime {
 class ComprehensionNextStep : public ExpressionStepBase {
  public:
   ComprehensionNextStep(const std::string& accu_var, const std::string& iter_var,
-                        const google::api::expr::v1alpha1::Expr* expr);
+                        int64_t expr_id);
 
   void set_jump_offset(int offset);
   void set_error_jump_offset(int offset);
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string accu_var_;
@@ -33,12 +33,11 @@ class ComprehensionNextStep : public ExpressionStepBase {
 class ComprehensionCondStep : public ExpressionStepBase {
  public:
   ComprehensionCondStep(const std::string& accu_var, const std::string& iter_var,
-                        bool shortcircuiting,
-                        const google::api::expr::v1alpha1::Expr* expr);
+                        bool shortcircuiting, int64_t expr_id);
 
   void set_jump_offset(int offset);
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string iter_var_;
@@ -49,9 +48,9 @@ class ComprehensionCondStep : public ExpressionStepBase {
 class ComprehensionFinish : public ExpressionStepBase {
  public:
   ComprehensionFinish(const std::string& accu_var, const std::string& iter_var,
-                      const google::api::expr::v1alpha1::Expr* expr);
+                      int64_t expr_id);
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string accu_var_;
@@ -59,8 +58,7 @@ class ComprehensionFinish : public ExpressionStepBase {
 
 // Creates a step that lists the map keys if the top of the stack is a map,
 // otherwise it's a no-op.
-std::unique_ptr<ExpressionStep> CreateListKeysStep(
-    const google::api::expr::v1alpha1::Expr* expr);
+std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id);
 
 }  // namespace runtime
 }  // namespace expr

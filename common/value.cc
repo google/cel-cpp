@@ -18,6 +18,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 using ::google::api::expr::internal::NotFoundError;
 
@@ -390,6 +391,7 @@ std::size_t Object::ComputeHash() const {
   return hash_code;
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

@@ -10,16 +10,16 @@ namespace runtime {
 namespace {
 class IdentStep : public ExpressionStepBase {
  public:
-  IdentStep(absl::string_view name, const google::api::expr::v1alpha1::Expr* expr)
-      : ExpressionStepBase(expr), name_(name) {}
+  IdentStep(absl::string_view name, int64_t expr_id)
+      : ExpressionStepBase(expr_id), name_(name) {}
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string name_;
 };
 
-util::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
   CelValue result;
   auto it = frame->iter_vars().find(name_);
   if (it != frame->iter_vars().end()) {
@@ -38,29 +38,26 @@ util::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
         result = CreateErrorValue(
             frame->arena(),
             absl::Substitute("No value with name \"$0\" found in Activation",
-                             name_),
-            CelError::UNKNOWN);
+                             name_));
       }
     } else {
       result = CreateErrorValue(
           frame->arena(),
-          absl::Substitute("Value with name \"$0\" is unknown", name_),
-          CelError::UNKNOWN);
+          absl::Substitute("Value with name \"$0\" is unknown", name_));
     }
   }
 
   frame->value_stack().Push(result);
 
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 }  // namespace
 
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const google::api::expr::v1alpha1::Expr::Ident* ident_expr,
-    const google::api::expr::v1alpha1::Expr* expr) {
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
+    const google::api::expr::v1alpha1::Expr::Ident* ident_expr, int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<IdentStep>(ident_expr->name(), expr);
+      absl::make_unique<IdentStep>(ident_expr->name(), expr_id);
   return std::move(step);
 }
 

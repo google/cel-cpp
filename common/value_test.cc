@@ -20,6 +20,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 namespace {
 
 using testutil::ExpectSameType;
@@ -681,8 +682,11 @@ TEST(TypeTest, EnumType) {
 }
 
 }  // namespace
+}  // namespace common
 
 namespace internal {
+
+using testutil::ExpectSameType;
 
 class ValueVisitTest : public ::testing::Test {
  public:
@@ -743,21 +747,21 @@ TEST_F(ValueVisitTest, Types) {
   TestValueAdapter<CopyHolder<double>>();
   TestGetPtrVisitor<CopyHolder<double>>();
 
-  TestValueAdapter<CopyHolder<NamedEnumValue>>();
-  TestGetPtrVisitor<CopyHolder<NamedEnumValue>>();
-  TestGetVisitor<CopyHolder<NamedEnumValue>, EnumValue>();
+  TestValueAdapter<CopyHolder<common::NamedEnumValue>>();
+  TestGetPtrVisitor<CopyHolder<common::NamedEnumValue>>();
+  TestGetVisitor<CopyHolder<common::NamedEnumValue>, common::EnumValue>();
 
-  TestValueAdapter<CopyHolder<BasicType>>();
-  TestGetPtrVisitor<CopyHolder<BasicType>>();
-  TestGetVisitor<CopyHolder<BasicType>, Type>();
+  TestValueAdapter<CopyHolder<common::BasicType>>();
+  TestGetPtrVisitor<CopyHolder<common::BasicType>>();
+  TestGetVisitor<CopyHolder<common::BasicType>, common::Type>();
 
-  TestValueAdapter<CopyHolder<ObjectType>>();
-  TestGetPtrVisitor<CopyHolder<ObjectType>>();
-  TestGetVisitor<CopyHolder<ObjectType>, Type>();
+  TestValueAdapter<CopyHolder<common::ObjectType>>();
+  TestGetPtrVisitor<CopyHolder<common::ObjectType>>();
+  TestGetVisitor<CopyHolder<common::ObjectType>, common::Type>();
 
-  TestValueAdapter<CopyHolder<EnumType>>();
-  TestGetPtrVisitor<CopyHolder<EnumType>>();
-  TestGetVisitor<CopyHolder<EnumType>, Type>();
+  TestValueAdapter<CopyHolder<common::EnumType>>();
+  TestGetPtrVisitor<CopyHolder<common::EnumType>>();
+  TestGetVisitor<CopyHolder<common::EnumType>, common::Type>();
 
   ExpectSameType<absl::string_view, ValueAdapterType<OwnedStr&>>();
   ExpectSameType<absl::string_view, ValueAdapterType<const OwnedStr&>>();
@@ -766,27 +770,27 @@ TEST_F(ValueVisitTest, Types) {
   ExpectSameType<absl::string_view, ValueAdapterType<ParentOwnedStr&>>();
   ExpectSameType<absl::string_view, ValueAdapterType<const ParentOwnedStr&>>();
 
-  TestValueAdapter<UnownedPtrHolder<const Map>>();
-  TestValueAdapter<RefPtrHolder<Map>>();
-  TestGetPtrVisitor<UnownedPtrHolder<const Map>>();
-  TestGetPtrVisitor<RefPtrHolder<const Map>>();
+  TestValueAdapter<UnownedPtrHolder<const common::Map>>();
+  TestValueAdapter<RefPtrHolder<common::Map>>();
+  TestGetPtrVisitor<UnownedPtrHolder<const common::Map>>();
+  TestGetPtrVisitor<RefPtrHolder<const common::Map>>();
 
-  TestValueAdapter<UnownedPtrHolder<const List>>();
-  TestValueAdapter<RefPtrHolder<List>>();
-  TestGetPtrVisitor<UnownedPtrHolder<const List>>();
-  TestGetPtrVisitor<RefPtrHolder<const List>>();
+  TestValueAdapter<UnownedPtrHolder<const common::List>>();
+  TestValueAdapter<RefPtrHolder<common::List>>();
+  TestGetPtrVisitor<UnownedPtrHolder<const common::List>>();
+  TestGetPtrVisitor<RefPtrHolder<const common::List>>();
 
-  TestValueAdapter<UnownedPtrHolder<const Object>>();
-  TestValueAdapter<RefPtrHolder<Object>>();
-  TestGetPtrVisitor<UnownedPtrHolder<const Object>>();
-  TestGetPtrVisitor<RefPtrHolder<const Object>>();
+  TestValueAdapter<UnownedPtrHolder<const common::Object>>();
+  TestValueAdapter<RefPtrHolder<common::Object>>();
+  TestGetPtrVisitor<UnownedPtrHolder<const common::Object>>();
+  TestGetPtrVisitor<RefPtrHolder<const common::Object>>();
 
   TestValueAdapter<RefCopyHolder<absl::Duration>>();
   TestValueAdapter<RefCopyHolder<absl::Time>>();
-  TestValueAdapter<RefCopyHolder<UnnamedEnumValue>>();
-  TestValueAdapter<RefCopyHolder<UnrecognizedType>>();
-  TestValueAdapter<RefCopyHolder<Error>>();
-  TestValueAdapter<RefCopyHolder<Unknown>>();
+  TestValueAdapter<RefCopyHolder<common::UnnamedEnumValue>>();
+  TestValueAdapter<RefCopyHolder<common::UnrecognizedType>>();
+  TestValueAdapter<RefCopyHolder<common::Error>>();
+  TestValueAdapter<RefCopyHolder<common::Unknown>>();
 }
 
 }  // namespace internal

@@ -30,7 +30,7 @@ using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
-util::StatusOr<CelValue> RunExpression(absl::string_view field,
+cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        const CelValue& value,
                                        google::protobuf::Arena* arena) {
   ExecutionPath path;
@@ -40,7 +40,7 @@ util::StatusOr<CelValue> RunExpression(absl::string_view field,
 
   auto ident = expr0.mutable_ident_expr();
   ident->set_name("message");
-  auto step0_status = CreateIdentStep(ident, &expr0);
+  auto step0_status = CreateIdentStep(ident, expr0.id());
 
   auto create_struct = expr1.mutable_struct_expr();
   create_struct->set_message_name("google.api.expr.runtime.TestMessage");
@@ -48,13 +48,13 @@ util::StatusOr<CelValue> RunExpression(absl::string_view field,
   auto entry = create_struct->add_entries();
   entry->set_field_key(field.data());
 
-  if (!util::IsOk(step0_status)) {
+  if (!step0_status.ok()) {
     return step0_status.status();
   }
 
-  auto step1_status = CreateCreateStructStep(create_struct, &expr1);
+  auto step1_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  if (!util::IsOk(step1_status)) {
+  if (!step1_status.ok()) {
     return step1_status.status();
   }
 
@@ -71,7 +71,7 @@ util::StatusOr<CelValue> RunExpression(absl::string_view field,
 void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
                                 google::protobuf::Arena* arena, TestMessage* test_msg) {
   auto status = RunExpression(field, value, arena);
-  ASSERT_TRUE(util::IsOk(status));
+  ASSERT_TRUE(status.ok());
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -91,7 +91,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
   CelValue value = CelValue::CreateList(&cel_list);
 
   auto status = RunExpression(field, value, arena);
-  ASSERT_TRUE(util::IsOk(status));
+  ASSERT_TRUE(status.ok());
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -105,7 +105,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds Map and runs it.
-util::StatusOr<CelValue> RunCreateMapExpression(
+cel_base::StatusOr<CelValue> RunCreateMapExpression(
     const std::vector<std::pair<CelValue, CelValue>> values,
     google::protobuf::Arena* arena) {
   ExecutionPath path;
@@ -126,8 +126,8 @@ util::StatusOr<CelValue> RunCreateMapExpression(
     auto key_ident = expr.mutable_ident_expr();
     key_ident->set_name(key_name);
     exprs.push_back(expr);
-    auto step_key_status = CreateIdentStep(key_ident, &exprs.back());
-    if (!util::IsOk(step_key_status)) {
+    auto step_key_status = CreateIdentStep(key_ident, exprs.back().id());
+    if (!step_key_status.ok()) {
       return step_key_status.status();
     }
 
@@ -135,8 +135,8 @@ util::StatusOr<CelValue> RunCreateMapExpression(
     auto value_ident = expr.mutable_ident_expr();
     value_ident->set_name(value_name);
     exprs.push_back(expr);
-    auto step_value_status = CreateIdentStep(value_ident, &exprs.back());
-    if (!util::IsOk(step_value_status)) {
+    auto step_value_status = CreateIdentStep(value_ident, exprs.back().id());
+    if (!step_value_status.ok()) {
       return step_value_status.status();
     }
 
@@ -150,9 +150,9 @@ util::StatusOr<CelValue> RunCreateMapExpression(
     index++;
   }
 
-  auto step1_status = CreateCreateStructStep(create_struct, &expr1);
+  auto step1_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  if (!util::IsOk(step1_status)) {
+  if (!step1_status.ok()) {
     return step1_status.status();
   }
 
@@ -170,9 +170,9 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   auto create_struct = expr1.mutable_struct_expr();
   create_struct->set_message_name("google.api.expr.runtime.TestMessage");
 
-  auto step_status = CreateCreateStructStep(create_struct, &expr1);
+  auto step_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  ASSERT_TRUE(util::IsOk(step_status));
+  ASSERT_TRUE(step_status.ok());
 
   path.push_back(std::move(step_status.ValueOrDie()));
 
@@ -182,7 +182,7 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   google::protobuf::Arena arena;
 
   auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(status));
+  ASSERT_TRUE(status.ok());
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -572,7 +572,7 @@ TEST(CreateCreateStructStepTest, TestCreateEmptyMap) {
   Arena arena;
   auto status = RunCreateMapExpression({}, &arena);
 
-  ASSERT_TRUE(util::IsOk(status));
+  ASSERT_TRUE(status.ok());
 
   CelValue result_value = status.ValueOrDie();
   ASSERT_TRUE(result_value.IsMap());
@@ -596,7 +596,7 @@ TEST(CreateCreateStructStepTest, TestCreateStringMap) {
 
   auto status = RunCreateMapExpression(entries, &arena);
 
-  ASSERT_TRUE(util::IsOk(status));
+  ASSERT_TRUE(status.ok());
 
   CelValue result_value = status.ValueOrDie();
   ASSERT_TRUE(result_value.IsMap());

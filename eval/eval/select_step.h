@@ -11,14 +11,13 @@ namespace expr {
 namespace runtime {
 
 // Factory method for Select - based Execution step
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const google::api::expr::v1alpha1::Expr::Select* select_expr,
-    const google::api::expr::v1alpha1::Expr* expr, absl::string_view select_path);
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
+    const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id,
+    absl::string_view select_path);
 
 // Factory method for Select - based Execution step
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const google::api::expr::v1alpha1::Expr::Select* select_expr,
-    const google::api::expr::v1alpha1::Expr* expr);
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
+    const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id);
 
 }  // namespace runtime
 }  // namespace expr

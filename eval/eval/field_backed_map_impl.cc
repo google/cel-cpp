@@ -1,7 +1,6 @@
 #include "eval/eval/field_backed_map_impl.h"
 #include "google/protobuf/map_field.h"
 #include "eval/eval/field_access.h"
-#include "eval/proto/cel_error.pb.h"
 #include "eval/public/cel_value.h"
 
 #ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
@@ -87,9 +86,8 @@ class KeyList : public CelList {
         entry_descriptor->FindFieldByNumber(kKeyTag);
 
     auto status = CreateValueFromSingleField(entry, key_desc, arena_, &key);
-    if (!util::IsOk(status)) {
-      return CreateErrorValue(arena_, status.message(),
-                              CelError::Code::CelError_Code_UNKNOWN);
+    if (!status.ok()) {
+      return CreateErrorValue(arena_, status.message());
     }
     return key;
   }
@@ -169,9 +167,8 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
   CelValue result = CelValue::CreateNull();
   auto status = CreateValueFromMapValue(message_, value_desc, &value_ref,
                                         arena_, &result);
-  if (!util::IsOk(status)) {
-    return CreateErrorValue(arena_, status.message(),
-                            CelError::Code::CelError_Code_UNKNOWN);
+  if (!status.ok()) {
+    return CreateErrorValue(arena_, status.message());
   }
   return result;
 #else   // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
@@ -193,12 +190,8 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 
     auto status =
         CreateValueFromSingleField(entry, key_desc, arena_, &inner_key);
-    if (!util::IsOk(status)) {
-      CelError* error = google::protobuf::Arena::Create<CelError>(arena_);
-      error->set_message(status.message());
-      error->set_code(CelError::Code::CelError_Code_UNKNOWN);
-      result = CelValue::CreateError(error);
-      return result;
+    if (!status.ok()) {
+      return CreateErrorValue(arena_, status.ToString());
     }
 
     if (key.type() != inner_key.type()) {
@@ -226,9 +219,8 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 
       auto status =
           CreateValueFromSingleField(entry, value_desc, arena_, &result);
-      if (!util::IsOk(status)) {
-        return CreateErrorValue(arena_, status.message(),
-                                CelError::Code::CelError_Code_UNKNOWN);
+      if (!status.ok()) {
+        return CreateErrorValue(arena_, status.message());
       }
 
       return result;

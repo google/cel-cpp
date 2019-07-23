@@ -23,21 +23,21 @@ bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
   return true;
 }
 
-util::Status CelFunctionRegistry::Register(
+cel_base::Status CelFunctionRegistry::Register(
     std::unique_ptr<CelFunction> function) {
   const CelFunction::Descriptor& descriptor = function->descriptor();
 
   if (!FindOverloads(descriptor.name, descriptor.receiver_style,
                      descriptor.types)
            .empty()) {
-    return util::MakeStatus(
-        google::rpc::Code::ALREADY_EXISTS,
+    return cel_base::Status(
+        cel_base::StatusCode::kAlreadyExists,
         "CelFunction with specified parameters already registered");
   }
 
   auto& overloads = functions_[descriptor.name];
   overloads.push_back(std::move(function));
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(

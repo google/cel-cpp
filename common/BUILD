@@ -1,7 +1,7 @@
 # Description
 #   Common cel libraries
 #
-# Uses the namespace google::api::expr
+# Uses the namespace google::api::expr::common
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,6 +12,7 @@ cc_library(
     hdrs = [
         "macros.h",
     ],
+    deps = [],
 )
 
 cc_library(

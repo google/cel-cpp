@@ -24,58 +24,58 @@ namespace protoutil {
 bool RegisterConvertersWith(TypeRegistry* registry);
 
 // Converters for google::protobuf::Value.
-Value ValueFrom(const google::protobuf::Value& value);
-Value ValueFrom(google::protobuf::Value&& value);
-Value ValueFrom(std::unique_ptr<google::protobuf::Value> value);
-Value ValueFor(const google::protobuf::Value* value,
-               ParentRef parent = NoParent());
+common::Value ValueFrom(const google::protobuf::Value& value);
+common::Value ValueFrom(google::protobuf::Value&& value);
+common::Value ValueFrom(std::unique_ptr<google::protobuf::Value> value);
+common::Value ValueFor(const google::protobuf::Value* value,
+                       common::ParentRef parent = common::NoParent());
 
 // Converters for google::protobuf::Struct.
-Value ValueFrom(const google::protobuf::Struct& value);
-Value ValueFrom(std::unique_ptr<google::protobuf::Struct> value);
-Value ValueFor(const google::protobuf::Struct* value,
-               ParentRef parent = NoParent());
+common::Value ValueFrom(const google::protobuf::Struct& value);
+common::Value ValueFrom(std::unique_ptr<google::protobuf::Struct> value);
+common::Value ValueFor(const google::protobuf::Struct* value,
+                       common::ParentRef parent = common::NoParent());
 
 // Converters for google::protobuf::ListValue
-Value ValueFrom(const google::protobuf::ListValue& value);
-Value ValueFrom(std::unique_ptr<google::protobuf::ListValue> value);
-Value ValueFor(const google::protobuf::ListValue* value,
-               ParentRef parent = NoParent());
+common::Value ValueFrom(const google::protobuf::ListValue& value);
+common::Value ValueFrom(std::unique_ptr<google::protobuf::ListValue> value);
+common::Value ValueFor(const google::protobuf::ListValue* value,
+                       common::ParentRef parent = common::NoParent());
 
 // Converters for time/duration.
-Value ValueFrom(const google::protobuf::Duration& value);
-Value ValueFrom(const google::protobuf::Timestamp& value);
+common::Value ValueFrom(const google::protobuf::Duration& value);
+common::Value ValueFrom(const google::protobuf::Timestamp& value);
 
 // Converters for wrapped values.
-inline Value ValueFrom(google::protobuf::NullValue value) {
-  return Value::NullValue();
+inline common::Value ValueFrom(google::protobuf::NullValue value) {
+  return common::Value::NullValue();
 }
-inline Value ValueFrom(const google::protobuf::BoolValue& value) {
-  return Value::FromBool(value.value());
+inline common::Value ValueFrom(const google::protobuf::BoolValue& value) {
+  return common::Value::FromBool(value.value());
 }
-inline Value ValueFrom(const google::protobuf::Int32Value& value) {
-  return Value::FromInt(value.value());
+inline common::Value ValueFrom(const google::protobuf::Int32Value& value) {
+  return common::Value::FromInt(value.value());
 }
-inline Value ValueFrom(const google::protobuf::Int64Value& value) {
-  return Value::FromInt(value.value());
+inline common::Value ValueFrom(const google::protobuf::Int64Value& value) {
+  return common::Value::FromInt(value.value());
 }
-inline Value ValueFrom(const google::protobuf::UInt32Value& value) {
-  return Value::FromUInt(value.value());
+inline common::Value ValueFrom(const google::protobuf::UInt32Value& value) {
+  return common::Value::FromUInt(value.value());
 }
-inline Value ValueFrom(const google::protobuf::UInt64Value& value) {
-  return Value::FromUInt(value.value());
+inline common::Value ValueFrom(const google::protobuf::UInt64Value& value) {
+  return common::Value::FromUInt(value.value());
 }
-inline Value ValueFrom(const google::protobuf::FloatValue& value) {
-  return Value::FromDouble(value.value());
+inline common::Value ValueFrom(const google::protobuf::FloatValue& value) {
+  return common::Value::FromDouble(value.value());
 }
-inline Value ValueFrom(const google::protobuf::DoubleValue& value) {
-  return Value::FromDouble(value.value());
+inline common::Value ValueFrom(const google::protobuf::DoubleValue& value) {
+  return common::Value::FromDouble(value.value());
 }
-inline Value ValueFrom(const google::protobuf::StringValue& value) {
-  return Value::FromString(value.value());
+inline common::Value ValueFrom(const google::protobuf::StringValue& value) {
+  return common::Value::FromString(value.value());
 }
-inline Value ValueFrom(const google::protobuf::BytesValue& value) {
-  return Value::FromBytes(std::string(value.value()));
+inline common::Value ValueFrom(const google::protobuf::BytesValue& value) {
+  return common::Value::FromBytes(std::string(value.value()));
 }
 
 }  // namespace protoutil

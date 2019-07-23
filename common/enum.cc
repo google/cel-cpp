@@ -5,6 +5,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 namespace {
 using ::google::api::expr::internal::ToCallString;
@@ -51,6 +52,7 @@ std::string EnumValue::ToString() const {
   return absl::visit(ToStringVisitor(), data_);
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

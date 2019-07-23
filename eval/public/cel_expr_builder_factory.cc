@@ -7,9 +7,13 @@ namespace expr {
 namespace runtime {
 
 std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
-    bool shortcircuiting) {
+    const InterpreterOptions& options) {
   auto builder = absl::make_unique<FlatExprBuilder>();
-  builder->set_shortcircuiting(shortcircuiting);
+  builder->set_shortcircuiting(options.short_circuiting);
+  builder->GetRegistry()->set_partial_string_match(
+      options.partial_string_match);
+  builder->set_constant_folding(options.constant_folding,
+                                options.constant_arena);
   return std::move(builder);
 }
 

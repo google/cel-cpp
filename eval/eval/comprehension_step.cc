@@ -27,10 +27,10 @@ namespace runtime {
 // 10. result                  (dep) 2
 // 11. ComprehensionFinish           1
 
-ComprehensionNextStep::ComprehensionNextStep(
-    const std::string& accu_var, const std::string& iter_var,
-    const google::api::expr::v1alpha1::Expr* expr)
-    : ExpressionStepBase(expr, false),
+ComprehensionNextStep::ComprehensionNextStep(const std::string& accu_var,
+                                             const std::string& iter_var,
+                                             int64_t expr_id)
+    : ExpressionStepBase(expr_id, false),
       accu_var_(accu_var),
       iter_var_(iter_var) {}
 
@@ -66,7 +66,7 @@ void ComprehensionNextStep::set_error_jump_offset(int offset) {
 //
 // Stack on error:
 // 0. error
-util::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   enum {
     POS_PREVIOUS_LOOP_STEP,
     POS_ITER_RANGE,
@@ -75,7 +75,7 @@ util::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     POS_LOOP_STEP,
   };
   if (!frame->value_stack().HasEnough(5)) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
+    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
   }
   auto state = frame->value_stack().GetSpan(5);
   CelValue iter_range = state[POS_ITER_RANGE];
@@ -85,9 +85,7 @@ util::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
       frame->value_stack().Push(iter_range);
       return frame->JumpTo(error_jump_offset_);
     }
-    auto* error = google::protobuf::Arena::Create<CelError>(frame->arena());
-    error->set_message("no_matching_overload");
-    frame->value_stack().Push(CelValue::CreateError(error));
+    frame->value_stack().Push(CreateNoMatchingOverloadError(frame->arena()));
     return frame->JumpTo(error_jump_offset_);
   }
   const CelList* cel_list = iter_range.ListOrDie();
@@ -97,7 +95,7 @@ util::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
         "ComprehensionNextStep: want int64_t, got ",
         CelValue::TypeName(current_index_value.type())
     );
-    return util::MakeStatus(google::rpc::Code::INTERNAL, message);
+    return cel_base::Status(cel_base::StatusCode::kInternal, message);
   }
   int64_t current_index = current_index_value.Int64OrDie();
   CelValue loop_step = state[POS_LOOP_STEP];
@@ -114,13 +112,14 @@ util::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(CelValue::CreateInt64(current_index));
   frame->value_stack().Push(current_value);
   frame->iter_vars()[iter_var_] = current_value;
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
-ComprehensionCondStep::ComprehensionCondStep(
-    const std::string& accu_var, const std::string& iter_var, bool shortcircuiting,
-    const google::api::expr::v1alpha1::Expr* expr)
-    : ExpressionStepBase(expr, false),
+ComprehensionCondStep::ComprehensionCondStep(const std::string& accu_var,
+                                             const std::string& iter_var,
+                                             bool shortcircuiting,
+                                             int64_t expr_id)
+    : ExpressionStepBase(expr_id, false),
       iter_var_(iter_var),
       shortcircuiting_(shortcircuiting) {}
 
@@ -133,9 +132,9 @@ void ComprehensionCondStep::set_jump_offset(int offset) {
 // Stack size before: 5.
 // Stack size after: 4.
 // Stack size on break: 1.
-util::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(5)) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
+    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
   }
   CelValue loop_condition_value = frame->value_stack().Peek();
   if (!loop_condition_value.IsBool()) {
@@ -143,7 +142,7 @@ util::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
         "ComprehensionCondStep:: want bool, got ",
         CelValue::TypeName(loop_condition_value.type())
     );
-    return util::MakeStatus(google::rpc::Code::INTERNAL, message);
+    return cel_base::Status(cel_base::StatusCode::kInternal, message);
   }
   bool loop_condition = loop_condition_value.BoolOrDie();
   frame->value_stack().Pop(1);  // loop_condition
@@ -152,52 +151,50 @@ util::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     frame->iter_vars().erase(iter_var_);
     return frame->JumpTo(jump_offset_);
   }
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 ComprehensionFinish::ComprehensionFinish(const std::string& accu_var,
                                          const std::string& iter_var,
-                                         const google::api::expr::v1alpha1::Expr* expr)
-    : ExpressionStepBase(expr), accu_var_(accu_var) {}
+                                         int64_t expr_id)
+    : ExpressionStepBase(expr_id), accu_var_(accu_var) {}
 
 // Stack changes of ComprehensionFinish.
 //
 // Stack size before: 2.
 // Stack size after: 1.
-util::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(2)) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
+    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
   }
   CelValue result = frame->value_stack().Peek();
   frame->value_stack().Pop(1);  // result
   frame->value_stack().PopAndPush(result);
   frame->iter_vars().erase(accu_var_);
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 class ListKeysStep : public ExpressionStepBase {
  public:
-  ListKeysStep(const google::api::expr::v1alpha1::Expr* expr)
-      : ExpressionStepBase(expr, false) {}
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  ListKeysStep(int64_t expr_id) : ExpressionStepBase(expr_id, false) {}
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 };
 
-std::unique_ptr<ExpressionStep> CreateListKeysStep(
-    const google::api::expr::v1alpha1::Expr* expr) {
-  return absl::make_unique<ListKeysStep>(expr);
+std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id) {
+  return absl::make_unique<ListKeysStep>(expr_id);
 }
 
-util::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
+    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
   }
   CelValue map_value = frame->value_stack().Peek();
   if (map_value.IsMap()) {
     const CelMap* cel_map = map_value.MapOrDie();
     frame->value_stack().PopAndPush(CelValue::CreateList(cel_map->ListKeys()));
-    return util::OkStatus();
+    return cel_base::OkStatus();
   }
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 }  // namespace runtime

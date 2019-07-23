@@ -8,6 +8,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 // An object base class for objects that do not support direct member access.
 class OpaqueObject : public Object {
@@ -29,6 +30,7 @@ class OpaqueObject : public Object {
   std::size_t ComputeHash() const override = 0;
 };
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

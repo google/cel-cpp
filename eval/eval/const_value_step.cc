@@ -15,25 +15,24 @@ namespace {
 
 class ConstValueStep : public ExpressionStepBase {
  public:
-  ConstValueStep(const Expr* expr, const CelValue& value, bool comes_from_ast)
-      : ExpressionStepBase(expr, comes_from_ast), value_(value) {}
+  ConstValueStep(const CelValue& value, int64_t expr_id, bool comes_from_ast)
+      : ExpressionStepBase(expr_id, comes_from_ast), value_(value) {}
 
-  util::Status Evaluate(ExecutionFrame* context) const override;
+  cel_base::Status Evaluate(ExecutionFrame* context) const override;
 
  private:
   CelValue value_;
 };
 
-util::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(value_);
 
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 }  // namespace
 
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const Constant* const_expr, const Expr* expr, bool comes_from_ast) {
+absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
   CelValue value = CelValue::CreateNull();
   switch (const_expr->constant_kind_case()) {
     case Constant::kNullValue:
@@ -64,23 +63,27 @@ util::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
       value = CelValue::CreateTimestamp(&const_expr->timestamp_value());
       break;
     default:
-      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
-                          "Unsupported constant type");
+      // constant with no kind specified
+      return {};
       break;
   }
+  return value;
+}
 
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+    CelValue value, int64_t expr_id, bool comes_from_ast) {
   std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<ConstValueStep>(expr, value, comes_from_ast);
+      absl::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
   return std::move(step);
 }
 
 // Factory method for Constant(Enum value) - based Execution step
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const google::protobuf::EnumValueDescriptor* value_descriptor, const Expr* expr) {
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+    const google::protobuf::EnumValueDescriptor* value_descriptor, int64_t expr_id) {
   CelValue value = CelValue::CreateInt64(value_descriptor->number());
 
   std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<ConstValueStep>(expr, value, false);
+      absl::make_unique<ConstValueStep>(value, expr_id, false);
   return std::move(step);
 }
 
