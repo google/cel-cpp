@@ -1,10 +1,9 @@
-dist: trusty
+dist: bionic
 
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
-      - llvm-toolchain-trusty
     packages:
       - wget
       - pkg-config
