@@ -20,6 +20,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 class SharedValue;
 
@@ -131,6 +132,7 @@ class SharedValue : public internal::RefCountable {
   ParentRef SelfRefProvider() const;
 };
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

@@ -16,13 +16,15 @@ using google::protobuf::Duration;
 using google::protobuf::Timestamp;
 using google::protobuf::Arena;
 
+static const int kNanosPerSecond = 1000000000;
+
 class ExtensionTest : public ::testing::Test {
  protected:
   ExtensionTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry_)));
-    ASSERT_TRUE(util::IsOk(RegisterExtensionFunctions(&registry_)));
+    ASSERT_TRUE(RegisterBuiltinFunctions(&registry_).ok());
+    ASSERT_TRUE(RegisterExtensionFunctions(&registry_).ok());
   }
 
   // Helper method to test string startsWith() function
@@ -47,7 +49,7 @@ class ExtensionTest : public ::testing::Test {
       absl::Span<CelValue> arg_span(&args[0], args.size());
       auto status = func->Evaluate(arg_span, &result_value, &arena);
 
-      ASSERT_TRUE(util::IsOk(status));
+      ASSERT_TRUE(status.ok());
       ASSERT_TRUE(result_value.IsBool());
       ASSERT_EQ(result_value.BoolOrDie(), result);
     }
@@ -77,7 +79,7 @@ class ExtensionTest : public ::testing::Test {
     absl::Span<CelValue> arg_span(&args[0], args.size());
     auto status = func->Evaluate(arg_span, result, arena);
 
-    ASSERT_TRUE(util::IsOk(status));
+    ASSERT_TRUE(status.ok());
   }
 
   // Helper method to test duration() function
@@ -93,7 +95,7 @@ class ExtensionTest : public ::testing::Test {
     absl::Span<CelValue> arg_span(&args[0], args.size());
     auto status = func->Evaluate(arg_span, result, arena);
 
-    ASSERT_TRUE(util::IsOk(status));
+    ASSERT_TRUE(status.ok());
   }
 
   // Function registry object
@@ -143,9 +145,9 @@ TEST_F(ExtensionTest, TestTimestampFromString) {
       PerformTimestampConversion(&arena, "2000-01-01T00:00:00Z", &result));
   ASSERT_TRUE(result.IsTimestamp());
 
-  const Timestamp* ts = result.TimestampOrDie();
-  ASSERT_EQ(ts->seconds(), 946684800L);
-  ASSERT_EQ(ts->nanos(), 0);
+  auto ts = result.TimestampOrDie();
+  ASSERT_EQ(absl::ToUnixSeconds(ts), 946684800L);
+  ASSERT_EQ(absl::ToUnixNanos(ts), 946684800L * kNanosPerSecond);
 
   // Valid timestamp - with nanoseconds.
   EXPECT_NO_FATAL_FAILURE(
@@ -153,8 +155,8 @@ TEST_F(ExtensionTest, TestTimestampFromString) {
   ASSERT_TRUE(result.IsTimestamp());
 
   ts = result.TimestampOrDie();
-  ASSERT_EQ(ts->seconds(), 946684800L);
-  ASSERT_EQ(ts->nanos(), 212000000);
+  ASSERT_EQ(absl::ToUnixSeconds(ts), 946684800L);
+  ASSERT_EQ(absl::ToUnixNanos(ts), 946684800L * kNanosPerSecond + 212000000);
 
   // Valid timestamp - with timezone.
   EXPECT_NO_FATAL_FAILURE(PerformTimestampConversion(
@@ -162,14 +164,13 @@ TEST_F(ExtensionTest, TestTimestampFromString) {
   ASSERT_TRUE(result.IsTimestamp());
 
   ts = result.TimestampOrDie();
-  ASSERT_EQ(ts->seconds(), 946688400L);
-  ASSERT_EQ(ts->nanos(), 212000000);
+  ASSERT_EQ(absl::ToUnixSeconds(ts), 946688400L);
+  ASSERT_EQ(absl::ToUnixNanos(ts), 946688400L * kNanosPerSecond + 212000000);
 
   // Invalid timestamp - empty string.
   EXPECT_NO_FATAL_FAILURE(PerformTimestampConversion(&arena, "", &result));
   ASSERT_TRUE(result.IsError());
-  ASSERT_EQ(result.ErrorOrDie()->code(),
-            CelError::Code::CelError_Code_INVALID_ARGUMENT);
+  ASSERT_EQ(result.ErrorOrDie()->code(), cel_base::StatusCode::kInvalidArgument);
 
   // Invalid timestamp.
   EXPECT_NO_FATAL_FAILURE(
@@ -187,23 +188,22 @@ TEST_F(ExtensionTest, TestDurationFromString) {
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "1354s", &result));
   ASSERT_TRUE(result.IsDuration());
 
-  const Duration* d = result.DurationOrDie();
-  ASSERT_EQ(d->seconds(), 1354L);
-  ASSERT_EQ(d->nanos(), 0L);
+  auto d = result.DurationOrDie();
+  ASSERT_EQ(absl::ToInt64Seconds(d), 1354L);
+  ASSERT_EQ(absl::ToInt64Nanoseconds(d), 1354L * kNanosPerSecond);
 
   // Valid duration - with nanoseconds.
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "15.11s", &result));
   ASSERT_TRUE(result.IsDuration());
 
   d = result.DurationOrDie();
-  ASSERT_EQ(d->seconds(), 15L);
-  ASSERT_EQ(d->nanos(), 110000000L);
+  ASSERT_EQ(absl::ToInt64Seconds(d), 15L);
+  ASSERT_EQ(absl::ToInt64Nanoseconds(d), 15L * kNanosPerSecond + 110000000L);
 
   // Invalid duration - empty string.
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "", &result));
   ASSERT_TRUE(result.IsError());
-  ASSERT_EQ(result.ErrorOrDie()->code(),
-            CelError::Code::CelError_Code_INVALID_ARGUMENT);
+  ASSERT_EQ(result.ErrorOrDie()->code(), cel_base::StatusCode::kInvalidArgument);
 
   // Invalid duration.
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "100", &result));

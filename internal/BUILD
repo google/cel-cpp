@@ -3,7 +3,7 @@
 #
 # Uses the namespace google::api::expr::internal
 
-package(default_visibility = ["//:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -275,8 +275,6 @@ cc_library(
     deps = [
         ":port",
         ":specialize",
-        "@com_github_gflags_gflags//:gflags",
-        "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_glog//:glog",

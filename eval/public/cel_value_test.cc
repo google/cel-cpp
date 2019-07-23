@@ -238,7 +238,9 @@ TEST(CelValueTest, TestDuration) {
   CelValue value = CelValue::CreateDuration(&msg_duration);
   //  CelValue value = CelValue::CreateString("test");
   EXPECT_TRUE(value.IsDuration());
-  EXPECT_THAT(*value.DurationOrDie(), testutil::EqualsProto(msg_duration));
+  Duration out;
+  expr::internal::EncodeDuration(value.DurationOrDie(), &out);
+  EXPECT_THAT(out, testutil::EqualsProto(msg_duration));
 }
 
 // This test verifies CelValue support of Timestamp type.
@@ -257,7 +259,9 @@ TEST(CelValueTest, TestTimestamp) {
   CelValue value = CelValue::CreateTimestamp(&msg_timestamp);
   //  CelValue value = CelValue::CreateString("test");
   EXPECT_TRUE(value.IsTimestamp());
-  EXPECT_THAT(*value.TimestampOrDie(), testutil::EqualsProto(msg_timestamp));
+  Timestamp out;
+  expr::internal::EncodeTime(value.TimestampOrDie(), &out);
+  EXPECT_THAT(out, testutil::EqualsProto(msg_timestamp));
 }
 
 // This test verifies CelValue support of List type.

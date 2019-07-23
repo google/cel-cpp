@@ -21,7 +21,7 @@ using testutil::EqualsProto;
 using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
-util::StatusOr<CelValue> RunExpression(const CelValue target,
+cel_base::StatusOr<CelValue> RunExpression(const CelValue target,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path) {
@@ -36,14 +36,14 @@ util::StatusOr<CelValue> RunExpression(const CelValue target,
 
   auto ident = expr0->mutable_ident_expr();
   ident->set_name("target");
-  auto step0_status = CreateIdentStep(ident, expr0);
-  auto step1_status = CreateSelectStep(select, &dummy_expr, unknown_path);
+  auto step0_status = CreateIdentStep(ident, expr0->id());
+  auto step1_status = CreateSelectStep(select, dummy_expr.id(), unknown_path);
 
-  if (!util::IsOk(step0_status)) {
+  if (!step0_status.ok()) {
     return step0_status.status();
   }
 
-  if (!util::IsOk(step1_status)) {
+  if (!step1_status.ok()) {
     return step1_status.status();
   }
 
@@ -57,7 +57,7 @@ util::StatusOr<CelValue> RunExpression(const CelValue target,
   return cel_expr.Evaluate(activation, arena);
 }
 
-util::StatusOr<CelValue> RunExpression(const TestMessage* message,
+cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path) {
@@ -65,13 +65,13 @@ util::StatusOr<CelValue> RunExpression(const TestMessage* message,
                        arena, unknown_path);
 }
 
-util::StatusOr<CelValue> RunExpression(const TestMessage* message,
+cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena) {
   return RunExpression(message, field, test, arena, "");
 }
 
-util::StatusOr<CelValue> RunExpression(const CelMap* map_value,
+cel_base::StatusOr<CelValue> RunExpression(const CelMap* map_value,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path) {
@@ -79,7 +79,7 @@ util::StatusOr<CelValue> RunExpression(const CelMap* map_value,
                        unknown_path);
 }
 
-util::StatusOr<CelValue> RunExpression(const CelMap* map_value,
+cel_base::StatusOr<CelValue> RunExpression(const CelMap* map_value,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena) {
   return RunExpression(map_value, field, test, arena, "");
@@ -90,7 +90,7 @@ TEST(SelectStepTest, SelectMessageIsNull) {
 
   auto run_status = RunExpression(static_cast<const TestMessage*>(nullptr),
                                   "bool_value", true, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -103,7 +103,7 @@ TEST(SelectStepTest, PresenseIsFalseTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "bool_value", true, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -118,7 +118,7 @@ TEST(SelectStepTest, PresenseIsTrueTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "bool_value", true, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -166,12 +166,12 @@ TEST(SelectStepTest, FieldIsNotPresentInProtoTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "fake_field", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
 
-  EXPECT_THAT(result.ErrorOrDie()->code(), Eq(CelError_Code_NO_SUCH_FIELD));
+  EXPECT_THAT(result.ErrorOrDie()->code(), Eq(cel_base::StatusCode::kNotFound));
 }
 
 TEST(SelectStepTest, FieldIsNotSetTest) {
@@ -180,7 +180,7 @@ TEST(SelectStepTest, FieldIsNotSetTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "bool_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -195,7 +195,7 @@ TEST(SelectStepTest, SimpleBoolTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "bool_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -210,7 +210,7 @@ TEST(SelectStepTest, SimpleInt32Test) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "int32_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -225,7 +225,7 @@ TEST(SelectStepTest, SimpleInt64Test) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "int64_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -240,7 +240,7 @@ TEST(SelectStepTest, SimpleUInt32Test) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "uint32_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -255,7 +255,7 @@ TEST(SelectStepTest, SimpleUint64Test) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "uint64_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -271,7 +271,7 @@ TEST(SelectStepTest, SimpleStringTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "string_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -288,7 +288,7 @@ TEST(SelectStepTest, SimpleBytesTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "bytes_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -306,7 +306,7 @@ TEST(SelectStepTest, SimpleMessageTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "message_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -322,7 +322,7 @@ TEST(SelectStepTest, SimpleEnumTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "enum_value", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -339,7 +339,7 @@ TEST(SelectStepTest, SimpleListTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "int32_list", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -359,7 +359,7 @@ TEST(SelectStepTest, SimpleMapTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(&message, "string_int32_map", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -383,7 +383,7 @@ TEST(SelectStepTest, MapSimpleInt32Test) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(map_value.get(), "key1", false, &arena);
-  ASSERT_TRUE(util::IsOk(run_status));
+  ASSERT_TRUE(run_status.ok());
 
   CelValue result = run_status.ValueOrDie();
 
@@ -404,11 +404,11 @@ TEST(SelectStepTest, CelErrorAsArgument) {
 
   auto ident = expr0->mutable_ident_expr();
   ident->set_name("message");
-  auto step0_status = CreateIdentStep(ident, expr0);
-  auto step1_status = CreateSelectStep(select, &dummy_expr, "");
+  auto step0_status = CreateIdentStep(ident, expr0->id());
+  auto step1_status = CreateSelectStep(select, dummy_expr.id(), "");
 
-  ASSERT_TRUE(util::IsOk(step0_status));
-  ASSERT_TRUE(util::IsOk(step1_status));
+  ASSERT_TRUE(step0_status.ok());
+  ASSERT_TRUE(step1_status.ok());
 
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
@@ -421,7 +421,7 @@ TEST(SelectStepTest, CelErrorAsArgument) {
   activation.InsertValue("message", CelValue::CreateError(&error));
 
   auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(status));
+  ASSERT_TRUE(status.ok());
 
   auto result = status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
@@ -443,12 +443,12 @@ TEST(SelectStepTest, UnknownValueProducesError) {
 
   auto ident = expr0->mutable_ident_expr();
   ident->set_name("message");
-  auto step0_status = CreateIdentStep(ident, expr0);
+  auto step0_status = CreateIdentStep(ident, expr0->id());
   auto step1_status =
-      CreateSelectStep(select, &dummy_expr, "message.bool_value");
+      CreateSelectStep(select, dummy_expr.id(), "message.bool_value");
 
-  ASSERT_TRUE(util::IsOk(step0_status));
-  ASSERT_TRUE(util::IsOk(step1_status));
+  ASSERT_TRUE(step0_status.ok());
+  ASSERT_TRUE(step1_status.ok());
 
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
@@ -458,7 +458,7 @@ TEST(SelectStepTest, UnknownValueProducesError) {
   activation.InsertValue("message", CelValue::CreateMessage(&message, &arena));
 
   auto eval_status0 = cel_expr.Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status0));
+  ASSERT_TRUE(eval_status0.ok());
 
   CelValue result = eval_status0.ValueOrDie();
 
@@ -471,7 +471,7 @@ TEST(SelectStepTest, UnknownValueProducesError) {
   activation.set_unknown_paths(mask);
 
   auto eval_status1 = cel_expr.Evaluate(activation, &arena);
-  ASSERT_TRUE(util::IsOk(eval_status1));
+  ASSERT_TRUE(eval_status1.ok());
 
   result = eval_status1.ValueOrDie();
 

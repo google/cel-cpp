@@ -67,7 +67,7 @@ testdata::TestValue NewValue(absl::Time value, absl::string_view name = "");
 testdata::TestValue NewBytesValue(absl::string_view value,
                                   absl::string_view name = "");
 
-testdata::TestValue NewValue(const expr::Type& type);
+testdata::TestValue NewValue(const expr::common::Type& type);
 
 // Helpers to remove overload ambiguity.
 template <typename T>

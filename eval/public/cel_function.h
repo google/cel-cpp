@@ -52,7 +52,7 @@ class CelFunction {
   // zero). When former happens, error Status is returned and *result is
   // not changed. In case of business logic error, returned Status is Ok, and
   // error is provided as CelValue - wrapped CelError in *result.
-  virtual util::Status Evaluate(absl::Span<const CelValue> arguments,
+  virtual ::cel_base::Status Evaluate(absl::Span<const CelValue> arguments,
                                   CelValue* result,
                                   google::protobuf::Arena* arena) const = 0;
 
@@ -73,13 +73,15 @@ class CelFunction {
 // CelExpression objects from Expr ASTs.
 class CelFunctionRegistry {
  public:
+  CelFunctionRegistry() : partial_string_match_(false) {}
+
   ~CelFunctionRegistry() {}
 
   // Register CelFunction object. Object ownership is
   // passed to registry.
   // Function registration should be performed prior to
   // CelExpression creation.
-  util::Status Register(std::unique_ptr<CelFunction> function);
+  cel_base::Status Register(std::unique_ptr<CelFunction> function);
 
   // Find subset of CelFunction that match overload conditions
   // As types may not be available during expression compilation,
@@ -96,10 +98,20 @@ class CelFunctionRegistry {
   absl::node_hash_map<std::string, std::vector<const CelFunction::Descriptor*>>
   ListFunctions() const;
 
+  // Select partial or full regex match for match() built-in function.
+  void set_partial_string_match(bool enabled) {
+    partial_string_match_ = enabled;
+  }
+
+  // Use partial regex match for match() built-in function.
+  bool partial_string_match() { return partial_string_match_; }
+
  private:
   using Overloads = std::vector<std::unique_ptr<CelFunction>>;
 
   absl::node_hash_map<std::string, Overloads> functions_;
+
+  bool partial_string_match_;
 };
 
 }  // namespace runtime

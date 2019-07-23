@@ -20,21 +20,26 @@ namespace google {
 namespace api {
 namespace expr {
 
+namespace common {
+
 class List;
 class Map;
 class Object;
+
+}  // namespace common
 
 namespace internal {
 
 // The types stored directly in ValueData.
 using InlineTypes = types<std::nullptr_t, bool, int64_t, uint64_t, double,
-                          NamedEnumValue, BasicType, ObjectType, EnumType>;
+                          common::NamedEnumValue, common::BasicType,
+                          common::ObjectType, common::EnumType>;
 // The types stored by reffed copy in ValueData.
-using RefCopyTypes = types<absl::Duration, absl::Time, Error, UnnamedEnumValue,
-                           UnrecognizedType>;
+using RefCopyTypes = types<absl::Duration, absl::Time, common::Error,
+                           common::UnnamedEnumValue, common::UnrecognizedType>;
 
 template <typename T>
-using is_shared_value = std::is_convertible<T*, const SharedValue*>;
+using is_shared_value = std::is_convertible<T*, const common::SharedValue*>;
 
 // If a type can be returned by pointer or reference.
 template <typename T>
@@ -62,7 +67,7 @@ class BaseValue {
 
   // Holds the string_view and parent in a refcounted container.
   using ParentOwnedStr =
-      Holder<absl::string_view, Ref<ParentOwned<ValueRef, Copy>>>;
+      Holder<absl::string_view, Ref<ParentOwned<common::ValueRef, Copy>>>;
 
   // Holds the string_view in a ref counted container.
   using UnownedStr = RefCopyHolder<absl::string_view>;
@@ -70,30 +75,33 @@ class BaseValue {
   // The variant type used by `expr::Value`.
   using ValueData = absl::variant<
       // Small types can be stored inline.
-      CopyHolder<std::nullptr_t>,  // null_value
-      CopyHolder<bool>,            // bool_value
-      CopyHolder<int64_t>,         // int_value
-      CopyHolder<uint64_t>,        // uint_value
-      CopyHolder<double>,          // double_value
-      CopyHolder<NamedEnumValue>,  // enum_value
-      CopyHolder<BasicType>,       // type_value
-      CopyHolder<ObjectType>,      // type_value
-      CopyHolder<EnumType>,        // type_value
-      CopyHolder<Id>,              // unknown of a single id.
+      CopyHolder<std::nullptr_t>,          // null_value
+      CopyHolder<bool>,                    // bool_value
+      CopyHolder<int64_t>,                 // int_value
+      CopyHolder<uint64_t>,                // uint_value
+      CopyHolder<double>,                  // double_value
+      CopyHolder<common::NamedEnumValue>,  // enum_value
+      CopyHolder<common::BasicType>,       // type_value
+      CopyHolder<common::ObjectType>,      // type_value
+      CopyHolder<common::EnumType>,        // type_value
+      CopyHolder<common::Id>,              // unknown of a single id.
 
       // Other types are stored as unowned, owned pointers.
       // An intrusive shared pointer is used to minimize the variant size.
-      OwnedStr, ParentOwnedStr, UnownedStr,                  // string_value
-      OwnedStr, ParentOwnedStr, UnownedStr,                  // bytes_value
-      RefPtrHolder<Map>, UnownedPtrHolder<const Map>,        // map_value
-      RefPtrHolder<List>, UnownedPtrHolder<const List>,      // list_value
-      RefPtrHolder<Object>, UnownedPtrHolder<const Object>,  // object_value
-      RefCopyHolder<absl::Duration>,                         // duration
-      RefCopyHolder<absl::Time>,                             // time
-      RefCopyHolder<UnnamedEnumValue>,                       // enum_value
-      RefCopyHolder<UnrecognizedType>,                       // type_value
-      RefCopyHolder<Error>,                                  // error
-      RefCopyHolder<Unknown>>;                               // unknown
+      OwnedStr, ParentOwnedStr, UnownedStr,  // string_value
+      OwnedStr, ParentOwnedStr, UnownedStr,  // bytes_value
+      RefPtrHolder<common::Map>,
+      UnownedPtrHolder<const common::Map>,  // map_value
+      RefPtrHolder<common::List>,
+      UnownedPtrHolder<const common::List>,  // list_value
+      RefPtrHolder<common::Object>,
+      UnownedPtrHolder<const common::Object>,   // object_value
+      RefCopyHolder<absl::Duration>,            // duration
+      RefCopyHolder<absl::Time>,                // time
+      RefCopyHolder<common::UnnamedEnumValue>,  // enum_value
+      RefCopyHolder<common::UnrecognizedType>,  // type_value
+      RefCopyHolder<common::Error>,             // error
+      RefCopyHolder<common::Unknown>>;          // unknown
 
   // The public types associated with each Value::Kind entry.
   using KindToType = types<std::nullptr_t,     // kNull
@@ -103,15 +111,15 @@ class BaseValue {
                            double,             // kDouble
                            absl::string_view,  // kString
                            absl::string_view,  // kBytes
-                           Type,               // kType
-                           Map,                // kMap
-                           List,               // kList
-                           Object,             // kObject
-                           EnumValue,          // kEnum
+                           common::Type,       // kType
+                           common::Map,        // kMap
+                           common::List,       // kList
+                           common::Object,     // kObject
+                           common::EnumValue,  // kEnum
                            absl::Duration,     // kDuration
                            absl::Time,         // kTime
-                           Error,              // kError
-                           Unknown>;           // kUnknown
+                           common::Error,      // kError
+                           common::Unknown>;   // kUnknown
 
   enum Index {
     kNull,        // null_value
@@ -175,8 +183,9 @@ class BaseValue {
                     conditional_t<is_uint<T>::value, uint64_t, double>>;
   template <typename T>
   using CustomValueType = conditional_t<
-      std::is_convertible<T*, const Map*>::value, Map,
-      conditional_t<std::is_convertible<T*, const List*>::value, List, Object>>;
+      std::is_convertible<T*, const common::Map*>::value, common::Map,
+      conditional_t<std::is_convertible<T*, const common::List*>::value,
+                    common::List, common::Object>>;
 
   template <typename T>
   using HolderType = conditional_t<type_in<T, InlineTypes>::value,
@@ -204,7 +213,9 @@ class BaseValue {
    */
   struct ValueDataAdapter {
     // Convert the single id case into Unknown.
-    Unknown operator()(const Id& value) { return Unknown(value); }
+    common::Unknown operator()(const common::Id& value) {
+      return common::Unknown(value);
+    }
 
     // Normalize string values to string_view
     template <typename T>
@@ -261,7 +272,7 @@ struct BaseValue::BaseTypeHelper<T, N> {
 
 // Base class for SharedValue types.
 template <typename T>
-struct BaseValue::BaseTypeHelper<T, SharedValue> {
+struct BaseValue::BaseTypeHelper<T, common::SharedValue> {
   using C = CustomValueType<T>;
   static const T* get_if(const ValueData* data);
   static const T& get(const ValueData& data);
@@ -270,7 +281,7 @@ struct BaseValue::BaseTypeHelper<T, SharedValue> {
 // Specialization for CustomValues.
 template <typename T>
 struct BaseValue::TypeHelper<T, specialize_ift<is_shared_value<T>>>
-    : BaseTypeHelper<T, SharedValue> {};
+    : BaseTypeHelper<T, common::SharedValue> {};
 
 // Specialization for numeric types.
 template <typename T>
@@ -278,17 +289,18 @@ struct BaseValue::TypeHelper<T, specialize_ift<is_numeric<T>>>
     : BaseTypeHelper<T, NumericValueType<T>> {};
 
 template <>
-struct BaseValue::TypeHelper<Unknown, specialize>
-    : BaseTypeHelper<Unknown, Unknown, Id> {};
+struct BaseValue::TypeHelper<common::Unknown, specialize>
+    : BaseTypeHelper<common::Unknown, common::Unknown, common::Id> {};
 
 template <>
-struct BaseValue::TypeHelper<EnumValue, specialize>
-    : BaseTypeHelper<EnumValue, UnnamedEnumValue, NamedEnumValue> {};
+struct BaseValue::TypeHelper<common::EnumValue, specialize>
+    : BaseTypeHelper<common::EnumValue, common::UnnamedEnumValue,
+                     common::NamedEnumValue> {};
 
 template <>
-struct BaseValue::TypeHelper<Type, specialize>
-    : BaseTypeHelper<Type, BasicType, EnumType, ObjectType, UnrecognizedType> {
-};
+struct BaseValue::TypeHelper<common::Type, specialize>
+    : BaseTypeHelper<common::Type, common::BasicType, common::EnumType,
+                     common::ObjectType, common::UnrecognizedType> {};
 template <typename T>
 specialize_ift<is_string<T>, absl::string_view> BaseValue::ValueDataAdapter::
 operator()(T& value) {
@@ -341,14 +353,15 @@ T BaseValue::BaseTypeHelper<T, N>::get(const ValueData& data) {
 }
 
 template <typename T>
-const T* BaseValue::BaseTypeHelper<T, SharedValue>::get_if(
+const T* BaseValue::BaseTypeHelper<T, common::SharedValue>::get_if(
     const ValueData* data) {
   return C::template cast_if<T>(
       absl::visit(GetPtrVisitor<DefaultVisitor<const C*>, C>(), *data));
 }
 
 template <typename T>
-const T& BaseValue::BaseTypeHelper<T, SharedValue>::get(const ValueData& data) {
+const T& BaseValue::BaseTypeHelper<T, common::SharedValue>::get(
+    const ValueData& data) {
   const T* value = get_if(&data);
   if (value == nullptr) {
     // Throw bad_variant_access without using `throw` keyword.
@@ -365,17 +378,17 @@ const T& BaseValue::BaseTypeHelper<T, SharedValue>::get(const ValueData& data) {
 // Hash specialization for parented owned values.
 namespace std {
 template <typename T>
-struct hash<std::pair<google::api::expr::ValueRef, T*>> {
+struct hash<std::pair<google::api::expr::common::ValueRef, T*>> {
   std::size_t operator()(
-      const std::pair<google::api::expr::ValueRef, T*>& value) {
+      const std::pair<google::api::expr::common::ValueRef, T*>& value) {
     return google::api::expr::internal::Hash(*value.second);
   }
 };
 
 template <typename T>
-struct hash<std::pair<google::api::expr::ValueRef, T>> {
+struct hash<std::pair<google::api::expr::common::ValueRef, T>> {
   std::size_t operator()(
-      const std::pair<google::api::expr::ValueRef, T>& value) {
+      const std::pair<google::api::expr::common::ValueRef, T>& value) {
     return google::api::expr::internal::Hash(value.second);
   }
 };

@@ -1,0 +1,5 @@
+This directory contains forked copies of google libraries not already available
+in open source. Generally, these libraries should always be considered
+'internal' and subject to change without notice.
+
+The original copy is located in https://github.com/google/zetasql/tree/master/zetasql/base

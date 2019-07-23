@@ -10,6 +10,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 /** A CEL Error. */
 class Error {
@@ -44,6 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Error& value) {
   return os << value.ToDebugString();
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

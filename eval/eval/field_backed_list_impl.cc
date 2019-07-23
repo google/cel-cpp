@@ -16,11 +16,8 @@ CelValue FieldBackedListImpl::operator[](int index) const {
   CelValue result = CelValue::CreateNull();
   auto status = CreateValueFromRepeatedField(message_, descriptor_, arena_,
                                              index, &result);
-  if (!util::IsOk(status)) {
-    CelError* error = google::protobuf::Arena::Create<CelError>(arena_);
-    error->set_message(status.message());
-    error->set_code(CelError::Code::CelError_Code_UNKNOWN);
-    result = CelValue::CreateError(error);
+  if (!status.ok()) {
+    result = CreateErrorValue(arena_, status.ToString());
   }
 
   return result;

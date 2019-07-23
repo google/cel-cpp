@@ -32,8 +32,8 @@ TEST(ConverterTest, ForProto) {
   google::type::Money money;
   money.set_nanos(1);
 
-  Value value = kReg->ValueFor(&money);
-  EXPECT_EQ(value.kind(), Value::Kind::kObject);
+  common::Value value = kReg->ValueFor(&money);
+  EXPECT_EQ(value.kind(), common::Value::Kind::kObject);
   EXPECT_FALSE(value.is_inline());
   EXPECT_TRUE(value.is_value());
   EXPECT_FALSE(value.owns_value());
@@ -46,8 +46,8 @@ TEST(ConverterTest, FromProto) {
   auto money = absl::make_unique<google::type::Money>();
   money->set_nanos(1);
 
-  Value value = kReg->ValueFrom(std::move(money));
-  EXPECT_EQ(value.kind(), Value::Kind::kObject);
+  common::Value value = kReg->ValueFrom(std::move(money));
+  EXPECT_EQ(value.kind(), common::Value::Kind::kObject);
   EXPECT_FALSE(value.is_inline());
   EXPECT_TRUE(value.is_value());
   EXPECT_TRUE(value.owns_value());
@@ -63,8 +63,8 @@ TEST(ConverterTest, FromProto_Any) {
   google::protobuf::Any any;
   any.PackFrom(money);
 
-  Value value = kReg->ValueFrom(any);
-  EXPECT_EQ(value.kind(), Value::Kind::kObject);
+  common::Value value = kReg->ValueFrom(any);
+  EXPECT_EQ(value.kind(), common::Value::Kind::kObject);
   EXPECT_FALSE(value.is_inline());
   EXPECT_TRUE(value.is_value());
   EXPECT_TRUE(value.owns_value());
@@ -80,8 +80,8 @@ TEST(ConverterTest, FromProto_AnyPtr) {
   google::protobuf::Any any;
   any.PackFrom(money);
 
-  Value value = kReg->ValueFor(&any);
-  EXPECT_EQ(value.kind(), Value::Kind::kObject);
+  common::Value value = kReg->ValueFor(&any);
+  EXPECT_EQ(value.kind(), common::Value::Kind::kObject);
   EXPECT_FALSE(value.is_inline());
   EXPECT_TRUE(value.is_value());
   EXPECT_TRUE(value.owns_value());

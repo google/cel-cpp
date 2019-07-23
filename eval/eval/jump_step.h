@@ -14,15 +14,14 @@ namespace runtime {
 
 class JumpStepBase : public ExpressionStepBase {
  public:
-  JumpStepBase(absl::optional<int> jump_offset,
-               const google::api::expr::v1alpha1::Expr* expr)
-      : ExpressionStepBase(expr), jump_offset_(jump_offset) {}
+  JumpStepBase(absl::optional<int> jump_offset, int64_t expr_id)
+      : ExpressionStepBase(expr_id, false), jump_offset_(jump_offset) {}
 
   void set_jump_offset(int offset) { jump_offset_ = offset; }
 
-  util::Status Jump(ExecutionFrame* frame) const {
+  cel_base::Status Jump(ExecutionFrame* frame) const {
     if (!jump_offset_.has_value()) {
-      return util::MakeStatus(google::rpc::Code::INTERNAL, "Jump offset not set");
+      return cel_base::Status(cel_base::StatusCode::kInternal, "Jump offset not set");
     }
     return frame->JumpTo(jump_offset_.value());
   }
@@ -32,23 +31,23 @@ class JumpStepBase : public ExpressionStepBase {
 };
 
 // Factory method for Jump step.
-util::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
-    absl::optional<int> jump_offset, const google::api::expr::v1alpha1::Expr* expr);
+cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
+    absl::optional<int> jump_offset, int64_t expr_id);
 
 // Factory method for Conditional Jump step.
 // Conditional Jump requires a boolean value to sit on the stack.
 // It is compared to jump_condition, and if matched, jump is performed.
 // leave on stack indicates whether value should be kept on top of the stack or
 // removed.
-util::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
+cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
     bool jump_condition, bool leave_on_stack, absl::optional<int> jump_offset,
-    const google::api::expr::v1alpha1::Expr* expr);
+    int64_t expr_id);
 
 // Factory method for ErrorJump step.
 // This step performs a Jump when an Error is on the top of the stack.
-// Value is left on stack.
-util::StatusOr<std::unique_ptr<JumpStepBase>> CreateErrorJumpStep(
-    absl::optional<int> jump_offset, const google::api::expr::v1alpha1::Expr* expr);
+// Value is left on stack if it is a bool or an error.
+cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
+    absl::optional<int> jump_offset, int64_t expr_id);
 
 }  // namespace runtime
 }  // namespace expr

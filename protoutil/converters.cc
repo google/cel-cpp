@@ -40,29 +40,29 @@ bool RegisterFromPtrCall(TypeRegistry* registry) {
 template <typename T>
 bool RegisterForCall(TypeRegistry* registry) {
   return registry->RegisterConstructor<T>(
-      [](const T* value, const RefProvider& parent) {
+      [](const T* value, const common::RefProvider& parent) {
         return ValueFor(value, parent);
       });
 }
 
 template <typename HolderPolicy>
-class ListValue final : public List {
+class ListValue final : public common::List {
  public:
   template <typename... Args>
   explicit ListValue(Args&&... args) : holder_(std::forward<Args>(args)...) {}
 
   std::size_t size() const override { return holder_.value().values_size(); }
 
-  expr::Value Get(std::size_t index) const override {
+  common::Value Get(std::size_t index) const override {
     if (index >= static_cast<std::size_t>(holder_.value().values_size())) {
-      return expr::Value::FromError(
+      return common::Value::FromError(
           internal::OutOfRangeError(index, holder_.value().values_size()));
     }
     return ValueFor(&holder_.value().values(index), SelfRefProvider());
   }
 
   google::rpc::Status ForEach(
-      const std::function<google::rpc::Status(const expr::Value&)>& call)
+      const std::function<google::rpc::Status(const common::Value&)>& call)
       const override {
     for (const auto& elem : holder_.value().values()) {
       RETURN_IF_STATUS_ERROR(call(ValueFor(&elem, SelfRefProvider())));
@@ -77,7 +77,7 @@ class ListValue final : public List {
 };
 
 template <typename HolderPolicy>
-class Struct final : public Map {
+class Struct final : public common::Map {
  public:
   template <typename... Args>
   explicit Struct(Args&&... args) : holder_(std::forward<Args>(args)...) {}
@@ -87,11 +87,11 @@ class Struct final : public Map {
   }
 
   google::rpc::Status ForEach(
-      const std::function<google::rpc::Status(const Value&, const Value&)>&
-          call) const override {
+      const std::function<google::rpc::Status(
+          const common::Value&, const common::Value&)>& call) const override {
     for (const auto& field : holder_.value().fields()) {
       RETURN_IF_STATUS_ERROR(
-          call(Value::ForString(field.first, SelfRefProvider()),
+          call(common::Value::ForString(field.first, SelfRefProvider()),
                ValueFor(field.second, SelfRefProvider())));
     }
     return internal::OkStatus();
@@ -100,63 +100,64 @@ class Struct final : public Map {
   inline bool owns_value() const override { return true; }
 
  protected:
-  Value GetImpl(const Value& key) const override;
+  common::Value GetImpl(const common::Value& key) const override;
 
  private:
   internal::Holder<google::protobuf::Struct, HolderPolicy> holder_;
 };
 
-expr::Value BuildMapFor(const google::protobuf::Struct* struct_value,
-                        ParentRef parent) {
-  absl::node_hash_map<expr::Value, expr::Value> result;
+common::Value BuildMapFor(const google::protobuf::Struct* struct_value,
+                          common::ParentRef parent) {
+  absl::node_hash_map<common::Value, common::Value> result;
   for (const auto& field : struct_value->fields()) {
-    result.emplace(Value::ForString(field.first, parent),
+    result.emplace(common::Value::ForString(field.first, parent),
                    ValueFor(&field.second, parent));
   }
   // The keys and values grabbed a ref on parent if needed, so we don't need one
   // separately.
-  return Value::MakeMap<internal::MapImpl>(std::move(result));
+  return common::Value::MakeMap<internal::MapImpl>(std::move(result));
 }
 
-expr::Value BuildMapFrom(google::protobuf::Struct&& struct_value) {
-  absl::node_hash_map<expr::Value, expr::Value> result;
+common::Value BuildMapFrom(google::protobuf::Struct&& struct_value) {
+  absl::node_hash_map<common::Value, common::Value> result;
   for (auto& fields : *struct_value.mutable_fields()) {
-    result.emplace(Value::FromString(fields.first),
+    result.emplace(common::Value::FromString(fields.first),
                    ValueFrom(std::move(fields.second)));
   }
-  return Value::MakeMap<internal::MapImpl>(std::move(result));
+  return common::Value::MakeMap<internal::MapImpl>(std::move(result));
 }
 
-expr::Value BuildMapFrom(const google::protobuf::Struct& struct_value) {
-  absl::node_hash_map<expr::Value, expr::Value> result;
+common::Value BuildMapFrom(const google::protobuf::Struct& struct_value) {
+  absl::node_hash_map<common::Value, common::Value> result;
   for (const auto& fields : struct_value.fields()) {
-    result.emplace(Value::FromString(fields.first), ValueFrom(fields.second));
+    result.emplace(common::Value::FromString(fields.first),
+                   ValueFrom(fields.second));
   }
-  return Value::MakeMap<internal::MapImpl>(std::move(result));
+  return common::Value::MakeMap<internal::MapImpl>(std::move(result));
 }
 
 }  // namespace
 
 // Converters for google::protobuf::Value.
-Value ValueFrom(const google::protobuf::Value& value) {
+common::Value ValueFrom(const google::protobuf::Value& value) {
   switch (value.kind_case()) {
     case google::protobuf::Value::kNullValue:
-      return Value::NullValue();
+      return common::Value::NullValue();
     case google::protobuf::Value::kBoolValue:
-      return Value::FromBool(value.bool_value());
+      return common::Value::FromBool(value.bool_value());
     case google::protobuf::Value::kNumberValue:
-      return Value::FromDouble(value.number_value());
+      return common::Value::FromDouble(value.number_value());
     case google::protobuf::Value::kStringValue:
-      return Value::FromString(value.string_value());
+      return common::Value::FromString(value.string_value());
     case google::protobuf::Value::kStructValue:
       return ValueFrom(value.struct_value());
     default:
-      return Value::FromError(
+      return common::Value::FromError(
           internal::UnimplementedError(absl::StrCat(value.kind_case())));
   }
 }
 
-Value ValueFrom(google::protobuf::Value&& value) {
+common::Value ValueFrom(google::protobuf::Value&& value) {
   switch (value.kind_case()) {
     case google::protobuf::Value::kStructValue:
       return ValueFrom(absl::WrapUnique(value.release_struct_value()));
@@ -167,11 +168,12 @@ Value ValueFrom(google::protobuf::Value&& value) {
   }
 }
 
-Value ValueFrom(std::unique_ptr<google::protobuf::Value> value) {
+common::Value ValueFrom(std::unique_ptr<google::protobuf::Value> value) {
   return ValueFrom(std::move(*value));
 }
 
-Value ValueFor(const google::protobuf::Value* value, ParentRef parent) {
+common::Value ValueFor(const google::protobuf::Value* value,
+                       common::ParentRef parent) {
   switch (value->kind_case()) {
     case google::protobuf::Value::kStructValue:
       return ValueFor(&value->struct_value(), parent);
@@ -183,50 +185,53 @@ Value ValueFor(const google::protobuf::Value* value, ParentRef parent) {
 }
 
 // Converters for google::protobuf::Struct.
-Value ValueFrom(const google::protobuf::Struct& value) {
+common::Value ValueFrom(const google::protobuf::Struct& value) {
   return BuildMapFrom(value);
 }
 
-Value ValueFrom(std::unique_ptr<google::protobuf::Struct> value) {
+common::Value ValueFrom(std::unique_ptr<google::protobuf::Struct> value) {
   return BuildMapFrom(std::move(*value));
 }
-Value ValueFor(const google::protobuf::Struct* value, ParentRef parent) {
+common::Value ValueFor(const google::protobuf::Struct* value,
+                       common::ParentRef parent) {
   return BuildMapFor(value, parent);
 }
 
 // Converters for google::protobuf::ListValue
-Value ValueFrom(const google::protobuf::ListValue& value) {
-  return Value::MakeList<ListValue<internal::Copy>>(value);
+common::Value ValueFrom(const google::protobuf::ListValue& value) {
+  return common::Value::MakeList<ListValue<internal::Copy>>(value);
 }
-Value ValueFrom(std::unique_ptr<google::protobuf::ListValue> value) {
-  return Value::MakeList<ListValue<internal::OwnedPtr>>(std::move(value));
+common::Value ValueFrom(std::unique_ptr<google::protobuf::ListValue> value) {
+  return common::Value::MakeList<ListValue<internal::OwnedPtr>>(
+      std::move(value));
 }
-Value ValueFor(const google::protobuf::ListValue* value, ParentRef parent) {
+common::Value ValueFor(const google::protobuf::ListValue* value,
+                       common::ParentRef parent) {
   if (!parent) {
     return ValueFrom(*value);
   }
   if (parent->RequiresReference()) {
-    return Value::MakeList<
-        ListValue<internal::ParentOwned<ValueRef, internal::UnownedPtr>>>(
+    return common::Value::MakeList<ListValue<
+        internal::ParentOwned<common::ValueRef, internal::UnownedPtr>>>(
         parent->GetRef(), value);
   }
-  return Value::MakeList<ListValue<internal::UnownedPtr>>(value);
+  return common::Value::MakeList<ListValue<internal::UnownedPtr>>(value);
 }
 
 // Converters for time/duration.
-Value ValueFrom(const google::protobuf::Timestamp& value) {
-  return Value::FromTime(internal::DecodeTime(value));
+common::Value ValueFrom(const google::protobuf::Timestamp& value) {
+  return common::Value::FromTime(internal::DecodeTime(value));
 }
 
-Value ValueFrom(const google::protobuf::Duration& value) {
-  return Value::FromDuration(internal::DecodeDuration(value));
+common::Value ValueFrom(const google::protobuf::Duration& value) {
+  return common::Value::FromDuration(internal::DecodeDuration(value));
 }
 
 bool RegisterConvertersWith(TypeRegistry* registry) {
   bool success = true;
   success &= registry->RegisterConstructor(
-      EnumType(google::protobuf::NullValue_descriptor()),
-      [](EnumType, int32_t) { return Value::NullValue(); });
+      common::EnumType(google::protobuf::NullValue_descriptor()),
+      [](common::EnumType, int32_t) { return common::Value::NullValue(); });
   success &= RegisterFromCall<google::protobuf::Value>(registry);
   success &= RegisterFromPtrCall<google::protobuf::Value>(registry);
   success &= RegisterForCall<google::protobuf::Value>(registry);

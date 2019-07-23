@@ -7,6 +7,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 /**
  * A recognized named enum value.
@@ -83,6 +84,7 @@ class EnumValue final {
   absl::variant<NamedEnumValue, UnnamedEnumValue> data_;
 };
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

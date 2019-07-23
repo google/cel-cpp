@@ -8,6 +8,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 // A expression, statement, or variable id.
 class Id : public internal::Handle<int32_t, Id> {
@@ -23,6 +24,7 @@ inline std::ostream& operator<<(std::ostream& os, Id arg) {
   return os << arg.ToDebugString();
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google
@@ -30,7 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, Id arg) {
 namespace std {
 
 template <>
-struct hash<google::api::expr::Id> : google::api::expr::Id::Hasher {};
+struct hash<google::api::expr::common::Id>
+    : google::api::expr::common::Id::Hasher {};
 
 }  // namespace std
 

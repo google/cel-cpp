@@ -3,6 +3,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 Value OpaqueObject::GetMember(absl::string_view name) const {
   return Value::FromError(
@@ -15,6 +16,7 @@ google::rpc::Status OpaqueObject::ForEach(
   return internal::OkStatus();
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

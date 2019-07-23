@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package google.api.expr.runtime;
+
+option cc_enable_arenas = true;
+
+// Message representing a sample request context
+message RequestContext {
+  string ip = 1;
+  string path = 2;
+  string token = 3;
+}

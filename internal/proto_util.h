@@ -34,25 +34,25 @@ absl::Duration DecodeDuration(const google::protobuf::Duration& proto);
 /** Helper function to decode a time from a google::protobuf::Timestamp. */
 absl::Time DecodeTime(const google::protobuf::Timestamp& proto);
 
-/** Returns the min base::Duration that can be represented as
+/** Returns the min absl::Duration that can be represented as
 / * google::protobuf::Duration. */
 inline absl::Duration MakeGoogleApiDurationMin() {
   return absl::Seconds(-315576000000) + absl::Nanoseconds(-999999999);
 }
 
-/** Returns the max base::Duration that can be represented as
+/** Returns the max absl::Duration that can be represented as
 / * google::protobuf::Duration. */
 inline absl::Duration MakeGoogleApiDurationMax() {
   return absl::Seconds(315576000000) + absl::Nanoseconds(999999999);
 }
 
-/** Returns the min base::Time that can be represented as
+/** Returns the min absl::Time that can be represented as
 / * google::protobuf::Timestamp. */
 inline absl::Time MakeGoogleApiTimeMin() {
   return absl::UnixEpoch() + absl::Seconds(-62135596800);
 }
 
-/** Returns the max base::Time that can be represented as
+/** Returns the max absl::Time that can be represented as
 / * google::protobuf::Timestamp. */
 inline absl::Time MakeGoogleApiTimeMax() {
   return absl::UnixEpoch() + absl::Seconds(253402300799) +

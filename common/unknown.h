@@ -7,6 +7,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 /** An unknown CEL value. */
 class Unknown {
@@ -40,6 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Unknown& value) {
   return os << value.ToString();
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

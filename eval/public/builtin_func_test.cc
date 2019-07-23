@@ -1,10 +1,10 @@
-#include "eval/public/builtin_func_registrar.h"
-
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/util/time_util.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/activation.h"
+#include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 
@@ -22,6 +22,7 @@ using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::Arena;
+using google::protobuf::util::TimeUtil;
 
 using testing::Eq;
 
@@ -29,11 +30,12 @@ class BuiltinsTest : public ::testing::Test {
  protected:
   BuiltinsTest() {}
 
-  void SetUp() override { ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry_))); }
+  void SetUp() override { ASSERT_TRUE(RegisterBuiltinFunctions(&registry_).ok()); }
 
   // Helper method. Looks up in registry and tests comparison operation.
   void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
-                  const std::vector<CelValue>& values, CelValue* result) {
+                  const std::vector<CelValue>& values, CelValue* result,
+                  const InterpreterOptions& options = InterpreterOptions()) {
     Activation activation;
 
     Expr expr;
@@ -62,21 +64,21 @@ class BuiltinsTest : public ::testing::Test {
 
     // Obtain CEL Expression builder.
     std::unique_ptr<CelExpressionBuilder> builder =
-        CreateCelExpressionBuilder();
+        CreateCelExpressionBuilder(options);
 
     // Builtin registration.
-    ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
+    ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry()).ok());
 
     // Create CelExpression from AST (Expr object).
     auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
 
-    ASSERT_TRUE(util::IsOk(cel_expression_status));
+    ASSERT_TRUE(cel_expression_status.ok());
 
     auto cel_expression = std::move(cel_expression_status.ValueOrDie());
 
     auto eval_status = cel_expression->Evaluate(activation, &arena_);
 
-    ASSERT_TRUE(util::IsOk(eval_status));
+    ASSERT_TRUE(eval_status.ok());
 
     *result = eval_status.ValueOrDie();
   }
@@ -103,8 +105,7 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_TRUE(eq_value.IsError())
         << " for " << CelValue::TypeName(ref.type()) << " and "
         << CelValue::TypeName(other.type());
-    EXPECT_THAT(eq_value.ErrorOrDie()->code(),
-                Eq(CelError_Code_NO_MATCHING_OVERLOAD));
+    EXPECT_TRUE(CheckNoMatchingOverloadError(eq_value));
 
     CelValue ineq_value;
     ASSERT_NO_FATAL_FAILURE(
@@ -112,8 +113,7 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_TRUE(ineq_value.IsError())
         << " for " << CelValue::TypeName(ref.type()) << " and "
         << CelValue::TypeName(other.type());
-    EXPECT_THAT(ineq_value.ErrorOrDie()->code(),
-                Eq(CelError_Code_NO_MATCHING_OVERLOAD));
+    EXPECT_TRUE(CheckNoMatchingOverloadError(ineq_value));
   }
 
   // Helper method. Looks up in registry and tests Type conversions.
@@ -418,43 +418,43 @@ TEST_F(BuiltinsTest, TestTimestampDurationArithmeticalOperation) {
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kSubtract, {}, {cel_ts0, cel_ts1}, &result_value));
   ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(result_value.DurationOrDie()->seconds(), d0.seconds());
-  ASSERT_EQ(result_value.DurationOrDie()->nanos(), d0.nanos());
+  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
+            TimeUtil::DurationToNanoseconds(d0));
 
   // ts0 - d0 = ts1
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kSubtract, {}, {cel_ts0, cel_d0}, &result_value));
   ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(result_value.TimestampOrDie()->seconds(), ts1.seconds());
-  ASSERT_EQ(result_value.TimestampOrDie()->nanos(), ts1.nanos());
+  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
+            TimeUtil::TimestampToNanoseconds(ts1));
 
   // ts1 + d0 = ts0
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kAdd, {}, {cel_ts1, cel_d0}, &result_value));
   ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(result_value.TimestampOrDie()->seconds(), ts0.seconds());
-  ASSERT_EQ(result_value.TimestampOrDie()->nanos(), ts0.nanos());
+  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
+            TimeUtil::TimestampToNanoseconds(ts0));
 
   // d0 + ts1 = ts0
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kAdd, {}, {cel_d0, cel_ts1}, &result_value));
   ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(result_value.TimestampOrDie()->seconds(), ts0.seconds());
-  ASSERT_EQ(result_value.TimestampOrDie()->nanos(), ts0.nanos());
+  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
+            TimeUtil::TimestampToNanoseconds(ts0));
 
   // d0 - d1 = d2
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kSubtract, {}, {cel_d0, cel_d1}, &result_value));
   ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(result_value.DurationOrDie()->seconds(), d2.seconds());
-  ASSERT_EQ(result_value.DurationOrDie()->nanos(), d2.nanos());
+  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
+            TimeUtil::DurationToNanoseconds(d2));
 
   // d1 + d2 = d0
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kAdd, {}, {cel_d2, cel_d1}, &result_value));
   ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(result_value.DurationOrDie()->seconds(), d0.seconds());
-  ASSERT_EQ(result_value.DurationOrDie()->nanos(), d0.nanos());
+  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
+            TimeUtil::DurationToNanoseconds(d0));
 }
 
 // Test functions for Duration
@@ -617,6 +617,14 @@ TEST_F(BuiltinsTest, TestLogicalOr) {
       op_name, {},
       {CelValue::CreateError(&error), CelValue::CreateError(&error)}, &result));
   EXPECT_TRUE(result.IsError());
+
+  // "foo" || "bar"
+  std::string arg0 = "foo";
+  std::string arg1 = "bar";
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      op_name, {},
+      {CelValue::CreateString(&arg0), CelValue::CreateString(&arg1)}, &result));
+  EXPECT_TRUE(CheckNoMatchingOverloadError(result));
 }
 
 TEST_F(BuiltinsTest, TestLogicalAnd) {
@@ -694,6 +702,18 @@ TEST_F(BuiltinsTest, TestTernaryErrorAsCondition) {
 
   ASSERT_EQ(result_value.IsError(), true);
   ASSERT_EQ(result_value.ErrorOrDie(), &cel_error);
+}
+
+TEST_F(BuiltinsTest, TestTernaryStringAsCondition) {
+  std::string test = "test";
+  std::vector<CelValue> args = {CelValue::CreateString(&test),
+                                CelValue::CreateInt64(1),
+                                CelValue::CreateInt64(2)};
+
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kTernary, {}, args, &result_value));
+  EXPECT_TRUE(CheckNoMatchingOverloadError(result_value));
 }
 
 class FakeList : public CelList {
@@ -873,7 +893,9 @@ TEST_F(BuiltinsTest, MapInt64Index) {
                  &result_value));
 
   ASSERT_TRUE(result_value.IsError());
-  EXPECT_THAT(result_value.ErrorOrDie()->code(), Eq(CelError_Code_NO_SUCH_KEY));
+  EXPECT_THAT(result_value.ErrorOrDie()->code(),
+              Eq(cel_base::StatusCode::kNotFound));
+  EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
 TEST_F(BuiltinsTest, MapUint64Index) {
@@ -900,7 +922,9 @@ TEST_F(BuiltinsTest, MapUint64Index) {
                  &result_value));
 
   ASSERT_TRUE(result_value.IsError());
-  EXPECT_THAT(result_value.ErrorOrDie()->code(), Eq(CelError_Code_NO_SUCH_KEY));
+  EXPECT_THAT(result_value.ErrorOrDie()->code(),
+              Eq(cel_base::StatusCode::kNotFound));
+  EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
 TEST_F(BuiltinsTest, MapStringIndex) {
@@ -929,7 +953,9 @@ TEST_F(BuiltinsTest, MapStringIndex) {
       &result_value));
 
   ASSERT_TRUE(result_value.IsError());
-  EXPECT_THAT(result_value.ErrorOrDie()->code(), Eq(CelError_Code_NO_SUCH_KEY));
+  EXPECT_THAT(result_value.ErrorOrDie()->code(),
+              Eq(cel_base::StatusCode::kNotFound));
+  EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
 TEST_F(BuiltinsTest, MapBoolIndex) {
@@ -1302,6 +1328,21 @@ TEST_F(BuiltinsTest, MatchesTrue) {
   EXPECT_TRUE(result_value.BoolOrDie());
 }
 
+TEST_F(BuiltinsTest, MatchesPartialTrue) {
+  std::string target = "haystack";
+  std::string regex = "\\w{2}ack";
+  std::vector<CelValue> args = {CelValue::CreateString(&target),
+                                CelValue::CreateString(&regex)};
+
+  InterpreterOptions options;
+  options.partial_string_match = true;
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
+  ASSERT_TRUE(result_value.IsBool());
+  EXPECT_TRUE(result_value.BoolOrDie());
+}
+
 TEST_F(BuiltinsTest, MatchesFalse) {
   std::string target = "haystack";
   std::string regex = "hay";
@@ -1315,6 +1356,21 @@ TEST_F(BuiltinsTest, MatchesFalse) {
   EXPECT_FALSE(result_value.BoolOrDie());
 }
 
+TEST_F(BuiltinsTest, MatchesPartialFalse) {
+  std::string target = "haystack";
+  std::string regex = "hy";
+  std::vector<CelValue> args = {CelValue::CreateString(&target),
+                                CelValue::CreateString(&regex)};
+
+  InterpreterOptions options;
+  options.partial_string_match = true;
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
+  ASSERT_TRUE(result_value.IsBool());
+  EXPECT_FALSE(result_value.BoolOrDie());
+}
+
 TEST_F(BuiltinsTest, MatchesError) {
   std::string target = "haystack";
   std::string invalid_regex = "(";
@@ -1324,6 +1380,20 @@ TEST_F(BuiltinsTest, MatchesError) {
   CelValue result_value;
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kRegexMatch, {}, args, &result_value));
+  EXPECT_TRUE(result_value.IsError());
+}
+
+TEST_F(BuiltinsTest, MatchesPartialError) {
+  std::string target = "haystack";
+  std::string invalid_regex = "(";
+  std::vector<CelValue> args = {CelValue::CreateString(&target),
+                                CelValue::CreateString(&invalid_regex)};
+
+  InterpreterOptions options;
+  options.partial_string_match = true;
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
   EXPECT_TRUE(result_value.IsError());
 }
 

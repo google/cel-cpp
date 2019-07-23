@@ -14,9 +14,8 @@ namespace {
 class FunctionStep : public ExpressionStepBase {
  public:
   // Constructs FunctionStep that uses overloads specified.
-  FunctionStep(std::vector<const CelFunction*> overloads,
-               const google::api::expr::v1alpha1::Expr* expr)
-      : ExpressionStepBase(expr),
+  FunctionStep(std::vector<const CelFunction*> overloads, int64_t expr_id)
+      : ExpressionStepBase(expr_id),
         overloads_(std::move(overloads)),
         num_arguments_(0) {
     if (!overloads_.empty()) {
@@ -24,16 +23,16 @@ class FunctionStep : public ExpressionStepBase {
     }
   }
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::vector<const CelFunction*> overloads_;
   int num_arguments_;
 };
 
-util::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(num_arguments_)) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
+    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
   }
 
   // Create Span object that contains input arguments to the function.
@@ -44,7 +43,7 @@ util::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
     if (overload->MatchArguments(input_args)) {
       // More than one overload matches our arguments.
       if (matched_function != nullptr) {
-        return util::MakeStatus(google::rpc::Code::INTERNAL,
+        return cel_base::Status(cel_base::StatusCode::kInternal,
                             "Cannot resolve overloads");
       }
 
@@ -56,9 +55,9 @@ util::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
 
   // Overload found
   if (matched_function != nullptr) {
-    util::Status status =
+    cel_base::Status status =
         matched_function->Evaluate(input_args, &result, frame->arena());
-    if (!util::IsOk(status)) {
+    if (!status.ok()) {
       return status;
     }
   } else {
@@ -75,22 +74,20 @@ util::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
     }
     // If no errors in input args, create new CelError.
     if (!result.IsError()) {
-      result = CreateErrorValue(frame->arena(), "No matching overloads found",
-                                CelError::Code::CelError_Code_UNKNOWN);
+      result = CreateNoMatchingOverloadError(frame->arena());
     }
   }
 
   frame->value_stack().Pop(num_arguments_);
   frame->value_stack().Push(result);
 
-  return util::OkStatus();
+  return cel_base::OkStatus();
 }
 
 }  // namespace
 
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call_expr,
-    const google::api::expr::v1alpha1::Expr* expr,
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
     const CelFunctionRegistry& function_registry) {
   bool receiver_style = call_expr->has_target();
 
@@ -100,19 +97,18 @@ util::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
   auto overloads = function_registry.FindOverloads(call_expr->function(),
                                                    receiver_style, args);
 
-  return CreateFunctionStep(expr, overloads);
+  return CreateFunctionStep(expr_id, overloads);
 }
 
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr* expr,
-    std::vector<const CelFunction*> overloads) {
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+    int64_t expr_id, std::vector<const CelFunction*> overloads) {
   if (overloads.empty()) {
-    return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
+    return ::cel_base::Status(cel_base::StatusCode::kInvalidArgument,
                           "No overloads provided for FunctionStep creation");
   }
 
   std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<FunctionStep>(std::move(overloads), expr);
+      absl::make_unique<FunctionStep>(std::move(overloads), expr_id);
 
   return std::move(step);
 }

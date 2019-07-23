@@ -8,6 +8,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 /** The basic value types. */
 enum class BasicTypeValue {
@@ -154,6 +155,7 @@ inline std::ostream& operator<<(std::ostream& os, const Type& value) {
   return os << value.ToString();
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google
@@ -161,20 +163,20 @@ inline std::ostream& operator<<(std::ostream& os, const Type& value) {
 namespace std {
 
 template <>
-struct hash<google::api::expr::UnrecognizedType>
+struct hash<google::api::expr::common::UnrecognizedType>
     : google::api::expr::internal::Hasher {};
 
 template <>
-struct hash<google::api::expr::BasicType>
+struct hash<google::api::expr::common::BasicType>
     : google::api::expr::internal::Hasher {};
 
 template <>
-struct hash<google::api::expr::EnumType> : google::api::expr::EnumType::Hasher {
-};
+struct hash<google::api::expr::common::EnumType>
+    : google::api::expr::common::EnumType::Hasher {};
 
 template <>
-struct hash<google::api::expr::ObjectType>
-    : google::api::expr::ObjectType::Hasher {};
+struct hash<google::api::expr::common::ObjectType>
+    : google::api::expr::common::ObjectType::Hasher {};
 
 }  // namespace std
 

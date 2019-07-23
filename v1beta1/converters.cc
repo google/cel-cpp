@@ -28,7 +28,7 @@ namespace {
 
 /** A visitor that encodes ExprValues. */
 struct ToExprValue {
-  expr::Value from;
+  common::Value from;
   v1beta1::ExprValue* result;
 
   google::rpc::Status operator()(std::nullptr_t value) {
@@ -57,7 +57,7 @@ struct ToExprValue {
     return OkStatus();
   }
 
-  google::rpc::Status operator()(const expr::EnumValue& value) {
+  google::rpc::Status operator()(const common::EnumValue& value) {
     auto enum_value = result->mutable_value()->mutable_enum_value();
     enum_value->set_value(value.value());
     enum_value->set_type(std::string(value.type().full_name()));
@@ -65,7 +65,7 @@ struct ToExprValue {
   }
 
   google::rpc::Status operator()(absl::string_view value) {
-    if (from.kind() == expr::Value::Kind::kBytes) {
+    if (from.kind() == common::Value::Kind::kBytes) {
       result->mutable_value()->set_bytes_value(std::string(value));
     } else {
       result->mutable_value()->set_string_value(std::string(value));
@@ -85,7 +85,7 @@ struct ToExprValue {
     result->mutable_value()->mutable_object_value()->PackFrom(value);
   }
 
-  google::rpc::Status EncodeValue(const expr::Value& value,
+  google::rpc::Status EncodeValue(const common::Value& value,
                                   v1beta1::Value* sub_value) {
     ExprValue expr_value;
     auto status = ValueTo(value, &expr_value);
@@ -115,34 +115,34 @@ struct ToExprValue {
     return status;
   }
 
-  google::rpc::Status operator()(const List& value) {
+  google::rpc::Status operator()(const common::List& value) {
     auto& list_value = *result->mutable_value()->mutable_list_value();
-    return value.ForEach([this, &list_value](const expr::Value& elem) {
+    return value.ForEach([this, &list_value](const common::Value& elem) {
       return EncodeValue(elem, list_value.add_values());
     });
   }
 
-  google::rpc::Status operator()(const Map& value) {
+  google::rpc::Status operator()(const common::Map& value) {
     auto& map_value = *result->mutable_value()->mutable_map_value();
-    return value.ForEach(
-        [this, &map_value](const expr::Value& key, const expr::Value& value) {
-          auto& entry = *map_value.add_entries();
-          RETURN_IF_STATUS_ERROR(EncodeValue(key, entry.mutable_key()));
-          return EncodeValue(value, entry.mutable_value());
-        });
+    return value.ForEach([this, &map_value](const common::Value& key,
+                                            const common::Value& value) {
+      auto& entry = *map_value.add_entries();
+      RETURN_IF_STATUS_ERROR(EncodeValue(key, entry.mutable_key()));
+      return EncodeValue(value, entry.mutable_value());
+    });
   }
 
-  google::rpc::Status operator()(const Object& value) {
+  google::rpc::Status operator()(const common::Object& value) {
     value.To(result->mutable_value()->mutable_object_value());
     return OkStatus();
   }
 
-  google::rpc::Status operator()(const Type& value) {
+  google::rpc::Status operator()(const common::Type& value) {
     result->mutable_value()->set_type_value(std::string(value.full_name()));
     return OkStatus();
   }
 
-  google::rpc::Status operator()(const Unknown& value) {
+  google::rpc::Status operator()(const common::Unknown& value) {
     auto& unknown = *result->mutable_unknown();
     for (const auto& id : value.ids()) {
       unknown.add_exprs()->set_id(id.value());
@@ -150,7 +150,7 @@ struct ToExprValue {
     return OkStatus();
   }
 
-  google::rpc::Status operator()(const Error& value) {
+  google::rpc::Status operator()(const common::Error& value) {
     auto& error_set = *result->mutable_error();
     for (const auto& error : value.errors()) {
       *error_set.add_errors() = error;
@@ -160,14 +160,14 @@ struct ToExprValue {
 };
 
 /**
- * Creates a new expr::Value potentially with a reference on parent, if not
+ * Creates a new common::Value potentially with a reference on parent, if not
  * null.
  */
-expr::Value ValueFor(const v1beta1::Value* value, ParentRef parent,
-                     const TypeRegistry* registry);
+common::Value ValueFor(const v1beta1::Value* value, common::ParentRef parent,
+                       const TypeRegistry* registry);
 
 template <typename HolderPolicy>
-class ListValue final : public List {
+class ListValue final : public common::List {
  public:
   template <typename... Args>
   explicit ListValue(const TypeRegistry* registry, Args&&... args)
@@ -175,9 +175,9 @@ class ListValue final : public List {
 
   std::size_t size() const override { return holder_.value().values_size(); }
 
-  expr::Value Get(std::size_t index) const override {
+  common::Value Get(std::size_t index) const override {
     if (index >= static_cast<std::size_t>(holder_.value().values_size())) {
-      return expr::Value::FromError(
+      return common::Value::FromError(
           internal::OutOfRangeError(index, holder_.value().values_size()));
     }
     return ValueFor(&holder_.value().values(index), SelfRefProvider(),
@@ -185,7 +185,7 @@ class ListValue final : public List {
   }
 
   google::rpc::Status ForEach(
-      const std::function<google::rpc::Status(const expr::Value&)>& call)
+      const std::function<google::rpc::Status(const common::Value&)>& call)
       const override {
     auto ref = SelfRefProvider();
     for (const auto& elem : holder_.value().values()) {
@@ -204,97 +204,99 @@ class ListValue final : public List {
 using ListValueCopy = ListValue<internal::Copy>;
 using ListValueOwned = ListValue<internal::OwnedPtr>;
 
-expr::Value BuildMapFor(const v1beta1::MapValue* map_value, ParentRef parent,
-                        const TypeRegistry* registry) {
-  absl::node_hash_map<expr::Value, expr::Value> result;
+common::Value BuildMapFor(const v1beta1::MapValue* map_value,
+                          common::ParentRef parent,
+                          const TypeRegistry* registry) {
+  absl::node_hash_map<common::Value, common::Value> result;
   for (const auto& entry : map_value->entries()) {
     result.emplace(ValueFor(&entry.key(), parent, registry),
                    ValueFor(&entry.value(), parent, registry));
   }
   // The keys and values grabbed a ref on parent if needed, so we don't need one
   // separately.
-  return expr::Value::MakeMap<internal::MapImpl>(std::move(result));
+  return common::Value::MakeMap<internal::MapImpl>(std::move(result));
 }
 
-expr::Value BuildMapFrom(v1beta1::MapValue&& map_value,
-                         const TypeRegistry* registry) {
-  absl::node_hash_map<expr::Value, expr::Value> result;
+common::Value BuildMapFrom(v1beta1::MapValue&& map_value,
+                           const TypeRegistry* registry) {
+  absl::node_hash_map<common::Value, common::Value> result;
   for (v1beta1::MapValue::Entry& entry : *map_value.mutable_entries()) {
     result.emplace(
         ValueFrom(absl::WrapUnique(entry.release_key()), registry),
         ValueFrom(absl::WrapUnique(entry.release_value()), registry));
   }
-  return expr::Value::MakeMap<internal::MapImpl>(std::move(result));
+  return common::Value::MakeMap<internal::MapImpl>(std::move(result));
 }
 
-expr::Value BuildMapFrom(const v1beta1::MapValue& map_value,
-                         const TypeRegistry* registry) {
-  absl::node_hash_map<expr::Value, expr::Value> result;
+common::Value BuildMapFrom(const v1beta1::MapValue& map_value,
+                           const TypeRegistry* registry) {
+  absl::node_hash_map<common::Value, common::Value> result;
   for (auto& entry : map_value.entries()) {
     result.emplace(ValueFrom(entry.key(), registry),
                    ValueFrom(entry.value(), registry));
   }
-  return expr::Value::MakeMap<expr::internal::MapImpl>(std::move(result));
+  return common::Value::MakeMap<internal::MapImpl>(std::move(result));
 }
 
 }  // namespace
 
-expr::Value ValueFrom(const v1beta1::Value& value,
-                      const TypeRegistry* registry) {
+common::Value ValueFrom(const v1beta1::Value& value,
+                        const TypeRegistry* registry) {
   switch (value.kind_case()) {
     case v1beta1::Value::kNullValue:
-      return expr::Value::NullValue();
+      return common::Value::NullValue();
     case v1beta1::Value::kBoolValue:
-      return expr::Value::FromBool(value.bool_value());
+      return common::Value::FromBool(value.bool_value());
     case v1beta1::Value::kInt64Value:
-      return expr::Value::FromInt(value.int64_value());
+      return common::Value::FromInt(value.int64_value());
     case v1beta1::Value::kUint64Value:
-      return expr::Value::FromUInt(value.uint64_value());
+      return common::Value::FromUInt(value.uint64_value());
     case v1beta1::Value::kDoubleValue:
-      return expr::Value::FromDouble(value.double_value());
+      return common::Value::FromDouble(value.double_value());
     case v1beta1::Value::kStringValue:
-      return expr::Value::FromString(value.string_value());
+      return common::Value::FromString(value.string_value());
     case v1beta1::Value::kBytesValue:
-      return expr::Value::FromBytes(value.bytes_value());
+      return common::Value::FromBytes(value.bytes_value());
     case v1beta1::Value::kTypeValue:
-      return expr::Value::FromType(value.type_value());
+      return common::Value::FromType(value.type_value());
     case v1beta1::Value::kListValue:
-      return expr::Value::MakeList<ListValueCopy>(registry, value.list_value());
+      return common::Value::MakeList<ListValueCopy>(registry,
+                                                    value.list_value());
     case v1beta1::Value::kObjectValue:
       return registry->ValueFrom(value.object_value());
     case v1beta1::Value::kMapValue:
       return BuildMapFrom(value.map_value(), registry);
     default:
-      return expr::Value::FromError(internal::UnimplementedError(
+      return common::Value::FromError(internal::UnimplementedError(
           absl::StrCat("Unimplemented value kind: ", value.kind_case())));
   }
 }
 
-expr::Value ValueFrom(const v1beta1::ExprValue& value,
-                      const TypeRegistry* registry) {
+common::Value ValueFrom(const v1beta1::ExprValue& value,
+                        const TypeRegistry* registry) {
   switch (value.kind_case()) {
     case v1beta1::ExprValue::kValue:
       return ValueFrom(value.value(), registry);
     case v1beta1::ExprValue::kError:
-      return expr::Value::FromError(Error(value.error().errors()));
+      return common::Value::FromError(common::Error(value.error().errors()));
     case v1beta1::ExprValue::kUnknown: {
-      std::vector<expr::Id> ids;
+      std::vector<common::Id> ids;
       ids.reserve(value.unknown().exprs_size());
       for (const auto& id_ref : value.unknown().exprs()) {
         ids.emplace_back(id_ref.id());
       }
-      return expr::Value::FromUnknown(Unknown(ids));
+      return common::Value::FromUnknown(common::Unknown(ids));
     }
     default:
-      return expr::Value::FromError(internal::UnimplementedError(
+      return common::Value::FromError(internal::UnimplementedError(
           absl::StrCat("Unimplemented expr value kind: ", value.kind_case())));
   }
 }
 
-expr::Value ValueFrom(v1beta1::Value&& value, const TypeRegistry* registry) {
+common::Value ValueFrom(v1beta1::Value&& value, const TypeRegistry* registry) {
   switch (value.kind_case()) {
     case v1beta1::Value::kListValue:
-      return expr::Value::MakeList<ListValueOwned>(
+      return common::Value::MakeList<ListValueOwned>(
           registry, absl::WrapUnique(value.release_list_value()));
     case v1beta1::Value::kMapValue:
       return BuildMapFrom(std::move(*value.mutable_map_value()), registry);
@@ -304,8 +306,8 @@ expr::Value ValueFrom(v1beta1::Value&& value, const TypeRegistry* registry) {
   }
 }
 
-expr::Value ValueFrom(v1beta1::ExprValue&& value,
-                      const TypeRegistry* registry) {
+common::Value ValueFrom(v1beta1::ExprValue&& value,
+                        const TypeRegistry* registry) {
   switch (value.kind_case()) {
     case v1beta1::ExprValue::kValue:
       return ValueFrom(absl::WrapUnique(value.release_value()), registry);
@@ -315,8 +317,8 @@ expr::Value ValueFrom(v1beta1::ExprValue&& value,
   }
 }
 
-expr::Value ValueFor(const v1beta1::ExprValue* value,
-                     const TypeRegistry* registry) {
+common::Value ValueFor(const v1beta1::ExprValue* value,
+                       const TypeRegistry* registry) {
   switch (value->kind_case()) {
     case v1beta1::ExprValue::kValue:
       return ValueFor(&value->value(), registry);
@@ -326,41 +328,41 @@ expr::Value ValueFor(const v1beta1::ExprValue* value,
   }
 }
 
-expr::Value ValueFrom(std::unique_ptr<v1beta1::Value> value,
-                      const TypeRegistry* registry) {
+common::Value ValueFrom(std::unique_ptr<v1beta1::Value> value,
+                        const TypeRegistry* registry) {
   return ValueFrom(std::move(*value), registry);
 }
 
-expr::Value ValueFrom(std::unique_ptr<v1beta1::ExprValue> value,
-                      const TypeRegistry* registry) {
+common::Value ValueFrom(std::unique_ptr<v1beta1::ExprValue> value,
+                        const TypeRegistry* registry) {
   return ValueFrom(std::move(*value), registry);
 }
 
-expr::Value ValueFor(const v1beta1::Value* value,
-                     const TypeRegistry* registry) {
-  return ValueFor(value, NoParent(), registry);
+common::Value ValueFor(const v1beta1::Value* value,
+                       const TypeRegistry* registry) {
+  return ValueFor(value, common::NoParent(), registry);
 }
 
-google::rpc::Status ValueTo(const expr::Value& value,
+google::rpc::Status ValueTo(const common::Value& value,
                             v1beta1::ExprValue* result) {
   return value.visit(ToExprValue{value, result});
 }
 
 namespace {
 
-expr::Value ValueFor(const v1beta1::Value* value, ParentRef parent,
-                     const TypeRegistry* registry) {
+common::Value ValueFor(const v1beta1::Value* value, common::ParentRef parent,
+                       const TypeRegistry* registry) {
   if (parent == absl::nullopt) {
     return ValueFrom(*value, registry);
   }
   switch (value->kind_case()) {
     case v1beta1::Value::kListValue:
       if (parent->RequiresReference()) {
-        return expr::Value::MakeList<
-            ListValue<internal::ParentOwned<ValueRef, internal::UnownedPtr>>>(
+        return common::Value::MakeList<ListValue<
+            internal::ParentOwned<common::ValueRef, internal::UnownedPtr>>>(
             registry, parent->GetRef(), &value->list_value());
       } else {
-        return expr::Value::MakeList<ListValue<internal::UnownedPtr>>(
+        return common::Value::MakeList<ListValue<internal::UnownedPtr>>(
             registry, &value->list_value());
       }
     case v1beta1::Value::kMapValue:

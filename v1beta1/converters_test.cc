@@ -49,10 +49,10 @@ class ValueTest : public ::testing::TestWithParam<TestValue> {
 TEST_P(ValueTest, SelfEqual) {
   for (const auto& lhs : GetParam().v1beta1()) {
     SCOPED_TRACE(lhs.ShortDebugString());
-    expr::Value lhs_val = ValueFrom(lhs, kReg);
+    common::Value lhs_val = ValueFrom(lhs, kReg);
     for (const auto& rhs : GetParam().v1beta1()) {
       SCOPED_TRACE(rhs.ShortDebugString());
-      expr::Value rhs_val = ValueFrom(rhs, kReg);
+      common::Value rhs_val = ValueFrom(rhs, kReg);
       EXPECT_EQ(lhs_val.hash_code(), rhs_val.hash_code());
       EXPECT_EQ(lhs_val, rhs_val);
     }
@@ -135,37 +135,37 @@ TEST(ConvertersTest, List) {
       ValueFrom(testutil::NewListValue(1, 2u, 3.0, "four").v1beta1(0), kReg);
   const auto& list = value.list_value();
 
-  auto error = expr::Value::FromError(expr::internal::OutOfRangeError(4, 4));
+  auto error = common::Value::FromError(expr::internal::OutOfRangeError(4, 4));
   EXPECT_EQ(4, list.size());
-  EXPECT_EQ(expr::Value::FromInt(1), list.Get(0));
-  EXPECT_EQ(expr::Value::FromUInt(2), list.Get(1));
-  EXPECT_EQ(expr::Value::FromDouble(3), list.Get(2));
-  EXPECT_EQ(expr::Value::ForString("four"), list.Get(3));
+  EXPECT_EQ(common::Value::FromInt(1), list.Get(0));
+  EXPECT_EQ(common::Value::FromUInt(2), list.Get(1));
+  EXPECT_EQ(common::Value::FromDouble(3), list.Get(2));
+  EXPECT_EQ(common::Value::ForString("four"), list.Get(3));
   EXPECT_EQ(error, list.Get(4));
 
-  EXPECT_EQ(expr::Value::FromBool(true),
-            list.Contains(expr::Value::FromInt(1)));
-  EXPECT_EQ(expr::Value::FromBool(true),
-            list.Contains(expr::Value::FromUInt(2)));
-  EXPECT_EQ(expr::Value::FromBool(true),
-            list.Contains(expr::Value::FromDouble(3)));
-  EXPECT_EQ(expr::Value::FromBool(true),
-            list.Contains(expr::Value::ForString("four")));
+  EXPECT_EQ(common::Value::FromBool(true),
+            list.Contains(common::Value::FromInt(1)));
+  EXPECT_EQ(common::Value::FromBool(true),
+            list.Contains(common::Value::FromUInt(2)));
+  EXPECT_EQ(common::Value::FromBool(true),
+            list.Contains(common::Value::FromDouble(3)));
+  EXPECT_EQ(common::Value::FromBool(true),
+            list.Contains(common::Value::ForString("four")));
   EXPECT_EQ(error, list.Contains(error));
 
-  EXPECT_EQ(expr::Value::FromBool(false),
-            list.Contains(expr::Value::FromUInt(1)));
-  EXPECT_EQ(expr::Value::FromBool(false),
-            list.Contains(expr::Value::FromInt(2)));
-  EXPECT_EQ(expr::Value::FromBool(false),
-            list.Contains(expr::Value::FromInt(3)));
-  EXPECT_EQ(expr::Value::FromBool(false),
-            list.Contains(expr::Value::FromInt(4)));
+  EXPECT_EQ(common::Value::FromBool(false),
+            list.Contains(common::Value::FromUInt(1)));
+  EXPECT_EQ(common::Value::FromBool(false),
+            list.Contains(common::Value::FromInt(2)));
+  EXPECT_EQ(common::Value::FromBool(false),
+            list.Contains(common::Value::FromInt(3)));
+  EXPECT_EQ(common::Value::FromBool(false),
+            list.Contains(common::Value::FromInt(4)));
 
   int i = 0;
-  list.ForEach([&i, &list](const expr::Value& elem) {
+  list.ForEach([&i, &list](const common::Value& elem) {
     EXPECT_EQ(list.Get(i++), elem);
-    return expr::internal::OkStatus();
+    return internal::OkStatus();
   });
   EXPECT_EQ(i, 4);
 }
@@ -175,17 +175,17 @@ TEST(ConvertersTest, Map) {
       ValueFrom(testutil::NewMapValue(1, 2u, 3.0, "four").v1beta1(0), kReg);
   const auto& map = value.map_value();
 
-  auto error1 = expr::Value::FromError(expr::internal::NoSuchKey("2u"));
-  auto error2 = expr::Value::FromError(expr::internal::NoSuchKey("\"four\""));
+  auto error1 = common::Value::FromError(expr::internal::NoSuchKey("2u"));
+  auto error2 = common::Value::FromError(expr::internal::NoSuchKey("\"four\""));
   EXPECT_EQ(2, map.size());
-  EXPECT_EQ(expr::Value::FromUInt(2), map.Get(expr::Value::FromInt(1)));
-  EXPECT_EQ(error1, map.Get(expr::Value::FromUInt(2)));
-  EXPECT_EQ(expr::Value::ForString("four"),
-            map.Get(expr::Value::FromDouble(3)));
-  EXPECT_EQ(error2, map.Get(expr::Value::ForString("four")));
+  EXPECT_EQ(common::Value::FromUInt(2), map.Get(common::Value::FromInt(1)));
+  EXPECT_EQ(error1, map.Get(common::Value::FromUInt(2)));
+  EXPECT_EQ(common::Value::ForString("four"),
+            map.Get(common::Value::FromDouble(3)));
+  EXPECT_EQ(error2, map.Get(common::Value::ForString("four")));
 
   int i = 0;
-  map.ForEach([&i, &map](const expr::Value& key, const expr::Value& value) {
+  map.ForEach([&i, &map](const common::Value& key, const common::Value& value) {
     i++;
     EXPECT_EQ(value, map.Get(key));
     return expr::internal::OkStatus();
@@ -195,12 +195,12 @@ TEST(ConvertersTest, Map) {
 
 TEST(ConvertersTest, BadValue) {
   v1beta1::ExprValue result;
-  auto bad_value = expr::Value::FromTime(absl::InfiniteFuture());
+  auto bad_value = common::Value::FromTime(absl::InfiniteFuture());
   auto status = ValueTo(bad_value, &result);
-  auto expected = expr::Value::FromError(
+  auto expected = common::Value::FromError(
       expr::internal::InvalidArgumentError("time above max"));
   // Status returns the expected error code.
-  EXPECT_EQ(expr::Value::FromError(status), expected);
+  EXPECT_EQ(common::Value::FromError(status), expected);
   // The result also encodes the error.
   EXPECT_EQ(expected, ValueFrom(result, kReg));
 }

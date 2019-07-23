@@ -13,33 +13,33 @@ namespace expr {
 namespace v1beta1 {
 
 /** Decode a v1beta1::Value. */
-expr::Value ValueFrom(const v1beta1::Value& value,
-                      const protoutil::TypeRegistry* registry);
+common::Value ValueFrom(const v1beta1::Value& value,
+                        const protoutil::TypeRegistry* registry);
 /** Decode a v1beta1::Value. */
-expr::Value ValueFrom(v1beta1::Value&& value,
-                      const protoutil::TypeRegistry* registry);
+common::Value ValueFrom(v1beta1::Value&& value,
+                        const protoutil::TypeRegistry* registry);
 /** Decode a v1beta1::Value. */
-expr::Value ValueFrom(std::unique_ptr<v1beta1::Value> value,
-                      const protoutil::TypeRegistry* registry);
+common::Value ValueFrom(std::unique_ptr<v1beta1::Value> value,
+                        const protoutil::TypeRegistry* registry);
 /** Decode a v1beta1::Value. */
-expr::Value ValueFor(const v1beta1::Value* value,
-                     const protoutil::TypeRegistry* registry);
+common::Value ValueFor(const v1beta1::Value* value,
+                       const protoutil::TypeRegistry* registry);
 
 /** Decode a v1beta1::ExprValue. */
-expr::Value ValueFrom(const v1beta1::ExprValue& value,
-                      const protoutil::TypeRegistry* registry);
+common::Value ValueFrom(const v1beta1::ExprValue& value,
+                        const protoutil::TypeRegistry* registry);
 /** Decode a v1beta1::ExprValue. */
-expr::Value ValueFrom(v1beta1::ExprValue&& value,
-                      const protoutil::TypeRegistry* registry);
+common::Value ValueFrom(v1beta1::ExprValue&& value,
+                        const protoutil::TypeRegistry* registry);
 /** Decode a v1beta1::ExprValue. */
-expr::Value ValueFrom(std::unique_ptr<v1beta1::ExprValue> value,
-                      const protoutil::TypeRegistry* registry);
+common::Value ValueFrom(std::unique_ptr<v1beta1::ExprValue> value,
+                        const protoutil::TypeRegistry* registry);
 /** Decode a v1beta1::ExprValue. */
-expr::Value ValueFor(const v1beta1::ExprValue* value,
-                     const protoutil::TypeRegistry* registry);
+common::Value ValueFor(const v1beta1::ExprValue* value,
+                       const protoutil::TypeRegistry* registry);
 
 /** Encode a v1beta1::ExprValue. */
-google::rpc::Status ValueTo(const expr::Value& value,
+google::rpc::Status ValueTo(const common::Value& value,
                             v1beta1::ExprValue* result);
 
 }  // namespace v1beta1

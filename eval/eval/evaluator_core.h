@@ -26,12 +26,15 @@ class ExpressionStep {
   // interface.
   // ExpressionStep instances can in specific cases
   // modify execution order(perform jumps).
-  virtual util::Status Evaluate(ExecutionFrame* context) const = 0;
+  virtual cel_base::Status Evaluate(ExecutionFrame* context) const = 0;
 
-  // Returns corresponding expression object
-  // Useful for error scenarios where information from Expr object is needed to
-  // create CelError.
-  virtual const google::api::expr::v1alpha1::Expr* expr() const = 0;
+  // Returns corresponding expression object ID.
+  // Requires that the input expression has IDs assigned to sub-expressions,
+  // e.g. via a checker. The default value 0 is returned if there is no
+  // expression associated (e.g. a jump step), or if there is no ID assigned to
+  // the corresponding expression. Useful for error scenarios where information
+  // from Expr object is needed to create CelError.
+  virtual int64_t id() const = 0;
 
   // Returns if the execution step comes from AST.
   virtual bool ComesFromAst() const = 0;
@@ -104,16 +107,16 @@ class ExecutionFrame {
   const ExpressionStep* Next();
 
   // Intended for use only in conditionals.
-  util::Status JumpTo(int offset) {
+  cel_base::Status JumpTo(int offset) {
     int new_pc = pc_ + offset;
     if (new_pc < 0 || new_pc > execution_path_->size()) {
-      return util::MakeStatus(google::rpc::Code::INTERNAL,
+      return cel_base::Status(cel_base::StatusCode::kInternal,
                           absl::StrCat("Jump address out of range: position: ",
                                        pc_, ",offset: ", offset,
                                        ", range: ", execution_path_->size()));
     }
     pc_ = new_pc;
-    return util::OkStatus();
+    return cel_base::OkStatus();
   }
 
   ValueStack& value_stack() { return value_stack_; }
@@ -145,19 +148,18 @@ class CelExpressionFlatImpl : public CelExpression {
   // flattened AST tree.
   CelExpressionFlatImpl(const google::api::expr::v1alpha1::Expr* root_expr,
                         ExecutionPath path)
-      : root_(root_expr), path_(std::move(path)) {}
+      : path_(std::move(path)) {}
 
   // Implementation of CelExpression evaluate method.
-  util::StatusOr<CelValue> Evaluate(const Activation& activation,
+  cel_base::StatusOr<CelValue> Evaluate(const Activation& activation,
                                     google::protobuf::Arena* arena) const override;
 
   // Implementation of CelExpression trace method.
-  util::StatusOr<CelValue> Trace(const Activation& activation,
+  cel_base::StatusOr<CelValue> Trace(const Activation& activation,
                                  google::protobuf::Arena* arena,
                                  CelEvaluationListener callback) const override;
 
  private:
-  const google::api::expr::v1alpha1::Expr* root_;
   const ExecutionPath path_;
 };
 

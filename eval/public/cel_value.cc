@@ -6,6 +6,7 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
+#include "internal/proto_util.h"
 
 namespace google {
 namespace api {
@@ -34,6 +35,9 @@ using google::protobuf::Int64Value;
 using google::protobuf::StringValue;
 using google::protobuf::UInt32Value;
 using google::protobuf::UInt64Value;
+
+constexpr char kErrNoMatchingOverload[] = "No matching overloads found";
+constexpr char kErrNoSuchKey[] = "Key not found in map";
 
 // Forward declaration for google.protobuf.Value
 CelValue ValueFromMessage(const Value* value, Arena* arena);
@@ -150,8 +154,7 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
   if (pos == absl::string_view::npos) {
     // TODO(issues/25) What error code?
     // Malformed type_url
-    return CreateErrorValue(arena, "Malformed type_url string",
-                            CelError::Code::CelError_Code_UNKNOWN);
+    return CreateErrorValue(arena, "Malformed type_url string");
   }
 
   std::string full_name = std::string(type_url.substr(pos + 1));
@@ -161,8 +164,7 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
   if (nested_descriptor == nullptr) {
     // Descriptor not found for the type
     // TODO(issues/25) What error code?
-    return CreateErrorValue(arena, "Descriptor not found",
-                            CelError::Code::CelError_Code_UNKNOWN);
+    return CreateErrorValue(arena, "Descriptor not found");
   }
 
   const Message* prototype =
@@ -171,16 +173,14 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
   if (prototype == nullptr) {
     // Failed to obtain prototype for the descriptor
     // TODO(issues/25) What error code?
-    return CreateErrorValue(arena, "Prototype not found",
-                            CelError::Code::CelError_Code_UNKNOWN);
+    return CreateErrorValue(arena, "Prototype not found");
   }
 
   Message* nested_message = prototype->New(arena);
   if (!any_value->UnpackTo(nested_message)) {
     // Failed to unpack.
     // TODO(issues/25) What error code?
-    return CreateErrorValue(arena, "Failed to unpack Any into message",
-                            CelError::Code::CelError_Code_UNKNOWN);
+    return CreateErrorValue(arena, "Failed to unpack Any into message");
   }
 
   return CelValue::CreateMessage(nested_message, arena);
@@ -239,8 +239,7 @@ CelValue ValueFromMessage(const Value* value, Arena* arena) {
     case Value::KindCase::kListValue:
       return CelValue::CreateMessage(&value->list_value(), arena);
     default:
-      return CreateErrorValue(arena, "No known fields set in Value message",
-                              CelError::Code::CelError_Code_UNKNOWN);
+      return CreateErrorValue(arena, "No known fields set in Value message");
   }
 }
 
@@ -374,12 +373,31 @@ std::string CelValue::TypeName(Type value_type) {
 }
 
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
-                          CelError::Code error_code, int position) {
-  CelError* error = Arena::CreateMessage<CelError>(arena);
-  error->set_code(error_code);
-  error->set_message(message.data());
-  error->set_position(position);
+                          cel_base::StatusCode error_code, int position) {
+  CelError* error = Arena::Create<CelError>(arena, error_code, message);
   return CelValue::CreateError(error);
+}
+
+CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena) {
+  return CreateErrorValue(arena, kErrNoMatchingOverload,
+                          cel_base::StatusCode::kUnknown);
+}
+
+bool CheckNoMatchingOverloadError(CelValue value) {
+  return value.IsError() &&
+         value.ErrorOrDie()->message() == kErrNoMatchingOverload;
+}
+
+CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
+  return CreateErrorValue(arena, "no_such_field", cel_base::StatusCode::kNotFound);
+}
+
+CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key) {
+  return CreateErrorValue(arena, kErrNoSuchKey, cel_base::StatusCode::kNotFound);
+}
+
+bool CheckNoSuchKeyError(CelValue value) {
+  return value.IsError() && value.ErrorOrDie()->message() == kErrNoSuchKey;
 }
 
 }  // namespace runtime

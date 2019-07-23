@@ -17,28 +17,32 @@ namespace {
 using testutil::EqualsProto;
 
 // A base object that provides dummy impls for many required overrides.
-struct BaseObject : Object {
-  Type object_type() const override {
-    return Type(ObjectType::For<google::type::Money>());
+struct BaseObject : common::Object {
+  common::Type object_type() const override {
+    return common::Type(common::ObjectType::For<google::type::Money>());
   };
 
-  Value GetMember(absl::string_view name) const override {
-    return Value::NullValue();
+  common::Value GetMember(absl::string_view name) const override {
+    return common::Value::NullValue();
   }
 
   inline google::rpc::Status ForEach(
-      const std::function<google::rpc::Status(absl::string_view, const Value&)>&
-          call) const final {
+      const std::function<google::rpc::Status(
+          absl::string_view, const common::Value&)>& call) const final {
     return internal::OkStatus();
   }
 
   /** Serialize the object to protobuf any. */
   void To(google::protobuf::Any* value) const override {}
 
-  bool EqualsImpl(const Object& same_type) const override { return true; }
+  bool EqualsImpl(const common::Object& same_type) const override {
+    return true;
+  }
 
   // Expose SelfRef for testing.
-  ParentRef SelfRefProvider() const { return Object::SelfRefProvider(); }
+  common::ParentRef SelfRefProvider() const {
+    return common::Object::SelfRefProvider();
+  }
 };
 
 // An impl that holds a copy.
@@ -68,11 +72,11 @@ struct MoneyOwnedImpl final : BaseObject {
 struct MoneyUnownedImpl final : BaseObject {
   explicit MoneyUnownedImpl(const google::type::Money* value) : value(value) {}
   explicit MoneyUnownedImpl(const google::type::Money* value,
-                            const RefProvider& parent)
+                            const common::RefProvider& parent)
       : value(value), parent(parent.GetRef()) {}
 
   const google::type::Money* value;
-  ValueRef parent;
+  common::ValueRef parent;
 
   bool owns_value() const override { return parent; }
 };
@@ -85,7 +89,7 @@ TEST(TypeRegistry, Copy) {
   auto result = reg.RegisterClass<google::type::Money, MoneyCopyImpl>();
   EXPECT_EQ(2, result);
 
-  auto test_value = [&expected_value](Value value, bool moved) {
+  auto test_value = [&expected_value](common::Value value, bool moved) {
     ASSERT_NE(value.get_if<MoneyCopyImpl>(), nullptr) << value;
     // Always owns value.
     EXPECT_TRUE(value.owns_value());
@@ -123,7 +127,7 @@ TEST(TypeRegistry, Owned) {
   auto result = reg.RegisterClass<google::type::Money, MoneyOwnedImpl>();
   EXPECT_EQ(1, result);
 
-  auto test_value = [&expected_value](Value value) {
+  auto test_value = [&expected_value](common::Value value) {
     ASSERT_NE(value.get_if<MoneyOwnedImpl>(), nullptr) << value;
     // Always owns the value.
     EXPECT_TRUE(value.owns_value());
@@ -155,7 +159,7 @@ TEST(TypeRegistry, Unowned) {
   auto result = reg.RegisterClass<google::type::Money, MoneyUnownedImpl>();
   EXPECT_EQ(2, result);
 
-  auto test_value = [&expected_value](Value value, bool has_parent) {
+  auto test_value = [&expected_value](common::Value value, bool has_parent) {
     ASSERT_NE(value.get_if<MoneyUnownedImpl>(), nullptr) << value;
     // Transitively owns the value when it holds a reference to a parent.
     EXPECT_EQ(value.owns_value(), has_parent);
@@ -164,7 +168,7 @@ TEST(TypeRegistry, Unowned) {
     EXPECT_EQ(value.get_if<MoneyUnownedImpl>()->value, &expected_value);
   };
 
-  Value error = Value::FromError(
+  common::Value error = common::Value::FromError(
       internal::InternalError("Missing callback for google.type.Money"));
 
   // All From* functions error, as no from constructor is provided.
@@ -225,11 +229,12 @@ TEST(TypeRegistry, Enum) {
   TypeRegistry reg;
   google::protobuf::Value val;
   auto actual = reg.ValueFrom(val).object_value().GetMember("null_value");
-  EXPECT_EQ(actual, Value::FromInt(0));
-  reg.RegisterConstructor(EnumType(google::protobuf::NullValue_descriptor()),
-                          [](EnumType, int32_t) { return Value::NullValue(); });
+  EXPECT_EQ(actual, common::Value::FromInt(0));
+  reg.RegisterConstructor(
+      common::EnumType(google::protobuf::NullValue_descriptor()),
+      [](common::EnumType, int32_t) { return common::Value::NullValue(); });
   actual = reg.ValueFrom(val).object_value().GetMember("null_value");
-  EXPECT_EQ(actual, Value::NullValue());
+  EXPECT_EQ(actual, common::Value::NullValue());
 }
 
 // Test that unknown types work.
@@ -240,9 +245,9 @@ TEST(TypeRegistry, UnknownAny) {
   unknown.set_value("hello");
 
   auto value = reg.ValueFrom(unknown);
-  EXPECT_EQ(value.GetType(), Value::FromType("bad_type"));
+  EXPECT_EQ(value.GetType(), common::Value::FromType("bad_type"));
   EXPECT_EQ(value.object_value().GetMember("bye"),
-            Value::FromError(internal::UnknownType("bad_type")));
+            common::Value::FromError(internal::UnknownType("bad_type")));
 
   // Equal to itself.
   EXPECT_EQ(value.hash_code(), reg.ValueFrom(unknown).hash_code());
@@ -270,8 +275,9 @@ TEST(TypeRegistry, KnownAny) {
   known.PackFrom(money);
 
   auto value = reg.ValueFrom(known);
-  EXPECT_EQ(value.GetType(), Value::FromType("google.type.Money"));
-  EXPECT_EQ(value.object_value().GetMember("nanos"), Value::FromInt(100));
+  EXPECT_EQ(value.GetType(), common::Value::FromType("google.type.Money"));
+  EXPECT_EQ(value.object_value().GetMember("nanos"),
+            common::Value::FromInt(100));
 
   // Equal to itself.
   EXPECT_EQ(value.hash_code(), reg.ValueFrom(known).hash_code());

@@ -33,6 +33,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 /**
  * A CEL Value.
@@ -819,6 +820,7 @@ inline std::ostream& operator<<(std::ostream& os, const Map& value) {
   return os << value.ToString();
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google
@@ -826,8 +828,8 @@ inline std::ostream& operator<<(std::ostream& os, const Map& value) {
 // Custom specialization of std::hash for Value.
 namespace std {
 template <>
-struct hash<google::api::expr::Value> {
-  typedef google::api::expr::Value argument_type;
+struct hash<google::api::expr::common::Value> {
+  typedef google::api::expr::common::Value argument_type;
   typedef std::size_t result_type;
   result_type operator()(argument_type const& value) const noexcept {
     return value.hash_code();

@@ -15,15 +15,15 @@ class LogicalOpStep : public ExpressionStepBase {
   enum class OpType { AND, OR };
 
   // Constructs FunctionStep that uses overloads specified.
-  LogicalOpStep(OpType op_type, const google::api::expr::v1alpha1::Expr* expr)
-      : ExpressionStepBase(expr), op_type_(op_type) {
+  LogicalOpStep(OpType op_type, int64_t expr_id)
+      : ExpressionStepBase(expr_id), op_type_(op_type) {
     shortcircuit_ = (op_type_ == OpType::OR);
   }
 
-  util::Status Evaluate(ExecutionFrame* frame) const override;
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  util::Status Calculate(absl::Span<const CelValue> args,
+  cel_base::Status Calculate(ExecutionFrame* frame, absl::Span<const CelValue> args,
                          CelValue* result) const {
     bool bool_args[2];
     bool has_bool_args[2];
@@ -32,7 +32,7 @@ class LogicalOpStep : public ExpressionStepBase {
       has_bool_args[i] = args[i].GetValue(bool_args + i);
       if (has_bool_args[i] && shortcircuit_ == bool_args[i]) {
         *result = CelValue::CreateBool(bool_args[i]);
-        return util::OkStatus();
+        return cel_base::OkStatus();
       }
     }
 
@@ -40,11 +40,11 @@ class LogicalOpStep : public ExpressionStepBase {
       switch (op_type_) {
         case OpType::AND:
           *result = CelValue::CreateBool(bool_args[0] && bool_args[1]);
-          return util::OkStatus();
+          return cel_base::OkStatus();
           break;
         case OpType::OR:
           *result = CelValue::CreateBool(bool_args[0] || bool_args[1]);
-          return util::OkStatus();
+          return cel_base::OkStatus();
           break;
       }
     } else {
@@ -53,11 +53,10 @@ class LogicalOpStep : public ExpressionStepBase {
       } else if (args[1].IsError()) {
         *result = args[1];
       } else {
-        return util::MakeStatus(google::rpc::Code::INTERNAL,
-                            "Unsupported type supplied for logical operation");
+        *result = CreateNoMatchingOverloadError(frame->arena());
       }
 
-      return util::OkStatus();
+      return cel_base::OkStatus();
     }
   }
 
@@ -65,10 +64,10 @@ class LogicalOpStep : public ExpressionStepBase {
   bool shortcircuit_;
 };
 
-util::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
+cel_base::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
   // Must have 2 or more values on the stack.
   if (!frame->value_stack().HasEnough(2)) {
-    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
+    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
   }
 
   // Create Span object that contains input arguments to the function.
@@ -76,8 +75,8 @@ util::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
   CelValue value;
 
-  auto status = Calculate(args, &value);
-  if (!util::IsOk(status)) {
+  auto status = Calculate(frame, args, &value);
+  if (!status.ok()) {
     return status;
   }
 
@@ -90,19 +89,17 @@ util::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 // Factory method for "And" Execution step
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(
-    const google::api::expr::v1alpha1::Expr* expr) {
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr);
+      absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
 
   return std::move(step);
 }
 
 // Factory method for "Or" Execution step
-util::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(
-    const google::api::expr::v1alpha1::Expr* expr) {
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr);
+      absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
 
   return std::move(step);
 }

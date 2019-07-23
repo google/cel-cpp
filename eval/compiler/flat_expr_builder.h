@@ -13,18 +13,31 @@ namespace runtime {
 // Builds instances of CelExpressionFlatImpl.
 class FlatExprBuilder : public CelExpressionBuilder {
  public:
-  FlatExprBuilder() : shortcircuiting_(true) {}
+  FlatExprBuilder()
+      : shortcircuiting_(true),
+        constant_folding_(false),
+        constant_arena_(nullptr) {}
 
   // set_shortcircuiting regulates shortcircuiting of some expressions.
   // Be default shortcircuiting is enabled.
   void set_shortcircuiting(bool enabled) { shortcircuiting_ = enabled; }
 
-  util::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  // Toggle constant folding optimization. By default it is not enabled.
+  // The provided arena is used to hold the generated constants.
+  void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
+    constant_folding_ = enabled;
+    constant_arena_ = arena;
+  }
+
+  cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
 
  private:
   bool shortcircuiting_;
+
+  bool constant_folding_;
+  google::protobuf::Arena* constant_arena_;
 };
 
 }  // namespace runtime

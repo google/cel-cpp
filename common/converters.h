@@ -14,6 +14,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 
 // Converters for native c++ list types.
 
@@ -123,6 +124,7 @@ Value ValueForMap(T* value, ParentRef parent) {
       internal::MapWrapper<KeyKind, ValueKind, T, internal::UnownedPtr>>(value);
 }
 
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

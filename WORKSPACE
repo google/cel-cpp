@@ -8,16 +8,10 @@ http_archive(
 )
 
 http_archive(
-    name = "bazel_skylib",
-    strip_prefix = "bazel-skylib-0.6.0",
-    urls = ["https://github.com/bazelbuild/bazel-skylib/archive/0.6.0.zip"],
-)
-
-http_archive(
-    name = "com_github_madler_zlib",
+    name = "zlib",
     build_file_content = """
 cc_library(
-    name = "z",
+    name = "zlib",
     srcs = [
         "adler32.c",
         "compress.c",
@@ -57,17 +51,6 @@ cc_library(
     url = "https://github.com/madler/zlib/archive/cacf7f1d4e3d44d871b605da3b647f07d718623f.tar.gz",
 )
 
-bind(
-    name = "zlib",
-    actual = "@com_github_madler_zlib//:z",
-)
-
-http_archive(
-    name = "com_google_protobuf",
-    strip_prefix = "protobuf-3.7.0",
-    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.7.0.zip"],
-)
-
 http_archive(
     name = "com_google_googletest",
     strip_prefix = "googletest-master",
@@ -95,17 +78,6 @@ http_archive(
     urls = ["https://github.com/google/re2/archive/master.zip"],
 )
 
-# gflags
-http_archive(
-    name = "com_github_gflags_gflags",
-    sha256 = "6e16c8bc91b1310a44f3965e616383dbda48f83e8c1eaa2370a215057b00cabe",
-    strip_prefix = "gflags-77592648e3f3be87d6c7123eb81cbad75f9aef5a",
-    urls = [
-        "https://mirror.bazel.build/github.com/gflags/gflags/archive/77592648e3f3be87d6c7123eb81cbad75f9aef5a.tar.gz",
-        "https://github.com/gflags/gflags/archive/77592648e3f3be87d6c7123eb81cbad75f9aef5a.tar.gz",
-    ],
-)
-
 # glog
 http_archive(
     name = "com_google_glog",
@@ -117,12 +89,12 @@ http_archive(
     ],
 )
 
-GOOGLEAPIS_SHA = "4f3516a6f96dac182973a3573ff5117e8e4f76c7"
+GOOGLEAPIS_SHA = "184ab77f4cee62332f8f9a689c70c9bea441f836"
 http_archive(
     name = "com_google_googleapis",
+    sha256 = "a3a8c83314e5a431473659cb342a11e5520c6de4790eee70633d578f278b1e73",
     strip_prefix = "googleapis-" + GOOGLEAPIS_SHA,
     urls = ["https://github.com/googleapis/googleapis/archive/" + GOOGLEAPIS_SHA + ".tar.gz"],
-    sha256 = "5d185318b4e6b2675336ca2391d99d0adaae5ed88f721f6f02978b152cc8d29f",
 )
 
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
@@ -169,12 +141,12 @@ go_register_toolchains()
 gazelle_dependencies()
 
 # gRPC dependencies:
-GRPC_SHA = "7569ba7a66a2b4dd93b04ad355cc401d06285ee7" # v1.21.0
+GRPC_SHA = "08fd59f039c7cf62614ab7741b3f34527af103c7" # v1.22.0
 http_archive(
     name = "com_github_grpc_grpc",
+    sha256 = "9dbb44a934d87faa8482c911e294a9f843a6c04d3936df8be116b1241bf475d9",
     strip_prefix = "grpc-" + GRPC_SHA,
     urls = ["https://github.com/grpc/grpc/archive/" + GRPC_SHA + ".tar.gz"],
-    sha256 = "e4864910b1127d2c05162df97986214874505e33cebfe6c9e36ca7eda4c6ad14",
 )
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()

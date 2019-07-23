@@ -1,7 +1,15 @@
 syntax = "proto3";
 
 package google.api.expr.runtime;
+
 option cc_enable_arenas = true;
+
+enum TestEnum {
+  TEST_ENUM_UNSPECIFIED = 0;
+  TEST_ENUM_1 = 10;
+  TEST_ENUM_2 = 20;
+  TEST_ENUM_3 = 30;
+}
 
 // Message representing errors
 // during CEL evaluation.

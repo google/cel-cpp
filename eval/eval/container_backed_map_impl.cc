@@ -22,6 +22,14 @@ class HasherOp {
     return std::hash<T>()(arg);
   }
 
+  size_t operator()(const absl::Time arg) {
+    return absl::Hash<absl::Time>()(arg);
+  }
+
+  size_t operator()(const absl::Duration arg) {
+    return absl::Hash<absl::Duration>()(arg);
+  }
+
   size_t operator()(const CelValue::StringHolder& arg) {
     return absl::Hash<absl::string_view>()(arg.value());
   }

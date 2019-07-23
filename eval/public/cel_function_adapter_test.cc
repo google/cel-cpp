@@ -15,7 +15,7 @@ TEST(CelFunctionAdapterTest, TestAdapterNoArg) {
 
   auto func_status = FunctionAdapter<int64_t>::Create("const", false, func);
 
-  ASSERT_TRUE(util::IsOk(func_status));
+  ASSERT_TRUE(func_status.ok());
 
   auto cel_func = std::move(func_status.ValueOrDie());
 
@@ -25,7 +25,7 @@ TEST(CelFunctionAdapterTest, TestAdapterNoArg) {
   google::protobuf::Arena arena;
   auto eval_status = cel_func->Evaluate(args, &result, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   ASSERT_TRUE(
       result.IsInt64());  // Obvious failure, for educational purposes only.
@@ -37,7 +37,7 @@ TEST(CelFunctionAdapterTest, TestAdapterOneArg) {
 
   auto func_status = FunctionAdapter<int64_t, int64_t>::Create("_++_", false, func);
 
-  ASSERT_TRUE(util::IsOk(func_status));
+  ASSERT_TRUE(func_status.ok());
 
   auto cel_func = std::move(func_status.ValueOrDie());
 
@@ -51,7 +51,7 @@ TEST(CelFunctionAdapterTest, TestAdapterOneArg) {
 
   auto eval_status = cel_func->Evaluate(args, &result, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 100);
@@ -65,7 +65,7 @@ TEST(CelFunctionAdapterTest, TestAdapterTwoArgs) {
   auto func_status =
       FunctionAdapter<int64_t, int64_t, int64_t>::Create("_++_", false, func);
 
-  ASSERT_TRUE(util::IsOk(func_status));
+  ASSERT_TRUE(func_status.ok());
 
   auto cel_func = std::move(func_status.ValueOrDie());
 
@@ -80,7 +80,7 @@ TEST(CelFunctionAdapterTest, TestAdapterTwoArgs) {
 
   auto eval_status = cel_func->Evaluate(args, &result, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 42);
@@ -100,7 +100,7 @@ TEST(CelFunctionAdapterTest, TestAdapterThreeArgs) {
       FunctionAdapter<StringHolder, StringHolder, StringHolder,
                       StringHolder>::Create("concat", false, func);
 
-  ASSERT_TRUE(util::IsOk(func_status));
+  ASSERT_TRUE(func_status.ok());
 
   auto cel_func = std::move(func_status.ValueOrDie());
 
@@ -120,7 +120,7 @@ TEST(CelFunctionAdapterTest, TestAdapterThreeArgs) {
 
   auto eval_status = cel_func->Evaluate(args, &result, &arena);
 
-  ASSERT_TRUE(util::IsOk(eval_status));
+  ASSERT_TRUE(eval_status.ok());
 
   ASSERT_TRUE(result.IsString());
   EXPECT_EQ(result.StringOrDie().value(), "123");
@@ -129,19 +129,17 @@ TEST(CelFunctionAdapterTest, TestAdapterThreeArgs) {
 TEST(CelFunctionAdapterTest, TestTypeDeductionForCelValueBasicTypes) {
   auto func = [](google::protobuf::Arena* arena, bool, int64_t, uint64_t, double,
                  CelValue::StringHolder, CelValue::BytesHolder,
-                 const google::protobuf::Message*, const google::protobuf::Duration*,
-                 const google::protobuf::Timestamp*, const CelList*,
-                 const CelMap*, const CelError*) -> bool { return false; };
+                 const google::protobuf::Message*, absl::Duration, absl::Time,
+                 const CelList*, const CelMap*,
+                 const CelError*) -> bool { return false; };
 
   auto func_status =
       FunctionAdapter<bool, bool, int64_t, uint64_t, double, CelValue::StringHolder,
                       CelValue::BytesHolder, const google::protobuf::Message*,
-                      const google::protobuf::Duration*,
-                      const google::protobuf::Timestamp*, const CelList*,
-                      const CelMap*, const CelError*>::Create("dummy_func",
-                                                              false, func);
+                      absl::Duration, absl::Time, const CelList*, const CelMap*,
+                      const CelError*>::Create("dummy_func", false, func);
 
-  ASSERT_TRUE(util::IsOk(func_status));
+  ASSERT_TRUE(func_status.ok());
 
   auto cel_func = std::move(func_status.ValueOrDie());
 

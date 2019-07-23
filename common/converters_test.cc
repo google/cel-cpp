@@ -9,6 +9,7 @@
 namespace google {
 namespace api {
 namespace expr {
+namespace common {
 namespace {
 
 void TestListImpl(const Value& list, const Value& first, const Value& second,
@@ -105,6 +106,7 @@ TEST(ConverterTest, Map_Bool) {
 }
 
 }  // namespace
+}  // namespace common
 }  // namespace expr
 }  // namespace api
 }  // namespace google

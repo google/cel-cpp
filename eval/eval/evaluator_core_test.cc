@@ -19,12 +19,12 @@ using testing::Eq;  // Optional ::testing aliases. Remove if unused.
 // Pushes int64_t(0) on top of value stack.
 class FakeConstExpressionStep : public ExpressionStep {
  public:
-  util::Status Evaluate(ExecutionFrame* frame) const override {
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
     frame->value_stack().Push(CelValue::CreateInt64(0));
-    return util::OkStatus();
+    return cel_base::OkStatus();
   }
 
-  const google::api::expr::v1alpha1::Expr* expr() const override { return nullptr; }
+  int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
 };
@@ -33,16 +33,16 @@ class FakeConstExpressionStep : public ExpressionStep {
 // Increments argument on top of the stack.
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
-  util::Status Evaluate(ExecutionFrame* frame) const override {
+  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
     CelValue value = frame->value_stack().Peek();
     frame->value_stack().Pop(1);
     EXPECT_TRUE(value.IsInt64());
     int64_t val = value.Int64OrDie();
     frame->value_stack().Push(CelValue::CreateInt64(val + 1));
-    return util::OkStatus();
+    return cel_base::OkStatus();
   }
 
-  const google::api::expr::v1alpha1::Expr* expr() const override { return nullptr; }
+  int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
 };
@@ -86,7 +86,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  EXPECT_TRUE(util::IsOk(status));
+  EXPECT_TRUE(status.ok());
 
   auto value = status.ValueOrDie();
   EXPECT_TRUE(value.IsInt64());
@@ -95,8 +95,8 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
 
 class MockTraceCallback {
  public:
-  MOCK_METHOD3(Call, void(const google::api::expr::v1alpha1::Expr* expr,
-                          const CelValue& value, google::protobuf::Arena*));
+  MOCK_METHOD3(Call,
+               void(int64_t expr_id, const CelValue& value, google::protobuf::Arena*));
 };
 
 TEST(EvaluatorCoreTest, TraceTest) {
@@ -158,10 +158,10 @@ TEST(EvaluatorCoreTest, TraceTest) {
 
   FlatExprBuilder builder;
   auto builtin_status = RegisterBuiltinFunctions(builder.GetRegistry());
-  ASSERT_TRUE(util::IsOk(builtin_status));
+  ASSERT_TRUE(builtin_status.ok());
   builder.set_shortcircuiting(false);
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(util::IsOk(build_status));
+  ASSERT_TRUE(build_status.ok());
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -170,31 +170,30 @@ TEST(EvaluatorCoreTest, TraceTest) {
 
   MockTraceCallback callback;
 
-  EXPECT_CALL(callback, Call(accu_init_expr, _, &arena));
-  EXPECT_CALL(callback, Call(el1_expr, _, &arena));
-  EXPECT_CALL(callback, Call(el2_expr, _, &arena));
-  EXPECT_CALL(callback, Call(el3_expr, _, &arena));
+  EXPECT_CALL(callback, Call(accu_init_expr->id(), _, &arena));
+  EXPECT_CALL(callback, Call(el1_expr->id(), _, &arena));
+  EXPECT_CALL(callback, Call(el2_expr->id(), _, &arena));
+  EXPECT_CALL(callback, Call(el3_expr->id(), _, &arena));
 
-  EXPECT_CALL(callback, Call(list_expr, _, &arena));
+  EXPECT_CALL(callback, Call(list_expr->id(), _, &arena));
 
-  EXPECT_CALL(callback, Call(loop_cond_expr, _, &arena)).Times(3);
-  EXPECT_CALL(callback, Call(iter_expr, _, &arena)).Times(3);
-  EXPECT_CALL(callback, Call(zero_expr, _, &arena)).Times(3);
-  EXPECT_CALL(callback, Call(loop_step_expr, _, &arena)).Times(3);
+  EXPECT_CALL(callback, Call(loop_cond_expr->id(), _, &arena)).Times(3);
+  EXPECT_CALL(callback, Call(iter_expr->id(), _, &arena)).Times(3);
+  EXPECT_CALL(callback, Call(zero_expr->id(), _, &arena)).Times(3);
+  EXPECT_CALL(callback, Call(loop_step_expr->id(), _, &arena)).Times(3);
 
-  EXPECT_CALL(callback, Call(result_expr, _, &arena));
-  EXPECT_CALL(callback, Call(comp_expr, _, &arena));
-  EXPECT_CALL(callback, Call(true_expr, _, &arena));
-  EXPECT_CALL(callback, Call(&expr, _, &arena));
+  EXPECT_CALL(callback, Call(result_expr->id(), _, &arena));
+  EXPECT_CALL(callback, Call(comp_expr->id(), _, &arena));
+  EXPECT_CALL(callback, Call(true_expr->id(), _, &arena));
+  EXPECT_CALL(callback, Call(expr.id(), _, &arena));
 
-  auto eval_status =
-      cel_expr->Trace(activation, &arena,
-                      [&](const google::api::expr::v1alpha1::Expr* expr1,
-                          const CelValue& value, google::protobuf::Arena* arena) {
-                        callback.Call(expr1, value, arena);
-                        return util::OkStatus();
-                      });
-  ASSERT_TRUE(util::IsOk(eval_status));
+  auto eval_status = cel_expr->Trace(
+      activation, &arena,
+      [&](int64_t expr_id, const CelValue& value, google::protobuf::Arena* arena) {
+        callback.Call(expr_id, value, arena);
+        return ::cel_base::OkStatus();
+      });
+  ASSERT_TRUE(eval_status.ok());
 }
 
 }  // namespace runtime
