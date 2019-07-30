@@ -1,6 +1,5 @@
 #include "benchmark/benchmark.h"
 
-#include <glog/logging.h>
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "gmock/gmock.h"
@@ -60,8 +59,8 @@ static void BM_Eval(benchmark::State& state) {
     CHECK_OK(eval_result.status());
 
     CelValue result = eval_result.ValueOrDie();
-    CHECK(result.IsInt64());
-    CHECK(result.Int64OrDie() == len + 1);
+    GOOGLE_CHECK(result.IsInt64());
+    GOOGLE_CHECK(result.Int64OrDie() == len + 1);
   }
 }
 
@@ -579,7 +578,7 @@ void BM_PolicyNative(benchmark::State& state) {
       {"ip", kIP}, {"token", kToken}, {"path", kPath}};
   for (auto _ : state) {
     auto result = NativeCheck(attributes, blacklists, whitelists);
-    CHECK(result);
+    GOOGLE_CHECK(result);
   }
 }
 
@@ -621,7 +620,7 @@ void BM_PolicySymbolic(benchmark::State& state) {
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
-    CHECK(eval_result.ValueOrDie().BoolOrDie());
+    GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
   }
 }
 
@@ -668,7 +667,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
-    CHECK(eval_result.ValueOrDie().BoolOrDie());
+    GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
   }
 }
 
@@ -698,7 +697,7 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
-    CHECK(eval_result.ValueOrDie().BoolOrDie());
+    GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
   }
 }
 

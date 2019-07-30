@@ -216,7 +216,6 @@ cc_library(
         ":ast_visitor",
         ":source_position",
         "@com_google_absl//absl/strings",
-        "@com_google_glog//:glog",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )

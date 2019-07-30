@@ -14,7 +14,6 @@
 
 #include <stack>
 
-#include <glog/logging.h>
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/public/ast_traverse.h"
 #include "eval/public/source_position.h"

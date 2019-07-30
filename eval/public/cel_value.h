@@ -56,8 +56,6 @@ class CelValue {
     // in the constructed holder object.
     explicit StringHolderBase(const std::string *str) : value_(*str) {}
 
-    explicit StringHolderBase(absl::string_view other) : value_(other) {}
-
     absl::string_view value() const { return value_; }
 
     // Group of comparison operations.
@@ -85,7 +83,11 @@ class CelValue {
       return value1.value_ >= value2.value_;
     }
 
+    friend class CelValue;
+
    private:
+    explicit StringHolderBase(absl::string_view other) : value_(other) {}
+
     absl::string_view value_;
   };
 
@@ -150,6 +152,9 @@ class CelValue {
 
   static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
 
+  // Requires that the input string memory is managed externally.
+  // Be careful to avoid passing a string as it is implicitly converted to a
+  // string.
   static CelValue CreateString(absl::string_view value) {
     return CelValue(StringHolder(value));
   }

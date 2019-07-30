@@ -18,7 +18,6 @@
 
 #include <ostream>
 
-#include <glog/logging.h>
 #include "base/status.h"
 
 namespace cel_base {
@@ -28,11 +27,15 @@ namespace statusor_internal {
 void Helper::HandleInvalidStatusCtorArg(Status* status) {
   const char* kMessage =
       "An OK status is not a valid constructor argument to StatusOr<T>";
-  // In optimized builds, we will fall back to absl::INTERNAL.
+  ABSL_RAW_CHECK(false, kMessage);
+  // In optimized builds, we will fall back to ::util::error::INTERNAL.
   *status = Status(StatusCode::kInternal, kMessage);
 }
 
-void Helper::Crash(const Status& status) { CHECK(false); }
+void Helper::Crash(const Status& status) {
+  ABSL_RAW_CHECK(false, "Attempting to fetch value instead of handling error");
+  abort();
+}
 
 }  // namespace statusor_internal
 

@@ -21,7 +21,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <glog/logging.h>
 #include "absl/base/attributes.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/strings/string_view.h"
@@ -176,10 +175,10 @@ std::ostream& operator<<(std::ostream& os, const Status& x);
 // Constructs an OK status object.
 inline Status OkStatus() { return Status(); }
 
-// cel_base::Status success comparison.
-// This is better than CHECK((val).ok()) because the embedded
+// This is better than GOOGLE_CHECK((val).ok()) because the embedded
 // error string gets printed by the CHECK_EQ.
-#define CHECK_OK(val) CHECK_EQ(::cel_base::OkStatus(), (val))
+#define CHECK_OK(val) \
+  ABSL_RAW_CHECK(val == ::cel_base::OkStatus(), "Status not OK")
 
 }  // namespace cel_base
 
