@@ -277,7 +277,6 @@ cc_library(
         ":specialize",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@com_google_glog//:glog",
     ],
 )
 

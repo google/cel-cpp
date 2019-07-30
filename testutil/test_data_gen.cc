@@ -1,9 +1,7 @@
-#include "gflags/gflags.h"
-#include "gflags/gflags.h"
-#include <glog/logging.h>
 #include "google/protobuf/empty.pb.h"
 #include "google/rpc/code.pb.h"
 #include "google/type/money.pb.h"
+#include "absl/flags/parse.h"
 #include "absl/strings/match.h"
 #include "common/type.h"
 #include "internal/proto_util.h"
@@ -159,7 +157,7 @@ TestData UniqueValues() {
 
 void WriteData() {
   auto status = WriteTestData("unique_values", UniqueValues());
-  CHECK(status.code() == google::rpc::Code::OK) << status.ShortDebugString();
+  GOOGLE_CHECK(status.code() == google::rpc::Code::OK) << status.ShortDebugString();
 }
 
 }  // namespace testutil
@@ -168,7 +166,6 @@ void WriteData() {
 }  // namespace google
 
 int main(int argc, char** argv) {
-  google::InitGoogleLogging(argv[0]);
-gflags::ParseCommandLineFlags(&argc, &argv, /*remove_flags=*/true);
+  absl::ParseCommandLine(argc, argv);
   google::api::expr::testutil::WriteData();
 }

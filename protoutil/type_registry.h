@@ -39,7 +39,7 @@ namespace protoutil {
  * concrete message types. For example:
  *
  *     // Register a (1)-style constructor function.
- *     CHECK(reg.RegisterConstructor<google::type::Money>(
+ *     GOOGLE_CHECK(reg.RegisterConstructor<google::type::Money>(
  *         [](const google::type::Money& value) {
  *           ...
  *         }));
@@ -50,7 +50,7 @@ namespace protoutil {
  *       Money(google::type::Money&& value);
  *     };
  *     // Register both Money constructors and set the default value to 'null'.
- *     CHECK(2 == reg.RegisterClass<google::type::Money, Money>();
+ *     GOOGLE_CHECK(2 == reg.RegisterClass<google::type::Money, Money>();
  *
  * Not all constructor types need to be registered:
  *  - If the underlying protobuf message is never needed by the returned

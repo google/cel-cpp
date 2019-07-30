@@ -24,7 +24,6 @@ cc_test(
         "//eval/public:cel_value",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
-        "@com_google_glog//:glog",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googlebench//:benchmark",
         "@com_google_googlebench//:benchmark_main",

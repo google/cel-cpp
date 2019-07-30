@@ -1,29 +1,29 @@
 #include "testutil/test_data_io.h"
 
 #include <fcntl.h>
+
 #include <fstream>
 
-#include "gflags/gflags.h"
-#include <glog/logging.h>
 #include "google/rpc/code.pb.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
+#include "absl/flags/flag.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "internal/status_util.h"
 #include "re2/re2.h"
 
-DEFINE_string(test_data_folder, "com_google_cel_spec/testdata/",
-              "The location to read test data from.");
+ABSL_FLAG(std::string, test_data_folder,
+          "com_google_cel_spec/testdata/",
+          "The location to read test data from.");
 
-DEFINE_string(
-    output_dir, "",
-    "The location to write test data to. Writes to standard out if not "
-    "specified.");
+ABSL_FLAG(std::string, output_dir, "",
+          "The location to write test data to. Writes to standard out if not "
+          "specified.");
 
-DEFINE_bool(binary, false, "If binary output should be used.");
+ABSL_FLAG(bool, binary, false, "If binary output should be used.");
 
 namespace google {
 namespace api {
@@ -119,27 +119,31 @@ google::rpc::Status WritePbFile(const google::protobuf::Message& message,
 
 google::rpc::Status WriteTestData(absl::string_view test_name,
                                   const TestData& values) {
-  if (FLAGS_output_dir.empty()) {
+  if (absl::GetFlag(FLAGS_output_dir).empty()) {
     google::protobuf::io::OstreamOutputStream os(&std::cout);
     google::protobuf::TextFormat::Print(values, &os);
     return internal::OkStatus();
   }
   return WritePbFile(
-      values, GetTestCaseFileName(FLAGS_output_dir, test_name, FLAGS_binary));
+      values, GetTestCaseFileName(absl::GetFlag(FLAGS_output_dir), test_name,
+                                  absl::GetFlag(FLAGS_binary)));
 }
 
 TestData ReadTestData(absl::string_view test_name) {
   TestData data;
-  auto dir = absl::StrCat(std::getenv("TEST_SRCDIR"), "/", FLAGS_test_data_folder);
+  auto dir = absl::StrCat(std::getenv("TEST_SRCDIR"), "/",
+                          absl::GetFlag(FLAGS_test_data_folder));
 
-  auto status =
-      ReadPbFile(GetTestCaseFileName(dir, test_name, FLAGS_binary), &data);
+  auto status = ReadPbFile(
+      GetTestCaseFileName(dir, test_name, absl::GetFlag(FLAGS_binary)), &data);
   if (status.code() == google::rpc::Code::OK) {
     return data;
   }
 
   // Check for the other file, just to be nice.
-  if (ReadPbFile(GetTestCaseFileName(dir, test_name, !FLAGS_binary), &data)
+  if (ReadPbFile(
+          GetTestCaseFileName(dir, test_name, !absl::GetFlag(FLAGS_binary)),
+          &data)
           .code() == google::rpc::Code::OK) {
     return data;
   }
