@@ -6,7 +6,8 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])  # Apache 2.0
 
 ALL_TESTS = [
-    "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
+    # Requires container support
+    #"@com_google_cel_spec//tests/simple:testdata/basic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
     "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
     "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
