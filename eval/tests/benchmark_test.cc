@@ -29,7 +29,7 @@ using google::api::expr::v1alpha1::SourceInfo;
 static void BM_Eval(benchmark::State& state) {
   auto builder = CreateCelExpressionBuilder();
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  CHECK_OK(reg_status);
+  GOOGLE_CHECK(util::IsOk(reg_status));
 
   int len = state.range(0);
 
@@ -47,7 +47,7 @@ static void BM_Eval(benchmark::State& state) {
 
   SourceInfo source_info;
   auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
-  CHECK_OK(cel_expr_status.status());
+  GOOGLE_CHECK(util::IsOk(cel_expr_status.status()));
 
   std::unique_ptr<CelExpression> cel_expr =
       std::move(cel_expr_status.ValueOrDie());
@@ -56,7 +56,7 @@ static void BM_Eval(benchmark::State& state) {
     google::protobuf::Arena arena;
     Activation activation;
     auto eval_result = cel_expr->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
+    GOOGLE_CHECK(util::IsOk(eval_result.status()));
 
     CelValue result = eval_result.ValueOrDie();
     GOOGLE_CHECK(result.IsInt64());
@@ -605,11 +605,11 @@ void BM_PolicySymbolic(benchmark::State& state) {
   options.constant_arena = &arena;
 
   auto builder = CreateCelExpressionBuilder(options);
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  GOOGLE_CHECK(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
 
   SourceInfo source_info;
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  CHECK_OK(cel_expression_status.status());
+  GOOGLE_CHECK(util::IsOk(cel_expression_status.status()));
 
   auto cel_expression = std::move(cel_expression_status.ValueOrDie());
   Activation activation;
@@ -619,7 +619,7 @@ void BM_PolicySymbolic(benchmark::State& state) {
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
+    GOOGLE_CHECK(util::IsOk(eval_result.status()));
     GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
   }
 }
@@ -653,11 +653,11 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
   google::protobuf::TextFormat::ParseFromString(CELAst(), &expr);
 
   auto builder = CreateCelExpressionBuilder();
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  GOOGLE_CHECK(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
 
   SourceInfo source_info;
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  CHECK_OK(cel_expression_status.status());
+  GOOGLE_CHECK(util::IsOk(cel_expression_status.status()));
 
   auto cel_expression = std::move(cel_expression_status.ValueOrDie());
   Activation activation;
@@ -666,7 +666,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
+    GOOGLE_CHECK(util::IsOk(eval_result.status()));
     GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
   }
 }
@@ -680,11 +680,11 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   google::protobuf::TextFormat::ParseFromString(CELAst(), &expr);
 
   auto builder = CreateCelExpressionBuilder();
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  GOOGLE_CHECK(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
 
   SourceInfo source_info;
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  CHECK_OK(cel_expression_status.status());
+  GOOGLE_CHECK(util::IsOk(cel_expression_status.status()));
 
   auto cel_expression = std::move(cel_expression_status.ValueOrDie());
   Activation activation;
@@ -696,7 +696,7 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
+    GOOGLE_CHECK(util::IsOk(eval_result.status()));
     GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
   }
 }

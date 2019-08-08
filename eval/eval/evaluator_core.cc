@@ -17,12 +17,12 @@ const ExpressionStep* ExecutionFrame::Next() {
   return nullptr;
 }
 
-cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
+util::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
     const Activation& activation, google::protobuf::Arena* arena) const {
   return Trace(activation, arena, CelEvaluationListener());
 }
 
-cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
+util::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const Activation& activation, google::protobuf::Arena* arena,
     CelEvaluationListener callback) const {
   ExecutionFrame frame(&path_, activation, arena);
@@ -32,7 +32,7 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
   const ExpressionStep* expr;
   while ((expr = frame.Next()) != nullptr) {
     auto status = expr->Evaluate(&frame);
-    if (!status.ok()) {
+    if (!util::IsOk(status)) {
       return status;
     }
     if (!callback) {
@@ -49,14 +49,14 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
       continue;
     }
     auto status2 = callback(expr->id(), stack->Peek(), arena);
-    if (!status2.ok()) {
+    if (!util::IsOk(status2)) {
       return status2;
     }
   }
 
   size_t final_stack_size = stack->size();
   if (initial_stack_size + 1 != final_stack_size || final_stack_size == 0) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
+    return util::MakeStatus(google::rpc::Code::INTERNAL,
                         "Stack error during evaluation");
   }
   CelValue value = stack->Peek();

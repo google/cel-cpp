@@ -150,7 +150,7 @@ TEST(ConstantFoldingTest, LogicApplication) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry)));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
@@ -183,7 +183,7 @@ TEST(ConstantFoldingTest, FunctionApplication) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry)));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
@@ -217,7 +217,7 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry)));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
@@ -250,7 +250,7 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry)));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;

@@ -16,7 +16,7 @@ using testing::Not;
 using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
-cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
+util::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
                                        google::protobuf::Arena* arena) {
   ExecutionPath path;
   Expr dummy_expr;
@@ -27,7 +27,7 @@ cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
     expr0->mutable_const_expr()->set_int64_value(value);
     auto const_step_status = CreateConstValueStep(
         ConvertConstant(&expr0->const_expr()).value(), expr0->id());
-    if (!const_step_status.ok()) {
+    if (!util::IsOk(const_step_status)) {
       return const_step_status.status();
     }
 
@@ -36,7 +36,7 @@ cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
 
   auto step0_status = CreateCreateListStep(create_list, dummy_expr.id());
 
-  if (!step0_status.ok()) {
+  if (!util::IsOk(step0_status)) {
     return step0_status.status();
   }
 
@@ -60,7 +60,7 @@ TEST(CreateListStepTest, TestCreateListStackUndeflow) {
 
   auto step0_status = CreateCreateListStep(create_list, dummy_expr.id());
 
-  ASSERT_TRUE(step0_status.ok());
+  ASSERT_TRUE(util::IsOk(step0_status));
 
   path.push_back(std::move(step0_status.ValueOrDie()));
 
@@ -70,14 +70,14 @@ TEST(CreateListStepTest, TestCreateListStackUndeflow) {
   google::protobuf::Arena arena;
 
   auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_FALSE(status.ok());
+  ASSERT_FALSE(util::IsOk(status));
 }
 
 TEST(CreateListStepTest, CreateListEmpty) {
   google::protobuf::Arena arena;
   auto eval_result = RunExpression({}, &arena);
 
-  ASSERT_TRUE(eval_result.ok());
+  ASSERT_TRUE(util::IsOk(eval_result));
   const CelValue result_value = eval_result.ValueOrDie();
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(), Eq(0));
@@ -87,7 +87,7 @@ TEST(CreateListStepTest, CreateListOne) {
   google::protobuf::Arena arena;
   auto eval_result = RunExpression({100}, &arena);
 
-  ASSERT_TRUE(eval_result.ok());
+  ASSERT_TRUE(util::IsOk(eval_result));
   const CelValue result_value = eval_result.ValueOrDie();
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(), Eq(1));
@@ -102,7 +102,7 @@ TEST(CreateListStepTest, CreateListHundred) {
   }
   auto eval_result = RunExpression(values, &arena);
 
-  ASSERT_TRUE(eval_result.ok());
+  ASSERT_TRUE(util::IsOk(eval_result));
   const CelValue result_value = eval_result.ValueOrDie();
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(), Eq(values.size()));

@@ -26,7 +26,7 @@ class ExpressionStep {
   // interface.
   // ExpressionStep instances can in specific cases
   // modify execution order(perform jumps).
-  virtual cel_base::Status Evaluate(ExecutionFrame* context) const = 0;
+  virtual util::Status Evaluate(ExecutionFrame* context) const = 0;
 
   // Returns corresponding expression object ID.
   // Requires that the input expression has IDs assigned to sub-expressions,
@@ -107,16 +107,16 @@ class ExecutionFrame {
   const ExpressionStep* Next();
 
   // Intended for use only in conditionals.
-  cel_base::Status JumpTo(int offset) {
+  util::Status JumpTo(int offset) {
     int new_pc = pc_ + offset;
     if (new_pc < 0 || new_pc > execution_path_->size()) {
-      return cel_base::Status(cel_base::StatusCode::kInternal,
+      return util::MakeStatus(google::rpc::Code::INTERNAL,
                           absl::StrCat("Jump address out of range: position: ",
                                        pc_, ",offset: ", offset,
                                        ", range: ", execution_path_->size()));
     }
     pc_ = new_pc;
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
   ValueStack& value_stack() { return value_stack_; }
@@ -151,11 +151,11 @@ class CelExpressionFlatImpl : public CelExpression {
       : path_(std::move(path)) {}
 
   // Implementation of CelExpression evaluate method.
-  cel_base::StatusOr<CelValue> Evaluate(const Activation& activation,
+  util::StatusOr<CelValue> Evaluate(const Activation& activation,
                                     google::protobuf::Arena* arena) const override;
 
   // Implementation of CelExpression trace method.
-  cel_base::StatusOr<CelValue> Trace(const Activation& activation,
+  util::StatusOr<CelValue> Trace(const Activation& activation,
                                  google::protobuf::Arena* arena,
                                  CelEvaluationListener callback) const override;
 

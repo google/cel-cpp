@@ -9,7 +9,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "re2/re2.h"
-#include "base/canonical_errors.h"
+#include "google/rpc/code.pb.h"
 
 namespace google {
 namespace api {
@@ -260,12 +260,12 @@ CelValue Equal(Arena* arena, CelValue t1, CelValue t2) {
 //
 // Registers all equality functions for template parameters type.
 template <class Type>
-::cel_base::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
+util::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
   // Inequality
-  ::cel_base::Status status =
+  util::Status status =
       FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
           builtin::kInequal, false, Inequal<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Equality
   status = FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
@@ -275,32 +275,32 @@ template <class Type>
 
 // Registers all comparison functions for template parameter type.
 template <class Type>
-::cel_base::Status RegisterComparisonFunctionsForType(
+util::Status RegisterComparisonFunctionsForType(
     CelFunctionRegistry* registry) {
-  ::cel_base::Status status = RegisterEqualityFunctionsForType<Type>(registry);
-  if (!status.ok()) return status;
+  util::Status status = RegisterEqualityFunctionsForType<Type>(registry);
+  if (!util::IsOk(status)) return status;
 
   // Less than
   status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
       builtin::kLess, false, LessThan<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Less than or Equal
   status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
       builtin::kLessOrEqual, false, LessThanOrEqual<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Greater than
   status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
       builtin::kGreater, false, GreaterThan<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Greater than or Equal
   status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
       builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
-  return ::cel_base::OkStatus();
+  return util::OkStatus();
 }
 
 // Template functions providing arithmetic operations
@@ -381,19 +381,19 @@ CelValue Modulo<uint64_t>(Arena* arena, uint64_t value, uint64_t value2) {
 // Helper method
 // Registers all arithmetic functions for template parameter type.
 template <class Type>
-::cel_base::Status RegisterArithmeticFunctionsForType(
+util::Status RegisterArithmeticFunctionsForType(
     CelFunctionRegistry* registry) {
-  cel_base::Status status = FunctionAdapter<Type, Type, Type>::CreateAndRegister(
+  util::Status status = FunctionAdapter<Type, Type, Type>::CreateAndRegister(
       builtin::kAdd, false, Add<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<Type, Type, Type>::CreateAndRegister(
       builtin::kSubtract, false, Sub<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<Type, Type, Type>::CreateAndRegister(
       builtin::kMultiply, false, Mul<Type>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
       builtin::kDivide, false, Div<Type>, registry);
@@ -487,19 +487,19 @@ const CelList* ConcatList(Arena* arena, const CelList* value1,
 }
 
 // Timestamp
-const cel_base::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
+const util::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
                                      absl::TimeZone::CivilInfo* breakdown) {
   absl::TimeZone time_zone;
 
   if (!tz.empty()) {
     bool found = absl::LoadTimeZone(std::string(tz), &time_zone);
     if (!found) {
-      return cel_base::InvalidArgumentError("Invalid timezone");
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, "Invalid timezone");
     }
   }
 
   *breakdown = time_zone.At(timestamp);
-  return cel_base::OkStatus();
+  return util::OkStatus();
 }
 
 CelValue GetTimeBreakdownPart(
@@ -509,7 +509,7 @@ CelValue GetTimeBreakdownPart(
   absl::TimeZone::CivilInfo breakdown;
   auto status = FindTimeBreakdown(timestamp, tz, &breakdown);
 
-  if (!status.ok()) {
+  if (!util::IsOk(status)) {
     return CreateErrorValue(arena, status.message());
   }
 
@@ -523,7 +523,7 @@ CelValue CreateTimestampFromString(Arena* arena,
       google::protobuf::util::TimeUtil::FromString(std::string(time_str.value()), &ts);
   if (!result) {
     return CreateErrorValue(arena, "String to Timestamp conversion failed",
-                            cel_base::StatusCode::kInvalidArgument);
+                            google::rpc::Code::INVALID_ARGUMENT);
   }
 
   return CelValue::CreateTimestamp(
@@ -619,7 +619,7 @@ CelValue CreateDurationFromString(Arena* arena,
       google::protobuf::util::TimeUtil::FromString(std::string(time_str.value()), &d);
   if (!result) {
     return CreateErrorValue(arena, "String to Duration conversion failed",
-                            cel_base::StatusCode::kInvalidArgument);
+                            google::rpc::Code::INVALID_ARGUMENT);
   }
 
   return CelValue::CreateDuration(Arena::Create<Duration>(arena, std::move(d)));
@@ -648,9 +648,9 @@ CelValue RegexMatchesFull(Arena* arena, CelValue::StringHolder target,
   RE2 re2(regex.value().data());
   if (!re2.ok()) {
     return CreateErrorValue(arena, "invalid_argument",
-                            cel_base::StatusCode::kInvalidArgument);
+                            google::rpc::Code::INVALID_ARGUMENT);
   }
-  return CelValue::CreateBool(RE2::FullMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
+  return CelValue::CreateBool(RE2::FullMatch(target.value().data(), re2));
 }
 
 CelValue RegexMatchesPartial(Arena* arena, CelValue::StringHolder target,
@@ -658,9 +658,9 @@ CelValue RegexMatchesPartial(Arena* arena, CelValue::StringHolder target,
   RE2 re2(regex.value().data());
   if (!re2.ok()) {
     return CreateErrorValue(arena, "invalid_argument",
-                            cel_base::StatusCode::kInvalidArgument);
+                            google::rpc::Code::INVALID_ARGUMENT);
   }
-  return CelValue::CreateBool(RE2::PartialMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
+  return CelValue::CreateBool(RE2::PartialMatch(target.value(), re2));
 }
 
 bool StringContains(Arena* arena, CelValue::StringHolder value,
@@ -680,7 +680,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
 // Creates and registers a map index function.
 template <typename T, typename CreateCelValue, typename ToAlphaNum>
-::cel_base::Status RegisterMapIndexFunction(CelFunctionRegistry* registry,
+util::Status RegisterMapIndexFunction(CelFunctionRegistry* registry,
                                         const CreateCelValue& create_cel_value,
                                         const ToAlphaNum& to_alpha_num) {
   return FunctionAdapter<CelValue, const CelMap*, T>::CreateAndRegister(
@@ -698,7 +698,7 @@ template <typename T, typename CreateCelValue, typename ToAlphaNum>
 }
 
 template <typename T, typename CreateCelValue>
-::cel_base::Status RegisterMapIndexFunction(
+util::Status RegisterMapIndexFunction(
     CelFunctionRegistry* registry, const CreateCelValue& create_cel_value) {
   return RegisterMapIndexFunction<T>(registry, create_cel_value,
                                      [](T v) { return absl::StrCat(v); });
@@ -706,56 +706,56 @@ template <typename T, typename CreateCelValue>
 
 }  // namespace
 
-::cel_base::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry) {
+util::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry) {
   // logical NOT
-  cel_base::Status status = FunctionAdapter<bool, bool>::CreateAndRegister(
+  util::Status status = FunctionAdapter<bool, bool>::CreateAndRegister(
       builtin::kNot, false,
       [](Arena* arena, bool value) -> bool { return !value; }, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Negation group
   status = FunctionAdapter<int64_t, int64_t>::CreateAndRegister(
       builtin::kNeg, false,
       [](Arena* arena, int64_t value) -> int64_t { return -value; }, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<double, double>::CreateAndRegister(
       builtin::kNeg, false,
       [](Arena* arena, double value) -> double { return -value; }, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<bool>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<int64_t>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<uint64_t>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<double>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<CelValue::StringHolder>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<CelValue::BytesHolder>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<absl::Duration>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterComparisonFunctionsForType<absl::Time>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterEqualityFunctionsForType<const google::protobuf::Message*>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterEqualityFunctionsForType<const CelList*>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterEqualityFunctionsForType<const CelMap*>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Logical AND
   // This implementation is used when short-circuiting is off.
@@ -765,7 +765,7 @@ template <typename T, typename CreateCelValue>
         return value1 && value2;
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, const CelError*, bool>::CreateAndRegister(
@@ -775,7 +775,7 @@ template <typename T, typename CreateCelValue>
                         : CelValue::CreateBool(false);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, bool, const CelError*>::CreateAndRegister(
@@ -785,7 +785,7 @@ template <typename T, typename CreateCelValue>
                         : CelValue::CreateBool(false);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special case: both arguments are errors.
   status = FunctionAdapter<const CelError*, const CelError*, const CelError*>::
@@ -793,7 +793,7 @@ template <typename T, typename CreateCelValue>
                         [](Arena* arena, const CelError* value1,
                            const CelError* value2) { return value1; },
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Logical OR
   // This implementation is used when short-circuiting is off.
@@ -803,7 +803,7 @@ template <typename T, typename CreateCelValue>
         return value1 || value2;
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, const CelError*, bool>::CreateAndRegister(
@@ -813,7 +813,7 @@ template <typename T, typename CreateCelValue>
                         : CelValue::CreateError(value1);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, bool, const CelError*>::CreateAndRegister(
@@ -823,7 +823,7 @@ template <typename T, typename CreateCelValue>
                         : CelValue::CreateError(value2);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special case: both arguments are errors.
   status = FunctionAdapter<const CelError*, const CelError*, const CelError*>::
@@ -831,7 +831,7 @@ template <typename T, typename CreateCelValue>
                         [](Arena* arena, const CelError* value1,
                            const CelError* value2) { return value1; },
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Ternary operator
   // This implementation is used when short-circuiting is off.
@@ -842,7 +842,7 @@ template <typename T, typename CreateCelValue>
             return (cond) ? value1 : value2;
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Ternary operator
   // Special case: condition is error
@@ -852,30 +852,30 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, const CelError* error, CelValue value1,
              CelValue value2) { return CelValue::CreateError(error); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Strictness
   status = FunctionAdapter<bool, bool>::CreateAndRegister(
       builtin::kNotStrictlyFalse, false,
       [](Arena* arena, bool value) -> bool { return value; }, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, const CelError*>::CreateAndRegister(
       builtin::kNotStrictlyFalse, false,
       [](Arena* arena, const CelError* error) -> bool { return true; },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, bool>::CreateAndRegister(
       builtin::kNotStrictlyFalseDeprecated, false,
       [](Arena* arena, bool value) -> bool { return value; }, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, const CelError*>::CreateAndRegister(
       builtin::kNotStrictlyFalseDeprecated, false,
       [](Arena* arena, const CelError* error) -> bool { return true; },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // String size
   auto string_size_func = [](Arena* arena,
@@ -886,10 +886,10 @@ template <typename T, typename CreateCelValue>
   // Support global and receiver style size() operations on strings.
   status = FunctionAdapter<int64_t, CelValue::StringHolder>::CreateAndRegister(
       builtin::kSize, true, string_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<int64_t, CelValue::StringHolder>::CreateAndRegister(
       builtin::kSize, false, string_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Bytes size
   auto bytes_size_func = [](Arena* arena,
@@ -900,10 +900,10 @@ template <typename T, typename CreateCelValue>
   // Support global and receiver style size() operations on bytes.
   status = FunctionAdapter<int64_t, CelValue::BytesHolder>::CreateAndRegister(
       builtin::kSize, true, bytes_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<int64_t, CelValue::BytesHolder>::CreateAndRegister(
       builtin::kSize, false, bytes_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // List Index
   status = FunctionAdapter<CelValue, const CelList*, int64_t>::CreateAndRegister(
@@ -918,7 +918,7 @@ template <typename T, typename CreateCelValue>
         return (*cel_list)[index];
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // List size
   auto list_size_func = [](Arena* arena, const CelList* cel_list) -> int64_t {
@@ -928,94 +928,94 @@ template <typename T, typename CreateCelValue>
   // Support both the global and receiver style size() for lists.
   status = FunctionAdapter<int64_t, const CelList*>::CreateAndRegister(
       builtin::kSize, true, list_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<int64_t, const CelList*>::CreateAndRegister(
       builtin::kSize, false, list_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // List in operator: @in
   status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
       builtin::kIn, false, In<bool>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
       builtin::kIn, false, In<int64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
       builtin::kIn, false, In<uint64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
       builtin::kIn, false, In<double>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
       CreateAndRegister(builtin::kIn, false, In<CelValue::StringHolder>,
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
       CreateAndRegister(builtin::kIn, false, In<CelValue::BytesHolder>,
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // List in operator: _in_ (deprecated)
   // Bindings preserved for backward compatibility with stored expressions.
   status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
       builtin::kInDeprecated, false, In<bool>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
       builtin::kInDeprecated, false, In<int64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
       builtin::kInDeprecated, false, In<uint64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
       builtin::kInDeprecated, false, In<double>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
       CreateAndRegister(builtin::kInDeprecated, false,
                         In<CelValue::StringHolder>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
       CreateAndRegister(builtin::kInDeprecated, false,
                         In<CelValue::BytesHolder>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // List in() function (deprecated)
   // Bindings preserved for backward compatibility with stored expressions.
   status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
       builtin::kInFunction, false, In<bool>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
       builtin::kInFunction, false, In<int64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
       builtin::kInFunction, false, In<uint64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
       builtin::kInFunction, false, In<double>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
       CreateAndRegister(builtin::kInFunction, false, In<CelValue::StringHolder>,
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
       CreateAndRegister(builtin::kInFunction, false, In<CelValue::BytesHolder>,
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Map Index
   status = RegisterMapIndexFunction<CelValue::StringHolder>(
       registry,
       [](CelValue::StringHolder v) { return CelValue::CreateString(v); },
       [](CelValue::StringHolder v) { return v.value(); });
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterMapIndexFunction<int64_t>(registry, CelValue::CreateInt64);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterMapIndexFunction<uint64_t>(registry, CelValue::CreateUint64);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterMapIndexFunction<bool>(registry, CelValue::CreateBool);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Map size
   auto map_size_func = [](Arena* arena, const CelMap* cel_map) -> int64_t {
@@ -1024,10 +1024,10 @@ template <typename T, typename CreateCelValue>
   // receiver style = true/false
   status = FunctionAdapter<int64_t, const CelMap*>::CreateAndRegister(
       builtin::kSize, true, map_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
   status = FunctionAdapter<int64_t, const CelMap*>::CreateAndRegister(
       builtin::kSize, false, map_size_func, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Map in operator: @in
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
@@ -1038,7 +1038,7 @@ template <typename T, typename CreateCelValue>
             return (*cel_map)[CelValue::CreateString(key)].has_value();
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
       builtin::kIn, false,
@@ -1046,7 +1046,7 @@ template <typename T, typename CreateCelValue>
         return (*cel_map)[CelValue::CreateInt64(key)].has_value();
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
       builtin::kIn, false,
@@ -1054,7 +1054,7 @@ template <typename T, typename CreateCelValue>
         return (*cel_map)[CelValue::CreateUint64(key)].has_value();
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Map in operators: _in_ (deprecated).
   // Bindings preserved for backward compatibility with stored expressions.
@@ -1064,7 +1064,7 @@ template <typename T, typename CreateCelValue>
         return (*cel_map)[CelValue::CreateInt64(key)].has_value();
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
       builtin::kInDeprecated, false,
@@ -1072,7 +1072,7 @@ template <typename T, typename CreateCelValue>
         return (*cel_map)[CelValue::CreateUint64(key)].has_value();
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
       CreateAndRegister(
@@ -1082,7 +1082,7 @@ template <typename T, typename CreateCelValue>
             return (*cel_map)[CelValue::CreateString(key)].has_value();
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Map in() function (deprecated)
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
@@ -1093,7 +1093,7 @@ template <typename T, typename CreateCelValue>
             return (*cel_map)[CelValue::CreateString(key)].has_value();
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
       builtin::kInFunction, false,
@@ -1101,7 +1101,7 @@ template <typename T, typename CreateCelValue>
         return (*cel_map)[CelValue::CreateInt64(key)].has_value();
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
       builtin::kInFunction, false,
@@ -1109,17 +1109,17 @@ template <typename T, typename CreateCelValue>
         return (*cel_map)[CelValue::CreateUint64(key)].has_value();
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // basic Arithmetic functions for numeric types
   status = RegisterArithmeticFunctionsForType<int64_t>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterArithmeticFunctionsForType<uint64_t>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = RegisterArithmeticFunctionsForType<double>(registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Special arithmetic operators for Timestamp and Duration
   status =
@@ -1129,7 +1129,7 @@ template <typename T, typename CreateCelValue>
             return CelValue::CreateTimestamp(t1 + d2);
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<CelValue, absl::Duration, absl::Time>::CreateAndRegister(
@@ -1138,7 +1138,7 @@ template <typename T, typename CreateCelValue>
             return CelValue::CreateTimestamp(t1 + d2);
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Duration, absl::Duration>::
       CreateAndRegister(
@@ -1147,7 +1147,7 @@ template <typename T, typename CreateCelValue>
             return CelValue::CreateDuration(d1 + d2);
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<CelValue, absl::Time, absl::Duration>::CreateAndRegister(
@@ -1156,7 +1156,7 @@ template <typename T, typename CreateCelValue>
             return CelValue::CreateTimestamp(t1 - d2);
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, absl::Time>::CreateAndRegister(
       builtin::kSubtract, false,
@@ -1164,7 +1164,7 @@ template <typename T, typename CreateCelValue>
         return CelValue::CreateDuration(t1 - t2);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Duration, absl::Duration>::
       CreateAndRegister(
@@ -1173,7 +1173,7 @@ template <typename T, typename CreateCelValue>
             return CelValue::CreateDuration(d1 - d2);
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Concat group
   status =
@@ -1182,7 +1182,7 @@ template <typename T, typename CreateCelValue>
                                                                  false,
                                                                  ConcatString,
                                                                  registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<CelValue::BytesHolder, CelValue::BytesHolder,
@@ -1190,13 +1190,13 @@ template <typename T, typename CreateCelValue>
                                                                 false,
                                                                 ConcatBytes,
                                                                 registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<const CelList*, const CelList*,
                       const CelList*>::CreateAndRegister(builtin::kAdd, false,
                                                          ConcatList, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Global matches function.
   status = FunctionAdapter<CelValue, CelValue::StringHolder,
@@ -1205,7 +1205,7 @@ template <typename T, typename CreateCelValue>
                         registry->partial_string_match() ? RegexMatchesPartial
                                                          : RegexMatchesFull,
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Receiver-style matches function.
   status = FunctionAdapter<CelValue, CelValue::StringHolder,
@@ -1214,59 +1214,59 @@ template <typename T, typename CreateCelValue>
                         registry->partial_string_match() ? RegexMatchesPartial
                                                          : RegexMatchesFull,
                         registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
           CreateAndRegister(builtin::kStringContains, false, StringContains,
                             registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
           CreateAndRegister(builtin::kStringContains, true, StringContains,
                             registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
           CreateAndRegister(builtin::kStringEndsWith, false, StringEndsWith,
                             registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
           CreateAndRegister(builtin::kStringEndsWith, true, StringEndsWith,
                             registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
           CreateAndRegister(builtin::kStringStartsWith, false, StringStartsWith,
                             registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
           CreateAndRegister(builtin::kStringStartsWith, true, StringStartsWith,
                             registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Modulo
   status = FunctionAdapter<CelValue, int64_t, int64_t>::CreateAndRegister(
       builtin::kModulo, false, Modulo<int64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, uint64_t, uint64_t>::CreateAndRegister(
       builtin::kModulo, false, Modulo<uint64_t>, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // Timestamp
   //
   // timestamp() conversion from string..
   status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
       builtin::kTimestamp, false, CreateTimestampFromString, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1274,7 +1274,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetFullYear(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kFullYear, true,
@@ -1282,7 +1282,7 @@ template <typename T, typename CreateCelValue>
         return GetFullYear(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1290,7 +1290,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetMonth(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kMonth, true,
@@ -1298,7 +1298,7 @@ template <typename T, typename CreateCelValue>
         return GetMonth(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1306,7 +1306,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetDayOfYear(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kDayOfYear, true,
@@ -1314,7 +1314,7 @@ template <typename T, typename CreateCelValue>
         return GetDayOfYear(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1322,7 +1322,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetDayOfMonth(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kDayOfMonth, true,
@@ -1330,7 +1330,7 @@ template <typename T, typename CreateCelValue>
         return GetDayOfMonth(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1338,7 +1338,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetDate(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kDate, true,
@@ -1346,7 +1346,7 @@ template <typename T, typename CreateCelValue>
         return GetDate(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1354,7 +1354,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetDayOfWeek(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kDayOfWeek, true,
@@ -1362,7 +1362,7 @@ template <typename T, typename CreateCelValue>
         return GetDayOfWeek(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1370,7 +1370,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetHours(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kHours, true,
@@ -1378,7 +1378,7 @@ template <typename T, typename CreateCelValue>
         return GetHours(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1386,7 +1386,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetMinutes(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kMinutes, true,
@@ -1394,7 +1394,7 @@ template <typename T, typename CreateCelValue>
         return GetMinutes(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1402,7 +1402,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetSeconds(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kSeconds, true,
@@ -1410,7 +1410,7 @@ template <typename T, typename CreateCelValue>
         return GetSeconds(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1418,7 +1418,7 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetMilliseconds(arena, ts, tz.value()); },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kMilliseconds, true,
@@ -1426,7 +1426,7 @@ template <typename T, typename CreateCelValue>
         return GetMilliseconds(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // type conversion to int
   // TODO(issues/26): To return errors on loss of precision
@@ -1435,29 +1435,29 @@ template <typename T, typename CreateCelValue>
       builtin::kInt, false,
       [](Arena* arena, absl::Time t) { return absl::ToUnixSeconds(t); },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<int64_t, double>::CreateAndRegister(
       builtin::kInt, false, [](Arena* arena, double v) { return (int64_t)v; },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<int64_t, bool>::CreateAndRegister(
       builtin::kInt, false, [](Arena* arena, bool v) { return (int64_t)v; },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<int64_t, uint64_t>::CreateAndRegister(
       builtin::kInt, false, [](Arena* arena, uint64_t v) { return (int64_t)v; },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   // duration
 
   // duration() conversion from string..
   status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
       builtin::kDuration, false, CreateDurationFromString, registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kHours, true,
@@ -1465,7 +1465,7 @@ template <typename T, typename CreateCelValue>
         return GetHours(arena, d);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kMinutes, true,
@@ -1473,7 +1473,7 @@ template <typename T, typename CreateCelValue>
         return GetMinutes(arena, d);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kSeconds, true,
@@ -1481,7 +1481,7 @@ template <typename T, typename CreateCelValue>
         return GetSeconds(arena, d);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kMilliseconds, true,
@@ -1489,7 +1489,7 @@ template <typename T, typename CreateCelValue>
         return GetMilliseconds(arena, d);
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue::StringHolder, int64_t>::CreateAndRegister(
       builtin::kString, false,
@@ -1498,7 +1498,7 @@ template <typename T, typename CreateCelValue>
             Arena::Create<std::string>(arena, absl::StrCat(value)));
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue::StringHolder, uint64_t>::CreateAndRegister(
       builtin::kString, false,
@@ -1507,7 +1507,7 @@ template <typename T, typename CreateCelValue>
             Arena::Create<std::string>(arena, absl::StrCat(value)));
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue::StringHolder, double>::CreateAndRegister(
       builtin::kString, false,
@@ -1516,7 +1516,7 @@ template <typename T, typename CreateCelValue>
             Arena::Create<std::string>(arena, absl::StrCat(value)));
       },
       registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
       CreateAndRegister(
@@ -1527,7 +1527,7 @@ template <typename T, typename CreateCelValue>
                 Arena::Create<std::string>(arena, std::string(value.value())));
           },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
   status = FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
       CreateAndRegister(
@@ -1535,9 +1535,9 @@ template <typename T, typename CreateCelValue>
           [](Arena* arena, CelValue::StringHolder value)
               -> CelValue::StringHolder { return value; },
           registry);
-  if (!status.ok()) return status;
+  if (!util::IsOk(status)) return status;
 
-  return ::cel_base::OkStatus();
+  return util::OkStatus();
 }
 
 }  // namespace runtime

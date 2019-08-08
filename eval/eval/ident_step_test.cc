@@ -24,7 +24,7 @@ TEST(IdentStepTest, TestIdentStep) {
   ident_expr->set_name("name0");
 
   auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_TRUE(step_status.ok());
+  ASSERT_TRUE(util::IsOk(step_status));
 
   ExecutionPath path;
   path.push_back(std::move(step_status.ValueOrDie()));
@@ -39,7 +39,7 @@ TEST(IdentStepTest, TestIdentStep) {
 
   activation.InsertValue("name0", CelValue::CreateString(&value));
   auto status0 = impl.Evaluate(activation, &arena);
-  ASSERT_TRUE(status0.ok());
+  ASSERT_TRUE(util::IsOk(status0));
 
   CelValue result = status0.ValueOrDie();
 
@@ -53,7 +53,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ident_expr->set_name("name0");
 
   auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_TRUE(step_status.ok());
+  ASSERT_TRUE(util::IsOk(step_status));
 
   ExecutionPath path;
   path.push_back(std::move(step_status.ValueOrDie()));
@@ -67,7 +67,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   std::string value("test");
 
   auto status0 = impl.Evaluate(activation, &arena);
-  ASSERT_TRUE(status0.ok());
+  ASSERT_TRUE(util::IsOk(status0));
 
   CelValue result = status0.ValueOrDie();
   ASSERT_TRUE(result.IsError());
@@ -79,7 +79,7 @@ TEST(IdentStepTest, TestIdentStepUnknownValue) {
   ident_expr->set_name("name0");
 
   auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_TRUE(step_status.ok());
+  ASSERT_TRUE(util::IsOk(step_status));
 
   ExecutionPath path;
   path.push_back(std::move(step_status.ValueOrDie()));
@@ -94,7 +94,7 @@ TEST(IdentStepTest, TestIdentStepUnknownValue) {
 
   activation.InsertValue("name0", CelValue::CreateString(&value));
   auto status0 = impl.Evaluate(activation, &arena);
-  ASSERT_TRUE(status0.ok());
+  ASSERT_TRUE(util::IsOk(status0));
 
   CelValue result = status0.ValueOrDie();
 
@@ -106,7 +106,7 @@ TEST(IdentStepTest, TestIdentStepUnknownValue) {
 
   activation.set_unknown_paths(unknown_mask);
   status0 = impl.Evaluate(activation, &arena);
-  ASSERT_TRUE(status0.ok());
+  ASSERT_TRUE(util::IsOk(status0));
 
   result = status0.ValueOrDie();
 

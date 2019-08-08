@@ -8,7 +8,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-cel_base::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry);
+util::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry);
 
 }  // namespace runtime
 }  // namespace expr

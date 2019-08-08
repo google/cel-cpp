@@ -21,7 +21,7 @@ TEST(ActivationBindHelperTest, TestSingleBoolBind) {
 
   Activation activation;
 
-  ASSERT_TRUE(BindProtoToActivation(&message, &arena, &activation).ok());
+  ASSERT_TRUE(util::IsOk(BindProtoToActivation(&message, &arena, &activation)));
 
   auto result = activation.FindValue("bool_value", &arena);
 
@@ -41,7 +41,7 @@ TEST(ActivationBindHelperTest, TestSingleInt32Bind) {
 
   Activation activation;
 
-  ASSERT_TRUE(BindProtoToActivation(&message, &arena, &activation).ok());
+  ASSERT_TRUE(util::IsOk(BindProtoToActivation(&message, &arena, &activation)));
 
   auto result = activation.FindValue("int32_value", &arena);
 

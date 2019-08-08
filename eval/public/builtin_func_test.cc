@@ -30,7 +30,7 @@ class BuiltinsTest : public ::testing::Test {
  protected:
   BuiltinsTest() {}
 
-  void SetUp() override { ASSERT_TRUE(RegisterBuiltinFunctions(&registry_).ok()); }
+  void SetUp() override { ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry_))); }
 
   // Helper method. Looks up in registry and tests comparison operation.
   void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
@@ -67,18 +67,18 @@ class BuiltinsTest : public ::testing::Test {
         CreateCelExpressionBuilder(options);
 
     // Builtin registration.
-    ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry()).ok());
+    ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(builder->GetRegistry())));
 
     // Create CelExpression from AST (Expr object).
     auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
 
-    ASSERT_TRUE(cel_expression_status.ok());
+    ASSERT_TRUE(util::IsOk(cel_expression_status));
 
     auto cel_expression = std::move(cel_expression_status.ValueOrDie());
 
     auto eval_status = cel_expression->Evaluate(activation, &arena_);
 
-    ASSERT_TRUE(eval_status.ok());
+    ASSERT_TRUE(util::IsOk(eval_status));
 
     *result = eval_status.ValueOrDie();
   }
@@ -894,7 +894,7 @@ TEST_F(BuiltinsTest, MapInt64Index) {
 
   ASSERT_TRUE(result_value.IsError());
   EXPECT_THAT(result_value.ErrorOrDie()->code(),
-              Eq(cel_base::StatusCode::kNotFound));
+              Eq(absl::StatusCode::kNotFound));
   EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
@@ -923,7 +923,7 @@ TEST_F(BuiltinsTest, MapUint64Index) {
 
   ASSERT_TRUE(result_value.IsError());
   EXPECT_THAT(result_value.ErrorOrDie()->code(),
-              Eq(cel_base::StatusCode::kNotFound));
+              Eq(absl::StatusCode::kNotFound));
   EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
@@ -954,7 +954,7 @@ TEST_F(BuiltinsTest, MapStringIndex) {
 
   ASSERT_TRUE(result_value.IsError());
   EXPECT_THAT(result_value.ErrorOrDie()->code(),
-              Eq(cel_base::StatusCode::kNotFound));
+              Eq(absl::StatusCode::kNotFound));
   EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 

@@ -25,14 +25,14 @@
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/proto_util.h"
-#include "base/statusor.h"
+#include "eval/public/cel_status_or.h"
 
 namespace google {
 namespace api {
 namespace expr {
 namespace runtime {
 
-using CelError = cel_base::Status;
+using CelError = util::Status;
 
 class CelList;
 class CelMap;
@@ -409,7 +409,7 @@ class CelMap {
 // parsed from. -1, if the position can not be determined.
 CelValue CreateErrorValue(
     google::protobuf::Arena *arena, absl::string_view message,
-    cel_base::StatusCode error_code = cel_base::StatusCode::kUnknown,
+    absl::StatusCode error_code = absl::StatusCode::kUnknown,
     int position = -1);
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena);

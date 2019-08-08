@@ -13,13 +13,13 @@ class IdentStep : public ExpressionStepBase {
   IdentStep(absl::string_view name, int64_t expr_id)
       : ExpressionStepBase(expr_id), name_(name) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  util::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string name_;
 };
 
-cel_base::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
+util::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
   CelValue result;
   auto it = frame->iter_vars().find(name_);
   if (it != frame->iter_vars().end()) {
@@ -49,12 +49,12 @@ cel_base::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 
   frame->value_stack().Push(result);
 
-  return cel_base::OkStatus();
+  return util::OkStatus();
 }
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
+util::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const google::api::expr::v1alpha1::Expr::Ident* ident_expr, int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<IdentStep>(ident_expr->name(), expr_id);

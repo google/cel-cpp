@@ -14,7 +14,7 @@ class JumpStep : public JumpStepBase {
   JumpStep(absl::optional<int> jump_offset, int64_t expr_id)
       : JumpStepBase(jump_offset, expr_id) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  util::Status Evaluate(ExecutionFrame* frame) const override {
     return Jump(frame);
   }
 };
@@ -28,10 +28,10 @@ class CondJumpStep : public JumpStepBase {
         jump_condition_(jump_condition),
         leave_on_stack_(leave_on_stack) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  util::Status Evaluate(ExecutionFrame* frame) const override {
     // Peek the top value
     if (!frame->value_stack().HasEnough(1)) {
-      return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+      return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
     }
 
     CelValue value = frame->value_stack().Peek();
@@ -44,7 +44,7 @@ class CondJumpStep : public JumpStepBase {
       return Jump(frame);
     }
 
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
  private:
@@ -62,10 +62,10 @@ class BoolCheckJumpStep : public JumpStepBase {
   BoolCheckJumpStep(absl::optional<int> jump_offset, int64_t expr_id)
       : JumpStepBase(jump_offset, expr_id) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  util::Status Evaluate(ExecutionFrame* frame) const override {
     // Peek the top value
     if (!frame->value_stack().HasEnough(1)) {
-      return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+      return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
     }
 
     CelValue value = frame->value_stack().Peek();
@@ -80,7 +80,7 @@ class BoolCheckJumpStep : public JumpStepBase {
       return Jump(frame);
     }
 
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 };
 
@@ -89,7 +89,7 @@ class BoolCheckJumpStep : public JumpStepBase {
 // Factory method for Conditional Jump step.
 // Conditional Jump requires a boolean value to sit on the stack.
 // It is compared to jump_condition, and if matched, jump is performed.
-cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
+util::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
     bool jump_condition, bool leave_on_stack, absl::optional<int> jump_offset,
     int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step = absl::make_unique<CondJumpStep>(
@@ -99,7 +99,7 @@ cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
 }
 
 // Factory method for Jump step.
-cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
+util::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step =
       absl::make_unique<JumpStep>(jump_offset, expr_id);
@@ -110,7 +110,7 @@ cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
 // Factory method for Conditional Jump step.
 // Conditional Jump requires a value to sit on the stack.
 // If this value is an error, a jump is performed.
-cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
+util::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step =
       absl::make_unique<BoolCheckJumpStep>(jump_offset, expr_id);

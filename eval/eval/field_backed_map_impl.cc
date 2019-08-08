@@ -86,7 +86,7 @@ class KeyList : public CelList {
         entry_descriptor->FindFieldByNumber(kKeyTag);
 
     auto status = CreateValueFromSingleField(entry, key_desc, arena_, &key);
-    if (!status.ok()) {
+    if (!util::IsOk(status)) {
       return CreateErrorValue(arena_, status.message());
     }
     return key;
@@ -167,7 +167,7 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
   CelValue result = CelValue::CreateNull();
   auto status = CreateValueFromMapValue(message_, value_desc, &value_ref,
                                         arena_, &result);
-  if (!status.ok()) {
+  if (!util::IsOk(status)) {
     return CreateErrorValue(arena_, status.message());
   }
   return result;
@@ -190,7 +190,7 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 
     auto status =
         CreateValueFromSingleField(entry, key_desc, arena_, &inner_key);
-    if (!status.ok()) {
+    if (!util::IsOk(status)) {
       return CreateErrorValue(arena_, status.ToString());
     }
 
@@ -219,7 +219,7 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 
       auto status =
           CreateValueFromSingleField(entry, value_desc, arena_, &result);
-      if (!status.ok()) {
+      if (!util::IsOk(status)) {
         return CreateErrorValue(arena_, status.message());
       }
 

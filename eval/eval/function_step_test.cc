@@ -27,15 +27,15 @@ class ConstFunction : public CelFunction {
     return Descriptor{"", false, {}};
   }
 
-  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+  util::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (!args.empty()) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Bad arguments number");
     }
 
     *result = value_;
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
  private:
@@ -51,10 +51,10 @@ class AddFunction : public CelFunction {
         "_+_", false, {CelValue::Type::kInt64, CelValue::Type::kInt64}};
   }
 
-  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+  util::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (args.size() != 2 || !args[0].IsInt64() || !args[1].IsInt64()) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Mismatched arguments passed to method");
     }
 
@@ -62,7 +62,7 @@ class AddFunction : public CelFunction {
     int64_t arg1 = args[1].Int64OrDie();
 
     *result = CelValue::CreateInt64(arg0 + arg1);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 };
 
@@ -82,9 +82,9 @@ TEST(FunctionStepTest, SimpleFunctionTest) {
   auto step1_status = CreateFunctionStep(dummy_expr1.id(), {&const_func1});
   auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
 
-  ASSERT_TRUE(step0_status.ok());
-  ASSERT_TRUE(step1_status.ok());
-  ASSERT_TRUE(step2_status.ok());
+  ASSERT_TRUE(util::IsOk(step0_status));
+  ASSERT_TRUE(util::IsOk(step1_status));
+  ASSERT_TRUE(util::IsOk(step2_status));
 
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
@@ -98,7 +98,7 @@ TEST(FunctionStepTest, SimpleFunctionTest) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  EXPECT_TRUE(status.ok());
+  EXPECT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -119,8 +119,8 @@ TEST(FunctionStepTest, TestStackUnderflow) {
   auto step0_status = CreateFunctionStep(dummy_expr0.id(), {&const_func0});
   auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
 
-  ASSERT_TRUE(step0_status.ok());
-  ASSERT_TRUE(step2_status.ok());
+  ASSERT_TRUE(util::IsOk(step0_status));
+  ASSERT_TRUE(util::IsOk(step2_status));
 
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step2_status.ValueOrDie()));
@@ -133,7 +133,7 @@ TEST(FunctionStepTest, TestStackUnderflow) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  EXPECT_FALSE(status.ok());
+  EXPECT_FALSE(util::IsOk(status));
 }
 
 // Test factory method when empty overload set is provided.
@@ -143,7 +143,7 @@ TEST(FunctionStepTest, TestNoOverloadsOnCreation) {
   // function step with empty overloads
   auto step0_status = CreateFunctionStep(dummy_expr0.id(), {});
 
-  EXPECT_FALSE(step0_status.ok());
+  EXPECT_FALSE(util::IsOk(step0_status));
 }
 
 TEST(FunctionStepTest, TestMultipleOverloads) {
@@ -157,7 +157,7 @@ TEST(FunctionStepTest, TestMultipleOverloads) {
   auto step0_status =
       CreateFunctionStep(dummy_expr0.id(), {&const_func0, &const_func0});
 
-  ASSERT_TRUE(step0_status.ok());
+  ASSERT_TRUE(util::IsOk(step0_status));
 
   path.push_back(std::move(step0_status.ValueOrDie()));
 
@@ -169,7 +169,7 @@ TEST(FunctionStepTest, TestMultipleOverloads) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  EXPECT_FALSE(status.ok());
+  EXPECT_FALSE(util::IsOk(status));
 }
 
 // Test situation when overloads match input arguments during evaliation.
@@ -190,9 +190,9 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   auto step1_status = CreateFunctionStep(dummy_expr1.id(), {&const_func1});
   auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
 
-  ASSERT_TRUE(step0_status.ok());
-  ASSERT_TRUE(step1_status.ok());
-  ASSERT_TRUE(step2_status.ok());
+  ASSERT_TRUE(util::IsOk(step0_status));
+  ASSERT_TRUE(util::IsOk(step1_status));
+  ASSERT_TRUE(util::IsOk(step2_status));
 
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
@@ -206,7 +206,7 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
   ASSERT_TRUE(value.IsError());
@@ -237,9 +237,9 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluationErrorForwarding) {
   auto step1_status = CreateFunctionStep(dummy_expr1.id(), {&const_func1});
   auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
 
-  ASSERT_TRUE(step0_status.ok());
-  ASSERT_TRUE(step1_status.ok());
-  ASSERT_TRUE(step2_status.ok());
+  ASSERT_TRUE(util::IsOk(step0_status));
+  ASSERT_TRUE(util::IsOk(step1_status));
+  ASSERT_TRUE(util::IsOk(step2_status));
 
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
@@ -253,7 +253,7 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluationErrorForwarding) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 

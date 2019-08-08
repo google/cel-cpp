@@ -29,7 +29,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
     constant_arena_ = arena;
   }
 
-  cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  util::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
 

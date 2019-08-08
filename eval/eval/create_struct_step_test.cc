@@ -30,7 +30,7 @@ using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
-cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
+util::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        const CelValue& value,
                                        google::protobuf::Arena* arena) {
   ExecutionPath path;
@@ -48,13 +48,13 @@ cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
   auto entry = create_struct->add_entries();
   entry->set_field_key(field.data());
 
-  if (!step0_status.ok()) {
+  if (!util::IsOk(step0_status)) {
     return step0_status.status();
   }
 
   auto step1_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  if (!step1_status.ok()) {
+  if (!util::IsOk(step1_status)) {
     return step1_status.status();
   }
 
@@ -71,7 +71,7 @@ cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
 void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
                                 google::protobuf::Arena* arena, TestMessage* test_msg) {
   auto status = RunExpression(field, value, arena);
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -91,7 +91,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
   CelValue value = CelValue::CreateList(&cel_list);
 
   auto status = RunExpression(field, value, arena);
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -105,7 +105,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds Map and runs it.
-cel_base::StatusOr<CelValue> RunCreateMapExpression(
+util::StatusOr<CelValue> RunCreateMapExpression(
     const std::vector<std::pair<CelValue, CelValue>> values,
     google::protobuf::Arena* arena) {
   ExecutionPath path;
@@ -127,7 +127,7 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
     key_ident->set_name(key_name);
     exprs.push_back(expr);
     auto step_key_status = CreateIdentStep(key_ident, exprs.back().id());
-    if (!step_key_status.ok()) {
+    if (!util::IsOk(step_key_status)) {
       return step_key_status.status();
     }
 
@@ -136,7 +136,7 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
     value_ident->set_name(value_name);
     exprs.push_back(expr);
     auto step_value_status = CreateIdentStep(value_ident, exprs.back().id());
-    if (!step_value_status.ok()) {
+    if (!util::IsOk(step_value_status)) {
       return step_value_status.status();
     }
 
@@ -152,7 +152,7 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
 
   auto step1_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  if (!step1_status.ok()) {
+  if (!util::IsOk(step1_status)) {
     return step1_status.status();
   }
 
@@ -172,7 +172,7 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 
   auto step_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  ASSERT_TRUE(step_status.ok());
+  ASSERT_TRUE(util::IsOk(step_status));
 
   path.push_back(std::move(step_status.ValueOrDie()));
 
@@ -182,7 +182,7 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   google::protobuf::Arena arena;
 
   auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -572,7 +572,7 @@ TEST(CreateCreateStructStepTest, TestCreateEmptyMap) {
   Arena arena;
   auto status = RunCreateMapExpression({}, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   CelValue result_value = status.ValueOrDie();
   ASSERT_TRUE(result_value.IsMap());
@@ -596,7 +596,7 @@ TEST(CreateCreateStructStepTest, TestCreateStringMap) {
 
   auto status = RunCreateMapExpression(entries, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   CelValue result_value = status.ValueOrDie();
   ASSERT_TRUE(result_value.IsMap());

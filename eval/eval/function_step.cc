@@ -23,16 +23,16 @@ class FunctionStep : public ExpressionStepBase {
     }
   }
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  util::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::vector<const CelFunction*> overloads_;
   int num_arguments_;
 };
 
-cel_base::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
+util::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(num_arguments_)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+    return util::MakeStatus(google::rpc::Code::INTERNAL, "Value stack underflow");
   }
 
   // Create Span object that contains input arguments to the function.
@@ -43,7 +43,7 @@ cel_base::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
     if (overload->MatchArguments(input_args)) {
       // More than one overload matches our arguments.
       if (matched_function != nullptr) {
-        return cel_base::Status(cel_base::StatusCode::kInternal,
+        return util::MakeStatus(google::rpc::Code::INTERNAL,
                             "Cannot resolve overloads");
       }
 
@@ -55,9 +55,9 @@ cel_base::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
 
   // Overload found
   if (matched_function != nullptr) {
-    cel_base::Status status =
+    util::Status status =
         matched_function->Evaluate(input_args, &result, frame->arena());
-    if (!status.ok()) {
+    if (!util::IsOk(status)) {
       return status;
     }
   } else {
@@ -81,12 +81,12 @@ cel_base::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Pop(num_arguments_);
   frame->value_stack().Push(result);
 
-  return cel_base::OkStatus();
+  return util::OkStatus();
 }
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+util::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
     const CelFunctionRegistry& function_registry) {
   bool receiver_style = call_expr->has_target();
@@ -100,10 +100,10 @@ cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
   return CreateFunctionStep(expr_id, overloads);
 }
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+util::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     int64_t expr_id, std::vector<const CelFunction*> overloads) {
   if (overloads.empty()) {
-    return ::cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+    return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "No overloads provided for FunctionStep creation");
   }
 

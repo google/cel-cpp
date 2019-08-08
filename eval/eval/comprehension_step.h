@@ -21,7 +21,7 @@ class ComprehensionNextStep : public ExpressionStepBase {
   void set_jump_offset(int offset);
   void set_error_jump_offset(int offset);
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  util::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string accu_var_;
@@ -37,7 +37,7 @@ class ComprehensionCondStep : public ExpressionStepBase {
 
   void set_jump_offset(int offset);
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  util::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string iter_var_;
@@ -50,7 +50,7 @@ class ComprehensionFinish : public ExpressionStepBase {
   ComprehensionFinish(const std::string& accu_var, const std::string& iter_var,
                       int64_t expr_id);
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  util::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string accu_var_;

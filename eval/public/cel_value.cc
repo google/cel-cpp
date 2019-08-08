@@ -373,14 +373,14 @@ std::string CelValue::TypeName(Type value_type) {
 }
 
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
-                          cel_base::StatusCode error_code, int position) {
+                          absl::StatusCode error_code, int position) {
   CelError* error = Arena::Create<CelError>(arena, error_code, message);
   return CelValue::CreateError(error);
 }
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena) {
   return CreateErrorValue(arena, kErrNoMatchingOverload,
-                          cel_base::StatusCode::kUnknown);
+                          absl::StatusCode::kUnknown);
 }
 
 bool CheckNoMatchingOverloadError(CelValue value) {
@@ -389,11 +389,11 @@ bool CheckNoMatchingOverloadError(CelValue value) {
 }
 
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
-  return CreateErrorValue(arena, "no_such_field", cel_base::StatusCode::kNotFound);
+  return CreateErrorValue(arena, "no_such_field", absl::StatusCode::kNotFound);
 }
 
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key) {
-  return CreateErrorValue(arena, kErrNoSuchKey, cel_base::StatusCode::kNotFound);
+  return CreateErrorValue(arena, kErrNoSuchKey, absl::StatusCode::kNotFound);
 }
 
 bool CheckNoSuchKeyError(CelValue value) {

@@ -116,7 +116,7 @@ class ConstantFoldingTransform {
         }
         CelValue result;
         auto status = matched_function->Evaluate(arg_values, &result, arena_);
-        if (status.ok()) {
+        if (util::IsOk(status)) {
           makeConstant(result, out);
         } else {
           makeConstant(

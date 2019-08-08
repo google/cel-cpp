@@ -52,7 +52,7 @@ class CelFunction {
   // zero). When former happens, error Status is returned and *result is
   // not changed. In case of business logic error, returned Status is Ok, and
   // error is provided as CelValue - wrapped CelError in *result.
-  virtual ::cel_base::Status Evaluate(absl::Span<const CelValue> arguments,
+  virtual util::Status Evaluate(absl::Span<const CelValue> arguments,
                                   CelValue* result,
                                   google::protobuf::Arena* arena) const = 0;
 
@@ -81,7 +81,7 @@ class CelFunctionRegistry {
   // passed to registry.
   // Function registration should be performed prior to
   // CelExpression creation.
-  cel_base::Status Register(std::unique_ptr<CelFunction> function);
+  util::Status Register(std::unique_ptr<CelFunction> function);
 
   // Find subset of CelFunction that match overload conditions
   // As types may not be available during expression compilation,

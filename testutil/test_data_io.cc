@@ -131,7 +131,7 @@ google::rpc::Status WriteTestData(absl::string_view test_name,
 
 TestData ReadTestData(absl::string_view test_name) {
   TestData data;
-  auto dir = absl::StrCat(std::getenv("TEST_SRCDIR"), "/",
+  auto dir = absl::StrCat(absl::GetFlag(std::getenv("TEST_SRCDIR")), "/",
                           absl::GetFlag(FLAGS_test_data_folder));
 
   auto status = ReadPbFile(

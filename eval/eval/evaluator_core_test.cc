@@ -19,9 +19,9 @@ using testing::Eq;  // Optional ::testing aliases. Remove if unused.
 // Pushes int64_t(0) on top of value stack.
 class FakeConstExpressionStep : public ExpressionStep {
  public:
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  util::Status Evaluate(ExecutionFrame* frame) const override {
     frame->value_stack().Push(CelValue::CreateInt64(0));
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
   int64_t id() const override { return 0; }
@@ -33,13 +33,13 @@ class FakeConstExpressionStep : public ExpressionStep {
 // Increments argument on top of the stack.
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  util::Status Evaluate(ExecutionFrame* frame) const override {
     CelValue value = frame->value_stack().Peek();
     frame->value_stack().Pop(1);
     EXPECT_TRUE(value.IsInt64());
     int64_t val = value.Int64OrDie();
     frame->value_stack().Push(CelValue::CreateInt64(val + 1));
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
   int64_t id() const override { return 0; }
@@ -86,7 +86,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  EXPECT_TRUE(status.ok());
+  EXPECT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
   EXPECT_TRUE(value.IsInt64());
@@ -158,10 +158,10 @@ TEST(EvaluatorCoreTest, TraceTest) {
 
   FlatExprBuilder builder;
   auto builtin_status = RegisterBuiltinFunctions(builder.GetRegistry());
-  ASSERT_TRUE(builtin_status.ok());
+  ASSERT_TRUE(util::IsOk(builtin_status));
   builder.set_shortcircuiting(false);
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_TRUE(util::IsOk(build_status));
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -191,9 +191,9 @@ TEST(EvaluatorCoreTest, TraceTest) {
       activation, &arena,
       [&](int64_t expr_id, const CelValue& value, google::protobuf::Arena* arena) {
         callback.Call(expr_id, value, arena);
-        return ::cel_base::OkStatus();
+        return util::OkStatus();
       });
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_TRUE(util::IsOk(eval_status));
 }
 
 }  // namespace runtime

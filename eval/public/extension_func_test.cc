@@ -23,8 +23,8 @@ class ExtensionTest : public ::testing::Test {
   ExtensionTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(RegisterBuiltinFunctions(&registry_).ok());
-    ASSERT_TRUE(RegisterExtensionFunctions(&registry_).ok());
+    ASSERT_TRUE(util::IsOk(RegisterBuiltinFunctions(&registry_)));
+    ASSERT_TRUE(util::IsOk(RegisterExtensionFunctions(&registry_)));
   }
 
   // Helper method to test string startsWith() function
@@ -49,7 +49,7 @@ class ExtensionTest : public ::testing::Test {
       absl::Span<CelValue> arg_span(&args[0], args.size());
       auto status = func->Evaluate(arg_span, &result_value, &arena);
 
-      ASSERT_TRUE(status.ok());
+      ASSERT_TRUE(util::IsOk(status));
       ASSERT_TRUE(result_value.IsBool());
       ASSERT_EQ(result_value.BoolOrDie(), result);
     }
@@ -79,7 +79,7 @@ class ExtensionTest : public ::testing::Test {
     absl::Span<CelValue> arg_span(&args[0], args.size());
     auto status = func->Evaluate(arg_span, result, arena);
 
-    ASSERT_TRUE(status.ok());
+    ASSERT_TRUE(util::IsOk(status));
   }
 
   // Helper method to test duration() function
@@ -95,7 +95,7 @@ class ExtensionTest : public ::testing::Test {
     absl::Span<CelValue> arg_span(&args[0], args.size());
     auto status = func->Evaluate(arg_span, result, arena);
 
-    ASSERT_TRUE(status.ok());
+    ASSERT_TRUE(util::IsOk(status));
   }
 
   // Function registry object
@@ -170,7 +170,7 @@ TEST_F(ExtensionTest, TestTimestampFromString) {
   // Invalid timestamp - empty string.
   EXPECT_NO_FATAL_FAILURE(PerformTimestampConversion(&arena, "", &result));
   ASSERT_TRUE(result.IsError());
-  ASSERT_EQ(result.ErrorOrDie()->code(), cel_base::StatusCode::kInvalidArgument);
+  ASSERT_EQ(result.ErrorOrDie()->code(), google::rpc::Code::INVALID_ARGUMENT);
 
   // Invalid timestamp.
   EXPECT_NO_FATAL_FAILURE(
@@ -203,7 +203,7 @@ TEST_F(ExtensionTest, TestDurationFromString) {
   // Invalid duration - empty string.
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "", &result));
   ASSERT_TRUE(result.IsError());
-  ASSERT_EQ(result.ErrorOrDie()->code(), cel_base::StatusCode::kInvalidArgument);
+  ASSERT_EQ(result.ErrorOrDie()->code(), google::rpc::Code::INVALID_ARGUMENT);
 
   // Invalid duration.
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "100", &result));

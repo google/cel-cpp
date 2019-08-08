@@ -73,7 +73,7 @@ http_archive(
 
 # Google RE2 (Regular Expression) C++ Library
 http_archive(
-    name = "com_google_re2",
+    name = "com_googlesource_code_re2",
     strip_prefix = "re2-master",
     urls = ["https://github.com/google/re2/archive/master.zip"],
 )

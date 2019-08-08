@@ -6,8 +6,8 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"
-#include "base/status.h"
-#include "base/statusor.h"
+#include "google/rpc/status.pb.h"
+#include "eval/public/cel_status_or.h"
 
 namespace google {
 namespace api {
@@ -73,7 +73,7 @@ bool AddType(CelFunction::Descriptor* descriptor) {
 //  auto func_status =
 //      FunctionAdapter<bool, int64_t, int64_t>::Create("<", false, func);
 //
-//  if(func_status.ok()) {
+//  if(util::IsOk(func_status)) {
 //     auto func = func_status.ValueOrDie();
 //  }
 template <typename ReturnType, typename... Arguments>
@@ -85,7 +85,7 @@ class FunctionAdapter : public CelFunction {
       : CelFunction(descriptor), handler_(std::move(handler)) {
   }
 
-  static cel_base::StatusOr<std::unique_ptr<CelFunction>> Create(
+  static util::StatusOr<std::unique_ptr<CelFunction>> Create(
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler) {
     CelFunction::Descriptor descriptor;
@@ -93,8 +93,8 @@ class FunctionAdapter : public CelFunction {
     descriptor.receiver_style = receiver_type;
 
     if (!internal::AddType<0, Arguments...>(&descriptor)) {
-      return cel_base::Status(
-          cel_base::StatusCode::kInternal,
+      return util::MakeStatus(
+          google::rpc::Code::INTERNAL,
           absl::StrCat("Failed to create adapter for ", name,
                        ": failed to determine input parameter type"));
     }
@@ -106,12 +106,12 @@ class FunctionAdapter : public CelFunction {
 
   // Creates function handler and attempts to register it with
   // supplied function registry.
-  static cel_base::Status CreateAndRegister(
+  static util::Status CreateAndRegister(
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler,
       CelFunctionRegistry* registry) {
     auto status = Create(name, receiver_type, std::move(handler));
-    if (!status.ok()) {
+    if (!util::IsOk(status)) {
       return status.status();
     }
 
@@ -119,30 +119,30 @@ class FunctionAdapter : public CelFunction {
   }
 
   template <int arg_index>
-  inline cel_base::Status RunWrap(absl::Span<const CelValue> arguments,
+  inline util::Status RunWrap(absl::Span<const CelValue> arguments,
                               std::tuple<::google::protobuf::Arena*, Arguments...> input,
                               CelValue* result, ::google::protobuf::Arena* arena) const {
     if (!ConvertFromValue(arguments[arg_index],
                           &std::get<arg_index + 1>(input))) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Type conversion failed");
     }
     return RunWrap<arg_index + 1>(arguments, input, result, arena);
   }
 
   template <>
-  inline cel_base::Status RunWrap<sizeof...(Arguments)>(
+  inline util::Status RunWrap<sizeof...(Arguments)>(
       absl::Span<const CelValue> arguments,
       std::tuple<::google::protobuf::Arena*, Arguments...> input, CelValue* result,
       ::google::protobuf::Arena* arena) const {
     return CreateReturnValue(absl::apply(handler_, input), arena, result);
   }
 
-  ::cel_base::Status Evaluate(absl::Span<const CelValue> arguments,
+  util::Status Evaluate(absl::Span<const CelValue> arguments,
                           CelValue* result,
                           ::google::protobuf::Arena* arena) const override {
     if (arguments.size() != sizeof...(Arguments)) {
-      return cel_base::Status(cel_base::StatusCode::kInternal,
+      return util::MakeStatus(google::rpc::Code::INTERNAL,
                           "Argument number mismatch");
     }
 
@@ -164,97 +164,97 @@ class FunctionAdapter : public CelFunction {
   }
 
   // CreateReturnValue method wraps evaluation result with CelValue.
-  static cel_base::Status CreateReturnValue(bool value, ::google::protobuf::Arena* arena,
+  static util::Status CreateReturnValue(bool value, ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = CelValue::CreateBool(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(int64_t value, ::google::protobuf::Arena* arena,
+  static util::Status CreateReturnValue(int64_t value, ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = CelValue::CreateInt64(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(uint64_t value, ::google::protobuf::Arena* arena,
+  static util::Status CreateReturnValue(uint64_t value, ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = CelValue::CreateUint64(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(double value, ::google::protobuf::Arena* arena,
+  static util::Status CreateReturnValue(double value, ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = CelValue::CreateDouble(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(CelValue::StringHolder value,
+  static util::Status CreateReturnValue(CelValue::StringHolder value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = CelValue::CreateString(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(CelValue::BytesHolder value,
+  static util::Status CreateReturnValue(CelValue::BytesHolder value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = CelValue::CreateBytes(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const ::google::protobuf::Message* value,
+  static util::Status CreateReturnValue(const ::google::protobuf::Message* value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Null Message pointer returned");
     }
     *result = CelValue::CreateMessage(value, arena);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelList* value,
+  static util::Status CreateReturnValue(const CelList* value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Null CelList pointer returned");
     }
     *result = CelValue::CreateList(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelMap* value,
+  static util::Status CreateReturnValue(const CelMap* value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Null CelMap pointer returned");
     }
     *result = CelValue::CreateMap(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelError* value,
+  static util::Status CreateReturnValue(const CelError* value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                           "Null CelError pointer returned");
     }
     *result = CelValue::CreateError(value);
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelValue& value,
+  static util::Status CreateReturnValue(const CelValue& value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     *result = value;
-    return cel_base::OkStatus();
+    return util::OkStatus();
   }
 
   template <typename T>
-  static cel_base::Status CreateReturnValue(const cel_base::StatusOr<T>& value,
+  static util::Status CreateReturnValue(const util::StatusOr<T>& value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     if (!value) {

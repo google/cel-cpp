@@ -16,7 +16,7 @@ CelValue FieldBackedListImpl::operator[](int index) const {
   CelValue result = CelValue::CreateNull();
   auto status = CreateValueFromRepeatedField(message_, descriptor_, arena_,
                                              index, &result);
-  if (!status.ok()) {
+  if (!util::IsOk(status)) {
     result = CreateErrorValue(arena_, status.ToString());
   }
 

@@ -21,7 +21,7 @@ namespace runtime {
 // then the order of the callback invocations is guaranteed to correspond
 // the order of variable sub-elements (e.g. the order of elements returned
 // by Comprehension.iter_range).
-using CelEvaluationListener = std::function<cel_base::Status(
+using CelEvaluationListener = std::function<util::Status(
     int64_t expr_id, const CelValue&, google::protobuf::Arena*)>;
 
 // Base interface for expression evaluating objects.
@@ -33,11 +33,11 @@ class CelExpression {
   // activation contains bindings from parameter names to values
   // arena parameter specifies Arena object where output result and
   // internal data will be allocated.
-  virtual cel_base::StatusOr<CelValue> Evaluate(const Activation& activation,
+  virtual util::StatusOr<CelValue> Evaluate(const Activation& activation,
                                             google::protobuf::Arena* arena) const = 0;
 
   // Trace evaluates expression calling the callback on each sub-tree.
-  virtual cel_base::StatusOr<CelValue> Trace(
+  virtual util::StatusOr<CelValue> Trace(
       const Activation& activation, google::protobuf::Arena* arena,
       CelEvaluationListener callback) const = 0;
 };
@@ -55,7 +55,7 @@ class CelExpressionBuilder {
 
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree
-  virtual cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  virtual util::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const = 0;
 

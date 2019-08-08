@@ -18,7 +18,7 @@
 #include "eval/public/ast_traverse.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/cel_builtins.h"
-#include "base/canonical_errors.h"
+#include "google/rpc/code.pb.h"
 
 namespace google {
 namespace api {
@@ -48,7 +48,7 @@ class FlatExprVisitor : public AstVisitor {
       absl::string_view container,
       const absl::flat_hash_map<std::string, CelValue>& constant_idents)
       : flattened_path_(path),
-        progress_status_(cel_base::OkStatus()),
+        progress_status_(util::OkStatus()),
         resolved_select_expr_(nullptr),
         function_registry_(function_registry),
         shortcircuiting_(shortcircuiting),
@@ -109,7 +109,7 @@ class FlatExprVisitor : public AstVisitor {
 
   void PostVisitConst(const Constant* const_expr, const Expr* expr,
                       const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
@@ -117,7 +117,7 @@ class FlatExprVisitor : public AstVisitor {
     if (value.has_value()) {
       AddStep(CreateConstValueStep(value.value(), expr->id()));
     } else {
-      SetProgressStatusError(cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      SetProgressStatusError(util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT,
                                           "Unsupported constant type"));
     }
   }
@@ -126,7 +126,7 @@ class FlatExprVisitor : public AstVisitor {
   // Invoked after child nodes are processed.
   void PostVisitIdent(const Ident* ident_expr, const Expr* expr,
                       const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
@@ -162,7 +162,7 @@ class FlatExprVisitor : public AstVisitor {
 
     if (resolved_select_expr_) {
       if (!resolved_select_expr_->has_select_expr()) {
-        progress_status_ = cel_base::InternalError("Unexpected Expr type");
+        progress_status_ = util::MakeStatus(google::rpc::Code::INTERNAL, "Unexpected Expr type");
         return;
       }
       AddStep(CreateConstValueStep(value_desc, resolved_select_expr_->id()));
@@ -173,7 +173,7 @@ class FlatExprVisitor : public AstVisitor {
 
   void PreVisitSelect(const Select* select_expr, const Expr* expr,
                       const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
     // Not exactly the cleanest solution - we peek into child of
@@ -192,7 +192,7 @@ class FlatExprVisitor : public AstVisitor {
   // Invoked after child nodes are processed.
   void PostVisitSelect(const Select* select_expr, const Expr* expr,
                        const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
@@ -223,7 +223,7 @@ class FlatExprVisitor : public AstVisitor {
   // PreVisitCall is invoked before child nodes are processed.
   void PreVisitCall(const Call* call_expr, const Expr* expr,
                     const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
@@ -248,7 +248,7 @@ class FlatExprVisitor : public AstVisitor {
   // Invoked after all child nodes are processed.
   void PostVisitCall(const Call* call_expr, const Expr* expr,
                      const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
@@ -265,7 +265,7 @@ class FlatExprVisitor : public AstVisitor {
   void PreVisitComprehension(const Comprehension* comprehension_expr,
                              const Expr* expr,
                              const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
     cond_visitor_stack_.emplace(expr,
@@ -278,7 +278,7 @@ class FlatExprVisitor : public AstVisitor {
   void PostVisitComprehension(const Comprehension* comprehension_expr,
                               const Expr* expr,
                               const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
     auto cond_visitor = FindCondVisitor(expr);
@@ -289,7 +289,7 @@ class FlatExprVisitor : public AstVisitor {
   // Invoked after each argument node processed.
   void PostVisitArg(int arg_num, const Expr* expr,
                     const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
     auto cond_visitor = FindCondVisitor(expr);
@@ -302,7 +302,7 @@ class FlatExprVisitor : public AstVisitor {
   // Invoked after child nodes are processed.
   void PostVisitCreateList(const CreateList* list_expr, const Expr* expr,
                            const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
@@ -313,14 +313,14 @@ class FlatExprVisitor : public AstVisitor {
   // Invoked after child nodes are processed.
   void PostVisitCreateStruct(const CreateStruct* struct_expr, const Expr* expr,
                              const SourcePosition* position) override {
-    if (!progress_status_.ok()) {
+    if (!util::IsOk(progress_status_)) {
       return;
     }
 
     AddStep(CreateCreateStructStep(struct_expr, expr->id()));
   }
 
-  cel_base::Status progress_status() const { return progress_status_; }
+  util::Status progress_status() const { return progress_status_; }
 
  private:
   class CondVisitor {
@@ -388,8 +388,8 @@ class FlatExprVisitor : public AstVisitor {
   };
 
   template <typename T>
-  void AddStep(cel_base::StatusOr<std::unique_ptr<T>> step_status) {
-    if (step_status.ok() && progress_status_.ok()) {
+  void AddStep(util::StatusOr<std::unique_ptr<T>> step_status) {
+    if (util::IsOk(step_status) && util::IsOk(progress_status_)) {
       flattened_path_->push_back(std::move(step_status.ValueOrDie()));
     } else {
       SetProgressStatusError(step_status.status());
@@ -398,13 +398,13 @@ class FlatExprVisitor : public AstVisitor {
 
   template <typename T>
   void AddStep(std::unique_ptr<T> step) {
-    if (progress_status_.ok()) {
+    if (util::IsOk(progress_status_)) {
       flattened_path_->push_back(std::move(step));
     }
   }
 
-  void SetProgressStatusError(const cel_base::Status& status) {
-    if (progress_status_.ok() && !status.ok()) {
+  void SetProgressStatusError(const util::Status& status) {
+    if (util::IsOk(progress_status_) && !util::IsOk(status)) {
       progress_status_ = status;
     }
   }
@@ -422,7 +422,7 @@ class FlatExprVisitor : public AstVisitor {
   }
 
   ExecutionPath* flattened_path_;
-  cel_base::Status progress_status_;
+  util::Status progress_status_;
 
   std::stack<std::pair<const Expr*, std::unique_ptr<CondVisitor>>>
       cond_visitor_stack_;
@@ -456,7 +456,7 @@ void FlatExprVisitor::BinaryCondVisitor::PostVisitArg(int arg_num,
     // jump over the second branch and provide result as final output.
     auto jump_step_status =
         CreateCondJumpStep(cond_value_, true, {}, expr->id());
-    if (jump_step_status.ok()) {
+    if (util::IsOk(jump_step_status)) {
       jump_step_ = Jump(visitor_->GetCurrentIndex(),
                         jump_step_status.ValueOrDie().get());
     }
@@ -488,7 +488,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
   if (arg_num == 0) {
     // Jump in case of error or non-bool
     auto error_jump_status = CreateBoolCheckJumpStep({}, expr->id());
-    if (error_jump_status.ok()) {
+    if (util::IsOk(error_jump_status)) {
       error_jump_ = Jump(visitor_->GetCurrentIndex(),
                          error_jump_status.ValueOrDie().get());
     }
@@ -498,7 +498,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
     // Value is to be removed from the stack.
     auto jump_to_second_status =
         CreateCondJumpStep(false, false, {}, expr->id());
-    if (jump_to_second_status.ok()) {
+    if (util::IsOk(jump_to_second_status)) {
       jump_to_second_ = Jump(visitor_->GetCurrentIndex(),
                              jump_to_second_status.ValueOrDie().get());
     }
@@ -507,7 +507,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
     // Jump after the first and over the second branch of execution.
     // Value is to be removed from the stack.
     auto jump_after_first_status = CreateJumpStep({}, expr->id());
-    if (jump_after_first_status.ok()) {
+    if (util::IsOk(jump_after_first_status)) {
       jump_after_first_ = Jump(visitor_->GetCurrentIndex(),
                                jump_after_first_status.ValueOrDie().get());
     }
@@ -516,7 +516,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
     if (jump_to_second_.exists()) {
       jump_to_second_.set_target(visitor_->GetCurrentIndex());
     } else {
-      visitor_->SetProgressStatusError(cel_base::InvalidArgumentError(
+      visitor_->SetProgressStatusError(util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
           "Error configuring ternary operator: jump_to_second_ is null"));
     }
   }
@@ -530,14 +530,14 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisit(const Expr* expr) {
   if (error_jump_.exists()) {
     error_jump_.set_target(visitor_->GetCurrentIndex());
   } else {
-    visitor_->SetProgressStatusError(cel_base::InvalidArgumentError(
+    visitor_->SetProgressStatusError(util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
         "Error configuring ternary operator: error_jump_ is null"));
     return;
   }
   if (jump_after_first_.exists()) {
     jump_after_first_.set_target(visitor_->GetCurrentIndex());
   } else {
-    visitor_->SetProgressStatusError(cel_base::InvalidArgumentError(
+    visitor_->SetProgressStatusError(util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
         "Error configuring ternary operator: jump_after_first_ is null"));
     return;
   }
@@ -606,7 +606,7 @@ void FlatExprVisitor::ComprehensionVisitor::PostVisitArg(int arg_num,
     case LOOP_STEP: {
       auto jump_to_next = CreateJumpStep(
           next_step_pos_ - visitor_->GetCurrentIndex() - 1, expr->id());
-      if (jump_to_next.ok()) {
+      if (util::IsOk(jump_to_next)) {
         visitor_->AddStep(std::move(jump_to_next));
       }
       // Set offsets.
@@ -632,13 +632,13 @@ void FlatExprVisitor::ComprehensionVisitor::PostVisit(const Expr* expr) {}
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<CelExpression>>
+util::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpression(const Expr* expr,
                                   const SourceInfo* source_info) const {
   ExecutionPath execution_path;
 
   if (absl::StartsWith(container(), ".") || absl::EndsWith(container(), ".")) {
-    return cel_base::InvalidArgumentError(
+    return util::MakeStatus(google::rpc::Code::INVALID_ARGUMENT, 
         absl::StrCat("Invalid expression container:", container()));
   }
 
@@ -656,7 +656,7 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
 
   AstTraverse(constant_folding_ ? &out : expr, source_info, &visitor);
 
-  if (!visitor.progress_status().ok()) {
+  if (!util::IsOk(visitor.progress_status())) {
     return visitor.progress_status();
   }
 

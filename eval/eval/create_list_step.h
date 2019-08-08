@@ -11,7 +11,7 @@ namespace expr {
 namespace runtime {
 
 // Factory method for CreateList - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
+util::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
     int64_t expr_id);
 

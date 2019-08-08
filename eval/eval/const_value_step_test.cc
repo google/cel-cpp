@@ -19,12 +19,12 @@ using google::api::expr::v1alpha1::Constant;
 
 using google::protobuf::Arena;
 
-cel_base::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
+util::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
                                                const Constant* const_expr,
                                                Arena* arena) {
   auto step_status =
       CreateConstValueStep(ConvertConstant(const_expr).value(), expr->id());
-  if (!step_status.ok()) return step_status.status();
+  if (!util::IsOk(step_status)) return step_status.status();
 
   ExecutionPath path;
   path.push_back(std::move(step_status.ValueOrDie()));
@@ -47,7 +47,7 @@ TEST(ConstValueStepTest, TestEvaluationConstInt64) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -64,7 +64,7 @@ TEST(ConstValueStepTest, TestEvaluationConstUint64) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -81,7 +81,7 @@ TEST(ConstValueStepTest, TestEvaluationConstBool) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -98,7 +98,7 @@ TEST(ConstValueStepTest, TestEvaluationConstNull) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -114,7 +114,7 @@ TEST(ConstValueStepTest, TestEvaluationConstString) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -131,7 +131,7 @@ TEST(ConstValueStepTest, TestEvaluationConstDouble) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
@@ -150,7 +150,7 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
 
   auto status = RunConstantExpression(&expr, const_expr, &arena);
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(util::IsOk(status));
 
   auto value = status.ValueOrDie();
 
