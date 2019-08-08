@@ -54,7 +54,7 @@ cc_library(
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
-        "@com_google_re2//:re2",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 
