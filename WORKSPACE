@@ -63,12 +63,11 @@ http_archive(
     urls = ["https://github.com/google/benchmark/archive/master.zip"],
 )
 
-CEL_SPEC_SHA="9cdb3682ba04109d2e03d9b048986bae113bf36f"
+CEL_SPEC_SHA="dd75cc98926a52975d303c9a635f18ab0aa1f2b8"
 http_archive(
     name = "com_google_cel_spec",
     strip_prefix = "cel-spec-" + CEL_SPEC_SHA,
     urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_SHA + ".zip"],
-    sha256 = "3172c95fc80d200948beb790806f881530c4e639469fa054eb8b6286cbbec7d3",
 )
 
 # Google RE2 (Regular Expression) C++ Library

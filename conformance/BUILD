@@ -9,7 +9,8 @@ ALL_TESTS = [
     # Requires container support
     #"@com_google_cel_spec//tests/simple:testdata/basic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
+    # Overflow is not handled
+    # "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
     "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
@@ -17,6 +18,17 @@ ALL_TESTS = [
     #"@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
     # Requires qualified bindings error message relaxation
     #"@com_google_cel_spec//tests/simple:testdata/fields.textproto",
+]
+
+DASHBOARD_TESTS = [
+    "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/string.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/fields.textproto",
 ]
 
 cc_binary(
@@ -58,3 +70,18 @@ cc_binary(
         "opt-test.sh",
     ]
 ]
+
+sh_test(
+    name = "simple-dashboard-test.sh",
+    srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
+    args = [
+        "$(location @com_google_cel_spec//tests/simple:simple_test)",
+        "--server=$(location @com_google_cel_go//server/main:cel_server)",
+        "--eval_server=$(location :server)",
+    ] + ["$(location " + test + ")" for test in DASHBOARD_TESTS],
+    data = [
+        ":server",
+        "@com_google_cel_go//server/main:cel_server",
+        "@com_google_cel_spec//tests/simple:simple_test",
+    ] + DASHBOARD_TESTS,
+)
