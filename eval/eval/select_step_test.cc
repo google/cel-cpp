@@ -50,7 +50,7 @@ cel_base::StatusOr<CelValue> RunExpression(const CelValue target,
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path));
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0);
   Activation activation;
   activation.InsertValue("target", target);
 
@@ -416,7 +416,7 @@ TEST(SelectStepTest, CelErrorAsArgument) {
   CelError error;
 
   google::protobuf::Arena arena;
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path));
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0);
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -453,7 +453,7 @@ TEST(SelectStepTest, UnknownValueProducesError) {
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path));
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0);
   Activation activation;
   activation.InsertValue("message", CelValue::CreateMessage(&message, &arena));
 

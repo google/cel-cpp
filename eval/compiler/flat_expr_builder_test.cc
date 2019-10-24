@@ -445,6 +445,58 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
               Eq("No matching overloads found"));
 }
 
+TEST(FlatExprBuilderTest, ComprehensionBudget) {
+  Expr expr;
+  // [1, 2].all(x, x > 0)
+  google::protobuf::TextFormat::ParseFromString(R"(
+    comprehension_expr {
+      iter_var: "k"
+      accu_var: "accu"
+      accu_init {
+        const_expr { bool_value: true }
+      }
+      loop_condition { ident_expr { name: "accu" } }
+      result { ident_expr { name: "accu" } }
+      loop_step {
+        call_expr {
+          function: "_&&_"
+          args {
+            ident_expr { name: "accu" }
+          }
+          args {
+            call_expr {
+              function: "_>_"
+              args { ident_expr { name: "k" } }
+              args { const_expr { int64_value: 0 } }
+            }
+          }
+        }
+      }
+      iter_range {
+        list_expr {
+          { const_expr { int64_value: 1 } }
+          { const_expr { int64_value: 2 } }
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_comprehension_max_iterations(1);
+  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_TRUE(build_status.ok());
+
+  auto cel_expr = std::move(build_status.ValueOrDie());
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  auto result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_FALSE(result_or.ok());
+  EXPECT_THAT(result_or.status().message(), Eq("Iteration budget exceeded"));
+}
+
 TEST(FlatExprBuilderTest, UnknownSupportTest) {
   TestMessage message;
 

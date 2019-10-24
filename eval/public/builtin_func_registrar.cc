@@ -25,26 +25,26 @@ namespace {
 
 // Comparison template functions
 template <class Type>
-CelValue Inequal(Arena* arena, Type t1, Type t2) {
+CelValue Inequal(Arena*, Type t1, Type t2) {
   return CelValue::CreateBool(t1 != t2);
 }
 
 template <class Type>
-CelValue Equal(Arena* arena, Type t1, Type t2) {
+CelValue Equal(Arena*, Type t1, Type t2) {
   return CelValue::CreateBool(t1 == t2);
 }
 
 // Forward declaration of the generic equality operator
 template <>
-CelValue Equal(Arena* arena, CelValue t1, CelValue t2);
+CelValue Equal(Arena*, CelValue t1, CelValue t2);
 
 template <class Type>
-bool LessThan(Arena* arena, Type t1, Type t2) {
+bool LessThan(Arena*, Type t1, Type t2) {
   return (t1 < t2);
 }
 
 template <class Type>
-bool LessThanOrEqual(Arena* arena, Type t1, Type t2) {
+bool LessThanOrEqual(Arena*, Type t1, Type t2) {
   return (t1 <= t2);
 }
 
@@ -60,63 +60,63 @@ bool GreaterThanOrEqual(Arena* arena, Type t1, Type t2) {
 
 // Duration comparison specializations
 template <>
-CelValue Inequal(Arena* arena, absl::Duration t1, absl::Duration t2) {
+CelValue Inequal(Arena*, absl::Duration t1, absl::Duration t2) {
   return CelValue::CreateBool(operator!=(t1, t2));
 }
 
 template <>
-CelValue Equal(Arena* arena, absl::Duration t1, absl::Duration t2) {
+CelValue Equal(Arena*, absl::Duration t1, absl::Duration t2) {
   return CelValue::CreateBool(operator==(t1, t2));
 }
 
 template <>
-bool LessThan(Arena* arena, absl::Duration t1, absl::Duration t2) {
+bool LessThan(Arena*, absl::Duration t1, absl::Duration t2) {
   return operator<(t1, t2);
 }
 
 template <>
-bool LessThanOrEqual(Arena* arena, absl::Duration t1, absl::Duration t2) {
+bool LessThanOrEqual(Arena*, absl::Duration t1, absl::Duration t2) {
   return operator<=(t1, t2);
 }
 
 template <>
-bool GreaterThan(Arena* arena, absl::Duration t1, absl::Duration t2) {
+bool GreaterThan(Arena*, absl::Duration t1, absl::Duration t2) {
   return operator>(t1, t2);
 }
 
 template <>
-bool GreaterThanOrEqual(Arena* arena, absl::Duration t1, absl::Duration t2) {
+bool GreaterThanOrEqual(Arena*, absl::Duration t1, absl::Duration t2) {
   return operator>=(t1, t2);
 }
 
 // Timestamp comparison specializations
 template <>
-CelValue Inequal(Arena* arena, absl::Time t1, absl::Time t2) {
+CelValue Inequal(Arena*, absl::Time t1, absl::Time t2) {
   return CelValue::CreateBool(operator!=(t1, t2));
 }
 
 template <>
-CelValue Equal(Arena* arena, absl::Time t1, absl::Time t2) {
+CelValue Equal(Arena*, absl::Time t1, absl::Time t2) {
   return CelValue::CreateBool(operator==(t1, t2));
 }
 
 template <>
-bool LessThan(Arena* arena, absl::Time t1, absl::Time t2) {
+bool LessThan(Arena*, absl::Time t1, absl::Time t2) {
   return operator<(t1, t2);
 }
 
 template <>
-bool LessThanOrEqual(Arena* arena, absl::Time t1, absl::Time t2) {
+bool LessThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
   return operator<=(t1, t2);
 }
 
 template <>
-bool GreaterThan(Arena* arena, absl::Time t1, absl::Time t2) {
+bool GreaterThan(Arena*, absl::Time t1, absl::Time t2) {
   return operator>(t1, t2);
 }
 
 template <>
-bool GreaterThanOrEqual(Arena* arena, absl::Time t1, absl::Time t2) {
+bool GreaterThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
   return operator>=(t1, t2);
 }
 
@@ -518,16 +518,13 @@ CelValue GetTimeBreakdownPart(
 
 CelValue CreateTimestampFromString(Arena* arena,
                                    CelValue::StringHolder time_str) {
-  Timestamp ts;
-  auto result =
-      google::protobuf::util::TimeUtil::FromString(std::string(time_str.value()), &ts);
-  if (!result) {
+  absl::Time ts;
+  if (!absl::ParseTime(absl::RFC3339_full, std::string(time_str.value()), &ts,
+                       nullptr)) {
     return CreateErrorValue(arena, "String to Timestamp conversion failed",
                             cel_base::StatusCode::kInvalidArgument);
   }
-
-  return CelValue::CreateTimestamp(
-      Arena::Create<Timestamp>(arena, std::move(ts)));
+  return CelValue::CreateTimestamp(ts);
 }
 
 CelValue GetFullYear(Arena* arena, absl::Time timestamp, absl::string_view tz) {
@@ -613,16 +610,14 @@ CelValue GetMilliseconds(Arena* arena, absl::Time timestamp,
 }
 
 CelValue CreateDurationFromString(Arena* arena,
-                                  CelValue::StringHolder time_str) {
-  Duration d;
-  auto result =
-      google::protobuf::util::TimeUtil::FromString(std::string(time_str.value()), &d);
-  if (!result) {
+                                  CelValue::StringHolder dur_str) {
+  absl::Duration d;
+  if (!absl::ParseDuration(std::string(dur_str.value()), &d)) {
     return CreateErrorValue(arena, "String to Duration conversion failed",
                             cel_base::StatusCode::kInvalidArgument);
   }
 
-  return CelValue::CreateDuration(Arena::Create<Duration>(arena, std::move(d)));
+  return CelValue::CreateDuration(d);
 }
 
 CelValue GetHours(Arena* arena, absl::Duration duration) {
@@ -643,26 +638,6 @@ CelValue GetMilliseconds(Arena* arena, absl::Duration duration) {
                                millis_per_second);
 }
 
-CelValue RegexMatchesFull(Arena* arena, CelValue::StringHolder target,
-                          CelValue::StringHolder regex) {
-  RE2 re2(regex.value().data());
-  if (!re2.ok()) {
-    return CreateErrorValue(arena, "invalid_argument",
-                            cel_base::StatusCode::kInvalidArgument);
-  }
-  return CelValue::CreateBool(RE2::FullMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
-}
-
-CelValue RegexMatchesPartial(Arena* arena, CelValue::StringHolder target,
-                             CelValue::StringHolder regex) {
-  RE2 re2(regex.value().data());
-  if (!re2.ok()) {
-    return CreateErrorValue(arena, "invalid_argument",
-                            cel_base::StatusCode::kInvalidArgument);
-  }
-  return CelValue::CreateBool(RE2::PartialMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
-}
-
 bool StringContains(Arena* arena, CelValue::StringHolder value,
                     CelValue::StringHolder substr) {
   return absl::StrContains(value.value(), substr.value());
@@ -678,35 +653,10 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   return absl::StartsWith(value.value(), prefix.value());
 }
 
-// Creates and registers a map index function.
-template <typename T, typename CreateCelValue, typename ToAlphaNum>
-::cel_base::Status RegisterMapIndexFunction(CelFunctionRegistry* registry,
-                                        const CreateCelValue& create_cel_value,
-                                        const ToAlphaNum& to_alpha_num) {
-  return FunctionAdapter<CelValue, const CelMap*, T>::CreateAndRegister(
-      builtin::kIndex, false,
-      [&create_cel_value, &to_alpha_num](Arena* arena, const CelMap* cel_map,
-                                         T key) -> CelValue {
-        auto maybe_value = (*cel_map)[create_cel_value(key)];
-        if (!maybe_value.has_value()) {
-          // TODO(issues/25) Which code?
-          return CreateNoSuchKeyError(arena, absl::StrCat(to_alpha_num(key)));
-        }
-        return maybe_value.value();
-      },
-      registry);
-}
-
-template <typename T, typename CreateCelValue>
-::cel_base::Status RegisterMapIndexFunction(
-    CelFunctionRegistry* registry, const CreateCelValue& create_cel_value) {
-  return RegisterMapIndexFunction<T>(registry, create_cel_value,
-                                     [](T v) { return absl::StrCat(v); });
-}
-
 }  // namespace
 
-::cel_base::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry) {
+::cel_base::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
+                                        const InterpreterOptions& options) {
   // logical NOT
   cel_base::Status status = FunctionAdapter<bool, bool>::CreateAndRegister(
       builtin::kNot, false,
@@ -905,21 +855,6 @@ template <typename T, typename CreateCelValue>
       builtin::kSize, false, bytes_size_func, registry);
   if (!status.ok()) return status;
 
-  // List Index
-  status = FunctionAdapter<CelValue, const CelList*, int64_t>::CreateAndRegister(
-      builtin::kIndex, false,
-      [](Arena* arena, const CelList* cel_list, int64_t index) -> CelValue {
-        if (index < 0 || index >= cel_list->size()) {
-          // TODO(issues/25) Which code?
-          return CreateErrorValue(arena,
-                                  absl::StrCat("Index error: index=", index,
-                                               " size=", cel_list->size()));
-        }
-        return (*cel_list)[index];
-      },
-      registry);
-  if (!status.ok()) return status;
-
   // List size
   auto list_size_func = [](Arena* arena, const CelList* cel_list) -> int64_t {
     return (*cel_list).size();
@@ -934,88 +869,74 @@ template <typename T, typename CreateCelValue>
   if (!status.ok()) return status;
 
   // List in operator: @in
-  status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
-      builtin::kIn, false, In<bool>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-      builtin::kIn, false, In<int64_t>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-      builtin::kIn, false, In<uint64_t>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
-      builtin::kIn, false, In<double>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
-      CreateAndRegister(builtin::kIn, false, In<CelValue::StringHolder>,
-                        registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
-      CreateAndRegister(builtin::kIn, false, In<CelValue::BytesHolder>,
-                        registry);
-  if (!status.ok()) return status;
+  if (options.enable_list_contains) {
+    status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
+        builtin::kIn, false, In<bool>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
+        builtin::kIn, false, In<int64_t>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
+        builtin::kIn, false, In<uint64_t>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
+        builtin::kIn, false, In<double>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
+        CreateAndRegister(builtin::kIn, false, In<CelValue::StringHolder>,
+                          registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
+        CreateAndRegister(builtin::kIn, false, In<CelValue::BytesHolder>,
+                          registry);
+    if (!status.ok()) return status;
 
-  // List in operator: _in_ (deprecated)
-  // Bindings preserved for backward compatibility with stored expressions.
-  status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
-      builtin::kInDeprecated, false, In<bool>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-      builtin::kInDeprecated, false, In<int64_t>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-      builtin::kInDeprecated, false, In<uint64_t>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
-      builtin::kInDeprecated, false, In<double>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
-      CreateAndRegister(builtin::kInDeprecated, false,
-                        In<CelValue::StringHolder>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
-      CreateAndRegister(builtin::kInDeprecated, false,
-                        In<CelValue::BytesHolder>, registry);
-  if (!status.ok()) return status;
+    // List in operator: _in_ (deprecated)
+    // Bindings preserved for backward compatibility with stored expressions.
+    status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
+        builtin::kInDeprecated, false, In<bool>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
+        builtin::kInDeprecated, false, In<int64_t>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
+        builtin::kInDeprecated, false, In<uint64_t>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
+        builtin::kInDeprecated, false, In<double>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
+        CreateAndRegister(builtin::kInDeprecated, false,
+                          In<CelValue::StringHolder>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
+        CreateAndRegister(builtin::kInDeprecated, false,
+                          In<CelValue::BytesHolder>, registry);
+    if (!status.ok()) return status;
 
-  // List in() function (deprecated)
-  // Bindings preserved for backward compatibility with stored expressions.
-  status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
-      builtin::kInFunction, false, In<bool>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-      builtin::kInFunction, false, In<int64_t>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-      builtin::kInFunction, false, In<uint64_t>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
-      builtin::kInFunction, false, In<double>, registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
-      CreateAndRegister(builtin::kInFunction, false, In<CelValue::StringHolder>,
-                        registry);
-  if (!status.ok()) return status;
-  status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
-      CreateAndRegister(builtin::kInFunction, false, In<CelValue::BytesHolder>,
-                        registry);
-  if (!status.ok()) return status;
-
-  // Map Index
-  status = RegisterMapIndexFunction<CelValue::StringHolder>(
-      registry,
-      [](CelValue::StringHolder v) { return CelValue::CreateString(v); },
-      [](CelValue::StringHolder v) { return v.value(); });
-  if (!status.ok()) return status;
-
-  status = RegisterMapIndexFunction<int64_t>(registry, CelValue::CreateInt64);
-  if (!status.ok()) return status;
-
-  status = RegisterMapIndexFunction<uint64_t>(registry, CelValue::CreateUint64);
-  if (!status.ok()) return status;
-
-  status = RegisterMapIndexFunction<bool>(registry, CelValue::CreateBool);
-  if (!status.ok()) return status;
+    // List in() function (deprecated)
+    // Bindings preserved for backward compatibility with stored expressions.
+    status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
+        builtin::kInFunction, false, In<bool>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
+        builtin::kInFunction, false, In<int64_t>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
+        builtin::kInFunction, false, In<uint64_t>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
+        builtin::kInFunction, false, In<double>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
+        CreateAndRegister(builtin::kInFunction, false,
+                          In<CelValue::StringHolder>, registry);
+    if (!status.ok()) return status;
+    status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
+        CreateAndRegister(builtin::kInFunction, false,
+                          In<CelValue::BytesHolder>, registry);
+    if (!status.ok()) return status;
+  }
 
   // Map size
   auto map_size_func = [](Arena* arena, const CelMap* cel_map) -> int64_t {
@@ -1176,45 +1097,61 @@ template <typename T, typename CreateCelValue>
   if (!status.ok()) return status;
 
   // Concat group
-  status =
-      FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder,
-                      CelValue::StringHolder>::CreateAndRegister(builtin::kAdd,
-                                                                 false,
-                                                                 ConcatString,
-                                                                 registry);
-  if (!status.ok()) return status;
+  if (options.enable_string_concat) {
+    status = FunctionAdapter<
+        CelValue::StringHolder, CelValue::StringHolder,
+        CelValue::StringHolder>::CreateAndRegister(builtin::kAdd, false,
+                                                   ConcatString, registry);
+    if (!status.ok()) return status;
 
-  status =
-      FunctionAdapter<CelValue::BytesHolder, CelValue::BytesHolder,
-                      CelValue::BytesHolder>::CreateAndRegister(builtin::kAdd,
-                                                                false,
-                                                                ConcatBytes,
-                                                                registry);
-  if (!status.ok()) return status;
+    status =
+        FunctionAdapter<CelValue::BytesHolder, CelValue::BytesHolder,
+                        CelValue::BytesHolder>::CreateAndRegister(builtin::kAdd,
+                                                                  false,
+                                                                  ConcatBytes,
+                                                                  registry);
+    if (!status.ok()) return status;
+  }
 
-  status =
-      FunctionAdapter<const CelList*, const CelList*,
-                      const CelList*>::CreateAndRegister(builtin::kAdd, false,
-                                                         ConcatList, registry);
-  if (!status.ok()) return status;
+  if (options.enable_list_concat) {
+    status =
+        FunctionAdapter<const CelList*, const CelList*,
+                        const CelList*>::CreateAndRegister(builtin::kAdd, false,
+                                                           ConcatList,
+                                                           registry);
+    if (!status.ok()) return status;
+  }
 
   // Global matches function.
-  status = FunctionAdapter<CelValue, CelValue::StringHolder,
-                           CelValue::StringHolder>::
-      CreateAndRegister(builtin::kRegexMatch, false,
-                        registry->partial_string_match() ? RegexMatchesPartial
-                                                         : RegexMatchesFull,
-                        registry);
-  if (!status.ok()) return status;
+  if (options.enable_regex) {
+    auto regex_matches = [max_size = options.regex_max_program_size](
+                             Arena* arena, CelValue::StringHolder target,
+                             CelValue::StringHolder regex) -> CelValue {
+      RE2 re2(regex.value().data());
+      if (max_size > 0 && re2.ProgramSize() > max_size) {
+        return CreateErrorValue(arena, "exceeded RE2 max program size",
+                                cel_base::StatusCode::kInvalidArgument);
+      }
+      if (!re2.ok()) {
+        return CreateErrorValue(arena, "invalid_argument",
+                                cel_base::StatusCode::kInvalidArgument);
+      }
+      return CelValue::CreateBool(RE2::PartialMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
+    };
 
-  // Receiver-style matches function.
-  status = FunctionAdapter<CelValue, CelValue::StringHolder,
-                           CelValue::StringHolder>::
-      CreateAndRegister(builtin::kRegexMatch, true,
-                        registry->partial_string_match() ? RegexMatchesPartial
-                                                         : RegexMatchesFull,
-                        registry);
-  if (!status.ok()) return status;
+    status = FunctionAdapter<
+        CelValue, CelValue::StringHolder,
+        CelValue::StringHolder>::CreateAndRegister(builtin::kRegexMatch, false,
+                                                   regex_matches, registry);
+    if (!status.ok()) return status;
+
+    // Receiver-style matches function.
+    status = FunctionAdapter<
+        CelValue, CelValue::StringHolder,
+        CelValue::StringHolder>::CreateAndRegister(builtin::kRegexMatch, true,
+                                                   regex_matches, registry);
+    if (!status.ok()) return status;
+  }
 
   status =
       FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
@@ -1491,51 +1428,53 @@ template <typename T, typename CreateCelValue>
       registry);
   if (!status.ok()) return status;
 
-  status = FunctionAdapter<CelValue::StringHolder, int64_t>::CreateAndRegister(
-      builtin::kString, false,
-      [](Arena* arena, int64_t value) -> CelValue::StringHolder {
-        return CelValue::StringHolder(
-            Arena::Create<std::string>(arena, absl::StrCat(value)));
-      },
-      registry);
-  if (!status.ok()) return status;
+  if (options.enable_string_conversion) {
+    status = FunctionAdapter<CelValue::StringHolder, int64_t>::CreateAndRegister(
+        builtin::kString, false,
+        [](Arena* arena, int64_t value) -> CelValue::StringHolder {
+          return CelValue::StringHolder(
+              Arena::Create<std::string>(arena, absl::StrCat(value)));
+        },
+        registry);
+    if (!status.ok()) return status;
 
-  status = FunctionAdapter<CelValue::StringHolder, uint64_t>::CreateAndRegister(
-      builtin::kString, false,
-      [](Arena* arena, uint64_t value) -> CelValue::StringHolder {
-        return CelValue::StringHolder(
-            Arena::Create<std::string>(arena, absl::StrCat(value)));
-      },
-      registry);
-  if (!status.ok()) return status;
+    status = FunctionAdapter<CelValue::StringHolder, uint64_t>::CreateAndRegister(
+        builtin::kString, false,
+        [](Arena* arena, uint64_t value) -> CelValue::StringHolder {
+          return CelValue::StringHolder(
+              Arena::Create<std::string>(arena, absl::StrCat(value)));
+        },
+        registry);
+    if (!status.ok()) return status;
 
-  status = FunctionAdapter<CelValue::StringHolder, double>::CreateAndRegister(
-      builtin::kString, false,
-      [](Arena* arena, double value) -> CelValue::StringHolder {
-        return CelValue::StringHolder(
-            Arena::Create<std::string>(arena, absl::StrCat(value)));
-      },
-      registry);
-  if (!status.ok()) return status;
+    status = FunctionAdapter<CelValue::StringHolder, double>::CreateAndRegister(
+        builtin::kString, false,
+        [](Arena* arena, double value) -> CelValue::StringHolder {
+          return CelValue::StringHolder(
+              Arena::Create<std::string>(arena, absl::StrCat(value)));
+        },
+        registry);
+    if (!status.ok()) return status;
 
-  status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
-      CreateAndRegister(
-          builtin::kString, false,
-          [](Arena* arena,
-             CelValue::BytesHolder value) -> CelValue::StringHolder {
-            return CelValue::StringHolder(
-                Arena::Create<std::string>(arena, std::string(value.value())));
-          },
-          registry);
-  if (!status.ok()) return status;
+    status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
+        CreateAndRegister(
+            builtin::kString, false,
+            [](Arena* arena,
+               CelValue::BytesHolder value) -> CelValue::StringHolder {
+              return CelValue::StringHolder(
+                  Arena::Create<std::string>(arena, std::string(value.value())));
+            },
+            registry);
+    if (!status.ok()) return status;
 
-  status = FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kString, false,
-          [](Arena* arena, CelValue::StringHolder value)
-              -> CelValue::StringHolder { return value; },
-          registry);
-  if (!status.ok()) return status;
+    status = FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
+        CreateAndRegister(
+            builtin::kString, false,
+            [](Arena* arena, CelValue::StringHolder value)
+                -> CelValue::StringHolder { return value; },
+            registry);
+    if (!status.ok()) return status;
+  }
 
   return ::cel_base::OkStatus();
 }

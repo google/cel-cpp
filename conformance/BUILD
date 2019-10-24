@@ -6,18 +6,14 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])  # Apache 2.0
 
 ALL_TESTS = [
-    # Requires container support
-    #"@com_google_cel_spec//tests/simple:testdata/basic.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/fp_math.textproto",
-    # Overflow is not handled
-    # "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/integer_math.textproto",
     "@com_google_cel_spec//tests/simple:testdata/logic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
-    # Requires heteregenous equality spec clarification
-    #"@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
-    # Requires qualified bindings error message relaxation
-    #"@com_google_cel_spec//tests/simple:testdata/fields.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/fields.textproto",
 ]
 
 DASHBOARD_TESTS = [
@@ -58,6 +54,16 @@ cc_binary(
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
             "--server=$(location @com_google_cel_go//server/main:cel_server)",
             "--eval_server=$(location :server)",
+            # Requires container support
+            "--skip_test=basic/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
+            # Requires heteregenous equality spec clarification
+            "--skip_test=comparisons/eq_literal/eq_bytes",
+            "--skip_test=comparisons/ne_literal/not_ne_bytes",
+            "--skip_test=comparisons/in_list_literal/elem_in_mixed_type_list_error",
+            "--skip_test=comparisons/in_map_literal/key_in_mixed_key_type_map_error",
+            # Requires qualified bindings error message relaxation
+            "--skip_test=fields/qualified_identifier_resolution/ident_with_longest_prefix_check,int64_field_select_unsupported,list_field_select_unsupported,map_key_null,qualified_identifier_resolution_unchecked",
+            "--skip_test=integer_math/int64_math/int64_overflow_positive,int64_overflow_negative,uint64_overflow_positive,uint64_overflow_negative",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",

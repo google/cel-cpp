@@ -3,6 +3,7 @@
 
 #include "absl/container/node_hash_map.h"
 #include "absl/types/span.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
 namespace google {
@@ -64,6 +65,9 @@ class CelFunction {
   // CelFunction descriptor
   const Descriptor& descriptor() const { return descriptor_; }
 
+  // Configuration extension to customize the overload behavior.
+  virtual void Configure(const InterpreterOptions& options) {}
+
  private:
   Descriptor descriptor_;
 };
@@ -73,7 +77,7 @@ class CelFunction {
 // CelExpression objects from Expr ASTs.
 class CelFunctionRegistry {
  public:
-  CelFunctionRegistry() : partial_string_match_(false) {}
+  CelFunctionRegistry() {}
 
   ~CelFunctionRegistry() {}
 
@@ -98,20 +102,10 @@ class CelFunctionRegistry {
   absl::node_hash_map<std::string, std::vector<const CelFunction::Descriptor*>>
   ListFunctions() const;
 
-  // Select partial or full regex match for match() built-in function.
-  void set_partial_string_match(bool enabled) {
-    partial_string_match_ = enabled;
-  }
-
-  // Use partial regex match for match() built-in function.
-  bool partial_string_match() { return partial_string_match_; }
-
  private:
   using Overloads = std::vector<std::unique_ptr<CelFunction>>;
 
   absl::node_hash_map<std::string, Overloads> functions_;
-
-  bool partial_string_match_;
 };
 
 }  // namespace runtime

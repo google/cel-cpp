@@ -16,7 +16,9 @@ class FlatExprBuilder : public CelExpressionBuilder {
   FlatExprBuilder()
       : shortcircuiting_(true),
         constant_folding_(false),
-        constant_arena_(nullptr) {}
+        constant_arena_(nullptr),
+        enable_comprehension_(true),
+        comprehension_max_iterations_(0) {}
 
   // set_shortcircuiting regulates shortcircuiting of some expressions.
   // Be default shortcircuiting is enabled.
@@ -29,6 +31,14 @@ class FlatExprBuilder : public CelExpressionBuilder {
     constant_arena_ = arena;
   }
 
+  void set_enable_comprehension(bool enabled) {
+    enable_comprehension_ = enabled;
+  }
+
+  void set_comprehension_max_iterations(int max_iterations) {
+    comprehension_max_iterations_ = max_iterations;
+  }
+
   cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -38,6 +48,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   bool constant_folding_;
   google::protobuf::Arena* constant_arena_;
+  bool enable_comprehension_;
+  int comprehension_max_iterations_;
 };
 
 }  // namespace runtime

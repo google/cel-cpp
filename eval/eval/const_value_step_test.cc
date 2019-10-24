@@ -31,7 +31,7 @@ cel_base::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
 
   google::api::expr::v1alpha1::Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path));
+  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0);
 
   Activation activation;
 

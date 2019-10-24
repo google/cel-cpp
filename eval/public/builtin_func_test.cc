@@ -67,7 +67,7 @@ class BuiltinsTest : public ::testing::Test {
         CreateCelExpressionBuilder(options);
 
     // Builtin registration.
-    ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry()).ok());
+    ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry(), options).ok());
 
     // Create CelExpression from AST (Expr object).
     auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
@@ -1315,45 +1315,17 @@ TEST_F(BuiltinsTest, TestConcatList) {
   }
 }
 
-TEST_F(BuiltinsTest, MatchesTrue) {
-  std::string target = "haystack";
-  std::string regex = "hay\\w{2}ack";
-  std::vector<CelValue> args = {CelValue::CreateString(&target),
-                                CelValue::CreateString(&regex)};
-
-  CelValue result_value;
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kRegexMatch, {}, args, &result_value));
-  ASSERT_TRUE(result_value.IsBool());
-  EXPECT_TRUE(result_value.BoolOrDie());
-}
-
 TEST_F(BuiltinsTest, MatchesPartialTrue) {
   std::string target = "haystack";
   std::string regex = "\\w{2}ack";
   std::vector<CelValue> args = {CelValue::CreateString(&target),
                                 CelValue::CreateString(&regex)};
 
-  InterpreterOptions options;
-  options.partial_string_match = true;
-  CelValue result_value;
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
-  ASSERT_TRUE(result_value.IsBool());
-  EXPECT_TRUE(result_value.BoolOrDie());
-}
-
-TEST_F(BuiltinsTest, MatchesFalse) {
-  std::string target = "haystack";
-  std::string regex = "hay";
-  std::vector<CelValue> args = {CelValue::CreateString(&target),
-                                CelValue::CreateString(&regex)};
-
   CelValue result_value;
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kRegexMatch, {}, args, &result_value));
   ASSERT_TRUE(result_value.IsBool());
-  EXPECT_FALSE(result_value.BoolOrDie());
+  EXPECT_TRUE(result_value.BoolOrDie());
 }
 
 TEST_F(BuiltinsTest, MatchesPartialFalse) {
@@ -1362,16 +1334,14 @@ TEST_F(BuiltinsTest, MatchesPartialFalse) {
   std::vector<CelValue> args = {CelValue::CreateString(&target),
                                 CelValue::CreateString(&regex)};
 
-  InterpreterOptions options;
-  options.partial_string_match = true;
   CelValue result_value;
   ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
+      PerformRun(builtin::kRegexMatch, {}, args, &result_value));
   ASSERT_TRUE(result_value.IsBool());
   EXPECT_FALSE(result_value.BoolOrDie());
 }
 
-TEST_F(BuiltinsTest, MatchesError) {
+TEST_F(BuiltinsTest, MatchesPartialError) {
   std::string target = "haystack";
   std::string invalid_regex = "(";
   std::vector<CelValue> args = {CelValue::CreateString(&target),
@@ -1383,15 +1353,15 @@ TEST_F(BuiltinsTest, MatchesError) {
   EXPECT_TRUE(result_value.IsError());
 }
 
-TEST_F(BuiltinsTest, MatchesPartialError) {
+TEST_F(BuiltinsTest, MatchesMaxSize) {
   std::string target = "haystack";
-  std::string invalid_regex = "(";
+  std::string large_regex = "[hj][ab][yt][st][tv][ac]";
   std::vector<CelValue> args = {CelValue::CreateString(&target),
-                                CelValue::CreateString(&invalid_regex)};
+                                CelValue::CreateString(&large_regex)};
 
-  InterpreterOptions options;
-  options.partial_string_match = true;
   CelValue result_value;
+  InterpreterOptions options;
+  options.regex_max_program_size = 1;
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
   EXPECT_TRUE(result_value.IsError());

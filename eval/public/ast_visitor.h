@@ -45,6 +45,20 @@ class AstVisitor {
  public:
   virtual ~AstVisitor() {}
 
+  // Expr node handler method. Called for all Expr nodes.
+  // Is invoked before child Expr nodes being processed.
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // breakage. Change it in subsequent CLs.
+  virtual void PreVisitExpr(const google::api::expr::v1alpha1::Expr* expr,
+                            const SourcePosition* position) {}
+
+  // Expr node handler method. Called for all Expr nodes.
+  // Is invoked after child Expr nodes are processed.
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // breakage. Change it in subsequent CLs.
+  virtual void PostVisitExpr(const google::api::expr::v1alpha1::Expr* expr,
+                             const SourcePosition* position) {}
+
   // Const node handler.
   // Invoked after child nodes are processed.
   virtual void PostVisitConst(const google::api::expr::v1alpha1::Constant* const_expr,

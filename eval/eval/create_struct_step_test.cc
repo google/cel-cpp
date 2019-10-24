@@ -61,7 +61,7 @@ cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path));
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0);
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -158,7 +158,7 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
 
   path.push_back(std::move(step1_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path));
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0);
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -176,7 +176,7 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 
   path.push_back(std::move(step_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path));
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0);
   Activation activation;
 
   google::protobuf::Arena arena;
@@ -291,6 +291,36 @@ TEST(CreateCreateStructStepTest, TestSetBytesField) {
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "bytes_value", CelValue::CreateBytes(&kTestStr), &arena, &test_msg));
   EXPECT_EQ(test_msg.bytes_value(), kTestStr);
+}
+
+// Test that fields of type duration are set correctly.
+TEST(CreateCreateStructStepTest, TestSetDurationField) {
+  Arena arena;
+
+  google::protobuf::Duration test_duration;
+  test_duration.set_seconds(2);
+  test_duration.set_nanos(3);
+  TestMessage test_msg;
+
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "duration_value", CelValue::CreateDuration(&test_duration), &arena,
+      &test_msg));
+  EXPECT_THAT(test_msg.duration_value(), EqualsProto(test_duration));
+}
+
+// Test that fields of type timestamp are set correctly.
+TEST(CreateCreateStructStepTest, TestSetTimestampField) {
+  Arena arena;
+
+  google::protobuf::Timestamp test_timestamp;
+  test_timestamp.set_seconds(2);
+  test_timestamp.set_nanos(3);
+  TestMessage test_msg;
+
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "timestamp_value", CelValue::CreateTimestamp(&test_timestamp), &arena,
+      &test_msg));
+  EXPECT_THAT(test_msg.timestamp_value(), EqualsProto(test_timestamp));
 }
 
 // Test that fields of type Message are set correctly.

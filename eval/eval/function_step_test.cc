@@ -92,7 +92,7 @@ TEST(FunctionStepTest, SimpleFunctionTest) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path));
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -127,7 +127,7 @@ TEST(FunctionStepTest, TestStackUnderflow) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path));
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -163,7 +163,7 @@ TEST(FunctionStepTest, TestMultipleOverloads) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path));
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -200,7 +200,7 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path));
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -247,7 +247,7 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluationErrorForwarding) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path));
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   Activation activation;
   google::protobuf::Arena arena;

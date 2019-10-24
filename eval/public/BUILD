@@ -88,6 +88,7 @@ cc_library(
         "cel_function.h",
     ],
     deps = [
+        ":cel_options",
         ":cel_value",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/strings",
@@ -132,6 +133,7 @@ cc_library(
         ":cel_builtins",
         ":cel_function",
         ":cel_function_adapter",
+        ":cel_options",
         "//base:status",
         "//eval/eval:container_backed_list_impl",
         "@com_google_absl//absl/strings",
@@ -221,6 +223,16 @@ cc_library(
 )
 
 cc_library(
+    name = "cel_options",
+    hdrs = [
+        "cel_options.h",
+    ],
+    deps = [
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "cel_expr_builder_factory",
     srcs = [
         "cel_expr_builder_factory.cc",
@@ -230,7 +242,24 @@ cc_library(
     ],
     deps = [
         ":cel_expression",
+        ":cel_options",
         "//eval/compiler:flat_expr_builder",
+    ],
+)
+
+cc_library(
+    name = "value_export_util",
+    srcs = [
+        "value_export_util.cc",
+    ],
+    hdrs = [
+        "value_export_util.h",
+    ],
+    deps = [
+        ":cel_value",
+        "//base:status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -345,5 +374,25 @@ cc_test(
         ":source_position",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "value_export_util_test",
+    size = "small",
+    srcs = [
+        "value_export_util_test.cc",
+    ],
+    deps = [
+        ":cel_value",
+        ":value_export_util",
+        "//base:status",
+        "//eval/eval:container_backed_list_impl",
+        "//eval/eval:container_backed_map_impl",
+        "//eval/testutil:test_message_cc_proto",
+        "//testutil:util",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )

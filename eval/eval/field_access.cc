@@ -5,6 +5,7 @@
 #include "google/protobuf/map_field.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "internal/proto_util.h"
 #include "base/canonical_errors.h"
 
 namespace google {
@@ -19,6 +20,10 @@ using ::google::protobuf::FieldDescriptor;
 using ::google::protobuf::MapValueRef;
 using ::google::protobuf::Message;
 using ::google::protobuf::Reflection;
+
+// Well-known type protobuf type names which require special get / set behavior.
+constexpr const char kProtobufDuration[] = "google.protobuf.Duration";
+constexpr const char kProtobufTimestamp[] = "google.protobuf.Timestamp";
 
 // Singular message fields and repeated message fields have similar access model
 // To provide common approach, we implement accessor classes, based on CRTP.
@@ -454,6 +459,30 @@ class FieldSetter {
     return true;
   }
 
+  bool AssignDuration(const CelValue& cel_value) const {
+    absl::Duration d;
+    if (!cel_value.GetValue(&d)) {
+      GOOGLE_LOG(ERROR) << "Unable to retrieve duration";
+      return false;
+    }
+    google::protobuf::Duration duration;
+    google::api::expr::internal::EncodeDuration(d, &duration);
+    static_cast<const Derived*>(this)->SetMessage(&duration);
+    return true;
+  }
+
+  bool AssignTimestamp(const CelValue& cel_value) const {
+    absl::Time t;
+    if (!cel_value.GetValue(&t)) {
+      GOOGLE_LOG(ERROR) << "Unable to retrieve timestamp";
+      return false;
+    }
+    google::protobuf::Timestamp timestamp;
+    google::api::expr::internal::EncodeTime(t, &timestamp);
+    static_cast<const Derived*>(this)->SetMessage(&timestamp);
+    return true;
+  }
+
   // This method provides message field content, wrapped in CelValue.
   // If value provided successfully, returns Ok.
   // arena Arena to use for allocations if needed.
@@ -494,6 +523,15 @@ class FieldSetter {
         break;
       }
       case FieldDescriptor::CPPTYPE_MESSAGE: {
+        const std::string& type_name = field_desc_->message_type()->full_name();
+        // When the field is a message, it might be a well-known type with a
+        // non-proto representation that requires special handling before it
+        // can be set on the field.
+        if (type_name == kProtobufTimestamp) {
+          return AssignTimestamp(value);
+        } else if (type_name == kProtobufDuration) {
+          return AssignDuration(value);
+        }
         return AssignMessage(value);
       }
       case FieldDescriptor::CPPTYPE_ENUM: {

@@ -63,11 +63,13 @@ http_archive(
     urls = ["https://github.com/google/benchmark/archive/master.zip"],
 )
 
-CEL_SPEC_SHA="dd75cc98926a52975d303c9a635f18ab0aa1f2b8"
+CEL_SPEC_GIT_SHA="b154461b3a037f9654852087ef96be2b756871a0" # 10/16/2019
+CEL_SPEC_SHA="a88cf903fc890cb8e53048365d05a5c0c03e35148b03812de7a471d7d2ff8744"
 http_archive(
     name = "com_google_cel_spec",
-    strip_prefix = "cel-spec-" + CEL_SPEC_SHA,
-    urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_SHA + ".zip"],
+    sha256 = CEL_SPEC_SHA,
+    strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
+    urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
 )
 
 # Google RE2 (Regular Expression) C++ Library
@@ -77,12 +79,14 @@ http_archive(
     urls = ["https://github.com/google/re2/archive/master.zip"],
 )
 
-GOOGLEAPIS_SHA = "184ab77f4cee62332f8f9a689c70c9bea441f836"
+GOOGLEAPIS_GIT_SHA = "be480e391cc88a75cf2a81960ef79c80d5012068"  # Jul 24, 2019
+GOOGLEAPIS_SHA = "c1969e5b72eab6d9b6cfcff748e45ba57294aeea1d96fd04cd081995de0605c2"
+
 http_archive(
     name = "com_google_googleapis",
-    sha256 = "a3a8c83314e5a431473659cb342a11e5520c6de4790eee70633d578f278b1e73",
-    strip_prefix = "googleapis-" + GOOGLEAPIS_SHA,
-    urls = ["https://github.com/googleapis/googleapis/archive/" + GOOGLEAPIS_SHA + ".tar.gz"],
+    sha256 = GOOGLEAPIS_SHA,
+    strip_prefix = "googleapis-" + GOOGLEAPIS_GIT_SHA,
+    urls = ["https://github.com/googleapis/googleapis/archive/" + GOOGLEAPIS_GIT_SHA + ".tar.gz"],
 )
 
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
