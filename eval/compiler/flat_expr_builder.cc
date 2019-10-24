@@ -111,7 +111,7 @@ class FlatExprVisitor : public AstVisitor {
   };
 
   void PostVisitConst(const Constant* const_expr, const Expr* expr,
-                      const SourcePosition* position) override {
+                      const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -128,7 +128,7 @@ class FlatExprVisitor : public AstVisitor {
   // Ident node handler.
   // Invoked after child nodes are processed.
   void PostVisitIdent(const Ident* ident_expr, const Expr* expr,
-                      const SourcePosition* position) override {
+                      const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -175,7 +175,7 @@ class FlatExprVisitor : public AstVisitor {
   }
 
   void PreVisitSelect(const Select* select_expr, const Expr* expr,
-                      const SourcePosition* position) override {
+                      const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -194,7 +194,7 @@ class FlatExprVisitor : public AstVisitor {
   // Select node handler.
   // Invoked after child nodes are processed.
   void PostVisitSelect(const Select* select_expr, const Expr* expr,
-                       const SourcePosition* position) override {
+                       const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -225,7 +225,7 @@ class FlatExprVisitor : public AstVisitor {
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
   void PreVisitCall(const Call* call_expr, const Expr* expr,
-                    const SourcePosition* position) override {
+                    const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -250,7 +250,7 @@ class FlatExprVisitor : public AstVisitor {
 
   // Invoked after all child nodes are processed.
   void PostVisitCall(const Call* call_expr, const Expr* expr,
-                     const SourcePosition* position) override {
+                     const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -270,9 +270,8 @@ class FlatExprVisitor : public AstVisitor {
     }
   }
 
-  void PreVisitComprehension(const Comprehension* comprehension_expr,
-                             const Expr* expr,
-                             const SourcePosition* position) override {
+  void PreVisitComprehension(const Comprehension*, const Expr* expr,
+                             const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -287,9 +286,8 @@ class FlatExprVisitor : public AstVisitor {
   }
 
   // Invoked after all child nodes are processed.
-  void PostVisitComprehension(const Comprehension* comprehension_expr,
-                              const Expr* expr,
-                              const SourcePosition* position) override {
+  void PostVisitComprehension(const Comprehension*, const Expr* expr,
+                              const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -300,7 +298,7 @@ class FlatExprVisitor : public AstVisitor {
 
   // Invoked after each argument node processed.
   void PostVisitArg(int arg_num, const Expr* expr,
-                    const SourcePosition* position) override {
+                    const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -313,7 +311,7 @@ class FlatExprVisitor : public AstVisitor {
   // CreateList node handler.
   // Invoked after child nodes are processed.
   void PostVisitCreateList(const CreateList* list_expr, const Expr* expr,
-                           const SourcePosition* position) override {
+                           const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -324,7 +322,7 @@ class FlatExprVisitor : public AstVisitor {
   // CreateStruct node handler.
   // Invoked after child nodes are processed.
   void PostVisitCreateStruct(const CreateStruct* struct_expr, const Expr* expr,
-                             const SourcePosition* position) override {
+                             const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -461,7 +459,7 @@ class FlatExprVisitor : public AstVisitor {
   bool enable_comprehension_;
 };
 
-void FlatExprVisitor::BinaryCondVisitor::PreVisit(const Expr* expr) {}
+void FlatExprVisitor::BinaryCondVisitor::PreVisit(const Expr*) {}
 
 void FlatExprVisitor::BinaryCondVisitor::PostVisitArg(int arg_num,
                                                       const Expr* expr) {
@@ -483,7 +481,7 @@ void FlatExprVisitor::BinaryCondVisitor::PostVisit(const Expr* expr) {
   jump_step_.set_target(visitor_->GetCurrentIndex());
 }
 
-void FlatExprVisitor::TernaryCondVisitor::PreVisit(const Expr* expr) {}
+void FlatExprVisitor::TernaryCondVisitor::PreVisit(const Expr*) {}
 
 void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
                                                        const Expr* expr) {
@@ -539,7 +537,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
   // clattered.
 }
 
-void FlatExprVisitor::TernaryCondVisitor::PostVisit(const Expr* expr) {
+void FlatExprVisitor::TernaryCondVisitor::PostVisit(const Expr*) {
   // Determine and set jump offset in jump instruction.
   if (error_jump_.exists()) {
     error_jump_.set_target(visitor_->GetCurrentIndex());
@@ -580,7 +578,7 @@ const Expr* CurrentValueDummy() {
   return expr;
 }
 
-void FlatExprVisitor::ComprehensionVisitor::PreVisit(const Expr* expr) {
+void FlatExprVisitor::ComprehensionVisitor::PreVisit(const Expr*) {
   const Expr* dummy = LoopStepDummy();
   visitor_->AddStep(CreateConstValueStep(
       ConvertConstant(&dummy->const_expr()).value(), dummy->id(), false));
@@ -642,7 +640,7 @@ void FlatExprVisitor::ComprehensionVisitor::PostVisitArg(int arg_num,
   }
 }
 
-void FlatExprVisitor::ComprehensionVisitor::PostVisit(const Expr* expr) {}
+void FlatExprVisitor::ComprehensionVisitor::PostVisit(const Expr*) {}
 
 }  // namespace
 

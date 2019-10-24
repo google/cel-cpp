@@ -29,7 +29,7 @@ class CelAttributeQualifier {
       explicit NestedEqualVisitor(const T& arg) : arg_(arg) {}
 
       template <class U>
-      bool operator()(const U& other) const {
+      bool operator()(const U&) const {
         return false;
       }
 

@@ -65,9 +65,6 @@ class CelFunction {
   // CelFunction descriptor
   const Descriptor& descriptor() const { return descriptor_; }
 
-  // Configuration extension to customize the overload behavior.
-  virtual void Configure(const InterpreterOptions& options) {}
-
  private:
   Descriptor descriptor_;
 };

@@ -164,13 +164,12 @@ class ExecutionFrame {
 class CelExpressionFlatImpl : public CelExpression {
  public:
   // Constructs CelExpressionFlatImpl instance.
-  // root_expr represents the root of AST tree;
   // path is flat execution path that is based upon
   // flattened AST tree. Max iterations dictates the maximum number of
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
-  CelExpressionFlatImpl(const google::api::expr::v1alpha1::Expr* root_expr,
-                        ExecutionPath path, int max_iterations)
+  CelExpressionFlatImpl(const google::api::expr::v1alpha1::Expr*, ExecutionPath path,
+                        int max_iterations)
       : path_(std::move(path)), max_iterations_(max_iterations) {}
 
   // Implementation of CelExpression evaluate method.

@@ -119,7 +119,7 @@ cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   return cel_base::OkStatus();
 }
 
-ComprehensionCondStep::ComprehensionCondStep(const std::string& accu_var,
+ComprehensionCondStep::ComprehensionCondStep(const std::string&,
                                              const std::string& iter_var,
                                              bool shortcircuiting,
                                              int64_t expr_id)
@@ -158,8 +158,7 @@ cel_base::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   return cel_base::OkStatus();
 }
 
-ComprehensionFinish::ComprehensionFinish(const std::string& accu_var,
-                                         const std::string& iter_var,
+ComprehensionFinish::ComprehensionFinish(const std::string& accu_var, const std::string&,
                                          int64_t expr_id)
     : ExpressionStepBase(expr_id), accu_var_(accu_var) {}
 

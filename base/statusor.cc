@@ -32,7 +32,7 @@ void Helper::HandleInvalidStatusCtorArg(Status* status) {
   *status = Status(StatusCode::kInternal, kMessage);
 }
 
-void Helper::Crash(const Status& status) {
+void Helper::Crash(const Status&) {
   ABSL_RAW_CHECK(false, "Attempting to fetch value instead of handling error");
   abort();
 }

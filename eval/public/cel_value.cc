@@ -129,11 +129,11 @@ class DynamicMap : public CelMap {
 // ValueFromMessage(....) function family.
 // Functions of this family create CelValue object from specific subtypes of
 // protobuf message.
-CelValue ValueFromMessage(const Duration* duration, Arena* arena) {
+CelValue ValueFromMessage(const Duration* duration, Arena*) {
   return CelValue::CreateDuration(duration);
 }
 
-CelValue ValueFromMessage(const Timestamp* timestamp, Arena* arena) {
+CelValue ValueFromMessage(const Timestamp* timestamp, Arena*) {
   return CelValue::CreateTimestamp(timestamp);
 }
 
@@ -186,35 +186,35 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
   return CelValue::CreateMessage(nested_message, arena);
 }
 
-CelValue ValueFromMessage(const BoolValue* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const BoolValue* wrapper, Arena*) {
   return CelValue::CreateBool(wrapper->value());
 }
 
-CelValue ValueFromMessage(const Int32Value* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const Int32Value* wrapper, Arena*) {
   return CelValue::CreateInt64(wrapper->value());
 }
 
-CelValue ValueFromMessage(const UInt32Value* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const UInt32Value* wrapper, Arena*) {
   return CelValue::CreateUint64(wrapper->value());
 }
 
-CelValue ValueFromMessage(const Int64Value* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const Int64Value* wrapper, Arena*) {
   return CelValue::CreateInt64(wrapper->value());
 }
 
-CelValue ValueFromMessage(const UInt64Value* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const UInt64Value* wrapper, Arena*) {
   return CelValue::CreateUint64(wrapper->value());
 }
 
-CelValue ValueFromMessage(const FloatValue* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const FloatValue* wrapper, Arena*) {
   return CelValue::CreateDouble(wrapper->value());
 }
 
-CelValue ValueFromMessage(const DoubleValue* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const DoubleValue* wrapper, Arena*) {
   return CelValue::CreateDouble(wrapper->value());
 }
 
-CelValue ValueFromMessage(const StringValue* wrapper, Arena* arena) {
+CelValue ValueFromMessage(const StringValue* wrapper, Arena*) {
   return CelValue::CreateString(&wrapper->value());
 }
 
@@ -373,7 +373,7 @@ std::string CelValue::TypeName(Type value_type) {
 }
 
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
-                          cel_base::StatusCode error_code, int position) {
+                          cel_base::StatusCode error_code, int) {
   CelError* error = Arena::Create<CelError>(arena, error_code, message);
   return CelValue::CreateError(error);
 }
@@ -392,7 +392,7 @@ CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
   return CreateErrorValue(arena, "no_such_field", cel_base::StatusCode::kNotFound);
 }
 
-CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key) {
+CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view) {
   return CreateErrorValue(arena, kErrNoSuchKey, cel_base::StatusCode::kNotFound);
 }
 
