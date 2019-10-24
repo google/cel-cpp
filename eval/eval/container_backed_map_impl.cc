@@ -39,7 +39,7 @@ class HasherOp {
   }
 
   // Needed for successful compilation resolution.
-  size_t operator()(const std::nullptr_t& arg) { return 0; }
+  size_t operator()(const std::nullptr_t&) { return 0; }
 };
 
 // Helper classes to provide CelValue equality comparison operation
@@ -49,7 +49,7 @@ class EqualOp {
   explicit EqualOp(const T& arg) : arg_(arg) {}
 
   template <class U>
-  bool operator()(const U& other) const {
+  bool operator()(const U&) const {
     return false;
   }
 

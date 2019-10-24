@@ -38,65 +38,62 @@ class AstVisitorBase : public AstVisitor {
 
   // Const node handler.
   // Invoked after child nodes are processed.
-  void PostVisitConst(const google::api::expr::v1alpha1::Constant* const_expr,
-                      const google::api::expr::v1alpha1::Expr* expr,
-                      const SourcePosition* position) override {}
+  void PostVisitConst(const google::api::expr::v1alpha1::Constant*,
+                      const google::api::expr::v1alpha1::Expr*,
+                      const SourcePosition*) override {}
 
   // Ident node handler.
   // Invoked after child nodes are processed.
-  void PostVisitIdent(const google::api::expr::v1alpha1::Expr::Ident* ident_expr,
-                      const google::api::expr::v1alpha1::Expr* expr,
-                      const SourcePosition* position) override {}
+  void PostVisitIdent(const google::api::expr::v1alpha1::Expr::Ident*,
+                      const google::api::expr::v1alpha1::Expr*,
+                      const SourcePosition*) override {}
 
   // Select node handler
   // Invoked after child nodes are processed.
-  void PostVisitSelect(const google::api::expr::v1alpha1::Expr::Select* select_expr,
-                       const google::api::expr::v1alpha1::Expr* expr,
-                       const SourcePosition* position) override {}
+  void PostVisitSelect(const google::api::expr::v1alpha1::Expr::Select*,
+                       const google::api::expr::v1alpha1::Expr*,
+                       const SourcePosition*) override {}
 
   // Call node handler group
   // We provide finer granularity for Call node callbacks to allow special
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
-  void PreVisitCall(const google::api::expr::v1alpha1::Expr::Call* call_expr,
-                    const google::api::expr::v1alpha1::Expr* expr,
-                    const SourcePosition* position) override {}
+  void PreVisitCall(const google::api::expr::v1alpha1::Expr::Call*,
+                    const google::api::expr::v1alpha1::Expr*,
+                    const SourcePosition*) override {}
 
   // Invoked after all child nodes are processed.
-  void PostVisitCall(const google::api::expr::v1alpha1::Expr::Call* call_expr,
-                     const google::api::expr::v1alpha1::Expr* expr,
-                     const SourcePosition* position) override {}
+  void PostVisitCall(const google::api::expr::v1alpha1::Expr::Call*,
+                     const google::api::expr::v1alpha1::Expr*,
+                     const SourcePosition*) override {}
 
   // Invoked before all child nodes are processed.
-  void PreVisitComprehension(
-      const google::api::expr::v1alpha1::Expr::Comprehension* comprehension_expr,
-      const google::api::expr::v1alpha1::Expr* expr,
-      const SourcePosition* position) override {}
+  void PreVisitComprehension(const google::api::expr::v1alpha1::Expr::Comprehension*,
+                             const google::api::expr::v1alpha1::Expr*,
+                             const SourcePosition*) override {}
 
   // Invoked after all child nodes are processed.
-  void PostVisitComprehension(
-      const google::api::expr::v1alpha1::Expr::Comprehension* comprehension_expr,
-      const google::api::expr::v1alpha1::Expr* expr,
-      const SourcePosition* position) override {}
+  void PostVisitComprehension(const google::api::expr::v1alpha1::Expr::Comprehension*,
+                              const google::api::expr::v1alpha1::Expr*,
+                              const SourcePosition*) override {}
 
   // Invoked after each argument node processed.
   // For Call arg_num is the index of the argument.
   // For Comprehension arg_num is specified by ComprehensionArg.
-  void PostVisitArg(int arg_num, const google::api::expr::v1alpha1::Expr* expr,
-                    const SourcePosition* position) override {}
+  void PostVisitArg(int, const google::api::expr::v1alpha1::Expr*,
+                    const SourcePosition*) override {}
 
   // CreateList node handler
   // Invoked after child nodes are processed.
-  void PostVisitCreateList(const google::api::expr::v1alpha1::Expr::CreateList* list_expr,
-                           const google::api::expr::v1alpha1::Expr* expr,
-                           const SourcePosition* position) override {}
+  void PostVisitCreateList(const google::api::expr::v1alpha1::Expr::CreateList*,
+                           const google::api::expr::v1alpha1::Expr*,
+                           const SourcePosition*) override {}
 
   // CreateStruct node handler
   // Invoked after child nodes are processed.
-  void PostVisitCreateStruct(
-      const google::api::expr::v1alpha1::Expr::CreateStruct* struct_expr,
-      const google::api::expr::v1alpha1::Expr* expr,
-      const SourcePosition* position) override {}
+  void PostVisitCreateStruct(const google::api::expr::v1alpha1::Expr::CreateStruct*,
+                             const google::api::expr::v1alpha1::Expr*,
+                             const SourcePosition*) override {}
 };
 
 }  // namespace runtime

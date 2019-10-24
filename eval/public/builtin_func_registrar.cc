@@ -305,17 +305,17 @@ template <class Type>
 
 // Template functions providing arithmetic operations
 template <class Type>
-Type Add(Arena* arena, Type v0, Type v1) {
+Type Add(Arena*, Type v0, Type v1) {
   return v0 + v1;
 }
 
 template <class Type>
-Type Sub(Arena* arena, Type v0, Type v1) {
+Type Sub(Arena*, Type v0, Type v1) {
   return v0 - v1;
 }
 
 template <class Type>
-Type Mul(Arena* arena, Type v0, Type v1) {
+Type Mul(Arena*, Type v0, Type v1) {
   return v0 * v1;
 }
 
@@ -349,7 +349,7 @@ CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
 }
 
 template <>
-CelValue Div<double>(Arena* arena, double v0, double v1) {
+CelValue Div<double>(Arena*, double v0, double v1) {
   // For double, division will result in +/- inf
   return CelValue::CreateDouble(v0 / v1);
 }
@@ -435,7 +435,7 @@ bool ValueEquals(const CelValue& value, CelValue::BytesHolder other) {
 
 // Template function implementing CEL in() function
 template <typename T>
-bool In(Arena* arena, T value, const CelList* list) {
+bool In(Arena*, T value, const CelList* list) {
   int index_size = list->size();
 
   for (int i = 0; i < index_size; i++) {
@@ -620,35 +620,35 @@ CelValue CreateDurationFromString(Arena* arena,
   return CelValue::CreateDuration(d);
 }
 
-CelValue GetHours(Arena* arena, absl::Duration duration) {
+CelValue GetHours(Arena*, absl::Duration duration) {
   return CelValue::CreateInt64(absl::ToInt64Hours(duration));
 }
 
-CelValue GetMinutes(Arena* arena, absl::Duration duration) {
+CelValue GetMinutes(Arena*, absl::Duration duration) {
   return CelValue::CreateInt64(absl::ToInt64Minutes(duration));
 }
 
-CelValue GetSeconds(Arena* arena, absl::Duration duration) {
+CelValue GetSeconds(Arena*, absl::Duration duration) {
   return CelValue::CreateInt64(absl::ToInt64Seconds(duration));
 }
 
-CelValue GetMilliseconds(Arena* arena, absl::Duration duration) {
+CelValue GetMilliseconds(Arena*, absl::Duration duration) {
   int64_t millis_per_second = 1000L;
   return CelValue::CreateInt64(absl::ToInt64Milliseconds(duration) %
                                millis_per_second);
 }
 
-bool StringContains(Arena* arena, CelValue::StringHolder value,
+bool StringContains(Arena*, CelValue::StringHolder value,
                     CelValue::StringHolder substr) {
   return absl::StrContains(value.value(), substr.value());
 }
 
-bool StringEndsWith(Arena* arena, CelValue::StringHolder value,
+bool StringEndsWith(Arena*, CelValue::StringHolder value,
                     CelValue::StringHolder suffix) {
   return absl::EndsWith(value.value(), suffix.value());
 }
 
-bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
+bool StringStartsWith(Arena*, CelValue::StringHolder value,
                       CelValue::StringHolder prefix) {
   return absl::StartsWith(value.value(), prefix.value());
 }
@@ -659,19 +659,19 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
                                         const InterpreterOptions& options) {
   // logical NOT
   cel_base::Status status = FunctionAdapter<bool, bool>::CreateAndRegister(
-      builtin::kNot, false,
-      [](Arena* arena, bool value) -> bool { return !value; }, registry);
+      builtin::kNot, false, [](Arena*, bool value) -> bool { return !value; },
+      registry);
   if (!status.ok()) return status;
 
   // Negation group
   status = FunctionAdapter<int64_t, int64_t>::CreateAndRegister(
-      builtin::kNeg, false,
-      [](Arena* arena, int64_t value) -> int64_t { return -value; }, registry);
+      builtin::kNeg, false, [](Arena*, int64_t value) -> int64_t { return -value; },
+      registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<double, double>::CreateAndRegister(
       builtin::kNeg, false,
-      [](Arena* arena, double value) -> double { return -value; }, registry);
+      [](Arena*, double value) -> double { return -value; }, registry);
   if (!status.ok()) return status;
 
   status = RegisterComparisonFunctionsForType<bool>(registry);
@@ -711,16 +711,14 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   // This implementation is used when short-circuiting is off.
   status = FunctionAdapter<bool, bool, bool>::CreateAndRegister(
       builtin::kAnd, false,
-      [](Arena* arena, bool value1, bool value2) -> bool {
-        return value1 && value2;
-      },
+      [](Arena*, bool value1, bool value2) -> bool { return value1 && value2; },
       registry);
   if (!status.ok()) return status;
 
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, const CelError*, bool>::CreateAndRegister(
       builtin::kAnd, false,
-      [](Arena* arena, const CelError* value1, bool value2) {
+      [](Arena*, const CelError* value1, bool value2) {
         return (value2) ? CelValue::CreateError(value1)
                         : CelValue::CreateBool(false);
       },
@@ -730,7 +728,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, bool, const CelError*>::CreateAndRegister(
       builtin::kAnd, false,
-      [](Arena* arena, bool value1, const CelError* value2) {
+      [](Arena*, bool value1, const CelError* value2) {
         return (value1) ? CelValue::CreateError(value2)
                         : CelValue::CreateBool(false);
       },
@@ -739,26 +737,26 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   // Special case: both arguments are errors.
   status = FunctionAdapter<const CelError*, const CelError*, const CelError*>::
-      CreateAndRegister(builtin::kAnd, false,
-                        [](Arena* arena, const CelError* value1,
-                           const CelError* value2) { return value1; },
-                        registry);
+      CreateAndRegister(
+          builtin::kAnd, false,
+          [](Arena*, const CelError* value1, const CelError*) {
+            return value1;
+          },
+          registry);
   if (!status.ok()) return status;
 
   // Logical OR
   // This implementation is used when short-circuiting is off.
   status = FunctionAdapter<bool, bool, bool>::CreateAndRegister(
       builtin::kOr, false,
-      [](Arena* arena, bool value1, bool value2) -> bool {
-        return value1 || value2;
-      },
+      [](Arena*, bool value1, bool value2) -> bool { return value1 || value2; },
       registry);
   if (!status.ok()) return status;
 
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, const CelError*, bool>::CreateAndRegister(
       builtin::kOr, false,
-      [](Arena* arena, const CelError* value1, bool value2) {
+      [](Arena*, const CelError* value1, bool value2) {
         return (value2) ? CelValue::CreateBool(true)
                         : CelValue::CreateError(value1);
       },
@@ -768,7 +766,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   // Special case: one of arguments is error.
   status = FunctionAdapter<CelValue, bool, const CelError*>::CreateAndRegister(
       builtin::kOr, false,
-      [](Arena* arena, bool value1, const CelError* value2) {
+      [](Arena*, bool value1, const CelError* value2) {
         return (value1) ? CelValue::CreateBool(true)
                         : CelValue::CreateError(value2);
       },
@@ -777,10 +775,12 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   // Special case: both arguments are errors.
   status = FunctionAdapter<const CelError*, const CelError*, const CelError*>::
-      CreateAndRegister(builtin::kOr, false,
-                        [](Arena* arena, const CelError* value1,
-                           const CelError* value2) { return value1; },
-                        registry);
+      CreateAndRegister(
+          builtin::kOr, false,
+          [](Arena*, const CelError* value1, const CelError*) {
+            return value1;
+          },
+          registry);
   if (!status.ok()) return status;
 
   // Ternary operator
@@ -788,7 +788,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status =
       FunctionAdapter<CelValue, bool, CelValue, CelValue>::CreateAndRegister(
           builtin::kTernary, false,
-          [](Arena* arena, bool cond, CelValue value1, CelValue value2) {
+          [](Arena*, bool cond, CelValue value1, CelValue value2) {
             return (cond) ? value1 : value2;
           },
           registry);
@@ -799,37 +799,35 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status = FunctionAdapter<CelValue, const CelError*, CelValue, CelValue>::
       CreateAndRegister(
           builtin::kTernary, false,
-          [](Arena* arena, const CelError* error, CelValue value1,
-             CelValue value2) { return CelValue::CreateError(error); },
+          [](Arena*, const CelError* error, CelValue, CelValue) {
+            return CelValue::CreateError(error);
+          },
           registry);
   if (!status.ok()) return status;
 
   // Strictness
   status = FunctionAdapter<bool, bool>::CreateAndRegister(
       builtin::kNotStrictlyFalse, false,
-      [](Arena* arena, bool value) -> bool { return value; }, registry);
+      [](Arena*, bool value) -> bool { return value; }, registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<bool, const CelError*>::CreateAndRegister(
       builtin::kNotStrictlyFalse, false,
-      [](Arena* arena, const CelError* error) -> bool { return true; },
-      registry);
+      [](Arena*, const CelError*) -> bool { return true; }, registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<bool, bool>::CreateAndRegister(
       builtin::kNotStrictlyFalseDeprecated, false,
-      [](Arena* arena, bool value) -> bool { return value; }, registry);
+      [](Arena*, bool value) -> bool { return value; }, registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<bool, const CelError*>::CreateAndRegister(
       builtin::kNotStrictlyFalseDeprecated, false,
-      [](Arena* arena, const CelError* error) -> bool { return true; },
-      registry);
+      [](Arena*, const CelError*) -> bool { return true; }, registry);
   if (!status.ok()) return status;
 
   // String size
-  auto string_size_func = [](Arena* arena,
-                             CelValue::StringHolder value) -> int64_t {
+  auto string_size_func = [](Arena*, CelValue::StringHolder value) -> int64_t {
     return value.value().size();
   };
   // receiver style = true/false
@@ -842,8 +840,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   if (!status.ok()) return status;
 
   // Bytes size
-  auto bytes_size_func = [](Arena* arena,
-                            CelValue::BytesHolder value) -> int64_t {
+  auto bytes_size_func = [](Arena*, CelValue::BytesHolder value) -> int64_t {
     return value.value().size();
   };
   // receiver style = true/false
@@ -856,7 +853,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   if (!status.ok()) return status;
 
   // List size
-  auto list_size_func = [](Arena* arena, const CelList* cel_list) -> int64_t {
+  auto list_size_func = [](Arena*, const CelList* cel_list) -> int64_t {
     return (*cel_list).size();
   };
   // receiver style = true/false
@@ -939,7 +936,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   }
 
   // Map size
-  auto map_size_func = [](Arena* arena, const CelMap* cel_map) -> int64_t {
+  auto map_size_func = [](Arena*, const CelMap* cel_map) -> int64_t {
     return (*cel_map).size();
   };
   // receiver style = true/false
@@ -954,7 +951,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
       CreateAndRegister(
           builtin::kIn, false,
-          [](Arena* arena, CelValue::StringHolder key,
+          [](Arena*, CelValue::StringHolder key,
              const CelMap* cel_map) -> bool {
             return (*cel_map)[CelValue::CreateString(key)].has_value();
           },
@@ -963,7 +960,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
       builtin::kIn, false,
-      [](Arena* arena, int64_t key, const CelMap* cel_map) -> bool {
+      [](Arena*, int64_t key, const CelMap* cel_map) -> bool {
         return (*cel_map)[CelValue::CreateInt64(key)].has_value();
       },
       registry);
@@ -971,7 +968,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
       builtin::kIn, false,
-      [](Arena* arena, uint64_t key, const CelMap* cel_map) -> bool {
+      [](Arena*, uint64_t key, const CelMap* cel_map) -> bool {
         return (*cel_map)[CelValue::CreateUint64(key)].has_value();
       },
       registry);
@@ -981,7 +978,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   // Bindings preserved for backward compatibility with stored expressions.
   status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
       builtin::kInDeprecated, false,
-      [](Arena* arena, int64_t key, const CelMap* cel_map) -> bool {
+      [](Arena*, int64_t key, const CelMap* cel_map) -> bool {
         return (*cel_map)[CelValue::CreateInt64(key)].has_value();
       },
       registry);
@@ -989,7 +986,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
       builtin::kInDeprecated, false,
-      [](Arena* arena, uint64_t key, const CelMap* cel_map) -> bool {
+      [](Arena*, uint64_t key, const CelMap* cel_map) -> bool {
         return (*cel_map)[CelValue::CreateUint64(key)].has_value();
       },
       registry);
@@ -998,7 +995,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
       CreateAndRegister(
           builtin::kInDeprecated, false,
-          [](Arena* arena, CelValue::StringHolder key,
+          [](Arena*, CelValue::StringHolder key,
              const CelMap* cel_map) -> bool {
             return (*cel_map)[CelValue::CreateString(key)].has_value();
           },
@@ -1009,7 +1006,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
       CreateAndRegister(
           builtin::kInFunction, false,
-          [](Arena* arena, CelValue::StringHolder key,
+          [](Arena*, CelValue::StringHolder key,
              const CelMap* cel_map) -> bool {
             return (*cel_map)[CelValue::CreateString(key)].has_value();
           },
@@ -1018,7 +1015,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
       builtin::kInFunction, false,
-      [](Arena* arena, int64_t key, const CelMap* cel_map) -> bool {
+      [](Arena*, int64_t key, const CelMap* cel_map) -> bool {
         return (*cel_map)[CelValue::CreateInt64(key)].has_value();
       },
       registry);
@@ -1026,7 +1023,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
       builtin::kInFunction, false,
-      [](Arena* arena, uint64_t key, const CelMap* cel_map) -> bool {
+      [](Arena*, uint64_t key, const CelMap* cel_map) -> bool {
         return (*cel_map)[CelValue::CreateUint64(key)].has_value();
       },
       registry);
@@ -1046,7 +1043,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status =
       FunctionAdapter<CelValue, absl::Time, absl::Duration>::CreateAndRegister(
           builtin::kAdd, false,
-          [](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
+          [](Arena*, absl::Time t1, absl::Duration d2) -> CelValue {
             return CelValue::CreateTimestamp(t1 + d2);
           },
           registry);
@@ -1055,7 +1052,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status =
       FunctionAdapter<CelValue, absl::Duration, absl::Time>::CreateAndRegister(
           builtin::kAdd, false,
-          [](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
+          [](Arena*, absl::Duration d2, absl::Time t1) -> CelValue {
             return CelValue::CreateTimestamp(t1 + d2);
           },
           registry);
@@ -1064,7 +1061,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status = FunctionAdapter<CelValue, absl::Duration, absl::Duration>::
       CreateAndRegister(
           builtin::kAdd, false,
-          [](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
+          [](Arena*, absl::Duration d1, absl::Duration d2) -> CelValue {
             return CelValue::CreateDuration(d1 + d2);
           },
           registry);
@@ -1073,7 +1070,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status =
       FunctionAdapter<CelValue, absl::Time, absl::Duration>::CreateAndRegister(
           builtin::kSubtract, false,
-          [](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
+          [](Arena*, absl::Time t1, absl::Duration d2) -> CelValue {
             return CelValue::CreateTimestamp(t1 - d2);
           },
           registry);
@@ -1081,7 +1078,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
 
   status = FunctionAdapter<CelValue, absl::Time, absl::Time>::CreateAndRegister(
       builtin::kSubtract, false,
-      [](Arena* arena, absl::Time t1, absl::Time t2) -> CelValue {
+      [](Arena*, absl::Time t1, absl::Time t2) -> CelValue {
         return CelValue::CreateDuration(t1 - t2);
       },
       registry);
@@ -1090,7 +1087,7 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   status = FunctionAdapter<CelValue, absl::Duration, absl::Duration>::
       CreateAndRegister(
           builtin::kSubtract, false,
-          [](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
+          [](Arena*, absl::Duration d1, absl::Duration d2) -> CelValue {
             return CelValue::CreateDuration(d1 - d2);
           },
           registry);
@@ -1370,22 +1367,20 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
   // (overflow/underflow) by returning StatusOr<RawType>.
   status = FunctionAdapter<int64_t, absl::Time>::CreateAndRegister(
       builtin::kInt, false,
-      [](Arena* arena, absl::Time t) { return absl::ToUnixSeconds(t); },
-      registry);
+      [](Arena*, absl::Time t) { return absl::ToUnixSeconds(t); }, registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<int64_t, double>::CreateAndRegister(
-      builtin::kInt, false, [](Arena* arena, double v) { return (int64_t)v; },
+      builtin::kInt, false, [](Arena*, double v) { return (int64_t)v; },
       registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<int64_t, bool>::CreateAndRegister(
-      builtin::kInt, false, [](Arena* arena, bool v) { return (int64_t)v; },
-      registry);
+      builtin::kInt, false, [](Arena*, bool v) { return (int64_t)v; }, registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<int64_t, uint64_t>::CreateAndRegister(
-      builtin::kInt, false, [](Arena* arena, uint64_t v) { return (int64_t)v; },
+      builtin::kInt, false, [](Arena*, uint64_t v) { return (int64_t)v; },
       registry);
   if (!status.ok()) return status;
 
@@ -1470,8 +1465,9 @@ bool StringStartsWith(Arena* arena, CelValue::StringHolder value,
     status = FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
         CreateAndRegister(
             builtin::kString, false,
-            [](Arena* arena, CelValue::StringHolder value)
-                -> CelValue::StringHolder { return value; },
+            [](Arena*, CelValue::StringHolder value) -> CelValue::StringHolder {
+              return value;
+            },
             registry);
     if (!status.ok()) return status;
   }

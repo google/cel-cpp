@@ -5,7 +5,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-::cel_base::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
+::cel_base::Status RegisterExtensionFunctions(CelFunctionRegistry*) {
   return ::cel_base::OkStatus();
 }
 
