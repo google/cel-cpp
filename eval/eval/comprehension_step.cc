@@ -97,6 +97,10 @@ cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     );
     return cel_base::Status(cel_base::StatusCode::kInternal, message);
   }
+  auto increment_status = frame->IncrementIterations();
+  if (!increment_status.ok()) {
+    return increment_status;
+  }
   int64_t current_index = current_index_value.Int64OrDie();
   CelValue loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);

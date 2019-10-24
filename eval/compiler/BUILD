@@ -23,6 +23,7 @@ cc_library(
         "//base:status",
         "//eval/eval:comprehension_step",
         "//eval/eval:const_value_step",
+        "//eval/eval:container_access_step",
         "//eval/eval:create_list_step",
         "//eval/eval:create_struct_step",
         "//eval/eval:evaluator_core",

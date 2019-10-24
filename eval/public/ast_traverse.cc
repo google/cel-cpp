@@ -66,6 +66,7 @@ struct StackRecord {
 void PreVisit(const StackRecord &record, AstVisitor *visitor) {
   const Expr *expr = record.expr;
   const SourcePosition position(expr->id(), record.source_info);
+  visitor->PreVisitExpr(expr, &position);
   switch (expr->expr_kind_case()) {
     case Expr::kSelectExpr:
       visitor->PreVisitSelect(&expr->select_expr(), expr, &position);
@@ -117,6 +118,7 @@ void PostVisit(const StackRecord &record, AstVisitor *visitor) {
       record.calling_expr != nullptr) {
     visitor->PostVisitArg(record.call_arg, record.calling_expr, &position);
   }
+  visitor->PostVisitExpr(expr, &position);
 }
 
 void PushSelectDeps(const Select *select_expr, const StackRecord &record,

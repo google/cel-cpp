@@ -25,7 +25,7 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
 cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const Activation& activation, google::protobuf::Arena* arena,
     CelEvaluationListener callback) const {
-  ExecutionFrame frame(&path_, activation, arena);
+  ExecutionFrame frame(&path_, activation, arena, max_iterations_);
 
   ValueStack* stack = &frame.value_stack();
   size_t initial_stack_size = stack->size();

@@ -37,6 +37,14 @@ using Comprehension = google::api::expr::v1alpha1::Expr::Comprehension;
 
 class MockAstVisitor : public AstVisitor {
  public:
+  // Expr handler.
+  MOCK_METHOD2(PreVisitExpr,
+               void(const Expr* expr, const SourcePosition* position));
+
+  // Expr handler.
+  MOCK_METHOD2(PostVisitExpr,
+               void(const Expr* expr, const SourcePosition* position));
+
   MOCK_METHOD3(PostVisitConst,
                void(const Constant* const_expr, const Expr* expr,
                     const SourcePosition* position));
@@ -243,6 +251,24 @@ TEST(AstCrawlerTest, CheckCreateStruct) {
   EXPECT_CALL(handler, PostVisitConst(key, &entry0->map_key(), _)).Times(1);
   EXPECT_CALL(handler, PostVisitIdent(value, &entry0->value(), _)).Times(1);
   EXPECT_CALL(handler, PostVisitCreateStruct(struct_expr, &expr, _)).Times(1);
+
+  AstTraverse(&expr, &source_info, &handler);
+}
+
+// Test generic Expr handlers.
+TEST(AstCrawlerTest, CheckExprHandlers) {
+  SourceInfo source_info;
+  MockAstVisitor handler;
+
+  Expr expr;
+  auto struct_expr = expr.mutable_struct_expr();
+  auto entry0 = struct_expr->add_entries();
+
+  entry0->mutable_map_key()->mutable_const_expr();
+  entry0->mutable_value()->mutable_ident_expr();
+
+  EXPECT_CALL(handler, PreVisitExpr(_, _)).Times(3);
+  EXPECT_CALL(handler, PostVisitExpr(_, _)).Times(3);
 
   AstTraverse(&expr, &source_info, &handler);
 }

@@ -60,6 +60,25 @@ cc_library(
 )
 
 cc_library(
+    name = "container_access_step",
+    srcs = [
+        "container_access_step.cc",
+    ],
+    hdrs = [
+        "container_access_step.h",
+    ],
+    deps = [
+        ":evaluator_core",
+        ":expression_step_base",
+        "//base:status",
+        "//eval/public:activation",
+        "//eval/public:cel_value",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "ident_step",
     srcs = [
         "ident_step.cc",
@@ -106,6 +125,7 @@ cc_library(
     deps = [
         "//base:status",
         "//eval/public:cel_value",
+        "//internal:proto_util",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -325,6 +345,24 @@ cc_test(
         ":evaluator_core",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "container_access_step_test",
+    size = "small",
+    srcs = [
+        "container_access_step_test.cc",
+    ],
+    deps = [
+        ":container_access_step",
+        ":container_backed_list_impl",
+        ":container_backed_map_impl",
+        ":ident_step",
+        "//eval/public:cel_builtins",
+        "//eval/public:cel_value",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

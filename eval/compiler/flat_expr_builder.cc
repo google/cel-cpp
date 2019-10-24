@@ -7,6 +7,7 @@
 #include "eval/compiler/constant_folding.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/container_access_step.h"
 #include "eval/eval/create_list_step.h"
 #include "eval/eval/create_struct_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -46,13 +47,15 @@ class FlatExprVisitor : public AstVisitor {
       bool shortcircuiting,
       const std::set<const google::protobuf::EnumDescriptor*>& enums,
       absl::string_view container,
-      const absl::flat_hash_map<std::string, CelValue>& constant_idents)
+      const absl::flat_hash_map<std::string, CelValue>& constant_idents,
+      bool enable_comprehension)
       : flattened_path_(path),
         progress_status_(cel_base::OkStatus()),
         resolved_select_expr_(nullptr),
         function_registry_(function_registry),
         shortcircuiting_(shortcircuiting),
-        constant_idents_(constant_idents) {
+        constant_idents_(constant_idents),
+        enable_comprehension_(enable_comprehension) {
     auto container_elements = absl::StrSplit(container, '.');
 
     // Build list of prefixes from container. Non-empty prefixes must end with
@@ -257,6 +260,11 @@ class FlatExprVisitor : public AstVisitor {
       cond_visitor->PostVisit(expr);
       cond_visitor_stack_.pop();
     } else {
+      // Special case for "_[_]".
+      if (call_expr->function() == builtin::kIndex) {
+        AddStep(CreateContainerAccessStep(call_expr, expr->id()));
+        return;
+      }
       // For regular functions, just create one based on registry.
       AddStep(CreateFunctionStep(call_expr, expr->id(), *function_registry_));
     }
@@ -267,6 +275,10 @@ class FlatExprVisitor : public AstVisitor {
                              const SourcePosition* position) override {
     if (!progress_status_.ok()) {
       return;
+    }
+    if (!enable_comprehension_) {
+      SetProgressStatusError(cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+                                          "Comprehension support is disabled"));
     }
     cond_visitor_stack_.emplace(expr,
                                 absl::make_unique<ComprehensionVisitor>(this));
@@ -445,6 +457,8 @@ class FlatExprVisitor : public AstVisitor {
   bool shortcircuiting_;
 
   const absl::flat_hash_map<std::string, CelValue>& constant_idents_;
+
+  bool enable_comprehension_;
 };
 
 void FlatExprVisitor::BinaryCondVisitor::PreVisit(const Expr* expr) {}
@@ -652,7 +666,7 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
 
   FlatExprVisitor visitor(this->GetRegistry(), &execution_path,
                           shortcircuiting_, resolvable_enums(), container(),
-                          idents);
+                          idents, enable_comprehension_);
 
   AstTraverse(constant_folding_ ? &out : expr, source_info, &visitor);
 
@@ -661,7 +675,8 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
   }
 
   std::unique_ptr<CelExpression> expression_impl =
-      absl::make_unique<CelExpressionFlatImpl>(expr, std::move(execution_path));
+      absl::make_unique<CelExpressionFlatImpl>(expr, std::move(execution_path),
+                                               comprehension_max_iterations_);
 
   return std::move(expression_impl);
 }

@@ -96,8 +96,13 @@ class ExecutionFrame {
   // activation provides bindings between parameter names and values.
   // arena serves as allocation manager during the expression evaluation.
   ExecutionFrame(const ExecutionPath* flat, const Activation& activation,
-                 google::protobuf::Arena* arena)
-      : pc_(0), execution_path_(flat), activation_(activation), arena_(arena) {
+                 google::protobuf::Arena* arena, int max_iterations)
+      : pc_(0),
+        execution_path_(flat),
+        activation_(activation),
+        arena_(arena),
+        max_iterations_(max_iterations),
+        iterations_(0) {
     // Reserve space on stack to minimize reallocations
     // on stack resize.
     value_stack_.Reserve(flat->size());
@@ -129,12 +134,28 @@ class ExecutionFrame {
   // Returns reference to iter_vars
   std::map<std::string, CelValue>& iter_vars() { return iter_vars_; }
 
+  // Increment iterations and return an error if the iteration budget is
+  // exceeded
+  cel_base::Status IncrementIterations() {
+    if (max_iterations_ == 0) {
+      return cel_base::OkStatus();
+    }
+    iterations_++;
+    if (iterations_ >= max_iterations_) {
+      return cel_base::Status(cel_base::StatusCode::kInternal,
+                          "Iteration budget exceeded");
+    }
+    return cel_base::OkStatus();
+  }
+
  private:
   int pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath* execution_path_;
   const Activation& activation_;
   ValueStack value_stack_;
   google::protobuf::Arena* arena_;
+  const int max_iterations_;
+  int iterations_;
   std::map<std::string, CelValue> iter_vars_;  // variables declared in the frame.
 };
 
@@ -145,10 +166,12 @@ class CelExpressionFlatImpl : public CelExpression {
   // Constructs CelExpressionFlatImpl instance.
   // root_expr represents the root of AST tree;
   // path is flat execution path that is based upon
-  // flattened AST tree.
+  // flattened AST tree. Max iterations dictates the maximum number of
+  // iterations in the comprehension expressions (use 0 to disable the upper
+  // bound).
   CelExpressionFlatImpl(const google::api::expr::v1alpha1::Expr* root_expr,
-                        ExecutionPath path)
-      : path_(std::move(path)) {}
+                        ExecutionPath path, int max_iterations)
+      : path_(std::move(path)), max_iterations_(max_iterations) {}
 
   // Implementation of CelExpression evaluate method.
   cel_base::StatusOr<CelValue> Evaluate(const Activation& activation,
@@ -161,6 +184,7 @@ class CelExpressionFlatImpl : public CelExpression {
 
  private:
   const ExecutionPath path_;
+  const int max_iterations_;
 };
 
 }  // namespace runtime

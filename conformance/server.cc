@@ -250,7 +250,6 @@ class ConformanceServiceImpl final
 int RunServer(std::string server_address) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
-  options.partial_string_match = true;
 
   const char* enable_constant_folding =
       getenv("CEL_CPP_ENABLE_CONSTANT_FOLDING");

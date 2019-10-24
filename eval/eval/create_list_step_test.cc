@@ -42,7 +42,7 @@ cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
 
   path.push_back(std::move(step0_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path));
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0);
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -64,7 +64,7 @@ TEST(CreateListStepTest, TestCreateListStackUndeflow) {
 
   path.push_back(std::move(step0_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path));
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0);
   Activation activation;
 
   google::protobuf::Arena arena;

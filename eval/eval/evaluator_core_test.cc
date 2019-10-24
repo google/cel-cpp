@@ -60,7 +60,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
   Activation activation;
-  ExecutionFrame frame(&path, activation, nullptr);
+  ExecutionFrame frame(&path, activation, nullptr, 0);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -80,7 +80,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path));
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   Activation activation;
   google::protobuf::Arena arena;

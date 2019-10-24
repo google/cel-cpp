@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package google.api.expr.runtime;
 
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
 option cc_enable_arenas = true;
 
 enum TestEnum {
@@ -11,8 +17,6 @@ enum TestEnum {
   TEST_ENUM_3 = 30;
 }
 
-// Message representing errors
-// during CEL evaluation.
 message TestMessage {
   int32 int32_value = 1;
   int64 int64_value = 2;
@@ -60,4 +64,20 @@ message TestMessage {
   map<int64, int32> int64_int32_map = 201;
   map<uint64, int32> uint64_int32_map = 202;
   map<string, int32> string_int32_map = 203;
+
+  // Well-known types.
+  google.protobuf.Any any_value = 300;
+  google.protobuf.Duration duration_value = 301;
+  google.protobuf.Timestamp timestamp_value = 302;
+  google.protobuf.Struct struct_value = 303;
+  google.protobuf.Value value_value = 304;
+  google.protobuf.Int64Value int64_wrapper_value = 305;
+  google.protobuf.Int32Value int32_wrapper_value = 306;
+  google.protobuf.DoubleValue double_wrapper_value = 307;
+  google.protobuf.FloatValue float_wrapper_value = 308;
+  google.protobuf.UInt64Value uint64_wrapper_value = 309;
+  google.protobuf.UInt32Value uint32_wrapper_value = 310;
+  google.protobuf.StringValue string_wrapper_value = 311;
+  google.protobuf.BoolValue bool_wrapper_value = 312;
+  google.protobuf.BytesValue bytes_wrapper_value = 313;
 }

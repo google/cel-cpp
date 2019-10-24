@@ -1,0 +1,146 @@
+#include "eval/public/value_export_util.h"
+
+#include "google/protobuf/util/json_util.h"
+#include "google/protobuf/util/time_util.h"
+#include "absl/strings/escaping.h"
+#include "absl/strings/str_cat.h"
+#include "base/canonical_errors.h"
+
+namespace google {
+namespace api {
+namespace expr {
+namespace runtime {
+
+using google::protobuf::Duration;
+using google::protobuf::ListValue;
+using google::protobuf::Struct;
+using google::protobuf::Timestamp;
+using google::protobuf::Value;
+using google::protobuf::FieldDescriptor;
+using google::protobuf::Message;
+using google::protobuf::util::TimeUtil;
+
+cel_base::Status KeyAsString(const CelValue& value, std::string* key) {
+  switch (value.type()) {
+    case CelValue::Type::kInt64: {
+      *key = absl::StrCat(value.Int64OrDie());
+      break;
+    }
+    case CelValue::Type::kUint64: {
+      *key = absl::StrCat(value.Uint64OrDie());
+      break;
+    }
+    case CelValue::Type::kString: {
+      key->assign(value.StringOrDie().value().data(),
+                  value.StringOrDie().value().size());
+      break;
+    }
+    default: { return cel_base::InvalidArgumentError("Unsupported map type"); }
+  }
+  return cel_base::OkStatus();
+}
+
+//  Export content of CelValue as google.protobuf.Value.
+cel_base::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
+  if (in_value.IsNull()) {
+    out_value->set_null_value(google::protobuf::NULL_VALUE);
+    return cel_base::OkStatus();
+  }
+  switch (in_value.type()) {
+    case CelValue::Type::kBool: {
+      out_value->set_bool_value(in_value.BoolOrDie());
+      break;
+    }
+    case CelValue::Type::kInt64: {
+      out_value->set_number_value(static_cast<double>(in_value.Int64OrDie()));
+      break;
+    }
+    case CelValue::Type::kUint64: {
+      out_value->set_number_value(static_cast<double>(in_value.Uint64OrDie()));
+      break;
+    }
+    case CelValue::Type::kDouble: {
+      out_value->set_number_value(in_value.DoubleOrDie());
+      break;
+    }
+    case CelValue::Type::kString: {
+      auto value = in_value.StringOrDie().value();
+      out_value->set_string_value(value.data(), value.size());
+      break;
+    }
+    case CelValue::Type::kBytes: {
+      absl::Base64Escape(in_value.BytesOrDie().value(),
+                         out_value->mutable_string_value());
+      break;
+    }
+    case CelValue::Type::kDuration: {
+      Duration duration;
+      expr::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
+      out_value->set_string_value(TimeUtil::ToString(duration));
+      break;
+    }
+    case CelValue::Type::kTimestamp: {
+      Timestamp timestamp;
+      expr::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
+      out_value->set_string_value(TimeUtil::ToString(timestamp));
+      break;
+    }
+    case CelValue::Type::kMessage: {
+      google::protobuf::util::JsonPrintOptions json_options;
+      json_options.preserve_proto_field_names = true;
+      std::string json;
+      auto status = google::protobuf::util::MessageToJsonString(*in_value.MessageOrDie(),
+                                                      &json, json_options);
+      if (!status.ok()) {
+        return cel_base::InternalError(status.ToString());
+      }
+      google::protobuf::util::JsonParseOptions json_parse_options;
+      status = google::protobuf::util::JsonStringToMessage(json, out_value,
+                                                 json_parse_options);
+      if (!status.ok()) {
+        return cel_base::InternalError(status.ToString());
+      }
+      break;
+    }
+    case CelValue::Type::kList: {
+      const CelList* cel_list = in_value.ListOrDie();
+      auto out_values = out_value->mutable_list_value();
+      for (int i = 0; i < cel_list->size(); i++) {
+        auto status =
+            ExportAsProtoValue((*cel_list)[i], out_values->add_values());
+        if (!status.ok()) {
+          return status;
+        }
+      }
+      break;
+    }
+    case CelValue::Type::kMap: {
+      const CelMap* cel_map = in_value.MapOrDie();
+      auto keys_list = cel_map->ListKeys();
+      auto out_values = out_value->mutable_struct_value()->mutable_fields();
+      for (int i = 0; i < keys_list->size(); i++) {
+        std::string key;
+        CelValue map_key = (*keys_list)[i];
+        auto status = KeyAsString(map_key, &key);
+        if (!status.ok()) {
+          return status;
+        }
+        auto map_value_ref = (*cel_map)[map_key];
+        CelValue map_value =
+            (map_value_ref) ? map_value_ref.value() : CelValue();
+        status = ExportAsProtoValue(map_value, &((*out_values)[key]));
+        if (!status.ok()) {
+          return status;
+        }
+      }
+      break;
+    }
+    default: { return cel_base::InvalidArgumentError("Unsupported value type"); }
+  }
+  return cel_base::OkStatus();
+}
+
+}  // namespace runtime
+}  // namespace expr
+}  // namespace api
+}  // namespace google
