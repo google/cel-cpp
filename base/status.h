@@ -28,7 +28,7 @@
 
 namespace cel_base {
 
-// replace with absl::Cord once available.
+// replace with cel_base::StatusCord once available.
 using StatusCord = std::string;
 
 enum class StatusCode {
@@ -103,6 +103,10 @@ class Status final {
   // Deprecated. Use code().
   StatusCode CanonicalCode() const;
 
+  // If "ok()", does nothing.  Else adds the given `payload` specified, by
+  // `type_url` as an additional payload.
+  void SetPayload(absl::string_view type_url, const StatusCord& payload);
+
   bool operator==(const Status& x) const;
   bool operator!=(const Status& x) const;
 
@@ -125,6 +129,13 @@ class Status final {
 
   // Returns the stored status code.
   StatusCode code() const { return code_; }
+
+  // Retrieve a single value associated with `type_url`. Returns absl::nullopt
+  // if no value is associated with `type_url`.
+  absl::optional<StatusCord> GetPayload(const absl::string_view type_url) const;
+
+  // Erase the payload associated with `type_url`, if present.
+  void ErasePayload(absl::string_view type_url);
 
   void ForEachPayload(
       const std::function<void(absl::string_view, const StatusCord&)>& visitor)

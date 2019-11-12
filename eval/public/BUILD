@@ -36,12 +36,45 @@ cc_library(
 )
 
 cc_library(
+    name = "cel_attribute",
+    srcs = [
+    ],
+    hdrs = [
+        "cel_attribute.h",
+    ],
+    deps = [
+        ":cel_value",
+        ":cel_value_internal",
+        "//base:status",
+        "//internal:proto_util",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
     name = "cel_value_producer",
     hdrs = [
         "cel_value_producer.h",
     ],
     deps = [
         ":cel_value",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "unknown_attribute_set",
+    srcs = [
+    ],
+    hdrs = [
+        "unknown_attribute_set.h",
+    ],
+    deps = [
+        ":cel_attribute",
+        "//base:status",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -91,7 +124,6 @@ cc_library(
         ":cel_options",
         ":cel_value",
         "@com_google_absl//absl/container:node_hash_map",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -106,6 +138,7 @@ cc_library(
     ],
     deps = [
         ":cel_function",
+        ":cel_function_registry",
         "//base:status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -133,6 +166,7 @@ cc_library(
         ":cel_builtins",
         ":cel_function",
         ":cel_function_adapter",
+        ":cel_function_registry",
         ":cel_options",
         "//base:status",
         "//eval/eval:container_backed_list_impl",
@@ -153,6 +187,7 @@ cc_library(
     deps = [
         ":cel_function",
         ":cel_function_adapter",
+        ":cel_function_registry",
         ":cel_value",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -167,6 +202,7 @@ cc_library(
     deps = [
         ":activation",
         ":cel_function",
+        ":cel_function_registry",
         ":cel_value",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -263,6 +299,31 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "cel_function_registry",
+    srcs = ["cel_function_registry.cc"],
+    hdrs = ["cel_function_registry.h"],
+    visibility = [
+        "//cloud/security/iam/orgpolicy/effective:__pkg__",
+        "//communication/wolverine/pbx/xavier/call_control:__pkg__",
+        "//eval/compiler:__pkg__",
+        "//eval/eval:__pkg__",
+        "//geo/moderation/croupier/issue/assignment:__pkg__",
+        "//identity/boq/cloud/attributecalculator/celexpression:__pkg__",
+        "//identity/cloud/attributecalculator/evalcel/extensions:__pkg__",
+        "//identity/cloud/attributecalculator/evalcel/test:__pkg__",
+        "//identity/cloud/attributecalculator/testing/utils:__pkg__",
+        "//monitoring/cloud_latency/evalcel:__pkg__",
+    ],
+    deps = [
+        ":cel_function",
+        ":cel_options",
+        ":cel_value",
+        "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 cc_test(
     name = "cel_value_test",
     size = "small",
@@ -271,9 +332,25 @@ cc_test(
     ],
     deps = [
         ":cel_value",
+        ":unknown_attribute_set",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "cel_attribute_test",
+    size = "small",
+    srcs = [
+        "cel_attribute_test.cc",
+    ],
+    deps = [
+        ":cel_attribute",
+        ":cel_value",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -286,7 +363,7 @@ cc_test(
     ],
     deps = [
         ":activation",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )
 
@@ -297,7 +374,7 @@ cc_test(
     ],
     deps = [
         ":ast_traverse",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )
 
@@ -311,7 +388,7 @@ cc_test(
         ":activation",
         ":activation_bind_helper",
         "//eval/testutil:test_message_cc_proto",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -326,7 +403,7 @@ cc_test(
         ":cel_function",
         ":cel_function_adapter",
         ":cel_value",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )
 
@@ -341,9 +418,10 @@ cc_test(
         ":builtin_func_registrar",
         ":cel_builtins",
         ":cel_expr_builder_factory",
+        ":cel_function_registry",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -356,10 +434,11 @@ cc_test(
     ],
     deps = [
         ":builtin_func_registrar",
+        ":cel_function_registry",
         ":cel_value",
         ":extension_func_registrar",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -372,8 +451,24 @@ cc_test(
     ],
     deps = [
         ":source_position",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "unknown_attribute_set_test",
+    size = "small",
+    srcs = [
+        "unknown_attribute_set_test.cc",
+    ],
+    deps = [
+        ":cel_attribute",
+        ":cel_value",
+        ":unknown_attribute_set",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -391,8 +486,8 @@ cc_test(
         "//eval/eval:container_backed_map_impl",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

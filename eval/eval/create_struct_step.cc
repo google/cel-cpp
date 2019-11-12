@@ -43,7 +43,7 @@ class CreateStructStepForMessage : public ExpressionStepBase {
 
 class CreateStructStepForMap : public ExpressionStepBase {
  public:
-  CreateStructStepForMap(int64_t expr_id, int entry_count)
+  CreateStructStepForMap(int64_t expr_id, size_t entry_count)
       : ExpressionStepBase(expr_id), entry_count_(entry_count) {}
 
   cel_base::Status Evaluate(ExecutionFrame* frame) const override;
@@ -51,7 +51,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
  private:
   cel_base::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
-  int entry_count_;
+  size_t entry_count_;
 };
 
 ::cel_base::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
@@ -205,7 +205,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
 
   std::vector<std::pair<CelValue, CelValue>> map_entries;
   map_entries.reserve(entry_count_);
-  for (int i = 0; i < entry_count_; i += 1) {
+  for (size_t i = 0; i < entry_count_; i += 1) {
     map_entries.push_back({args[2 * i], args[2 * i + 1]});
   }
 

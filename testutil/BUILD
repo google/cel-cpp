@@ -45,6 +45,7 @@ cc_library(
     ],
     deps = [
         "//internal:status_util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -52,7 +53,6 @@ cc_library(
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/rpc:status_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
     ],
@@ -90,9 +90,9 @@ cc_test(
     deps = [
         ":test_data_util",
         "//testutil:test_data_io",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_googleapis//google/api/expr/v1beta1:value_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -102,7 +102,7 @@ cc_library(
         "util.h",
     ],
     deps = [
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

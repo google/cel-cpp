@@ -1,10 +1,12 @@
 #include "eval/eval/function_step.h"
-#include "eval/eval/evaluator_core.h"
-#include "eval/public/cel_function_adapter.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/memory/memory.h"
+#include "absl/strings/string_view.h"
+#include "eval/eval/evaluator_core.h"
+#include "eval/public/cel_function.h"
 
 namespace google {
 namespace api {
@@ -18,13 +20,26 @@ using testing::Not;
 
 using google::api::expr::v1alpha1::Expr;
 
+int GetExprId() {
+  static int id = 0;
+  id++;
+  return id;
+}
+
 class ConstFunction : public CelFunction {
  public:
-  explicit ConstFunction(const CelValue& value, CelValue::Type type_kind)
-      : CelFunction(CreateDescriptor(type_kind)), value_(value) {}
+  explicit ConstFunction(const CelValue& value, absl::string_view name)
+      : CelFunction(CreateDescriptor(name)), value_(value) {}
 
-  static CelFunction::Descriptor CreateDescriptor(CelValue::Type kind) {
-    return Descriptor{"", false, {}};
+  static CelFunction::Descriptor CreateDescriptor(absl::string_view name) {
+    return Descriptor{std::string(name), false, {}};
+  }
+
+  static Expr::Call MakeCall(absl::string_view name) {
+    Expr::Call call;
+    call.set_function(name.data());
+    call.clear_target();
+    return call;
   }
 
   cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
@@ -51,6 +66,15 @@ class AddFunction : public CelFunction {
         "_+_", false, {CelValue::Type::kInt64, CelValue::Type::kInt64}};
   }
 
+  static Expr::Call MakeCall() {
+    Expr::Call call;
+    call.set_function("_+_");
+    call.add_args();
+    call.add_args();
+    call.clear_target();
+    return call;
+  }
+
   cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (args.size() != 2 || !args[0].IsInt64() || !args[1].IsInt64()) {
@@ -66,21 +90,32 @@ class AddFunction : public CelFunction {
   }
 };
 
+// Create and initialize a registry with some default functions.
+void AddDefaults(CelFunctionRegistry& registry) {
+  EXPECT_TRUE(registry
+                  .Register(absl::make_unique<ConstFunction>(
+                      CelValue::CreateInt64(3), "Const3"))
+                  .ok());
+  EXPECT_TRUE(registry
+                  .Register(absl::make_unique<ConstFunction>(
+                      CelValue::CreateInt64(2), "Const2"))
+                  .ok());
+  EXPECT_TRUE(registry.Register(absl::make_unique<AddFunction>()).ok());
+}
+
 TEST(FunctionStepTest, SimpleFunctionTest) {
   ExecutionPath path;
 
-  ConstFunction const_func0(CelValue::CreateInt64(3), CelValue::Type::kInt64);
-  ConstFunction const_func1(CelValue::CreateInt64(2), CelValue::Type::kInt64);
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
 
-  AddFunction add_func;
+  Expr::Call call1 = ConstFunction::MakeCall("Const3");
+  Expr::Call call2 = ConstFunction::MakeCall("Const2");
+  Expr::Call add_call = AddFunction::MakeCall();
 
-  Expr dummy_expr0;
-  Expr dummy_expr1;
-  Expr dummy_expr2;
-
-  auto step0_status = CreateFunctionStep(dummy_expr0.id(), {&const_func0});
-  auto step1_status = CreateFunctionStep(dummy_expr1.id(), {&const_func1});
-  auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
+  auto step0_status = CreateFunctionStep(&call1, GetExprId(), registry);
+  auto step1_status = CreateFunctionStep(&call2, GetExprId(), registry);
+  auto step2_status = CreateFunctionStep(&add_call, GetExprId(), registry);
 
   ASSERT_TRUE(step0_status.ok());
   ASSERT_TRUE(step1_status.ok());
@@ -109,15 +144,16 @@ TEST(FunctionStepTest, SimpleFunctionTest) {
 TEST(FunctionStepTest, TestStackUnderflow) {
   ExecutionPath path;
 
-  ConstFunction const_func0(CelValue::CreateInt64(3), CelValue::Type::kInt64);
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
 
   AddFunction add_func;
 
-  Expr dummy_expr0;
-  Expr dummy_expr2;
+  Expr::Call call1 = ConstFunction::MakeCall("Const3");
+  Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = CreateFunctionStep(dummy_expr0.id(), {&const_func0});
-  auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
+  auto step0_status = CreateFunctionStep(&call1, GetExprId(), registry);
+  auto step2_status = CreateFunctionStep(&add_call, GetExprId(), registry);
 
   ASSERT_TRUE(step0_status.ok());
   ASSERT_TRUE(step2_status.ok());
@@ -138,57 +174,35 @@ TEST(FunctionStepTest, TestStackUnderflow) {
 
 // Test factory method when empty overload set is provided.
 TEST(FunctionStepTest, TestNoOverloadsOnCreation) {
-  Expr dummy_expr0;
+  CelFunctionRegistry registry;  // SetupRegistry();
+  Expr::Call call = ConstFunction::MakeCall("Const0");
 
   // function step with empty overloads
-  auto step0_status = CreateFunctionStep(dummy_expr0.id(), {});
+  auto step0_status = CreateFunctionStep(&call, GetExprId(), registry);
 
   EXPECT_FALSE(step0_status.ok());
 }
 
-TEST(FunctionStepTest, TestMultipleOverloads) {
-  ExecutionPath path;
-
-  ConstFunction const_func0(CelValue::CreateInt64(3), CelValue::Type::kInt64);
-
-  Expr dummy_expr0;
-
-  // function step with 2 identical overloads
-  auto step0_status =
-      CreateFunctionStep(dummy_expr0.id(), {&const_func0, &const_func0});
-
-  ASSERT_TRUE(step0_status.ok());
-
-  path.push_back(std::move(step0_status.ValueOrDie()));
-
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
-
-  Activation activation;
-  google::protobuf::Arena arena;
-
-  auto status = impl.Evaluate(activation, &arena);
-  EXPECT_FALSE(status.ok());
-}
-
-// Test situation when overloads match input arguments during evaliation.
+// Test situation when no overloads match input arguments during evaluation.
 TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   ExecutionPath path;
 
-  // Constants have UINT type, while AddFunction expects INT.
-  ConstFunction const_func0(CelValue::CreateUint64(3), CelValue::Type::kUint64);
-  ConstFunction const_func1(CelValue::CreateUint64(2), CelValue::Type::kUint64);
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
 
-  AddFunction add_func;
+  ASSERT_TRUE(registry
+                  .Register(absl::make_unique<ConstFunction>(
+                      CelValue::CreateUint64(4), "Const4"))
+                  .ok());
 
-  Expr dummy_expr0;
-  Expr dummy_expr1;
-  Expr dummy_expr2;
+  Expr::Call call1 = ConstFunction::MakeCall("Const3");
+  Expr::Call call2 = ConstFunction::MakeCall("Const4");
+  // Add expects {int64_t, int64_t} but it's {int64_t, uint64_t}.
+  Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = CreateFunctionStep(dummy_expr0.id(), {&const_func0});
-  auto step1_status = CreateFunctionStep(dummy_expr1.id(), {&const_func1});
-  auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
+  auto step0_status = CreateFunctionStep(&call1, GetExprId(), registry);
+  auto step1_status = CreateFunctionStep(&call2, GetExprId(), registry);
+  auto step2_status = CreateFunctionStep(&add_call, GetExprId(), registry);
 
   ASSERT_TRUE(step0_status.ok());
   ASSERT_TRUE(step1_status.ok());
@@ -218,24 +232,29 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluationErrorForwarding) {
   ExecutionPath path;
 
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
+
   CelError error0;
   CelError error1;
 
   // Constants have ERROR type, while AddFunction expects INT.
-  ConstFunction const_func0(CelValue::CreateError(&error0),
-                            CelValue::Type::kError);
-  ConstFunction const_func1(CelValue::CreateError(&error1),
-                            CelValue::Type::kError);
+  ASSERT_TRUE(registry
+                  .Register(absl::make_unique<ConstFunction>(
+                      CelValue::CreateError(&error0), "ConstError1"))
+                  .ok());
+  ASSERT_TRUE(registry
+                  .Register(absl::make_unique<ConstFunction>(
+                      CelValue::CreateError(&error1), "ConstError2"))
+                  .ok());
 
-  AddFunction add_func;
+  Expr::Call call1 = ConstFunction::MakeCall("ConstError1");
+  Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
+  Expr::Call add_call = AddFunction::MakeCall();
 
-  Expr dummy_expr0;
-  Expr dummy_expr1;
-  Expr dummy_expr2;
-
-  auto step0_status = CreateFunctionStep(dummy_expr0.id(), {&const_func0});
-  auto step1_status = CreateFunctionStep(dummy_expr1.id(), {&const_func1});
-  auto step2_status = CreateFunctionStep(dummy_expr2.id(), {&add_func});
+  auto step0_status = CreateFunctionStep(&call1, GetExprId(), registry);
+  auto step1_status = CreateFunctionStep(&call2, GetExprId(), registry);
+  auto step2_status = CreateFunctionStep(&add_call, GetExprId(), registry);
 
   ASSERT_TRUE(step0_status.ok());
   ASSERT_TRUE(step1_status.ok());

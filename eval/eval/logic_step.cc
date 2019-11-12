@@ -28,7 +28,7 @@ class LogicalOpStep : public ExpressionStepBase {
     bool bool_args[2];
     bool has_bool_args[2];
 
-    for (int i = 0; i < args.size(); i++) {
+    for (size_t i = 0; i < args.size(); i++) {
       has_bool_args[i] = args[i].GetValue(bool_args + i);
       if (has_bool_args[i] && shortcircuit_ == bool_args[i]) {
         *result = CelValue::CreateBool(bool_args[i]);
@@ -47,17 +47,17 @@ class LogicalOpStep : public ExpressionStepBase {
           return cel_base::OkStatus();
           break;
       }
-    } else {
-      if (args[0].IsError()) {
-        *result = args[0];
-      } else if (args[1].IsError()) {
-        *result = args[1];
-      } else {
-        *result = CreateNoMatchingOverloadError(frame->arena());
-      }
-
-      return cel_base::OkStatus();
     }
+
+    if (args[0].IsError()) {
+      *result = args[0];
+    } else if (args[1].IsError()) {
+      *result = args[1];
+    } else {
+      *result = CreateNoMatchingOverloadError(frame->arena());
+    }
+
+    return cel_base::OkStatus();
   }
 
   const OpType op_type_;

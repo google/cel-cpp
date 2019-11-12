@@ -19,6 +19,7 @@
 #include "eval/public/ast_traverse.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_function_registry.h"
 #include "base/canonical_errors.h"
 
 namespace google {

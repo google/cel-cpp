@@ -73,6 +73,23 @@ std::string Status::ToString() const {
   return ok() ? "OK" : absl::StrCat(StatusCodeToString(code()), ": ", message_);
 }
 
+void Status::SetPayload(absl::string_view type_url, const StatusCord& payload) {
+  if (!ok()) {
+    payload_.try_emplace(std::string(type_url), payload);
+  }
+}
+
+absl::optional<StatusCord> Status::GetPayload(
+    absl::string_view type_url) const {
+  auto it = payload_.find(std::string(type_url));
+  if (it == payload_.end()) return absl::nullopt;
+  return it->second;
+}
+
+void Status::ErasePayload(absl::string_view type_url) {
+  payload_.erase(std::string(type_url));
+}
+
 std::ostream& operator<<(std::ostream& os, const Status& x) {
   return os << x.ToString();
 }

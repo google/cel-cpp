@@ -25,8 +25,8 @@ cc_test(
     deps = [
         ":ref_countable",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -46,8 +46,8 @@ cc_test(
     srcs = ["handle_test.cc"],
     deps = [
         ":handle",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/container:node_hash_set",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -71,8 +71,8 @@ cc_test(
         ":holder",
         ":types",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -128,9 +128,9 @@ cc_test(
         ":adapter_util",
         ":visitor_util",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -165,7 +165,7 @@ cc_test(
     srcs = ["cel_printer_test.cc"],
     deps = [
         ":cel_printer",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )
 
@@ -230,9 +230,9 @@ cc_test(
     deps = [
         ":value_internal",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -263,7 +263,7 @@ cc_test(
     srcs = ["cast_test.cc"],
     deps = [
         ":cast",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )
 
@@ -285,6 +285,6 @@ cc_test(
     srcs = ["types_test.cc"],
     deps = [
         ":types",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )

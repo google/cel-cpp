@@ -476,6 +476,9 @@ TEST(SelectStepTest, UnknownValueProducesError) {
   result = eval_status1.ValueOrDie();
 
   ASSERT_TRUE(result.IsError());
+  ASSERT_TRUE(IsUnknownValueError(result));
+  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
+              Eq(std::set<std::string>({"message.bool_value"})));
 }
 
 }  // namespace

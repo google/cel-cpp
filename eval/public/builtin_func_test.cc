@@ -7,6 +7,7 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
+#include "eval/public/cel_function_registry.h"
 
 namespace google {
 namespace api {
@@ -825,7 +826,7 @@ TEST_F(BuiltinsTest, ListIndex) {
 
   FakeList cel_list(values);
 
-  for (int i = 0; i < values.size(); i++) {
+  for (size_t i = 0; i < values.size(); i++) {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(
         PerformRun(builtin::kIndex, {},
@@ -851,8 +852,8 @@ TEST_F(BuiltinsTest, TestListEqual) {
   values.push_back(CelValue::CreateList(&kList2));
   values.push_back(CelValue::CreateList(&kList3));
 
-  for (int i = 0; i < values.size(); i++) {
-    for (int j = 0; j < values.size(); j++) {
+  for (size_t i = 0; i < values.size(); i++) {
+    for (size_t j = 0; j < values.size(); j++) {
       if (i == j) {
         TestComparison(builtin::kEqual, values[i], values[j], true);
         TestComparison(builtin::kInequal, values[i], values[j], false);
@@ -930,11 +931,11 @@ TEST_F(BuiltinsTest, MapUint64Index) {
 TEST_F(BuiltinsTest, MapStringIndex) {
   std::vector<std::string> kValues = {"test0", "test1", "test2"};
   std::map<CelValue::StringHolder, CelValue> data;
-  for (int64_t i = 0; i < kValues.size(); i++) {
+  for (size_t i = 0; i < kValues.size(); i++) {
     data[CelValue::StringHolder(&kValues[i])] = CelValue::CreateInt64(i);
   }
   FakeStringMap cel_map(data);
-  for (int64_t i = 0; i < kValues.size(); i++) {
+  for (size_t i = 0; i < kValues.size(); i++) {
     std::string value = kValues[i];
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(
@@ -961,11 +962,11 @@ TEST_F(BuiltinsTest, MapStringIndex) {
 TEST_F(BuiltinsTest, MapBoolIndex) {
   std::vector<bool> kValues = {true, false};
   std::map<bool, CelValue> data;
-  for (int64_t i = 0; i < kValues.size(); i++) {
+  for (size_t i = 0; i < kValues.size(); i++) {
     data[kValues[i]] = CelValue::CreateInt64(i);
   }
   FakeBoolMap cel_map(data);
-  for (int64_t i = 0; i < kValues.size(); i++) {
+  for (size_t i = 0; i < kValues.size(); i++) {
     bool value = kValues[i];
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(
@@ -991,8 +992,8 @@ TEST_F(BuiltinsTest, TestMapEqual) {
   values.push_back(CelValue::CreateMap(&kMap2));
   values.push_back(CelValue::CreateMap(&kMap3));
 
-  for (int i = 0; i < values.size(); i++) {
-    for (int j = 0; j < values.size(); j++) {
+  for (size_t i = 0; i < values.size(); i++) {
+    for (size_t j = 0; j < values.size(); j++) {
       if (i == j) {
         TestComparison(builtin::kEqual, values[i], values[j], true);
         TestComparison(builtin::kInequal, values[i], values[j], false);
@@ -1043,8 +1044,8 @@ TEST_F(BuiltinsTest, TestNestedEqual) {
   values.push_back(CelValue::CreateList(&kList10));
   values.push_back(CelValue::CreateList(&kList11));
 
-  for (int i = 0; i < values.size(); i++) {
-    for (int j = 0; j < values.size(); j++) {
+  for (size_t i = 0; i < values.size(); i++) {
+    for (size_t j = 0; j < values.size(); j++) {
       if (i == j) {
         TestComparison(builtin::kEqual, values[i], values[j], true);
         TestComparison(builtin::kInequal, values[i], values[j], false);
@@ -1198,7 +1199,7 @@ TEST_F(BuiltinsTest, TestUint64MapIn) {
 TEST_F(BuiltinsTest, TestStringMapIn) {
   std::vector<std::string> kValues = {"test0", "test1", "test2", "42"};
   std::map<CelValue::StringHolder, CelValue> data;
-  for (int64_t i = 0; i < kValues.size(); i++) {
+  for (size_t i = 0; i < kValues.size(); i++) {
     data[CelValue::StringHolder(&kValues[i])] = CelValue::CreateInt64(i);
   }
   FakeStringMap cel_map(data);
@@ -1308,7 +1309,7 @@ TEST_F(BuiltinsTest, TestConcatList) {
   const CelList* result_list = result_value.ListOrDie();
   ASSERT_EQ(result_list->size(), kValues.size());
 
-  for (int i = 0; i < result_list->size(); i++) {
+  for (size_t i = 0; i < result_list->size(); i++) {
     CelValue item = (*result_list)[i];
     ASSERT_TRUE(item.IsInt64());
     EXPECT_EQ(item.Int64OrDie(), kValues[i]);

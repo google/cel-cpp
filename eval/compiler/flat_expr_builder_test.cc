@@ -542,6 +542,9 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   ASSERT_TRUE(eval_status.ok());
   result = eval_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
+  ASSERT_TRUE(IsUnknownValueError(result));
+  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
+              Eq(std::set<std::string>({"message.message_value.int32_value"})));
 
   mask.clear_paths();
   mask.add_paths("message.message_value");
@@ -550,6 +553,9 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   ASSERT_TRUE(eval_status.ok());
   result = eval_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
+  ASSERT_TRUE(IsUnknownValueError(result));
+  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
+              Eq(std::set<std::string>({"message.message_value"})));
 }
 
 TEST(FlatExprBuilderTest, SimpleEnumTest) {

@@ -8,6 +8,7 @@
 #include "eval/eval/container_backed_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
+#include "eval/public/cel_function_registry.h"
 #include "re2/re2.h"
 #include "base/canonical_errors.h"
 

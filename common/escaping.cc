@@ -142,7 +142,7 @@ inline std::tuple<std::string, std::string_view, std::string> unescape_char(
           break;
       }
       char32_t v = 0;
-      if (s.size() < n) {
+      if (static_cast<int>(s.size()) < n) {
         return std::make_tuple("", s,
                                "unable to unescape string "
                                "(string too short after \\xXuU)");

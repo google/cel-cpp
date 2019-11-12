@@ -41,9 +41,7 @@ cel_base::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
                              name_));
       }
     } else {
-      result = CreateErrorValue(
-          frame->arena(),
-          absl::Substitute("Value with name \"$0\" is unknown", name_));
+      result = CreateUnknownValueError(frame->arena(), name_);
     }
   }
 

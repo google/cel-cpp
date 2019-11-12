@@ -4,6 +4,7 @@
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_backed_list_impl.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_function_registry.h"
 
 namespace google {
 namespace api {

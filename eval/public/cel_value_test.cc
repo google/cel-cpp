@@ -5,6 +5,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "eval/public/unknown_attribute_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
 
@@ -92,6 +93,10 @@ TEST(CelValueTest, TestType) {
 
   CelValue value_timestamp2 = CelValue::CreateMessage(&msg_timestamp, &arena);
   EXPECT_THAT(value_timestamp2.type(), Eq(CelValue::Type::kTimestamp));
+
+  UnknownAttributeSet unknown_set;
+  CelValue value_unknown = CelValue::CreateUnknownSet(&unknown_set);
+  EXPECT_THAT(value_unknown.type(), Eq(CelValue::Type::kUnknownSet));
 }
 
 int CountTypeMatch(const CelValue& value) {
@@ -126,6 +131,9 @@ int CountTypeMatch(const CelValue& value) {
 
   const CelError* value_error;
   count += (value.GetValue(&value_error)) ? 1 : 0;
+
+  const UnknownAttributeSet* value_unknown;
+  count += (value.GetValue(&value_unknown)) ? 1 : 0;
 
   return count;
 }
@@ -291,6 +299,21 @@ TEST(CelValueTest, TestMap) {
   const CelMap* value2;
   EXPECT_TRUE(value.GetValue(&value2));
   EXPECT_THAT(value2, Eq(&dummy_map));
+  EXPECT_THAT(CountTypeMatch(value), Eq(1));
+}
+
+// This test verifies CelValue support of Unknown type.
+TEST(CelValueTest, TestUnknownSet) {
+  UnknownAttributeSet unknown_set;
+
+  CelValue value = CelValue::CreateUnknownSet(&unknown_set);
+  EXPECT_TRUE(value.IsUnknownSet());
+  EXPECT_THAT(value.UnknownSetOrDie(), Eq(&unknown_set));
+
+  // test template getter
+  const UnknownAttributeSet* value2;
+  EXPECT_TRUE(value.GetValue(&value2));
+  EXPECT_THAT(value2, Eq(&unknown_set));
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
 }
 

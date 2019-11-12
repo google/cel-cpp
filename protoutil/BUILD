@@ -34,8 +34,8 @@ cc_test(
         "//common:value",
         "//internal:ref_countable",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -80,11 +80,11 @@ cc_test(
         "//testutil:test_data_io",
         "//testutil:test_data_util",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
