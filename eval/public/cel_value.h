@@ -36,6 +36,7 @@ using CelError = cel_base::Status;
 
 class CelList;
 class CelMap;
+class UnknownAttributeSet;
 
 class CelValue {
  public:
@@ -98,11 +99,10 @@ class CelValue {
   using BytesHolder = StringHolderBase<1>;
 
  private:
-  using ValueHolder =
-      internal::ValueHolder<bool, int64_t, uint64_t, double, StringHolder,
-                            BytesHolder, const google::protobuf::Message *,
-                            absl::Duration, absl::Time, const CelList *,
-                            const CelMap *, const CelError *>;
+  using ValueHolder = internal::ValueHolder<
+      bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
+      const google::protobuf::Message *, absl::Duration, absl::Time, const CelList *,
+      const CelMap *, const UnknownAttributeSet *, const CelError *>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -123,6 +123,7 @@ class CelValue {
     kTimestamp = IndexOf<absl::Time>::value,
     kList = IndexOf<const CelList *>::value,
     kMap = IndexOf<const CelMap *>::value,
+    kUnknownSet = IndexOf<const UnknownAttributeSet *>::value,
     kError = IndexOf<const CelError *>::value,
     kAny  // Special value. Used in function descriptors.
   };
@@ -152,10 +153,7 @@ class CelValue {
 
   static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
 
-  // Requires that the input string memory is managed externally.
-  // Be careful to avoid passing a string as it is implicitly converted to a
-  // string.
-  static CelValue CreateString(absl::string_view value) {
+  static CelValue CreateStringView(absl::string_view value) {
     return CelValue(StringHolder(value));
   }
 
@@ -196,6 +194,11 @@ class CelValue {
 
   static CelValue CreateMap(const CelMap *value) {
     CheckNullPointer(value, Type::kMap);
+    return CelValue(value);
+  }
+
+  static CelValue CreateUnknownSet(const UnknownAttributeSet *value) {
+    CheckNullPointer(value, Type::kUnknownSet);
     return CelValue(value);
   }
 
@@ -265,6 +268,12 @@ class CelValue {
     return GetValueOrDie<const CelMap *>(Type::kMap);
   }
 
+  // Returns stored const UnknownAttributeSet * value.
+  // Fails if stored value type is not const UnknownAttributeSet *.
+  const UnknownAttributeSet *UnknownSetOrDie() const {
+    return GetValueOrDie<const UnknownAttributeSet *>(Type::kUnknownSet);
+  }
+
   // Returns stored const CelError * value.
   // Fails if stored value type is not const CelError *.
   const CelError *ErrorOrDie() const {
@@ -294,6 +303,8 @@ class CelValue {
   bool IsList() const { return value_.is<const CelList *>(); }
 
   bool IsMap() const { return value_.is<const CelMap *>(); }
+
+  bool IsUnknownSet() const { return value_.is<const UnknownAttributeSet *>(); }
 
   bool IsError() const { return value_.is<const CelError *>(); }
 
@@ -419,6 +430,19 @@ CelValue CreateNoSuchFieldError(google::protobuf::Arena *arena);
 
 CelValue CreateNoSuchKeyError(google::protobuf::Arena *arena, absl::string_view key);
 bool CheckNoSuchKeyError(CelValue value);
+
+// Returns the error indicating that evaluation encountered a value marked
+// as unknown, was included in Activation unknown_paths.
+CelValue CreateUnknownValueError(google::protobuf::Arena *arena,
+                                 absl::string_view unknown_path);
+
+// Returns true if this is unknown value error indicating that evaluation
+// encountered a value marked as unknown in Activation unknown_paths.
+bool IsUnknownValueError(const CelValue &value);
+
+// Returns set of unknown paths for unknown value error. The value must be
+// unknown error, see IsUnknownValueError() above, or it dies.
+std::set<std::string> GetUnknownPathsSetOrDie(const CelValue &value);
 
 }  // namespace runtime
 }  // namespace expr

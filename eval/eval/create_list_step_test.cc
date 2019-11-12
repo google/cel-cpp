@@ -97,7 +97,7 @@ TEST(CreateListStepTest, CreateListOne) {
 TEST(CreateListStepTest, CreateListHundred) {
   google::protobuf::Arena arena;
   std::vector<int64_t> values;
-  for (int i = 0; i < 100; i++) {
+  for (size_t i = 0; i < 100; i++) {
     values.push_back(i);
   }
   auto eval_result = RunExpression(values, &arena);
@@ -105,8 +105,9 @@ TEST(CreateListStepTest, CreateListHundred) {
   ASSERT_TRUE(eval_result.ok());
   const CelValue result_value = eval_result.ValueOrDie();
   ASSERT_TRUE(result_value.IsList());
-  EXPECT_THAT(result_value.ListOrDie()->size(), Eq(values.size()));
-  for (int i = 0; i < values.size(); i++) {
+  EXPECT_THAT(result_value.ListOrDie()->size(),
+              Eq(static_cast<int>(values.size())));
+  for (size_t i = 0; i < values.size(); i++) {
     EXPECT_THAT((*result_value.ListOrDie())[i].Int64OrDie(), Eq(values[i]));
   }
 }

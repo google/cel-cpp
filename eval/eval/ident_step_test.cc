@@ -111,6 +111,8 @@ TEST(IdentStepTest, TestIdentStepUnknownValue) {
   result = status0.ValueOrDie();
 
   ASSERT_TRUE(result.IsError());
+  ASSERT_TRUE(IsUnknownValueError(result));
+  EXPECT_THAT(GetUnknownPathsSetOrDie(result), Eq(std::set<std::string>({"name0"})));
 }
 
 }  // namespace

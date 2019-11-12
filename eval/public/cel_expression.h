@@ -7,6 +7,7 @@
 #include "absl/strings/string_view.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_function.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 
 namespace google {

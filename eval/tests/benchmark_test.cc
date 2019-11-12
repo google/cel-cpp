@@ -613,9 +613,9 @@ void BM_PolicySymbolic(benchmark::State& state) {
 
   auto cel_expression = std::move(cel_expression_status.ValueOrDie());
   Activation activation;
-  activation.InsertValue("ip", CelValue::CreateString(kIP));
-  activation.InsertValue("path", CelValue::CreateString(kPath));
-  activation.InsertValue("token", CelValue::CreateString(kToken));
+  activation.InsertValue("ip", CelValue::CreateStringView(kIP));
+  activation.InsertValue("path", CelValue::CreateStringView(kPath));
+  activation.InsertValue("token", CelValue::CreateStringView(kToken));
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
@@ -634,11 +634,11 @@ class RequestMap : public CelMap {
     }
     auto value = key.StringOrDie().value();
     if (value == "ip") {
-      return CelValue::CreateString(kIP);
+      return CelValue::CreateStringView(kIP);
     } else if (value == "path") {
-      return CelValue::CreateString(kPath);
+      return CelValue::CreateStringView(kPath);
     } else if (value == "token") {
-      return CelValue::CreateString(kToken);
+      return CelValue::CreateStringView(kToken);
     }
     return {};
   }

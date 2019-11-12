@@ -142,50 +142,52 @@ int LookupPrecedence(const std::string& op) {
   return 0;
 }
 
-std::optional<std::string> LookupUnaryOperator(const std::string& op) {
+absl::optional<std::string> LookupUnaryOperator(const std::string& op) {
   auto unary_ops = UnaryOperators();
   auto o = unary_ops.find(op);
   if (o == unary_ops.end()) {
-    return std::optional<std::string>();
+    return absl::optional<std::string>();
   }
   return o->second;
 }
 
-std::optional<std::string> LookupBinaryOperator(const std::string& op) {
+absl::optional<std::string> LookupBinaryOperator(const std::string& op) {
   auto bin_ops = BinaryOperators();
   auto o = bin_ops.find(op);
   if (o == bin_ops.end()) {
-    return std::optional<std::string>();
+    return absl::optional<std::string>();
   }
   return o->second;
 }
 
-std::optional<std::string> LookupOperator(const std::string& op) {
+absl::optional<std::string> LookupOperator(const std::string& op) {
   auto ops = Operators();
   auto o = ops.find(op);
   if (o == ops.end()) {
-    return std::optional<std::string>();
+    return absl::optional<std::string>();
   }
   return o->second;
 }
 
-std::optional<std::string> ReverseLookupOperator(const std::string& op) {
+absl::optional<std::string> ReverseLookupOperator(const std::string& op) {
   auto rev_ops = ReverseOperators();
   auto o = rev_ops.find(op);
   if (o == rev_ops.end()) {
-    return std::optional<std::string>();
+    return absl::optional<std::string>();
   }
   return o->second;
 }
 
-bool IsOperatorSamePrecedence(const std::string& op, const Expr& expr) {
+bool IsOperatorSamePrecedence(const std::string& op,
+                              const google::api::expr::v1alpha1::Expr& expr) {
   if (!expr.has_call_expr()) {
     return false;
   }
   return LookupPrecedence(op) == LookupPrecedence(expr.call_expr().function());
 }
 
-bool IsOperatorLowerPrecedence(const std::string& op, const Expr& expr) {
+bool IsOperatorLowerPrecedence(const std::string& op,
+                               const google::api::expr::v1alpha1::Expr& expr) {
   if (!expr.has_call_expr()) {
     return false;
   }

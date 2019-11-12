@@ -144,6 +144,7 @@ void ExportValue(const CelValue& result, v1alpha1::Value* out) {
       }
       break;
     }
+    case CelValue::Type::kUnknownSet:
     case CelValue::Type::kError:
     case CelValue::Type::kAny:
       // do nothing for special values

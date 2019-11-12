@@ -114,6 +114,21 @@ cc_library(
 )
 
 cc_library(
+    name = "operators",
+    srcs = [
+        "operators.cc",
+    ],
+    hdrs = [
+        "operators.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
     name = "value",
     srcs = [
         "value.cc",
@@ -158,10 +173,10 @@ cc_test(
         "//internal:types",
         "//internal:value_internal",
         "//testutil:util",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -189,7 +204,7 @@ cc_test(
     deps = [
         ":converters",
         ":value",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
-        "@com_google_googletest//:gtest_main",
     ],
 )

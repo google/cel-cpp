@@ -66,7 +66,7 @@ TEST(CelAttributeQualifierTest, TestUint64Access) {
   EXPECT_FALSE(qualifier.GetInt64Key().has_value());
 
   EXPECT_TRUE(qualifier.GetUint64Key().has_value());
-  EXPECT_THAT(qualifier.GetUint64Key().value(), Eq(1));
+  EXPECT_THAT(qualifier.GetUint64Key().value(), Eq(1UL));
 }
 
 TEST(CelAttributeQualifierTest, TestStringAccess) {

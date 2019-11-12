@@ -1,10 +1,10 @@
-#include "eval/public/builtin_func_registrar.h"
-#include "eval/public/extension_func_registrar.h"
-
 #include "google/protobuf/util/time_util.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
+#include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_function_registry.h"
+#include "eval/public/extension_func_registrar.h"
 
 namespace google {
 namespace api {

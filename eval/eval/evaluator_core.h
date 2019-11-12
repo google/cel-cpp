@@ -53,15 +53,15 @@ class ValueStack {
   ValueStack() = default;
 
   // Stack size.
-  int size() const { return stack_.size(); }
+  size_t size() const { return stack_.size(); }
 
   // Check that stack has enough elements.
-  bool HasEnough(int size) const { return stack_.size() >= size; }
+  bool HasEnough(size_t size) const { return stack_.size() >= size; }
 
   // Gets the last size elements of the stack.
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
-  absl::Span<const CelValue> GetSpan(int size) const {
+  absl::Span<const CelValue> GetSpan(size_t size) const {
     return absl::Span<const CelValue>(stack_.data() + stack_.size() - size,
                                       size);
   }
@@ -72,7 +72,7 @@ class ValueStack {
 
   // Clears the last size elements of the stack.
   // Checking that stack has enough elements is caller's responsibility.
-  void Pop(int size) { stack_.resize(stack_.size() - size); }
+  void Pop(size_t size) { stack_.resize(stack_.size() - size); }
 
   // Put element on the top of the stack.
   void Push(const CelValue& value) { stack_.push_back(value); }
@@ -82,7 +82,7 @@ class ValueStack {
   void PopAndPush(const CelValue& value) { stack_.back() = value; }
 
   // Preallocate stack.
-  void Reserve(int size) { stack_.reserve(size); }
+  void Reserve(size_t size) { stack_.reserve(size); }
 
  private:
   std::vector<CelValue> stack_;
@@ -97,7 +97,7 @@ class ExecutionFrame {
   // arena serves as allocation manager during the expression evaluation.
   ExecutionFrame(const ExecutionPath* flat, const Activation& activation,
                  google::protobuf::Arena* arena, int max_iterations)
-      : pc_(0),
+      : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
         arena_(arena),
@@ -113,14 +113,14 @@ class ExecutionFrame {
 
   // Intended for use only in conditionals.
   cel_base::Status JumpTo(int offset) {
-    int new_pc = pc_ + offset;
-    if (new_pc < 0 || new_pc > execution_path_->size()) {
+    int new_pc = static_cast<int>(pc_) + offset;
+    if (new_pc < 0 || new_pc > static_cast<int>(execution_path_->size())) {
       return cel_base::Status(cel_base::StatusCode::kInternal,
                           absl::StrCat("Jump address out of range: position: ",
                                        pc_, ",offset: ", offset,
                                        ", range: ", execution_path_->size()));
     }
-    pc_ = new_pc;
+    pc_ = static_cast<size_t>(new_pc);
     return cel_base::OkStatus();
   }
 
@@ -149,7 +149,7 @@ class ExecutionFrame {
   }
 
  private:
-  int pc_;  // pc_ - Program Counter. Current position on execution path.
+  size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath* execution_path_;
   const Activation& activation_;
   ValueStack value_stack_;

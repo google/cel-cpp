@@ -1,6 +1,8 @@
 #include "eval/eval/function_step.h"
-#include "eval/eval/expression_step_base.h"
+
 #include "absl/strings/str_cat.h"
+#include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_function_registry.h"
 
 namespace google {
 namespace api {
@@ -84,23 +86,7 @@ cel_base::Status FunctionStep::Evaluate(ExecutionFrame* frame) const {
   return cel_base::OkStatus();
 }
 
-}  // namespace
-
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
-    const CelFunctionRegistry& function_registry) {
-  bool receiver_style = call_expr->has_target();
-
-  std::vector<CelValue::Type> args(
-      call_expr->args_size() + (receiver_style ? 1 : 0), CelValue::Type::kAny);
-
-  auto overloads = function_registry.FindOverloads(call_expr->function(),
-                                                   receiver_style, args);
-
-  return CreateFunctionStep(expr_id, overloads);
-}
-
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateStaticFunctionStep(
     int64_t expr_id, std::vector<const CelFunction*> overloads) {
   if (overloads.empty()) {
     return ::cel_base::Status(cel_base::StatusCode::kInvalidArgument,
@@ -111,6 +97,22 @@ cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
       absl::make_unique<FunctionStep>(std::move(overloads), expr_id);
 
   return std::move(step);
+}
+
+}  // namespace
+
+cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
+    const CelFunctionRegistry& function_registry) {
+  bool receiver_style = call_expr->has_target();
+  int num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
+
+  std::vector<CelValue::Type> args(num_args, CelValue::Type::kAny);
+
+  auto overloads = function_registry.FindOverloads(call_expr->function(),
+                                                   receiver_style, args);
+
+  return CreateStaticFunctionStep(expr_id, overloads);
 }
 
 }  // namespace runtime

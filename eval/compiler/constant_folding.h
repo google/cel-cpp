@@ -4,6 +4,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "eval/public/cel_function.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 
 namespace google {

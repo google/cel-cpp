@@ -95,8 +95,8 @@ cel_base::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       }
 
       if (unknown_value) {
-        CelValue error_value = CreateErrorValue(
-            frame->arena(), absl::StrCat("Unknown value ", select_path_));
+        CelValue error_value =
+            CreateUnknownValueError(frame->arena(), select_path_);
         frame->value_stack().PopAndPush(error_value);
         return cel_base::OkStatus();
       }

@@ -60,25 +60,31 @@ class CelAttributeQualifier {
     return CelAttributeQualifier(value);
   }
 
+  template <typename T, typename Op>
+  T Visit(Op&& operation) const {
+    return value_.Visit<T>(operation);
+  }
+
   // Family of Get... methods. Return values if requested type matches the
   // stored one.
   absl::optional<int64_t> GetInt64Key() const {
-    return (value_.IsInt64()) ? absl::optional(value_.Int64OrDie())
+    return (value_.IsInt64()) ? absl::optional<int64_t>(value_.Int64OrDie())
                               : absl::nullopt;
   }
 
   absl::optional<uint64_t> GetUint64Key() const {
-    return (value_.IsUint64()) ? absl::optional(value_.Uint64OrDie())
+    return (value_.IsUint64()) ? absl::optional<uint64_t>(value_.Uint64OrDie())
                                : absl::nullopt;
   }
 
   absl::optional<absl::string_view> GetStringKey() const {
-    return (value_.IsString()) ? absl::optional(value_.StringOrDie().value())
-                               : absl::nullopt;
+    return (value_.IsString())
+               ? absl::optional<absl::string_view>(value_.StringOrDie().value())
+               : absl::nullopt;
   }
 
   absl::optional<bool> GetBoolKey() const {
-    return (value_.IsBool()) ? absl::optional(value_.BoolOrDie())
+    return (value_.IsBool()) ? absl::optional<bool>(value_.BoolOrDie())
                              : absl::nullopt;
   }
 
@@ -150,18 +156,43 @@ class CelAttributeQualifierPattern {
 // CelAttribute represents resolved attribute path.
 class CelAttribute {
  public:
-  CelAttribute(Expr variable, std::vector<CelAttributeQualifier> qualifier_path)
+  CelAttribute(google::api::expr::v1alpha1::Expr variable,
+               std::vector<CelAttributeQualifier> qualifier_path)
       : variable_(std::move(variable)),
         qualifier_path_(std::move(qualifier_path)) {}
 
-  const Expr& variable() const { return variable_; }
+  const google::api::expr::v1alpha1::Expr& variable() const { return variable_; }
 
   const std::vector<CelAttributeQualifier>& qualifier_path() const {
     return qualifier_path_;
   }
 
+  bool operator==(const CelAttribute& other) const {
+    // TODO(issues/41) we only support Ident-rooted attributes at the moment.
+    if (!variable().has_ident_expr() || !other.variable().has_ident_expr()) {
+      return false;
+    }
+
+    if (variable().ident_expr().name() !=
+        other.variable().ident_expr().name()) {
+      return false;
+    }
+
+    if (qualifier_path().size() != other.qualifier_path().size()) {
+      return false;
+    }
+
+    for (size_t i = 0; i < qualifier_path().size(); i++) {
+      if (!(qualifier_path()[i] == other.qualifier_path()[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
  private:
-  Expr variable_;
+  google::api::expr::v1alpha1::Expr variable_;
   std::vector<CelAttributeQualifier> qualifier_path_;
 };
 
@@ -205,7 +236,7 @@ class CelAttributePattern {
       result = MatchType::PARTIAL;
     }
 
-    for (int i = 0; i < max_index; i++) {
+    for (size_t i = 0; i < max_index; i++) {
       if (!(qualifier_path()[i].IsMatch(attribute.qualifier_path()[i]))) {
         return MatchType::NONE;
       }

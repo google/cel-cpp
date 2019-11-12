@@ -6,6 +6,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"
+#include "eval/public/cel_function_registry.h"
 #include "base/status.h"
 #include "base/statusor.h"
 

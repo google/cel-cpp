@@ -38,6 +38,8 @@ using google::protobuf::UInt64Value;
 
 constexpr char kErrNoMatchingOverload[] = "No matching overloads found";
 constexpr char kErrNoSuchKey[] = "Key not found in map";
+constexpr absl::string_view kErrUnknownValue = "Unknown value ";
+constexpr absl::string_view kPayloadUrlUnknownPath = "unknown_path";
 
 // Forward declaration for google.protobuf.Value
 CelValue ValueFromMessage(const Value* value, Arena* arena);
@@ -365,10 +367,12 @@ std::string CelValue::TypeName(Type value_type) {
       return "CelList";
     case Type::kMap:
       return "CelMap";
+    case Type::kUnknownSet:
+      return "UnknownAttributeSet";
     case Type::kError:
       return "CelError";
     default:
-      return "UnknownType";
+      return "Unknown Type";
   }
 }
 
@@ -398,6 +402,36 @@ CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view)
 
 bool CheckNoSuchKeyError(CelValue value) {
   return value.IsError() && value.ErrorOrDie()->message() == kErrNoSuchKey;
+}
+
+CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
+                                 absl::string_view unknown_path) {
+  CelError* error =
+      Arena::Create<CelError>(arena, cel_base::StatusCode::kUnavailable,
+                              absl::StrCat(kErrUnknownValue, unknown_path));
+  error->SetPayload(kPayloadUrlUnknownPath, cel_base::StatusCord(unknown_path));
+  return CelValue::CreateError(error);
+}
+
+bool IsUnknownValueError(const CelValue& value) {
+  // TODO(issues/41): replace with the implementation of go/cel-known-unknowns
+  if (!value.IsError()) return false;
+  const CelError* error = value.ErrorOrDie();
+  if (error && error->code() == cel_base::StatusCode::kUnavailable) {
+    auto path = error->GetPayload(kPayloadUrlUnknownPath);
+    return path.has_value();
+  }
+  return false;
+}
+
+std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value) {
+  // TODO(issues/41): replace with the implementation of go/cel-known-unknowns
+  const CelError* error = value.ErrorOrDie();
+  if (error && error->code() == cel_base::StatusCode::kUnavailable) {
+    auto path = error->GetPayload(kPayloadUrlUnknownPath);
+    if (path.has_value()) return {std::string(path.value())};
+  }
+  GOOGLE_LOG(FATAL) << "The value is not an unknown path error.";  // Crash ok
 }
 
 }  // namespace runtime
