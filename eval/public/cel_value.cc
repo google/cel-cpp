@@ -432,6 +432,7 @@ std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value) {
     if (path.has_value()) return {std::string(path.value())};
   }
   GOOGLE_LOG(FATAL) << "The value is not an unknown path error.";  // Crash ok
+  return {};
 }
 
 }  // namespace runtime

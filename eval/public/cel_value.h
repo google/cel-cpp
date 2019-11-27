@@ -46,7 +46,7 @@ class CelValue {
   template <int N>
   class StringHolderBase {
    public:
-    StringHolderBase() : value_(nullptr) {}
+    StringHolderBase() : value_({}) {}
 
     StringHolderBase(const StringHolderBase &) = default;
     StringHolderBase &operator=(const StringHolderBase &) = default;

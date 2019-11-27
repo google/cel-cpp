@@ -14,10 +14,6 @@ cc_library(
     hdrs = [
         "flat_expr_builder.h",
     ],
-    visibility = [
-        "//eval:__subpackages__",
-        "//google/api/expr/conformance/evaluators/cel:__pkg__",
-    ],
     deps = [
         ":constant_folding",
         "//base:status",

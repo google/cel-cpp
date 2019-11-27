@@ -9,7 +9,6 @@ cc_library(
     hdrs = [
         "cel_value_internal.h",
     ],
-    visibility = ["//visibility:private"],
     deps = [
         "@com_google_absl//absl/types:variant",
     ],
@@ -88,8 +87,11 @@ cc_library(
         "activation.h",
     ],
     deps = [
+        ":cel_function",
         ":cel_value",
         ":cel_value_producer",
+        "//base:status",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -121,9 +123,7 @@ cc_library(
         "cel_function.h",
     ],
     deps = [
-        ":cel_options",
         ":cel_value",
-        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -142,6 +142,20 @@ cc_library(
         "//base:status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "cel_function_provider",
+    srcs = [
+        "cel_function_provider.cc",
+    ],
+    hdrs = [
+        "cel_function_provider.h",
+    ],
+    deps = [
+        ":activation",
+        ":cel_function",
     ],
 )
 
@@ -303,20 +317,9 @@ cc_library(
     name = "cel_function_registry",
     srcs = ["cel_function_registry.cc"],
     hdrs = ["cel_function_registry.h"],
-    visibility = [
-        "//cloud/security/iam/orgpolicy/effective:__pkg__",
-        "//communication/wolverine/pbx/xavier/call_control:__pkg__",
-        "//eval/compiler:__pkg__",
-        "//eval/eval:__pkg__",
-        "//geo/moderation/croupier/issue/assignment:__pkg__",
-        "//identity/boq/cloud/attributecalculator/celexpression:__pkg__",
-        "//identity/cloud/attributecalculator/evalcel/extensions:__pkg__",
-        "//identity/cloud/attributecalculator/evalcel/test:__pkg__",
-        "//identity/cloud/attributecalculator/testing/utils:__pkg__",
-        "//monitoring/cloud_latency/evalcel:__pkg__",
-    ],
     deps = [
         ":cel_function",
+        ":cel_function_provider",
         ":cel_options",
         ":cel_value",
         "@com_google_absl//absl/container:node_hash_map",
@@ -363,6 +366,7 @@ cc_test(
     ],
     deps = [
         ":activation",
+        ":cel_function",
         "@com_github_google_googletest//:gtest_main",
     ],
 )
@@ -390,6 +394,31 @@ cc_test(
         "//eval/testutil:test_message_cc_proto",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "cel_function_provider_test",
+    srcs = [
+        "cel_function_provider_test.cc",
+    ],
+    deps = [
+        ":cel_function",
+        ":cel_function_provider",
+        "@com_github_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "cel_function_registry_test",
+    srcs = [
+        "cel_function_registry_test.cc",
+    ],
+    deps = [
+        ":cel_function",
+        ":cel_function_provider",
+        ":cel_function_registry",
+        "@com_github_google_googletest//:gtest_main",
     ],
 )
 

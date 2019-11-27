@@ -12,9 +12,9 @@ namespace {
 using testing::Eq;
 using testing::Ne;
 
-struct TestInfo {
-  static constexpr char EXPECT_ERROR[] = "--ERROR--";
+constexpr char EXPECT_ERROR[] = "--ERROR--";
 
+struct TestInfo {
   TestInfo(const std::string& I, const std::string& O, bool is_bytes = false)
       : I(I), O(O), is_bytes(is_bytes) {}
 
@@ -44,8 +44,8 @@ std::vector<TestInfo> test_cases = {
     {R"("\a\b\f\n\r\t\v\'\"\\\? Legal escapes")",
      "\a\b\f\n\r\t\v'\"\\? Legal escapes"},
     // Illegal escape, expect error
-    {R"("\a\b\f\n\r\t\v\'\\"\\\? Illegal escape \>")", TestInfo::EXPECT_ERROR},
-    {R"("\u1")", TestInfo::EXPECT_ERROR},
+    {R"("\a\b\f\n\r\t\v\'\\"\\\? Illegal escape \>")", EXPECT_ERROR},
+    {R"("\u1")", EXPECT_ERROR},
 
     // The following are interpreted as byte sequences, hence "true"
     {"\"abc\"", "\x61\x62\x63", true},
@@ -55,10 +55,10 @@ std::vector<TestInfo> test_cases = {
     {R"("\xc3\xbf")", "\xc3\xbf", true},
     {R"("\xff")", "\xff", true},
     // Bytes unicode escape, expect error
-    {R"("\u00ff")", TestInfo::EXPECT_ERROR, true},
-    {R"("\z")", TestInfo::EXPECT_ERROR, true},
-    {R"("\x1")", TestInfo::EXPECT_ERROR, true},
-    {R"("\u1")", TestInfo::EXPECT_ERROR, true},
+    {R"("\u00ff")", EXPECT_ERROR, true},
+    {R"("\z")", EXPECT_ERROR, true},
+    {R"("\x1")", EXPECT_ERROR, true},
+    {R"("\u1")", EXPECT_ERROR, true},
 };
 
 class UnescapeTest : public testing::TestWithParam<TestInfo> {};
@@ -72,7 +72,7 @@ TEST_P(UnescapeTest, Unescape) {
   ::testing::internal::ColoredPrintf(::testing::internal::COLOR_YELLOW, "%s%s",
                                      test_info.I.c_str(),
                                      test_info.is_bytes ? " BYTES" : "");
-  if (test_info.O != TestInfo::EXPECT_ERROR) {
+  if (test_info.O != EXPECT_ERROR) {
     ::testing::internal::ColoredPrintf(::testing::internal::COLOR_DEFAULT,
                                        "  Expected Output: ");
     ::testing::internal::ColoredPrintf(::testing::internal::COLOR_YELLOW,
@@ -83,10 +83,10 @@ TEST_P(UnescapeTest, Unescape) {
   }
 
   auto result = unescape(test_info.I, test_info.is_bytes);
-  if (test_info.O == TestInfo::EXPECT_ERROR) {
-    EXPECT_THAT(result, Eq(std::nullopt));
+  if (test_info.O == EXPECT_ERROR) {
+    EXPECT_THAT(result, Eq(absl::nullopt));
   } else {
-    ASSERT_THAT(result, Ne(std::nullopt));
+    ASSERT_THAT(result, Ne(absl::nullopt));
     EXPECT_EQ(*result, test_info.O);
   }
 }

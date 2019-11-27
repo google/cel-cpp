@@ -31,8 +31,8 @@ class ConstFunction : public CelFunction {
   explicit ConstFunction(const CelValue& value, absl::string_view name)
       : CelFunction(CreateDescriptor(name)), value_(value) {}
 
-  static CelFunction::Descriptor CreateDescriptor(absl::string_view name) {
-    return Descriptor{std::string(name), false, {}};
+  static CelFunctionDescriptor CreateDescriptor(absl::string_view name) {
+    return CelFunctionDescriptor{std::string(name), false, {}};
   }
 
   static Expr::Call MakeCall(absl::string_view name) {
@@ -61,8 +61,8 @@ class AddFunction : public CelFunction {
  public:
   AddFunction() : CelFunction(CreateDescriptor()) {}
 
-  static CelFunction::Descriptor CreateDescriptor() {
-    return Descriptor{
+  static CelFunctionDescriptor CreateDescriptor() {
+    return CelFunctionDescriptor{
         "_+_", false, {CelValue::Type::kInt64, CelValue::Type::kInt64}};
   }
 
@@ -270,6 +270,114 @@ TEST(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluationErrorForwarding) {
 
   Activation activation;
   google::protobuf::Arena arena;
+
+  auto status = impl.Evaluate(activation, &arena);
+  ASSERT_TRUE(status.ok());
+
+  auto value = status.ValueOrDie();
+
+  ASSERT_TRUE(value.IsError());
+  EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
+}
+
+TEST(FunctionStepTest, LazyFunctionTest) {
+  ExecutionPath path;
+  Activation activation;
+  CelFunctionRegistry registry;
+
+  auto register0_status =
+      registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3"));
+  EXPECT_TRUE(register0_status.ok());
+  auto insert0_status = activation.InsertFunction(
+      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3"));
+  EXPECT_TRUE(insert0_status.ok());
+  auto register1_status =
+      registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const2"));
+  EXPECT_TRUE(register1_status.ok());
+  auto insert1_status = activation.InsertFunction(
+      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2"));
+  EXPECT_TRUE(insert1_status.ok());
+  EXPECT_TRUE(registry.Register(absl::make_unique<AddFunction>()).ok());
+
+  Expr::Call call1 = ConstFunction::MakeCall("Const3");
+  Expr::Call call2 = ConstFunction::MakeCall("Const2");
+  Expr::Call add_call = AddFunction::MakeCall();
+
+  auto step0_status = CreateFunctionStep(&call1, GetExprId(), registry);
+  auto step1_status = CreateFunctionStep(&call2, GetExprId(), registry);
+  auto step2_status = CreateFunctionStep(&add_call, GetExprId(), registry);
+
+  ASSERT_TRUE(step0_status.ok());
+  ASSERT_TRUE(step1_status.ok());
+  ASSERT_TRUE(step2_status.ok());
+
+  path.push_back(std::move(step0_status.ValueOrDie()));
+  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step2_status.ValueOrDie()));
+
+  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
+
+  google::protobuf::Arena arena;
+
+  auto status = impl.Evaluate(activation, &arena);
+  EXPECT_TRUE(status.ok());
+
+  auto value = status.ValueOrDie();
+
+  ASSERT_TRUE(value.IsInt64());
+  EXPECT_THAT(value.Int64OrDie(), Eq(5));
+}
+
+// Test situation when no overloads match input arguments during evaluation
+// and at least one of arguments is error.
+TEST(FunctionStepTest,
+     TestNoMatchingOverloadsDuringEvaluationErrorForwardingLazy) {
+  ExecutionPath path;
+  Activation activation;
+  google::protobuf::Arena arena;
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
+
+  CelError error0;
+  CelError error1;
+
+  // Constants have ERROR type, while AddFunction expects INT.
+  auto register0_status = registry.RegisterLazyFunction(
+      ConstFunction::CreateDescriptor("ConstError1"));
+  ASSERT_TRUE(register0_status.ok());
+  auto insert0_status =
+      activation.InsertFunction(absl::make_unique<ConstFunction>(
+          CelValue::CreateError(&error0), "ConstError1"));
+  ASSERT_TRUE(insert0_status.ok());
+  auto register1_status = registry.RegisterLazyFunction(
+      ConstFunction::CreateDescriptor("ConstError2"));
+  ASSERT_TRUE(register1_status.ok());
+  auto insert1_status =
+      activation.InsertFunction(absl::make_unique<ConstFunction>(
+          CelValue::CreateError(&error1), "ConstError2"));
+  ASSERT_TRUE(insert1_status.ok());
+
+  Expr::Call call1 = ConstFunction::MakeCall("ConstError1");
+  Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
+  Expr::Call add_call = AddFunction::MakeCall();
+
+  auto step0_status = CreateFunctionStep(&call1, GetExprId(), registry);
+  auto step1_status = CreateFunctionStep(&call2, GetExprId(), registry);
+  auto step2_status = CreateFunctionStep(&add_call, GetExprId(), registry);
+
+  ASSERT_TRUE(step0_status.ok());
+  ASSERT_TRUE(step1_status.ok());
+  ASSERT_TRUE(step2_status.ok());
+
+  path.push_back(std::move(step0_status.ValueOrDie()));
+  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step2_status.ValueOrDie()));
+
+  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
 
   auto status = impl.Evaluate(activation, &arena);
   ASSERT_TRUE(status.ok());

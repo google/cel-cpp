@@ -129,6 +129,30 @@ cc_library(
 )
 
 cc_library(
+    name = "escaping",
+    srcs = [
+        "escaping.cc",
+    ],
+    hdrs = [
+        "escaping.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "escaping_test",
+    srcs = ["escaping_test.cc"],
+    deps = [
+        ":escaping",
+        "@com_github_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "value",
     srcs = [
         "value.cc",

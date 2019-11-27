@@ -1,6 +1,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 
+#include <vector>
+
 #include "absl/types/span.h"
 #include "eval/public/cel_value.h"
 
@@ -9,6 +11,38 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+// Type that describes CelFunction.
+// This complex structure is needed for overloads support.
+class CelFunctionDescriptor {
+ public:
+  CelFunctionDescriptor(const std::string& name, bool receiver_style,
+                        const std::vector<CelValue::Type> types)
+      : name_(name), receiver_style_(receiver_style), types_(types) {}
+
+  // Function name.
+  const std::string& name() const { return name_; }
+
+  // Whether function is receiver style i.e. true means arg0.name(args[1:]...).
+  bool receiver_style() const { return receiver_style_; }
+
+  // The argmument types the function accepts.
+  const std::vector<CelValue::Type>& types() const { return types_; }
+
+  // Helper for matching a descriptor. This tests that the shape is the same --
+  // |other| accepts the same number and types of arguments and is the same call
+  // style).
+  bool ShapeMatches(const CelFunctionDescriptor& other) const {
+    return ShapeMatches(other.receiver_style(), other.types());
+  }
+  bool ShapeMatches(bool receiver_style,
+                    const std::vector<CelValue::Type>& types) const;
+
+ private:
+  std::string name_;
+  bool receiver_style_;
+  std::vector<CelValue::Type> types_;
+};
+
 // CelFunction is a handler that represents single
 // CEL function.
 // CelFunction provides Evaluate() method, that performs
@@ -16,23 +50,13 @@ namespace runtime {
 // descriptors that contain function information:
 // - name
 // - is function receiver style (e.f(g) vs f(e,g))
-// - return type
 // - amount of arguments and their types.
 // Function overloads are resolved based on their arguments and
 // receiver style.
 class CelFunction {
  public:
-  // Type that describes CelFunction.
-  // This complex structure is needed for overloads support.
-  //
-  struct Descriptor {
-    std::string name;
-    bool receiver_style;
-    std::vector<CelValue::Type> types;
-  };
-
   // Build CelFunction from descriptor
-  explicit CelFunction(const Descriptor& descriptor)
+  explicit CelFunction(const CelFunctionDescriptor& descriptor)
       : descriptor_(descriptor) {}
 
   // Non-copyable
@@ -61,10 +85,10 @@ class CelFunction {
   bool MatchArguments(absl::Span<const CelValue> arguments) const;
 
   // CelFunction descriptor
-  const Descriptor& descriptor() const { return descriptor_; }
+  const CelFunctionDescriptor& descriptor() const { return descriptor_; }
 
  private:
-  Descriptor descriptor_;
+  CelFunctionDescriptor descriptor_;
 };
 
 }  // namespace runtime

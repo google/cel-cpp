@@ -15,35 +15,35 @@ namespace common {
 
 // Operator function names.
 struct CelOperator {
-  static constexpr const char* CONDITIONAL = "_?_:_";
-  static constexpr const char* LOGICAL_AND = "_&&_";
-  static constexpr const char* LOGICAL_OR = "_||_";
-  static constexpr const char* LOGICAL_NOT = "!_";
-  static constexpr const char* IN_DEPRECATED = "_in_";
-  static constexpr const char* EQUALS = "_==_";
-  static constexpr const char* NOT_EQUALS = "_!=_";
-  static constexpr const char* LESS = "_<_";
-  static constexpr const char* LESS_EQUALS = "_<=_";
-  static constexpr const char* GREATER = "_>_";
-  static constexpr const char* GREATER_EQUALS = "_>=_";
-  static constexpr const char* ADD = "_+_";
-  static constexpr const char* SUBTRACT = "_-_";
-  static constexpr const char* MULTIPLY = "_*_";
-  static constexpr const char* DIVIDE = "_/_";
-  static constexpr const char* MODULO = "_%_";
-  static constexpr const char* NEGATE = "-_";
-  static constexpr const char* INDEX = "_[_]";
+  static const char* CONDITIONAL;
+  static const char* LOGICAL_AND;
+  static const char* LOGICAL_OR;
+  static const char* LOGICAL_NOT;
+  static const char* IN_DEPRECATED;
+  static const char* EQUALS;
+  static const char* NOT_EQUALS;
+  static const char* LESS;
+  static const char* LESS_EQUALS;
+  static const char* GREATER;
+  static const char* GREATER_EQUALS;
+  static const char* ADD;
+  static const char* SUBTRACT;
+  static const char* MULTIPLY;
+  static const char* DIVIDE;
+  static const char* MODULO;
+  static const char* NEGATE;
+  static const char* INDEX;
   // Macros
-  static constexpr const char* HAS = "has";
-  static constexpr const char* ALL = "all";
-  static constexpr const char* EXISTS = "exists";
-  static constexpr const char* EXISTS_ONE = "exists_one";
-  static constexpr const char* MAP = "map";
-  static constexpr const char* FILTER = "filter";
+  static const char* HAS;
+  static const char* ALL;
+  static const char* EXISTS;
+  static const char* EXISTS_ONE;
+  static const char* MAP;
+  static const char* FILTER;
 
   // Named operators, must not have be valid identifiers.
-  static constexpr const char* NOT_STRICTLY_FALSE = "@not_strictly_false";
-  static constexpr const char* IN = "@in";
+  static const char* NOT_STRICTLY_FALSE;
+  static const char* IN;
 };
 
 // These give access to all or some specific precedence value.

@@ -27,8 +27,8 @@ class ConcatFunction : public CelFunction {
  public:
   explicit ConcatFunction() : CelFunction(CreateDescriptor()) {}
 
-  static CelFunction::Descriptor CreateDescriptor() {
-    return Descriptor{
+  static CelFunctionDescriptor CreateDescriptor() {
+    return CelFunctionDescriptor{
         "concat", false, {CelValue::Type::kString, CelValue::Type::kString}};
   }
 
@@ -94,7 +94,7 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
 class RecorderFunction : public CelFunction {
  public:
   explicit RecorderFunction(const std::string& name, int* count)
-      : CelFunction(Descriptor{name, false, {}}), count_(count) {}
+      : CelFunction(CelFunctionDescriptor{name, false, {}}), count_(count) {}
 
   cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
