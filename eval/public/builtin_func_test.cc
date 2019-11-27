@@ -1309,7 +1309,7 @@ TEST_F(BuiltinsTest, TestConcatList) {
   const CelList* result_list = result_value.ListOrDie();
   ASSERT_EQ(result_list->size(), kValues.size());
 
-  for (size_t i = 0; i < result_list->size(); i++) {
+  for (int i = 0; i < result_list->size(); i++) {
     CelValue item = (*result_list)[i];
     ASSERT_TRUE(item.IsInt64());
     EXPECT_EQ(item.Int64OrDie(), kValues[i]);

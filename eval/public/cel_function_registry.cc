@@ -7,18 +7,32 @@ namespace runtime {
 
 cel_base::Status CelFunctionRegistry::Register(
     std::unique_ptr<CelFunction> function) {
-  const CelFunction::Descriptor& descriptor = function->descriptor();
+  const CelFunctionDescriptor& descriptor = function->descriptor();
 
-  if (!FindOverloads(descriptor.name, descriptor.receiver_style,
-                     descriptor.types)
-           .empty()) {
+  if (DescriptorRegistered(descriptor)) {
     return cel_base::Status(
         cel_base::StatusCode::kAlreadyExists,
         "CelFunction with specified parameters already registered");
   }
 
-  auto& overloads = functions_[descriptor.name];
-  overloads.push_back(std::move(function));
+  auto& overloads = functions_[descriptor.name()];
+  overloads.static_overloads.push_back(std::move(function));
+  return cel_base::OkStatus();
+}
+
+cel_base::Status CelFunctionRegistry::RegisterLazyFunction(
+    const CelFunctionDescriptor& descriptor,
+    std::unique_ptr<CelFunctionProvider> factory) {
+  if (DescriptorRegistered(descriptor)) {
+    return cel_base::Status(
+        cel_base::StatusCode::kAlreadyExists,
+        "CelFunction with specified parameters already registered");
+  }
+  auto& overloads = functions_[descriptor.name()];
+  LazyFunctionEntry entry = std::make_unique<LazyFunctionEntry::element_type>(
+      descriptor, std::move(factory));
+  overloads.lazy_overloads.push_back(std::move(entry));
+
   return cel_base::OkStatus();
 }
 
@@ -27,35 +41,13 @@ std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(
     const std::vector<CelValue::Type>& types) const {
   std::vector<const CelFunction*> matched_funcs;
 
-  auto types_size = types.size();
-
   auto overloads = functions_.find(std::string(name));
   if (overloads == functions_.end()) {
     return matched_funcs;
   }
 
-  for (const auto& func_ptr : overloads->second) {
-    const CelFunction::Descriptor& other_desc = func_ptr->descriptor();
-    if (other_desc.receiver_style != receiver_style) {
-      continue;
-    }
-
-    if (other_desc.types.size() != types_size) {
-      continue;
-    }
-
-    bool arg_match = true;
-    for (size_t i = 0; i < types_size; i++) {
-      CelValue::Type type0 = types[i];
-      CelValue::Type type1 = other_desc.types[i];
-      if (type0 != CelValue::Type::kAny && type1 != CelValue::Type::kAny &&
-          type0 != type1) {
-        arg_match = false;
-        break;
-      }
-    }
-
-    if (arg_match) {
+  for (const auto& func_ptr : overloads->second.static_overloads) {
+    if (func_ptr->descriptor().ShapeMatches(receiver_style, types)) {
       matched_funcs.push_back(func_ptr.get());
     }
   }
@@ -63,21 +55,55 @@ std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(
   return matched_funcs;
 }
 
-absl::node_hash_map<std::string, std::vector<const CelFunction::Descriptor*>>
+std::vector<const CelFunctionProvider*> CelFunctionRegistry::FindLazyOverloads(
+    absl::string_view name, bool receiver_style,
+    const std::vector<CelValue::Type>& types) const {
+  std::vector<const CelFunctionProvider*> matched_funcs;
+
+  auto overloads = functions_.find(std::string(name));
+  if (overloads == functions_.end()) {
+    return matched_funcs;
+  }
+
+  for (const LazyFunctionEntry& entry : overloads->second.lazy_overloads) {
+    if (entry->first.ShapeMatches(receiver_style, types)) {
+      matched_funcs.push_back(entry->second.get());
+    }
+  }
+
+  return matched_funcs;
+}
+
+absl::node_hash_map<std::string, std::vector<const CelFunctionDescriptor*>>
 CelFunctionRegistry::ListFunctions() const {
-  absl::node_hash_map<std::string, std::vector<const CelFunction::Descriptor*>>
+  absl::node_hash_map<std::string, std::vector<const CelFunctionDescriptor*>>
       descriptor_map;
 
   for (const auto& entry : functions_) {
-    std::vector<const CelFunction::Descriptor*> descriptors;
-    descriptors.reserve(entry.second.size());
-    for (const auto& func : entry.second) {
+    std::vector<const CelFunctionDescriptor*> descriptors;
+    const RegistryEntry& function_entry = entry.second;
+    descriptors.reserve(function_entry.static_overloads.size() +
+                        function_entry.lazy_overloads.size());
+    for (const auto& func : function_entry.static_overloads) {
       descriptors.push_back(&func->descriptor());
+    }
+    for (const LazyFunctionEntry& func : function_entry.lazy_overloads) {
+      descriptors.push_back(&func->first);
     }
     descriptor_map[entry.first] = std::move(descriptors);
   }
 
   return descriptor_map;
+}
+
+bool CelFunctionRegistry::DescriptorRegistered(
+    const CelFunctionDescriptor& descriptor) const {
+  return !(FindOverloads(descriptor.name(), descriptor.receiver_style(),
+                         descriptor.types())
+               .empty()) ||
+         !(FindLazyOverloads(descriptor.name(), descriptor.receiver_style(),
+                             descriptor.types())
+               .empty());
 }
 
 }  // namespace runtime

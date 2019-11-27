@@ -4,7 +4,6 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
-#include "util/utf8/public/unicodetext.h"
 
 namespace google {
 namespace api {
@@ -24,6 +23,49 @@ inline std::pair<char, bool> unhex(char c) {
   return std::make_pair(0, false);
 }
 
+// Write the characters from the first code point into output, which must be at
+// least 4 bytes long. Return the number of bytes written.
+inline int get_utf8(absl::string_view s, char* buffer) {
+  buffer[0] = s[0];
+  if (s[0] < 0x80 || s.size() < 2) return 1;
+  buffer[1] = s[1];
+  if (s[0] < 0xE0 || s.size() < 3) return 2;
+  buffer[2] = s[2];
+  if (s[0] < 0xF0 || s.size() < 4) return 3;
+  buffer[3] = s[3];
+  return 4;
+}
+
+// Write UTF-8 encoding into a buffer, which must be at least 4 bytes long.
+// Return the number of bytes written.
+inline int encode_utf8(char* buffer, char32_t utf8_char) {
+  if (utf8_char <= 0x7F) {
+    *buffer = static_cast<char>(utf8_char);
+    return 1;
+  } else if (utf8_char <= 0x7FF) {
+    buffer[1] = 0x80 | (utf8_char & 0x3F);
+    utf8_char >>= 6;
+    buffer[0] = 0xC0 | utf8_char;
+    return 2;
+  } else if (utf8_char <= 0xFFFF) {
+    buffer[2] = 0x80 | (utf8_char & 0x3F);
+    utf8_char >>= 6;
+    buffer[1] = 0x80 | (utf8_char & 0x3F);
+    utf8_char >>= 6;
+    buffer[0] = 0xE0 | utf8_char;
+    return 3;
+  } else {
+    buffer[3] = 0x80 | (utf8_char & 0x3F);
+    utf8_char >>= 6;
+    buffer[2] = 0x80 | (utf8_char & 0x3F);
+    utf8_char >>= 6;
+    buffer[1] = 0x80 | (utf8_char & 0x3F);
+    utf8_char >>= 6;
+    buffer[0] = 0xF0 | utf8_char;
+    return 4;
+  }
+}
+
 // unescape_char takes a string input and returns the following info:
 //
 //   value - the escaped unicode rune at the front of the string.
@@ -37,17 +79,14 @@ inline std::pair<char, bool> unhex(char c) {
 //
 // If is_bytes is set, unescape as a bytes literal so octal and hex escapes
 // represent byte values, not unicode code points.
-inline std::tuple<std::string, std::string_view, std::string> unescape_char(
-    std::string_view s, bool is_bytes) {
+inline std::tuple<std::string, absl::string_view, std::string> unescape_char(
+    absl::string_view s, bool is_bytes) {
   char c = s[0];
 
   // 1. Character is not an escape sequence.
   if (c >= 0x80 && !is_bytes) {
-    UnicodeText ut;
-    ut.PointToUTF8(s.data(), s.size());
-    auto r = ut.begin();
     char tmp[5];
-    int len = r.get_utf8(tmp);
+    int len = get_utf8(s, tmp);
     tmp[len] = '\0';
     return std::make_tuple(std::string(tmp), s.substr(len), "");
   } else if (c != '\\') {
@@ -205,14 +244,15 @@ inline std::tuple<std::string, std::string_view, std::string> unescape_char(
     char tmp[2] = {(char)value, '\0'};
     return std::make_tuple(std::string(tmp), s, "");
   } else {
-    UnicodeText ut;
-    ut.push_back(value);
-    return std::make_tuple(ut.begin().get_utf8_string(), s, "");
+    char tmp[5];
+    int len = encode_utf8(tmp, value);
+    tmp[len] = '\0';
+    return std::make_tuple(std::string(tmp), s, "");
   }
 }
 
 // Unescape takes a quoted string, unquotes, and unescapes it.
-std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
+absl::optional<std::string> unescape(const std::string& s, bool is_bytes) {
   // All strings normalize newlines to the \n representation.
   std::string value = absl::StrReplaceAll(s, {{"\r\n", "\n"}, {"\r", "\n"}});
 
@@ -220,7 +260,7 @@ std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
 
   // Nothing to unescape / decode.
   if (n < 2) {
-    return std::make_optional(value);
+    return value;
   }
 
   // Raw string preceded by the 'r|R' prefix.
@@ -233,7 +273,7 @@ std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
 
   // Quoted string of some form, must have same first and last char.
   if (value[0] != value[n - 1] || (value[0] != '"' && value[0] != '\'')) {
-    return std::optional<std::string>();
+    return absl::optional<std::string>();
   }
 
   // Normalize the multi-line CEL string representation to a standard
@@ -241,12 +281,12 @@ std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
   if (n >= 6) {
     if (absl::StartsWith(value, "'''")) {
       if (!absl::EndsWith(value, "'''")) {
-        return std::optional<std::string>();
+        return absl::optional<std::string>();
       }
       value = "\"" + value.substr(3, n - 6) + "\"";
     } else if (absl::StartsWith(value, "\"\"\"")) {
       if (!absl::EndsWith(value, "\"\"\"")) {
-        return std::optional<std::string>();
+        return absl::optional<std::string>();
       }
       value = "\"" + value.substr(3, n - 6) + "\"";
     }
@@ -266,7 +306,7 @@ std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
         if (value[i + 1] == 'x' || value[i + 1] == 'X') {
           if (i > (std::numeric_limits<std::string::size_type>::max() - 3) ||
               i + 3 >= value.size()) {
-            return std::optional<std::string>();
+            return absl::optional<std::string>();
           }
           char v = 0;
           for (int j = 2; j <= 3; ++j) {
@@ -279,20 +319,20 @@ std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
                    value[i + 1] == '2' || value[i + 1] == '3') {
           if (i > (std::numeric_limits<std::string::size_type>::max() - 3) ||
               i + 3 >= value.size()) {
-            return std::optional<std::string>();
+            return absl::optional<std::string>();
           }
           char v = value[i + 1] - '0';
           for (int j = 1; j <= 3; ++j) {
             char x = value[i + j];
             if (x < '0' || x > '7') {
-              return std::optional<std::string>();
+              return absl::optional<std::string>();
             }
             v = v * 8 + (x - '0');
           }
           i += 3;
           new_value += v;
         } else {
-          return std::optional<std::string>();
+          return absl::optional<std::string>();
         }
       } else {
         new_value += value[i];
@@ -303,21 +343,21 @@ std::optional<std::string> unescape(const std::string& s, bool is_bytes) {
 
   std::string unescaped;
   unescaped.reserve(3 * value.size() / 2);
-  std::string_view value_sv(value);
+  absl::string_view value_sv(value);
   while (!value_sv.empty()) {
-    std::tuple<std::string, std::string_view, std::string> c =
+    std::tuple<std::string, absl::string_view, std::string> c =
         unescape_char(value_sv, is_bytes);
     if (!std::get<2>(c).empty()) {
-      return std::optional<std::string>();
+      return absl::optional<std::string>();
     }
 
     unescaped.append(std::get<0>(c));
     value_sv = std::get<1>(c);
   }
-  return std::make_optional(unescaped);
+  return unescaped;
 }
 
-std::string escapeAndQuote(std::string_view str) {
+std::string escapeAndQuote(absl::string_view str) {
   const std::string lowerhex = "0123456789abcdef";
 
   std::string s;

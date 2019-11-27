@@ -37,22 +37,22 @@ template <>
 absl::optional<CelValue::Type> TypeCodeMatch<CelValue>();
 
 template <int N>
-bool AddType(CelFunction::Descriptor*) {
+bool AddType(std::vector<CelValue::Type>*) {
   return true;
 }
 
 // AddType template method
 // Appends CEL type constant deduced from C++ type Type to descriptor
 template <int N, typename Type, typename... Args>
-bool AddType(CelFunction::Descriptor* descriptor) {
+bool AddType(std::vector<CelValue::Type>* arg_types) {
   auto kind = TypeCodeMatch<Type>();
   if (!kind) {
     return false;
   }
 
-  descriptor->types.push_back(kind.value());
+  arg_types->push_back(kind.value());
 
-  return AddType<N, Args...>(descriptor);
+  return AddType<N, Args...>(arg_types);
 
   return true;
 }
@@ -82,26 +82,24 @@ class FunctionAdapter : public CelFunction {
  public:
   using FuncType = std::function<ReturnType(::google::protobuf::Arena*, Arguments...)>;
 
-  FunctionAdapter(const Descriptor& descriptor, FuncType handler)
-      : CelFunction(descriptor), handler_(std::move(handler)) {
-  }
+  FunctionAdapter(const CelFunctionDescriptor& descriptor, FuncType handler)
+      : CelFunction(descriptor), handler_(std::move(handler)) {}
 
   static cel_base::StatusOr<std::unique_ptr<CelFunction>> Create(
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler) {
-    CelFunction::Descriptor descriptor;
-    descriptor.name = std::string(name);
-    descriptor.receiver_style = receiver_type;
+    std::vector<CelValue::Type> arg_types;
 
-    if (!internal::AddType<0, Arguments...>(&descriptor)) {
+    if (!internal::AddType<0, Arguments...>(&arg_types)) {
       return cel_base::Status(
           cel_base::StatusCode::kInternal,
           absl::StrCat("Failed to create adapter for ", name,
                        ": failed to determine input parameter type"));
     }
 
-    std::unique_ptr<CelFunction> cel_func =
-        absl::make_unique<FunctionAdapter>(descriptor, std::move(handler));
+    std::unique_ptr<CelFunction> cel_func = absl::make_unique<FunctionAdapter>(
+        CelFunctionDescriptor(std::string(name), receiver_type, arg_types),
+        std::move(handler));
     return std::move(cel_func);
   }
 

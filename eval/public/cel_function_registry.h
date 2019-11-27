@@ -4,6 +4,7 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/types/span.h"
 #include "eval/public/cel_function.h"
+#include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
@@ -27,6 +28,19 @@ class CelFunctionRegistry {
   // CelExpression creation.
   cel_base::Status Register(std::unique_ptr<CelFunction> function);
 
+  // Register a lazily provided function. CelFunctionProvider is used to get
+  // a CelFunction ptr at evaluation time. The registry takes ownership of the
+  // factory.
+  cel_base::Status RegisterLazyFunction(
+      const CelFunctionDescriptor& descriptor,
+      std::unique_ptr<CelFunctionProvider> factory);
+
+  // Register a lazily provided function. This overload uses a default provider
+  // that delegates to the activation at evaluation time.
+  cel_base::Status RegisterLazyFunction(const CelFunctionDescriptor& descriptor) {
+    return RegisterLazyFunction(descriptor, CreateActivationFunctionProvider());
+  }
+
   // Find subset of CelFunction that match overload conditions
   // As types may not be available during expression compilation,
   // further narrowing of this subset will happen at evaluation stage.
@@ -38,14 +52,34 @@ class CelFunctionRegistry {
       absl::string_view name, bool receiver_style,
       const std::vector<CelValue::Type>& types) const;
 
-  // Retrieve list of registered function descriptors.
-  absl::node_hash_map<std::string, std::vector<const CelFunction::Descriptor*>>
+  // Find subset of CelFunction providers that match overload conditions
+  // As types may not be available during expression compilation,
+  // further narrowing of this subset will happen at evaluation stage.
+  // name - the name of CelFunction;
+  // receiver_style - indicates whether function has receiver style;
+  // types - argument types. If  type is not known during compilation,
+  // DYN value should be passed.
+  std::vector<const CelFunctionProvider*> FindLazyOverloads(
+      absl::string_view name, bool receiver_style,
+      const std::vector<CelValue::Type>& types) const;
+
+  // Retrieve list of registered function descriptors. This includes both
+  // static and lazy functions.
+  absl::node_hash_map<std::string, std::vector<const CelFunctionDescriptor*>>
   ListFunctions() const;
 
  private:
-  using Overloads = std::vector<std::unique_ptr<CelFunction>>;
-
-  absl::node_hash_map<std::string, Overloads> functions_;
+  // Returns whether the descriptor is registered in either as a lazy funtion or
+  // in the static functions.
+  bool DescriptorRegistered(const CelFunctionDescriptor& descriptor) const;
+  using StaticFunctionEntry = std::unique_ptr<CelFunction>;
+  using LazyFunctionEntry = std::unique_ptr<
+      std::pair<CelFunctionDescriptor, std::unique_ptr<CelFunctionProvider>>>;
+  struct RegistryEntry {
+    std::vector<StaticFunctionEntry> static_overloads;
+    std::vector<LazyFunctionEntry> lazy_overloads;
+  };
+  absl::node_hash_map<std::string, RegistryEntry> functions_;
 };
 
 }  // namespace runtime

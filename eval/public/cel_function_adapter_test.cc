@@ -145,22 +145,22 @@ TEST(CelFunctionAdapterTest, TestTypeDeductionForCelValueBasicTypes) {
 
   auto descriptor = cel_func->descriptor();
 
-  EXPECT_EQ(descriptor.receiver_style, false);
-  EXPECT_EQ(descriptor.name, "dummy_func");
+  EXPECT_EQ(descriptor.receiver_style(), false);
+  EXPECT_EQ(descriptor.name(), "dummy_func");
 
   int pos = 0;
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kBool);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kInt64);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kUint64);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kDouble);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kString);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kBytes);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kMessage);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kDuration);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kTimestamp);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kList);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kMap);
-  ASSERT_EQ(descriptor.types[pos++], CelValue::Type::kError);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kBool);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kInt64);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kUint64);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kDouble);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kString);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kBytes);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kMessage);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kDuration);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kTimestamp);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kList);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kMap);
+  ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kError);
 }
 
 }  // namespace

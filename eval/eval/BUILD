@@ -107,11 +107,12 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:status",
         "//eval/public:activation",
         "//eval/public:cel_function",
+        "//eval/public:cel_function_provider",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_value",
-        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -140,12 +141,6 @@ cc_library(
     hdrs = [
         "container_backed_list_impl.h",
     ],
-    # Make private once temporary internal use over.
-    visibility = [
-        "//conformance:__subpackages__",
-        "//eval:__subpackages__",
-        "//identity/cloud/attributecalculator:__subpackages__",
-    ],
     deps = [
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
@@ -160,11 +155,6 @@ cc_library(
     ],
     hdrs = [
         "container_backed_map_impl.h",
-    ],
-    # Make private once temporary internal use over.
-    visibility = [
-        "//conformance:__subpackages__",
-        "//eval:__subpackages__",
     ],
     deps = [
         "//eval/public:cel_value",

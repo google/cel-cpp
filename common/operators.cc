@@ -133,6 +133,33 @@ const std::map<std::string, int>& Precedences() {
 
 }  // namespace
 
+const char* CelOperator::CONDITIONAL = "_?_:_";
+const char* CelOperator::LOGICAL_AND = "_&&_";
+const char* CelOperator::LOGICAL_OR = "_||_";
+const char* CelOperator::LOGICAL_NOT = "!_";
+const char* CelOperator::IN_DEPRECATED = "_in_";
+const char* CelOperator::EQUALS = "_==_";
+const char* CelOperator::NOT_EQUALS = "_!=_";
+const char* CelOperator::LESS = "_<_";
+const char* CelOperator::LESS_EQUALS = "_<=_";
+const char* CelOperator::GREATER = "_>_";
+const char* CelOperator::GREATER_EQUALS = "_>=_";
+const char* CelOperator::ADD = "_+_";
+const char* CelOperator::SUBTRACT = "_-_";
+const char* CelOperator::MULTIPLY = "_*_";
+const char* CelOperator::DIVIDE = "_/_";
+const char* CelOperator::MODULO = "_%_";
+const char* CelOperator::NEGATE = "-_";
+const char* CelOperator::INDEX = "_[_]";
+const char* CelOperator::HAS = "has";
+const char* CelOperator::ALL = "all";
+const char* CelOperator::EXISTS = "exists";
+const char* CelOperator::EXISTS_ONE = "exists_one";
+const char* CelOperator::MAP = "map";
+const char* CelOperator::FILTER = "filter";
+const char* CelOperator::NOT_STRICTLY_FALSE = "@not_strictly_false";
+const char* CelOperator::IN = "@in";
+
 int LookupPrecedence(const std::string& op) {
   auto precs = Precedences();
   auto p = precs.find(op);
