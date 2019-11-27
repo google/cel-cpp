@@ -13,6 +13,7 @@ cc_library(
     hdrs = [
         "type_registry.h",
     ],
+    copts = ["-std=c++14"],
     deps = [
         "//common:macros",
         "//common:parent_ref",
@@ -29,6 +30,7 @@ cc_library(
 cc_test(
     name = "type_registry_test",
     srcs = ["type_registry_test.cc"],
+    copts = ["-std=c++14"],
     deps = [
         ":type_registry",
         "//common:value",
@@ -48,6 +50,7 @@ cc_library(
     hdrs = [
         "converters.h",
     ],
+    copts = ["-std=c++14"],
     deps = [
         ":type_registry",
         "//common:macros",
@@ -70,6 +73,7 @@ cc_library(
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
+    copts = ["-std=c++14"],
     data = [
         "@com_google_cel_spec//testdata",
     ],

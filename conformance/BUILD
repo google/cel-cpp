@@ -31,6 +31,7 @@ cc_binary(
     name = "server",
     testonly = 1,
     srcs = ["server.cc"],
+    copts = ["-std=c++14"],
     deps = [
         "//base:status",
         "//eval/eval:container_backed_list_impl",

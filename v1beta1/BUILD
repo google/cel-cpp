@@ -15,6 +15,7 @@ cc_library(
     hdrs = [
         "converters.h",
     ],
+    copts = ["-std=c++14"],
     deps = [
         "//common:converters",
         "//common:macros",
@@ -36,6 +37,7 @@ cc_library(
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
+    copts = ["-std=c++14"],
     data = [
         "@com_google_cel_spec//testdata",
     ],
