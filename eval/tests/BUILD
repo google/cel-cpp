@@ -14,6 +14,7 @@ cc_test(
     srcs = [
         "benchmark_test.cc",
     ],
+    copts = ["-std=c++14"],
     tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
@@ -38,6 +39,7 @@ cc_test(
     srcs = [
         "end_to_end_test.cc",
     ],
+    copts = ["-std=c++14"],
     deps = [
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",

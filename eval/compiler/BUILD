@@ -14,6 +14,7 @@ cc_library(
     hdrs = [
         "flat_expr_builder.h",
     ],
+    copts = ["-std=c++14"],
     deps = [
         ":constant_folding",
         "//base:status",
@@ -43,6 +44,7 @@ cc_test(
     srcs = [
         "flat_expr_builder_test.cc",
     ],
+    copts = ["-std=c++14"],
     deps = [
         ":flat_expr_builder",
         "//eval/public:builtin_func_registrar",
@@ -62,6 +64,7 @@ cc_library(
     hdrs = [
         "constant_folding.h",
     ],
+    copts = ["-std=c++14"],
     deps = [
         "//eval/eval:const_value_step",
         "//eval/eval:container_backed_list_impl",
@@ -80,6 +83,7 @@ cc_test(
     srcs = [
         "constant_folding_test.cc",
     ],
+    copts = ["-std=c++14"],
     deps = [
         ":constant_folding",
         "//eval/public:builtin_func_registrar",

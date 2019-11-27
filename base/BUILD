@@ -17,6 +17,7 @@ cc_library(
         "statusor.h",
         "statusor_internals.h",
     ],
+    copts = ["-std=c++14"],
     deps = [
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
