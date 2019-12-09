@@ -38,11 +38,13 @@ cc_binary(
         "//eval/eval:container_backed_map_impl",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
+        "//parser",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:conformance_service_cc_grpc",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -53,8 +55,8 @@ cc_binary(
         srcs = [":" + driver],
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=$(location @com_google_cel_go//server/main:cel_server)",
-            "--eval_server=$(location :server)",
+            "--server=$(location :server)",
+            "--check_server=$(location @com_google_cel_go//server/main:cel_server)",
             # Requires container support
             "--skip_test=basic/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
             # Requires heteregenous equality spec clarification
@@ -83,8 +85,8 @@ sh_test(
     srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
     args = [
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
-        "--server=$(location @com_google_cel_go//server/main:cel_server)",
-        "--eval_server=$(location :server)",
+        "--server=$(location :server)",
+        "--check_server=$(location @com_google_cel_go//server/main:cel_server)",
     ] + ["$(location " + test + ")" for test in DASHBOARD_TESTS],
     data = [
         ":server",

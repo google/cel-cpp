@@ -17,10 +17,35 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+// Base class for an activation.
+class BaseActivation {
+ public:
+  BaseActivation() = default;
+
+  // Non-copyable/non-assignable
+  BaseActivation(const BaseActivation&) = delete;
+  BaseActivation& operator=(const BaseActivation&) = delete;
+
+  // Return a list of function overloads for the given name.
+  virtual std::vector<const CelFunction*> FindFunctionOverloads(
+      absl::string_view) const = 0;
+
+  // Provide the value that is bound to the name, if found.
+  // arena parameter is provided to support the case when we want to pass the
+  // ownership of returned object ( Message/List/Map ) to Evaluator.
+  virtual absl::optional<CelValue> FindValue(absl::string_view,
+                                             google::protobuf::Arena*) const = 0;
+
+  // Check whether a select path is unknown.
+  virtual bool IsPathUnknown(absl::string_view) const = 0;
+
+  virtual ~BaseActivation() {}
+};
+
 // Instance of Activation class is used by evaluator.
 // It provides binding between references used in expressions
 // and actual values.
-class Activation {
+class Activation : public BaseActivation {
  public:
   Activation() = default;
 
@@ -28,15 +53,17 @@ class Activation {
   Activation(const Activation&) = delete;
   Activation& operator=(const Activation&) = delete;
 
-  // Return list of function overloads for the given name.
+  // BaseActivation
   std::vector<const CelFunction*> FindFunctionOverloads(
-      absl::string_view name) const;
+      absl::string_view name) const override;
 
-  // Provide value that is bound to the name, if found.
-  // arena parameter is provided to support the case when we want to pass the
-  // ownership of returned object ( Message/List/Map ) to Evaluator.
   absl::optional<CelValue> FindValue(absl::string_view name,
-                                     google::protobuf::Arena* arena) const;
+                                     google::protobuf::Arena* arena) const override;
+
+  bool IsPathUnknown(absl::string_view path) const override {
+    return google::protobuf::util::FieldMaskUtil::IsPathInFieldMask(std::string(path),
+                                                          unknown_paths_);
+  }
 
   // Insert a function into the activation (ie a lazily bound function). Returns
   // a status if the name and shape of the function matches another one that has
@@ -73,12 +100,6 @@ class Activation {
   // Return FieldMask defining the list of unknown paths.
   const google::protobuf::FieldMask unknown_paths() const {
     return unknown_paths_;
-  }
-
-  // Check whether select path is unknown.
-  bool IsPathUnknown(absl::string_view path) const {
-    return google::protobuf::util::FieldMaskUtil::IsPathInFieldMask(std::string(path),
-                                                          unknown_paths_);
   }
 
  private:

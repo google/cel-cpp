@@ -95,7 +95,7 @@ class ExecutionFrame {
   // flat is the flattened sequence of execution steps that will be evaluated.
   // activation provides bindings between parameter names and values.
   // arena serves as allocation manager during the expression evaluation.
-  ExecutionFrame(const ExecutionPath* flat, const Activation& activation,
+  ExecutionFrame(const ExecutionPath* flat, const BaseActivation& activation,
                  google::protobuf::Arena* arena, int max_iterations)
       : pc_(0UL),
         execution_path_(flat),
@@ -129,7 +129,7 @@ class ExecutionFrame {
   google::protobuf::Arena* arena() { return arena_; }
 
   // Returns reference to Activation
-  const Activation& activation() const { return activation_; }
+  const BaseActivation& activation() const { return activation_; }
 
   // Returns reference to iter_vars
   std::map<std::string, CelValue>& iter_vars() { return iter_vars_; }
@@ -151,7 +151,7 @@ class ExecutionFrame {
  private:
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath* execution_path_;
-  const Activation& activation_;
+  const BaseActivation& activation_;
   ValueStack value_stack_;
   google::protobuf::Arena* arena_;
   const int max_iterations_;
@@ -173,11 +173,11 @@ class CelExpressionFlatImpl : public CelExpression {
       : path_(std::move(path)), max_iterations_(max_iterations) {}
 
   // Implementation of CelExpression evaluate method.
-  cel_base::StatusOr<CelValue> Evaluate(const Activation& activation,
+  cel_base::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
                                     google::protobuf::Arena* arena) const override;
 
   // Implementation of CelExpression trace method.
-  cel_base::StatusOr<CelValue> Trace(const Activation& activation,
+  cel_base::StatusOr<CelValue> Trace(const BaseActivation& activation,
                                  google::protobuf::Arena* arena,
                                  CelEvaluationListener callback) const override;
 

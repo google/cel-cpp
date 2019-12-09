@@ -34,12 +34,12 @@ class CelExpression {
   // activation contains bindings from parameter names to values
   // arena parameter specifies Arena object where output result and
   // internal data will be allocated.
-  virtual cel_base::StatusOr<CelValue> Evaluate(const Activation& activation,
+  virtual cel_base::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
                                             google::protobuf::Arena* arena) const = 0;
 
   // Trace evaluates expression calling the callback on each sub-tree.
   virtual cel_base::StatusOr<CelValue> Trace(
-      const Activation& activation, google::protobuf::Arena* arena,
+      const BaseActivation& activation, google::protobuf::Arena* arena,
       CelEvaluationListener callback) const = 0;
 };
 

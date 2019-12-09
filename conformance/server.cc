@@ -5,12 +5,14 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "google/rpc/code.pb.h"
 #include "grpcpp/grpcpp.h"
 #include "absl/strings/str_split.h"
 #include "eval/eval/container_backed_list_impl.h"
 #include "eval/eval/container_backed_map_impl.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
+#include "parser/parser.h"
 #include "base/statusor.h"
 
 
@@ -190,12 +192,25 @@ class ConformanceServiceImpl final
   Status Parse(grpc::ServerContext* context,
                const v1alpha1::ParseRequest* request,
                v1alpha1::ParseResponse* response) override {
-    return Status(StatusCode::UNIMPLEMENTED, "only Eval is supported");
+    if (request->cel_source().empty()) {
+      return Status(StatusCode::INVALID_ARGUMENT, "No source code.");
+    }
+    auto parse_status = parser::Parse(request->cel_source(), "");
+    if (!parse_status.ok()) {
+      auto issue = response->add_issues();
+      *issue->mutable_message() = std::string(parse_status.status().message());
+      issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
+    } else {
+      google::api::expr::v1alpha1::ParsedExpr out;
+      out = parse_status.ValueOrDie();
+      response->mutable_parsed_expr()->CopyFrom(out);
+    }
+    return Status::OK;
   }
   Status Check(grpc::ServerContext* context,
                const v1alpha1::CheckRequest* request,
                v1alpha1::CheckResponse* response) override {
-    return Status(StatusCode::UNIMPLEMENTED, "only Eval is supported");
+    return Status(StatusCode::UNIMPLEMENTED, "Check is not supported");
   }
   Status Eval(grpc::ServerContext* context,
               const v1alpha1::EvalRequest* request,
