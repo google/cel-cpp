@@ -149,7 +149,7 @@ cel_base::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 
   CelFunctionDescriptor matcher{name_, receiver_style_, arg_types};
 
-  const Activation& activation = frame->activation();
+  const BaseActivation& activation = frame->activation();
   for (auto provider : providers_) {
     auto status = provider->GetFunction(matcher, activation);
     if (!status.ok()) {

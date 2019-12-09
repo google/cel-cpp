@@ -18,12 +18,12 @@ const ExpressionStep* ExecutionFrame::Next() {
 }
 
 cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
-    const Activation& activation, google::protobuf::Arena* arena) const {
+    const BaseActivation& activation, google::protobuf::Arena* arena) const {
   return Trace(activation, arena, CelEvaluationListener());
 }
 
 cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
-    const Activation& activation, google::protobuf::Arena* arena,
+    const BaseActivation& activation, google::protobuf::Arena* arena,
     CelEvaluationListener callback) const {
   ExecutionFrame frame(&path_, activation, arena, max_iterations_);
 

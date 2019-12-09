@@ -13,7 +13,7 @@ class ActivationFunctionProviderImpl : public CelFunctionProvider {
   ActivationFunctionProviderImpl() {}
   cel_base::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& descriptor,
-      const Activation& activation) const override {
+      const BaseActivation& activation) const override {
     std::vector<const CelFunction*> overloads =
         activation.FindFunctionOverloads(descriptor.name());
 

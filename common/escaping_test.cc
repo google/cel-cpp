@@ -35,6 +35,7 @@ std::vector<TestInfo> test_cases = {
     {R"("\\")", "\\"},
     {"'''x''x'''", "x''x"},
     {R"("""x""x""")", R"(x""x)"},
+    {R"(r"")", ""},
     // Octal 303 -> Code point 195 (Ã)
     // Octal 277 -> Code point 191 (¿)
     {R"("\303\277")", "Ã¿"},

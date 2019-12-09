@@ -266,7 +266,7 @@ absl::optional<std::string> unescape(const std::string& s, bool is_bytes) {
   // Raw string preceded by the 'r|R' prefix.
   bool is_raw_literal = false;
   if (value[0] == 'r' || value[0] == 'R') {
-    value.resize(value.size() - 1);
+    value = value.substr(1, n - 1);
     n = value.size();
     is_raw_literal = true;
   }

@@ -20,7 +20,7 @@ class CelFunctionProvider {
   // nullptr is interpreted as no funtion overload matches the descriptor.
   virtual cel_base::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& descriptor,
-      const Activation& activation) const = 0;
+      const BaseActivation& activation) const = 0;
   virtual ~CelFunctionProvider() {}
 };
 
