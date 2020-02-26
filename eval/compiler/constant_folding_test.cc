@@ -8,6 +8,8 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/testutil/test_message.pb.h"
+#include "base/status_macros.h"
+
 namespace google {
 namespace api {
 namespace expr {
@@ -41,6 +43,62 @@ TEST(ConstantFoldingTest, Select) {
   google::protobuf::util::MessageDifferencer md;
   EXPECT_TRUE(md.Compare(out, expr)) << out.DebugString();
   EXPECT_TRUE(idents.empty());
+}
+
+// Validate struct message creation
+TEST(ConstantFoldingTest, StructMessage) {
+  Expr expr;
+  // {"field1": "y", "field2": "t"}
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        id: 5
+        struct_expr {
+          entries {
+            id: 11
+            field_key: "field1"
+            value { const_expr { string_value: "value1" } }
+          }
+          entries {
+            id: 7
+            field_key: "field2"
+            value { const_expr { int64_value: 12 } }
+          }
+          message_name: "MyProto"
+        })pb",
+      &expr);
+
+  google::protobuf::Arena arena;
+  CelFunctionRegistry registry;
+
+  absl::flat_hash_map<std::string, CelValue> idents;
+  Expr out;
+  FoldConstants(expr, registry, &arena, idents, &out);
+
+  Expr expected;
+  google::protobuf::TextFormat::ParseFromString(R"(
+    id: 5
+    struct_expr {
+      entries {
+        id: 11
+        field_key: "field1"
+        value { ident_expr { name: "$v0" } }
+      }
+      entries {
+        id: 7
+        field_key: "field2"
+        value { ident_expr { name: "$v1" } }
+      }
+      message_name: "MyProto"
+    })",
+                                      &expected);
+  google::protobuf::util::MessageDifferencer md;
+  EXPECT_TRUE(md.Compare(out, expected)) << out.DebugString();
+
+  EXPECT_EQ(idents.size(), 2);
+  EXPECT_TRUE(idents["$v0"].IsString());
+  EXPECT_EQ(idents["$v0"].StringOrDie().value(), "value1");
+  EXPECT_TRUE(idents["$v1"].IsInt64());
+  EXPECT_EQ(idents["$v1"].Int64OrDie(), 12);
 }
 
 // Validate struct creation is not folded but recursed into
@@ -151,7 +209,7 @@ TEST(ConstantFoldingTest, LogicApplication) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
@@ -184,7 +242,7 @@ TEST(ConstantFoldingTest, FunctionApplication) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
@@ -218,7 +276,7 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
@@ -251,7 +309,7 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  ASSERT_TRUE(RegisterBuiltinFunctions(&registry).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;

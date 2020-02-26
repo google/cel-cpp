@@ -8,8 +8,23 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+// Options for unknown processing.
+enum class UnknownProcessingOptions {
+  // No unknown processing.
+  kDisabled,
+  // Only attributes supported.
+  kAttributeOnly,
+  // Attributes and functions supported. Function results are dependent on the
+  // logic for handling unknown_attributes, so clients must opt in to both.
+  kAttributeAndFunction
+};
+
 // Interpreter options for controlling evaluation and builtin functions.
 struct InterpreterOptions {
+  // Level of unknown support enabled.
+  UnknownProcessingOptions unknown_processing =
+      UnknownProcessingOptions::kDisabled;
+
   // Enable short-circuiting of the logical operator evaluation. If enabled,
   // AND, OR, and TERNARY do not evaluate the entire expression once the the
   // resulting value is known from the left-hand side.
@@ -20,6 +35,8 @@ struct InterpreterOptions {
 
   // Enable constant folding during the expression creation. If enabled,
   // an arena must be provided for constant generation.
+  // Note that expression tracing applies a modified expression if this option
+  // is enabled.
   bool constant_folding = false;
   google::protobuf::Arena* constant_arena = nullptr;
 
@@ -50,6 +67,9 @@ struct InterpreterOptions {
 
   // Enable list membership overload.
   bool enable_list_contains = true;
+
+  // Treat builder warnings as fatal errors.
+  bool fail_on_warnings = true;
 };
 
 }  // namespace runtime

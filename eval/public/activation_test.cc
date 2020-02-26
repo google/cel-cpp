@@ -3,6 +3,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "eval/public/cel_function.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -33,10 +34,10 @@ class ConstCelFunction : public CelFunction {
   explicit ConstCelFunction(const CelFunctionDescriptor& desc)
       : CelFunction(desc) {}
 
-  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* output,
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* output,
                         google::protobuf::Arena* arena) const override {
     *output = CelValue::CreateInt64(42);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 };
 
@@ -110,7 +111,7 @@ TEST(ActivationTest, CheckInsertFunction) {
   Activation activation;
   auto insert_status = activation.InsertFunction(
       std::make_unique<ConstCelFunction>("ConstFunc"));
-  EXPECT_TRUE(insert_status.ok());
+  EXPECT_OK(insert_status);
 
   auto overloads = activation.FindFunctionOverloads("ConstFunc");
   EXPECT_THAT(overloads,
@@ -118,7 +119,7 @@ TEST(ActivationTest, CheckInsertFunction) {
                   &CelFunction::descriptor,
                   Property(&CelFunctionDescriptor::name, Eq("ConstFunc")))));
 
-  cel_base::Status status = activation.InsertFunction(
+  absl::Status status = activation.InsertFunction(
       std::make_unique<ConstCelFunction>("ConstFunc"));
 
   EXPECT_THAT(std::string(status.message()),
@@ -134,10 +135,10 @@ TEST(ActivationTest, CheckRemoveFunction) {
   auto insert_status =
       activation.InsertFunction(std::make_unique<ConstCelFunction>(
           CelFunctionDescriptor{"ConstFunc", false, {CelValue::Type::kInt64}}));
-  EXPECT_TRUE(insert_status.ok());
+  EXPECT_OK(insert_status);
   insert_status = activation.InsertFunction(std::make_unique<ConstCelFunction>(
       CelFunctionDescriptor{"ConstFunc", false, {CelValue::Type::kUint64}}));
-  EXPECT_TRUE(insert_status.ok());
+  EXPECT_OK(insert_status);
 
   auto overloads = activation.FindFunctionOverloads("ConstFunc");
   EXPECT_THAT(

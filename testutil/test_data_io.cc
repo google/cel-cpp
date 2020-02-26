@@ -67,8 +67,8 @@ std::unique_ptr<google::protobuf::io::FileOutputStream> OpenForWrite(
     return nullptr;
   }
 }
-std::string GetTestCaseFileName(absl::string_view dir, absl::string_view test_name,
-                           bool binary) {
+std::string GetTestCaseFileName(absl::string_view dir,
+                                absl::string_view test_name, bool binary) {
   return absl::StrCat(dir, test_name, binary ? kBinaryPbExt : kTextPbExt);
 }
 

@@ -4,10 +4,10 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
-#include "base/status.h"
 #include "base/statusor.h"
 
 namespace google {
@@ -91,8 +91,8 @@ class FunctionAdapter : public CelFunction {
     std::vector<CelValue::Type> arg_types;
 
     if (!internal::AddType<0, Arguments...>(&arg_types)) {
-      return cel_base::Status(
-          cel_base::StatusCode::kInternal,
+      return absl::Status(
+          absl::StatusCode::kInternal,
           absl::StrCat("Failed to create adapter for ", name,
                        ": failed to determine input parameter type"));
     }
@@ -105,7 +105,7 @@ class FunctionAdapter : public CelFunction {
 
   // Creates function handler and attempts to register it with
   // supplied function registry.
-  static cel_base::Status CreateAndRegister(
+  static absl::Status CreateAndRegister(
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler,
       CelFunctionRegistry* registry) {
@@ -119,26 +119,26 @@ class FunctionAdapter : public CelFunction {
 
 #if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)
   template <int arg_index>
-  inline cel_base::Status RunWrap(absl::Span<const CelValue> arguments,
+  inline absl::Status RunWrap(absl::Span<const CelValue> arguments,
                               std::tuple<::google::protobuf::Arena*, Arguments...> input,
                               CelValue* result, ::google::protobuf::Arena* arena) const {
     if (!ConvertFromValue(arguments[arg_index],
                           &std::get<arg_index + 1>(input))) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Type conversion failed");
     }
     return RunWrap<arg_index + 1>(arguments, input, result, arena);
   }
 
   template <>
-  inline cel_base::Status RunWrap<sizeof...(Arguments)>(
+  inline absl::Status RunWrap<sizeof...(Arguments)>(
       absl::Span<const CelValue>,
       std::tuple<::google::protobuf::Arena*, Arguments...> input, CelValue* result,
       ::google::protobuf::Arena* arena) const {
     return CreateReturnValue(absl::apply(handler_, input), arena, result);
   }
 #else
-  inline cel_base::Status RunWrap(std::function<ReturnType()> func,
+  inline absl::Status RunWrap(std::function<ReturnType()> func,
                               const absl::Span<const CelValue> argset,
                               ::google::protobuf::Arena* arena, CelValue* result,
                               int arg_index) const {
@@ -146,13 +146,13 @@ class FunctionAdapter : public CelFunction {
   }
 
   template <typename Arg, typename... Args>
-  inline cel_base::Status RunWrap(std::function<ReturnType(Arg, Args...)> func,
+  inline absl::Status RunWrap(std::function<ReturnType(Arg, Args...)> func,
                               const absl::Span<const CelValue> argset,
                               ::google::protobuf::Arena* arena, CelValue* result,
                               int arg_index) const {
     Arg argument;
     if (!ConvertFromValue(argset[arg_index], &argument)) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Type conversion failed");
     }
 
@@ -166,11 +166,10 @@ class FunctionAdapter : public CelFunction {
   }
 #endif
 
-  ::cel_base::Status Evaluate(absl::Span<const CelValue> arguments,
-                          CelValue* result,
-                          ::google::protobuf::Arena* arena) const override {
+  absl::Status Evaluate(absl::Span<const CelValue> arguments, CelValue* result,
+                        ::google::protobuf::Arena* arena) const override {
     if (arguments.size() != sizeof...(Arguments)) {
-      return cel_base::Status(cel_base::StatusCode::kInternal,
+      return absl::Status(absl::StatusCode::kInternal,
                           "Argument number mismatch");
     }
 
@@ -201,91 +200,91 @@ class FunctionAdapter : public CelFunction {
   }
 
   // CreateReturnValue method wraps evaluation result with CelValue.
-  static cel_base::Status CreateReturnValue(bool value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(bool value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     *result = CelValue::CreateBool(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(int64_t value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(int64_t value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     *result = CelValue::CreateInt64(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(uint64_t value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(uint64_t value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     *result = CelValue::CreateUint64(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(double value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(double value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     *result = CelValue::CreateDouble(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(CelValue::StringHolder value,
+  static absl::Status CreateReturnValue(CelValue::StringHolder value,
                                         ::google::protobuf::Arena*, CelValue* result) {
     *result = CelValue::CreateString(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(CelValue::BytesHolder value,
+  static absl::Status CreateReturnValue(CelValue::BytesHolder value,
                                         ::google::protobuf::Arena*, CelValue* result) {
     *result = CelValue::CreateBytes(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const ::google::protobuf::Message* value,
+  static absl::Status CreateReturnValue(const ::google::protobuf::Message* value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Null Message pointer returned");
     }
     *result = CelValue::CreateMessage(value, arena);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelList* value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(const CelList* value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Null CelList pointer returned");
     }
     *result = CelValue::CreateList(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelMap* value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(const CelMap* value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Null CelMap pointer returned");
     }
     *result = CelValue::CreateMap(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelError* value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(const CelError* value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     if (value == nullptr) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Null CelError pointer returned");
     }
     *result = CelValue::CreateError(value);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
-  static cel_base::Status CreateReturnValue(const CelValue& value, ::google::protobuf::Arena*,
+  static absl::Status CreateReturnValue(const CelValue& value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     *result = value;
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   template <typename T>
-  static cel_base::Status CreateReturnValue(const cel_base::StatusOr<T>& value,
+  static absl::Status CreateReturnValue(const cel_base::StatusOr<T>& value,
                                         ::google::protobuf::Arena*, CelValue*) {
     if (!value) {
       return value.status();

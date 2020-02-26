@@ -14,85 +14,91 @@ namespace {
 // Expr to textual mapping, e.g., from "_&&_" to "&&".
 
 const std::map<std::string, std::string>& UnaryOperators() {
-  static std::shared_ptr<std::map<std::string, std::string>> unaries_map = [&]() {
-    auto u =
-        std::make_shared<std::map<std::string, std::string>>(std::map<std::string, std::string>{
-            {CelOperator::NEGATE, "-"}, {CelOperator::LOGICAL_NOT, "!"}});
-    return u;
-  }();
+  static std::shared_ptr<std::map<std::string, std::string>> unaries_map =
+      [&]() {
+        auto u = std::make_shared<std::map<std::string, std::string>>(
+            std::map<std::string, std::string>{
+                {CelOperator::NEGATE, "-"}, {CelOperator::LOGICAL_NOT, "!"}});
+        return u;
+      }();
   return *unaries_map;
 }
 
 const std::map<std::string, std::string>& BinaryOperators() {
-  static std::shared_ptr<std::map<std::string, std::string>> binops_map = [&]() {
-    auto c = std::make_shared<std::map<std::string, std::string>>(
-        std::map<std::string, std::string>{{CelOperator::LOGICAL_OR, "||"},
-                                 {CelOperator::LOGICAL_AND, "&&"},
-                                 {CelOperator::LESS_EQUALS, "<="},
-                                 {CelOperator::LESS, "<"},
-                                 {CelOperator::GREATER_EQUALS, ">="},
-                                 {CelOperator::GREATER, ">"},
-                                 {CelOperator::EQUALS, "=="},
-                                 {CelOperator::NOT_EQUALS, "!="},
-                                 {CelOperator::IN_DEPRECATED, "in"},
-                                 {CelOperator::IN, "in"},
-                                 {CelOperator::ADD, "+"},
-                                 {CelOperator::SUBTRACT, "-"},
-                                 {CelOperator::MULTIPLY, "*"},
-                                 {CelOperator::DIVIDE, "/"},
-                                 {CelOperator::MODULO, "%"}});
-    return c;
-  }();
+  static std::shared_ptr<std::map<std::string, std::string>> binops_map =
+      [&]() {
+        auto c = std::make_shared<std::map<std::string, std::string>>(
+            std::map<std::string, std::string>{
+                {CelOperator::LOGICAL_OR, "||"},
+                {CelOperator::LOGICAL_AND, "&&"},
+                {CelOperator::LESS_EQUALS, "<="},
+                {CelOperator::LESS, "<"},
+                {CelOperator::GREATER_EQUALS, ">="},
+                {CelOperator::GREATER, ">"},
+                {CelOperator::EQUALS, "=="},
+                {CelOperator::NOT_EQUALS, "!="},
+                {CelOperator::IN_DEPRECATED, "in"},
+                {CelOperator::IN, "in"},
+                {CelOperator::ADD, "+"},
+                {CelOperator::SUBTRACT, "-"},
+                {CelOperator::MULTIPLY, "*"},
+                {CelOperator::DIVIDE, "/"},
+                {CelOperator::MODULO, "%"}});
+        return c;
+      }();
   return *binops_map;
 }
 
 const std::map<std::string, std::string>& ReverseOperators() {
-  static std::shared_ptr<std::map<std::string, std::string>> operators_map = [&]() {
-    auto c =
-        std::make_shared<std::map<std::string, std::string>>(std::map<std::string, std::string>{
-            {"+", CelOperator::ADD},
-            {"-", CelOperator::SUBTRACT},
-            {"*", CelOperator::MULTIPLY},
-            {"/", CelOperator::DIVIDE},
-            {"%", CelOperator::MODULO},
-            {"==", CelOperator::EQUALS},
-            {"!=", CelOperator::NOT_EQUALS},
-            {">", CelOperator::GREATER},
-            {">=", CelOperator::GREATER_EQUALS},
-            {"<", CelOperator::LESS},
-            {"<=", CelOperator::LESS_EQUALS},
-            {"&&", CelOperator::LOGICAL_AND},
-            {"!", CelOperator::LOGICAL_NOT},
-            {"||", CelOperator::LOGICAL_OR},
-            {"in", CelOperator::IN},
-        });
-    return c;
-  }();
+  static std::shared_ptr<std::map<std::string, std::string>> operators_map =
+      [&]() {
+        auto c = std::make_shared<std::map<std::string, std::string>>(
+            std::map<std::string, std::string>{
+                {"+", CelOperator::ADD},
+                {"-", CelOperator::SUBTRACT},
+                {"*", CelOperator::MULTIPLY},
+                {"/", CelOperator::DIVIDE},
+                {"%", CelOperator::MODULO},
+                {"==", CelOperator::EQUALS},
+                {"!=", CelOperator::NOT_EQUALS},
+                {">", CelOperator::GREATER},
+                {">=", CelOperator::GREATER_EQUALS},
+                {"<", CelOperator::LESS},
+                {"<=", CelOperator::LESS_EQUALS},
+                {"&&", CelOperator::LOGICAL_AND},
+                {"!", CelOperator::LOGICAL_NOT},
+                {"||", CelOperator::LOGICAL_OR},
+                {"in", CelOperator::IN},
+            });
+        return c;
+      }();
   return *operators_map;
 }
 
 const std::map<std::string, std::string>& Operators() {
-  static std::shared_ptr<std::map<std::string, std::string>> operators_map = [&]() {
-    auto c = std::make_shared<std::map<std::string, std::string>>(
-        std::map<std::string, std::string>{{CelOperator::ADD, "+"},
-                                 {CelOperator::SUBTRACT, "-"},
-                                 {CelOperator::MULTIPLY, "*"},
-                                 {CelOperator::DIVIDE, "/"},
-                                 {CelOperator::MODULO, "%"},
-                                 {CelOperator::EQUALS, "=="},
-                                 {CelOperator::NOT_EQUALS, "!="},
-                                 {CelOperator::GREATER, ">"},
-                                 {CelOperator::GREATER_EQUALS, ">="},
-                                 {CelOperator::LESS, "<"},
-                                 {CelOperator::LESS_EQUALS, "<="},
-                                 {CelOperator::LOGICAL_AND, "&&"},
-                                 {CelOperator::LOGICAL_NOT, "!"},
-                                 {CelOperator::LOGICAL_OR, "||"},
-                                 {CelOperator::IN, "in"},
-                                 {CelOperator::IN_DEPRECATED, "in"},
-                                 {CelOperator::NEGATE, "-"}});
-    return c;
-  }();
+  static std::shared_ptr<std::map<std::string, std::string>> operators_map =
+      [&]() {
+        auto c = std::make_shared<std::map<std::string, std::string>>(
+            std::map<std::string, std::string>{
+                {CelOperator::ADD, "+"},
+                {CelOperator::SUBTRACT, "-"},
+                {CelOperator::MULTIPLY, "*"},
+                {CelOperator::DIVIDE, "/"},
+                {CelOperator::MODULO, "%"},
+                {CelOperator::EQUALS, "=="},
+                {CelOperator::NOT_EQUALS, "!="},
+                {CelOperator::GREATER, ">"},
+                {CelOperator::GREATER_EQUALS, ">="},
+                {CelOperator::LESS, "<"},
+                {CelOperator::LESS_EQUALS, "<="},
+                {CelOperator::LOGICAL_AND, "&&"},
+                {CelOperator::LOGICAL_NOT, "!"},
+                {CelOperator::LOGICAL_OR, "||"},
+                {CelOperator::IN, "in"},
+                {CelOperator::IN_DEPRECATED, "in"},
+                {CelOperator::NEGATE, "-"}});
+        return c;
+      }();
   return *operators_map;
 }
 
@@ -102,30 +108,30 @@ const std::map<std::string, int>& Precedences() {
     auto c = std::make_shared<std::map<std::string, int>>(
         std::map<std::string, int>{{CelOperator::CONDITIONAL, 8},
 
-                              {CelOperator::LOGICAL_OR, 7},
+                                   {CelOperator::LOGICAL_OR, 7},
 
-                              {CelOperator::LOGICAL_AND, 6},
+                                   {CelOperator::LOGICAL_AND, 6},
 
-                              {CelOperator::EQUALS, 5},
-                              {CelOperator::GREATER, 5},
-                              {CelOperator::GREATER_EQUALS, 5},
-                              {CelOperator::IN, 5},
-                              {CelOperator::LESS, 5},
-                              {CelOperator::LESS_EQUALS, 5},
-                              {CelOperator::NOT_EQUALS, 5},
-                              {CelOperator::IN_DEPRECATED, 5},
+                                   {CelOperator::EQUALS, 5},
+                                   {CelOperator::GREATER, 5},
+                                   {CelOperator::GREATER_EQUALS, 5},
+                                   {CelOperator::IN, 5},
+                                   {CelOperator::LESS, 5},
+                                   {CelOperator::LESS_EQUALS, 5},
+                                   {CelOperator::NOT_EQUALS, 5},
+                                   {CelOperator::IN_DEPRECATED, 5},
 
-                              {CelOperator::ADD, 4},
-                              {CelOperator::SUBTRACT, 4},
+                                   {CelOperator::ADD, 4},
+                                   {CelOperator::SUBTRACT, 4},
 
-                              {CelOperator::DIVIDE, 3},
-                              {CelOperator::MODULO, 3},
-                              {CelOperator::MULTIPLY, 3},
+                                   {CelOperator::DIVIDE, 3},
+                                   {CelOperator::MODULO, 3},
+                                   {CelOperator::MULTIPLY, 3},
 
-                              {CelOperator::LOGICAL_NOT, 2},
-                              {CelOperator::NEGATE, 2},
+                                   {CelOperator::LOGICAL_NOT, 2},
+                                   {CelOperator::NEGATE, 2},
 
-                              {CelOperator::INDEX, 1}});
+                                   {CelOperator::INDEX, 1}});
     return c;
   }();
   return *precedence_map;

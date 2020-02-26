@@ -75,9 +75,9 @@ class CelFunction {
   // zero). When former happens, error Status is returned and *result is
   // not changed. In case of business logic error, returned Status is Ok, and
   // error is provided as CelValue - wrapped CelError in *result.
-  virtual ::cel_base::Status Evaluate(absl::Span<const CelValue> arguments,
-                                  CelValue* result,
-                                  google::protobuf::Arena* arena) const = 0;
+  virtual absl::Status Evaluate(absl::Span<const CelValue> arguments,
+                                CelValue* result,
+                                google::protobuf::Arena* arena) const = 0;
 
   // Determines whether instance of CelFunction is applicable to
   // arguments supplied.

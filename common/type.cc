@@ -79,7 +79,8 @@ absl::string_view UnrecognizedType::full_name() const {
   return absl::string_view(string_rep_).substr(6, string_rep_.size() - 8);
 }
 
-Type::Type(const std::string& full_name) : data_(BasicType(BasicTypeValue::kNull)) {
+Type::Type(const std::string& full_name)
+    : data_(BasicType(BasicTypeValue::kNull)) {
   auto itr = kBasicTypeMap->find(full_name);
   if (itr != kBasicTypeMap->end()) {
     data_ = itr->second;

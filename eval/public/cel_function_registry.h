@@ -26,18 +26,18 @@ class CelFunctionRegistry {
   // passed to registry.
   // Function registration should be performed prior to
   // CelExpression creation.
-  cel_base::Status Register(std::unique_ptr<CelFunction> function);
+  absl::Status Register(std::unique_ptr<CelFunction> function);
 
   // Register a lazily provided function. CelFunctionProvider is used to get
   // a CelFunction ptr at evaluation time. The registry takes ownership of the
   // factory.
-  cel_base::Status RegisterLazyFunction(
+  absl::Status RegisterLazyFunction(
       const CelFunctionDescriptor& descriptor,
       std::unique_ptr<CelFunctionProvider> factory);
 
   // Register a lazily provided function. This overload uses a default provider
   // that delegates to the activation at evaluation time.
-  cel_base::Status RegisterLazyFunction(const CelFunctionDescriptor& descriptor) {
+  absl::Status RegisterLazyFunction(const CelFunctionDescriptor& descriptor) {
     return RegisterLazyFunction(descriptor, CreateActivationFunctionProvider());
   }
 

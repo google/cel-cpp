@@ -9,6 +9,7 @@
 #include "eval/eval/ident_step.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -16,12 +17,12 @@ namespace expr {
 namespace runtime {
 namespace {
 
-using ::google::protobuf::Message;
 using ::google::protobuf::Arena;
+using ::google::protobuf::Message;
 
 using testing::Eq;
-using testing::Not;
 using testing::IsNull;
+using testing::Not;
 using testing::Pointwise;
 
 using testutil::EqualsProto;
@@ -32,7 +33,8 @@ using google::api::expr::v1alpha1::Expr;
 // builds message and runs it.
 cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        const CelValue& value,
-                                       google::protobuf::Arena* arena) {
+                                       google::protobuf::Arena* arena,
+                                       bool enable_unknowns) {
   ExecutionPath path;
 
   Expr expr0;
@@ -61,7 +63,8 @@ cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
   path.push_back(std::move(step0_status.ValueOrDie()));
   path.push_back(std::move(step1_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0);
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
+                                 enable_unknowns);
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -69,9 +72,10 @@ cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
 }
 
 void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
-                                google::protobuf::Arena* arena, TestMessage* test_msg) {
-  auto status = RunExpression(field, value, arena);
-  ASSERT_TRUE(status.ok());
+                                google::protobuf::Arena* arena, TestMessage* test_msg,
+                                bool enable_unknowns) {
+  auto status = RunExpression(field, value, arena, enable_unknowns);
+  ASSERT_OK(status);
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -85,13 +89,14 @@ void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
 
 void RunExpressionAndGetMessage(absl::string_view field,
                                 std::vector<CelValue> values,
-                                google::protobuf::Arena* arena, TestMessage* test_msg) {
+                                google::protobuf::Arena* arena, TestMessage* test_msg,
+                                bool enable_unknowns) {
   ContainerBackedListImpl cel_list(std::move(values));
 
   CelValue value = CelValue::CreateList(&cel_list);
 
-  auto status = RunExpression(field, value, arena);
-  ASSERT_TRUE(status.ok());
+  auto status = RunExpression(field, value, arena, enable_unknowns);
+  ASSERT_OK(status);
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -107,7 +112,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 // builds Map and runs it.
 cel_base::StatusOr<CelValue> RunCreateMapExpression(
     const std::vector<std::pair<CelValue, CelValue>> values,
-    google::protobuf::Arena* arena) {
+    google::protobuf::Arena* arena, bool enable_unknowns) {
   ExecutionPath path;
   Activation activation;
 
@@ -158,11 +163,14 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
 
   path.push_back(std::move(step1_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0);
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
+                                 enable_unknowns);
   return cel_expr.Evaluate(activation, arena);
 }
 
-TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
+class CreateCreateStructStepTest : public testing::TestWithParam<bool> {};
+
+TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ExecutionPath path;
 
   Expr expr1;
@@ -172,17 +180,17 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 
   auto step_status = CreateCreateStructStep(create_struct, expr1.id());
 
-  ASSERT_TRUE(step_status.ok());
+  ASSERT_OK(step_status);
 
   path.push_back(std::move(step_status.ValueOrDie()));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0);
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {}, GetParam());
   Activation activation;
 
   google::protobuf::Arena arena;
 
   auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_TRUE(status.ok());
+  ASSERT_OK(status);
 
   CelValue result = status.ValueOrDie();
   ASSERT_TRUE(result.IsMessage());
@@ -193,108 +201,126 @@ TEST(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ASSERT_EQ(msg->GetDescriptor(), TestMessage::descriptor());
 }
 
+// Test message creation if unknown argument is passed
+TEST(CreateCreateStructStepTest, TestMessageCreateWithUnknown) {
+  Arena arena;
+  TestMessage test_msg;
+  UnknownSet unknown_set;
+
+  auto eval_status = RunExpression(
+      "bool_value", CelValue::CreateUnknownSet(&unknown_set), &arena, true);
+  ASSERT_OK(eval_status);
+  ASSERT_TRUE(eval_status->IsUnknownSet());
+}
+
 // Test that fields of type bool are set correctly
-TEST(CreateCreateStructStepTest, TestSetBoolField) {
+TEST_P(CreateCreateStructStepTest, TestSetBoolField) {
   Arena arena;
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "bool_value", CelValue::CreateBool(true), &arena, &test_msg));
+      "bool_value", CelValue::CreateBool(true), &arena, &test_msg, GetParam()));
   ASSERT_EQ(test_msg.bool_value(), true);
 }
 
 // Test that fields of type int32_t are set correctly
-TEST(CreateCreateStructStepTest, TestSetInt32Field) {
+TEST_P(CreateCreateStructStepTest, TestSetInt32Field) {
   Arena arena;
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int32_value", CelValue::CreateInt64(1), &arena, &test_msg));
+      "int32_value", CelValue::CreateInt64(1), &arena, &test_msg, GetParam()));
 
   ASSERT_EQ(test_msg.int32_value(), 1);
 }
 
 // Test that fields of type uint32_t are set correctly.
-TEST(CreateCreateStructStepTest, TestSetUInt32Field) {
+TEST_P(CreateCreateStructStepTest, TestSetUInt32Field) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "uint32_value", CelValue::CreateUint64(1), &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(
+      RunExpressionAndGetMessage("uint32_value", CelValue::CreateUint64(1),
+                                 &arena, &test_msg, GetParam()));
 
   ASSERT_EQ(test_msg.uint32_value(), 1);
 }
 
 // Test that fields of type int64_t are set correctly.
-TEST(CreateCreateStructStepTest, TestSetInt64Field) {
+TEST_P(CreateCreateStructStepTest, TestSetInt64Field) {
   Arena arena;
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int64_value", CelValue::CreateInt64(1), &arena, &test_msg));
+      "int64_value", CelValue::CreateInt64(1), &arena, &test_msg, GetParam()));
 
   EXPECT_EQ(test_msg.int64_value(), 1);
 }
 
 // Test that fields of type uint64_t are set correctly.
-TEST(CreateCreateStructStepTest, TestSetUInt64Field) {
+TEST_P(CreateCreateStructStepTest, TestSetUInt64Field) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "uint64_value", CelValue::CreateUint64(1), &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(
+      RunExpressionAndGetMessage("uint64_value", CelValue::CreateUint64(1),
+                                 &arena, &test_msg, GetParam()));
 
   EXPECT_EQ(test_msg.uint64_value(), 1);
 }
 
 // Test that fields of type float are set correctly
-TEST(CreateCreateStructStepTest, TestSetFloatField) {
+TEST_P(CreateCreateStructStepTest, TestSetFloatField) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "float_value", CelValue::CreateDouble(2.0), &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(
+      RunExpressionAndGetMessage("float_value", CelValue::CreateDouble(2.0),
+                                 &arena, &test_msg, GetParam()));
 
   EXPECT_DOUBLE_EQ(test_msg.float_value(), 2.0);
 }
 
 // Test that fields of type double are set correctly
-TEST(CreateCreateStructStepTest, TestSetDoubleField) {
+TEST_P(CreateCreateStructStepTest, TestSetDoubleField) {
   Arena arena;
   TestMessage test_msg;
 
-  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "double_value", CelValue::CreateDouble(2.0), &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(
+      RunExpressionAndGetMessage("double_value", CelValue::CreateDouble(2.0),
+                                 &arena, &test_msg, GetParam()));
   EXPECT_DOUBLE_EQ(test_msg.double_value(), 2.0);
 }
 
 // Test that fields of type string are set correctly.
-TEST(CreateCreateStructStepTest, TestSetStringField) {
+TEST_P(CreateCreateStructStepTest, TestSetStringField) {
   const std::string kTestStr = "test";
 
   Arena arena;
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "string_value", CelValue::CreateString(&kTestStr), &arena, &test_msg));
+      "string_value", CelValue::CreateString(&kTestStr), &arena, &test_msg,
+      GetParam()));
   EXPECT_EQ(test_msg.string_value(), kTestStr);
 }
 
 
 // Test that fields of type bytes are set correctly.
-TEST(CreateCreateStructStepTest, TestSetBytesField) {
+TEST_P(CreateCreateStructStepTest, TestSetBytesField) {
   Arena arena;
 
   const std::string kTestStr = "test";
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "bytes_value", CelValue::CreateBytes(&kTestStr), &arena, &test_msg));
+      "bytes_value", CelValue::CreateBytes(&kTestStr), &arena, &test_msg,
+      GetParam()));
   EXPECT_EQ(test_msg.bytes_value(), kTestStr);
 }
 
 // Test that fields of type duration are set correctly.
-TEST(CreateCreateStructStepTest, TestSetDurationField) {
+TEST_P(CreateCreateStructStepTest, TestSetDurationField) {
   Arena arena;
 
   google::protobuf::Duration test_duration;
@@ -304,12 +330,12 @@ TEST(CreateCreateStructStepTest, TestSetDurationField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "duration_value", CelValue::CreateDuration(&test_duration), &arena,
-      &test_msg));
+      &test_msg, GetParam()));
   EXPECT_THAT(test_msg.duration_value(), EqualsProto(test_duration));
 }
 
 // Test that fields of type timestamp are set correctly.
-TEST(CreateCreateStructStepTest, TestSetTimestampField) {
+TEST_P(CreateCreateStructStepTest, TestSetTimestampField) {
   Arena arena;
 
   google::protobuf::Timestamp test_timestamp;
@@ -319,12 +345,12 @@ TEST(CreateCreateStructStepTest, TestSetTimestampField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "timestamp_value", CelValue::CreateTimestamp(&test_timestamp), &arena,
-      &test_msg));
+      &test_msg, GetParam()));
   EXPECT_THAT(test_msg.timestamp_value(), EqualsProto(test_timestamp));
 }
 
 // Test that fields of type Message are set correctly.
-TEST(CreateCreateStructStepTest, TestSetMessageField) {
+TEST_P(CreateCreateStructStepTest, TestSetMessageField) {
   Arena arena;
 
   // Create payload message and set some fields.
@@ -336,23 +362,23 @@ TEST(CreateCreateStructStepTest, TestSetMessageField) {
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "message_value", CelValue::CreateMessage(&orig_msg, &arena), &arena,
-      &test_msg));
+      &test_msg, GetParam()));
   EXPECT_THAT(test_msg.message_value(), EqualsProto(orig_msg));
 }
 
 // Test that fields of type Message are set correctly.
-TEST(CreateCreateStructStepTest, TestSetEnumField) {
+TEST_P(CreateCreateStructStepTest, TestSetEnumField) {
   Arena arena;
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "enum_value", CelValue::CreateInt64(TestMessage::TEST_ENUM_2), &arena,
-      &test_msg));
+      &test_msg, GetParam()));
   EXPECT_EQ(test_msg.enum_value(), TestMessage::TEST_ENUM_2);
 }
 
 // Test that fields of type bool are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedBoolField) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedBoolField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -362,13 +388,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedBoolField) {
     values.push_back(CelValue::CreateBool(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("bool_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "bool_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.bool_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type int32_t are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedInt32Field) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt32Field) {
   Arena arena;
   TestMessage test_msg;
 
@@ -378,13 +404,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedInt32Field) {
     values.push_back(CelValue::CreateInt64(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("int32_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "int32_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.int32_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type uint32_t are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedUInt32Field) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt32Field) {
   Arena arena;
   TestMessage test_msg;
 
@@ -394,13 +420,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedUInt32Field) {
     values.push_back(CelValue::CreateUint64(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("uint32_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "uint32_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.uint32_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type int64_t are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedInt64Field) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedInt64Field) {
   Arena arena;
   TestMessage test_msg;
 
@@ -410,13 +436,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedInt64Field) {
     values.push_back(CelValue::CreateInt64(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("int64_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "int64_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.int64_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type uint64_t are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedUInt64Field) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedUInt64Field) {
   Arena arena;
   TestMessage test_msg;
 
@@ -426,13 +452,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedUInt64Field) {
     values.push_back(CelValue::CreateUint64(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("uint64_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "uint64_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.uint64_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type float are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedFloatField) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedFloatField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -442,13 +468,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedFloatField) {
     values.push_back(CelValue::CreateDouble(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("float_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "float_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.float_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type uint32_t are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedDoubleField) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedDoubleField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -458,13 +484,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedDoubleField) {
     values.push_back(CelValue::CreateDouble(value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("double_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "double_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.double_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type String are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedStringField) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedStringField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -474,13 +500,13 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedStringField) {
     values.push_back(CelValue::CreateString(&value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("string_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "string_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.string_list(), Pointwise(Eq(), kValues));
 }
 
 // Test that repeated fields of type String are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedBytesField) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedBytesField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -490,14 +516,14 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedBytesField) {
     values.push_back(CelValue::CreateBytes(&value));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("bytes_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "bytes_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.bytes_list(), Pointwise(Eq(), kValues));
 }
 
 
 // Test that repeated fields of type Message are set correctly
-TEST(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
+TEST_P(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -509,15 +535,15 @@ TEST(CreateCreateStructStepTest, TestSetRepeatedMessageField) {
     values.push_back(CelValue::CreateMessage(&value, &arena));
   }
 
-  ASSERT_NO_FATAL_FAILURE(
-      RunExpressionAndGetMessage("message_list", values, &arena, &test_msg));
+  ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
+      "message_list", values, &arena, &test_msg, GetParam()));
   ASSERT_THAT(test_msg.message_list()[0], EqualsProto(kValues[0]));
   ASSERT_THAT(test_msg.message_list()[1], EqualsProto(kValues[1]));
 }
 
 
 // Test that fields of type map<string, ...> are set correctly
-TEST(CreateCreateStructStepTest, TestSetStringMapField) {
+TEST_P(CreateCreateStructStepTest, TestSetStringMapField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -535,8 +561,8 @@ TEST(CreateCreateStructStepTest, TestSetStringMapField) {
           entries.data(), entries.size()));
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "string_int32_map", CelValue::CreateMap(cel_map.get()), &arena,
-      &test_msg));
+      "string_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
+      GetParam()));
 
   ASSERT_EQ(test_msg.string_int32_map().size(), 2);
   ASSERT_EQ(test_msg.string_int32_map().at(kKeys[0]), 2);
@@ -544,7 +570,7 @@ TEST(CreateCreateStructStepTest, TestSetStringMapField) {
 }
 
 // Test that fields of type map<int64_t, ...> are set correctly
-TEST(CreateCreateStructStepTest, TestSetInt64MapField) {
+TEST_P(CreateCreateStructStepTest, TestSetInt64MapField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -562,8 +588,8 @@ TEST(CreateCreateStructStepTest, TestSetInt64MapField) {
           entries.data(), entries.size()));
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "int64_int32_map", CelValue::CreateMap(cel_map.get()), &arena,
-      &test_msg));
+      "int64_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
+      GetParam()));
 
   ASSERT_EQ(test_msg.int64_int32_map().size(), 2);
   ASSERT_EQ(test_msg.int64_int32_map().at(kKeys[0]), 1);
@@ -571,7 +597,7 @@ TEST(CreateCreateStructStepTest, TestSetInt64MapField) {
 }
 
 // Test that fields of type map<uint64_t, ...> are set correctly
-TEST(CreateCreateStructStepTest, TestSetUInt64MapField) {
+TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
   Arena arena;
   TestMessage test_msg;
 
@@ -589,8 +615,8 @@ TEST(CreateCreateStructStepTest, TestSetUInt64MapField) {
           entries.data(), entries.size()));
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "uint64_int32_map", CelValue::CreateMap(cel_map.get()), &arena,
-      &test_msg));
+      "uint64_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
+      GetParam()));
 
   ASSERT_EQ(test_msg.uint64_int32_map().size(), 2);
   ASSERT_EQ(test_msg.uint64_int32_map().at(kKeys[0]), 1);
@@ -598,11 +624,11 @@ TEST(CreateCreateStructStepTest, TestSetUInt64MapField) {
 }
 
 // Test that Empty Map is created successfully.
-TEST(CreateCreateStructStepTest, TestCreateEmptyMap) {
+TEST_P(CreateCreateStructStepTest, TestCreateEmptyMap) {
   Arena arena;
-  auto status = RunCreateMapExpression({}, &arena);
+  auto status = RunCreateMapExpression({}, &arena, GetParam());
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_OK(status);
 
   CelValue result_value = status.ValueOrDie();
   ASSERT_TRUE(result_value.IsMap());
@@ -611,8 +637,29 @@ TEST(CreateCreateStructStepTest, TestCreateEmptyMap) {
   ASSERT_EQ(cel_map->size(), 0);
 }
 
+// Test message creation if unknown argument is passed
+TEST(CreateCreateStructStepTest, TestMapCreateWithUnknown) {
+  Arena arena;
+  UnknownSet unknown_set;
+  std::vector<std::pair<CelValue, CelValue>> entries;
+
+  std::vector<std::string> kKeys = {"test2", "test1"};
+
+  entries.push_back(
+      {CelValue::CreateString(&kKeys[0]), CelValue::CreateInt64(2)});
+  entries.push_back({CelValue::CreateString(&kKeys[1]),
+                     CelValue::CreateUnknownSet(&unknown_set)});
+
+  auto status = RunCreateMapExpression(entries, &arena, true);
+
+  ASSERT_OK(status);
+
+  CelValue result_value = status.ValueOrDie();
+  ASSERT_TRUE(result_value.IsUnknownSet());
+}
+
 // Test that String Map is created successfully.
-TEST(CreateCreateStructStepTest, TestCreateStringMap) {
+TEST_P(CreateCreateStructStepTest, TestCreateStringMap) {
   Arena arena;
 
   std::vector<std::pair<CelValue, CelValue>> entries;
@@ -624,9 +671,9 @@ TEST(CreateCreateStructStepTest, TestCreateStringMap) {
   entries.push_back(
       {CelValue::CreateString(&kKeys[1]), CelValue::CreateInt64(1)});
 
-  auto status = RunCreateMapExpression(entries, &arena);
+  auto status = RunCreateMapExpression(entries, &arena, GetParam());
 
-  ASSERT_TRUE(status.ok());
+  ASSERT_OK(status);
 
   CelValue result_value = status.ValueOrDie();
   ASSERT_TRUE(result_value.IsMap());
@@ -644,6 +691,9 @@ TEST(CreateCreateStructStepTest, TestCreateStringMap) {
   ASSERT_TRUE(lookup1.value().IsInt64());
   EXPECT_EQ(lookup1.value().Int64OrDie(), 1);
 }
+
+INSTANTIATE_TEST_SUITE_P(CombinedCreateStructTest, CreateCreateStructStepTest,
+                         testing::Bool());
 
 }  // namespace
 

@@ -4,7 +4,6 @@
 #include "google/protobuf/util/time_util.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
-#include "base/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -20,7 +19,7 @@ using google::protobuf::FieldDescriptor;
 using google::protobuf::Message;
 using google::protobuf::util::TimeUtil;
 
-cel_base::Status KeyAsString(const CelValue& value, std::string* key) {
+absl::Status KeyAsString(const CelValue& value, std::string* key) {
   switch (value.type()) {
     case CelValue::Type::kInt64: {
       *key = absl::StrCat(value.Int64OrDie());
@@ -35,16 +34,18 @@ cel_base::Status KeyAsString(const CelValue& value, std::string* key) {
                   value.StringOrDie().value().size());
       break;
     }
-    default: { return cel_base::InvalidArgumentError("Unsupported map type"); }
+    default: {
+      return absl::InvalidArgumentError("Unsupported map type");
+    }
   }
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 //  Export content of CelValue as google.protobuf.Value.
-cel_base::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
+absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
   if (in_value.IsNull()) {
     out_value->set_null_value(google::protobuf::NULL_VALUE);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
   switch (in_value.type()) {
     case CelValue::Type::kBool: {
@@ -92,13 +93,13 @@ cel_base::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) 
       auto status = google::protobuf::util::MessageToJsonString(*in_value.MessageOrDie(),
                                                       &json, json_options);
       if (!status.ok()) {
-        return cel_base::InternalError(status.ToString());
+        return absl::InternalError(status.ToString());
       }
       google::protobuf::util::JsonParseOptions json_parse_options;
       status = google::protobuf::util::JsonStringToMessage(json, out_value,
                                                  json_parse_options);
       if (!status.ok()) {
-        return cel_base::InternalError(status.ToString());
+        return absl::InternalError(status.ToString());
       }
       break;
     }
@@ -135,9 +136,11 @@ cel_base::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) 
       }
       break;
     }
-    default: { return cel_base::InvalidArgumentError("Unsupported value type"); }
+    default: {
+      return absl::InvalidArgumentError("Unsupported value type");
+    }
   }
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace runtime

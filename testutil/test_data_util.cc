@@ -121,7 +121,7 @@ bool rep_as(F value) {
 
 template <typename T>
 std::string MakeName(absl::string_view type, T&& value,
-                absl::string_view name = "") {
+                     absl::string_view name = "") {
   if (name.empty()) {
     return absl::StrCat(type, "(", value, ")");
   }

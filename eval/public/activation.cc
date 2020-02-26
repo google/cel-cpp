@@ -4,10 +4,9 @@
 #include <memory>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_function.h"
-#include "base/canonical_errors.h"
-#include "base/status.h"
 
 namespace google {
 namespace api {
@@ -26,16 +25,16 @@ absl::optional<CelValue> Activation::FindValue(absl::string_view name,
   return entry->second.RetrieveValue(arena);
 }
 
-cel_base::Status Activation::InsertFunction(std::unique_ptr<CelFunction> function) {
+absl::Status Activation::InsertFunction(std::unique_ptr<CelFunction> function) {
   auto& overloads = function_map_[function->descriptor().name()];
   for (const auto& overload : overloads) {
     if (overload->descriptor().ShapeMatches(function->descriptor())) {
-      return cel_base::InvalidArgumentError(
+      return absl::InvalidArgumentError(
           "Function with same shape already defined in activation");
     }
   }
   overloads.emplace_back(std::move(function));
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 std::vector<const CelFunction*> Activation::FindFunctionOverloads(

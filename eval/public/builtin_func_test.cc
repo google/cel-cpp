@@ -8,6 +8,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_function_registry.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -31,7 +32,7 @@ class BuiltinsTest : public ::testing::Test {
  protected:
   BuiltinsTest() {}
 
-  void SetUp() override { ASSERT_TRUE(RegisterBuiltinFunctions(&registry_).ok()); }
+  void SetUp() override { ASSERT_OK(RegisterBuiltinFunctions(&registry_)); }
 
   // Helper method. Looks up in registry and tests comparison operation.
   void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
@@ -68,18 +69,18 @@ class BuiltinsTest : public ::testing::Test {
         CreateCelExpressionBuilder(options);
 
     // Builtin registration.
-    ASSERT_TRUE(RegisterBuiltinFunctions(builder->GetRegistry(), options).ok());
+    ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
     // Create CelExpression from AST (Expr object).
     auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
 
-    ASSERT_TRUE(cel_expression_status.ok());
+    ASSERT_OK(cel_expression_status);
 
     auto cel_expression = std::move(cel_expression_status.ValueOrDie());
 
     auto eval_status = cel_expression->Evaluate(activation, &arena_);
 
-    ASSERT_TRUE(eval_status.ok());
+    ASSERT_OK(eval_status);
 
     *result = eval_status.ValueOrDie();
   }
@@ -895,7 +896,7 @@ TEST_F(BuiltinsTest, MapInt64Index) {
 
   ASSERT_TRUE(result_value.IsError());
   EXPECT_THAT(result_value.ErrorOrDie()->code(),
-              Eq(cel_base::StatusCode::kNotFound));
+              Eq(absl::StatusCode::kNotFound));
   EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
@@ -924,7 +925,7 @@ TEST_F(BuiltinsTest, MapUint64Index) {
 
   ASSERT_TRUE(result_value.IsError());
   EXPECT_THAT(result_value.ErrorOrDie()->code(),
-              Eq(cel_base::StatusCode::kNotFound));
+              Eq(absl::StatusCode::kNotFound));
   EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
@@ -955,7 +956,7 @@ TEST_F(BuiltinsTest, MapStringIndex) {
 
   ASSERT_TRUE(result_value.IsError());
   EXPECT_THAT(result_value.ErrorOrDie()->code(),
-              Eq(cel_base::StatusCode::kNotFound));
+              Eq(absl::StatusCode::kNotFound));
   EXPECT_TRUE(CheckNoSuchKeyError(result_value));
 }
 
@@ -1366,6 +1367,23 @@ TEST_F(BuiltinsTest, MatchesMaxSize) {
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
   EXPECT_TRUE(result_value.IsError());
+}
+
+TEST_F(BuiltinsTest, StringToInt) {
+  std::string target = "-42";
+  std::vector<CelValue> args = {CelValue::CreateString(&target)};
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kInt, {}, args, &result_value));
+  ASSERT_TRUE(result_value.IsInt64());
+  EXPECT_EQ(result_value.Int64OrDie(), -42);
+}
+
+TEST_F(BuiltinsTest, StringToIntNonInt) {
+  std::string target = "not_a_number";
+  std::vector<CelValue> args = {CelValue::CreateString(&target)};
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kInt, {}, args, &result_value));
+  ASSERT_TRUE(result_value.IsError());
 }
 
 TEST_F(BuiltinsTest, IntToString) {

@@ -1,6 +1,10 @@
 #include "eval/eval/ident_step.h"
-#include "eval/eval/expression_step_base.h"
+
+#include "google/protobuf/arena.h"
 #include "absl/strings/substitute.h"
+#include "eval/eval/evaluator_core.h"
+#include "eval/eval/expression_step_base.h"
+#include "eval/public/unknown_attribute_set.h"
 
 namespace google {
 namespace api {
@@ -13,41 +17,69 @@ class IdentStep : public ExpressionStepBase {
   IdentStep(absl::string_view name, int64_t expr_id)
       : ExpressionStepBase(expr_id), name_(name) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
+  void DoEvaluate(ExecutionFrame* frame, CelValue* result,
+                  AttributeTrail* trail) const;
+
   std::string name_;
 };
 
-cel_base::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
-  CelValue result;
-  auto it = frame->iter_vars().find(name_);
-  if (it != frame->iter_vars().end()) {
-    result = it->second;
-  } else {
-    auto value = frame->activation().FindValue(name_, frame->arena());
+void IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
+                           AttributeTrail* trail) const {
+  // Special case - iterator looked up in
+  if (frame->GetIterVar(name_, result)) {
+    return;
+  }
 
+  auto value = frame->activation().FindValue(name_, frame->arena());
+
+  {
     // We handle masked unknown paths for the sake of uniformity, although it is
     // better not to bind unknown values to activation in first place.
+    // TODO(issues/41) Deprecate this style of unknowns handling after
+    // Unknowns are properly supported.
     bool unknown_value = frame->activation().IsPathUnknown(name_);
 
-    if (!unknown_value) {
-      if (value.has_value()) {
-        result = value.value();
-      } else {
-        result = CreateErrorValue(
-            frame->arena(),
-            absl::Substitute("No value with name \"$0\" found in Activation",
-                             name_));
-      }
-    } else {
-      result = CreateUnknownValueError(frame->arena(), name_);
+    if (unknown_value) {
+      *result = CreateUnknownValueError(frame->arena(), name_);
+      return;
     }
   }
 
-  frame->value_stack().Push(result);
+  if (frame->enable_unknowns()) {
+    google::api::expr::v1alpha1::Expr expr;
+    expr.mutable_ident_expr()->set_name(name_);
+    *trail = AttributeTrail(expr, frame->arena());
 
-  return cel_base::OkStatus();
+    if (frame->unknowns_utility().CheckForUnknown(*trail, false)) {
+      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+          frame->arena(), UnknownAttributeSet({trail->attribute()}));
+      *result = CelValue::CreateUnknownSet(unknown_set);
+      return;
+    }
+  }
+
+  if (value.has_value()) {
+    *result = value.value();
+  } else {
+    *result = CreateErrorValue(
+        frame->arena(),
+        absl::Substitute("No value with name \"$0\" found in Activation",
+                         name_));
+  }
+}
+
+absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
+  CelValue result;
+  AttributeTrail trail;
+
+  DoEvaluate(frame, &result, &trail);
+
+  frame->value_stack().Push(result, trail);
+
+  return absl::OkStatus();
 }
 
 }  // namespace

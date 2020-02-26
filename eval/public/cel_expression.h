@@ -22,13 +22,23 @@ namespace runtime {
 // then the order of the callback invocations is guaranteed to correspond
 // the order of variable sub-elements (e.g. the order of elements returned
 // by Comprehension.iter_range).
-using CelEvaluationListener = std::function<cel_base::Status(
+using CelEvaluationListener = std::function<absl::Status(
     int64_t expr_id, const CelValue&, google::protobuf::Arena*)>;
+
+// An opaque state used for evaluation of a cell expression.
+class CelEvaluationState {
+ public:
+  virtual ~CelEvaluationState() = default;
+};
 
 // Base interface for expression evaluating objects.
 class CelExpression {
  public:
-  virtual ~CelExpression() {}
+  virtual ~CelExpression() = default;
+
+  // Initializes the state
+  virtual std::unique_ptr<CelEvaluationState> InitializeState(
+      google::protobuf::Arena* arena) const = 0;
 
   // Evaluates expression and returns value.
   // activation contains bindings from parameter names to values
@@ -37,9 +47,23 @@ class CelExpression {
   virtual cel_base::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
                                             google::protobuf::Arena* arena) const = 0;
 
+  // Evaluates expression and returns value.
+  // activation contains bindings from parameter names to values
+  // state must be non-null and created prior to calling Evaluate by
+  // InitializeState.
+  virtual cel_base::StatusOr<CelValue> Evaluate(
+      const BaseActivation& activation, CelEvaluationState* state) const = 0;
+
   // Trace evaluates expression calling the callback on each sub-tree.
   virtual cel_base::StatusOr<CelValue> Trace(
       const BaseActivation& activation, google::protobuf::Arena* arena,
+      CelEvaluationListener callback) const = 0;
+
+  // Trace evaluates expression calling the callback on each sub-tree.
+  // state must be non-null and created prior to calling Evaluate by
+  // InitializeState.
+  virtual cel_base::StatusOr<CelValue> Trace(
+      const BaseActivation& activation, CelEvaluationState* state,
       CelEvaluationListener callback) const = 0;
 };
 
@@ -60,6 +84,14 @@ class CelExpressionBuilder {
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const = 0;
 
+  // Creates CelExpression object from AST tree.
+  // expr specifies root of AST tree.
+  // non-fatal build warnings are written to warnings if encountered.
+  virtual cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+      const google::api::expr::v1alpha1::Expr* expr,
+      const google::api::expr::v1alpha1::SourceInfo* source_info,
+      std::vector<absl::Status>* warnings) const = 0;
+
   // CelFunction registry. Extension function should be registered with it
   // prior to expression creation.
   CelFunctionRegistry* GetRegistry() const { return registry_.get(); }
@@ -70,12 +102,12 @@ class CelExpressionBuilder {
   }
 
   // Add Enum to the list of resolvable by the builder.
-  void addResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
+  void AddResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
     resolvable_enums_.emplace(enum_descriptor);
   }
 
   // Remove Enum from the list of resolvable by the builder.
-  void removeResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
+  void RemoveResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
     resolvable_enums_.erase(enum_descriptor);
   }
 

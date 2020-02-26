@@ -1,10 +1,10 @@
 #include "eval/public/activation_bind_helper.h"
-#include "eval/public/activation.h"
-
-#include "eval/testutil/test_message.pb.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "eval/public/activation.h"
+#include "eval/testutil/test_message.pb.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -21,7 +21,7 @@ TEST(ActivationBindHelperTest, TestSingleBoolBind) {
 
   Activation activation;
 
-  ASSERT_TRUE(BindProtoToActivation(&message, &arena, &activation).ok());
+  ASSERT_OK(BindProtoToActivation(&message, &arena, &activation));
 
   auto result = activation.FindValue("bool_value", &arena);
 
@@ -41,7 +41,7 @@ TEST(ActivationBindHelperTest, TestSingleInt32Bind) {
 
   Activation activation;
 
-  ASSERT_TRUE(BindProtoToActivation(&message, &arena, &activation).ok());
+  ASSERT_OK(BindProtoToActivation(&message, &arena, &activation));
 
   auto result = activation.FindValue("int32_value", &arena);
 

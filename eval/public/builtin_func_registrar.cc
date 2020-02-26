@@ -4,13 +4,13 @@
 
 #include "google/protobuf/util/time_util.h"
 #include "absl/strings/match.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/container_backed_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "re2/re2.h"
-#include "base/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -261,9 +261,9 @@ CelValue Equal(Arena* arena, CelValue t1, CelValue t2) {
 //
 // Registers all equality functions for template parameters type.
 template <class Type>
-::cel_base::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
+absl::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
   // Inequality
-  ::cel_base::Status status =
+  absl::Status status =
       FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
           builtin::kInequal, false, Inequal<Type>, registry);
   if (!status.ok()) return status;
@@ -276,9 +276,8 @@ template <class Type>
 
 // Registers all comparison functions for template parameter type.
 template <class Type>
-::cel_base::Status RegisterComparisonFunctionsForType(
-    CelFunctionRegistry* registry) {
-  ::cel_base::Status status = RegisterEqualityFunctionsForType<Type>(registry);
+absl::Status RegisterComparisonFunctionsForType(CelFunctionRegistry* registry) {
+  absl::Status status = RegisterEqualityFunctionsForType<Type>(registry);
   if (!status.ok()) return status;
 
   // Less than
@@ -301,7 +300,7 @@ template <class Type>
       builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>, registry);
   if (!status.ok()) return status;
 
-  return ::cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 // Template functions providing arithmetic operations
@@ -382,9 +381,8 @@ CelValue Modulo<uint64_t>(Arena* arena, uint64_t value, uint64_t value2) {
 // Helper method
 // Registers all arithmetic functions for template parameter type.
 template <class Type>
-::cel_base::Status RegisterArithmeticFunctionsForType(
-    CelFunctionRegistry* registry) {
-  cel_base::Status status = FunctionAdapter<Type, Type, Type>::CreateAndRegister(
+absl::Status RegisterArithmeticFunctionsForType(CelFunctionRegistry* registry) {
+  absl::Status status = FunctionAdapter<Type, Type, Type>::CreateAndRegister(
       builtin::kAdd, false, Add<Type>, registry);
   if (!status.ok()) return status;
 
@@ -488,19 +486,19 @@ const CelList* ConcatList(Arena* arena, const CelList* value1,
 }
 
 // Timestamp
-const cel_base::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
+const absl::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
                                      absl::TimeZone::CivilInfo* breakdown) {
   absl::TimeZone time_zone;
 
   if (!tz.empty()) {
     bool found = absl::LoadTimeZone(std::string(tz), &time_zone);
     if (!found) {
-      return cel_base::InvalidArgumentError("Invalid timezone");
+      return absl::InvalidArgumentError("Invalid timezone");
     }
   }
 
   *breakdown = time_zone.At(timestamp);
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 CelValue GetTimeBreakdownPart(
@@ -523,7 +521,7 @@ CelValue CreateTimestampFromString(Arena* arena,
   if (!absl::ParseTime(absl::RFC3339_full, std::string(time_str.value()), &ts,
                        nullptr)) {
     return CreateErrorValue(arena, "String to Timestamp conversion failed",
-                            cel_base::StatusCode::kInvalidArgument);
+                            absl::StatusCode::kInvalidArgument);
   }
   return CelValue::CreateTimestamp(ts);
 }
@@ -570,7 +568,7 @@ CelValue GetDayOfWeek(Arena* arena, absl::Time timestamp,
                       absl::string_view tz) {
   return GetTimeBreakdownPart(
       arena, timestamp, tz, [](const absl::TimeZone::CivilInfo& breakdown) {
-        absl::Weekday weekday = absl::GetWeekday(absl::CivilDay(breakdown.cs));
+        absl::Weekday weekday = absl::GetWeekday(breakdown.cs);
 
         // get day of week from the date in UTC, zero-based, zero for Sunday,
         // based on GetDayOfWeek CEL function definition.
@@ -615,7 +613,7 @@ CelValue CreateDurationFromString(Arena* arena,
   absl::Duration d;
   if (!absl::ParseDuration(std::string(dur_str.value()), &d)) {
     return CreateErrorValue(arena, "String to Duration conversion failed",
-                            cel_base::StatusCode::kInvalidArgument);
+                            absl::StatusCode::kInvalidArgument);
   }
 
   return CelValue::CreateDuration(d);
@@ -654,28 +652,9 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
   return absl::StartsWith(value.value(), prefix.value());
 }
 
-}  // namespace
-
-::cel_base::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
-                                        const InterpreterOptions& options) {
-  // logical NOT
-  cel_base::Status status = FunctionAdapter<bool, bool>::CreateAndRegister(
-      builtin::kNot, false, [](Arena*, bool value) -> bool { return !value; },
-      registry);
-  if (!status.ok()) return status;
-
-  // Negation group
-  status = FunctionAdapter<int64_t, int64_t>::CreateAndRegister(
-      builtin::kNeg, false, [](Arena*, int64_t value) -> int64_t { return -value; },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<double, double>::CreateAndRegister(
-      builtin::kNeg, false,
-      [](Arena*, double value) -> double { return -value; }, registry);
-  if (!status.ok()) return status;
-
-  status = RegisterComparisonFunctionsForType<bool>(registry);
+absl::Status RegisterComparisonFunctions(CelFunctionRegistry* registry,
+                                         const InterpreterOptions& options) {
+  auto status = RegisterComparisonFunctionsForType<bool>(registry);
   if (!status.ok()) return status;
 
   status = RegisterComparisonFunctionsForType<int64_t>(registry);
@@ -706,6 +685,247 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
   if (!status.ok()) return status;
 
   status = RegisterEqualityFunctionsForType<const CelMap*>(registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
+                                     const InterpreterOptions& options) {
+  auto status =
+      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+          CreateAndRegister(builtin::kStringContains, false, StringContains,
+                            registry);
+  if (!status.ok()) return status;
+
+  status =
+      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+          CreateAndRegister(builtin::kStringContains, true, StringContains,
+                            registry);
+  if (!status.ok()) return status;
+
+  status =
+      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+          CreateAndRegister(builtin::kStringEndsWith, false, StringEndsWith,
+                            registry);
+  if (!status.ok()) return status;
+
+  status =
+      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+          CreateAndRegister(builtin::kStringEndsWith, true, StringEndsWith,
+                            registry);
+  if (!status.ok()) return status;
+
+  status =
+      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+          CreateAndRegister(builtin::kStringStartsWith, false, StringStartsWith,
+                            registry);
+  if (!status.ok()) return status;
+
+  status =
+      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+          CreateAndRegister(builtin::kStringStartsWith, true, StringStartsWith,
+                            registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
+                                        const InterpreterOptions& options) {
+  // Timestamp
+  //
+  // timestamp() conversion from string..
+  auto status =
+      FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+          builtin::kTimestamp, false, CreateTimestampFromString, registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kFullYear, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetFullYear(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kFullYear, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetFullYear(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kMonth, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetMonth(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kMonth, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetMonth(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kDayOfYear, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetDayOfYear(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kDayOfYear, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetDayOfYear(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kDayOfMonth, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetDayOfMonth(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kDayOfMonth, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetDayOfMonth(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kDate, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetDate(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kDate, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetDate(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kDayOfWeek, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetDayOfWeek(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kDayOfWeek, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetDayOfWeek(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kHours, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetHours(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kHours, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetHours(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kMinutes, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetMinutes(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kMinutes, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetMinutes(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kSeconds, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetSeconds(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kSeconds, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetSeconds(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kMilliseconds, true,
+          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
+              -> CelValue { return GetMilliseconds(arena, ts, tz.value()); },
+          registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kMilliseconds, true,
+      [](Arena* arena, absl::Time ts) -> CelValue {
+        return GetMilliseconds(arena, ts, "");
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
+                                      const InterpreterOptions& options) {
+  // logical NOT
+  absl::Status status = FunctionAdapter<bool, bool>::CreateAndRegister(
+      builtin::kNot, false, [](Arena*, bool value) -> bool { return !value; },
+      registry);
+  if (!status.ok()) return status;
+
+  // Negation group
+  status = FunctionAdapter<int64_t, int64_t>::CreateAndRegister(
+      builtin::kNeg, false, [](Arena*, int64_t value) -> int64_t { return -value; },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<double, double>::CreateAndRegister(
+      builtin::kNeg, false,
+      [](Arena*, double value) -> double { return -value; }, registry);
+  if (!status.ok()) return status;
+
+  status = RegisterComparisonFunctions(registry, options);
   if (!status.ok()) return status;
 
   // Logical AND
@@ -1128,11 +1348,11 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
       RE2 re2(regex.value().data());
       if (max_size > 0 && re2.ProgramSize() > max_size) {
         return CreateErrorValue(arena, "exceeded RE2 max program size",
-                                cel_base::StatusCode::kInvalidArgument);
+                                absl::StatusCode::kInvalidArgument);
       }
       if (!re2.ok()) {
         return CreateErrorValue(arena, "invalid_argument",
-                                cel_base::StatusCode::kInvalidArgument);
+                                absl::StatusCode::kInvalidArgument);
       }
       return CelValue::CreateBool(RE2::PartialMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
     };
@@ -1151,40 +1371,7 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
     if (!status.ok()) return status;
   }
 
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringContains, false, StringContains,
-                            registry);
-  if (!status.ok()) return status;
-
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringContains, true, StringContains,
-                            registry);
-  if (!status.ok()) return status;
-
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringEndsWith, false, StringEndsWith,
-                            registry);
-  if (!status.ok()) return status;
-
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringEndsWith, true, StringEndsWith,
-                            registry);
-  if (!status.ok()) return status;
-
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringStartsWith, false, StringStartsWith,
-                            registry);
-  if (!status.ok()) return status;
-
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringStartsWith, true, StringStartsWith,
-                            registry);
+  status = RegisterStringFunctions(registry, options);
   if (!status.ok()) return status;
 
   // Modulo
@@ -1196,171 +1383,7 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
       builtin::kModulo, false, Modulo<uint64_t>, registry);
   if (!status.ok()) return status;
 
-  // Timestamp
-  //
-  // timestamp() conversion from string..
-  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kTimestamp, false, CreateTimestampFromString, registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kFullYear, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetFullYear(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kFullYear, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetFullYear(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kMonth, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetMonth(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kMonth, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetMonth(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kDayOfYear, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetDayOfYear(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDayOfYear, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDayOfYear(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kDayOfMonth, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetDayOfMonth(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDayOfMonth, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDayOfMonth(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kDate, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetDate(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDate, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDate(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kDayOfWeek, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetDayOfWeek(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDayOfWeek, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDayOfWeek(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kHours, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetHours(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kHours, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetHours(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kMinutes, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetMinutes(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kMinutes, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetMinutes(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kSeconds, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetSeconds(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kSeconds, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetSeconds(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kMilliseconds, true,
-          [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-              -> CelValue { return GetMilliseconds(arena, ts, tz.value()); },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kMilliseconds, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetMilliseconds(arena, ts, "");
-      },
-      registry);
+  status = RegisterTimestampFunctions(registry, options);
   if (!status.ok()) return status;
 
   // type conversion to int
@@ -1382,6 +1405,20 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
 
   status = FunctionAdapter<int64_t, uint64_t>::CreateAndRegister(
       builtin::kInt, false, [](Arena*, uint64_t v) { return (int64_t)v; },
+      registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena* arena, CelValue::StringHolder s) {
+        int64_t result;
+        if (absl::SimpleAtoi(s.value(), &result)) {
+          return CelValue::CreateInt64(result);
+        } else {
+          return CreateErrorValue(arena, "doesn't convert to a string",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+      },
       registry);
   if (!status.ok()) return status;
 
@@ -1473,7 +1510,7 @@ bool StringStartsWith(Arena*, CelValue::StringHolder value,
     if (!status.ok()) return status;
   }
 
-  return ::cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace runtime

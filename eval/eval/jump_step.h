@@ -19,9 +19,9 @@ class JumpStepBase : public ExpressionStepBase {
 
   void set_jump_offset(int offset) { jump_offset_ = offset; }
 
-  cel_base::Status Jump(ExecutionFrame* frame) const {
+  absl::Status Jump(ExecutionFrame* frame) const {
     if (!jump_offset_.has_value()) {
-      return cel_base::Status(cel_base::StatusCode::kInternal, "Jump offset not set");
+      return absl::Status(absl::StatusCode::kInternal, "Jump offset not set");
     }
     return frame->JumpTo(jump_offset_.value());
   }

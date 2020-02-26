@@ -27,11 +27,11 @@ inline std::pair<char, bool> unhex(char c) {
 // least 4 bytes long. Return the number of bytes written.
 inline int get_utf8(absl::string_view s, char* buffer) {
   buffer[0] = s[0];
-  if (s[0] < 0x80 || s.size() < 2) return 1;
+  if (static_cast<uint8_t>(s[0]) < 0x80 || s.size() < 2) return 1;
   buffer[1] = s[1];
-  if (s[0] < 0xE0 || s.size() < 3) return 2;
+  if (static_cast<uint8_t>(s[0]) < 0xE0 || s.size() < 3) return 2;
   buffer[2] = s[2];
-  if (s[0] < 0xF0 || s.size() < 4) return 3;
+  if (static_cast<uint8_t>(s[0]) < 0xF0 || s.size() < 4) return 3;
   buffer[3] = s[3];
   return 4;
 }
@@ -84,7 +84,7 @@ inline std::tuple<std::string, absl::string_view, std::string> unescape_char(
   char c = s[0];
 
   // 1. Character is not an escape sequence.
-  if (c >= 0x80 && !is_bytes) {
+  if (static_cast<uint8_t>(c) >= 0x80 && !is_bytes) {
     char tmp[5];
     int len = get_utf8(s, tmp);
     tmp[len] = '\0';

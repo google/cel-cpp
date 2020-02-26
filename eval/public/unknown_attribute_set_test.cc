@@ -33,7 +33,7 @@ TEST(UnknownAttributeSetTest, TestCreate) {
                  CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
                  CelAttributeQualifier::Create(CelValue::CreateBool(true))}));
 
-  UnknownAttributeSet unknown_set({cel_attr});
+  UnknownAttributeSet unknown_set({cel_attr.get()});
   EXPECT_THAT(unknown_set.attributes().size(), Eq(1));
   EXPECT_THAT(*(unknown_set.attributes()[0]), Eq(*cel_attr));
 }
@@ -74,8 +74,8 @@ TEST(UnknownAttributeSetTest, TestMergeSets) {
                  CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
                  CelAttributeQualifier::Create(CelValue::CreateBool(false))}));
 
-  UnknownAttributeSet unknown_set1({cel_attr1, cel_attr2});
-  UnknownAttributeSet unknown_set2({cel_attr1_copy, cel_attr3});
+  UnknownAttributeSet unknown_set1({cel_attr1.get(), cel_attr2.get()});
+  UnknownAttributeSet unknown_set2({cel_attr1_copy.get(), cel_attr3.get()});
 
   UnknownAttributeSet unknown_set3 =
       UnknownAttributeSet::Merge(unknown_set1, unknown_set2);

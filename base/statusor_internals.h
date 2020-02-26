@@ -23,7 +23,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/meta/type_traits.h"
-#include "base/status.h"
+#include "absl/status/status.h"
 
 namespace cel_base {
 
@@ -32,8 +32,8 @@ namespace statusor_internal {
 class Helper {
  public:
   // Move type-agnostic error handling to the .cc.
-  static void HandleInvalidStatusCtorArg(Status*);
-  ABSL_ATTRIBUTE_NORETURN static void Crash(const Status& status);
+  static void HandleInvalidStatusCtorArg(absl::Status*);
+  ABSL_ATTRIBUTE_NORETURN static void Crash(const absl::Status& status);
 };
 
 // Construct an instance of T in `p` through placement new, passing Args... to
@@ -100,10 +100,10 @@ class StatusOrData {
   explicit StatusOrData(const T& value) : data_(value) { MakeStatus(); }
   explicit StatusOrData(T&& value) : data_(std::move(value)) { MakeStatus(); }
 
-  explicit StatusOrData(const Status& status) : status_(status) {
+  explicit StatusOrData(const absl::Status& status) : status_(status) {
     EnsureNotOk();
   }
-  explicit StatusOrData(Status&& status) : status_(std::move(status)) {
+  explicit StatusOrData(absl::Status&& status) : status_(std::move(status)) {
     EnsureNotOk();
   }
 
@@ -140,7 +140,7 @@ class StatusOrData {
       MakeValue(value);
     } else {
       MakeValue(value);
-      status_ = OkStatus();
+      status_ = absl::OkStatus();
     }
   }
 
@@ -150,17 +150,17 @@ class StatusOrData {
       MakeValue(std::move(value));
     } else {
       MakeValue(std::move(value));
-      status_ = OkStatus();
+      status_ = absl::OkStatus();
     }
   }
 
-  void Assign(const Status& status) {
+  void Assign(const absl::Status& status) {
     Clear();
     status_ = status;
     EnsureNotOk();
   }
 
-  void Assign(Status&& status) {
+  void Assign(absl::Status&& status) {
     Clear();
     status_ = std::move(status);
     EnsureNotOk();
@@ -175,7 +175,7 @@ class StatusOrData {
   // Eg. in the copy constructor we use the default constructor of
   // Status in the ok() path to avoid an extra Ref call.
   union {
-    Status status_;
+    absl::Status status_;
   };
 
   // data_ is active iff status_.ok()==true
@@ -210,8 +210,8 @@ class StatusOrData {
   // argument.
   template <typename... Args>
   void MakeStatus(Args&&... args) {
-    statusor_internal::PlacementNew<Status>(&status_,
-                                            std::forward<Args>(args)...);
+    statusor_internal::PlacementNew<absl::Status>(&status_,
+                                                  std::forward<Args>(args)...);
   }
 };
 

@@ -150,8 +150,8 @@ class ConstantFoldingTransform {
       }
       case Expr::kStructExpr: {
         auto struct_expr = out->mutable_struct_expr();
+        struct_expr->set_message_name(expr.struct_expr().message_name());
         int entries_size = expr.struct_expr().entries_size();
-        bool all_constant = true;
         for (int i = 0; i < entries_size; i++) {
           auto& entry = expr.struct_expr().entries(i);
           auto new_entry = struct_expr->add_entries();
@@ -161,16 +161,13 @@ class ConstantFoldingTransform {
               new_entry->set_field_key(entry.field_key());
               break;
             case Expr::CreateStruct::Entry::kMapKey:
-              all_constant =
-                  Transform(entry.map_key(), new_entry->mutable_map_key()) &&
-                  all_constant;
+              Transform(entry.map_key(), new_entry->mutable_map_key());
               break;
             default:
               GOOGLE_LOG(ERROR) << "Unsupported Entry kind: " << entry.key_kind_case();
               break;
           }
-          all_constant = Transform(entry.value(), new_entry->mutable_value()) &&
-                         all_constant;
+          Transform(entry.value(), new_entry->mutable_value());
         }
         return false;
       }

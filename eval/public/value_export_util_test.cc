@@ -9,6 +9,7 @@
 #include "eval/eval/container_backed_map_impl.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -27,7 +28,7 @@ using google::protobuf::Arena;
 TEST(ValueExportUtilTest, ConvertBoolValue) {
   CelValue cel_value = CelValue::CreateBool(true);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kBoolValue);
   EXPECT_EQ(value.bool_value(), true);
 }
@@ -35,7 +36,7 @@ TEST(ValueExportUtilTest, ConvertBoolValue) {
 TEST(ValueExportUtilTest, ConvertInt64Value) {
   CelValue cel_value = CelValue::CreateInt64(-1);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kNumberValue);
   EXPECT_DOUBLE_EQ(value.number_value(), -1);
 }
@@ -43,7 +44,7 @@ TEST(ValueExportUtilTest, ConvertInt64Value) {
 TEST(ValueExportUtilTest, ConvertUint64Value) {
   CelValue cel_value = CelValue::CreateUint64(1);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kNumberValue);
   EXPECT_DOUBLE_EQ(value.number_value(), 1);
 }
@@ -51,7 +52,7 @@ TEST(ValueExportUtilTest, ConvertUint64Value) {
 TEST(ValueExportUtilTest, ConvertDoubleValue) {
   CelValue cel_value = CelValue::CreateDouble(1.3);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kNumberValue);
   EXPECT_DOUBLE_EQ(value.number_value(), 1.3);
 }
@@ -60,7 +61,7 @@ TEST(ValueExportUtilTest, ConvertStringValue) {
   std::string test = "test";
   CelValue cel_value = CelValue::CreateString(&test);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStringValue);
   EXPECT_EQ(value.string_value(), "test");
 }
@@ -69,7 +70,7 @@ TEST(ValueExportUtilTest, ConvertBytesValue) {
   std::string test = "test";
   CelValue cel_value = CelValue::CreateBytes(&test);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStringValue);
   // Check that the result is BASE64 encoded.
   EXPECT_EQ(value.string_value(), "dGVzdA==");
@@ -81,7 +82,7 @@ TEST(ValueExportUtilTest, ConvertDurationValue) {
   duration.set_nanos(3);
   CelValue cel_value = CelValue::CreateDuration(&duration);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStringValue);
   EXPECT_EQ(value.string_value(), "2.000000003s");
 }
@@ -92,7 +93,7 @@ TEST(ValueExportUtilTest, ConvertTimestampValue) {
   timestamp.set_nanos(3);
   CelValue cel_value = CelValue::CreateTimestamp(&timestamp);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStringValue);
   EXPECT_EQ(value.string_value(), "2001-09-09T01:46:40.000000003Z");
 }
@@ -103,7 +104,7 @@ TEST(ValueExportUtilTest, ConvertStructMessage) {
   Arena arena;
   CelValue cel_value = CelValue::CreateMessage(&struct_msg, &arena);
   Value value;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
   EXPECT_THAT(value.struct_value(), testutil::EqualsProto(struct_msg));
 }
@@ -116,7 +117,7 @@ TEST(ValueExportUtilTest, ConvertValueMessage) {
   Arena arena;
   CelValue cel_value = CelValue::CreateMessage(&value_in, &arena);
   Value value_out;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value_out).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value_out));
   EXPECT_THAT(value_in, testutil::EqualsProto(value_out));
 }
 
@@ -127,7 +128,7 @@ TEST(ValueExportUtilTest, ConvertListValueMessage) {
   Arena arena;
   CelValue cel_value = CelValue::CreateMessage(&list_value, &arena);
   Value value_out;
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value_out).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value_out));
   EXPECT_THAT(list_value, testutil::EqualsProto(value_out.list_value()));
 }
 
@@ -140,7 +141,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBoolValue) {
   msg->add_bool_list(false);
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("bool_list");
@@ -159,7 +160,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt32Value) {
   msg->add_int32_list(3);
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("int32_list");
@@ -178,7 +179,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt64Value) {
   msg->add_int64_list(3);
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("int64_list");
@@ -197,7 +198,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedUint64Value) {
   msg->add_uint64_list(3);
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("uint64_list");
@@ -216,7 +217,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedDoubleValue) {
   msg->add_double_list(3);
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("double_list");
@@ -235,7 +236,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedStringValue) {
   msg->add_string_list("test2");
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("string_list");
@@ -254,7 +255,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBytesValue) {
   msg->add_bytes_list("test2");
   CelValue cel_value = CelValue::CreateMessage(msg, &arena);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   Value list_value = value.struct_value().fields().at("bytes_list");
@@ -274,7 +275,7 @@ TEST(ValueExportUtilTest, ConvertCelList) {
   CelList *cel_list = Arena::Create<ContainerBackedListImpl>(&arena, values);
   CelValue cel_value = CelValue::CreateList(cel_list);
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kListValue);
 
   EXPECT_DOUBLE_EQ(value.list_value().values(0).number_value(), 2);
@@ -299,7 +300,7 @@ TEST(ValueExportUtilTest, ConvertCelMapWithStringKey) {
       absl::Span<std::pair<CelValue, CelValue>>(map_entries));
   CelValue cel_value = CelValue::CreateMap(cel_map.get());
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   const auto &fields = value.struct_value().fields();
@@ -326,7 +327,7 @@ TEST(ValueExportUtilTest, ConvertCelMapWithInt64Key) {
       absl::Span<std::pair<CelValue, CelValue>>(map_entries));
   CelValue cel_value = CelValue::CreateMap(cel_map.get());
 
-  EXPECT_TRUE(ExportAsProtoValue(cel_value, &value).ok());
+  EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
   const auto &fields = value.struct_value().fields();

@@ -1,9 +1,11 @@
 #include "eval/eval/select_step.h"
+
+#include "absl/strings/str_cat.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/eval/field_access.h"
 #include "eval/eval/field_backed_list_impl.h"
 #include "eval/eval/field_backed_map_impl.h"
-#include "absl/strings/str_cat.h"
 
 namespace google {
 namespace api {
@@ -12,9 +14,9 @@ namespace runtime {
 
 namespace {
 
-using google::protobuf::Reflection;
 using google::protobuf::Descriptor;
 using google::protobuf::FieldDescriptor;
+using google::protobuf::Reflection;
 
 // SelectStep performs message field access specified by Expr::Select
 // message.
@@ -27,10 +29,10 @@ class SelectStep : public ExpressionStepBase {
         test_field_presence_(test_field_presence),
         select_path_(select_path) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  cel_base::Status CreateValueFromField(const google::protobuf::Message* message,
+  absl::Status CreateValueFromField(const google::protobuf::Message* msg,
                                     google::protobuf::Arena* arena,
                                     CelValue* result) const;
 
@@ -39,7 +41,7 @@ class SelectStep : public ExpressionStepBase {
   std::string select_path_;
 };
 
-cel_base::Status SelectStep::CreateValueFromField(const google::protobuf::Message* msg,
+absl::Status SelectStep::CreateValueFromField(const google::protobuf::Message* msg,
                                               google::protobuf::Arena* arena,
                                               CelValue* result) const {
   const Reflection* reflection = msg->GetReflection();
@@ -48,36 +50,42 @@ cel_base::Status SelectStep::CreateValueFromField(const google::protobuf::Messag
 
   if (field_desc == nullptr) {
     *result = CreateNoSuchFieldError(arena);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   if (field_desc->is_map()) {
     *result = CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
         arena, msg, field_desc, arena));
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
   if (field_desc->is_repeated()) {
     *result = CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
         arena, msg, field_desc, arena));
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
   if (test_field_presence_) {
     *result = CelValue::CreateBool(reflection->HasField(*msg, field_desc));
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
   return CreateValueFromSingleField(msg, field_desc, arena, result);
 }
 
-cel_base::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
+    return absl::Status(absl::StatusCode::kInternal,
                         "No arguments supplied for Select-type expression");
   }
 
-  CelValue arg = frame->value_stack().Peek();
+  const CelValue& arg = frame->value_stack().Peek();
+  const AttributeTrail& trail = frame->value_stack().PeekAttribute();
+
+  CelValue result;
+  AttributeTrail result_trail;
 
   // Non-empty select path - check if value mapped to unknown.
   bool unknown_value = false;
+  // TODO(issues/41) deprecate this path after proper support of unknown is
+  // implemented
   if (!select_path_.empty()) {
     unknown_value = frame->activation().IsPathUnknown(select_path_);
   }
@@ -87,24 +95,36 @@ cel_base::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     case CelValue::Type::kMessage: {
       const google::protobuf::Message* msg = arg.MessageOrDie();
 
+      if (frame->enable_unknowns()) {
+        result_trail = trail.Step(&field_, frame->arena());
+        if (frame->unknowns_utility().CheckForUnknown(result_trail,
+                                                      /*use_partial=*/false)) {
+          auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+              frame->arena(), UnknownAttributeSet({result_trail.attribute()}));
+          result = CelValue::CreateUnknownSet(unknown_set);
+          frame->value_stack().PopAndPush(result, result_trail);
+          return absl::OkStatus();
+        }
+      }
+
       if (msg == nullptr) {
         CelValue error_value =
             CreateErrorValue(frame->arena(), "Message is NULL");
-        frame->value_stack().PopAndPush(error_value);
-        return cel_base::OkStatus();
+        frame->value_stack().PopAndPush(error_value, result_trail);
+        return absl::OkStatus();
       }
 
       if (unknown_value) {
         CelValue error_value =
             CreateUnknownValueError(frame->arena(), select_path_);
-        frame->value_stack().PopAndPush(error_value);
-        return cel_base::OkStatus();
+        frame->value_stack().PopAndPush(error_value, result_trail);
+        return absl::OkStatus();
       }
 
-      cel_base::Status status = CreateValueFromField(msg, frame->arena(), &arg);
+      absl::Status status = CreateValueFromField(msg, frame->arena(), &result);
 
       if (status.ok()) {
-        frame->value_stack().PopAndPush(arg);
+        frame->value_stack().PopAndPush(result, result_trail);
       }
 
       return status;
@@ -115,42 +135,57 @@ cel_base::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       if (cel_map == nullptr) {
         CelValue error_value = CreateErrorValue(frame->arena(), "Map is NULL");
         frame->value_stack().PopAndPush(error_value);
-        return cel_base::OkStatus();
+        return absl::OkStatus();
       }
 
       if (unknown_value) {
         CelValue error_value = CreateErrorValue(
             frame->arena(), absl::StrCat("Unknown value ", select_path_));
         frame->value_stack().PopAndPush(error_value);
-        return cel_base::OkStatus();
+        return absl::OkStatus();
       }
 
       auto lookup_result = (*cel_map)[CelValue::CreateString(&field_)];
 
       // Test only Select expression.
       if (test_field_presence_) {
-        arg = CelValue::CreateBool(lookup_result.has_value());
-        frame->value_stack().PopAndPush(arg);
-        return cel_base::OkStatus();
+        result = CelValue::CreateBool(lookup_result.has_value());
+        frame->value_stack().PopAndPush(result);
+        return absl::OkStatus();
+      }
+
+      if (frame->enable_unknowns()) {
+        result_trail = trail.Step(&field_, frame->arena());
+        if (frame->unknowns_utility().CheckForUnknown(result_trail, false)) {
+          auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+              frame->arena(), UnknownAttributeSet({result_trail.attribute()}));
+          result = CelValue::CreateUnknownSet(unknown_set);
+          frame->value_stack().PopAndPush(result, result_trail);
+          return absl::OkStatus();
+        }
       }
 
       // If object is not found, we return Error, per CEL specification.
       if (lookup_result) {
-        arg = lookup_result.value();
+        result = lookup_result.value();
       } else {
-        arg = CreateNoSuchKeyError(frame->arena(), field_);
+        result = CreateNoSuchKeyError(frame->arena(), field_);
       }
-      frame->value_stack().PopAndPush(arg);
+      frame->value_stack().PopAndPush(result, result_trail);
 
-      return ::cel_base::OkStatus();
+      return absl::OkStatus();
+    }
+    case CelValue::Type::kUnknownSet: {
+      // Parent is unknown already, bubble it up.
+      return absl::OkStatus();
     }
     case CelValue::Type::kError: {
       // If argument is CelError, we propagate it forward.
       // It is already on the top of the stack.
-      return ::cel_base::OkStatus();
+      return absl::OkStatus();
     }
     default:
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Applying SELECT to non-message type");
   }
 }

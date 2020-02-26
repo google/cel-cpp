@@ -35,9 +35,7 @@ struct RawString {
  */
 struct ScalarPrinter {
   inline std::string operator()(std::nullptr_t) { return "null"; }
-  inline std::string operator()(bool value) {
-    return value ? "true" : "false";
-  }
+  inline std::string operator()(bool value) { return value ? "true" : "false"; }
   std::string operator()(absl::Time value);
   std::string operator()(absl::Duration value);
 
@@ -83,8 +81,8 @@ struct ForwardingPrinter {
 
   // If the value defines a ToDebugString function, call it.
   template <typename T>
-  specialize_ifd<std::string, decltype(inst_of<T&&>().ToDebugString())> operator()(
-      T&& value) {
+  specialize_ifd<std::string, decltype(inst_of<T&&>().ToDebugString())>
+  operator()(T&& value) {
     return std::string(value.ToDebugString());
   }
 };

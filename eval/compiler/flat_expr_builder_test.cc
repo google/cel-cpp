@@ -5,10 +5,20 @@
 #include "google/protobuf/text_format.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_attribute.h"
+#include "eval/public/cel_builtins.h"
+#include "eval/public/cel_expression.h"
+#include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/unknown_attribute_set.h"
+#include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
+#include "base/status_macros.h"
+
 namespace google {
 namespace api {
 namespace expr {
@@ -32,10 +42,10 @@ class ConcatFunction : public CelFunction {
         "concat", false, {CelValue::Type::kString, CelValue::Type::kString}};
   }
 
-  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (args.size() != 2) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Bad arguments number");
     }
 
@@ -47,7 +57,7 @@ class ConcatFunction : public CelFunction {
 
     *result = CelValue::CreateString(concatenated);
 
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 };
 
@@ -67,10 +77,10 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
 
   auto register_status =
       builder.GetRegistry()->Register(absl::make_unique<ConcatFunction>());
-  ASSERT_TRUE(register_status.ok());
+  ASSERT_OK(register_status);
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -82,7 +92,7 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   google::protobuf::Arena arena;
 
   auto eval_status = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
 
   CelValue result = eval_status.ValueOrDie();
 
@@ -91,20 +101,66 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   EXPECT_THAT(result.StringOrDie().value(), Eq("prefixtest"));
 }
 
+TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
+  Expr expr;
+  SourceInfo source_info;
+  auto call_expr = expr.mutable_call_expr();
+  call_expr->set_function("concat");
+
+  auto arg1 = call_expr->add_args();
+  arg1->mutable_const_expr()->set_string_value("prefix");
+
+  auto arg2 = call_expr->add_args();
+  arg2->mutable_ident_expr()->set_name("value");
+
+  FlatExprBuilder builder;
+  builder.set_fail_on_warnings(false);
+  std::vector<absl::Status> warnings;
+
+  // Concat function not registered.
+
+  auto build_status = builder.CreateExpression(&expr, &source_info, &warnings);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.ValueOrDie());
+
+  std::string variable = "test";
+
+  Activation activation;
+  activation.InsertValue("value", CelValue::CreateString(&variable));
+
+  google::protobuf::Arena arena;
+
+  auto eval_status = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(eval_status);
+
+  CelValue result = eval_status.ValueOrDie();
+
+  ASSERT_TRUE(result.IsError());
+
+  EXPECT_THAT(result.ErrorOrDie()->message(),
+              Eq("No matching overloads found"));
+
+  ASSERT_THAT(warnings, testing::SizeIs(1));
+  EXPECT_EQ(warnings[0].code(), absl::StatusCode::kInvalidArgument);
+  EXPECT_THAT(warnings[0].message(),
+              testing::HasSubstr("No overloads provided"));
+}
+
 class RecorderFunction : public CelFunction {
  public:
   explicit RecorderFunction(const std::string& name, int* count)
       : CelFunction(CelFunctionDescriptor{name, false, {}}), count_(count) {}
 
-  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
                         google::protobuf::Arena* arena) const override {
     if (!args.empty()) {
-      return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+      return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Bad arguments number");
     }
     (*count_)++;
     *result = CelValue::CreateBool(true);
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   int* count_;
@@ -130,21 +186,21 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
 
   auto register_status1 = builder.GetRegistry()->Register(
       absl::make_unique<RecorderFunction>("recorder1", &count1));
-  ASSERT_TRUE(register_status1.ok());
+  ASSERT_OK(register_status1);
   auto register_status2 = builder.GetRegistry()->Register(
       absl::make_unique<RecorderFunction>("recorder2", &count2));
-  ASSERT_TRUE(register_status2.ok());
+  ASSERT_OK(register_status2);
 
   // Shortcircuiting on.
   auto build_status_on = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status_on.ok());
+  ASSERT_OK(build_status_on);
 
   auto cel_expr_on = std::move(build_status_on.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto eval_status_on = cel_expr_on->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status_on.ok());
+  ASSERT_OK(eval_status_on);
 
   EXPECT_THAT(count1, Eq(1));
   EXPECT_THAT(count2, Eq(0));
@@ -152,7 +208,7 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   // Shortcircuiting off.
   builder.set_shortcircuiting(false);
   auto build_status_off = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status_off.ok());
+  ASSERT_OK(build_status_off);
 
   auto cel_expr_off = std::move(build_status_off.ValueOrDie());
 
@@ -160,7 +216,7 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   count2 = 0;
 
   auto eval_status_off = cel_expr_off->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status_off.ok());
+  ASSERT_OK(eval_status_off);
 
   EXPECT_THAT(count1, Eq(1));
   EXPECT_THAT(count2, Eq(1));
@@ -193,32 +249,32 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
   int count = 0;
   auto register_status = builder.GetRegistry()->Register(
       absl::make_unique<RecorderFunction>("loop_step", &count));
-  ASSERT_TRUE(register_status.ok());
+  ASSERT_OK(register_status);
 
   // Shortcircuiting on.
   auto build_status_on = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status_on.ok());
+  ASSERT_OK(build_status_on);
 
   auto cel_expr_on = std::move(build_status_on.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto eval_status_on = cel_expr_on->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status_on.ok());
+  ASSERT_OK(eval_status_on);
 
   EXPECT_THAT(count, Eq(0));
 
   // Shortcircuiting off.
   builder.set_shortcircuiting(false);
   auto build_status_off = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status_off.ok());
+  ASSERT_OK(build_status_off);
 
   auto cel_expr_off = std::move(build_status_off.ValueOrDie());
 
   count = 0;
 
   auto eval_status_off = cel_expr_off->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status_off.ok());
+  ASSERT_OK(eval_status_off);
 
   EXPECT_THAT(count, Eq(3));
 }
@@ -266,17 +322,17 @@ TEST(FlatExprBuilderTest, MapComprehension) {
                                       &expr);
 
   FlatExprBuilder builder;
-  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(result_or.ok());
+  ASSERT_OK(result_or);
   CelValue result = result_or.ValueOrDie();
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());
@@ -353,17 +409,17 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
                                       &expr);
 
   FlatExprBuilder builder;
-  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(result_or.ok());
+  ASSERT_OK(result_or);
   CelValue result = result_or.ValueOrDie();
   ASSERT_TRUE(result.IsError());
 }
@@ -428,17 +484,17 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
                                       &expr);
 
   FlatExprBuilder builder;
-  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(result_or.ok());
+  ASSERT_OK(result_or);
   CelValue result = result_or.ValueOrDie();
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie()->message(),
@@ -483,10 +539,10 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
 
   FlatExprBuilder builder;
   builder.set_comprehension_max_iterations(1);
-  ASSERT_TRUE(RegisterBuiltinFunctions(builder.GetRegistry()).ok());
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   SourceInfo source_info;
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -517,7 +573,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   FlatExprBuilder builder;
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -529,7 +585,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
 
   auto eval_status = cel_expr->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
   CelValue result = eval_status.ValueOrDie();
 
   ASSERT_TRUE(result.IsInt64());
@@ -539,7 +595,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   mask.add_paths("message.message_value.int32_value");
   activation.set_unknown_paths(mask);
   eval_status = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
   result = eval_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
   ASSERT_TRUE(IsUnknownValueError(result));
@@ -550,7 +606,7 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
   mask.add_paths("message.message_value");
   activation.set_unknown_paths(mask);
   eval_status = cel_expr->Evaluate(activation, &arena);
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
   result = eval_status.ValueOrDie();
   ASSERT_TRUE(result.IsError());
   ASSERT_TRUE(IsUnknownValueError(result));
@@ -579,10 +635,10 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
 
   FlatExprBuilder builder;
-  builder.addResolvableEnum(TestMessage::TestEnum_descriptor());
+  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -590,7 +646,7 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   Activation activation;
   auto eval_status = cel_expr->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
   CelValue result = eval_status.ValueOrDie();
 
   ASSERT_TRUE(result.IsInt64());
@@ -607,13 +663,13 @@ TEST(FlatExprBuilderTest, ContainerStringFormat) {
   builder.set_container("");
   {
     auto build_status = builder.CreateExpression(&expr, &source_info);
-    ASSERT_TRUE(build_status.ok());
+    ASSERT_OK(build_status);
   }
 
   builder.set_container("random.namespace");
   {
     auto build_status = builder.CreateExpression(&expr, &source_info);
-    ASSERT_TRUE(build_status.ok());
+    ASSERT_OK(build_status);
   }
 
   // Leading '.'
@@ -650,19 +706,19 @@ void EvalExpressionWithEnum(absl::string_view enum_name,
   cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
 
   FlatExprBuilder builder;
-  builder.addResolvableEnum(TestMessage::TestEnum_descriptor());
-  builder.addResolvableEnum(TestEnum_descriptor());
+  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
+  builder.AddResolvableEnum(TestEnum_descriptor());
   builder.set_container(std::string(container));
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
   auto cel_expr = std::move(build_status.ValueOrDie());
 
   google::protobuf::Arena arena;
   Activation activation;
   auto eval_status = cel_expr->Evaluate(activation, &arena);
 
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
   *result = eval_status.ValueOrDie();
 }
 
@@ -718,6 +774,164 @@ TEST(FlatExprBuilderTest, PartialQualifiedEnumResolution) {
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+absl::Status RunTernaryExpression(CelValue selector, CelValue value1,
+                                  CelValue value2, google::protobuf::Arena* arena,
+                                  CelValue* result) {
+  Expr expr;
+  SourceInfo source_info;
+  auto call_expr = expr.mutable_call_expr();
+  call_expr->set_function(builtin::kTernary);
+
+  auto arg0 = call_expr->add_args();
+  arg0->mutable_ident_expr()->set_name("selector");
+  auto arg1 = call_expr->add_args();
+  arg1->mutable_ident_expr()->set_name("value1");
+  auto arg2 = call_expr->add_args();
+  arg2->mutable_ident_expr()->set_name("value2");
+
+  FlatExprBuilder builder;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  if (!build_status.ok()) {
+    return build_status.status();
+  }
+
+  auto cel_expr = std::move(build_status.ValueOrDie());
+
+  std::string variable = "test";
+
+  Activation activation;
+  activation.InsertValue("selector", selector);
+  activation.InsertValue("value1", value1);
+  activation.InsertValue("value2", value2);
+
+  auto eval_status = cel_expr->Evaluate(activation, arena);
+  if (!eval_status.ok()) {
+    return eval_status.status();
+  }
+
+  *result = eval_status.ValueOrDie();
+  return eval_status.status();
+}
+
+TEST(FlatExprBuilderTest, Ternary) {
+  Expr expr;
+  SourceInfo source_info;
+  auto call_expr = expr.mutable_call_expr();
+  call_expr->set_function(builtin::kTernary);
+
+  auto arg0 = call_expr->add_args();
+  arg0->mutable_ident_expr()->set_name("selector");
+  auto arg1 = call_expr->add_args();
+  arg1->mutable_ident_expr()->set_name("value1");
+  auto arg2 = call_expr->add_args();
+  arg2->mutable_ident_expr()->set_name("value1");
+
+  FlatExprBuilder builder;
+  //  builder.set_enable_unknowns(true);
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.ValueOrDie());
+
+  google::protobuf::Arena arena;
+
+  // On True, value 1
+  {
+    CelValue result;
+    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(true),
+                                   CelValue::CreateInt64(1),
+                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(1));
+
+    // Unknown handling
+    UnknownSet unknown_set;
+    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(true),
+                                   CelValue::CreateUnknownSet(&unknown_set),
+                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_TRUE(result.IsUnknownSet());
+
+    ASSERT_OK(RunTernaryExpression(
+        CelValue::CreateBool(true), CelValue::CreateInt64(1),
+        CelValue::CreateUnknownSet(&unknown_set), &arena, &result));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(1));
+  }
+
+  // On False, value 2
+  {
+    CelValue result;
+    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(false),
+                                   CelValue::CreateInt64(1),
+                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(2));
+
+    // Unknown handling
+    UnknownSet unknown_set;
+    ASSERT_OK(RunTernaryExpression(CelValue::CreateBool(false),
+                                   CelValue::CreateUnknownSet(&unknown_set),
+                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_TRUE(result.IsInt64());
+    EXPECT_THAT(result.Int64OrDie(), Eq(2));
+
+    ASSERT_OK(RunTernaryExpression(
+        CelValue::CreateBool(false), CelValue::CreateInt64(1),
+        CelValue::CreateUnknownSet(&unknown_set), &arena, &result));
+    ASSERT_TRUE(result.IsUnknownSet());
+  }
+  // On Error, surface error
+  {
+    CelValue result;
+    ASSERT_OK(RunTernaryExpression(CreateErrorValue(&arena, "error"),
+                                   CelValue::CreateInt64(1),
+                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_TRUE(result.IsError());
+  }
+  // On Unknown, surface Unknown
+  {
+    UnknownSet unknown_set;
+    CelValue result;
+    ASSERT_OK(RunTernaryExpression(CelValue::CreateUnknownSet(&unknown_set),
+                                   CelValue::CreateInt64(1),
+                                   CelValue::CreateInt64(2), &arena, &result));
+    ASSERT_TRUE(result.IsUnknownSet());
+    EXPECT_THAT(&unknown_set, Eq(result.UnknownSetOrDie()));
+  }
+  // We should not merge unknowns
+  {
+    Expr selector;
+    selector.mutable_ident_expr()->set_name("selector");
+    CelAttribute selector_attr(selector, {});
+
+    Expr value1;
+    value1.mutable_ident_expr()->set_name("value1");
+    CelAttribute value1_attr(value1, {});
+
+    Expr value2;
+    value2.mutable_ident_expr()->set_name("value2");
+    CelAttribute value2_attr(value2, {});
+
+    UnknownSet unknown_selector(UnknownAttributeSet({&selector_attr}));
+    UnknownSet unknown_value1(UnknownAttributeSet({&value1_attr}));
+    UnknownSet unknown_value2(UnknownAttributeSet({&value2_attr}));
+    CelValue result;
+    ASSERT_OK(RunTernaryExpression(
+        CelValue::CreateUnknownSet(&unknown_selector),
+        CelValue::CreateUnknownSet(&unknown_value1),
+        CelValue::CreateUnknownSet(&unknown_value2), &arena, &result));
+    ASSERT_TRUE(result.IsUnknownSet());
+    const UnknownSet* result_set = result.UnknownSetOrDie();
+    EXPECT_THAT(result_set->unknown_attributes().attributes().size(), Eq(1));
+    EXPECT_THAT(result_set->unknown_attributes()
+                    .attributes()[0]
+                    ->variable()
+                    .ident_expr()
+                    .name(),
+                Eq("selector"));
+  }
 }
 
 }  // namespace

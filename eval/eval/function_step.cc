@@ -5,11 +5,17 @@
 #include <memory>
 #include <vector>
 
+#include "google/protobuf/arena.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/eval/expression_build_warning.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/unknown_function_result_set.h"
+#include "eval/public/unknown_set.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -27,7 +33,10 @@ class AbstractFunctionStep : public ExpressionStepBase {
   AbstractFunctionStep(size_t num_arguments, int64_t expr_id)
       : ExpressionStepBase(expr_id), num_arguments_(num_arguments) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
+
+  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+
   virtual cel_base::StatusOr<const CelFunction*> ResolveFunction(
       absl::Span<const CelValue> args, const ExecutionFrame* frame) const = 0;
 
@@ -35,13 +44,17 @@ class AbstractFunctionStep : public ExpressionStepBase {
   size_t num_arguments_;
 };
 
-cel_base::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
-  if (!frame->value_stack().HasEnough(num_arguments_)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
-  }
-
+absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
+                                              CelValue* result) const {
   // Create Span object that contains input arguments to the function.
   auto input_args = frame->value_stack().GetSpan(num_arguments_);
+
+  const UnknownSet* unknown_set = nullptr;
+  if (frame->enable_unknowns()) {
+    auto input_attrs = frame->value_stack().GetAttributeSpan(num_arguments_);
+    unknown_set = frame->unknowns_utility().MergeUnknowns(
+        input_args, input_attrs, /*initial_set=*/nullptr, /*use_partial=*/true);
+  }
 
   // Derived class resolves to a single function overload or none.
   auto status = ResolveFunction(input_args, frame);
@@ -50,14 +63,22 @@ cel_base::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
   }
   const CelFunction* matched_function = status.ValueOrDie();
 
-  CelValue result = CelValue::CreateNull();
-
   // Overload found
-  if (matched_function != nullptr) {
-    cel_base::Status status =
-        matched_function->Evaluate(input_args, &result, frame->arena());
+  if (matched_function != nullptr && unknown_set == nullptr) {
+    absl::Status status =
+        matched_function->Evaluate(input_args, result, frame->arena());
     if (!status.ok()) {
       return status;
+    }
+    if (frame->enable_unknown_function_results() &&
+        IsUnknownFunctionResult(*result)) {
+      const auto* function_result =
+          google::protobuf::Arena::Create<UnknownFunctionResult>(
+              frame->arena(), matched_function->descriptor(), id(),
+              std::vector<CelValue>(input_args.begin(), input_args.end()));
+      const auto* unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+          frame->arena(), UnknownFunctionResultSet(function_result));
+      *result = CelValue::CreateUnknownSet(unknown_set);
     }
   } else {
     // No matching overloads.
@@ -67,20 +88,40 @@ cel_base::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
     // should be propagated along execution path.
     for (const CelValue& arg : input_args) {
       if (arg.IsError()) {
-        result = arg;
-        break;
+        *result = arg;
+        return absl::OkStatus();
       }
     }
+
+    if (unknown_set) {
+      *result = CelValue::CreateUnknownSet(unknown_set);
+      return absl::OkStatus();
+    }
+
     // If no errors in input args, create new CelError.
-    if (!result.IsError()) {
-      result = CreateNoMatchingOverloadError(frame->arena());
+    if (!result->IsError()) {
+      *result = CreateNoMatchingOverloadError(frame->arena());
     }
   }
 
-  frame->value_stack().Pop(input_args.length());
+  return absl::OkStatus();
+}
+
+absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
+  if (!frame->value_stack().HasEnough(num_arguments_)) {
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
+  }
+
+  CelValue result;
+  auto status = DoEvaluate(frame, &result);
+  if (!status.ok()) {
+    return status;
+  }
+
+  frame->value_stack().Pop(num_arguments_);
   frame->value_stack().Push(result);
 
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 class EagerFunctionStep : public AbstractFunctionStep {
@@ -105,7 +146,7 @@ cel_base::StatusOr<const CelFunction*> EagerFunctionStep::ResolveFunction(
     if (overload->MatchArguments(input_args)) {
       // More than one overload matches our arguments.
       if (matched_function != nullptr) {
-        return cel_base::Status(cel_base::StatusCode::kInternal,
+        return absl::Status(absl::StatusCode::kInternal,
                             "Cannot resolve overloads");
       }
 
@@ -159,7 +200,7 @@ cel_base::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
     if (overload != nullptr && overload->MatchArguments(input_args)) {
       // More than one overload matches our arguments.
       if (matched_function != nullptr) {
-        return cel_base::Status(cel_base::StatusCode::kInternal,
+        return absl::Status(absl::StatusCode::kInternal,
                             "Cannot resolve overloads");
       }
 
@@ -174,7 +215,8 @@ cel_base::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 
 cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
-    const CelFunctionRegistry& function_registry) {
+    const CelFunctionRegistry& function_registry,
+    BuilderWarnings* builder_warnings) {
   bool receiver_style = call_expr->has_target();
   size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr->function();
@@ -192,15 +234,16 @@ cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
 
   auto overloads = function_registry.FindOverloads(name, receiver_style, args);
 
-  if (!overloads.empty()) {
-    std::unique_ptr<ExpressionStep> step = absl::make_unique<EagerFunctionStep>(
-        std::move(overloads), num_args, expr_id);
-    return std::move(step);
+  // No overloads found.
+  if (overloads.empty()) {
+    RETURN_IF_ERROR(builder_warnings->AddWarning(
+        absl::Status(absl::StatusCode::kInvalidArgument,
+                     "No overloads provided for FunctionStep creation")));
   }
 
-  // No overloads found.
-  return ::cel_base::Status(cel_base::StatusCode::kInvalidArgument,
-                        "No overloads provided for FunctionStep creation");
+  std::unique_ptr<ExpressionStep> step = absl::make_unique<EagerFunctionStep>(
+      std::move(overloads), num_args, expr_id);
+  return std::move(step);
 }
 
 }  // namespace runtime
