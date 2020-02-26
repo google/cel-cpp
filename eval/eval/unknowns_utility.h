@@ -1,0 +1,68 @@
+#ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
+#define THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
+
+#include <memory>
+#include <vector>
+
+#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/arena.h"
+#include "absl/types/optional.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/public/activation.h"
+#include "eval/public/cel_attribute.h"
+#include "eval/public/cel_expression.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/unknown_attribute_set.h"
+#include "eval/public/unknown_set.h"
+
+namespace google {
+namespace api {
+namespace expr {
+namespace runtime {
+
+// Helper class for handling unknowns logic. Provides helpers for merging
+// unknown sets from arguments on the stack and for identifying unknown
+// attributes based on the patterns for a given Evaluation.
+class UnknownsUtility {
+ public:
+  UnknownsUtility(const std::vector<CelAttributePattern>* unknown_patterns,
+                  google::protobuf::Arena* arena)
+      : unknown_patterns_(unknown_patterns), arena_(arena) {}
+
+  // Checks whether particular corresponds to any patterns that define unknowns.
+  bool CheckForUnknown(const AttributeTrail& trail, bool use_partial) const;
+
+  // Creates merged UnknownAttributeSet.
+  // Scans over the args collection, determines if there matches to unknown
+  // patterns and returns the (possibly empty) collection.
+  UnknownAttributeSet CheckForUnknowns(absl::Span<const AttributeTrail> args,
+                                       bool use_partial) const;
+
+  // Creates merged UnknownSet.
+  // Scans over the args collection, merges any UnknownAttributeSets found in
+  // it together with initial_set (if initial_set is not null).
+  // Returns pointer to merged set or nullptr, if there were no sets to merge.
+  const UnknownSet* MergeUnknowns(absl::Span<const CelValue> args,
+                                  const UnknownSet* initial_set) const;
+
+  // Creates merged UnknownSet.
+  // Merges together attributes from UnknownSets found in the args
+  // collection, attributes from attr that match unknown pattern
+  // patterns, and attributes from initial_set
+  // (if initial_set is not null).
+  // Returns pointer to merged set or nullptr, if there were no sets to merge.
+  const UnknownSet* MergeUnknowns(absl::Span<const CelValue> args,
+                                  absl::Span<const AttributeTrail> attrs,
+                                  const UnknownSet* initial_set,
+                                  bool use_partial) const;
+
+ private:
+  const std::vector<CelAttributePattern>* unknown_patterns_;
+  google::protobuf::Arena* arena_;
+};
+}  // namespace runtime
+}  // namespace expr
+}  // namespace api
+}  // namespace google
+
+#endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_

@@ -1,10 +1,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_VALUE_EXPORT_UTIL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_VALUE_EXPORT_UTIL_H_
 
-#include "eval/public/cel_value.h"
-
 #include "google/protobuf/struct.pb.h"
-#include "base/status.h"
+#include "absl/status/status.h"
+#include "eval/public/cel_value.h"
 
 namespace google {
 namespace api {
@@ -16,7 +15,7 @@ namespace runtime {
 // - exports integer values as doubles (Value.number_value);
 // - exports integer keys in maps as strings;
 // - handles Duration and Timestamp as generic messages.
-cel_base::Status ExportAsProtoValue(const CelValue &in_value,
+absl::Status ExportAsProtoValue(const CelValue &in_value,
                                 google::protobuf::Value *out_value);
 
 }  // namespace runtime

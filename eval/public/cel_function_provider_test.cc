@@ -2,6 +2,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -19,9 +20,9 @@ class ConstCelFunction : public CelFunction {
   ConstCelFunction() : CelFunction({"ConstFunction", false, {}}) {}
   explicit ConstCelFunction(const CelFunctionDescriptor& desc)
       : CelFunction(desc) {}
-  cel_base::Status Evaluate(absl::Span<const CelValue> args, CelValue* output,
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* output,
                         google::protobuf::Arena* arena) const override {
-    return cel_base::Status(cel_base::StatusCode::kUnimplemented, "Not Implemented");
+    return absl::Status(absl::StatusCode::kUnimplemented, "Not Implemented");
   }
 };
 
@@ -31,7 +32,7 @@ TEST(CreateActivationFunctionProviderTest, NoOverloadFound) {
 
   auto func = provider->GetFunction({"LazyFunc", false, {}}, activation);
 
-  ASSERT_TRUE(func.status().ok());
+  ASSERT_OK(func.status());
   EXPECT_THAT(func.ValueOrDie(), Eq(nullptr));
 }
 
@@ -42,11 +43,11 @@ TEST(CreateActivationFunctionProviderTest, OverloadFound) {
 
   auto status =
       activation.InsertFunction(std::make_unique<ConstCelFunction>(desc));
-  EXPECT_TRUE(status.ok());
+  EXPECT_OK(status);
 
   auto func = provider->GetFunction(desc, activation);
 
-  ASSERT_TRUE(func.status().ok());
+  ASSERT_OK(func.status());
   EXPECT_THAT(func.ValueOrDie(), Ne(nullptr));
 }
 
@@ -60,9 +61,9 @@ TEST(CreateActivationFunctionProviderTest, AmbiguousLookup) {
 
   auto status =
       activation.InsertFunction(std::make_unique<ConstCelFunction>(desc1));
-  EXPECT_TRUE(status.ok());
+  EXPECT_OK(status);
   status = activation.InsertFunction(std::make_unique<ConstCelFunction>(desc2));
-  EXPECT_TRUE(status.ok());
+  EXPECT_OK(status);
 
   auto func = provider->GetFunction(match_desc, activation);
 

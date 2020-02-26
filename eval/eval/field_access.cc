@@ -3,10 +3,10 @@
 #include <type_traits>
 
 #include "google/protobuf/map_field.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "internal/proto_util.h"
-#include "base/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -73,7 +73,7 @@ class FieldAccessor {
   // If value provided successfully, returns Ok.
   // arena Arena to use for allocations if needed.
   // result pointer to object to store value in.
-  cel_base::Status CreateValueFromFieldAccessor(Arena* arena, CelValue* result) {
+  absl::Status CreateValueFromFieldAccessor(Arena* arena, CelValue* result) {
     switch (field_desc_->cpp_type()) {
       case FieldDescriptor::CPPTYPE_BOOL: {
         bool value = GetBool();
@@ -124,7 +124,7 @@ class FieldAccessor {
             *result = CelValue::CreateBytes(value);
             break;
           default:
-            return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+            return absl::Status(absl::StatusCode::kInvalidArgument,
                                 "Error handling C++ string conversion");
         }
         break;
@@ -140,11 +140,11 @@ class FieldAccessor {
         break;
       }
       default:
-        return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+        return absl::Status(absl::StatusCode::kInvalidArgument,
                             "Unhandled C++ type conversion");
     }
 
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
  protected:
@@ -322,7 +322,7 @@ class MessageRetrieverOp {
 
 }  // namespace
 
-cel_base::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
+absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
                                         const FieldDescriptor* desc,
                                         google::protobuf::Arena* arena,
                                         CelValue* result) {
@@ -330,7 +330,7 @@ cel_base::Status CreateValueFromSingleField(const google::protobuf::Message* msg
   return accessor.CreateValueFromFieldAccessor(arena, result);
 }
 
-cel_base::Status CreateValueFromRepeatedField(const google::protobuf::Message* msg,
+absl::Status CreateValueFromRepeatedField(const google::protobuf::Message* msg,
                                           const FieldDescriptor* desc,
                                           google::protobuf::Arena* arena, int index,
                                           CelValue* result) {
@@ -338,7 +338,7 @@ cel_base::Status CreateValueFromRepeatedField(const google::protobuf::Message* m
   return accessor.CreateValueFromFieldAccessor(arena, result);
 }
 
-cel_base::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
+absl::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
                                      const FieldDescriptor* desc,
                                      const MapValueRef* value_ref,
                                      google::protobuf::Arena* arena, CelValue* result) {
@@ -700,33 +700,32 @@ class RepeatedFieldSetter : public FieldSetter<RepeatedFieldSetter> {
 // If value provided successfully, returns Ok.
 // arena Arena to use for allocations if needed.
 // result pointer to object to store value in.
-::cel_base::Status SetValueToSingleField(const CelValue& value,
-                                     const FieldDescriptor* desc,
-                                     Message* msg) {
+absl::Status SetValueToSingleField(const CelValue& value,
+                                   const FieldDescriptor* desc, Message* msg) {
   ScalarFieldSetter setter(msg, desc);
   return (setter.SetFieldFromCelValue(value))
-             ? ::cel_base::OkStatus()
-             : ::cel_base::InvalidArgumentError(absl::Substitute(
+             ? absl::OkStatus()
+             : absl::InvalidArgumentError(absl::Substitute(
                    "Could not assign supplied argument to message \"$0\" field "
                    "\"$1\" of type $2: type was $3",
                    msg->GetDescriptor()->name(), desc->name(),
                    desc->type_name(), absl::StrCat(value.type())));
 }
 
-::cel_base::Status AddValueToRepeatedField(const CelValue& value,
-                                       const FieldDescriptor* desc,
-                                       Message* msg) {
+absl::Status AddValueToRepeatedField(const CelValue& value,
+                                     const FieldDescriptor* desc,
+                                     Message* msg) {
   RepeatedFieldSetter setter(msg, desc);
   return (setter.SetFieldFromCelValue(value))
-             ? ::cel_base::OkStatus()
-             : ::cel_base::InvalidArgumentError(absl::Substitute(
+             ? absl::OkStatus()
+             : absl::InvalidArgumentError(absl::Substitute(
                    "Could not add supplied argument to message \"$0\" field "
                    "\"$1\".",
                    msg->GetDescriptor()->name(), desc->name()));
 }
 
-::cel_base::Status AddValueToMapField(const CelValue& key, const CelValue& value,
-                                  const FieldDescriptor* desc, Message* msg) {
+absl::Status AddValueToMapField(const CelValue& key, const CelValue& value,
+                                const FieldDescriptor* desc, Message* msg) {
   auto entry_msg = msg->GetReflection()->AddMessage(msg, desc);
   auto key_field_desc = entry_msg->GetDescriptor()->FindFieldByNumber(1);
   auto value_field_desc = entry_msg->GetDescriptor()->FindFieldByNumber(2);
@@ -735,20 +734,20 @@ class RepeatedFieldSetter : public FieldSetter<RepeatedFieldSetter> {
   ScalarFieldSetter value_setter(entry_msg, value_field_desc);
 
   if (!key_setter.SetFieldFromCelValue(key)) {
-    return ::cel_base::InvalidArgumentError(
+    return absl::InvalidArgumentError(
         absl::Substitute("Could not assign supplied argument to message \"$0\" "
                          "field \"$1\" map key.",
                          msg->GetDescriptor()->name(), desc->name()));
   }
 
   if (!value_setter.SetFieldFromCelValue(value)) {
-    return ::cel_base::InvalidArgumentError(
+    return absl::InvalidArgumentError(
         absl::Substitute("Could not assign supplied argument to message \"$0\" "
                          "field \"$1\" map value.",
                          msg->GetDescriptor()->name(), desc->name()));
   }
 
-  return ::cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace runtime

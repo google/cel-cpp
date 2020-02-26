@@ -41,6 +41,7 @@ cc_test(
     ],
     copts = ["-std=c++14"],
     deps = [
+        "//base:status_macros",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -48,8 +49,31 @@ cc_test(
         "//eval/public:cel_value",
         "//eval/testutil:test_message_cc_proto",
         "@com_github_google_googletest//:gtest_main",
-        "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "unknowns_end_to_end_test",
+    size = "small",
+    srcs = [
+        "unknowns_end_to_end_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        "//base:status_macros",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_function",
+        "//eval/public:cel_options",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_set",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -64,4 +88,16 @@ proto_library(
 cc_proto_library(
     name = "request_context_cc_proto",
     deps = [":request_context_protos"],
+)
+
+cc_library(
+    name = "mock_cel_expression",
+    testonly = 1,
+    hdrs = ["mock_cel_expression.h"],
+    copts = ["-std=c++14"],
+    deps = [
+        "//eval/public:activation",
+        "//eval/public:cel_expression",
+        "@com_github_google_googletest//:gtest_main",
+    ],
 )

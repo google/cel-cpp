@@ -26,9 +26,10 @@ cc_library(
     copts = ["-std=c++14"],
     deps = [
         ":cel_value_internal",
-        "//base:status",
+        "//base:statusor",
         "//internal:proto_util",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
@@ -47,7 +48,7 @@ cc_library(
     deps = [
         ":cel_value",
         ":cel_value_internal",
-        "//base:status",
+        "//base:statusor",
         "//internal:proto_util",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
@@ -77,9 +78,7 @@ cc_library(
     copts = ["-std=c++14"],
     deps = [
         ":cel_attribute",
-        "//base:status",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -93,11 +92,12 @@ cc_library(
     ],
     copts = ["-std=c++14"],
     deps = [
+        ":cel_attribute",
         ":cel_function",
         ":cel_value",
         ":cel_value_producer",
-        "//base:status",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -148,7 +148,8 @@ cc_library(
     deps = [
         ":cel_function",
         ":cel_function_registry",
-        "//base:status",
+        "//base:statusor",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -194,7 +195,7 @@ cc_library(
         ":cel_function_adapter",
         ":cel_function_registry",
         ":cel_options",
-        "//base:status",
+        "//base:status_macros",
         "//eval/eval:container_backed_list_impl",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -328,7 +329,7 @@ cc_library(
     copts = ["-std=c++14"],
     deps = [
         ":cel_value",
-        "//base:status",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -359,6 +360,7 @@ cc_test(
     deps = [
         ":cel_value",
         ":unknown_attribute_set",
+        ":unknown_set",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
         "@com_github_google_googletest//:gtest_main",
@@ -392,6 +394,7 @@ cc_test(
     deps = [
         ":activation",
         ":cel_function",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
     ],
 )
@@ -418,6 +421,7 @@ cc_test(
     deps = [
         ":activation",
         ":activation_bind_helper",
+        "//base:status_macros",
         "//eval/testutil:test_message_cc_proto",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
@@ -433,6 +437,7 @@ cc_test(
     deps = [
         ":cel_function",
         ":cel_function_provider",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
     ],
 )
@@ -447,6 +452,7 @@ cc_test(
         ":cel_function",
         ":cel_function_provider",
         ":cel_function_registry",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
     ],
 )
@@ -462,6 +468,7 @@ cc_test(
         ":cel_function",
         ":cel_function_adapter",
         ":cel_value",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
     ],
 )
@@ -479,6 +486,7 @@ cc_test(
         ":cel_builtins",
         ":cel_expr_builder_factory",
         ":cel_function_registry",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -498,6 +506,7 @@ cc_test(
         ":cel_function_registry",
         ":cel_value",
         ":extension_func_registrar",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -530,8 +539,6 @@ cc_test(
         ":cel_value",
         ":unknown_attribute_set",
         "@com_github_google_googletest//:gtest_main",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -545,13 +552,71 @@ cc_test(
     deps = [
         ":cel_value",
         ":value_export_util",
-        "//base:status",
+        "//base:status_macros",
         "//eval/eval:container_backed_list_impl",
         "//eval/eval:container_backed_map_impl",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "unknown_function_result_set",
+    srcs = ["unknown_function_result_set.cc"],
+    hdrs = ["unknown_function_result_set.h"],
+    copts = ["-std=c++14"],
+    deps = [
+        ":cel_function",
+        ":cel_options",
+        ":cel_value",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "unknown_function_result_set_test",
+    size = "small",
+    srcs = [
+        "unknown_function_result_set_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":cel_function",
+        ":cel_value",
+        ":unknown_function_result_set",
+        "//eval/eval:container_backed_list_impl",
+        "//eval/eval:container_backed_map_impl",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "unknown_set",
+    hdrs = ["unknown_set.h"],
+    copts = ["-std=c++14"],
+    deps = [
+        ":unknown_attribute_set",
+        ":unknown_function_result_set",
+    ],
+)
+
+cc_test(
+    name = "unknown_set_test",
+    srcs = ["unknown_set_test.cc"],
+    copts = ["-std=c++14"],
+    deps = [
+        ":cel_attribute",
+        ":unknown_attribute_set",
+        ":unknown_function_result_set",
+        ":unknown_set",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

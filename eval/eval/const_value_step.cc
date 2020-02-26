@@ -18,16 +18,16 @@ class ConstValueStep : public ExpressionStepBase {
   ConstValueStep(const CelValue& value, int64_t expr_id, bool comes_from_ast)
       : ExpressionStepBase(expr_id, comes_from_ast), value_(value) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* context) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   CelValue value_;
 };
 
-cel_base::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(value_);
 
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace

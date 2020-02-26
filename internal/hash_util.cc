@@ -7,7 +7,9 @@ namespace api {
 namespace expr {
 namespace internal {
 
-std::size_t HashImpl(const std::string& value, specialize) { return StdHash(value); }
+std::size_t HashImpl(const std::string& value, specialize) {
+  return StdHash(value);
+}
 
 std::size_t HashImpl(const google::rpc::Status& value, specialize) {
   std::size_t hash = Hash(value.code());

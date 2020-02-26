@@ -5,27 +5,27 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-cel_base::Status CelFunctionRegistry::Register(
+absl::Status CelFunctionRegistry::Register(
     std::unique_ptr<CelFunction> function) {
   const CelFunctionDescriptor& descriptor = function->descriptor();
 
   if (DescriptorRegistered(descriptor)) {
-    return cel_base::Status(
-        cel_base::StatusCode::kAlreadyExists,
+    return absl::Status(
+        absl::StatusCode::kAlreadyExists,
         "CelFunction with specified parameters already registered");
   }
 
   auto& overloads = functions_[descriptor.name()];
   overloads.static_overloads.push_back(std::move(function));
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
-cel_base::Status CelFunctionRegistry::RegisterLazyFunction(
+absl::Status CelFunctionRegistry::RegisterLazyFunction(
     const CelFunctionDescriptor& descriptor,
     std::unique_ptr<CelFunctionProvider> factory) {
   if (DescriptorRegistered(descriptor)) {
-    return cel_base::Status(
-        cel_base::StatusCode::kAlreadyExists,
+    return absl::Status(
+        absl::StatusCode::kAlreadyExists,
         "CelFunction with specified parameters already registered");
   }
   auto& overloads = functions_[descriptor.name()];
@@ -33,7 +33,7 @@ cel_base::Status CelFunctionRegistry::RegisterLazyFunction(
       descriptor, std::move(factory));
   overloads.lazy_overloads.push_back(std::move(entry));
 
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(

@@ -1,10 +1,12 @@
 #include "eval/eval/container_access_step.h"
 
 #include "google/protobuf/arena.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_value.h"
-#include "base/status.h"
+#include "eval/public/unknown_attribute_set.h"
 
 namespace google {
 namespace api {
@@ -13,17 +15,20 @@ namespace runtime {
 
 namespace {
 
+constexpr int NUM_CONTAINER_ACCESS_ARGUMENTS = 2;
+
 // ContainerAccessStep performs message field access specified by Expr::Select
 // message.
 class ContainerAccessStep : public ExpressionStepBase {
  public:
   ContainerAccessStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  CelValue PerformLookup(const CelValue& container, const CelValue& key,
-                         google::protobuf::Arena* arena) const;
+  using ValueAttributePair = std::pair<CelValue, AttributeTrail>;
+
+  ValueAttributePair PerformLookup(ExecutionFrame* frame) const;
   CelValue LookupInMap(const CelMap* cel_map, const CelValue& key,
                        google::protobuf::Arena* arena) const;
   CelValue LookupInList(const CelList* cel_list, const CelValue& key,
@@ -72,52 +77,78 @@ inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
   }
 }
 
-CelValue ContainerAccessStep::PerformLookup(const CelValue& container,
-                                            const CelValue& key,
-                                            google::protobuf::Arena* arena) const {
-  if (container.IsError()) {
-    return container;
-  }
-  if (key.IsError()) {
-    return key;
-  }
-  // Select steps can be applied to either maps or messages
-  switch (container.type()) {
-    case CelValue::Type::kMap: {
-      const CelMap* cel_map = container.MapOrDie();
-      return LookupInMap(cel_map, key, arena);
-    }
-    case CelValue::Type::kList: {
-      const CelList* cel_list = container.ListOrDie();
-      return LookupInList(cel_list, key, arena);
-    }
-    default: {
-      return CreateErrorValue(
-          arena, absl::StrCat("Unexpected container type for [] operation: ",
-                              CelValue::TypeName(key.type())));
-    }
-  }
-}
-
-cel_base::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
-  const int NUM_ARGUMENTS = 2;
-
-  if (!frame->value_stack().HasEnough(NUM_ARGUMENTS)) {
-    return cel_base::Status(
-        cel_base::StatusCode::kInternal,
-        "Insufficient arguments supplied for ContainerAccess-type expression");
-  }
-
-  auto input_args = frame->value_stack().GetSpan(NUM_ARGUMENTS);
+ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
+    ExecutionFrame* frame) const {
+  auto input_args =
+      frame->value_stack().GetSpan(NUM_CONTAINER_ACCESS_ARGUMENTS);
+  AttributeTrail trail;
 
   const CelValue& container = input_args[0];
   const CelValue& key = input_args[1];
 
-  CelValue result = PerformLookup(container, key, frame->arena());
-  frame->value_stack().Pop(NUM_ARGUMENTS);
-  frame->value_stack().Push(result);
+  if (frame->enable_unknowns()) {
+    auto unknown_set =
+        frame->unknowns_utility().MergeUnknowns(input_args, nullptr);
 
-  return cel_base::OkStatus();
+    if (unknown_set) {
+      return {CelValue::CreateUnknownSet(unknown_set), trail};
+    }
+
+    // We guarantee that GetAttributeSpan can aquire this number of arguments
+    // by calling HasEnough() at the beginning of Execute() method.
+    auto input_attrs =
+        frame->value_stack().GetAttributeSpan(NUM_CONTAINER_ACCESS_ARGUMENTS);
+    auto container_trail = input_attrs[0];
+    trail = container_trail.Step(CelAttributeQualifier::Create(key),
+                                 frame->arena());
+
+    if (frame->unknowns_utility().CheckForUnknown(trail,
+                                                  /*use_partial=*/false)) {
+      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+          frame->arena(), UnknownAttributeSet({trail.attribute()}));
+
+      return {CelValue::CreateUnknownSet(unknown_set), trail};
+    }
+  }
+
+  for (const auto& value : input_args) {
+    if (value.IsError()) {
+      return {value, trail};
+    }
+  }
+
+  // Select steps can be applied to either maps or messages
+  switch (container.type()) {
+    case CelValue::Type::kMap: {
+      const CelMap* cel_map = container.MapOrDie();
+      return {LookupInMap(cel_map, key, frame->arena()), trail};
+    }
+    case CelValue::Type::kList: {
+      const CelList* cel_list = container.ListOrDie();
+      return {LookupInList(cel_list, key, frame->arena()), trail};
+    }
+    default: {
+      auto error = CreateErrorValue(
+          frame->arena(),
+          absl::StrCat("Unexpected container type for [] operation: ",
+                       CelValue::TypeName(key.type())));
+      return {error, trail};
+    }
+  }
+}
+
+absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
+  if (!frame->value_stack().HasEnough(NUM_CONTAINER_ACCESS_ARGUMENTS)) {
+    return absl::Status(
+        absl::StatusCode::kInternal,
+        "Insufficient arguments supplied for ContainerAccess-type expression");
+  }
+
+  auto result = PerformLookup(frame);
+  frame->value_stack().Pop(NUM_CONTAINER_ACCESS_ARGUMENTS);
+  frame->value_stack().Push(result.first, result.second);
+
+  return absl::OkStatus();
 }
 }  // namespace
 

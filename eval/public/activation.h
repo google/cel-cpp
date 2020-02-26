@@ -3,11 +3,13 @@
 
 #include <cstddef>
 #include <memory>
+#include <vector>
 
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/util/field_mask_util.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_producer.h"
@@ -39,6 +41,14 @@ class BaseActivation {
   // Check whether a select path is unknown.
   virtual bool IsPathUnknown(absl::string_view) const = 0;
 
+  // Return FieldMask defining the list of unknown paths.
+  virtual const google::protobuf::FieldMask unknown_paths() const = 0;
+
+  // Return the collection of attribute patterns that determine "unknown"
+  // values.
+  virtual const std::vector<CelAttributePattern>& unknown_attribute_patterns()
+      const = 0;
+
   virtual ~BaseActivation() {}
 };
 
@@ -68,7 +78,7 @@ class Activation : public BaseActivation {
   // Insert a function into the activation (ie a lazily bound function). Returns
   // a status if the name and shape of the function matches another one that has
   // already been bound.
-  cel_base::Status InsertFunction(std::unique_ptr<CelFunction> function);
+  absl::Status InsertFunction(std::unique_ptr<CelFunction> function);
 
   // Insert value into Activation.
   void InsertValue(absl::string_view name, const CelValue& value);
@@ -98,8 +108,22 @@ class Activation : public BaseActivation {
   }
 
   // Return FieldMask defining the list of unknown paths.
-  const google::protobuf::FieldMask unknown_paths() const {
+  const google::protobuf::FieldMask unknown_paths() const override {
     return unknown_paths_;
+  }
+
+  // Sets the collection of attribute patterns that will be recognized as
+  // "unknown" values during expression evaluation.
+  void set_unknown_attribute_patterns(
+      std::vector<CelAttributePattern> unknown_attribute_patterns) {
+    unknown_attribute_patterns_ = std::move(unknown_attribute_patterns);
+  }
+
+  // Return the collection of attribute patterns that determine "unknown"
+  // values.
+  const std::vector<CelAttributePattern>& unknown_attribute_patterns()
+      const override {
+    return unknown_attribute_patterns_;
   }
 
  private:
@@ -140,7 +164,9 @@ class Activation : public BaseActivation {
   absl::flat_hash_map<std::string, std::vector<std::unique_ptr<CelFunction>>>
       function_map_;
 
+  // TODO(issues/41) deprecate when unknowns support is done.
   google::protobuf::FieldMask unknown_paths_;
+  std::vector<CelAttributePattern> unknown_attribute_patterns_;
 };
 
 }  // namespace runtime

@@ -7,8 +7,8 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-::cel_base::Status RegisterExtensionFunctions(CelFunctionRegistry*) {
-  return ::cel_base::OkStatus();
+absl::Status RegisterExtensionFunctions(CelFunctionRegistry*) {
+  return absl::OkStatus();
 }
 
 }  // namespace runtime

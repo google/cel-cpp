@@ -1,10 +1,13 @@
 #include "eval/eval/evaluator_core.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "eval/compiler/flat_expr_builder.h"
-#include "eval/public/builtin_func_registrar.h"
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "eval/compiler/flat_expr_builder.h"
+#include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_attribute.h"
+#include "eval/public/cel_value.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -13,15 +16,16 @@ namespace runtime {
 
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using testing::_;
-using testing::Eq;  // Optional ::testing aliases. Remove if unused.
+using testing::Eq;
+using testing::NotNull;
 
 // Fake expression implementation
 // Pushes int64_t(0) on top of value stack.
 class FakeConstExpressionStep : public ExpressionStep {
  public:
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
     frame->value_stack().Push(CelValue::CreateInt64(0));
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   int64_t id() const override { return 0; }
@@ -33,19 +37,65 @@ class FakeConstExpressionStep : public ExpressionStep {
 // Increments argument on top of the stack.
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
     CelValue value = frame->value_stack().Peek();
     frame->value_stack().Pop(1);
     EXPECT_TRUE(value.IsInt64());
     int64_t val = value.Int64OrDie();
     frame->value_stack().Push(CelValue::CreateInt64(val + 1));
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
 };
+
+// Test Value Stack Push/Pop operation
+TEST(EvaluatorCoreTest, ValueStackPushPop) {
+  google::protobuf::Arena arena;
+  google::api::expr::v1alpha1::Expr expr;
+  expr.mutable_ident_expr()->set_name("name");
+  CelAttribute attribute(expr, {});
+  ValueStack stack(10);
+  stack.Push(CelValue::CreateInt64(1));
+  stack.Push(CelValue::CreateInt64(2), AttributeTrail());
+  stack.Push(CelValue::CreateInt64(3), AttributeTrail(expr, &arena));
+
+  ASSERT_EQ(stack.Peek().Int64OrDie(), 3);
+  ASSERT_THAT(stack.PeekAttribute().attribute(), NotNull());
+  ASSERT_EQ(*stack.PeekAttribute().attribute(), attribute);
+
+  stack.Pop(1);
+
+  ASSERT_EQ(stack.Peek().Int64OrDie(), 2);
+  ASSERT_EQ(stack.PeekAttribute().attribute(), nullptr);
+
+  stack.Pop(1);
+
+  ASSERT_EQ(stack.Peek().Int64OrDie(), 1);
+  ASSERT_EQ(stack.PeekAttribute().attribute(), nullptr);
+}
+
+// Test that inner stacks within value stack retain the equality of their sizes.
+TEST(EvaluatorCoreTest, ValueStackBalanced) {
+  ValueStack stack(10);
+  ASSERT_EQ(stack.size(), stack.attribute_size());
+
+  stack.Push(CelValue::CreateInt64(1));
+  ASSERT_EQ(stack.size(), stack.attribute_size());
+  stack.Push(CelValue::CreateInt64(2), AttributeTrail());
+  stack.Push(CelValue::CreateInt64(3), AttributeTrail());
+  ASSERT_EQ(stack.size(), stack.attribute_size());
+
+  stack.PopAndPush(CelValue::CreateInt64(4), AttributeTrail());
+  ASSERT_EQ(stack.size(), stack.attribute_size());
+  stack.PopAndPush(CelValue::CreateInt64(5));
+  ASSERT_EQ(stack.size(), stack.attribute_size());
+
+  stack.Pop(3);
+  ASSERT_EQ(stack.size(), stack.attribute_size());
+}
 
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionPath path;
@@ -60,12 +110,62 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
   Activation activation;
-  ExecutionFrame frame(&path, activation, nullptr, 0);
+  CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
+  ExecutionFrame frame(path, activation, 0, &state, false, false);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
   EXPECT_THAT(frame.Next(), Eq(path[2].get()));
   EXPECT_THAT(frame.Next(), Eq(nullptr));
+}
+
+// Test the set, get, and clear functions for "IterVar" on ExecutionFrame
+TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
+  const std::string test_key = "test_key";
+  const int64_t test_value = 0xF00F00;
+
+  Activation activation;
+  ExecutionPath path;
+  CelExpressionFlatEvaluationState state(path.size(), {test_key}, nullptr);
+  ExecutionFrame frame(path, activation, 0, &state, false, false);
+
+  CelValue original = CelValue::CreateInt64(test_value);
+  CelValue result;
+
+  ASSERT_OK(frame.PushIterFrame());
+
+  // Nothing is there yet
+  ASSERT_FALSE(frame.GetIterVar(test_key, &result));
+  ASSERT_OK(frame.SetIterVar(test_key, original));
+
+  // Make sure its now there
+  ASSERT_TRUE(frame.GetIterVar(test_key, &result));
+
+  int64_t result_value;
+  ASSERT_TRUE(result.GetValue(&result_value));
+  EXPECT_EQ(test_value, result_value);
+
+  // Test that it goes away properly
+  ASSERT_OK(frame.ClearIterVar(test_key));
+  ASSERT_FALSE(frame.GetIterVar(test_key, &result));
+
+  // Test that bogus names return the right thing
+  ASSERT_FALSE(frame.SetIterVar("foo", original).ok());
+  ASSERT_FALSE(frame.ClearIterVar("bar").ok());
+
+  // Test error conditions for accesses outside of comprehension.
+  ASSERT_OK(frame.SetIterVar(test_key, original));
+  ASSERT_OK(frame.PopIterFrame());
+
+  // Access on empty stack ok, but no value.
+  ASSERT_FALSE(frame.GetIterVar(test_key, &result));
+
+  // Pop empty stack
+  ASSERT_FALSE(frame.PopIterFrame().ok());
+
+  // Updates on empty stack not ok.
+  ASSERT_FALSE(frame.SetIterVar(test_key, original).ok());
+  ASSERT_FALSE(frame.ClearIterVar(test_key).ok());
 }
 
 TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
@@ -80,13 +180,13 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0);
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
 
   Activation activation;
   google::protobuf::Arena arena;
 
   auto status = impl.Evaluate(activation, &arena);
-  EXPECT_TRUE(status.ok());
+  EXPECT_OK(status);
 
   auto value = status.ValueOrDie();
   EXPECT_TRUE(value.IsInt64());
@@ -158,10 +258,10 @@ TEST(EvaluatorCoreTest, TraceTest) {
 
   FlatExprBuilder builder;
   auto builtin_status = RegisterBuiltinFunctions(builder.GetRegistry());
-  ASSERT_TRUE(builtin_status.ok());
+  ASSERT_OK(builtin_status);
   builder.set_shortcircuiting(false);
   auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_TRUE(build_status.ok());
+  ASSERT_OK(build_status);
 
   auto cel_expr = std::move(build_status.ValueOrDie());
 
@@ -191,9 +291,9 @@ TEST(EvaluatorCoreTest, TraceTest) {
       activation, &arena,
       [&](int64_t expr_id, const CelValue& value, google::protobuf::Arena* arena) {
         callback.Call(expr_id, value, arena);
-        return ::cel_base::OkStatus();
+        return absl::OkStatus();
       });
-  ASSERT_TRUE(eval_status.ok());
+  ASSERT_OK(eval_status);
 }
 
 }  // namespace runtime

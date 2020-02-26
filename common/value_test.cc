@@ -118,7 +118,8 @@ struct ValueTestCase {
     return Value::Kind::kNull;
   }
 
-  static ValueTestCase ForInline(const Value& value, const std::string& debug_string,
+  static ValueTestCase ForInline(const Value& value,
+                                 const std::string& debug_string,
                                  const std::string& type_debug_string) {
     return ValueTestCase{value, value,        value.kind(),
                          value, debug_string, type_debug_string,

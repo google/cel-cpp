@@ -19,29 +19,31 @@ class UnknownAttributeSet {
   UnknownAttributeSet& operator=(const UnknownAttributeSet& other) = default;
 
   UnknownAttributeSet() {}
-  UnknownAttributeSet(
-      const std::vector<std::shared_ptr<CelAttribute>>& attributes) {
+  UnknownAttributeSet(const std::vector<const CelAttribute*>& attributes) {
     attributes_.reserve(attributes.size());
     for (const auto& attr : attributes) {
       Add(attr);
     }
   }
 
-  std::vector<std::shared_ptr<CelAttribute>> attributes() const {
-    return attributes_;
+  UnknownAttributeSet(const UnknownAttributeSet& set1,
+                      const UnknownAttributeSet& set2)
+      : attributes_(set1.attributes()) {
+    attributes_.reserve(set1.attributes().size() + set2.attributes().size());
+    for (const auto& attr : set2.attributes()) {
+      Add(attr);
+    }
   }
+
+  std::vector<const CelAttribute*> attributes() const { return attributes_; }
 
   static UnknownAttributeSet Merge(const UnknownAttributeSet& set1,
                                    const UnknownAttributeSet& set2) {
-    UnknownAttributeSet attr_set = set1;
-    for (const auto& attr : set2.attributes()) {
-      attr_set.Add(attr);
-    }
-    return attr_set;
+    return UnknownAttributeSet(set1, set2);
   }
 
  private:
-  void Add(std::shared_ptr<CelAttribute> attribute) {
+  void Add(const CelAttribute* attribute) {
     if (!attribute) {
       return;
     }
@@ -54,7 +56,7 @@ class UnknownAttributeSet {
   }
 
   // Attribute container.
-  std::vector<std::shared_ptr<CelAttribute>> attributes_;
+  std::vector<const CelAttribute*> attributes_;
 };
 
 }  // namespace runtime

@@ -1,7 +1,9 @@
 #include "eval/eval/logic_step.h"
 
-#include "eval/eval/expression_step_base.h"
 #include "absl/strings/str_cat.h"
+#include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/unknown_attribute_set.h"
 
 namespace google {
 namespace api {
@@ -20,10 +22,10 @@ class LogicalOpStep : public ExpressionStepBase {
     shortcircuit_ = (op_type_ == OpType::OR);
   }
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  cel_base::Status Calculate(ExecutionFrame* frame, absl::Span<const CelValue> args,
+  absl::Status Calculate(ExecutionFrame* frame, absl::Span<const CelValue> args,
                          CelValue* result) const {
     bool bool_args[2];
     bool has_bool_args[2];
@@ -32,7 +34,7 @@ class LogicalOpStep : public ExpressionStepBase {
       has_bool_args[i] = args[i].GetValue(bool_args + i);
       if (has_bool_args[i] && shortcircuit_ == bool_args[i]) {
         *result = CelValue::CreateBool(bool_args[i]);
-        return cel_base::OkStatus();
+        return absl::OkStatus();
       }
     }
 
@@ -40,34 +42,51 @@ class LogicalOpStep : public ExpressionStepBase {
       switch (op_type_) {
         case OpType::AND:
           *result = CelValue::CreateBool(bool_args[0] && bool_args[1]);
-          return cel_base::OkStatus();
+          return absl::OkStatus();
           break;
         case OpType::OR:
           *result = CelValue::CreateBool(bool_args[0] || bool_args[1]);
-          return cel_base::OkStatus();
+          return absl::OkStatus();
           break;
+      }
+    }
+
+    // As opposed to regular function, logical operation treat Unknowns with
+    // higher precedence than error. This is due to the fact that after Unknown
+    // is resolved to actual value, it may shortcircuit and thus hide the error.
+    if (frame->enable_unknowns()) {
+      // Check if unknown?
+      const UnknownSet* unknown_set =
+          frame->unknowns_utility().MergeUnknowns(args,
+                                                  /*initial_set=*/nullptr);
+
+      if (unknown_set) {
+        *result = CelValue::CreateUnknownSet(unknown_set);
+        return absl::OkStatus();
       }
     }
 
     if (args[0].IsError()) {
       *result = args[0];
+      return absl::OkStatus();
     } else if (args[1].IsError()) {
       *result = args[1];
-    } else {
-      *result = CreateNoMatchingOverloadError(frame->arena());
+      return absl::OkStatus();
     }
 
-    return cel_base::OkStatus();
+    // Fallback.
+    *result = CreateNoMatchingOverloadError(frame->arena());
+    return absl::OkStatus();
   }
 
   const OpType op_type_;
   bool shortcircuit_;
 };
 
-cel_base::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
   // Must have 2 or more values on the stack.
   if (!frame->value_stack().HasEnough(2)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
 
   // Create Span object that contains input arguments to the function.
@@ -87,6 +106,9 @@ cel_base::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 }
 
 }  // namespace
+
+// TODO(issues/41) Make sure Unknowns are properly supported by ternary
+// operation.
 
 // Factory method for "And" Execution step
 cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {

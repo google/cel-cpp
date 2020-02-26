@@ -66,6 +66,7 @@ class UnescapeTest : public testing::TestWithParam<TestInfo> {};
 
 TEST_P(UnescapeTest, Unescape) {
   const TestInfo& test_info = GetParam();
+  /*
   ::testing::internal::ColoredPrintf(::testing::internal::COLOR_GREEN,
                                      "[          ]");
   ::testing::internal::ColoredPrintf(::testing::internal::COLOR_DEFAULT,
@@ -82,6 +83,7 @@ TEST_P(UnescapeTest, Unescape) {
     ::testing::internal::ColoredPrintf(::testing::internal::COLOR_YELLOW,
                                        "  Expecting ERROR\n");
   }
+  */
 
   auto result = unescape(test_info.I, test_info.is_bytes);
   if (test_info.O == EXPECT_ERROR) {

@@ -1,4 +1,5 @@
 #include "eval/eval/create_list_step.h"
+
 #include "eval/eval/container_backed_list_impl.h"
 
 namespace google {
@@ -13,32 +14,48 @@ class CreateListStep : public ExpressionStepBase {
   CreateListStep(int64_t expr_id, int list_size)
       : ExpressionStepBase(expr_id), list_size_(list_size) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   int list_size_;
 };
 
-cel_base::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   if (list_size_ < 0) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
+    return absl::Status(absl::StatusCode::kInternal,
                         "CreateListStep: list size is <0");
   }
 
   if (!frame->value_stack().HasEnough(list_size_)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
-                        "CreateListStep: stack undeflow");
+    return absl::Status(absl::StatusCode::kInternal,
+                        "CreateListStep: stack underflow");
   }
 
   auto args = frame->value_stack().GetSpan(list_size_);
 
-  CelList* cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
-      frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+  CelValue result;
+
+  const UnknownSet* unknown_set = nullptr;
+  if (frame->enable_unknowns()) {
+    unknown_set = frame->unknowns_utility().MergeUnknowns(
+        args, frame->value_stack().GetAttributeSpan(list_size_),
+        /*initial_set=*/nullptr,
+        /*use_partial=*/true);
+    if (unknown_set != nullptr) {
+      result = CelValue::CreateUnknownSet(unknown_set);
+    }
+  }
+
+  if (unknown_set == nullptr) {
+    CelList* cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
+        frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+    result = CelValue::CreateList(cel_list);
+  }
 
   frame->value_stack().Pop(list_size_);
-  frame->value_stack().Push(CelValue::CreateList(cel_list));
+  frame->value_stack().Push(result);
 
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace

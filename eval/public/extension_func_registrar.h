@@ -10,7 +10,7 @@ namespace expr {
 namespace runtime {
 
 // Register generic/widely used extension functions.
-cel_base::Status RegisterExtensionFunctions(CelFunctionRegistry* registry);
+absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry);
 
 }  // namespace runtime
 }  // namespace expr

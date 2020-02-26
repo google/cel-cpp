@@ -5,7 +5,6 @@
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
 #include "parser/visitor.h"
 #include "antlr4-runtime.h"
-#include "base/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -47,15 +46,15 @@ cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
   try {
     root = parser.start();
   } catch (ParseCancellationException& e) {
-    return cel_base::CancelledError(e.what());
+    return absl::CancelledError(e.what());
   } catch (std::exception& e) {
-    return cel_base::AbortedError(e.what());
+    return absl::AbortedError(e.what());
   }
 
   Expr expr = visitor.visit(root).as<Expr>();
 
   if (visitor.hasErrored()) {
-    return cel_base::InvalidArgumentError(visitor.errorMessage());
+    return absl::InvalidArgumentError(visitor.errorMessage());
   }
 
   // root is deleted as part of the parser context

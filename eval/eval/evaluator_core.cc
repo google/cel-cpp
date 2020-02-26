@@ -1,31 +1,147 @@
 #include "eval/eval/evaluator_core.h"
 
+#include "absl/status/status.h"
+#include "absl/types/optional.h"
+#include "eval/public/cel_value.h"
+#include "base/status_macros.h"
+#include "base/statusor.h"
+
 namespace google {
 namespace api {
 namespace expr {
 namespace runtime {
+namespace {
 
-using google::api::expr::v1alpha1::Expr;
+absl::Status CheckIterAccess(CelExpressionFlatEvaluationState* state,
+                             const std::string& name) {
+  if (state->iter_stack().empty()) {
+    return absl::Status(
+        absl::StatusCode::kInternal,
+        absl::StrCat(
+            "Attempted to update iteration variable outside of comprehension.'",
+            name, "'"));
+  }
+  auto iter = state->iter_variable_names().find(name);
+  if (iter == state->iter_variable_names().end()) {
+    return absl::Status(
+        absl::StatusCode::kInternal,
+        absl::StrCat("Attempted to set unknown variable '", name, "'"));
+  }
+
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+void ValueStack::Clear() {
+  for (auto& v : stack_) {
+    v = CelValue();
+  }
+  for (auto& attr : attribute_stack_) {
+    attr = AttributeTrail();
+  }
+
+  current_size_ = 0;
+}
+
+CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
+    size_t value_stack_size, const std::set<std::string>& iter_variable_names,
+    google::protobuf::Arena* arena)
+    : value_stack_(value_stack_size),
+      iter_variable_names_(iter_variable_names),
+      arena_(arena) {}
+
+void CelExpressionFlatEvaluationState::Reset() {
+  iter_stack_.clear();
+  value_stack_.Clear();
+}
 
 const ExpressionStep* ExecutionFrame::Next() {
-  size_t end_pos = execution_path_->size();
+  size_t end_pos = execution_path_.size();
 
-  if (pc_ < end_pos) return (*execution_path_)[pc_++].get();
+  if (pc_ < end_pos) return execution_path_[pc_++].get();
   if (pc_ > end_pos) {
     GOOGLE_LOG(ERROR) << "Attempting to step beyond the end of execution path.";
   }
   return nullptr;
 }
 
+absl::Status ExecutionFrame::PushIterFrame() {
+  state_->iter_stack().push_back({});
+  return absl::OkStatus();
+}
+
+absl::Status ExecutionFrame::PopIterFrame() {
+  if (state_->iter_stack().empty()) {
+    return absl::InternalError("Loop stack underflow.");
+  }
+  state_->iter_stack().pop_back();
+  return absl::OkStatus();
+}
+
+absl::Status ExecutionFrame::SetIterVar(const std::string& name,
+                                        const CelValue& val) {
+  RETURN_IF_ERROR(CheckIterAccess(state_, name));
+  state_->IterStackTop()[name] = val;
+
+  return absl::OkStatus();
+}
+
+absl::Status ExecutionFrame::ClearIterVar(const std::string& name) {
+  RETURN_IF_ERROR(CheckIterAccess(state_, name));
+  state_->IterStackTop()[name] = absl::nullopt;
+  return absl::OkStatus();
+}
+
+bool ExecutionFrame::GetIterVar(const std::string& name, CelValue* val) const {
+  absl::Status status = CheckIterAccess(state_, name);
+  if (!status.ok()) {
+    return false;
+  }
+
+  for (auto iter = state_->iter_stack().rbegin();
+       iter != state_->iter_stack().rend(); ++iter) {
+    auto& frame = *iter;
+    auto frame_iter = frame.find(name);
+    if (frame_iter != frame.end()) {
+      if (frame_iter->second.has_value()) {
+        *val = frame_iter->second.value();
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
+    google::protobuf::Arena* arena) const {
+  return absl::make_unique<CelExpressionFlatEvaluationState>(
+      path_.size(), iter_variable_names_, arena);
+}
+
 cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
-    const BaseActivation& activation, google::protobuf::Arena* arena) const {
-  return Trace(activation, arena, CelEvaluationListener());
+    const BaseActivation& activation, CelEvaluationState* state) const {
+  return Trace(activation, state, CelEvaluationListener());
 }
 
 cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
-    const BaseActivation& activation, google::protobuf::Arena* arena,
+    const BaseActivation& activation, CelEvaluationState* _state,
     CelEvaluationListener callback) const {
-  ExecutionFrame frame(&path_, activation, arena, max_iterations_);
+  auto state = down_cast<CelExpressionFlatEvaluationState*>(_state);
+  state->Reset();
+
+  // Using both unknown attribute patterns and unknown paths via FieldMask is
+  // not allowed.
+  if (activation.unknown_paths().paths_size() != 0 &&
+      !activation.unknown_attribute_patterns().empty()) {
+    return absl::InvalidArgumentError(
+        "Attempting to evaluate expression with both unknown_paths and "
+        "unknown_attribute_patterns set in the Activation");
+  }
+
+  ExecutionFrame frame(path_, activation, max_iterations_, state,
+                       enable_unknowns_, enable_unknown_function_results_);
 
   ValueStack* stack = &frame.value_stack();
   size_t initial_stack_size = stack->size();
@@ -48,7 +164,7 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
                     "Try to disable short-circuiting.";
       continue;
     }
-    auto status2 = callback(expr->id(), stack->Peek(), arena);
+    auto status2 = callback(expr->id(), stack->Peek(), state->arena());
     if (!status2.ok()) {
       return status2;
     }
@@ -56,7 +172,7 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
 
   size_t final_stack_size = stack->size();
   if (initial_stack_size + 1 != final_stack_size || final_stack_size == 0) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
+    return absl::Status(absl::StatusCode::kInternal,
                         "Stack error during evaluation");
   }
   CelValue value = stack->Peek();

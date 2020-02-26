@@ -10,7 +10,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-cel_base::Status RegisterBuiltinFunctions(
+absl::Status RegisterBuiltinFunctions(
     CelFunctionRegistry* registry,
     const InterpreterOptions& options = InterpreterOptions());
 

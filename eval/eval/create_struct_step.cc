@@ -1,10 +1,10 @@
 #include "eval/eval/create_struct_step.h"
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
+#include "absl/strings/substitute.h"
 #include "eval/eval/container_backed_map_impl.h"
 #include "eval/eval/field_access.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "absl/strings/substitute.h"
-#include "base/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -13,12 +13,12 @@ namespace runtime {
 
 namespace {
 
-using ::google::protobuf::Message;
-using ::google::protobuf::MessageFactory;
 using ::google::protobuf::Arena;
 using ::google::protobuf::Descriptor;
 using ::google::protobuf::DescriptorPool;
 using ::google::protobuf::FieldDescriptor;
+using ::google::protobuf::Message;
+using ::google::protobuf::MessageFactory;
 
 class CreateStructStepForMessage : public ExpressionStepBase {
  public:
@@ -32,10 +32,10 @@ class CreateStructStepForMessage : public ExpressionStepBase {
         descriptor_(descriptor),
         entries_(std::move(entries)) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  cel_base::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
   const Descriptor* descriptor_;
   std::vector<FieldEntry> entries_;
@@ -46,19 +46,30 @@ class CreateStructStepForMap : public ExpressionStepBase {
   CreateStructStepForMap(int64_t expr_id, size_t entry_count)
       : ExpressionStepBase(expr_id), entry_count_(entry_count) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  cel_base::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
   size_t entry_count_;
 };
 
-::cel_base::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
-                                                      CelValue* result) const {
+absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
+                                                    CelValue* result) const {
   int entries_size = entries_.size();
 
   absl::Span<const CelValue> args = frame->value_stack().GetSpan(entries_size);
+
+  if (frame->enable_unknowns()) {
+    auto unknown_set = frame->unknowns_utility().MergeUnknowns(
+        args, frame->value_stack().GetAttributeSpan(entries_size),
+        /*initial_set=*/nullptr,
+        /*use_partial=*/true);
+    if (unknown_set != nullptr) {
+      *result = CelValue::CreateUnknownSet(unknown_set);
+      return absl::OkStatus();
+    }
+  }
 
   const Message* prototype =
       MessageFactory::generated_factory()->GetPrototype(descriptor_);
@@ -70,14 +81,14 @@ class CreateStructStepForMap : public ExpressionStepBase {
     *result = CreateErrorValue(
         frame->arena(),
         absl::Substitute("Failed to create message $0", descriptor_->name()));
-    return ::cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   int index = 0;
   for (const auto& entry : entries_) {
     const CelValue& arg = args[index++];
 
-    ::cel_base::Status status = ::cel_base::OkStatus();
+    absl::Status status = absl::OkStatus();
 
     if (entry.field->is_map()) {
       constexpr int kKeyField = 1;
@@ -85,7 +96,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
 
       const CelMap* cel_map;
       if (!arg.GetValue<const CelMap*>(&cel_map) || cel_map == nullptr) {
-        status = cel_base::InvalidArgumentError(absl::Substitute(
+        status = absl::InvalidArgumentError(absl::Substitute(
             "Failed to create message $0, field $1: value is not CelMap",
             descriptor_->name(), entry.field->name()));
         break;
@@ -94,7 +105,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
       auto entry_descriptor = entry.field->message_type();
 
       if (entry_descriptor == nullptr) {
-        status = cel_base::InvalidArgumentError(
+        status = absl::InvalidArgumentError(
             absl::Substitute("Failed to create message $0, field $1: failed to "
                              "find map entry descriptor",
                              descriptor_->name(), entry.field->name()));
@@ -107,14 +118,14 @@ class CreateStructStepForMap : public ExpressionStepBase {
           entry_descriptor->FindFieldByNumber(kValueField);
 
       if (key_field_descriptor == nullptr) {
-        status = cel_base::InvalidArgumentError(
+        status = absl::InvalidArgumentError(
             absl::Substitute("Failed to create message $0, field $1: failed to "
                              "find key field descriptor",
                              descriptor_->name(), entry.field->name()));
         break;
       }
       if (value_field_descriptor == nullptr) {
-        status = cel_base::InvalidArgumentError(
+        status = absl::InvalidArgumentError(
             absl::Substitute("Failed to create message $0, field $1: failed to "
                              "find value field descriptor",
                              descriptor_->name(), entry.field->name()));
@@ -127,7 +138,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
 
         auto value = (*cel_map)[key];
         if (!value.has_value()) {
-          status = cel_base::InvalidArgumentError(absl::Substitute(
+          status = absl::InvalidArgumentError(absl::Substitute(
               "Failed to create message $0, field $1: Error serializing CelMap",
               descriptor_->name(), entry.field->name()));
           break;
@@ -153,7 +164,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
             absl::Substitute(
                 "Failed to create message $0: value $1 is not CelList",
                 descriptor_->name(), entry.field->name()));
-        return ::cel_base::OkStatus();
+        return absl::OkStatus();
       }
 
       for (int i = 0; i < cel_list->size(); i++) {
@@ -169,25 +180,24 @@ class CreateStructStepForMap : public ExpressionStepBase {
           frame->arena(),
           absl::Substitute("Failed to create message $0: reason $1",
                            descriptor_->name(), status.ToString()));
-      return ::cel_base::OkStatus();
+      return absl::OkStatus();
     }
   }
 
   *result = CelValue::CreateMessage(msg, frame->arena());
 
-  return ::cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
-::cel_base::Status CreateStructStepForMessage::Evaluate(
-    ExecutionFrame* frame) const {
+absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < entries_.size()) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
+    return absl::Status(absl::StatusCode::kInternal,
                         "CreateStructStepForMessage: stack undeflow");
   }
 
   CelValue result;
 
-  ::cel_base::Status status = DoEvaluate(frame, &result);
+  absl::Status status = DoEvaluate(frame, &result);
   if (!status.ok()) {
     return status;
   }
@@ -195,13 +205,23 @@ class CreateStructStepForMap : public ExpressionStepBase {
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(result);
 
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
-::cel_base::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
-                                                  CelValue* result) const {
+absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
+                                                CelValue* result) const {
   absl::Span<const CelValue> args =
       frame->value_stack().GetSpan(2 * entry_count_);
+
+  if (frame->enable_unknowns()) {
+    const UnknownSet* unknown_set = frame->unknowns_utility().MergeUnknowns(
+        args, frame->value_stack().GetAttributeSpan(args.size()),
+        /*initial_set=*/nullptr, true);
+    if (unknown_set != nullptr) {
+      *result = CelValue::CreateUnknownSet(unknown_set);
+      return absl::OkStatus();
+    }
+  }
 
   std::vector<std::pair<CelValue, CelValue>> map_entries;
   map_entries.reserve(entry_count_);
@@ -216,7 +236,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
   if (cel_map == nullptr) {
     *result = CreateErrorValue(frame->arena(), "Failed to create map");
 
-    return ::cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
   *result = CelValue::CreateMap(cel_map.get());
@@ -224,18 +244,18 @@ class CreateStructStepForMap : public ExpressionStepBase {
   // Pass object ownership to Arena.
   frame->arena()->Own(cel_map.release());
 
-  return ::cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
-::cel_base::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
+absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < 2 * entry_count_) {
-    return cel_base::Status(cel_base::StatusCode::kInternal,
+    return absl::Status(absl::StatusCode::kInternal,
                         "CreateStructStepForMap: stack undeflow");
   }
 
   CelValue result;
 
-  ::cel_base::Status status = DoEvaluate(frame, &result);
+  absl::Status status = DoEvaluate(frame, &result);
   if (!status.ok()) {
     return status;
   }
@@ -243,7 +263,7 @@ class CreateStructStepForMap : public ExpressionStepBase {
   frame->value_stack().Pop(2 * entry_count_);
   frame->value_stack().Push(result);
 
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -260,20 +280,20 @@ cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
             create_struct_expr->message_name());
 
     if (desc == nullptr) {
-      return cel_base::InvalidArgumentError(
+      return absl::InvalidArgumentError(
           "Error configuring message creation: message descriptor not found");
     }
 
     for (const auto& entry : create_struct_expr->entries()) {
       if (entry.field_key().empty()) {
-        return cel_base::InvalidArgumentError(
+        return absl::InvalidArgumentError(
             "Error configuring message creation: field name missing");
       }
 
       const FieldDescriptor* field_desc =
           desc->FindFieldByName(entry.field_key());
       if (field_desc == nullptr) {
-        return cel_base::InvalidArgumentError(
+        return absl::InvalidArgumentError(
             "Error configuring message creation: field name not found");
       }
       entries.push_back({field_desc});

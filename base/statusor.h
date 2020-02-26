@@ -70,7 +70,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
-#include "base/status.h"
 #include "base/statusor_internals.h"
 
 namespace cel_base {
@@ -144,8 +143,8 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
   // REQUIRES: !status.ok(). This requirement is DCHECKed.
   // In optimized builds, passing OkStatus() here will have the effect
   // of passing INTERNAL as a fallback.
-  StatusOr(const Status& status);
-  StatusOr& operator=(const Status& status);
+  StatusOr(const absl::Status& status);
+  StatusOr& operator=(const absl::Status& status);
 
   // Similar to the `const T&` overload.
   //
@@ -153,8 +152,8 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
   StatusOr(T&& value);
 
   // RValue versions of the operations declared above.
-  StatusOr(Status&& status);
-  StatusOr& operator=(Status&& status);
+  StatusOr(absl::Status&& status);
+  StatusOr& operator=(absl::Status&& status);
 
   // Returns this->ok()
   explicit operator bool() const { return ok(); }
@@ -164,8 +163,8 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
 
   // Returns a reference to our status. If this contains a T, then
   // returns OkStatus().
-  const Status& status() const&;
-  Status status() &&;
+  const absl::Status& status() const&;
+  absl::Status status() &&;
 
   // Returns a reference to our current value, or CHECK-fails if !this->ok(). If
   // you have already checked the status using this->ok() or operator bool(),
@@ -237,16 +236,16 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
 // Implementation details for StatusOr<T>
 
 template <typename T>
-StatusOr<T>::StatusOr() : Base(Status(UNKNOWN, "")) {}
+StatusOr<T>::StatusOr() : Base(absl::Status(absl::StatusCode::kUnknown, "")) {}
 
 template <typename T>
 StatusOr<T>::StatusOr(const T& value) : Base(value) {}
 
 template <typename T>
-StatusOr<T>::StatusOr(const Status& status) : Base(status) {}
+StatusOr<T>::StatusOr(const absl::Status& status) : Base(status) {}
 
 template <typename T>
-StatusOr<T>& StatusOr<T>::operator=(const Status& status) {
+StatusOr<T>& StatusOr<T>::operator=(const absl::Status& status) {
   this->Assign(status);
   return *this;
 }
@@ -255,10 +254,10 @@ template <typename T>
 StatusOr<T>::StatusOr(T&& value) : Base(std::move(value)) {}
 
 template <typename T>
-StatusOr<T>::StatusOr(Status&& status) : Base(std::move(status)) {}
+StatusOr<T>::StatusOr(absl::Status&& status) : Base(std::move(status)) {}
 
 template <typename T>
-StatusOr<T>& StatusOr<T>::operator=(Status&& status) {
+StatusOr<T>& StatusOr<T>::operator=(absl::Status&& status) {
   this->Assign(std::move(status));
   return *this;
 }
@@ -295,12 +294,12 @@ inline StatusOr<T>& StatusOr<T>::operator=(StatusOr<U>&& other) {
 }
 
 template <typename T>
-const Status& StatusOr<T>::status() const& {
+const absl::Status& StatusOr<T>::status() const& {
   return this->status_;
 }
 template <typename T>
-Status StatusOr<T>::status() && {
-  return ok() ? OkStatus() : std::move(this->status_);
+absl::Status StatusOr<T>::status() && {
+  return ok() ? absl::OkStatus() : std::move(this->status_);
 }
 
 template <typename T>

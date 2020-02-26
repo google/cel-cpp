@@ -4,6 +4,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 #include "internal/proto_util.h"
@@ -40,6 +41,8 @@ constexpr char kErrNoMatchingOverload[] = "No matching overloads found";
 constexpr char kErrNoSuchKey[] = "Key not found in map";
 constexpr absl::string_view kErrUnknownValue = "Unknown value ";
 constexpr absl::string_view kPayloadUrlUnknownPath = "unknown_path";
+constexpr absl::string_view kPayloadUrlUnknownFunctionResult =
+    "cel_is_unknown_function_result";
 
 // Forward declaration for google.protobuf.Value
 CelValue ValueFromMessage(const Value* value, Arena* arena);
@@ -368,7 +371,7 @@ std::string CelValue::TypeName(Type value_type) {
     case Type::kMap:
       return "CelMap";
     case Type::kUnknownSet:
-      return "UnknownAttributeSet";
+      return "UnknownSet";
     case Type::kError:
       return "CelError";
     default:
@@ -377,14 +380,14 @@ std::string CelValue::TypeName(Type value_type) {
 }
 
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
-                          cel_base::StatusCode error_code, int) {
+                          absl::StatusCode error_code, int) {
   CelError* error = Arena::Create<CelError>(arena, error_code, message);
   return CelValue::CreateError(error);
 }
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena) {
   return CreateErrorValue(arena, kErrNoMatchingOverload,
-                          cel_base::StatusCode::kUnknown);
+                          absl::StatusCode::kUnknown);
 }
 
 bool CheckNoMatchingOverloadError(CelValue value) {
@@ -393,11 +396,11 @@ bool CheckNoMatchingOverloadError(CelValue value) {
 }
 
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
-  return CreateErrorValue(arena, "no_such_field", cel_base::StatusCode::kNotFound);
+  return CreateErrorValue(arena, "no_such_field", absl::StatusCode::kNotFound);
 }
 
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view) {
-  return CreateErrorValue(arena, kErrNoSuchKey, cel_base::StatusCode::kNotFound);
+  return CreateErrorValue(arena, kErrNoSuchKey, absl::StatusCode::kNotFound);
 }
 
 bool CheckNoSuchKeyError(CelValue value) {
@@ -407,9 +410,9 @@ bool CheckNoSuchKeyError(CelValue value) {
 CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
                                  absl::string_view unknown_path) {
   CelError* error =
-      Arena::Create<CelError>(arena, cel_base::StatusCode::kUnavailable,
+      Arena::Create<CelError>(arena, absl::StatusCode::kUnavailable,
                               absl::StrCat(kErrUnknownValue, unknown_path));
-  error->SetPayload(kPayloadUrlUnknownPath, cel_base::StatusCord(unknown_path));
+  error->SetPayload(kPayloadUrlUnknownPath, absl::Cord(unknown_path));
   return CelValue::CreateError(error);
 }
 
@@ -417,7 +420,7 @@ bool IsUnknownValueError(const CelValue& value) {
   // TODO(issues/41): replace with the implementation of go/cel-known-unknowns
   if (!value.IsError()) return false;
   const CelError* error = value.ErrorOrDie();
-  if (error && error->code() == cel_base::StatusCode::kUnavailable) {
+  if (error && error->code() == absl::StatusCode::kUnavailable) {
     auto path = error->GetPayload(kPayloadUrlUnknownPath);
     return path.has_value();
   }
@@ -427,12 +430,33 @@ bool IsUnknownValueError(const CelValue& value) {
 std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value) {
   // TODO(issues/41): replace with the implementation of go/cel-known-unknowns
   const CelError* error = value.ErrorOrDie();
-  if (error && error->code() == cel_base::StatusCode::kUnavailable) {
+  if (error && error->code() == absl::StatusCode::kUnavailable) {
     auto path = error->GetPayload(kPayloadUrlUnknownPath);
     if (path.has_value()) return {std::string(path.value())};
   }
   GOOGLE_LOG(FATAL) << "The value is not an unknown path error.";  // Crash ok
   return {};
+}
+
+CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
+                                          absl::string_view help_message) {
+  CelError* error = Arena::Create<CelError>(
+      arena, absl::StatusCode::kUnavailable,
+      absl::StrCat("Unknown function result: ", help_message));
+  error->SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
+  return CelValue::CreateError(error);
+}
+
+bool IsUnknownFunctionResult(const CelValue& value) {
+  if (!value.IsError()) {
+    return false;
+  }
+  const CelError* error = value.ErrorOrDie();
+  if (error == nullptr || error->code() != absl::StatusCode::kUnavailable) {
+    return false;
+  }
+  auto payload = error->GetPayload(kPayloadUrlUnknownFunctionResult);
+  return payload.has_value() && payload.value() == "true";
 }
 
 }  // namespace runtime

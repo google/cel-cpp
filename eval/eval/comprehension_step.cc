@@ -1,5 +1,7 @@
 #include "eval/eval/comprehension_step.h"
+
 #include "absl/strings/str_cat.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -66,7 +68,7 @@ void ComprehensionNextStep::set_error_jump_offset(int offset) {
 //
 // Stack on error:
 // 0. error
-cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   enum {
     POS_PREVIOUS_LOOP_STEP,
     POS_ITER_RANGE,
@@ -75,7 +77,7 @@ cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     POS_LOOP_STEP,
   };
   if (!frame->value_stack().HasEnough(5)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   auto state = frame->value_stack().GetSpan(5);
   CelValue iter_range = state[POS_ITER_RANGE];
@@ -95,19 +97,22 @@ cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
         "ComprehensionNextStep: want int64_t, got ",
         CelValue::TypeName(current_index_value.type())
     );
-    return cel_base::Status(cel_base::StatusCode::kInternal, message);
+    return absl::Status(absl::StatusCode::kInternal, message);
   }
   auto increment_status = frame->IncrementIterations();
   if (!increment_status.ok()) {
     return increment_status;
   }
   int64_t current_index = current_index_value.Int64OrDie();
+  if (current_index == -1) {
+    RETURN_IF_ERROR(frame->PushIterFrame());
+  }
   CelValue loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  frame->iter_vars()[accu_var_] = loop_step;
+  RETURN_IF_ERROR(frame->SetIterVar(accu_var_, loop_step));
   if (current_index >= cel_list->size() - 1) {
-    frame->iter_vars().erase(iter_var_);
+    RETURN_IF_ERROR(frame->ClearIterVar(iter_var_));
     return frame->JumpTo(jump_offset_);
   }
   frame->value_stack().Push(iter_range);
@@ -115,8 +120,8 @@ cel_base::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   CelValue current_value = (*cel_list)[current_index];
   frame->value_stack().Push(CelValue::CreateInt64(current_index));
   frame->value_stack().Push(current_value);
-  frame->iter_vars()[iter_var_] = current_value;
-  return cel_base::OkStatus();
+  RETURN_IF_ERROR(frame->SetIterVar(iter_var_, current_value));
+  return absl::OkStatus();
 }
 
 ComprehensionCondStep::ComprehensionCondStep(const std::string&,
@@ -136,9 +141,9 @@ void ComprehensionCondStep::set_jump_offset(int offset) {
 // Stack size before: 5.
 // Stack size after: 4.
 // Stack size on break: 1.
-cel_base::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(5)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   CelValue loop_condition_value = frame->value_stack().Peek();
   if (!loop_condition_value.IsBool()) {
@@ -146,16 +151,16 @@ cel_base::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
         "ComprehensionCondStep:: want bool, got ",
         CelValue::TypeName(loop_condition_value.type())
     );
-    return cel_base::Status(cel_base::StatusCode::kInternal, message);
+    return absl::Status(absl::StatusCode::kInternal, message);
   }
   bool loop_condition = loop_condition_value.BoolOrDie();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     frame->value_stack().Pop(3);  // current_value, current_index, iter_range
-    frame->iter_vars().erase(iter_var_);
+    RETURN_IF_ERROR(frame->ClearIterVar(iter_var_));
     return frame->JumpTo(jump_offset_);
   }
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 ComprehensionFinish::ComprehensionFinish(const std::string& accu_var, const std::string&,
@@ -166,38 +171,38 @@ ComprehensionFinish::ComprehensionFinish(const std::string& accu_var, const std:
 //
 // Stack size before: 2.
 // Stack size after: 1.
-cel_base::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
+absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(2)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   CelValue result = frame->value_stack().Peek();
   frame->value_stack().Pop(1);  // result
   frame->value_stack().PopAndPush(result);
-  frame->iter_vars().erase(accu_var_);
-  return cel_base::OkStatus();
+  RETURN_IF_ERROR(frame->PopIterFrame());
+  return absl::OkStatus();
 }
 
 class ListKeysStep : public ExpressionStepBase {
  public:
   ListKeysStep(int64_t expr_id) : ExpressionStepBase(expr_id, false) {}
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override;
+  absl::Status Evaluate(ExecutionFrame* frame) const override;
 };
 
 std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id) {
   return absl::make_unique<ListKeysStep>(expr_id);
 }
 
-cel_base::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
+absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
-    return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+    return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   CelValue map_value = frame->value_stack().Peek();
   if (map_value.IsMap()) {
     const CelMap* cel_map = map_value.MapOrDie();
     frame->value_stack().PopAndPush(CelValue::CreateList(cel_map->ListKeys()));
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
-  return cel_base::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace runtime

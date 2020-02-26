@@ -506,14 +506,18 @@ class Object : public Container {
 
 Value Value::FromDouble(double value) { return Create<kDouble>(value); }
 Value Value::FromString(absl::string_view value) { return Create<kStr>(value); }
-Value Value::FromString(const std::string& value) { return Create<kStr>(value); }
+Value Value::FromString(const std::string& value) {
+  return Create<kStr>(value);
+}
 Value Value::FromString(std::string&& value) {
   return Create<kStr>(std::move(value));
 }
 Value Value::FromBytes(absl::string_view value) {
   return Create<kBytes>(value);
 }
-Value Value::FromBytes(const std::string& value) { return Create<kBytes>(value); }
+Value Value::FromBytes(const std::string& value) {
+  return Create<kBytes>(value);
+}
 Value Value::FromBytes(std::string&& value) {
   return Create<kBytes>(std::move(value));
 }

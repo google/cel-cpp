@@ -22,7 +22,7 @@ class ActivationFunctionProviderImpl : public CelFunctionProvider {
     for (const CelFunction* overload : overloads) {
       if (overload->descriptor().ShapeMatches(descriptor)) {
         if (matching_overload != nullptr) {
-          return cel_base::Status(cel_base::StatusCode::kInvalidArgument,
+          return absl::Status(absl::StatusCode::kInvalidArgument,
                               "Couldn't resolve function.");
         }
         matching_overload = overload;

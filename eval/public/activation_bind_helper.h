@@ -31,9 +31,9 @@ namespace runtime {
 //  "name", with string value of "John Doe"
 //  "age", with int value of 42.
 //
-::cel_base::Status BindProtoToActivation(const google::protobuf::Message* message,
-                                     google::protobuf::Arena* arena,
-                                     Activation* activation);
+absl::Status BindProtoToActivation(const google::protobuf::Message* message,
+                                   google::protobuf::Arena* arena,
+                                   Activation* activation);
 
 }  // namespace runtime
 }  // namespace expr

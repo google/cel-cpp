@@ -18,24 +18,18 @@
 
 #include <ostream>
 
-#include "base/status.h"
-
 namespace cel_base {
 
 namespace statusor_internal {
 
-void Helper::HandleInvalidStatusCtorArg(Status* status) {
+void Helper::HandleInvalidStatusCtorArg(absl::Status* status) {
   const char* kMessage =
       "An OK status is not a valid constructor argument to StatusOr<T>";
-  ABSL_RAW_CHECK(false, kMessage);
   // In optimized builds, we will fall back to ::util::error::INTERNAL.
-  *status = Status(StatusCode::kInternal, kMessage);
+  *status = absl::Status(absl::StatusCode::kInternal, kMessage);
 }
 
-void Helper::Crash(const Status&) {
-  ABSL_RAW_CHECK(false, "Attempting to fetch value instead of handling error");
-  abort();
-}
+void Helper::Crash(const absl::Status&) { abort(); }
 
 }  // namespace statusor_internal
 

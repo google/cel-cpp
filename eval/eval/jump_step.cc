@@ -14,7 +14,7 @@ class JumpStep : public JumpStepBase {
   JumpStep(absl::optional<int> jump_offset, int64_t expr_id)
       : JumpStepBase(jump_offset, expr_id) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
     return Jump(frame);
   }
 };
@@ -28,10 +28,10 @@ class CondJumpStep : public JumpStepBase {
         jump_condition_(jump_condition),
         leave_on_stack_(leave_on_stack) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
     // Peek the top value
     if (!frame->value_stack().HasEnough(1)) {
-      return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+      return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
     CelValue value = frame->value_stack().Peek();
@@ -44,7 +44,7 @@ class CondJumpStep : public JumpStepBase {
       return Jump(frame);
     }
 
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 
  private:
@@ -57,20 +57,25 @@ class BoolCheckJumpStep : public JumpStepBase {
   // Checks if the top value is a boolean:
   // - no-op if it is a boolean
   // - jump to the label if it is an error value
+  // - jump to the label if it is unknown value
   // - jump to the label if it is neither an error nor a boolean, pops it and
   // pushes "no matching overload" error
   BoolCheckJumpStep(absl::optional<int> jump_offset, int64_t expr_id)
       : JumpStepBase(jump_offset, expr_id) {}
 
-  cel_base::Status Evaluate(ExecutionFrame* frame) const override {
+  absl::Status Evaluate(ExecutionFrame* frame) const override {
     // Peek the top value
     if (!frame->value_stack().HasEnough(1)) {
-      return cel_base::Status(cel_base::StatusCode::kInternal, "Value stack underflow");
+      return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
     CelValue value = frame->value_stack().Peek();
 
     if (value.IsError()) {
+      return Jump(frame);
+    }
+
+    if (value.IsUnknownSet()) {
       return Jump(frame);
     }
 
@@ -80,7 +85,7 @@ class BoolCheckJumpStep : public JumpStepBase {
       return Jump(frame);
     }
 
-    return cel_base::OkStatus();
+    return absl::OkStatus();
   }
 };
 
@@ -109,7 +114,7 @@ cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
 
 // Factory method for Conditional Jump step.
 // Conditional Jump requires a value to sit on the stack.
-// If this value is an error, a jump is performed.
+// If this value is an error or unknown, a jump is performed.
 cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step =
@@ -117,6 +122,9 @@ cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
 
   return std::move(step);
 }
+
+// TODO(issues/41) Make sure Unknowns are properly supported by ternary
+// operation.
 
 }  // namespace runtime
 }  // namespace expr

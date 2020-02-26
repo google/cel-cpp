@@ -16,11 +16,19 @@ cc_library(
     ],
     copts = ["-std=c++14"],
     deps = [
+        ":attribute_trail",
+        ":unknowns_utility",
+        "//base:status_macros",
+        "//base:statusor",
         "//eval/public:activation",
+        "//eval/public:cel_attribute",
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
-        "@com_google_absl//absl/strings",
+        "//eval/public:unknown_attribute_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -74,9 +82,10 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
-        "//base:status",
         "//eval/public:activation",
         "//eval/public:cel_value",
+        "//eval/public:unknown_attribute_set",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -96,8 +105,9 @@ cc_library(
         ":expression_step_base",
         "//eval/public:activation",
         "//eval/public:cel_value",
+        "//eval/public:unknown_attribute_set",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -112,14 +122,18 @@ cc_library(
     copts = ["-std=c++14"],
     deps = [
         ":evaluator_core",
+        ":expression_build_warning",
         ":expression_step_base",
-        "//base:status",
+        "//base:status_macros",
         "//eval/public:activation",
         "//eval/public:cel_function",
         "//eval/public:cel_function_provider",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_value",
+        "//eval/public:unknown_function_result_set",
+        "//eval/public:unknown_set",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -133,9 +147,9 @@ cc_library(
     ],
     copts = ["-std=c++14"],
     deps = [
-        "//base:status",
         "//eval/public:cel_value",
         "//internal:proto_util",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -223,7 +237,6 @@ cc_library(
         "//eval/public:activation",
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -262,7 +275,7 @@ cc_library(
         ":evaluator_core",
         ":expression_step_base",
         ":field_access",
-        "//base:status",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -303,6 +316,7 @@ cc_library(
         "//eval/public:activation",
         "//eval/public:cel_function",
         "//eval/public:cel_value",
+        "//eval/public:unknown_attribute_set",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -320,6 +334,7 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:status_macros",
         "//eval/public:activation",
         "//eval/public:cel_function",
         "//eval/public:cel_value",
@@ -337,8 +352,11 @@ cc_test(
     copts = ["-std=c++14"],
     deps = [
         ":evaluator_core",
+        "//base:status_macros",
         "//eval/compiler:flat_expr_builder",
         "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_value",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -354,6 +372,7 @@ cc_test(
     deps = [
         ":const_value_step",
         ":evaluator_core",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -371,6 +390,8 @@ cc_test(
         ":container_backed_list_impl",
         ":container_backed_map_impl",
         ":ident_step",
+        "//base:status_macros",
+        "//eval/public:cel_attribute",
         "//eval/public:cel_builtins",
         "//eval/public:cel_value",
         "@com_github_google_googletest//:gtest_main",
@@ -388,6 +409,7 @@ cc_test(
     deps = [
         ":evaluator_core",
         ":ident_step",
+        "//base:status_macros",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -402,9 +424,16 @@ cc_test(
     copts = ["-std=c++14"],
     deps = [
         ":evaluator_core",
+        ":expression_build_warning",
         ":function_step",
-        "//base:status",
+        ":ident_step",
+        "//base:status_macros",
+        "//eval/public:cel_attribute",
         "//eval/public:cel_function",
+        "//eval/public:cel_options",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_function_result_set",
+        "//eval/testutil:test_message_cc_proto",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -460,6 +489,23 @@ cc_test(
 )
 
 cc_test(
+    name = "logic_step_test",
+    size = "small",
+    srcs = [
+        "logic_step_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":ident_step",
+        ":logic_step",
+        "//base:status_macros",
+        "//eval/public:unknown_attribute_set",
+        "//eval/public:unknown_set",
+        "@com_github_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "select_step_test",
     size = "small",
     srcs = [
@@ -468,9 +514,11 @@ cc_test(
     copts = ["-std=c++14"],
     deps = [
         ":container_backed_map_impl",
-        ":evaluator_core",
         ":ident_step",
         ":select_step",
+        "//base:status_macros",
+        "//eval/public:cel_attribute",
+        "//eval/public:unknown_attribute_set",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
         "@com_github_google_googletest//:gtest_main",
@@ -488,10 +536,13 @@ cc_test(
     deps = [
         ":const_value_step",
         ":create_list_step",
-        ":evaluator_core",
-        "//eval/testutil:test_message_cc_proto",
+        ":ident_step",
+        "//base:status_macros",
+        "//eval/public:activation",
+        "//eval/public:cel_attribute",
+        "//eval/public:unknown_attribute_set",
         "@com_github_google_googletest//:gtest_main",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -507,10 +558,113 @@ cc_test(
         ":container_backed_map_impl",
         ":create_struct_step",
         ":ident_step",
+        "//base:status_macros",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "expression_build_warning",
+    srcs = [
+        "expression_build_warning.cc",
+    ],
+    hdrs = [
+        "expression_build_warning.h",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "expression_build_warning_test",
+    size = "small",
+    srcs = [
+        "expression_build_warning_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":expression_build_warning",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "attribute_trail",
+    srcs = ["attribute_trail.cc"],
+    hdrs = ["attribute_trail.h"],
+    copts = ["-std=c++14"],
+    deps = [
+        "//base:statusor",
+        "//eval/public:activation",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_attribute_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "attribute_trail_test",
+    size = "small",
+    srcs = [
+        "attribute_trail_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":attribute_trail",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_value",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "unknowns_utility",
+    srcs = ["unknowns_utility.cc"],
+    hdrs = ["unknowns_utility.h"],
+    copts = ["-std=c++14"],
+    deps = [
+        ":attribute_trail",
+        "//base:statusor",
+        "//eval/public:activation",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_attribute_set",
+        "//eval/public:unknown_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "unknowns_utility_test",
+    size = "small",
+    srcs = [
+        "unknowns_utility_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":unknowns_utility",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_attribute_set",
+        "//eval/public:unknown_set",
+        "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )

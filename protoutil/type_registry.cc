@@ -100,8 +100,9 @@ class ProtoStrList final : public BaseProtoRefList {
 
   common::Value Get(std::size_t index) const override {
     std::string scratch;
-    const std::string& value = msg_->GetReflection()->GetRepeatedStringReference(
-        *msg_, field_, index, &scratch);
+    const std::string& value =
+        msg_->GetReflection()->GetRepeatedStringReference(*msg_, field_, index,
+                                                          &scratch);
     if (&value == &scratch) {
       return common::Value::From<ValueKind>(value);
     }

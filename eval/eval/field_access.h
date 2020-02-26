@@ -14,7 +14,7 @@ namespace runtime {
 // desc Descriptor of the field to access.
 // arena Arena object to allocate result on, if needed.
 // result pointer to CelValue to store the result in.
-cel_base::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
+absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
                                         const google::protobuf::FieldDescriptor* desc,
                                         google::protobuf::Arena* arena, CelValue* result);
 
@@ -25,7 +25,7 @@ cel_base::Status CreateValueFromSingleField(const google::protobuf::Message* msg
 // arena Arena object to allocate result on, if needed.
 // index position in the repeated field.
 // result pointer to CelValue to store the result in.
-cel_base::Status CreateValueFromRepeatedField(const google::protobuf::Message* msg,
+absl::Status CreateValueFromRepeatedField(const google::protobuf::Message* msg,
                                           const google::protobuf::FieldDescriptor* desc,
                                           google::protobuf::Arena* arena, int index,
                                           CelValue* result);
@@ -37,7 +37,7 @@ cel_base::Status CreateValueFromRepeatedField(const google::protobuf::Message* m
 // value_ref pointer to map value.
 // arena Arena object to allocate result on, if needed.
 // result pointer to CelValue to store the result in.
-cel_base::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
+absl::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
                                      const google::protobuf::FieldDescriptor* desc,
                                      const google::protobuf::MapValueRef* value_ref,
                                      google::protobuf::Arena* arena, CelValue* result);
@@ -46,25 +46,25 @@ cel_base::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
 // Returns status of the operation.
 // msg Message containing the field.
 // desc Descriptor of the field to access.
-::cel_base::Status SetValueToSingleField(const CelValue& value,
+absl::Status SetValueToSingleField(const CelValue& value,
+                                   const google::protobuf::FieldDescriptor* desc,
+                                   google::protobuf::Message* msg);
+// Adds content of CelValue to repeated message field.
+// Returns status of the operation.
+// msg Message containing the field.
+// desc Descriptor of the field to access.
+absl::Status AddValueToRepeatedField(const CelValue& value,
                                      const google::protobuf::FieldDescriptor* desc,
                                      google::protobuf::Message* msg);
-// Adds content of CelValue to repeated message field.
-// Returns status of the operation.
-// msg Message containing the field.
-// desc Descriptor of the field to access.
-::cel_base::Status AddValueToRepeatedField(const CelValue& value,
-                                       const google::protobuf::FieldDescriptor* desc,
-                                       google::protobuf::Message* msg);
 
 // Adds content of CelValue to repeated message field.
 // Returns status of the operation.
 // msg Message containing the field.
 // desc Descriptor of the field to access.
 
-::cel_base::Status AddValueToMapField(const CelValue& key, const CelValue& value,
-                                  const google::protobuf::FieldDescriptor* desc,
-                                  google::protobuf::Message* msg);
+absl::Status AddValueToMapField(const CelValue& key, const CelValue& value,
+                                const google::protobuf::FieldDescriptor* desc,
+                                google::protobuf::Message* msg);
 
 }  // namespace runtime
 }  // namespace expr

@@ -6,6 +6,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "eval/public/unknown_attribute_set.h"
+#include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
 
@@ -94,7 +95,7 @@ TEST(CelValueTest, TestType) {
   CelValue value_timestamp2 = CelValue::CreateMessage(&msg_timestamp, &arena);
   EXPECT_THAT(value_timestamp2.type(), Eq(CelValue::Type::kTimestamp));
 
-  UnknownAttributeSet unknown_set;
+  UnknownSet unknown_set;
   CelValue value_unknown = CelValue::CreateUnknownSet(&unknown_set);
   EXPECT_THAT(value_unknown.type(), Eq(CelValue::Type::kUnknownSet));
 }
@@ -132,7 +133,7 @@ int CountTypeMatch(const CelValue& value) {
   const CelError* value_error;
   count += (value.GetValue(&value_error)) ? 1 : 0;
 
-  const UnknownAttributeSet* value_unknown;
+  const UnknownSet* value_unknown;
   count += (value.GetValue(&value_unknown)) ? 1 : 0;
 
   return count;
@@ -215,7 +216,6 @@ TEST(CelValueTest, TestString) {
 TEST(CelValueTest, TestBytes) {
   constexpr char kTestStr0[] = "test0";
   std::string v = kTestStr0;
-  absl::string_view sv(v);
 
   CelValue value = CelValue::CreateBytes(&v);
   //  CelValue value = CelValue::CreateString("test");
@@ -304,14 +304,14 @@ TEST(CelValueTest, TestMap) {
 
 // This test verifies CelValue support of Unknown type.
 TEST(CelValueTest, TestUnknownSet) {
-  UnknownAttributeSet unknown_set;
+  UnknownSet unknown_set;
 
   CelValue value = CelValue::CreateUnknownSet(&unknown_set);
   EXPECT_TRUE(value.IsUnknownSet());
   EXPECT_THAT(value.UnknownSetOrDie(), Eq(&unknown_set));
 
   // test template getter
-  const UnknownAttributeSet* value2;
+  const UnknownSet* value2;
   EXPECT_TRUE(value.GetValue(&value2));
   EXPECT_THAT(value2, Eq(&unknown_set));
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
@@ -583,6 +583,14 @@ TEST(CelValueTest, TestBytesWrapper) {
   ASSERT_TRUE(value.IsBytes());
 
   EXPECT_EQ(value.BytesOrDie().value(), wrapper.value());
+}
+
+TEST(CelValueTest, UnknownFunctionResultErrors) {
+  ::google::protobuf::Arena arena;
+
+  CelValue value = CreateUnknownFunctionResultError(&arena, "message");
+  EXPECT_TRUE(value.IsError());
+  EXPECT_TRUE(IsUnknownFunctionResult(value));
 }
 
 }  // namespace runtime

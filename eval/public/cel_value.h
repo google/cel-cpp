@@ -32,11 +32,12 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-using CelError = cel_base::Status;
+using CelError = absl::Status;
 
+// Break cyclic depdendencies for container types.
 class CelList;
 class CelMap;
-class UnknownAttributeSet;
+class UnknownSet;
 
 class CelValue {
  public:
@@ -102,7 +103,7 @@ class CelValue {
   using ValueHolder = internal::ValueHolder<
       bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
       const google::protobuf::Message *, absl::Duration, absl::Time, const CelList *,
-      const CelMap *, const UnknownAttributeSet *, const CelError *>;
+      const CelMap *, const UnknownSet *, const CelError *>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -123,7 +124,7 @@ class CelValue {
     kTimestamp = IndexOf<absl::Time>::value,
     kList = IndexOf<const CelList *>::value,
     kMap = IndexOf<const CelMap *>::value,
-    kUnknownSet = IndexOf<const UnknownAttributeSet *>::value,
+    kUnknownSet = IndexOf<const UnknownSet *>::value,
     kError = IndexOf<const CelError *>::value,
     kAny  // Special value. Used in function descriptors.
   };
@@ -197,7 +198,7 @@ class CelValue {
     return CelValue(value);
   }
 
-  static CelValue CreateUnknownSet(const UnknownAttributeSet *value) {
+  static CelValue CreateUnknownSet(const UnknownSet *value) {
     CheckNullPointer(value, Type::kUnknownSet);
     return CelValue(value);
   }
@@ -270,8 +271,8 @@ class CelValue {
 
   // Returns stored const UnknownAttributeSet * value.
   // Fails if stored value type is not const UnknownAttributeSet *.
-  const UnknownAttributeSet *UnknownSetOrDie() const {
-    return GetValueOrDie<const UnknownAttributeSet *>(Type::kUnknownSet);
+  const UnknownSet *UnknownSetOrDie() const {
+    return GetValueOrDie<const UnknownSet *>(Type::kUnknownSet);
   }
 
   // Returns stored const CelError * value.
@@ -304,7 +305,7 @@ class CelValue {
 
   bool IsMap() const { return value_.is<const CelMap *>(); }
 
-  bool IsUnknownSet() const { return value_.is<const UnknownAttributeSet *>(); }
+  bool IsUnknownSet() const { return value_.is<const UnknownSet *>(); }
 
   bool IsError() const { return value_.is<const CelError *>(); }
 
@@ -420,7 +421,7 @@ class CelMap {
 // parsed from. -1, if the position can not be determined.
 CelValue CreateErrorValue(
     google::protobuf::Arena *arena, absl::string_view message,
-    cel_base::StatusCode error_code = cel_base::StatusCode::kUnknown,
+    absl::StatusCode error_code = absl::StatusCode::kUnknown,
     int position = -1);
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena);
@@ -439,6 +440,18 @@ CelValue CreateUnknownValueError(google::protobuf::Arena *arena,
 // Returns true if this is unknown value error indicating that evaluation
 // encountered a value marked as unknown in Activation unknown_paths.
 bool IsUnknownValueError(const CelValue &value);
+
+// Returns error indicating the result of the function is unknown. This is used
+// as a signal to create an unknown set if unknown function handling is opted
+// into.
+CelValue CreateUnknownFunctionResultError(google::protobuf::Arena *arena,
+                                          absl::string_view help_message);
+
+// Returns true if this is unknown value error indicating that evaluation
+// called an extension function whose value is unknown for the given args.
+// This is used as a signal to convert to an UnknownSet if the behavior is opted
+// into.
+bool IsUnknownFunctionResult(const CelValue &value);
 
 // Returns set of unknown paths for unknown value error. The value must be
 // unknown error, see IsUnknownValueError() above, or it dies.

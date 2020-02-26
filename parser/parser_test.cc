@@ -1,5 +1,6 @@
 #include "parser/parser.h"
 
+#include <list>
 #include <memory>
 
 #include "gmock/gmock.h"
@@ -1132,6 +1133,7 @@ class ExpressionTest : public testing::TestWithParam<TestInfo> {};
 
 TEST_P(ExpressionTest, Parse) {
   const TestInfo& test_info = GetParam();
+  /*
   ::testing::internal::ColoredPrintf(::testing::internal::COLOR_GREEN,
                                      "[          ]");
   ::testing::internal::ColoredPrintf(::testing::internal::COLOR_DEFAULT,
@@ -1141,6 +1143,7 @@ TEST_P(ExpressionTest, Parse) {
   ::testing::internal::ColoredPrintf(
       ::testing::internal::COLOR_DEFAULT, "%s\n",
       !test_info.E.empty() ? " (error expected)" : "");
+  */
 
   auto result = Parse(test_info.I);
   if (test_info.E.empty()) {
