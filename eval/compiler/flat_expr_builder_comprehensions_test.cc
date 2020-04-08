@@ -161,13 +161,13 @@ TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
   auto build_status = builder.CreateExpression(&expr, &source_info);
   ASSERT_OK(build_status);
 
-  auto cel_expr = std::move(build_status.ValueOrDie());
+  auto cel_expr = std::move(build_status.value());
 
   Activation activation;
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
   ASSERT_OK(result_or);
-  CelValue result = result_or.ValueOrDie();
+  CelValue result = result_or.value();
   ASSERT_TRUE(result.IsList());
   EXPECT_THAT(*result.ListOrDie(), testing::SizeIs(2));
 }

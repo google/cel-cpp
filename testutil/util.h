@@ -25,7 +25,7 @@ template <typename T>
 T CreateProto(const std::string& textual_proto);
 
 /**
- * Simple implementation of a proto matcher comparing std::string representations.
+ * Simple implementation of a proto matcher comparing string representations.
  *
  * IMPORTANT: Only use this for protos whose textual representation is
  * deterministic (that may not be the case for the map collection type).

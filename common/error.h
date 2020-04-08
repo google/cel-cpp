@@ -31,7 +31,7 @@ class Error {
   std::size_t hash_code() const;
 
   /**
-   * A std::string useful for debugging.
+   * A string useful for debugging.
    *
    * Format may change, and computation may be expensive.
    */

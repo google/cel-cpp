@@ -31,8 +31,8 @@ class ExtensionTest : public ::testing::Test {
   // Helper method to test string startsWith() function
   void TestStringInclusion(absl::string_view func_name,
                            const std::vector<bool>& call_style,
-                           const std::string& test_string, const std::string& included,
-                           bool result) {
+                           const std::string& test_string,
+                           const std::string& included, bool result) {
     std::vector<bool> call_styles = {true, false};
 
     for (auto call_style : call_styles) {
@@ -56,14 +56,14 @@ class ExtensionTest : public ::testing::Test {
     }
   }
 
-  void TestStringStartsWith(const std::string& test_string, const std::string& prefix,
-                            bool result) {
+  void TestStringStartsWith(const std::string& test_string,
+                            const std::string& prefix, bool result) {
     TestStringInclusion("startsWith", {true, false}, test_string, prefix,
                         result);
   }
 
-  void TestStringEndsWith(const std::string& test_string, const std::string& prefix,
-                          bool result) {
+  void TestStringEndsWith(const std::string& test_string,
+                          const std::string& prefix, bool result) {
     TestStringInclusion("endsWith", {true, false}, test_string, prefix, result);
   }
 

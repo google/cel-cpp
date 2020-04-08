@@ -24,6 +24,7 @@
 // Early-returns the status if it is in error; otherwise, proceeds.
 //
 // The argument expression is guaranteed to be evaluated exactly once.
+#if !defined(RETURN_IF_ERROR)
 #define RETURN_IF_ERROR(__status) \
   do {                            \
     auto _status = __status;      \
@@ -31,6 +32,7 @@
       return _status;             \
     }                             \
   } while (false)
+#endif
 
 template <typename To, typename From>  // use like this: down_cast<T*>(foo);
 inline To down_cast(From* f) {         // so we only accept pointers
@@ -47,7 +49,12 @@ inline To down_cast(From* f) {         // so we only accept pointers
   return static_cast<To>(f);
 }
 
+#if !defined(ASSERT_OK)
 #define ASSERT_OK(expression) ASSERT_TRUE(expression.ok())
+#endif
+
+#if !defined(EXPECT_OK)
 #define EXPECT_OK(expression) EXPECT_TRUE(expression.ok())
+#endif
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_STATUS_MACROS_H_

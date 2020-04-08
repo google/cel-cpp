@@ -423,6 +423,7 @@ cc_test(
         ":activation_bind_helper",
         "//base:status_macros",
         "//eval/testutil:test_message_cc_proto",
+        "//testutil:util",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

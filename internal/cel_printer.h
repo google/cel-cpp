@@ -31,7 +31,7 @@ struct RawString {
 };
 
 /**
- * Printer for all scalar types (null, bool, int, unit, double, std::string).
+ * Printer for all scalar types (null, bool, int, unit, double, string).
  */
 struct ScalarPrinter {
   inline std::string operator()(std::nullptr_t) { return "null"; }

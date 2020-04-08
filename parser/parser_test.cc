@@ -1156,14 +1156,14 @@ TEST_P(ExpressionTest, Parse) {
   if (!test_info.P.empty()) {
     KindAndIdAdorner kind_and_id_adorner;
     DebugWriter w(kind_and_id_adorner);
-    std::string adorned_string = w.toAdornedDebugString(result.ValueOrDie());
+    std::string adorned_string = w.toAdornedDebugString(result.value());
     EXPECT_EQ(test_info.P, adorned_string);
   }
 
   if (!test_info.L.empty()) {
-    LocationAdorner location_adorner(result.ValueOrDie().source_info());
+    LocationAdorner location_adorner(result.value().source_info());
     DebugWriter w(location_adorner);
-    std::string adorned_string = w.toAdornedDebugString(result.ValueOrDie());
+    std::string adorned_string = w.toAdornedDebugString(result.value());
     EXPECT_EQ(test_info.L, adorned_string);
   }
 }

@@ -25,8 +25,8 @@
  *       ... specialized impl ...
  *     };
  *
- * In this case, if T is a std::string type, the second `Foo` implemenation is
- * chosen. Without specialize, each std::string type would have to be instantiated
+ * In this case, if T is a string type, the second `Foo` implemenation is
+ * chosen. Without specialize, each string type would have to be instantiated
  * explicitly.
  *
  * Specialize helper functions come in three different flavors. A traling 't'

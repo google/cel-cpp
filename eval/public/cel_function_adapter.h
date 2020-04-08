@@ -75,7 +75,7 @@ bool AddType(std::vector<CelValue::Type>* arg_types) {
 //      FunctionAdapter<bool, int64_t, int64_t>::Create("<", false, func);
 //
 //  if(func_status.ok()) {
-//     auto func = func_status.ValueOrDie();
+//     auto func = func_status.value();
 //  }
 template <typename ReturnType, typename... Arguments>
 class FunctionAdapter : public CelFunction {
@@ -114,7 +114,7 @@ class FunctionAdapter : public CelFunction {
       return status.status();
     }
 
-    return registry->Register(std::move(status.ValueOrDie()));
+    return registry->Register(std::move(status.value()));
   }
 
 #if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)
@@ -289,7 +289,7 @@ class FunctionAdapter : public CelFunction {
     if (!value) {
       return value.status();
     }
-    return CreateReturnValue(value.ValueOrDie());
+    return CreateReturnValue(value.value());
   }
 
   FuncType handler_;

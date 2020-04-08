@@ -69,21 +69,22 @@ void ComprehensionNextStep::set_error_jump_offset(int offset) {
 // Stack on error:
 // 0. error
 absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
-  enum {
-    POS_PREVIOUS_LOOP_STEP,
-    POS_ITER_RANGE,
-    POS_CURRENT_INDEX,
-    POS_CURRENT_VALUE,
-    POS_LOOP_STEP,
-  };
+  constexpr int
+      // kPreviousLoopStep = 0,
+      kIterRange = 1,
+      kCurrentIndex = 2,
+      // kCurrentValue = 3,
+      kLoopSet = 4;
   if (!frame->value_stack().HasEnough(5)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   auto state = frame->value_stack().GetSpan(5);
-  CelValue iter_range = state[POS_ITER_RANGE];
+
+  // Get range from the stack.
+  CelValue iter_range = state[kIterRange];
   if (!iter_range.IsList()) {
     frame->value_stack().Pop(5);
-    if (iter_range.IsError()) {
+    if (iter_range.IsError() || iter_range.IsUnknownSet()) {
       frame->value_stack().Push(iter_range);
       return frame->JumpTo(error_jump_offset_);
     }
@@ -91,7 +92,9 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     return frame->JumpTo(error_jump_offset_);
   }
   const CelList* cel_list = iter_range.ListOrDie();
-  CelValue current_index_value = state[POS_CURRENT_INDEX];
+
+  // Get the current index off the stack.
+  CelValue current_index_value = state[kCurrentIndex];
   if (!current_index_value.IsInt64()) {
     auto message = absl::StrCat(
         "ComprehensionNextStep: want int64_t, got ",
@@ -107,7 +110,9 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   if (current_index == -1) {
     RETURN_IF_ERROR(frame->PushIterFrame());
   }
-  CelValue loop_step = state[POS_LOOP_STEP];
+
+  // Update stack for breaking out of loop or next round.
+  CelValue loop_step = state[kLoopSet];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
   RETURN_IF_ERROR(frame->SetIterVar(accu_var_, loop_step));
@@ -136,6 +141,10 @@ void ComprehensionCondStep::set_jump_offset(int offset) {
   jump_offset_ = offset;
 }
 
+void ComprehensionCondStep::set_error_jump_offset(int offset) {
+  error_jump_offset_ = offset;
+}
+
 // Stack changes by ComprehensionCondStep.
 //
 // Stack size before: 5.
@@ -147,12 +156,18 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   }
   CelValue loop_condition_value = frame->value_stack().Peek();
   if (!loop_condition_value.IsBool()) {
-    auto message = absl::StrCat(
-        "ComprehensionCondStep:: want bool, got ",
-        CelValue::TypeName(loop_condition_value.type())
-    );
-    return absl::Status(absl::StatusCode::kInternal, message);
+    frame->value_stack().Pop(5);
+    if (loop_condition_value.IsError() || loop_condition_value.IsUnknownSet()) {
+      frame->value_stack().Push(loop_condition_value);
+    } else {
+      frame->value_stack().Push(CreateNoMatchingOverloadError(frame->arena()));
+    }
+    // The error jump skips the ComprehensionFinish clean-up step, so we
+    // need to update the iteration variable stack here.
+    RETURN_IF_ERROR(frame->PopIterFrame());
+    return frame->JumpTo(error_jump_offset_);
   }
+
   bool loop_condition = loop_condition_value.BoolOrDie();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
@@ -163,8 +178,8 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-ComprehensionFinish::ComprehensionFinish(const std::string& accu_var, const std::string&,
-                                         int64_t expr_id)
+ComprehensionFinish::ComprehensionFinish(const std::string& accu_var,
+                                         const std::string&, int64_t expr_id)
     : ExpressionStepBase(expr_id), accu_var_(accu_var) {}
 
 // Stack changes of ComprehensionFinish.

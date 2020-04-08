@@ -161,7 +161,7 @@ class BaseValue {
   };
 
   /**
-   * A helper function to grab either the unowned or owned std::string value.
+   * A helper function to grab either the unowned or owned string value.
    *
    * Assumes the owned value is immediately after the unowned value.
    *

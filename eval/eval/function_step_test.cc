@@ -223,9 +223,9 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -235,7 +235,7 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(5));
@@ -261,8 +261,8 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
   ASSERT_OK(step0_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -303,7 +303,7 @@ TEST_P(FunctionStepTest, TestNoOverloadsOnCreationDelayedError) {
   EXPECT_TRUE(step0_status.ok());
   EXPECT_THAT(warnings.warnings(), testing::SizeIs(1));
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -313,7 +313,7 @@ TEST_P(FunctionStepTest, TestNoOverloadsOnCreationDelayedError) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
   ASSERT_TRUE(value.IsError());
 }
 
@@ -346,9 +346,9 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -358,7 +358,7 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
   ASSERT_TRUE(value.IsError());
 }
 
@@ -400,9 +400,9 @@ TEST_P(FunctionStepTest,
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -412,7 +412,7 @@ TEST_P(FunctionStepTest,
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsError());
   EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
@@ -453,9 +453,9 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -464,7 +464,7 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(5));
@@ -516,16 +516,16 @@ TEST_P(FunctionStepTest,
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsError());
   EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
@@ -593,9 +593,9 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -605,7 +605,7 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsUnknownSet());
 }
@@ -630,8 +630,8 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -651,7 +651,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsUnknownSet());
 }
@@ -686,9 +686,9 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -698,7 +698,7 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   auto status = impl->Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
@@ -749,9 +749,9 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   Expr dummy_expr;
 
@@ -763,7 +763,7 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   auto status = impl.Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsUnknownSet());
   // Arguments captured.
@@ -815,13 +815,13 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   ASSERT_OK(step5_status);
   ASSERT_OK(step6_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
-  path.push_back(std::move(step3_status.ValueOrDie()));
-  path.push_back(std::move(step4_status.ValueOrDie()));
-  path.push_back(std::move(step5_status.ValueOrDie()));
-  path.push_back(std::move(step6_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step3_status.value()));
+  path.push_back(std::move(step4_status.value()));
+  path.push_back(std::move(step5_status.value()));
+  path.push_back(std::move(step6_status.value()));
 
   Expr dummy_expr;
 
@@ -833,7 +833,7 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   auto status = impl.Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsUnknownSet());
   // Arguments captured.
@@ -885,13 +885,13 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   ASSERT_OK(step5_status);
   ASSERT_OK(step6_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
-  path.push_back(std::move(step3_status.ValueOrDie()));
-  path.push_back(std::move(step4_status.ValueOrDie()));
-  path.push_back(std::move(step5_status.ValueOrDie()));
-  path.push_back(std::move(step6_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step3_status.value()));
+  path.push_back(std::move(step4_status.value()));
+  path.push_back(std::move(step5_status.value()));
+  path.push_back(std::move(step6_status.value()));
 
   Expr dummy_expr;
 
@@ -903,7 +903,7 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   auto status = impl.Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsUnknownSet()) << value.ErrorOrDie()->ToString();
   // Arguments captured.
@@ -946,9 +946,9 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK(step1_status);
   ASSERT_OK(step2_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
-  path.push_back(std::move(step2_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
 
   Expr dummy_expr;
 
@@ -960,7 +960,7 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   auto status = impl.Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.

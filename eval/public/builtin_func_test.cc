@@ -76,13 +76,13 @@ class BuiltinsTest : public ::testing::Test {
 
     ASSERT_OK(cel_expression_status);
 
-    auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+    auto cel_expression = std::move(cel_expression_status.value());
 
     auto eval_status = cel_expression->Evaluate(activation, &arena_);
 
     ASSERT_OK(eval_status);
 
-    *result = eval_status.ValueOrDie();
+    *result = eval_status.value();
   }
 
   // Helper method. Looks up in registry and tests comparison operation.

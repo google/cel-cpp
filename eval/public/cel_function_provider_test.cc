@@ -33,7 +33,7 @@ TEST(CreateActivationFunctionProviderTest, NoOverloadFound) {
   auto func = provider->GetFunction({"LazyFunc", false, {}}, activation);
 
   ASSERT_OK(func.status());
-  EXPECT_THAT(func.ValueOrDie(), Eq(nullptr));
+  EXPECT_THAT(func.value(), Eq(nullptr));
 }
 
 TEST(CreateActivationFunctionProviderTest, OverloadFound) {
@@ -48,7 +48,7 @@ TEST(CreateActivationFunctionProviderTest, OverloadFound) {
   auto func = provider->GetFunction(desc, activation);
 
   ASSERT_OK(func.status());
-  EXPECT_THAT(func.ValueOrDie(), Ne(nullptr));
+  EXPECT_THAT(func.value(), Ne(nullptr));
 }
 
 TEST(CreateActivationFunctionProviderTest, AmbiguousLookup) {

@@ -18,7 +18,7 @@ TEST(CelFunctionAdapterTest, TestAdapterNoArg) {
 
   ASSERT_OK(func_status);
 
-  auto cel_func = std::move(func_status.ValueOrDie());
+  auto cel_func = std::move(func_status.value());
 
   absl::Span<CelValue> args;
 
@@ -40,7 +40,7 @@ TEST(CelFunctionAdapterTest, TestAdapterOneArg) {
 
   ASSERT_OK(func_status);
 
-  auto cel_func = std::move(func_status.ValueOrDie());
+  auto cel_func = std::move(func_status.value());
 
   std::vector<CelValue> args_vec;
   args_vec.push_back(CelValue::CreateInt64(99));
@@ -68,7 +68,7 @@ TEST(CelFunctionAdapterTest, TestAdapterTwoArgs) {
 
   ASSERT_OK(func_status);
 
-  auto cel_func = std::move(func_status.ValueOrDie());
+  auto cel_func = std::move(func_status.value());
 
   std::vector<CelValue> args_vec;
   args_vec.push_back(CelValue::CreateInt64(20));
@@ -94,7 +94,8 @@ TEST(CelFunctionAdapterTest, TestAdapterThreeArgs) {
                  StringHolder s3) -> StringHolder {
     std::string value = absl::StrCat(s1.value(), s2.value(), s3.value());
 
-    return StringHolder(google::protobuf::Arena::Create<std::string>(arena, std::move(value)));
+    return StringHolder(
+        google::protobuf::Arena::Create<std::string>(arena, std::move(value)));
   };
 
   auto func_status =
@@ -103,7 +104,7 @@ TEST(CelFunctionAdapterTest, TestAdapterThreeArgs) {
 
   ASSERT_OK(func_status);
 
-  auto cel_func = std::move(func_status.ValueOrDie());
+  auto cel_func = std::move(func_status.value());
 
   std::string test1 = "1";
   std::string test2 = "2";
@@ -142,7 +143,7 @@ TEST(CelFunctionAdapterTest, TestTypeDeductionForCelValueBasicTypes) {
 
   ASSERT_OK(func_status);
 
-  auto cel_func = std::move(func_status.ValueOrDie());
+  auto cel_func = std::move(func_status.value());
 
   auto descriptor = cel_func->descriptor();
 

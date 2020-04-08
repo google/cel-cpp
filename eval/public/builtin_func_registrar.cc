@@ -928,6 +928,8 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = RegisterComparisonFunctions(registry, options);
   if (!status.ok()) return status;
 
+  // TODO(issues/41): add overloads for unknown sets to work properly with
+  // short circuiting off for AND, OR, and Ternary.
   // Logical AND
   // This implementation is used when short-circuiting is off.
   status = FunctionAdapter<bool, bool, bool>::CreateAndRegister(
@@ -1035,6 +1037,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<bool, const CelError*>::CreateAndRegister(
       builtin::kNotStrictlyFalse, false,
       [](Arena*, const CelError*) -> bool { return true; }, registry);
+  if (!status.ok()) return status;
+
+  status = FunctionAdapter<bool, const UnknownSet*>::CreateAndRegister(
+      builtin::kNotStrictlyFalse, false,
+      [](Arena*, const UnknownSet*) -> bool { return true; }, registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<bool, bool>::CreateAndRegister(
@@ -1494,8 +1501,8 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
             builtin::kString, false,
             [](Arena* arena,
                CelValue::BytesHolder value) -> CelValue::StringHolder {
-              return CelValue::StringHolder(
-                  Arena::Create<std::string>(arena, std::string(value.value())));
+              return CelValue::StringHolder(Arena::Create<std::string>(
+                  arena, std::string(value.value())));
             },
             registry);
     if (!status.ok()) return status;
