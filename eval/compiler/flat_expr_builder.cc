@@ -416,7 +416,7 @@ class FlatExprVisitor : public AstVisitor {
   template <typename T>
   void AddStep(cel_base::StatusOr<std::unique_ptr<T>> step_status) {
     if (step_status.ok() && progress_status_.ok()) {
-      flattened_path_->push_back(std::move(step_status.ValueOrDie()));
+      flattened_path_->push_back(std::move(step_status.value()));
     } else {
       SetProgressStatusError(step_status.status());
     }
@@ -489,8 +489,8 @@ void FlatExprVisitor::BinaryCondVisitor::PostVisitArg(int arg_num,
     auto jump_step_status =
         CreateCondJumpStep(cond_value_, true, {}, expr->id());
     if (jump_step_status.ok()) {
-      jump_step_ = Jump(visitor_->GetCurrentIndex(),
-                        jump_step_status.ValueOrDie().get());
+      jump_step_ =
+          Jump(visitor_->GetCurrentIndex(), jump_step_status.value().get());
     }
     visitor_->AddStep(std::move(jump_step_status));
   }
@@ -521,8 +521,8 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
     // Jump in case of error or non-bool
     auto error_jump_status = CreateBoolCheckJumpStep({}, expr->id());
     if (error_jump_status.ok()) {
-      error_jump_ = Jump(visitor_->GetCurrentIndex(),
-                         error_jump_status.ValueOrDie().get());
+      error_jump_ =
+          Jump(visitor_->GetCurrentIndex(), error_jump_status.value().get());
     }
     visitor_->AddStep(std::move(error_jump_status));
 
@@ -532,7 +532,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
         CreateCondJumpStep(false, false, {}, expr->id());
     if (jump_to_second_status.ok()) {
       jump_to_second_ = Jump(visitor_->GetCurrentIndex(),
-                             jump_to_second_status.ValueOrDie().get());
+                             jump_to_second_status.value().get());
     }
     visitor_->AddStep(std::move(jump_to_second_status));
   } else if (arg_num == 1) {
@@ -541,7 +541,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
     auto jump_after_first_status = CreateJumpStep({}, expr->id());
     if (jump_after_first_status.ok()) {
       jump_after_first_ = Jump(visitor_->GetCurrentIndex(),
-                               jump_after_first_status.ValueOrDie().get());
+                               jump_after_first_status.value().get());
     }
     visitor_->AddStep(std::move(jump_after_first_status));
 
@@ -653,6 +653,8 @@ void FlatExprVisitor::ComprehensionVisitor::PostVisitArg(int arg_num,
           new ComprehensionFinish(accu_var, iter_var, expr->id())));
       next_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
                                         next_step_pos_ - 1);
+      cond_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
+                                        cond_step_pos_ - 1);
       break;
     }
   }

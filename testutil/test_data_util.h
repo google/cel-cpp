@@ -53,7 +53,7 @@ testdata::TestValue NewValue(uint64_t value, absl::string_view name = "");
 /** Converts a string_view to a TestValue. */
 testdata::TestValue NewValue(absl::string_view value,
                              absl::string_view name = "");
-/** Converts a std::string literal to a TestValue. */
+/** Converts a string literal to a TestValue. */
 testdata::TestValue NewValue(const char* value, absl::string_view name = "");
 /** Converts a nullptr to a TestValue. */
 testdata::TestValue NewValue(const google::protobuf::Message& value,

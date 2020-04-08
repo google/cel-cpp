@@ -28,7 +28,7 @@ cel_base::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
   if (!step_status.ok()) return step_status.status();
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.ValueOrDie()));
+  path.push_back(std::move(step_status.value()));
 
   google::api::expr::v1alpha1::Expr dummy_expr;
 
@@ -50,7 +50,7 @@ TEST(ConstValueStepTest, TestEvaluationConstInt64) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(1));
@@ -67,7 +67,7 @@ TEST(ConstValueStepTest, TestEvaluationConstUint64) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsUint64());
   EXPECT_THAT(value.Uint64OrDie(), Eq(1));
@@ -84,7 +84,7 @@ TEST(ConstValueStepTest, TestEvaluationConstBool) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsBool());
   EXPECT_THAT(value.BoolOrDie(), Eq(true));
@@ -101,7 +101,7 @@ TEST(ConstValueStepTest, TestEvaluationConstNull) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   EXPECT_TRUE(value.IsNull());
 }
@@ -117,7 +117,7 @@ TEST(ConstValueStepTest, TestEvaluationConstString) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsString());
   EXPECT_THAT(value.StringOrDie().value(), Eq("test"));
@@ -134,7 +134,7 @@ TEST(ConstValueStepTest, TestEvaluationConstDouble) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsDouble());
   EXPECT_THAT(value.DoubleOrDie(), testing::DoubleEq(1.0));
@@ -153,7 +153,7 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
 
   ASSERT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
 
   ASSERT_TRUE(value.IsBytes());
   EXPECT_THAT(value.BytesOrDie().value(), Eq("test"));

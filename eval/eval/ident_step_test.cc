@@ -28,7 +28,7 @@ TEST(IdentStepTest, TestIdentStep) {
   ASSERT_OK(step_status);
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.ValueOrDie()));
+  path.push_back(std::move(step_status.value()));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -42,7 +42,7 @@ TEST(IdentStepTest, TestIdentStep) {
   auto status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  CelValue result = status0.ValueOrDie();
+  CelValue result = status0.value();
 
   ASSERT_TRUE(result.IsString());
   EXPECT_THAT(result.StringOrDie().value(), Eq("test"));
@@ -57,7 +57,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ASSERT_OK(step_status);
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.ValueOrDie()));
+  path.push_back(std::move(step_status.value()));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -70,7 +70,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   auto status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  CelValue result = status0.ValueOrDie();
+  CelValue result = status0.value();
   ASSERT_TRUE(result.IsError());
 }
 
@@ -83,7 +83,7 @@ TEST(IdentStepTest, TestIdentStepUnknownValueError) {
   ASSERT_OK(step_status);
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.ValueOrDie()));
+  path.push_back(std::move(step_status.value()));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -97,7 +97,7 @@ TEST(IdentStepTest, TestIdentStepUnknownValueError) {
   auto status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  CelValue result = status0.ValueOrDie();
+  CelValue result = status0.value();
 
   ASSERT_TRUE(result.IsString());
   EXPECT_THAT(result.StringOrDie().value(), Eq("test"));
@@ -109,11 +109,12 @@ TEST(IdentStepTest, TestIdentStepUnknownValueError) {
   status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  result = status0.ValueOrDie();
+  result = status0.value();
 
   ASSERT_TRUE(result.IsError());
   ASSERT_TRUE(IsUnknownValueError(result));
-  EXPECT_THAT(GetUnknownPathsSetOrDie(result), Eq(std::set<std::string>({"name0"})));
+  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
+              Eq(std::set<std::string>({"name0"})));
 }
 
 TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
@@ -125,7 +126,7 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   ASSERT_OK(step_status);
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.ValueOrDie()));
+  path.push_back(std::move(step_status.value()));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -144,7 +145,7 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   auto status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  CelValue result = status0.ValueOrDie();
+  CelValue result = status0.value();
 
   ASSERT_TRUE(result.IsString());
   EXPECT_THAT(result.StringOrDie().value(), Eq("test"));
@@ -155,7 +156,7 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  result = status0.ValueOrDie();
+  result = status0.value();
 
   ASSERT_TRUE(result.IsUnknownSet());
 }

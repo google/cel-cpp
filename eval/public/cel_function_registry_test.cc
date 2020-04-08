@@ -59,7 +59,7 @@ TEST(CelFunctionRegistryTest, InsertAndRetrieveLazyFunction) {
   EXPECT_THAT(providers, testing::SizeIs(1));
   auto func = providers[0]->GetFunction(lazy_function_desc, activation);
   ASSERT_OK(func.status());
-  EXPECT_THAT(func.ValueOrDie(), Eq(nullptr));
+  EXPECT_THAT(func.value(), Eq(nullptr));
 }
 
 // Confirm that lazy and static functions share the same descriptor space:
@@ -105,9 +105,9 @@ TEST(CelFunctionRegistryTest, DefaultLazyProvider) {
   EXPECT_THAT(providers, testing::SizeIs(1));
   auto func = providers[0]->GetFunction(lazy_function_desc, activation);
   ASSERT_OK(func.status());
-  EXPECT_THAT(func.ValueOrDie(), Property(&CelFunction::descriptor,
-                                          Property(&CelFunctionDescriptor::name,
-                                                   Eq("LazyFunction"))));
+  EXPECT_THAT(func.value(), Property(&CelFunction::descriptor,
+                                     Property(&CelFunctionDescriptor::name,
+                                              Eq("LazyFunction"))));
 }
 
 }  // namespace

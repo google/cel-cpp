@@ -16,7 +16,8 @@ using testing::UnorderedPointwise;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 std::unique_ptr<CelMap> CreateMap(const TestMessage* message,
-                                  const std::string& field, google::protobuf::Arena* arena) {
+                                  const std::string& field,
+                                  google::protobuf::Arena* arena) {
   const google::protobuf::FieldDescriptor* field_desc =
       message->GetDescriptor()->FindFieldByName(field);
 

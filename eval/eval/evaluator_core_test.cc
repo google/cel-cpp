@@ -188,7 +188,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   auto status = impl.Evaluate(activation, &arena);
   EXPECT_OK(status);
 
-  auto value = status.ValueOrDie();
+  auto value = status.value();
   EXPECT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(2));
 }
@@ -263,7 +263,7 @@ TEST(EvaluatorCoreTest, TraceTest) {
   auto build_status = builder.CreateExpression(&expr, &source_info);
   ASSERT_OK(build_status);
 
-  auto cel_expr = std::move(build_status.ValueOrDie());
+  auto cel_expr = std::move(build_status.value());
 
   Activation activation;
   google::protobuf::Arena arena;

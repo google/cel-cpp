@@ -8,6 +8,14 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+enum class ProtoUnsetFieldOptions {
+  // Do not bind a field if it is unset. Repeated fields are bound as empty
+  // list.
+  kSkip,
+  // Bind the (cc api) default value for a field.
+  kBindDefault
+};
+
 // Utility method, that takes a protobuf Message and interprets it as a
 // namespace, binding its fields to Activation.
 // Field names and values become respective names and values of parameters
@@ -31,9 +39,17 @@ namespace runtime {
 //  "name", with string value of "John Doe"
 //  "age", with int value of 42.
 //
-absl::Status BindProtoToActivation(const google::protobuf::Message* message,
-                                   google::protobuf::Arena* arena,
-                                   Activation* activation);
+// The default behavior for unset fields is to skip them. E.g. if the name field
+// is not set on the Person message, it will not be bound in to the activation.
+// ProtoUnsetFieldOptions::kBindDefault, will bind the cc proto api default for
+// the field (either an explicit default value or a type specific default).
+//
+// TODO(issues/41): Consider updating the default behavior to bind default
+// values for unset fields.
+absl::Status BindProtoToActivation(
+    const google::protobuf::Message* message, google::protobuf::Arena* arena,
+    Activation* activation,
+    ProtoUnsetFieldOptions options = ProtoUnsetFieldOptions::kSkip);
 
 }  // namespace runtime
 }  // namespace expr

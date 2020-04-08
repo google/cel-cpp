@@ -202,7 +202,7 @@ class ConformanceServiceImpl final
       issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
     } else {
       google::api::expr::v1alpha1::ParsedExpr out;
-      out = parse_status.ValueOrDie();
+      out = parse_status.value();
       response->mutable_parsed_expr()->CopyFrom(out);
     }
     return Status::OK;
@@ -233,7 +233,7 @@ class ConformanceServiceImpl final
                     std::string(cel_expression_status.status().message()));
     }
 
-    auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+    auto cel_expression = std::move(cel_expression_status.value());
     Activation activation;
 
     for (const auto& pair : request->bindings()) {
@@ -247,7 +247,7 @@ class ConformanceServiceImpl final
                     std::string(eval_status.status().message()));
     }
 
-    CelValue result = eval_status.ValueOrDie();
+    CelValue result = eval_status.value();
     if (result.IsError()) {
       *response->mutable_result()
            ->mutable_error()

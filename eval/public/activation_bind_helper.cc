@@ -35,7 +35,8 @@ absl::Status CreateValueFromField(const google::protobuf::Message* msg,
 }  // namespace
 
 absl::Status BindProtoToActivation(const Message* message, Arena* arena,
-                                   Activation* activation) {
+                                   Activation* activation,
+                                   ProtoUnsetFieldOptions options) {
   // TODO(issues/24): Improve the utilities to bind dynamic values as well.
   const Descriptor* desc = message->GetDescriptor();
   const google::protobuf::Reflection* reflection = message->GetReflection();
@@ -43,9 +44,11 @@ absl::Status BindProtoToActivation(const Message* message, Arena* arena,
     CelValue value;
     const FieldDescriptor* field_desc = desc->field(i);
 
-    if (!field_desc->is_repeated() &&
-        !reflection->HasField(*message, field_desc)) {
-      continue;
+    if (options == ProtoUnsetFieldOptions::kSkip) {
+      if (!field_desc->is_repeated() &&
+          !reflection->HasField(*message, field_desc)) {
+        continue;
+      }
     }
 
     auto status = CreateValueFromField(message, field_desc, arena, &value);

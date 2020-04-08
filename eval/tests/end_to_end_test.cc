@@ -57,7 +57,7 @@ TEST(EndToEndTest, SimpleOnePlusOne) {
 
   ASSERT_OK(cel_expression_status);
 
-  auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+  auto cel_expression = std::move(cel_expression_status.value());
 
   Activation activation;
 
@@ -71,7 +71,7 @@ TEST(EndToEndTest, SimpleOnePlusOne) {
 
   ASSERT_OK(eval_status);
 
-  CelValue result = eval_status.ValueOrDie();
+  CelValue result = eval_status.value();
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 2);
@@ -141,7 +141,7 @@ TEST(EndToEndTest, EmptyStringCompare) {
 
   ASSERT_OK(cel_expression_status);
 
-  auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+  auto cel_expression = std::move(cel_expression_status.value());
 
   Activation activation;
 
@@ -161,7 +161,7 @@ TEST(EndToEndTest, EmptyStringCompare) {
 
   ASSERT_OK(eval_status);
 
-  CelValue result = eval_status.ValueOrDie();
+  CelValue result = eval_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());

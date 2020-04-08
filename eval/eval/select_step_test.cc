@@ -51,8 +51,8 @@ cel_base::StatusOr<CelValue> RunExpression(const CelValue target,
     return step1_status.status();
   }
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
                                  enable_unknowns);
@@ -103,7 +103,7 @@ TEST_P(SelectStepTest, SelectMessageIsNull) {
                                   "bool_value", true, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsError());
 }
@@ -117,7 +117,7 @@ TEST_P(SelectStepTest, PresenseIsFalseTest) {
       RunExpression(&message, "bool_value", true, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
@@ -133,7 +133,7 @@ TEST_P(SelectStepTest, PresenseIsTrueTest) {
       RunExpression(&message, "bool_value", true, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
@@ -151,7 +151,7 @@ TEST_P(SelectStepTest, MapPresenseIsFalseTest) {
 
   auto run_status =
       RunExpression(map_value.get(), "key2", true, &arena, GetParam());
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
@@ -169,7 +169,7 @@ TEST_P(SelectStepTest, MapPresenseIsTrueTest) {
 
   auto run_status =
       RunExpression(map_value.get(), "key1", true, &arena, GetParam());
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
@@ -188,7 +188,7 @@ TEST(SelectStepTest, MapPresenseIsTrueWithUnknownTest) {
   google::protobuf::Arena arena;
 
   auto run_status = RunExpression(map_value.get(), "key1", true, &arena, true);
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
@@ -203,7 +203,7 @@ TEST_P(SelectStepTest, FieldIsNotPresentInProtoTest) {
       RunExpression(&message, "fake_field", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
   ASSERT_TRUE(result.IsError());
 
   EXPECT_THAT(result.ErrorOrDie()->code(), Eq(absl::StatusCode::kNotFound));
@@ -218,7 +218,7 @@ TEST_P(SelectStepTest, FieldIsNotSetTest) {
       RunExpression(&message, "bool_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
@@ -234,7 +234,7 @@ TEST_P(SelectStepTest, SimpleBoolTest) {
       RunExpression(&message, "bool_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
@@ -250,7 +250,7 @@ TEST_P(SelectStepTest, SimpleInt32Test) {
       RunExpression(&message, "int32_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 1);
@@ -266,7 +266,7 @@ TEST_P(SelectStepTest, SimpleInt64Test) {
       RunExpression(&message, "int64_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 1);
@@ -282,7 +282,7 @@ TEST_P(SelectStepTest, SimpleUInt32Test) {
       RunExpression(&message, "uint32_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsUint64());
   EXPECT_EQ(result.Uint64OrDie(), 1);
@@ -298,7 +298,7 @@ TEST_P(SelectStepTest, SimpleUint64Test) {
       RunExpression(&message, "uint64_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsUint64());
   EXPECT_EQ(result.Uint64OrDie(), 1);
@@ -315,7 +315,7 @@ TEST_P(SelectStepTest, SimpleStringTest) {
       RunExpression(&message, "string_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsString());
   EXPECT_EQ(result.StringOrDie().value(), "test");
@@ -333,7 +333,7 @@ TEST_P(SelectStepTest, SimpleBytesTest) {
       RunExpression(&message, "bytes_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsBytes());
   EXPECT_EQ(result.BytesOrDie().value(), "test");
@@ -352,7 +352,7 @@ TEST_P(SelectStepTest, SimpleMessageTest) {
       RunExpression(&message, "message_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsMessage());
   EXPECT_THAT(*message2, EqualsProto(*result.MessageOrDie()));
@@ -369,7 +369,7 @@ TEST_P(SelectStepTest, SimpleEnumTest) {
       RunExpression(&message, "enum_value", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
@@ -387,7 +387,7 @@ TEST_P(SelectStepTest, SimpleListTest) {
       RunExpression(&message, "int32_list", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsList());
 
@@ -408,7 +408,7 @@ TEST_P(SelectStepTest, SimpleMapTest) {
       RunExpression(&message, "string_int32_map", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsMap());
 
@@ -433,7 +433,7 @@ TEST_P(SelectStepTest, MapSimpleInt32Test) {
       RunExpression(map_value.get(), "key1", false, &arena, GetParam());
   ASSERT_OK(run_status);
 
-  CelValue result = run_status.ValueOrDie();
+  CelValue result = run_status.value();
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 1);
@@ -458,8 +458,8 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   ASSERT_TRUE(step0_status.ok());
   ASSERT_TRUE(step1_status.ok());
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
 
   CelError error;
 
@@ -472,7 +472,7 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   auto status = cel_expr.Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  auto result = status.ValueOrDie();
+  auto result = status.value();
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie(), Eq(&error));
 }
@@ -499,8 +499,8 @@ TEST_P(SelectStepTest, UnknownValueProducesError) {
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
                                  GetParam());
@@ -510,7 +510,7 @@ TEST_P(SelectStepTest, UnknownValueProducesError) {
   auto eval_status0 = cel_expr.Evaluate(activation, &arena);
   ASSERT_OK(eval_status0);
 
-  CelValue result = eval_status0.ValueOrDie();
+  CelValue result = eval_status0.value();
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
@@ -523,7 +523,7 @@ TEST_P(SelectStepTest, UnknownValueProducesError) {
   auto eval_status1 = cel_expr.Evaluate(activation, &arena);
   ASSERT_OK(eval_status1);
 
-  result = eval_status1.ValueOrDie();
+  result = eval_status1.value();
 
   ASSERT_TRUE(result.IsError());
   ASSERT_TRUE(IsUnknownValueError(result));
@@ -553,8 +553,8 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {}, true);
 
@@ -568,7 +568,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
     ASSERT_OK(eval_status0);
 
-    CelValue result = eval_status0.ValueOrDie();
+    CelValue result = eval_status0.value();
 
     ASSERT_TRUE(result.IsBool());
     EXPECT_EQ(result.BoolOrDie(), true);
@@ -588,7 +588,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
     ASSERT_OK(eval_status0);
 
-    CelValue result = eval_status0.ValueOrDie();
+    CelValue result = eval_status0.value();
 
     ASSERT_TRUE(result.IsUnknownSet());
   }
@@ -606,7 +606,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
     ASSERT_OK(eval_status0);
 
-    CelValue result = eval_status0.ValueOrDie();
+    CelValue result = eval_status0.value();
 
     ASSERT_TRUE(result.IsUnknownSet());
   }
@@ -623,7 +623,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
     ASSERT_OK(eval_status0);
 
-    CelValue result = eval_status0.ValueOrDie();
+    CelValue result = eval_status0.value();
 
     ASSERT_TRUE(result.IsUnknownSet());
   }
@@ -641,7 +641,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
     ASSERT_OK(eval_status0);
 
-    CelValue result = eval_status0.ValueOrDie();
+    CelValue result = eval_status0.value();
 
     ASSERT_TRUE(result.IsBool());
     EXPECT_EQ(result.BoolOrDie(), true);

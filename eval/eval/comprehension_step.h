@@ -15,8 +15,8 @@ namespace runtime {
 
 class ComprehensionNextStep : public ExpressionStepBase {
  public:
-  ComprehensionNextStep(const std::string& accu_var, const std::string& iter_var,
-                        int64_t expr_id);
+  ComprehensionNextStep(const std::string& accu_var,
+                        const std::string& iter_var, int64_t expr_id);
 
   void set_jump_offset(int offset);
   void set_error_jump_offset(int offset);
@@ -32,16 +32,19 @@ class ComprehensionNextStep : public ExpressionStepBase {
 
 class ComprehensionCondStep : public ExpressionStepBase {
  public:
-  ComprehensionCondStep(const std::string& accu_var, const std::string& iter_var,
-                        bool shortcircuiting, int64_t expr_id);
+  ComprehensionCondStep(const std::string& accu_var,
+                        const std::string& iter_var, bool shortcircuiting,
+                        int64_t expr_id);
 
   void set_jump_offset(int offset);
+  void set_error_jump_offset(int offset);
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   std::string iter_var_;
   int jump_offset_;
+  int error_jump_offset_;
   bool shortcircuiting_;
 };
 

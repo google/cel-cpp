@@ -42,7 +42,7 @@ class ParserVisitor : public ::cel_grammar::CelBaseVisitor,
   antlrcpp::Any visitIndex(
       ::cel_grammar::CelParser::IndexContext* ctx) override;
   antlrcpp::Any visitCreateMessage(
-      ::cel_grammar::CelParser::CreateMessageContext* ctx);
+      ::cel_grammar::CelParser::CreateMessageContext* ctx) override;
   antlrcpp::Any visitFieldInitializerList(
       ::cel_grammar::CelParser::FieldInitializerListContext* ctx) override;
   antlrcpp::Any visitIdentOrGlobalCall(

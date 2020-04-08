@@ -38,7 +38,7 @@
 // Example that is guaranteed crash if the result holds no value:
 //
 //  StatusOr<Foo> result = DoBigCalculationThatCouldFail();
-//  const Foo& foo = result.ValueOrDie();
+//  const Foo& foo = result.value();
 //  foo.DoSomethingCool();
 //
 // Example usage of a StatusOr<std::unique_ptr<T>>:
@@ -123,7 +123,7 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
 
   // Constructs a new StatusOr with the given value. After calling this
   // constructor, this->ok() will be true and the contained value may be
-  // retrieved with ValueOrDie(), operator*(), or operator->().
+  // retrieved with value(), operator*(), or operator->().
   //
   // NOTE: Not explicit - we want to use StatusOr<T> as a return type
   // so it is convenient and sensible to be able to do 'return T()'
@@ -133,7 +133,7 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
   StatusOr(const T& value);
 
   // Constructs a new StatusOr with the given non-ok status. After calling this
-  // constructor, this->ok() will be false and calls to ValueOrDie() will
+  // constructor, this->ok() will be false and calls to value() will
   // CHECK-fail.
   //
   // NOTE: Not explicit - we want to use StatusOr<T> as a return
@@ -169,36 +169,36 @@ class StatusOr : private statusor_internal::StatusOrData<T>,
   // Returns a reference to our current value, or CHECK-fails if !this->ok(). If
   // you have already checked the status using this->ok() or operator bool(),
   // then you probably want to use operator*() or operator->() to access the
-  // current value instead of ValueOrDie().
+  // current value instead of value().
   //
   // Note: for value types that are cheap to copy, prefer simple code:
   //
-  //   T value = statusor.ValueOrDie();
+  //   T value = statusor.value();
   //
   // Otherwise, if the value type is expensive to copy, but can be left
   // in the StatusOr, simply assign to a reference:
   //
-  //   T& value = statusor.ValueOrDie();  // or `const T&`
+  //   T& value = statusor.value();  // or `const T&`
   //
   // Otherwise, if the value type supports an efficient move, it can be
   // used as follows:
   //
-  //   T value = std::move(statusor).ValueOrDie();
+  //   T value = std::move(statusor).value();
   //
   // The std::move on statusor instead of on the whole expression enables
   // warnings about possible uses of the statusor object after the move.
 
-  const T& ValueOrDie() const&;
-  T& ValueOrDie() &;
-  const T&& ValueOrDie() const&&;
-  T&& ValueOrDie() &&;
+  const T& value() const&;
+  T& value() &;
+  const T&& value() const&&;
+  T&& value() &&;
 
   // Returns a reference to the current value.
   //
   // REQUIRES: this->ok() == true, otherwise the behavior is undefined.
   //
   // Use this->ok() or `operator bool()` to verify that there is a current
-  // value. Alternatively, see ValueOrDie() for a similar API that guarantees
+  // value. Alternatively, see value() for a similar API that guarantees
   // CHECK-failing if there is no current value.
   //
   // copybara:strip_begin(internal-doc)
@@ -271,7 +271,7 @@ template <typename T>
 template <typename U>
 inline StatusOr<T>& StatusOr<T>::operator=(const StatusOr<U>& other) {
   if (other.ok())
-    this->Assign(other.ValueOrDie());
+    this->Assign(other.value());
   else
     this->Assign(other.status());
   return *this;
@@ -286,7 +286,7 @@ template <typename T>
 template <typename U>
 inline StatusOr<T>& StatusOr<T>::operator=(StatusOr<U>&& other) {
   if (other.ok()) {
-    this->Assign(std::move(other).ValueOrDie());
+    this->Assign(std::move(other).value());
   } else {
     this->Assign(std::move(other).status());
   }
@@ -303,25 +303,25 @@ absl::Status StatusOr<T>::status() && {
 }
 
 template <typename T>
-const T& StatusOr<T>::ValueOrDie() const& {
+const T& StatusOr<T>::value() const& {
   this->EnsureOk();
   return this->data_;
 }
 
 template <typename T>
-T& StatusOr<T>::ValueOrDie() & {
+T& StatusOr<T>::value() & {
   this->EnsureOk();
   return this->data_;
 }
 
 template <typename T>
-const T&& StatusOr<T>::ValueOrDie() const&& {
+const T&& StatusOr<T>::value() const&& {
   this->EnsureOk();
   return std::move(this->data_);
 }
 
 template <typename T>
-T&& StatusOr<T>::ValueOrDie() && {
+T&& StatusOr<T>::value() && {
   this->EnsureOk();
   return std::move(this->data_);
 }

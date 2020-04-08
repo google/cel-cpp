@@ -164,6 +164,10 @@ class CelValue {
 
   static CelValue CreateBytes(BytesHolder holder) { return CelValue(holder); }
 
+  static CelValue CreateBytesView(absl::string_view value) {
+    return CelValue(BytesHolder(value));
+  }
+
   static CelValue CreateBytes(const std::string *str) {
     return CelValue(BytesHolder(str));
   }

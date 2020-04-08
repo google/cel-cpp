@@ -48,11 +48,11 @@ CelValue EvaluateAttributeHelper(
   container_expr->mutable_ident_expr()->set_name("container");
   key_expr->mutable_ident_expr()->set_name("key");
 
-  path.push_back(std::move(
-      CreateIdentStep(&container_expr->ident_expr(), 1).ValueOrDie()));
   path.push_back(
-      std::move(CreateIdentStep(&key_expr->ident_expr(), 2).ValueOrDie()));
-  path.push_back(std::move(CreateContainerAccessStep(call, 3).ValueOrDie()));
+      std::move(CreateIdentStep(&container_expr->ident_expr(), 1).value()));
+  path.push_back(
+      std::move(CreateIdentStep(&key_expr->ident_expr(), 2).value()));
+  path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
 
   CelExpressionFlatImpl cel_expr(&expr, std::move(path), 0, {}, enable_unknown);
   Activation activation;
@@ -64,7 +64,7 @@ CelValue EvaluateAttributeHelper(
   auto eval_status = cel_expr.Evaluate(activation, arena);
 
   EXPECT_OK(eval_status);
-  return eval_status.ValueOrDie();
+  return eval_status.value();
 }
 
 class ContainerAccessStepTest : public ::testing::Test {

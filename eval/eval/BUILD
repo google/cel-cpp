@@ -121,11 +121,13 @@ cc_library(
     ],
     copts = ["-std=c++14"],
     deps = [
+        ":attribute_trail",
         ":evaluator_core",
         ":expression_build_warning",
         ":expression_step_base",
         "//base:status_macros",
         "//eval/public:activation",
+        "//eval/public:cel_builtins",
         "//eval/public:cel_function",
         "//eval/public:cel_function_provider",
         "//eval/public:cel_function_registry",
@@ -133,6 +135,8 @@ cc_library(
         "//eval/public:unknown_function_result_set",
         "//eval/public:unknown_set",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -666,5 +670,33 @@ cc_test(
         "//eval/public:unknown_set",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "set_util",
+    srcs = ["set_util.cc"],
+    hdrs = ["set_util.h"],
+    copts = ["-std=c++14"],
+    deps = ["//eval/public:cel_value"],
+)
+
+cc_test(
+    name = "set_util_test",
+    size = "small",
+    srcs = [
+        "set_util_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":container_backed_list_impl",
+        ":container_backed_map_impl",
+        ":set_util",
+        "//eval/public:cel_value",
+        "//eval/public:unknown_set",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
     ],
 )

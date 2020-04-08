@@ -49,8 +49,7 @@ static void BM_Eval(benchmark::State& state) {
   auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
   CHECK_OK(cel_expr_status.status());
 
-  std::unique_ptr<CelExpression> cel_expr =
-      std::move(cel_expr_status.ValueOrDie());
+  std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
 
   for (auto _ : state) {
     google::protobuf::Arena arena;
@@ -58,7 +57,7 @@ static void BM_Eval(benchmark::State& state) {
     auto eval_result = cel_expr->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
 
-    CelValue result = eval_result.ValueOrDie();
+    CelValue result = eval_result.value();
     GOOGLE_CHECK(result.IsInt64());
     GOOGLE_CHECK(result.Int64OrDie() == len + 1);
   }
@@ -611,7 +610,7 @@ void BM_PolicySymbolic(benchmark::State& state) {
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
   CHECK_OK(cel_expression_status.status());
 
-  auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+  auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
   activation.InsertValue("ip", CelValue::CreateStringView(kIP));
   activation.InsertValue("path", CelValue::CreateStringView(kPath));
@@ -620,7 +619,7 @@ void BM_PolicySymbolic(benchmark::State& state) {
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
-    GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
+    GOOGLE_CHECK(eval_result.value().BoolOrDie());
   }
 }
 
@@ -659,7 +658,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
   CHECK_OK(cel_expression_status.status());
 
-  auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+  auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
   RequestMap request;
   activation.InsertValue("request", CelValue::CreateMap(&request));
@@ -667,7 +666,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
-    GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
+    GOOGLE_CHECK(eval_result.value().BoolOrDie());
   }
 }
 
@@ -686,7 +685,7 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
   CHECK_OK(cel_expression_status.status());
 
-  auto cel_expression = std::move(cel_expression_status.ValueOrDie());
+  auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
   RequestContext request;
   request.set_ip(kIP);
@@ -697,7 +696,7 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
     CHECK_OK(eval_result.status());
-    GOOGLE_CHECK(eval_result.ValueOrDie().BoolOrDie());
+    GOOGLE_CHECK(eval_result.value().BoolOrDie());
   }
 }
 

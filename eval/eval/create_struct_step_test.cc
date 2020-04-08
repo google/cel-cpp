@@ -60,8 +60,8 @@ cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
     return step1_status.status();
   }
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
 
   CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
                                  enable_unknowns);
@@ -77,7 +77,7 @@ void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
   auto status = RunExpression(field, value, arena, enable_unknowns);
   ASSERT_OK(status);
 
-  CelValue result = status.ValueOrDie();
+  CelValue result = status.value();
   ASSERT_TRUE(result.IsMessage());
 
   const Message* msg = result.MessageOrDie();
@@ -98,7 +98,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
   auto status = RunExpression(field, value, arena, enable_unknowns);
   ASSERT_OK(status);
 
-  CelValue result = status.ValueOrDie();
+  CelValue result = status.value();
   ASSERT_TRUE(result.IsMessage());
 
   const Message* msg = result.MessageOrDie();
@@ -145,8 +145,8 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
       return step_value_status.status();
     }
 
-    path.push_back(std::move(step_key_status.ValueOrDie()));
-    path.push_back(std::move(step_value_status.ValueOrDie()));
+    path.push_back(std::move(step_key_status.value()));
+    path.push_back(std::move(step_value_status.value()));
 
     activation.InsertValue(key_name, item.first);
     activation.InsertValue(value_name, item.second);
@@ -161,7 +161,7 @@ cel_base::StatusOr<CelValue> RunCreateMapExpression(
     return step1_status.status();
   }
 
-  path.push_back(std::move(step1_status.ValueOrDie()));
+  path.push_back(std::move(step1_status.value()));
 
   CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
                                  enable_unknowns);
@@ -182,7 +182,7 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 
   ASSERT_OK(step_status);
 
-  path.push_back(std::move(step_status.ValueOrDie()));
+  path.push_back(std::move(step_status.value()));
 
   CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {}, GetParam());
   Activation activation;
@@ -192,7 +192,7 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   auto status = cel_expr.Evaluate(activation, &arena);
   ASSERT_OK(status);
 
-  CelValue result = status.ValueOrDie();
+  CelValue result = status.value();
   ASSERT_TRUE(result.IsMessage());
 
   const Message* msg = result.MessageOrDie();
@@ -630,7 +630,7 @@ TEST_P(CreateCreateStructStepTest, TestCreateEmptyMap) {
 
   ASSERT_OK(status);
 
-  CelValue result_value = status.ValueOrDie();
+  CelValue result_value = status.value();
   ASSERT_TRUE(result_value.IsMap());
 
   const CelMap* cel_map = result_value.MapOrDie();
@@ -654,7 +654,7 @@ TEST(CreateCreateStructStepTest, TestMapCreateWithUnknown) {
 
   ASSERT_OK(status);
 
-  CelValue result_value = status.ValueOrDie();
+  CelValue result_value = status.value();
   ASSERT_TRUE(result_value.IsUnknownSet());
 }
 
@@ -675,7 +675,7 @@ TEST_P(CreateCreateStructStepTest, TestCreateStringMap) {
 
   ASSERT_OK(status);
 
-  CelValue result_value = status.ValueOrDie();
+  CelValue result_value = status.value();
   ASSERT_TRUE(result_value.IsMap());
 
   const CelMap* cel_map = result_value.MapOrDie();

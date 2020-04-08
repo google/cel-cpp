@@ -38,7 +38,7 @@ cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
       return const_step_status.status();
     }
 
-    path.push_back(std::move(const_step_status.ValueOrDie()));
+    path.push_back(std::move(const_step_status.value()));
   }
 
   auto step0_status = CreateCreateListStep(create_list, dummy_expr.id());
@@ -47,7 +47,7 @@ cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
     return step0_status.status();
   }
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
                                  enable_unknowns);
@@ -77,7 +77,7 @@ cel_base::StatusOr<CelValue> RunExpressionWithCelValues(
       return ident_step_status.status();
     }
 
-    path.push_back(std::move(ident_step_status.ValueOrDie()));
+    path.push_back(std::move(ident_step_status.value()));
     activation.InsertValue(var_name, value);
   }
 
@@ -87,7 +87,7 @@ cel_base::StatusOr<CelValue> RunExpressionWithCelValues(
     return step0_status.status();
   }
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
                                  enable_unknowns);
@@ -111,7 +111,7 @@ TEST(CreateListStepTest, TestCreateListStackUndeflow) {
 
   ASSERT_OK(step0_status);
 
-  path.push_back(std::move(step0_status.ValueOrDie()));
+  path.push_back(std::move(step0_status.value()));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {});
   Activation activation;
@@ -127,7 +127,7 @@ TEST_P(CreateListStepTest, CreateListEmpty) {
   auto eval_result = RunExpression({}, &arena, GetParam());
 
   ASSERT_OK(eval_result);
-  const CelValue result_value = eval_result.ValueOrDie();
+  const CelValue result_value = eval_result.value();
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(), Eq(0));
 }
@@ -137,7 +137,7 @@ TEST_P(CreateListStepTest, CreateListOne) {
   auto eval_result = RunExpression({100}, &arena, GetParam());
 
   ASSERT_OK(eval_result);
-  const CelValue result_value = eval_result.ValueOrDie();
+  const CelValue result_value = eval_result.value();
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(), Eq(1));
   EXPECT_THAT((*result_value.ListOrDie())[0].Int64OrDie(), Eq(100));
@@ -152,7 +152,7 @@ TEST_P(CreateListStepTest, CreateListHundred) {
   auto eval_result = RunExpression(values, &arena, GetParam());
 
   ASSERT_OK(eval_result);
-  const CelValue result_value = eval_result.ValueOrDie();
+  const CelValue result_value = eval_result.value();
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(),
               Eq(static_cast<int>(values.size())));
@@ -182,7 +182,7 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
   auto eval_result = RunExpressionWithCelValues(values, &arena, true);
 
   ASSERT_OK(eval_result);
-  const CelValue result_value = eval_result.ValueOrDie();
+  const CelValue result_value = eval_result.value();
   ASSERT_TRUE(result_value.IsUnknownSet());
   const UnknownSet* result_set = result_value.UnknownSetOrDie();
   EXPECT_THAT(result_set->unknown_attributes().attributes().size(), Eq(2));

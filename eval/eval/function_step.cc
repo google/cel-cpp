@@ -7,9 +7,14 @@
 
 #include "google/protobuf/arena.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
@@ -23,6 +28,57 @@ namespace expr {
 namespace runtime {
 
 namespace {
+
+// Non-strict functions are allowed to consume errors and UnknownSets.
+// If short-circuiting is turned off, and, or and ternary use the function
+// implementations instead of special logic steps, so they need to be
+// whitelisted here to behave correctly.
+bool IsNonStrict(const std::string& name) {
+  return (name == builtin::kNotStrictlyFalse ||
+          name == builtin::kNotStrictlyFalseDeprecated ||
+          name == builtin::kAnd || name == builtin::kOr ||
+          name == builtin::kTernary);
+}
+
+// Determine if the overload should be considered. Overloads that can consume
+// errors or unknown sets must be whitelisted as a non-strict function.
+bool ShouldAcceptOverload(const CelFunction* function,
+                          absl::Span<const CelValue> arguments) {
+  if (function == nullptr) {
+    return false;
+  }
+  for (int i = 0; i < arguments.size(); i++) {
+    if (arguments[i].IsUnknownSet() || arguments[i].IsError()) {
+      return IsNonStrict(function->descriptor().name());
+    }
+  }
+  return true;
+}
+
+// Convert partially unknown arguments to unknowns before passing to the
+// function.
+// TODO(issues/52): See if this can be refactored to remove the eager
+// arguments copy.
+// Argument and attribute spans are expected to be equal length.
+std::vector<CelValue> CheckForPartialUnknowns(
+    ExecutionFrame* frame, absl::Span<const CelValue> args,
+    absl::Span<const AttributeTrail> attrs) {
+  std::vector<CelValue> result;
+  result.reserve(args.size());
+  for (int i = 0; i < args.size(); i++) {
+    auto attr_set = frame->unknowns_utility().CheckForUnknowns(
+        attrs.subspan(i, 1), /*use_partial=*/true);
+    if (!attr_set.attributes().empty()) {
+      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(frame->arena(),
+                                                           std::move(attr_set));
+      result.push_back(CelValue::CreateUnknownSet(unknown_set));
+    } else {
+      result.push_back(args.at(i));
+    }
+  }
+
+  return result;
+}
 
 // Implementation of ExpressionStep that finds suitable CelFunction overload and
 // invokes it. Abstract base class standardizes behavior between lazy and eager
@@ -49,11 +105,13 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
   // Create Span object that contains input arguments to the function.
   auto input_args = frame->value_stack().GetSpan(num_arguments_);
 
-  const UnknownSet* unknown_set = nullptr;
+  std::vector<CelValue> unknowns_args;
+  // Preprocess args. If an argument is partially unknown, convert it to an
+  // unknown attribute set.
   if (frame->enable_unknowns()) {
     auto input_attrs = frame->value_stack().GetAttributeSpan(num_arguments_);
-    unknown_set = frame->unknowns_utility().MergeUnknowns(
-        input_args, input_attrs, /*initial_set=*/nullptr, /*use_partial=*/true);
+    unknowns_args = CheckForPartialUnknowns(frame, input_args, input_attrs);
+    input_args = absl::MakeConstSpan(unknowns_args);
   }
 
   // Derived class resolves to a single function overload or none.
@@ -61,10 +119,10 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
   if (!status.ok()) {
     return status.status();
   }
-  const CelFunction* matched_function = status.ValueOrDie();
+  const CelFunction* matched_function = status.value();
 
-  // Overload found
-  if (matched_function != nullptr && unknown_set == nullptr) {
+  // Overload found and is allowed to consume the arguments.
+  if (ShouldAcceptOverload(matched_function, input_args)) {
     absl::Status status =
         matched_function->Evaluate(input_args, result, frame->arena());
     if (!status.ok()) {
@@ -93,15 +151,18 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
       }
     }
 
-    if (unknown_set) {
-      *result = CelValue::CreateUnknownSet(unknown_set);
-      return absl::OkStatus();
+    if (frame->enable_unknowns()) {
+      // Already converted partial unknowns to unknown sets so just merge.
+      auto unknown_set =
+          frame->unknowns_utility().MergeUnknowns(input_args, nullptr);
+      if (unknown_set != nullptr) {
+        *result = CelValue::CreateUnknownSet(unknown_set);
+        return absl::OkStatus();
+      }
     }
 
-    // If no errors in input args, create new CelError.
-    if (!result->IsError()) {
-      *result = CreateNoMatchingOverloadError(frame->arena());
-    }
+    // If no errors or unknowns in input args, create new CelError.
+    *result = CreateNoMatchingOverloadError(frame->arena());
   }
 
   return absl::OkStatus();
@@ -196,7 +257,7 @@ cel_base::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
     if (!status.ok()) {
       return status;
     }
-    auto overload = status.ValueOrDie();
+    auto overload = status.value();
     if (overload != nullptr && overload->MatchArguments(input_args)) {
       // More than one overload matches our arguments.
       if (matched_function != nullptr) {
