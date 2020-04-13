@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/container/btree_map.h"
+#include "absl/container/btree_set.h"
 #include "eval/public/cel_function.h"
 
 namespace google {
@@ -30,7 +32,8 @@ class UnknownFunctionResult {
   // The arguments of the function call that generated the unknown.
   const std::vector<CelValue>& arguments() const { return arguments_; }
 
-  // Equality operator provided for set semantics.
+  // Equality operator provided for testing. Compatible with set less-than
+  // comparator.
   // Compares descriptor then arguments elementwise.
   bool IsEqualTo(const UnknownFunctionResult& other) const;
 
@@ -38,6 +41,12 @@ class UnknownFunctionResult {
   CelFunctionDescriptor descriptor_;
   int64_t expr_id_;
   std::vector<CelValue> arguments_;
+};
+
+// Comparator for set semantics.
+struct UnknownFunctionComparator {
+  bool operator()(const UnknownFunctionResult*,
+                  const UnknownFunctionResult*) const;
 };
 
 // Represents a collection of unknown function results at a particular point in
@@ -57,14 +66,15 @@ class UnknownFunctionResultSet {
   UnknownFunctionResultSet(const UnknownFunctionResult* initial)
       : unknown_function_results_{initial} {}
 
-  const std::vector<const UnknownFunctionResult*>& unknown_function_results()
-      const {
+  using Container =
+      absl::btree_set<const UnknownFunctionResult*, UnknownFunctionComparator>;
+
+  const Container& unknown_function_results() const {
     return unknown_function_results_;
   }
 
  private:
-  std::vector<const UnknownFunctionResult*> unknown_function_results_;
-  void Add(const UnknownFunctionResult* result);
+  Container unknown_function_results_;
 };
 
 }  // namespace runtime

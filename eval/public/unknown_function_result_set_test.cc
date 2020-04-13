@@ -35,6 +35,12 @@ CelFunctionDescriptor kTwoInt("TwoInt", false,
 
 CelFunctionDescriptor kOneInt("OneInt", false, {CelValue::Type::kInt64});
 
+// Helper to confirm the set comparator works.
+bool IsLessThan(const UnknownFunctionResult& lhs,
+                const UnknownFunctionResult& rhs) {
+  return UnknownFunctionComparator()(&lhs, &rhs);
+}
+
 TEST(UnknownFunctionResult, ArgumentCapture) {
   UnknownFunctionResult call1(
       kTwoInt, /*expr_id=*/0,
@@ -54,6 +60,8 @@ TEST(UnknownFunctionResult, Equals) {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)});
 
   EXPECT_TRUE(call1.IsEqualTo(call2));
+  EXPECT_FALSE(IsLessThan(call1, call2));
+  EXPECT_FALSE(IsLessThan(call2, call1));
 
   UnknownFunctionResult call3(kOneInt, /*expr_id=*/0,
                               {CelValue::CreateInt64(1)});
@@ -73,6 +81,7 @@ TEST(UnknownFunctionResult, InequalDescriptor) {
                               {CelValue::CreateInt64(1)});
 
   EXPECT_FALSE(call1.IsEqualTo(call2));
+  EXPECT_TRUE(IsLessThan(call2, call1));
 
   CelFunctionDescriptor one_uint("OneInt", false, {CelValue::Type::kUint64});
 
@@ -83,6 +92,7 @@ TEST(UnknownFunctionResult, InequalDescriptor) {
                               {CelValue::CreateUint64(1)});
 
   EXPECT_FALSE(call3.IsEqualTo(call4));
+  EXPECT_TRUE(IsLessThan(call3, call4));
 }
 
 TEST(UnknownFunctionResult, InequalArgs) {
@@ -95,6 +105,7 @@ TEST(UnknownFunctionResult, InequalArgs) {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(3)});
 
   EXPECT_FALSE(call1.IsEqualTo(call2));
+  EXPECT_TRUE(IsLessThan(call1, call2));
 
   UnknownFunctionResult call3(
       kTwoInt, /*expr_id=*/0,
@@ -104,6 +115,7 @@ TEST(UnknownFunctionResult, InequalArgs) {
                               {CelValue::CreateInt64(1)});
 
   EXPECT_FALSE(call3.IsEqualTo(call4));
+  EXPECT_TRUE(IsLessThan(call4, call3));
 }
 
 TEST(UnknownFunctionResult, ListsEqual) {
@@ -143,6 +155,7 @@ TEST(UnknownFunctionResult, ListsDifferentSizes) {
 
   // [1, 2] == [1, 2, 3]
   EXPECT_FALSE(call1.IsEqualTo(call2));
+  EXPECT_TRUE(IsLessThan(call1, call2));
 }
 
 TEST(UnknownFunctionResult, ListsDifferentMembers) {
@@ -161,6 +174,7 @@ TEST(UnknownFunctionResult, ListsDifferentMembers) {
 
   // [1, 2] == [2, 2]
   EXPECT_FALSE(call1.IsEqualTo(call2));
+  EXPECT_TRUE(IsLessThan(call1, call2));
 }
 
 TEST(UnknownFunctionResult, MapsEqual) {
@@ -205,6 +219,7 @@ TEST(UnknownFunctionResult, MapsDifferentSizes) {
 
   // {1: 2, 2: 4} == {1: 2, 2: 4, 3: 6}
   EXPECT_FALSE(call1.IsEqualTo(call2));
+  EXPECT_TRUE(IsLessThan(call1, call2));
 }
 
 TEST(UnknownFunctionResult, MapsDifferentElements) {
@@ -240,8 +255,10 @@ TEST(UnknownFunctionResult, MapsDifferentElements) {
 
   // {1: 2, 2: 4, 3: 6} == {1: 2, 2: 4, 4: 8}
   EXPECT_FALSE(call1.IsEqualTo(call2));
+  EXPECT_TRUE(IsLessThan(call1, call2));
   // {1: 2, 2: 4, 3: 6} == {1: 2, 2: 4, 3: 5}
   EXPECT_FALSE(call1.IsEqualTo(call3));
+  EXPECT_TRUE(IsLessThan(call3, call1));
 }
 
 TEST(UnknownFunctionResult, Messages) {
@@ -279,7 +296,9 @@ TEST(UnknownFunctionResult, AnyDescriptor) {
                                     {CelValue::CreateUint64(2)});
 
   EXPECT_FALSE(callAnyInt1.IsEqualTo(callInt));
+  EXPECT_TRUE(IsLessThan(callAnyInt1, callInt));
   EXPECT_FALSE(callAnyInt1.IsEqualTo(callAnyUint));
+  EXPECT_TRUE(IsLessThan(callAnyInt1, callAnyUint));
   EXPECT_TRUE(callAnyInt1.IsEqualTo(callAnyInt2));
 }
 
