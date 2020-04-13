@@ -573,6 +573,8 @@ cc_library(
         ":cel_function",
         ":cel_options",
         ":cel_value",
+        "//eval/eval:set_util",
+        "@com_google_absl//absl/container:btree",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
