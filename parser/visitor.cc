@@ -422,6 +422,10 @@ google::api::expr::v1alpha1::SourceInfo ParserVisitor::sourceInfo() const {
   return sf_->sourceInfo();
 }
 
+EnrichedSourceInfo ParserVisitor::enrichedSourceInfo() const {
+  return sf_->enrichedSourceInfo();
+}
+
 void ParserVisitor::syntaxError(antlr4::Recognizer* recognizer,
                                 antlr4::Token* offending_symbol, size_t line,
                                 size_t col, const std::string& msg,

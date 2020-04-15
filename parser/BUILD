@@ -26,8 +26,8 @@ cc_library(
     deps = [
         ":cel_cc_parser",
         ":macro",
+        ":source_factory",
         ":visitor",
-        "//base:status_macros",
         "//base:statusor",
         "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/types:optional",
@@ -75,7 +75,6 @@ cc_library(
         ":source_factory",
         "//common:escaping",
         "//common:operators",
-        "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
@@ -99,6 +98,7 @@ cc_library(
     ],
     deps = [
         ":cel_cc_parser",
+        "//base",
         "//common:operators",
         "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/memory",
@@ -115,6 +115,7 @@ cc_test(
     copts = ["-std=c++14"],
     deps = [
         ":parser",
+        ":source_factory",
         "//common:escaping",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",

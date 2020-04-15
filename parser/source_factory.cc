@@ -1,5 +1,6 @@
 #include "parser/source_factory.h"
 
+#include "base/integral_types.h"
 #include "google/protobuf/struct.pb.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/numbers.h"
@@ -23,9 +24,9 @@ SourceFactory::SourceFactory(const std::string& expression) : next_id_(1) {
 int64_t SourceFactory::id(const antlr4::Token* token) {
   int64_t new_id = next_id_;
   positions_.emplace(
-      new_id,
-      SourceLocation{(int32_t)token->getLine(),
-                     (int32_t)token->getCharPositionInLine(), line_offsets_});
+      new_id, SourceLocation{(int32_t)token->getLine(),
+                             (int32_t)token->getCharPositionInLine(),
+                             (int32_t)token->getStopIndex(), line_offsets_});
   next_id_ += 1;
   return new_id;
 }
@@ -408,7 +409,7 @@ Expr SourceFactory::reportError(antlr4::ParserRuleContext* ctx,
 }
 
 Expr SourceFactory::reportError(int32_t line, int32_t col, const std::string& msg) {
-  SourceLocation loc(line, col, line_offsets_);
+  SourceLocation loc(line, col, /*offset_end=*/-1, line_offsets_);
   errors_.emplace_back(msg, loc);
   return newExpr(id(loc));
 }
@@ -440,6 +441,15 @@ google::api::expr::v1alpha1::SourceInfo SourceFactory::sourceInfo() const {
       line_offsets_.begin(), line_offsets_.end(),
       [&source_info](int32_t offset) { source_info.add_line_offsets(offset); });
   return source_info;
+}
+
+EnrichedSourceInfo SourceFactory::enrichedSourceInfo() const {
+  std::vector<std::pair<int64_t, int32_t>> offset_ends;
+  std::for_each(positions_.begin(), positions_.end(),
+                [&offset_ends](const std::pair<int64_t, SourceLocation>& loc) {
+                  offset_ends.push_back({loc.first, loc.second.offset_end});
+                });
+  return EnrichedSourceInfo(offset_ends);
 }
 
 const std::vector<int32_t>& SourceFactory::line_offsets() const {

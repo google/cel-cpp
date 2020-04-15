@@ -10,6 +10,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
 #include "common/escaping.h"
+#include "parser/source_factory.h"
 
 namespace google {
 namespace api {
@@ -23,8 +24,9 @@ using testing::Not;
 
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,
-           const std::string& E = "", const std::string& L = "")
-      : I(I), P(P), E(E), L(L) {}
+           const std::string& E = "", const std::string& L = "",
+           const std::string& R = "")
+      : I(I), P(P), E(E), L(L), R(R) {}
 
   // I contains the input expression to be parsed.
   std::string I;
@@ -38,6 +40,9 @@ struct TestInfo {
 
   // L contains the expected source adorned debug output of the expression tree.
   std::string L;
+
+  // R contains the expected enriched source info output of the expression tree.
+  std::string R;
 };
 
 std::vector<TestInfo> test_cases = {
@@ -344,6 +349,7 @@ std::vector<TestInfo> test_cases = {
         "a^#1[1,0]#.b(\n"
         "  c^#3[1,4]#\n"
         ")^#2[1,3]#",
+        "[1,0]^#[2,3]^#[3,4]",
     },
 
     // Parse error tests
@@ -377,6 +383,7 @@ std::vector<TestInfo> test_cases = {
         "m^#2:Expr.Ident#.f~test-only~^#4:Expr.Select#",
         "",
         "m^#2[1,4]#.f~test-only~^#4[1,3]#",
+        "[1,3]^#[2,4]^#[3,5]^#[4,3]",
     },
     {"m.exists_one(v, f)",
      "__comprehension__(\n"
@@ -1129,23 +1136,22 @@ class DebugWriter {
   int indent_;
 };
 
+std::string ConvertEnrichedSourceInfoToString(
+    const EnrichedSourceInfo& enriched_source_info) {
+  std::vector<std::string> offset_ends;
+  for (const auto& offset_end : enriched_source_info.offset_ends()) {
+    offset_ends.push_back(
+        absl::StrFormat("[%d,%d]", offset_end.first, offset_end.second));
+  }
+  return absl::StrJoin(offset_ends, "^#");
+}
+
 class ExpressionTest : public testing::TestWithParam<TestInfo> {};
 
 TEST_P(ExpressionTest, Parse) {
   const TestInfo& test_info = GetParam();
-  /*
-  ::testing::internal::ColoredPrintf(::testing::internal::COLOR_GREEN,
-                                     "[          ]");
-  ::testing::internal::ColoredPrintf(::testing::internal::COLOR_DEFAULT,
-                                     " Expression: ");
-  ::testing::internal::ColoredPrintf(::testing::internal::COLOR_YELLOW, "%s",
-                                     test_info.I.c_str());
-  ::testing::internal::ColoredPrintf(
-      ::testing::internal::COLOR_DEFAULT, "%s\n",
-      !test_info.E.empty() ? " (error expected)" : "");
-  */
 
-  auto result = Parse(test_info.I);
+  auto result = EnrichedParse(test_info.I, Macro::AllMacros());
   if (test_info.E.empty()) {
     EXPECT_TRUE(result.ok());
   } else {
@@ -1156,15 +1162,24 @@ TEST_P(ExpressionTest, Parse) {
   if (!test_info.P.empty()) {
     KindAndIdAdorner kind_and_id_adorner;
     DebugWriter w(kind_and_id_adorner);
-    std::string adorned_string = w.toAdornedDebugString(result.value());
+    std::string adorned_string =
+        w.toAdornedDebugString(result.value().parsed_expr());
     EXPECT_EQ(test_info.P, adorned_string);
   }
 
   if (!test_info.L.empty()) {
-    LocationAdorner location_adorner(result.value().source_info());
+    LocationAdorner location_adorner(
+        result.value().parsed_expr().source_info());
     DebugWriter w(location_adorner);
-    std::string adorned_string = w.toAdornedDebugString(result.value());
+    std::string adorned_string =
+        w.toAdornedDebugString(result.value().parsed_expr());
     EXPECT_EQ(test_info.L, adorned_string);
+  }
+
+  if (!test_info.R.empty()) {
+    EXPECT_EQ(ConvertEnrichedSourceInfoToString(
+                  result.value().enriched_source_info()),
+              test_info.R);
   }
 }
 
