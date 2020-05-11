@@ -36,7 +36,7 @@ namespace {
 
 struct StackRecord {
  public:
-  static const int kNotCallArg = -1;
+  static constexpr int kNotCallArg = -1;
 
   StackRecord(const Expr *e, const SourceInfo *info)
       : expr(e),

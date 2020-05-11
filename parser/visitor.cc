@@ -336,6 +336,29 @@ antlrcpp::Any ParserVisitor::visitCreateStruct(
   return sf_->newMap(struct_id, entries);
 }
 
+antlrcpp::Any ParserVisitor::visitConstantLiteral(
+    CelParser::ConstantLiteralContext* clctx) {
+  CelParser::LiteralContext* literal = clctx->literal();
+  if (auto* ctx = tree_as<CelParser::IntContext>(literal)) {
+    return visitInt(ctx);
+  } else if (auto* ctx = tree_as<CelParser::UintContext>(literal)) {
+    return visitUint(ctx);
+  } else if (auto* ctx = tree_as<CelParser::DoubleContext>(literal)) {
+    return visitDouble(ctx);
+  } else if (auto* ctx = tree_as<CelParser::StringContext>(literal)) {
+    return visitString(ctx);
+  } else if (auto* ctx = tree_as<CelParser::BytesContext>(literal)) {
+    return visitBytes(ctx);
+  } else if (auto* ctx = tree_as<CelParser::BoolFalseContext>(literal)) {
+    return visitBoolFalse(ctx);
+  } else if (auto* ctx = tree_as<CelParser::BoolTrueContext>(literal)) {
+    return visitBoolTrue(ctx);
+  } else if (auto* ctx = tree_as<CelParser::NullContext>(literal)) {
+    return visitNull(ctx);
+  }
+  return sf_->reportError(clctx, "invalid constant literal expression");
+}
+
 antlrcpp::Any ParserVisitor::visitMapInitializerList(
     CelParser::MapInitializerListContext* ctx) {
   std::vector<Expr::CreateStruct::Entry> res;
@@ -420,6 +443,10 @@ antlrcpp::Any ParserVisitor::visitNull(CelParser::NullContext* ctx) {
 
 google::api::expr::v1alpha1::SourceInfo ParserVisitor::sourceInfo() const {
   return sf_->sourceInfo();
+}
+
+EnrichedSourceInfo ParserVisitor::enrichedSourceInfo() const {
+  return sf_->enrichedSourceInfo();
 }
 
 void ParserVisitor::syntaxError(antlr4::Recognizer* recognizer,

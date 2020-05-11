@@ -143,7 +143,7 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
 
   ASSERT_THAT(warnings, testing::SizeIs(1));
   EXPECT_EQ(warnings[0].code(), absl::StatusCode::kInvalidArgument);
-  EXPECT_THAT(warnings[0].message(),
+  EXPECT_THAT(std::string(warnings[0].message()),
               testing::HasSubstr("No overloads provided"));
 }
 

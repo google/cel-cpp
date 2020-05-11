@@ -42,4 +42,5 @@ def antlr_cc_library(name, src, listener = False, visitor = True):
         toolchains = [":" + generated],
         # ANTLR runtime does not build with dynamic linking
         linkstatic = True,
+        alwayslink = 1,
     )

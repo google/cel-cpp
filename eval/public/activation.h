@@ -39,15 +39,20 @@ class BaseActivation {
                                              google::protobuf::Arena*) const = 0;
 
   // Check whether a select path is unknown.
-  virtual bool IsPathUnknown(absl::string_view) const = 0;
+  virtual bool IsPathUnknown(absl::string_view) const { return false; }
 
   // Return FieldMask defining the list of unknown paths.
-  virtual const google::protobuf::FieldMask unknown_paths() const = 0;
+  virtual const google::protobuf::FieldMask& unknown_paths() const {
+    return google::protobuf::FieldMask::default_instance();
+  }
 
   // Return the collection of attribute patterns that determine "unknown"
   // values.
   virtual const std::vector<CelAttributePattern>& unknown_attribute_patterns()
-      const = 0;
+      const {
+    static const std::vector<CelAttributePattern> empty;
+    return empty;
+  }
 
   virtual ~BaseActivation() {}
 };
@@ -108,7 +113,7 @@ class Activation : public BaseActivation {
   }
 
   // Return FieldMask defining the list of unknown paths.
-  const google::protobuf::FieldMask unknown_paths() const override {
+  const google::protobuf::FieldMask& unknown_paths() const override {
     return unknown_paths_;
   }
 

@@ -3,6 +3,7 @@
 #include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelLexer.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
+#include "parser/source_factory.h"
 #include "parser/visitor.h"
 #include "antlr4-runtime.h"
 
@@ -26,6 +27,16 @@ cel_base::StatusOr<ParsedExpr> Parse(const std::string& expression,
 cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
                                            const std::vector<Macro>& macros,
                                            const std::string& description) {
+  auto result = EnrichedParse(expression, macros, description);
+  if (result.ok()) {
+    return result->parsed_expr();
+  }
+  return result.status();
+}
+
+cel_base::StatusOr<VerboseParsedExpr> EnrichedParse(
+    const std::string& expression, const std::vector<Macro>& macros,
+    const std::string& description) {
   ANTLRInputStream input(expression);
   ::cel_grammar::CelLexer lexer(&input);
   CommonTokenStream tokens(&lexer);
@@ -61,7 +72,8 @@ cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
   ParsedExpr parsed_expr;
   parsed_expr.mutable_expr()->CopyFrom(expr);
   parsed_expr.mutable_source_info()->CopyFrom(visitor.sourceInfo());
-  return parsed_expr;
+  auto enriched_source_info = visitor.enrichedSourceInfo();
+  return VerboseParsedExpr(parsed_expr, enriched_source_info);
 }
 
 }  // namespace parser

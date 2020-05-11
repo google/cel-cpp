@@ -573,7 +573,7 @@ cc_library(
         ":cel_function",
         ":cel_options",
         ":cel_value",
-        "//eval/eval:set_util",
+        ":set_util",
         "@com_google_absl//absl/container:btree",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -620,6 +620,34 @@ cc_test(
         ":unknown_set",
         "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "set_util",
+    srcs = ["set_util.cc"],
+    hdrs = ["set_util.h"],
+    copts = ["-std=c++14"],
+    deps = ["//eval/public:cel_value"],
+)
+
+cc_test(
+    name = "set_util_test",
+    size = "small",
+    srcs = [
+        "set_util_test.cc",
+    ],
+    copts = ["-std=c++14"],
+    deps = [
+        ":cel_value",
+        ":set_util",
+        ":unknown_set",
+        "//eval/eval:container_backed_list_impl",
+        "//eval/eval:container_backed_map_impl",
+        "@com_github_google_googletest//:gtest_main",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )

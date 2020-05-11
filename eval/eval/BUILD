@@ -672,31 +672,3 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
-
-cc_library(
-    name = "set_util",
-    srcs = ["set_util.cc"],
-    hdrs = ["set_util.h"],
-    copts = ["-std=c++14"],
-    deps = ["//eval/public:cel_value"],
-)
-
-cc_test(
-    name = "set_util_test",
-    size = "small",
-    srcs = [
-        "set_util_test.cc",
-    ],
-    copts = ["-std=c++14"],
-    deps = [
-        ":container_backed_list_impl",
-        ":container_backed_map_impl",
-        ":set_util",
-        "//eval/public:cel_value",
-        "//eval/public:unknown_set",
-        "@com_github_google_googletest//:gtest_main",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/time",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
