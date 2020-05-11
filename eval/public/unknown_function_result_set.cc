@@ -3,10 +3,10 @@
 #include <type_traits>
 
 #include "absl/container/btree_set.h"
-#include "eval/eval/set_util.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/set_util.h"
 
 namespace google {
 namespace api {

@@ -1,4 +1,4 @@
-#include "eval/eval/set_util.h"
+#include "eval/public/set_util.h"
 
 #include <cstddef>
 
@@ -85,8 +85,7 @@ TEST_P(TypeOrderingTest, TypeLessThan) {
   // Strict less than.
   EXPECT_EQ(CelValueLessThan(lhs, rhs), i_ < j_);
   // Equality.
-  EXPECT_EQ(!CelValueLessThan(lhs, rhs) && !CelValueLessThan(rhs, lhs),
-            i_ == j_);
+  EXPECT_EQ(CelValueEqual(lhs, rhs), i_ == j_);
 }
 
 std::string TypeOrderingTestName(
@@ -151,11 +150,10 @@ TEST_P(PrimitiveCmpTest, Basic) {
       EXPECT_TRUE(CelValueLessThan(lhs_, rhs_));
       break;
     case ExpectedCmp::kGt:
-      EXPECT_TRUE(CelValueLessThan(rhs_, lhs_));
+      EXPECT_TRUE(CelValueGreaterThan(lhs_, rhs_));
       break;
     case ExpectedCmp::kEq:
-      EXPECT_TRUE(!CelValueLessThan(lhs_, rhs_) &&
-                  !CelValueLessThan(rhs_, lhs_));
+      EXPECT_TRUE(CelValueEqual(lhs_, rhs_));
       break;
   }
 }
@@ -298,8 +296,8 @@ TEST(CelValueLessThan, CelListEqual) {
 
   EXPECT_FALSE(CelValueLessThan(CelValue::CreateList(&cel_list_1),
                                 CelValue::CreateList(&cel_list_2)));
-  EXPECT_FALSE(CelValueLessThan(CelValue::CreateList(&cel_list_2),
-                                CelValue::CreateList(&cel_list_1)));
+  EXPECT_TRUE(CelValueEqual(CelValue::CreateList(&cel_list_2),
+                            CelValue::CreateList(&cel_list_1)));
 }
 
 TEST(CelValueLessThan, CelListSupportProtoListCompatible) {
@@ -388,8 +386,8 @@ TEST(CelValueLessThan, CelMapEqual) {
 
   EXPECT_FALSE(CelValueLessThan(CelValue::CreateMap(cel_map_1.get()),
                                 CelValue::CreateMap(cel_map_2.get())));
-  EXPECT_FALSE(CelValueLessThan(CelValue::CreateMap(cel_map_2.get()),
-                                CelValue::CreateMap(cel_map_1.get())));
+  EXPECT_TRUE(CelValueEqual(CelValue::CreateMap(cel_map_2.get()),
+                            CelValue::CreateMap(cel_map_1.get())));
 }
 
 TEST(CelValueLessThan, CelMapSupportProtoMapCompatible) {
@@ -422,7 +420,7 @@ TEST(CelValueLessThan, CelMapSupportProtoMapCompatible) {
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
 
   EXPECT_TRUE(!CelValueLessThan(cel_map, proto_struct) &&
-              !CelValueLessThan(proto_struct, cel_map));
+              !CelValueGreaterThan(cel_map, proto_struct));
 }
 
 TEST(CelValueLessThan, NestedMap) {

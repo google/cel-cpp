@@ -2,6 +2,7 @@
 #define THIRD_PARTY_CEL_CPP_PARSER_SOURCE_FACTORY_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -15,15 +16,29 @@ namespace parser {
 
 using google::api::expr::v1alpha1::Expr;
 
+class EnrichedSourceInfo {
+ public:
+  EnrichedSourceInfo(const std::map<int64_t, std::pair<int32_t, int32_t>>& offsets)
+      : offsets_(offsets) {}
+
+  const std::map<int64_t, std::pair<int32_t, int32_t>>& offsets() const {
+    return offsets_;
+  }
+
+ private:
+  // A map between node_id and pair of start position and end position
+  std::map<int64_t, std::pair<int32_t, int32_t>> offsets_;
+};
+
 // Provide tools to generate expressions during parsing.
 // Keeps track of ID and source location information.
 // Shares functionality with //third_party/cel/go/parser/helper.go
 class SourceFactory {
  public:
   struct SourceLocation {
-    SourceLocation(int32_t line, int32_t col,
+    SourceLocation(int32_t line, int32_t col, int32_t offset_end,
                    const std::vector<int32_t>& line_offsets)
-        : line(line), col(col) {
+        : line(line), col(col), offset_end(offset_end) {
       if (line == 1) {
         offset = col;
       } else if (line > 1) {
@@ -34,6 +49,7 @@ class SourceFactory {
     }
     int32_t line;
     int32_t col;
+    int32_t offset_end;
     int32_t offset;
   };
 
@@ -118,7 +134,7 @@ class SourceFactory {
 
   bool isReserved(const std::string& ident_name);
   google::api::expr::v1alpha1::SourceInfo sourceInfo() const;
-
+  EnrichedSourceInfo enrichedSourceInfo() const;
   const std::vector<int32_t>& line_offsets() const;
   const std::vector<Error>& errors() const { return errors_; }
 

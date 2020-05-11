@@ -540,6 +540,7 @@ std::string TestNameFn(testing::TestParamInfo<UnknownProcessingOptions> opt) {
     case UnknownProcessingOptions::kAttributeAndFunction:
       return "attribute_and_function";
   }
+  return "";
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -71,9 +71,9 @@ TEST_F(ValueAdapterTest, NullPtr) {
 
 TEST_F(ValueAdapterTest, RefPtr) {
   // Smart pointer is dereferenced.
-  auto ptr = RefPtrHolder<RefOnlyType>();
+  auto ptr = RefPtrHolder<RefOnlyType>(new RefOnlyType());
   TestAdapter<RefOnlyType&>(ptr, *ptr);
-  auto cptr = RefPtrHolder<const RefOnlyType>();
+  auto cptr = RefPtrHolder<const RefOnlyType>(new RefOnlyType());
   TestAdapter<const RefOnlyType&>(cptr, *cptr);
 }
 

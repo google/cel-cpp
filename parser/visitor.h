@@ -5,6 +5,7 @@
 #include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelBaseVisitor.h"
 #include "parser/macro.h"
+#include "parser/source_factory.h"
 
 namespace google {
 namespace api {
@@ -55,6 +56,8 @@ class ParserVisitor : public ::cel_grammar::CelBaseVisitor,
       ::cel_grammar::CelParser::ExprListContext* ctx);
   antlrcpp::Any visitCreateStruct(
       ::cel_grammar::CelParser::CreateStructContext* ctx) override;
+  antlrcpp::Any visitConstantLiteral(
+      ::cel_grammar::CelParser::ConstantLiteralContext* ctx) override;
   antlrcpp::Any visitPrimaryExpr(
       ::cel_grammar::CelParser::PrimaryExprContext* ctx) override;
   antlrcpp::Any visitMemberExpr(
@@ -76,6 +79,7 @@ class ParserVisitor : public ::cel_grammar::CelBaseVisitor,
       ::cel_grammar::CelParser::BoolFalseContext* ctx) override;
   antlrcpp::Any visitNull(::cel_grammar::CelParser::NullContext* ctx) override;
   google::api::expr::v1alpha1::SourceInfo sourceInfo() const;
+  EnrichedSourceInfo enrichedSourceInfo() const;
   void syntaxError(antlr4::Recognizer* recognizer,
                    antlr4::Token* offending_symbol, size_t line, size_t col,
                    const std::string& msg, std::exception_ptr e) override;

@@ -1,4 +1,4 @@
-#include "eval/eval/set_util.h"
+#include "eval/public/set_util.h"
 
 #include <algorithm>
 
@@ -11,30 +11,33 @@ namespace {
 // Default implementation is operator<.
 // Note: for UnknownSet, Error and Message, this is ptr less than.
 template <typename T>
-bool LessThanImpl(T lhs, T rhs) {
-  return lhs < rhs;
+int ComparisonImpl(T lhs, T rhs) {
+  if (lhs < rhs) {
+    return -1;
+  } else if (lhs > rhs) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 // List specialization -- compare size then elementwise compare.
 template <>
-bool LessThanImpl(const CelList* lhs, const CelList* rhs) {
-  if (lhs->size() < rhs->size()) {
-    return true;
-  } else if (lhs->size() > rhs->size()) {
-    return false;
+int ComparisonImpl(const CelList* lhs, const CelList* rhs) {
+  int size_comparison = ComparisonImpl(lhs->size(), rhs->size());
+  if (size_comparison != 0) {
+    return size_comparison;
   }
   for (int i = 0; i < lhs->size(); i++) {
     CelValue lhs_i = lhs->operator[](i);
     CelValue rhs_i = rhs->operator[](i);
-    if (CelValueLessThan(lhs_i, rhs_i)) {
-      return true;
-    }
-    if (CelValueLessThan(rhs_i, lhs_i)) {
-      return false;
+    int value_comparison = CelValueCompare(lhs_i, rhs_i);
+    if (value_comparison != 0) {
+      return value_comparison;
     }
   }
   // equal
-  return false;
+  return 0;
 }
 
 // Map specialization -- size then sorted elementwise compare (i.e.
@@ -42,11 +45,10 @@ bool LessThanImpl(const CelList* lhs, const CelList* rhs) {
 //
 // This is expensive, but hopefully maps will be rarely used in sets.
 template <>
-bool LessThanImpl(const CelMap* lhs, const CelMap* rhs) {
-  if (lhs->size() < rhs->size()) {
-    return true;
-  } else if (lhs->size() > rhs->size()) {
-    return false;
+int ComparisonImpl(const CelMap* lhs, const CelMap* rhs) {
+  int size_comparison = ComparisonImpl(lhs->size(), rhs->size());
+  if (size_comparison != 0) {
+    return size_comparison;
   }
 
   std::vector<CelValue> lhs_keys;
@@ -65,47 +67,56 @@ bool LessThanImpl(const CelMap* lhs, const CelMap* rhs) {
   std::sort(lhs_keys.begin(), lhs_keys.end(), &CelValueLessThan);
   std::sort(rhs_keys.begin(), rhs_keys.end(), &CelValueLessThan);
 
-  for (int i = 0; i < lhs_keys.size(); i++) {
+  for (size_t i = 0; i < lhs_keys.size(); i++) {
     auto lhs_key_i = lhs_keys[i];
     auto rhs_key_i = rhs_keys[i];
-    if (CelValueLessThan(lhs_key_i, rhs_key_i)) {
-      return true;
+    int key_comparison = CelValueCompare(lhs_key_i, rhs_key_i);
+    if (key_comparison != 0) {
+      return key_comparison;
     }
-    if (CelValueLessThan(rhs_key_i, lhs_key_i)) {
-      return false;
-    }
+
     // keys equal, compare values.
     auto lhs_value_i = lhs->operator[](lhs_key_i).value();
     auto rhs_value_i = rhs->operator[](rhs_key_i).value();
-
-    if (CelValueLessThan(lhs_value_i, rhs_value_i)) {
-      return true;
-    }
-    if (CelValueLessThan(rhs_value_i, lhs_value_i)) {
-      return true;
+    int value_comparison = CelValueCompare(lhs_value_i, rhs_value_i);
+    if (value_comparison != 0) {
+      return value_comparison;
     }
   }
   // maps equal
-  return false;
+  return 0;
 }
 
-struct LessThanVisitor {
+struct ComparisonVisitor {
   CelValue rhs;
-  LessThanVisitor(CelValue rhs) : rhs(rhs) {}
+  ComparisonVisitor(CelValue rhs) : rhs(rhs) {}
   template <typename T>
-  bool operator()(T lhs_value) {
+  int operator()(T lhs_value) {
     T rhs_value;
     if (!rhs.GetValue(&rhs_value)) {
-      return CelValue::Type(CelValue::IndexOf<T>::value) < rhs.type();
+      return ComparisonImpl(CelValue::Type(CelValue::IndexOf<T>::value),
+                            rhs.type());
     }
-    return LessThanImpl(lhs_value, rhs_value);
+    return ComparisonImpl(lhs_value, rhs_value);
   }
 };
 
 }  // namespace
 
+int CelValueCompare(CelValue lhs, CelValue rhs) {
+  return lhs.Visit<int>(ComparisonVisitor(rhs));
+}
+
 bool CelValueLessThan(CelValue lhs, CelValue rhs) {
-  return lhs.Visit<bool>(LessThanVisitor(rhs));
+  return lhs.Visit<int>(ComparisonVisitor(rhs)) < 0;
+}
+
+bool CelValueEqual(CelValue lhs, CelValue rhs) {
+  return lhs.Visit<int>(ComparisonVisitor(rhs)) == 0;
+}
+
+bool CelValueGreaterThan(CelValue lhs, CelValue rhs) {
+  return lhs.Visit<int>(ComparisonVisitor(rhs)) > 0;
 }
 
 }  // namespace runtime

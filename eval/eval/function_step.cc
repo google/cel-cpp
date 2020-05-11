@@ -47,7 +47,7 @@ bool ShouldAcceptOverload(const CelFunction* function,
   if (function == nullptr) {
     return false;
   }
-  for (int i = 0; i < arguments.size(); i++) {
+  for (size_t i = 0; i < arguments.size(); i++) {
     if (arguments[i].IsUnknownSet() || arguments[i].IsError()) {
       return IsNonStrict(function->descriptor().name());
     }
@@ -65,7 +65,7 @@ std::vector<CelValue> CheckForPartialUnknowns(
     absl::Span<const AttributeTrail> attrs) {
   std::vector<CelValue> result;
   result.reserve(args.size());
-  for (int i = 0; i < args.size(); i++) {
+  for (size_t i = 0; i < args.size(); i++) {
     auto attr_set = frame->unknowns_utility().CheckForUnknowns(
         attrs.subspan(i, 1), /*use_partial=*/true);
     if (!attr_set.attributes().empty()) {

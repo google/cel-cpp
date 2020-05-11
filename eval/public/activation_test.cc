@@ -13,7 +13,6 @@ namespace runtime {
 namespace {
 
 using ::google::protobuf::Arena;
-using testing::_;
 using testing::ElementsAre;
 using testing::Eq;
 using testing::HasSubstr;
