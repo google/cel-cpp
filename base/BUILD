@@ -13,7 +13,7 @@ cc_library(
         "statusor.h",
         "statusor_internals.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/meta:type_traits",
@@ -26,5 +26,5 @@ cc_library(
     hdrs = [
         "status_macros.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
 )

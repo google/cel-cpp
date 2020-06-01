@@ -14,7 +14,7 @@ cc_library(
     hdrs = [
         "flat_expr_builder.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":constant_folding",
         "//base:status_macros",
@@ -45,7 +45,7 @@ cc_test(
     srcs = [
         "flat_expr_builder_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":flat_expr_builder",
         "//base:status_macros",
@@ -71,7 +71,7 @@ cc_test(
     srcs = [
         "flat_expr_builder_comprehensions_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":flat_expr_builder",
         "//base:status_macros",
@@ -100,7 +100,7 @@ cc_library(
     hdrs = [
         "constant_folding.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//eval/eval:const_value_step",
         "//eval/eval:container_backed_list_impl",
@@ -119,7 +119,7 @@ cc_test(
     srcs = [
         "constant_folding_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":constant_folding",
         "//base:status_macros",

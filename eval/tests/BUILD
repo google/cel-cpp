@@ -14,7 +14,7 @@ cc_test(
     srcs = [
         "benchmark_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
@@ -39,7 +39,7 @@ cc_test(
     srcs = [
         "end_to_end_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//base:status_macros",
         "//eval/public:activation",
@@ -60,7 +60,7 @@ cc_test(
     srcs = [
         "unknowns_end_to_end_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//base:status_macros",
         "//eval/public:activation",
@@ -94,7 +94,7 @@ cc_library(
     name = "mock_cel_expression",
     testonly = 1,
     hdrs = ["mock_cel_expression.h"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//eval/public:activation",
         "//eval/public:cel_expression",

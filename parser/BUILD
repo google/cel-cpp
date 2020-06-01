@@ -112,7 +112,7 @@ cc_library(
 cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":parser",
         "//common:escaping",
