@@ -56,7 +56,7 @@ class CelValue {
     // initialized with string rvalue. Also, according to Google style guide,
     // passing pointers conveys the message that the reference to string is kept
     // in the constructed holder object.
-    explicit StringHolderBase(const std::string *str) : value_(*str) {}
+    explicit StringHolderBase(const std::string *str) : value_(*ABSL_DIE_IF_NULL(str)) {}
 
     absl::string_view value() const { return value_; }
 
