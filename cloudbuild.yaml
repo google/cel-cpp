@@ -1,0 +1,5 @@
+steps:
+- name: 'gcr.io/cloud-marketplace-containers/google/bazel'
+  entrypoint: 'bazel'
+  args: ['test', '...']
+
