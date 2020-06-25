@@ -4,11 +4,10 @@ steps:
     args: ['test', '--test_output=errors', '...']
     id: bazel-test
     waitFor: ['-']
-    timeout: 1h
   - name: 'gcr.io/cloud-marketplace-containers/google/bazel:3.0.0'
     entrypoint: bazel
     args: ['test', '--config=asan', '--test_output=errors', '...']
     id: bazel-asan
     waitFor: ['-']
-    timeout: 1h
+timeout: 1h
 
