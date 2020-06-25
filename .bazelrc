@@ -1,5 +1,0 @@
-build:asan --copt -fsanitize=address
-build:asan --linkopt -fsanitize=address
-build:asan --copt -DADDRESS_SANITIZER=1
-build:asan --copt -D__SANITIZE_ADDRESS__
-build:asan --linkopt -fuse-ld=lld
