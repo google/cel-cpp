@@ -21,7 +21,7 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++14",
+        "-std=c++17",
     ],
     deps = [
         ":cel_cc_parser",
@@ -45,7 +45,7 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++14",
+        "-std=c++17",
     ],
     deps = [
         ":source_factory",
@@ -67,7 +67,7 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++14",
+        "-std=c++17",
     ],
     deps = [
         ":cel_cc_parser",
@@ -94,7 +94,7 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++14",
+        "-std=c++17",
     ],
     deps = [
         ":cel_cc_parser",
@@ -111,7 +111,7 @@ cc_library(
 cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":parser",
         ":source_factory",

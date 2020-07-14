@@ -14,7 +14,7 @@ cc_library(
     hdrs = [
         "evaluator_core.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":attribute_trail",
         ":unknowns_utility",
@@ -37,7 +37,7 @@ cc_library(
     hdrs = [
         "expression_step_base.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         "//eval/public:activation",
@@ -57,7 +57,7 @@ cc_library(
     hdrs = [
         "const_value_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -78,7 +78,7 @@ cc_library(
     hdrs = [
         "container_access_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -99,7 +99,7 @@ cc_library(
     hdrs = [
         "ident_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -119,7 +119,7 @@ cc_library(
     hdrs = [
         "function_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":attribute_trail",
         ":evaluator_core",
@@ -149,7 +149,7 @@ cc_library(
     hdrs = [
         "field_access.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//eval/public:cel_value",
         "//internal:proto_util",
@@ -166,7 +166,7 @@ cc_library(
     hdrs = [
         "container_backed_list_impl.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//eval/public:cel_value",
         "@com_google_absl//absl/strings",
@@ -182,7 +182,7 @@ cc_library(
     hdrs = [
         "container_backed_map_impl.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//eval/public:cel_value",
         "@com_google_absl//absl/container:node_hash_map",
@@ -198,7 +198,7 @@ cc_library(
     hdrs = [
         "field_backed_list_impl.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":field_access",
         "//eval/public:cel_value",
@@ -214,7 +214,7 @@ cc_library(
     hdrs = [
         "field_backed_map_impl.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":field_access",
         "//eval/public:cel_value",
@@ -231,7 +231,7 @@ cc_library(
     hdrs = [
         "select_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -252,7 +252,7 @@ cc_library(
     hdrs = [
         "create_list_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":container_backed_list_impl",
         ":evaluator_core",
@@ -273,7 +273,7 @@ cc_library(
     hdrs = [
         "create_struct_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":container_backed_map_impl",
         ":evaluator_core",
@@ -294,7 +294,7 @@ cc_library(
     hdrs = [
         "jump_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -313,7 +313,7 @@ cc_library(
     hdrs = [
         "logic_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -334,7 +334,7 @@ cc_library(
     hdrs = [
         "comprehension_step.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_step_base",
@@ -353,7 +353,7 @@ cc_test(
     srcs = [
         "evaluator_core_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         "//base:status_macros",
@@ -372,7 +372,7 @@ cc_test(
     srcs = [
         "const_value_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":const_value_step",
         ":evaluator_core",
@@ -388,7 +388,7 @@ cc_test(
     srcs = [
         "container_access_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":container_access_step",
         ":container_backed_list_impl",
@@ -409,7 +409,7 @@ cc_test(
     srcs = [
         "ident_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":ident_step",
@@ -425,7 +425,7 @@ cc_test(
     srcs = [
         "function_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":expression_build_warning",
@@ -451,7 +451,7 @@ cc_test(
     srcs = [
         "container_backed_map_impl_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":container_backed_map_impl",
         "//eval/public:cel_value",
@@ -466,7 +466,7 @@ cc_test(
     srcs = [
         "field_backed_list_impl_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":field_backed_list_impl",
@@ -482,7 +482,7 @@ cc_test(
     srcs = [
         "field_backed_map_impl_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":evaluator_core",
         ":field_backed_map_impl",
@@ -498,7 +498,7 @@ cc_test(
     srcs = [
         "logic_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":ident_step",
         ":logic_step",
@@ -515,7 +515,7 @@ cc_test(
     srcs = [
         "select_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":container_backed_map_impl",
         ":ident_step",
@@ -536,7 +536,7 @@ cc_test(
     srcs = [
         "create_list_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":const_value_step",
         ":create_list_step",
@@ -556,7 +556,7 @@ cc_test(
     srcs = [
         "create_struct_step_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":container_backed_list_impl",
         ":container_backed_map_impl",
@@ -579,7 +579,7 @@ cc_library(
     hdrs = [
         "expression_build_warning.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "@com_google_absl//absl/status",
     ],
@@ -591,7 +591,7 @@ cc_test(
     srcs = [
         "expression_build_warning_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":expression_build_warning",
         "@com_github_google_googletest//:gtest_main",
@@ -603,7 +603,7 @@ cc_library(
     name = "attribute_trail",
     srcs = ["attribute_trail.cc"],
     hdrs = ["attribute_trail.h"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//base:statusor",
         "//eval/public:activation",
@@ -624,7 +624,7 @@ cc_test(
     srcs = [
         "attribute_trail_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":attribute_trail",
         "//eval/public:cel_attribute",
@@ -638,7 +638,7 @@ cc_library(
     name = "unknowns_utility",
     srcs = ["unknowns_utility.cc"],
     hdrs = ["unknowns_utility.h"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":attribute_trail",
         "//base:statusor",
@@ -661,7 +661,7 @@ cc_test(
     srcs = [
         "unknowns_utility_test.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":unknowns_utility",
         "//eval/public:cel_attribute",

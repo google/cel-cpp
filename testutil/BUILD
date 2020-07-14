@@ -15,7 +15,7 @@ cc_library(
     hdrs = [
         "test_data_util.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//common:type",
         "//common:value",
@@ -44,7 +44,7 @@ cc_library(
     hdrs = [
         "test_data_io.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "//internal:status_util",
         "@com_github_google_googletest//:gtest_main",
@@ -69,7 +69,7 @@ cc_binary(
     srcs = [
         "test_data_gen.cc",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         ":test_data_io",
         ":test_data_util",
@@ -87,7 +87,7 @@ cc_binary(
 cc_test(
     name = "test_data_test",
     srcs = ["test_data_test.cc"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     data = [
         "@com_google_cel_spec//testdata",
     ],
@@ -105,7 +105,7 @@ cc_library(
     hdrs = [
         "util.h",
     ],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++17"],
     deps = [
         "@com_github_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
