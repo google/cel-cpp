@@ -14,6 +14,7 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
@@ -498,7 +499,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
   CelValue result = result_or.value();
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie()->message(),
-              Eq("No matching overloads found"));
+              Eq("No matching overloads found <iter_range>"));
 }
 
 TEST(FlatExprBuilderTest, ComprehensionBudget) {
@@ -581,7 +582,8 @@ TEST(FlatExprBuilderTest, UnknownSupportTest) {
 
   google::protobuf::Arena arena;
   Activation activation;
-  activation.InsertValue("message", CelValue::CreateMessage(&message, &arena));
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
 
   auto eval_status = cel_expr->Evaluate(activation, &arena);
 
@@ -931,6 +933,20 @@ TEST(FlatExprBuilderTest, Ternary) {
                     .ident_expr()
                     .name(),
                 Eq("selector"));
+  }
+}
+
+TEST(FlatExprBuilderTest, EmptyCallList) {
+  std::vector<std::string> operators = {"_&&_", "_||_", "_?_:_"};
+  for (const auto& op : operators) {
+    Expr expr;
+    SourceInfo source_info;
+    auto call_expr = expr.mutable_call_expr();
+    call_expr->set_function(op);
+    FlatExprBuilder builder;
+    ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+    auto build_status = builder.CreateExpression(&expr, &source_info);
+    ASSERT_FALSE(build_status.ok());
   }
 }
 

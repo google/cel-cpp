@@ -42,6 +42,10 @@ class ProtoStringMatcher {
   bool MatchAndExplain(const Message& p,
                        ::testing::MatchResultListener* /* listener */) const;
 
+  template <typename Message>
+  bool MatchAndExplain(const Message* p,
+                       ::testing::MatchResultListener* /* listener */) const;
+
   inline void DescribeTo(::std::ostream* os) const { *os << expected_; }
   inline void DescribeNegationTo(::std::ostream* os) const {
     *os << "not equal to expected message: " << expected_;
@@ -77,6 +81,17 @@ bool ProtoStringMatcher::MatchAndExplain(
   // matches exactly.
   return p.SerializeAsString() ==
          CreateProto<Message>(expected_).SerializeAsString();
+}
+
+template <typename Message>
+bool ProtoStringMatcher::MatchAndExplain(
+    const Message* p, ::testing::MatchResultListener* /* listener */) const {
+  // Need to CreateProto and then print as std::string so that the formatting
+  // matches exactly.
+  std::unique_ptr<google::protobuf::Message> value;
+  value.reset(p->New());
+  google::protobuf::TextFormat::ParseFromString(expected_, value.get());
+  return p->SerializeAsString() == value->SerializeAsString();
 }
 
 }  // namespace testutil

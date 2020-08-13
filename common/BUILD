@@ -12,8 +12,6 @@ cc_library(
     hdrs = [
         "macros.h",
     ],
-    copts = ["-std=c++17"],
-    deps = [],
 )
 
 cc_library(
@@ -21,7 +19,6 @@ cc_library(
     hdrs = [
         "id.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//internal:cel_printer",
         "//internal:handle",
@@ -35,7 +32,6 @@ cc_library(
     hdrs = [
         "type.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//internal:handle",
         "@com_google_absl//absl/memory",
@@ -51,7 +47,6 @@ cc_library(
     hdrs = [
         "enum.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":type",
         "//internal:cel_printer",
@@ -66,7 +61,6 @@ cc_library(
     hdrs = [
         "error.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//internal:cel_printer",
         "//internal:hash_util",
@@ -84,7 +78,6 @@ cc_library(
     hdrs = [
         "unknown.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":id",
         ":macros",
@@ -100,7 +93,6 @@ cc_library(
     hdrs = [
         "parent_ref.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//internal:ref_countable",
         "@com_google_absl//absl/types:optional",
@@ -115,7 +107,6 @@ cc_library(
     hdrs = [
         "custom_object.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":value",
     ],
@@ -129,7 +120,6 @@ cc_library(
     hdrs = [
         "operators.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
@@ -145,7 +135,6 @@ cc_library(
     hdrs = [
         "escaping.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
@@ -156,10 +145,9 @@ cc_library(
 cc_test(
     name = "escaping_test",
     srcs = ["escaping_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":escaping",
-        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -171,7 +159,6 @@ cc_library(
     hdrs = [
         "value.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":enum",
         ":error",
@@ -202,7 +189,6 @@ cc_library(
 cc_test(
     name = "value_test",
     srcs = ["value_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":custom_object",
         ":value",
@@ -210,10 +196,10 @@ cc_test(
         "//internal:types",
         "//internal:value_internal",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -226,7 +212,6 @@ cc_library(
     hdrs = [
         "converters.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":parent_ref",
         ":value",
@@ -239,11 +224,10 @@ cc_library(
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":converters",
         ":value",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
+        "@com_google_googletest//:gtest_main",
     ],
 )

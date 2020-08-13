@@ -88,7 +88,7 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
 
   if (frame->enable_unknowns()) {
     auto unknown_set =
-        frame->unknowns_utility().MergeUnknowns(input_args, nullptr);
+        frame->attribute_utility().MergeUnknowns(input_args, nullptr);
 
     if (unknown_set) {
       return {CelValue::CreateUnknownSet(unknown_set), trail};
@@ -102,8 +102,8 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
     trail = container_trail.Step(CelAttributeQualifier::Create(key),
                                  frame->arena());
 
-    if (frame->unknowns_utility().CheckForUnknown(trail,
-                                                  /*use_partial=*/false)) {
+    if (frame->attribute_utility().CheckForUnknown(trail,
+                                                   /*use_partial=*/false)) {
       auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
           frame->arena(), UnknownAttributeSet({trail.attribute()}));
 

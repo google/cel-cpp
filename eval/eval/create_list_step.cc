@@ -1,6 +1,6 @@
 #include "eval/eval/create_list_step.h"
 
-#include "eval/eval/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_list_impl.h"
 
 namespace google {
 namespace api {
@@ -37,7 +37,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   const UnknownSet* unknown_set = nullptr;
   if (frame->enable_unknowns()) {
-    unknown_set = frame->unknowns_utility().MergeUnknowns(
+    unknown_set = frame->attribute_utility().MergeUnknowns(
         args, frame->value_stack().GetAttributeSpan(list_size_),
         /*initial_set=*/nullptr,
         /*use_partial=*/true);

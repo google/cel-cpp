@@ -16,6 +16,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
   FlatExprBuilder()
       : enable_unknowns_(false),
         enable_unknown_function_results_(false),
+        enable_missing_attribute_errors_(false),
         shortcircuiting_(true),
         constant_folding_(false),
         constant_arena_(nullptr),
@@ -25,6 +26,12 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
+
+  // set_enable_missing_attribute_errors support for error injection in
+  // expressions created.
+  void set_enable_missing_attribute_errors(bool enabled) {
+    enable_missing_attribute_errors_ = enabled;
+  }
 
   // set_enable_unknown_function_results controls support for unknown function
   // results.
@@ -68,6 +75,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
  private:
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
+  bool enable_missing_attribute_errors_;
   bool shortcircuiting_;
 
   bool constant_folding_;

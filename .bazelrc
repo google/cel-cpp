@@ -1,0 +1,5 @@
+build --cxxopt=-std=c++17
+
+# Enable matchers in googletest
+build --define absl=1
+

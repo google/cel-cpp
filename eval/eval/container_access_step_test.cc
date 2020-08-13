@@ -7,12 +7,13 @@
 #include "google/protobuf/struct.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "eval/eval/container_backed_list_impl.h"
-#include "eval/eval/container_backed_map_impl.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "base/status_macros.h"
 
 namespace google {
@@ -170,7 +171,7 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccess) {
   (*cel_struct.mutable_fields())[kKey2].set_string_value("value2");
 
   CelValue result = EvaluateAttribute(
-      CelValue::CreateMessage(&cel_struct, &arena_),
+      CelProtoWrapper::CreateMessage(&cel_struct, &arena_),
       CelValue::CreateString(&kKey0), std::get<0>(param), std::get<1>(param));
 
   ASSERT_TRUE(result.IsString());
@@ -186,7 +187,7 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
   (*cel_struct.mutable_fields())[kKey0].set_string_value("value0");
 
   CelValue result = EvaluateAttribute(
-      CelValue::CreateMessage(&cel_struct, &arena_),
+      CelProtoWrapper::CreateMessage(&cel_struct, &arena_),
       CelValue::CreateString(&kKey1), std::get<0>(param), std::get<1>(param));
 
   ASSERT_TRUE(result.IsError());
@@ -237,7 +238,7 @@ TEST_F(ContainerAccessStepTest, TestMapUnknownKey) {
 
   UnknownSet unknown_set;
   CelValue result =
-      EvaluateAttribute(CelValue::CreateMessage(&cel_struct, &arena_),
+      EvaluateAttribute(CelProtoWrapper::CreateMessage(&cel_struct, &arena_),
                         CelValue::CreateUnknownSet(&unknown_set), true, true);
 
   ASSERT_TRUE(result.IsUnknownSet());

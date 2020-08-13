@@ -46,6 +46,14 @@ class BaseActivation {
     return google::protobuf::FieldMask::default_instance();
   }
 
+  // Return the collection of attribute patterns that determine missing
+  // attributes.
+  virtual const std::vector<CelAttributePattern>& missing_attribute_patterns()
+      const {
+    static const std::vector<CelAttributePattern> empty;
+    return empty;
+  }
+
   // Return the collection of attribute patterns that determine "unknown"
   // values.
   virtual const std::vector<CelAttributePattern>& unknown_attribute_patterns()
@@ -112,9 +120,21 @@ class Activation : public BaseActivation {
     unknown_paths_ = std::move(mask);
   }
 
+  // Set error paths through FieldMask
+  void set_missing_attribute_patterns(
+      std::vector<CelAttributePattern> missing_attribute_patterns) {
+    missing_attribute_patterns_ = std::move(missing_attribute_patterns);
+  }
+
   // Return FieldMask defining the list of unknown paths.
   const google::protobuf::FieldMask& unknown_paths() const override {
     return unknown_paths_;
+  }
+
+  // Return FieldMask defining the list of unknown paths.
+  const std::vector<CelAttributePattern>& missing_attribute_patterns()
+      const override {
+    return missing_attribute_patterns_;
   }
 
   // Sets the collection of attribute patterns that will be recognized as
@@ -171,6 +191,7 @@ class Activation : public BaseActivation {
 
   // TODO(issues/41) deprecate when unknowns support is done.
   google::protobuf::FieldMask unknown_paths_;
+  std::vector<CelAttributePattern> missing_attribute_patterns_;
   std::vector<CelAttributePattern> unknown_attribute_patterns_;
 };
 

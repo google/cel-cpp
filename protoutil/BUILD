@@ -13,7 +13,6 @@ cc_library(
     hdrs = [
         "type_registry.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//common:macros",
         "//common:parent_ref",
@@ -30,14 +29,13 @@ cc_library(
 cc_test(
     name = "type_registry_test",
     srcs = ["type_registry_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":type_registry",
         "//common:value",
         "//internal:ref_countable",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/type:money_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -50,7 +48,6 @@ cc_library(
     hdrs = [
         "converters.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":type_registry",
         "//common:macros",
@@ -73,7 +70,6 @@ cc_library(
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
-    copts = ["-std=c++17"],
     data = [
         "@com_google_cel_spec//testdata",
     ],
@@ -84,11 +80,11 @@ cc_test(
         "//testutil:test_data_io",
         "//testutil:test_data_util",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

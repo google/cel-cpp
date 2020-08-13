@@ -8,6 +8,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "base/status_macros.h"
 
 namespace google {
@@ -383,7 +384,7 @@ TEST_F(BuiltinsTest, TestNullMessageEqual) {
   CelValue ref = CelValue::CreateNull();
   Expr call;
   call.mutable_call_expr()->set_function("test");
-  CelValue value = CelValue::CreateMessage(&call, &arena_);
+  CelValue value = CelProtoWrapper::CreateMessage(&call, &arena_);
   TestComparison(builtin::kEqual, ref, ref, true);
   TestComparison(builtin::kInequal, ref, ref, false);
   TestComparison(builtin::kEqual, value, ref, false);

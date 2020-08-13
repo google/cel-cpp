@@ -3,9 +3,10 @@
 #include "absl/strings/str_cat.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/eval/field_access.h"
-#include "eval/eval/field_backed_list_impl.h"
-#include "eval/eval/field_backed_map_impl.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/containers/field_access.h"
+#include "eval/public/containers/field_backed_list_impl.h"
+#include "eval/public/containers/field_backed_map_impl.h"
 
 namespace google {
 namespace api {
@@ -82,7 +83,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   CelValue result;
   AttributeTrail result_trail;
 
-  // Non-empty select path - check if value mapped to unknown.
+  // Non-empty select path - check if value mapped to unknown or error.
   bool unknown_value = false;
   // TODO(issues/41) deprecate this path after proper support of unknown is
   // implemented
@@ -95,16 +96,27 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     case CelValue::Type::kMessage: {
       const google::protobuf::Message* msg = arg.MessageOrDie();
 
-      if (frame->enable_unknowns()) {
+      if (frame->enable_unknowns() ||
+          frame->enable_missing_attribute_errors()) {
         result_trail = trail.Step(&field_, frame->arena());
-        if (frame->unknowns_utility().CheckForUnknown(result_trail,
-                                                      /*use_partial=*/false)) {
-          auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
-              frame->arena(), UnknownAttributeSet({result_trail.attribute()}));
-          result = CelValue::CreateUnknownSet(unknown_set);
-          frame->value_stack().PopAndPush(result, result_trail);
-          return absl::OkStatus();
-        }
+      }
+
+      if (frame->enable_missing_attribute_errors() &&
+          frame->attribute_utility().CheckForMissingAttribute(result_trail)) {
+        CelValue error_value =
+            CreateMissingAttributeError(frame->arena(), select_path_);
+        frame->value_stack().PopAndPush(error_value, result_trail);
+        return absl::OkStatus();
+      }
+
+      if (frame->enable_unknowns() &&
+          frame->attribute_utility().CheckForUnknown(result_trail,
+                                                     /*use_partial=*/false)) {
+        auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+            frame->arena(), UnknownAttributeSet({result_trail.attribute()}));
+        result = CelValue::CreateUnknownSet(unknown_set);
+        frame->value_stack().PopAndPush(result, result_trail);
+        return absl::OkStatus();
       }
 
       if (msg == nullptr) {
@@ -156,7 +168,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
       if (frame->enable_unknowns()) {
         result_trail = trail.Step(&field_, frame->arena());
-        if (frame->unknowns_utility().CheckForUnknown(result_trail, false)) {
+        if (frame->attribute_utility().CheckForUnknown(result_trail, false)) {
           auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
               frame->arena(), UnknownAttributeSet({result_trail.attribute()}));
           result = CelValue::CreateUnknownSet(unknown_set);

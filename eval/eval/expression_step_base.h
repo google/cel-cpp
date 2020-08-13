@@ -1,6 +1,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EXPRESSION_STEP_BASE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EXPRESSION_STEP_BASE_H_
 
+#include <stdint.h>
+
 #include "eval/eval/evaluator_core.h"
 
 namespace google {

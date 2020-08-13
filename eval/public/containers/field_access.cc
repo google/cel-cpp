@@ -1,7 +1,8 @@
-#include "eval/eval/field_access.h"
+#include "eval/public/containers/field_access.h"
 
 #include <type_traits>
 
+#include "google/protobuf/any.pb.h"
 #include "google/protobuf/map_field.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -24,6 +25,9 @@ using ::google::protobuf::Reflection;
 // Well-known type protobuf type names which require special get / set behavior.
 constexpr const char kProtobufDuration[] = "google.protobuf.Duration";
 constexpr const char kProtobufTimestamp[] = "google.protobuf.Timestamp";
+constexpr const char kProtobufAny[] = "google.protobuf.Any";
+
+const char kTypeGoogleApisComPrefix[] = "type.googleapis.com/";
 
 // Singular message fields and repeated message fields have similar access model
 // To provide common approach, we implement accessor classes, based on CRTP.
@@ -608,13 +612,25 @@ class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
       GOOGLE_LOG(ERROR) << "Message is NULL";
       return true;
     }
-    if (value->GetDescriptor()->full_name() !=
-        field_desc_->message_type()->full_name()) {
-      return false;
-    }
 
-    GetReflection()->MutableMessage(msg_, field_desc_)->MergeFrom(*value);
-    return true;
+    if (value->GetDescriptor()->full_name() ==
+        field_desc_->message_type()->full_name()) {
+      GetReflection()->MutableMessage(msg_, field_desc_)->MergeFrom(*value);
+      return true;
+
+    } else if (field_desc_->message_type()->full_name() == kProtobufAny) {
+      auto any_msg = google::protobuf::DynamicCastToGenerated<google::protobuf::Any>(
+          GetReflection()->MutableMessage(msg_, field_desc_));
+      if (any_msg == nullptr) {
+        // TODO(issues/68): This is probably a dynamic message. We should
+        // implement this once we add support for dynamic protobuf types.
+        return false;
+      }
+      any_msg->set_type_url(absl::StrCat(kTypeGoogleApisComPrefix,
+                                         value->GetDescriptor()->full_name()));
+      return value->SerializeToString(any_msg->mutable_value());
+    }
+    return false;
   }
 
   bool SetEnum(const int64_t value) const {

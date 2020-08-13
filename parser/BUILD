@@ -21,7 +21,6 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++17",
     ],
     deps = [
         ":cel_cc_parser",
@@ -45,7 +44,6 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++17",
     ],
     deps = [
         ":source_factory",
@@ -67,7 +65,6 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++17",
     ],
     deps = [
         ":cel_cc_parser",
@@ -94,7 +91,6 @@ cc_library(
     ],
     copts = [
         "-fexceptions",
-        "-std=c++17",
     ],
     deps = [
         ":cel_cc_parser",
@@ -103,6 +99,7 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -111,14 +108,13 @@ cc_library(
 cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":parser",
         ":source_factory",
-        "//common:escaping",
-        "@com_github_google_googletest//:gtest_main",
-        "@com_google_absl//absl/memory",
+        "//testutil:expr_printer",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googletest//:gtest_main",
     ],
 )

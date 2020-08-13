@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
 #include "antlr4-runtime.h"
 
@@ -76,6 +77,8 @@ class SourceFactory {
 
   const SourceLocation& getSourceLocation(int64_t id) const;
 
+  static const SourceLocation noLocation();
+
   Expr newExpr(int64_t id);
   Expr newExpr(antlr4::ParserRuleContext* ctx);
   Expr newExpr(const antlr4::Token* token);
@@ -135,16 +138,21 @@ class SourceFactory {
   bool isReserved(const std::string& ident_name);
   google::api::expr::v1alpha1::SourceInfo sourceInfo() const;
   EnrichedSourceInfo enrichedSourceInfo() const;
-  const std::vector<int32_t>& line_offsets() const;
-  const std::vector<Error>& errors() const { return errors_; }
+  const std::vector<Error>& errors() const { return errors_truncated_; }
+  std::string errorMessage(const std::string& description,
+                           const std::string& expression) const;
 
  private:
   void calcLineOffsets(const std::string& expression);
+  absl::optional<int32_t> findLineOffset(int32_t line) const;
+  std::string getSourceLine(int32_t line, const std::string& expression) const;
 
  private:
   int64_t next_id_;
   std::map<int64_t, SourceLocation> positions_;
-  std::vector<Error> errors_;
+  // Truncated at kMaxErrorsToReport.
+  std::vector<Error> errors_truncated_;
+  int64_t num_errors_;
   std::vector<int32_t> line_offsets_;
 };
 

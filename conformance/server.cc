@@ -8,10 +8,10 @@
 #include "google/rpc/code.pb.h"
 #include "grpcpp/grpcpp.h"
 #include "absl/strings/str_split.h"
-#include "eval/eval/container_backed_list_impl.h"
-#include "eval/eval/container_backed_map_impl.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
 #include "parser/parser.h"
 #include "base/statusor.h"
 
@@ -154,34 +154,6 @@ void ExportValue(const CelValue& result, v1alpha1::Value* out) {
   }
 }
 
-void InsertActivation(Activation& activation, std::string key, CelValue value,
-                      Arena* arena) {
-  std::vector<std::string> parts = absl::StrSplit(key, '.');
-  if (parts.size() == 1) {
-    activation.InsertValue(key, value);
-    return;
-  }
-
-  auto entry = activation.FindValue(parts[0], arena);
-  // skip over overlapping qualified identifiers
-  if (entry.has_value()) {
-    return;
-  }
-
-  auto result = value;
-  // populate nested maps, e.g. "a.b.c" becomes an activation a: map[b: c]
-  for (int k = parts.size() - 1; k > 0; k--) {
-    std::vector<std::pair<CelValue, CelValue>> pairs;
-    std::string* msg = Arena::Create<std::string>(arena, parts[k]);
-    pairs.push_back({CelValue::CreateString(msg), result});
-    auto cel_map = CreateContainerBackedMap(
-        absl::Span<std::pair<CelValue, CelValue>>(pairs.data(), pairs.size()));
-    result = CelValue::CreateMap(cel_map.get());
-    arena->Own(cel_map.release());
-  }
-  activation.InsertValue(parts[0], result);
-}
-
 }  // namespace
 
 class ConformanceServiceImpl final
@@ -238,7 +210,7 @@ class ConformanceServiceImpl final
 
     for (const auto& pair : request->bindings()) {
       auto value = ImportValue(&arena, pair.second.value());
-      InsertActivation(activation, pair.first, value, &arena);
+      activation.InsertValue(pair.first, value);
     }
 
     auto eval_status = cel_expression->Evaluate(activation, &arena);

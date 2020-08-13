@@ -11,6 +11,8 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+using google::api::expr::v1alpha1::Expr;
+
 // Attribute Trail behavior
 TEST(AttributeTrailTest, AttributeTrailEmptyStep) {
   google::protobuf::Arena arena;
@@ -26,7 +28,7 @@ TEST(AttributeTrailTest, AttributeTrailStep) {
   google::protobuf::Arena arena;
   std::string step = "step";
   CelValue step_value = CelValue::CreateString(&step);
-  google::api::expr::v1alpha1::Expr root;
+  Expr root;
   root.mutable_ident_expr()->set_name("ident");
   AttributeTrail trail = AttributeTrail(root, &arena).Step(&step, &arena);
 

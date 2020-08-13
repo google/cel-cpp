@@ -31,6 +31,9 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
       break;
   }
 
+  builder->set_enable_missing_attribute_errors(
+      options.enable_missing_attribute_errors);
+
   return std::move(builder);
 }
 
