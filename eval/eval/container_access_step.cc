@@ -153,7 +153,7 @@ absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 // Factory method for Select - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
     const google::api::expr::v1alpha1::Expr::Call*, int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<ContainerAccessStep>(expr_id);

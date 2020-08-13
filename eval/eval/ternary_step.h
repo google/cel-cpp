@@ -13,7 +13,7 @@ namespace expr {
 namespace runtime {
 
 // Factory method for ternary (_?_:_) execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateTernaryStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateTernaryStep(
     int64_t expr_id);
 
 }  // namespace runtime

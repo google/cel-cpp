@@ -25,7 +25,7 @@
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/proto_util.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {

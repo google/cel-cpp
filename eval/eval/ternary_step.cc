@@ -66,7 +66,7 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateTernaryStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateTernaryStep(
     int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<TernaryStep>(expr_id);

@@ -1,5 +1,6 @@
 #include "parser/parser.h"
 
+#include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelLexer.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
@@ -19,14 +20,14 @@ using antlr4::ParseCancellationException;
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::ParsedExpr;
 
-cel_base::StatusOr<ParsedExpr> Parse(const std::string& expression,
+absl::StatusOr<ParsedExpr> Parse(const std::string& expression,
                                  const std::string& description,
                                  const int max_recursion_depth) {
   return ParseWithMacros(expression, Macro::AllMacros(), description,
                          max_recursion_depth);
 }
 
-cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
+absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
                                            const std::vector<Macro>& macros,
                                            const std::string& description,
                                            const int max_recursion_depth) {
@@ -38,7 +39,7 @@ cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
   return result.status();
 }
 
-cel_base::StatusOr<VerboseParsedExpr> EnrichedParse(
+absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
     const std::string& description, const int max_recursion_depth) {
   ANTLRInputStream input(expression);

@@ -44,25 +44,25 @@ class CelExpression {
   // activation contains bindings from parameter names to values
   // arena parameter specifies Arena object where output result and
   // internal data will be allocated.
-  virtual cel_base::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
+  virtual absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
                                             google::protobuf::Arena* arena) const = 0;
 
   // Evaluates expression and returns value.
   // activation contains bindings from parameter names to values
   // state must be non-null and created prior to calling Evaluate by
   // InitializeState.
-  virtual cel_base::StatusOr<CelValue> Evaluate(
+  virtual absl::StatusOr<CelValue> Evaluate(
       const BaseActivation& activation, CelEvaluationState* state) const = 0;
 
   // Trace evaluates expression calling the callback on each sub-tree.
-  virtual cel_base::StatusOr<CelValue> Trace(
+  virtual absl::StatusOr<CelValue> Trace(
       const BaseActivation& activation, google::protobuf::Arena* arena,
       CelEvaluationListener callback) const = 0;
 
   // Trace evaluates expression calling the callback on each sub-tree.
   // state must be non-null and created prior to calling Evaluate by
   // InitializeState.
-  virtual cel_base::StatusOr<CelValue> Trace(
+  virtual absl::StatusOr<CelValue> Trace(
       const BaseActivation& activation, CelEvaluationState* state,
       CelEvaluationListener callback) const = 0;
 };
@@ -80,14 +80,14 @@ class CelExpressionBuilder {
 
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree
-  virtual cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const = 0;
 
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree.
   // non-fatal build warnings are written to warnings if encountered.
-  virtual cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info,
       std::vector<absl::Status>* warnings) const = 0;

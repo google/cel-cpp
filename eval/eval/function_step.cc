@@ -27,7 +27,7 @@
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
 #include "base/status_macros.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {
@@ -99,7 +99,7 @@ class AbstractFunctionStep : public ExpressionStepBase {
 
   absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
-  virtual cel_base::StatusOr<const CelFunction*> ResolveFunction(
+  virtual absl::StatusOr<const CelFunction*> ResolveFunction(
       absl::Span<const CelValue> args, const ExecutionFrame* frame) const = 0;
 
  protected:
@@ -198,7 +198,7 @@ class EagerFunctionStep : public AbstractFunctionStep {
                     const std::string& name, size_t num_args, int64_t expr_id)
       : AbstractFunctionStep(name, num_args, expr_id), overloads_(overloads) {}
 
-  cel_base::StatusOr<const CelFunction*> ResolveFunction(
+  absl::StatusOr<const CelFunction*> ResolveFunction(
       absl::Span<const CelValue> input_args,
       const ExecutionFrame* frame) const override;
 
@@ -206,7 +206,7 @@ class EagerFunctionStep : public AbstractFunctionStep {
   std::vector<const CelFunction*> overloads_;
 };
 
-cel_base::StatusOr<const CelFunction*> EagerFunctionStep::ResolveFunction(
+absl::StatusOr<const CelFunction*> EagerFunctionStep::ResolveFunction(
     absl::Span<const CelValue> input_args, const ExecutionFrame* frame) const {
   const CelFunction* matched_function = nullptr;
 
@@ -236,7 +236,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
         receiver_style_(receiver_style),
         providers_(providers) {}
 
-  cel_base::StatusOr<const CelFunction*> ResolveFunction(
+  absl::StatusOr<const CelFunction*> ResolveFunction(
       absl::Span<const CelValue> input_args,
       const ExecutionFrame* frame) const override;
 
@@ -245,7 +245,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
   std::vector<const CelFunctionProvider*> providers_;
 };
 
-cel_base::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
+absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
     absl::Span<const CelValue> input_args, const ExecutionFrame* frame) const {
   const CelFunction* matched_function = nullptr;
 
@@ -279,7 +279,7 @@ cel_base::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
     const CelFunctionRegistry& function_registry,
     BuilderWarnings* builder_warnings) {

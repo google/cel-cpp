@@ -22,7 +22,7 @@ using testing::Not;
 using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
-cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
+absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
                                        google::protobuf::Arena* arena,
                                        bool enable_unknowns) {
   ExecutionPath path;
@@ -57,7 +57,7 @@ cel_base::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
 }
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
-cel_base::StatusOr<CelValue> RunExpressionWithCelValues(
+absl::StatusOr<CelValue> RunExpressionWithCelValues(
     const std::vector<CelValue>& values, google::protobuf::Arena* arena,
     bool enable_unknowns) {
   ExecutionPath path;

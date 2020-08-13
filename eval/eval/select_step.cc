@@ -205,7 +205,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 // Factory method for Select - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id,
     absl::string_view select_path) {
   std::unique_ptr<ExpressionStep> step = absl::make_unique<SelectStep>(

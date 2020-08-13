@@ -11,7 +11,7 @@ namespace expr {
 namespace runtime {
 
 // Factory method for Select - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
     const google::api::expr::v1alpha1::Expr::Call* call, int64_t expr_id);
 
 }  // namespace runtime

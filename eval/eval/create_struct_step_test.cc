@@ -32,7 +32,7 @@ using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
-cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
+absl::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        const CelValue& value,
                                        google::protobuf::Arena* arena,
                                        bool enable_unknowns) {
@@ -111,7 +111,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds Map and runs it.
-cel_base::StatusOr<CelValue> RunCreateMapExpression(
+absl::StatusOr<CelValue> RunCreateMapExpression(
     const std::vector<std::pair<CelValue, CelValue>> values,
     google::protobuf::Arena* arena, bool enable_unknowns) {
   ExecutionPath path;

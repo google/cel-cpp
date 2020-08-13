@@ -99,7 +99,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const google::api::expr::v1alpha1::Expr::Ident* ident_expr, int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<IdentStep>(ident_expr->name(), expr_id);

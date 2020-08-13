@@ -11,7 +11,7 @@ namespace {
 class ActivationFunctionProviderImpl : public CelFunctionProvider {
  public:
   ActivationFunctionProviderImpl() {}
-  cel_base::StatusOr<const CelFunction*> GetFunction(
+  absl::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& descriptor,
       const BaseActivation& activation) const override {
     std::vector<const CelFunction*> overloads =

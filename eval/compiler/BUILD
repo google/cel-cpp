@@ -141,12 +141,12 @@ cc_library(
     ],
     deps = [
         "//base:status_macros",
-        "//base:statusor",
         "//eval/eval:const_value_step",
         "//eval/eval:expression_build_warning",
         "//eval/public:cel_builtins",
         "//eval/public:cel_function_registry",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",

@@ -95,7 +95,7 @@ class BoolCheckJumpStep : public JumpStepBase {
 // Factory method for Conditional Jump step.
 // Conditional Jump requires a boolean value to sit on the stack.
 // It is compared to jump_condition, and if matched, jump is performed.
-cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
+absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
     bool jump_condition, bool leave_on_stack, absl::optional<int> jump_offset,
     int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step = absl::make_unique<CondJumpStep>(
@@ -105,7 +105,7 @@ cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
 }
 
 // Factory method for Jump step.
-cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
+absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step =
       absl::make_unique<JumpStep>(jump_offset, expr_id);
@@ -116,7 +116,7 @@ cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
 // Factory method for Conditional Jump step.
 // Conditional Jump requires a value to sit on the stack.
 // If this value is an error or unknown, a jump is performed.
-cel_base::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
+absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
   std::unique_ptr<JumpStepBase> step =
       absl::make_unique<BoolCheckJumpStep>(jump_offset, expr_id);

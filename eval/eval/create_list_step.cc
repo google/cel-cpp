@@ -61,7 +61,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 // Factory method for CreateList - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
     int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step = absl::make_unique<CreateListStep>(

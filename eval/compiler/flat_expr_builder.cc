@@ -435,7 +435,7 @@ class FlatExprVisitor : public AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
-  void AddStep(cel_base::StatusOr<std::unique_ptr<ExpressionStep>> step_status) {
+  void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step_status) {
     if (step_status.ok() && progress_status_.ok()) {
       flattened_path_->push_back(std::move(step_status.value()));
     } else {
@@ -699,7 +699,7 @@ void ComprehensionVisitor::PostVisit(const Expr*) {}
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<CelExpression>>
+absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpression(const Expr* expr,
                                   const SourceInfo* source_info,
                                   std::vector<absl::Status>* warnings) const {
@@ -743,7 +743,7 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
   return std::move(expression_impl);
 }
 
-cel_base::StatusOr<std::unique_ptr<CelExpression>>
+absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpression(const Expr* expr,
                                   const SourceInfo* source_info) const {
   return CreateExpression(expr, source_info, nullptr);

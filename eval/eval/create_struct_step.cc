@@ -269,7 +269,7 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
     int64_t expr_id) {
   if (!create_struct_expr->message_name().empty()) {

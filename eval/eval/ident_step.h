@@ -11,7 +11,7 @@ namespace expr {
 namespace runtime {
 
 // Factory method for Ident - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const google::api::expr::v1alpha1::Expr::Ident* ident, int64_t expr_id);
 
 }  // namespace runtime

@@ -6,7 +6,7 @@
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {
@@ -83,7 +83,7 @@ class FunctionAdapter : public CelFunction {
   FunctionAdapter(const CelFunctionDescriptor& descriptor, FuncType handler)
       : CelFunction(descriptor), handler_(std::move(handler)) {}
 
-  static cel_base::StatusOr<std::unique_ptr<CelFunction>> Create(
+  static absl::StatusOr<std::unique_ptr<CelFunction>> Create(
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler) {
     std::vector<CelValue::Type> arg_types;
@@ -282,7 +282,7 @@ class FunctionAdapter : public CelFunction {
   }
 
   template <typename T>
-  static absl::Status CreateReturnValue(const cel_base::StatusOr<T>& value,
+  static absl::Status CreateReturnValue(const absl::StatusOr<T>& value,
                                         ::google::protobuf::Arena*, CelValue*) {
     if (!value) {
       return value.status();

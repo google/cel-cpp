@@ -20,7 +20,7 @@ using google::api::expr::v1alpha1::Expr;
 
 using google::protobuf::Arena;
 
-cel_base::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
+absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
                                                const Constant* const_expr,
                                                Arena* arena) {
   auto step_status =

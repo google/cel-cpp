@@ -22,7 +22,7 @@ class NullLazyFunctionProvider : public virtual CelFunctionProvider {
  public:
   NullLazyFunctionProvider() {}
   // Just return nullptr indicating no matching function.
-  cel_base::StatusOr<const CelFunction*> GetFunction(
+  absl::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& desc,
       const BaseActivation& activation) const override {
     return nullptr;
