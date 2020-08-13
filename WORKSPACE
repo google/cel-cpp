@@ -1,7 +1,7 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-CEL_SPEC_GIT_SHA = "02a12e7cffe452a611b0e6ef47872963bbd87028" # 4/17/2020
+CEL_SPEC_GIT_SHA = "02a12e7cffe452a611b0e6ef47872963bbd87028"  # 4/17/2020
 
 CEL_SPEC_SHA = "757cfdb00dc76fd0d12dadbae982c22a9218711d5e4cf30c94cfe6c05b1cdf2b"
 
@@ -59,11 +59,11 @@ switched_rules_by_language(
 
 http_archive(
     name = "io_bazel_rules_go",
+    sha256 = "f04d2373bcaf8aa09bccb08a98a57e721306c8f6043a2a0ee610fd6853dcde3d",
     urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.18.6/rules_go-0.18.6.tar.gz"],
-    sha256 = "f04d2373bcaf8aa09bccb08a98a57e721306c8f6043a2a0ee610fd6853dcde3d"
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 # cel-go dependencies:
 http_archive(
@@ -88,9 +88,9 @@ go_repository(
 )
 
 go_repository(
-  name = "com_github_antlr",
-  commit = "621b933c7a7f01c67ae9de15103151fa0f9d6d90",
-  importpath = "github.com/antlr/antlr4",
+    name = "com_github_antlr",
+    commit = "621b933c7a7f01c67ae9de15103151fa0f9d6d90",
+    importpath = "github.com/antlr/antlr4",
 )
 
 go_rules_dependencies()
@@ -102,19 +102,17 @@ gazelle_dependencies()
 # Parser dependencies
 http_archive(
     name = "rules_antlr",
-    urls = ["https://github.com/marcohu/rules_antlr/archive/3cc2f9502a54ceb7b79b37383316b23c4da66f9a.tar.gz"],
-    strip_prefix = "rules_antlr-3cc2f9502a54ceb7b79b37383316b23c4da66f9a",
     sha256 = "7249d1569293d9b239e23c65f6b4c81a07da921738bde0dfeb231ed98be40429",
+    strip_prefix = "rules_antlr-3cc2f9502a54ceb7b79b37383316b23c4da66f9a",
+    urls = ["https://github.com/marcohu/rules_antlr/archive/3cc2f9502a54ceb7b79b37383316b23c4da66f9a.tar.gz"],
 )
 
 load("@rules_antlr//antlr:deps.bzl", "antlr_dependencies")
+
 antlr_dependencies(472)
 
 http_archive(
     name = "antlr4_runtimes",
-    sha256 = "46f5e1af5f4bd28ade55cb632f9a069656b31fc8c2408f9aa045f9b5f5caad64",
-    strip_prefix = "antlr4-4.7.2",
-    urls = ["https://github.com/antlr/antlr4/archive/4.7.2.tar.gz"],
     build_file_content = """
 package(default_visibility = ["//visibility:public"])
 cc_library(
@@ -123,7 +121,10 @@ cc_library(
     hdrs = glob(["runtime/Cpp/runtime/src/**/*.h"]),
     includes = ["runtime/Cpp/runtime/src"],
 )
-"""
+""",
+    sha256 = "46f5e1af5f4bd28ade55cb632f9a069656b31fc8c2408f9aa045f9b5f5caad64",
+    strip_prefix = "antlr4-4.7.2",
+    urls = ["https://github.com/antlr/antlr4/archive/4.7.2.tar.gz"],
 )
 
 # tools/flatbuffers dependencies
@@ -140,4 +141,3 @@ http_archive(
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 
 grpc_extra_deps()
-

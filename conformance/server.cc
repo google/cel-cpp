@@ -260,7 +260,7 @@ int RunServer(std::string server_address) {
                                 grpc::InsecureServerCredentials(), &port);
   grpc_builder.RegisterService(&service);
   std::unique_ptr<grpc::Server> server(grpc_builder.BuildAndStart());
-  std::cout << "Listening on [::1]:" << port << std::endl;
+  std::cout << "Listening on 127.0.0.1:" << port << std::endl;
   fflush(stdout);
   server->Wait();
   return 0;
@@ -272,6 +272,6 @@ int RunServer(std::string server_address) {
 }  // namespace google
 
 int main(int argc, char** argv) {
-  std::string server_address = "[::1]:0";
+  std::string server_address = "127.0.0.1:0";
   return google::api::expr::runtime::RunServer(server_address);
 }
