@@ -3,9 +3,10 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "eval/eval/container_backed_map_impl.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
@@ -67,8 +68,8 @@ cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path,
                                        bool enable_unknowns) {
-  return RunExpression(CelValue::CreateMessage(message, arena), field, test,
-                       arena, unknown_path, enable_unknowns);
+  return RunExpression(CelProtoWrapper::CreateMessage(message, arena), field,
+                       test, arena, unknown_path, enable_unknowns);
 }
 
 cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
@@ -477,6 +478,107 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   EXPECT_THAT(result.ErrorOrDie(), Eq(&error));
 }
 
+TEST(SelectStepTest, DisableMissingAttributeOK) {
+  TestMessage message;
+  message.set_bool_value(true);
+  google::protobuf::Arena arena;
+  ExecutionPath path;
+
+  Expr dummy_expr;
+
+  auto select = dummy_expr.mutable_select_expr();
+  select->set_field("bool_value");
+  select->set_test_only(false);
+  Expr* expr0 = select->mutable_operand();
+
+  auto ident = expr0->mutable_ident_expr();
+  ident->set_name("message");
+  auto step0_status = CreateIdentStep(ident, expr0->id());
+  auto step1_status =
+      CreateSelectStep(select, dummy_expr.id(), "message.bool_value");
+
+  ASSERT_OK(step0_status);
+  ASSERT_OK(step1_status);
+
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
+                                 /*enable_unknowns=*/false);
+  Activation activation;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
+
+  auto eval_status0 = cel_expr.Evaluate(activation, &arena);
+  ASSERT_OK(eval_status0);
+
+  CelValue result = eval_status0.value();
+
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_EQ(true, result.BoolOrDie());
+
+  CelAttributePattern pattern("message", {});
+  activation.set_missing_attribute_patterns({pattern});
+
+  auto eval_status1 = cel_expr.Evaluate(activation, &arena);
+  ASSERT_OK(eval_status1);
+  EXPECT_EQ(true, eval_status1.value().BoolOrDie());
+}
+
+TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
+  TestMessage message;
+  message.set_bool_value(true);
+  google::protobuf::Arena arena;
+  ExecutionPath path;
+
+  Expr dummy_expr;
+
+  auto select = dummy_expr.mutable_select_expr();
+  select->set_field("bool_value");
+  select->set_test_only(false);
+  Expr* expr0 = select->mutable_operand();
+
+  auto ident = expr0->mutable_ident_expr();
+  ident->set_name("message");
+  auto step0_status = CreateIdentStep(ident, expr0->id());
+  auto step1_status =
+      CreateSelectStep(select, dummy_expr.id(), "message.bool_value");
+
+  ASSERT_OK(step0_status);
+  ASSERT_OK(step1_status);
+
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {}, false,
+                                 false,
+                                 /*enable_missing_attribute_errors=*/true);
+  Activation activation;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
+
+  auto eval_status0 = cel_expr.Evaluate(activation, &arena);
+  ASSERT_OK(eval_status0);
+
+  CelValue result = eval_status0.value();
+
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_EQ(result.BoolOrDie(), true);
+
+  CelAttributePattern pattern("message",
+                              {CelAttributeQualifierPattern::Create(
+                                  CelValue::CreateStringView("bool_value"))});
+  activation.set_missing_attribute_patterns({pattern});
+
+  auto eval_status1 = cel_expr.Evaluate(activation, &arena);
+  ASSERT_OK(eval_status1);
+
+  EXPECT_EQ(eval_status1.value().ErrorOrDie()->code(),
+            absl::StatusCode::kInvalidArgument);
+  EXPECT_EQ(eval_status1.value().ErrorOrDie()->message(),
+            "MissingAttributeError: message.bool_value");
+}
+
 TEST_P(SelectStepTest, UnknownValueProducesError) {
   TestMessage message;
   message.set_bool_value(true);
@@ -505,7 +607,8 @@ TEST_P(SelectStepTest, UnknownValueProducesError) {
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
                                  GetParam());
   Activation activation;
-  activation.InsertValue("message", CelValue::CreateMessage(&message, &arena));
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
 
   auto eval_status0 = cel_expr.Evaluate(activation, &arena);
   ASSERT_OK(eval_status0);
@@ -562,7 +665,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     std::vector<CelAttributePattern> unknown_patterns;
     Activation activation;
     activation.InsertValue("message",
-                           CelValue::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
@@ -582,7 +685,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     unknown_patterns.push_back(CelAttributePattern("message", {}));
     Activation activation;
     activation.InsertValue("message",
-                           CelValue::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
@@ -600,7 +703,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
                        CelValue::CreateString(&kSegmentCorrect1))}));
     Activation activation;
     activation.InsertValue("message",
-                           CelValue::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
@@ -617,7 +720,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
         "message", {CelAttributeQualifierPattern::CreateWildcard()}));
     Activation activation;
     activation.InsertValue("message",
-                           CelValue::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);
@@ -635,7 +738,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
                        CelValue::CreateString(&kSegmentIncorrect))}));
     Activation activation;
     activation.InsertValue("message",
-                           CelValue::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     auto eval_status0 = cel_expr.Evaluate(activation, &arena);

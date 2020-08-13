@@ -74,6 +74,85 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ASSERT_TRUE(result.IsError());
 }
 
+TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
+  Expr expr;
+  auto ident_expr = expr.mutable_ident_expr();
+  ident_expr->set_name("name0");
+
+  auto step_status = CreateIdentStep(ident_expr, expr.id());
+  ASSERT_OK(step_status);
+
+  ExecutionPath path;
+  path.push_back(std::move(step_status.value()));
+
+  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {},
+                             /*enable_unknowns=*/false);
+
+  Activation activation;
+  Arena arena;
+  std::string value("test");
+
+  activation.InsertValue("name0", CelValue::CreateString(&value));
+  auto status0 = impl.Evaluate(activation, &arena);
+  ASSERT_OK(status0);
+
+  CelValue result = status0.value();
+
+  ASSERT_TRUE(result.IsString());
+  EXPECT_THAT(result.StringOrDie().value(), Eq("test"));
+
+  const CelAttributePattern pattern("name0", {});
+  activation.set_missing_attribute_patterns({pattern});
+
+  status0 = impl.Evaluate(activation, &arena);
+  ASSERT_OK(status0);
+
+  EXPECT_THAT(status0.value().StringOrDie().value(), Eq("test"));
+}
+
+TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
+  Expr expr;
+  auto ident_expr = expr.mutable_ident_expr();
+  ident_expr->set_name("name0");
+
+  auto step_status = CreateIdentStep(ident_expr, expr.id());
+  ASSERT_OK(step_status);
+
+  ExecutionPath path;
+  path.push_back(std::move(step_status.value()));
+
+  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {}, false,
+                             false, /*enable_missing_attribute_errors=*/true);
+
+  Activation activation;
+  Arena arena;
+  std::string value("test");
+
+  activation.InsertValue("name0", CelValue::CreateString(&value));
+  auto status0 = impl.Evaluate(activation, &arena);
+  ASSERT_OK(status0);
+
+  CelValue result = status0.value();
+
+  ASSERT_TRUE(result.IsString());
+  EXPECT_THAT(result.StringOrDie().value(), Eq("test"));
+
+  CelAttributePattern pattern("name0", {});
+  activation.set_missing_attribute_patterns({pattern});
+
+  status0 = impl.Evaluate(activation, &arena);
+  ASSERT_OK(status0);
+
+  EXPECT_EQ(status0.value().ErrorOrDie()->code(),
+            absl::StatusCode::kInvalidArgument);
+  EXPECT_EQ(status0.value().ErrorOrDie()->message(),
+            "MissingAttributeError: name0");
+}
+
 TEST(IdentStepTest, TestIdentStepUnknownValueError) {
   Expr expr;
   auto ident_expr = expr.mutable_ident_expr();

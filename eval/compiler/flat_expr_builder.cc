@@ -1,6 +1,7 @@
 #include "eval/compiler/flat_expr_builder.h"
 
 #include "stack"
+#include "absl/container/node_hash_map.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
@@ -17,6 +18,7 @@
 #include "eval/eval/jump_step.h"
 #include "eval/eval/logic_step.h"
 #include "eval/eval/select_step.h"
+#include "eval/eval/ternary_step.h"
 #include "eval/public/ast_traverse.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/cel_builtins.h"
@@ -39,13 +41,109 @@ using CreateList = google::api::expr::v1alpha1::Expr::CreateList;
 using CreateStruct = google::api::expr::v1alpha1::Expr::CreateStruct;
 using Comprehension = google::api::expr::v1alpha1::Expr::Comprehension;
 
+// Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
+
+// A convenience wrapper for offset-calculating logic.
+class Jump {
+ public:
+  explicit Jump() : self_index_(-1), jump_step_(nullptr) {}
+  explicit Jump(int self_index, JumpStepBase* jump_step)
+      : self_index_(self_index), jump_step_(jump_step) {}
+  void set_target(int index) {
+    // 0 offset means no-op.
+    jump_step_->set_jump_offset(index - self_index_ - 1);
+  }
+  bool exists() { return jump_step_ != nullptr; }
+
+ private:
+  int self_index_;
+  JumpStepBase* jump_step_;
+};
+
+class CondVisitor {
+ public:
+  virtual ~CondVisitor() {}
+  virtual void PreVisit(const Expr* expr) = 0;
+  virtual void PostVisitArg(int arg_num, const Expr* expr) = 0;
+  virtual void PostVisit(const Expr* expr) = 0;
+};
+
+// Visitor managing the "&&" and "||" operatiions.
+class BinaryCondVisitor : public CondVisitor {
+ public:
+  explicit BinaryCondVisitor(FlatExprVisitor* visitor, bool cond_value,
+                             bool short_circuiting)
+      : visitor_(visitor),
+        cond_value_(cond_value),
+        short_circuiting_(short_circuiting) {}
+
+  void PreVisit(const Expr* expr) override;
+  void PostVisitArg(int arg_num, const Expr* expr) override;
+  void PostVisit(const Expr* expr) override;
+
+ private:
+  FlatExprVisitor* visitor_;
+  const bool cond_value_;
+  Jump jump_step_;
+  bool short_circuiting_;
+};
+
+class TernaryCondVisitor : public CondVisitor {
+ public:
+  explicit TernaryCondVisitor(FlatExprVisitor* visitor) : visitor_(visitor) {}
+
+  void PreVisit(const Expr* expr) override;
+  void PostVisitArg(int arg_num, const Expr* expr) override;
+  void PostVisit(const Expr* expr) override;
+
+ private:
+  FlatExprVisitor* visitor_;
+  Jump jump_to_second_;
+  Jump error_jump_;
+  Jump jump_after_first_;
+};
+
+class ExhaustiveTernaryCondVisitor : public CondVisitor {
+ public:
+  explicit ExhaustiveTernaryCondVisitor(FlatExprVisitor* visitor)
+      : visitor_(visitor) {}
+
+  void PreVisit(const Expr* expr) override {}
+  void PostVisitArg(int arg_num, const Expr* expr) override {}
+  void PostVisit(const Expr* expr) override;
+
+ private:
+  FlatExprVisitor* visitor_;
+};
+
+// Visitor Comprehension expression.
+class ComprehensionVisitor : public CondVisitor {
+ public:
+  explicit ComprehensionVisitor(FlatExprVisitor* visitor, bool short_circuiting)
+      : visitor_(visitor),
+        next_step_(nullptr),
+        cond_step_(nullptr),
+        short_circuiting_(short_circuiting) {}
+
+  void PreVisit(const Expr* expr) override;
+  void PostVisitArg(int arg_num, const Expr* expr) override;
+  void PostVisit(const Expr* expr) override;
+
+ private:
+  FlatExprVisitor* visitor_;
+  ComprehensionNextStep* next_step_;
+  ComprehensionCondStep* cond_step_;
+  int next_step_pos_;
+  int cond_step_pos_;
+  bool short_circuiting_;
+};
 
 class FlatExprVisitor : public AstVisitor {
  public:
   FlatExprVisitor(
       const CelFunctionRegistry* function_registry, ExecutionPath* path,
-      bool shortcircuiting,
+      bool short_circuiting,
       const std::set<const google::protobuf::EnumDescriptor*>& enums,
       absl::string_view container,
       const absl::flat_hash_map<std::string, CelValue>& constant_idents,
@@ -55,7 +153,7 @@ class FlatExprVisitor : public AstVisitor {
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
         function_registry_(function_registry),
-        shortcircuiting_(shortcircuiting),
+        short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
         enable_comprehension_(enable_comprehension),
         builder_warnings_(warnings),
@@ -99,23 +197,6 @@ class FlatExprVisitor : public AstVisitor {
     }
   }
 
-  // A convenience wrapper for offset-calculating logic.
-  class Jump {
-   public:
-    explicit Jump() : self_index_(-1), jump_step_(nullptr) {}
-    explicit Jump(int self_index, JumpStepBase* jump_step)
-        : self_index_(self_index), jump_step_(jump_step) {}
-    void set_target(int index) {
-      // 0 offset means no-op.
-      jump_step_->set_jump_offset(index - self_index_ - 1);
-    }
-    bool exists() { return jump_step_ != nullptr; }
-
-   private:
-    int self_index_;
-    JumpStepBase* jump_step_;
-  };
-
   void PostVisitConst(const Constant* const_expr, const Expr* expr,
                       const SourcePosition*) override {
     if (!progress_status_.ok()) {
@@ -139,7 +220,7 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
 
-    std::string path = ident_expr->name();
+    std::string path(ident_expr->name());
 
     // Automatically replace constant idents with the backing CEL values.
     auto constant = constant_idents_.find(path);
@@ -156,7 +237,7 @@ class FlatExprVisitor : public AstVisitor {
     while (!namespace_stack_.empty()) {
       const auto& select_node = namespace_stack_.back();
       // Generate path in format "<ident>.<field 0>.<field 1>...".
-      path = absl::StrCat(path, ".", select_node.second);
+      absl::StrAppend(&path, ".", select_node.second);
       namespace_map_[select_node.first] = path;
 
       // Attempt to match namespace
@@ -236,20 +317,25 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
 
-    if (!shortcircuiting_) {
+    std::unique_ptr<CondVisitor> cond_visitor;
+    if (call_expr->function() == builtin::kAnd) {
+      cond_visitor = absl::make_unique<BinaryCondVisitor>(
+          this, /* cond_value= */ false, short_circuiting_);
+    } else if (call_expr->function() == builtin::kOr) {
+      cond_visitor = absl::make_unique<BinaryCondVisitor>(
+          this, /* cond_value= */ true, short_circuiting_);
+    } else if (call_expr->function() == builtin::kTernary) {
+      if (short_circuiting_) {
+        cond_visitor = absl::make_unique<TernaryCondVisitor>(this);
+      } else {
+        cond_visitor = absl::make_unique<ExhaustiveTernaryCondVisitor>(this);
+      }
+    } else {
       return;
     }
 
-    std::unique_ptr<CondVisitor> cond_visitor;
-    if (call_expr->function() == builtin::kAnd) {
-      cond_visitor = absl::make_unique<BinaryCondVisitor>(this, false);
-    } else if (call_expr->function() == builtin::kOr) {
-      cond_visitor = absl::make_unique<BinaryCondVisitor>(this, true);
-    } else if (call_expr->function() == builtin::kTernary) {
-      cond_visitor = absl::make_unique<TernaryCondVisitor>(this);
-    }
-
     if (cond_visitor) {
+      cond_visitor->PreVisit(expr);
       cond_visitor_stack_.emplace(expr, std::move(cond_visitor));
     }
   }
@@ -286,8 +372,8 @@ class FlatExprVisitor : public AstVisitor {
       SetProgressStatusError(absl::Status(absl::StatusCode::kInvalidArgument,
                                           "Comprehension support is disabled"));
     }
-    cond_visitor_stack_.emplace(expr,
-                                absl::make_unique<ComprehensionVisitor>(this));
+    cond_visitor_stack_.emplace(
+        expr, absl::make_unique<ComprehensionVisitor>(this, short_circuiting_));
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PreVisit(expr);
   }
@@ -349,72 +435,7 @@ class FlatExprVisitor : public AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
- private:
-  class CondVisitor {
-   public:
-    explicit CondVisitor(FlatExprVisitor* visitor) : visitor_(visitor) {}
-
-    virtual ~CondVisitor() {}
-    virtual void PreVisit(const Expr* expr) = 0;
-    virtual void PostVisitArg(int arg_num, const Expr* expr) = 0;
-    virtual void PostVisit(const Expr* expr) = 0;
-
-   protected:
-    FlatExprVisitor* visitor_;
-  };
-
-  // Visitor managing the "&&" and "||" operatiions.
-  class BinaryCondVisitor : public CondVisitor {
-   public:
-    explicit BinaryCondVisitor(FlatExprVisitor* visitor, bool cond_value)
-        : CondVisitor(visitor), cond_value_(cond_value) {}
-
-    void PreVisit(const Expr* expr) override;
-    void PostVisitArg(int arg_num, const Expr* expr) override;
-    void PostVisit(const Expr* expr) override;
-
-   private:
-    const bool cond_value_;
-    Jump jump_step_;
-  };
-
-  // Visitor managing the "?" operation.
-  // TODO(issues/41) Make sure Unknowns are properly supported by ternary
-  // operation.
-  class TernaryCondVisitor : public CondVisitor {
-   public:
-    explicit TernaryCondVisitor(FlatExprVisitor* visitor)
-        : CondVisitor(visitor) {}
-
-    void PreVisit(const Expr* expr) override;
-    void PostVisitArg(int arg_num, const Expr* expr) override;
-    void PostVisit(const Expr* expr) override;
-
-   private:
-    Jump jump_to_second_;
-    Jump error_jump_;
-    Jump jump_after_first_;
-  };
-
-  // Visitor Comprehension expression.
-  class ComprehensionVisitor : public CondVisitor {
-   public:
-    explicit ComprehensionVisitor(FlatExprVisitor* visitor)
-        : CondVisitor(visitor), next_step_(nullptr), cond_step_(nullptr) {}
-
-    void PreVisit(const Expr* expr) override;
-    void PostVisitArg(int arg_num, const Expr* expr) override;
-    void PostVisit(const Expr* expr) override;
-
-   private:
-    ComprehensionNextStep* next_step_;
-    ComprehensionCondStep* cond_step_;
-    int next_step_pos_;
-    int cond_step_pos_;
-  };
-
-  template <typename T>
-  void AddStep(cel_base::StatusOr<std::unique_ptr<T>> step_status) {
+  void AddStep(cel_base::StatusOr<std::unique_ptr<ExpressionStep>> step_status) {
     if (step_status.ok() && progress_status_.ok()) {
       flattened_path_->push_back(std::move(step_status.value()));
     } else {
@@ -422,8 +443,7 @@ class FlatExprVisitor : public AstVisitor {
     }
   }
 
-  template <typename T>
-  void AddStep(std::unique_ptr<T> step) {
+  void AddStep(std::unique_ptr<ExpressionStep> step) {
     if (progress_status_.ok()) {
       flattened_path_->push_back(std::move(step));
     }
@@ -435,6 +455,7 @@ class FlatExprVisitor : public AstVisitor {
     }
   }
 
+  // Index of the next step to be inserted.
   int GetCurrentIndex() const { return flattened_path_->size(); }
 
   CondVisitor* FindCondVisitor(const Expr* expr) const {
@@ -447,6 +468,7 @@ class FlatExprVisitor : public AstVisitor {
     return (latest.first == expr) ? latest.second.get() : nullptr;
   }
 
+ private:
   ExecutionPath* flattened_path_;
   absl::Status progress_status_;
 
@@ -464,11 +486,12 @@ class FlatExprVisitor : public AstVisitor {
   const Expr* resolved_select_expr_;
 
   // Fully resolved enum value names.
-  std::unordered_map<std::string, const google::protobuf::EnumValueDescriptor*> enum_map_;
+  absl::node_hash_map<std::string, const google::protobuf::EnumValueDescriptor*>
+      enum_map_;
 
   const CelFunctionRegistry* function_registry_;
 
-  bool shortcircuiting_;
+  bool short_circuiting_;
 
   const absl::flat_hash_map<std::string, CelValue>& constant_idents_;
 
@@ -479,10 +502,18 @@ class FlatExprVisitor : public AstVisitor {
   std::set<std::string>* iter_variable_names_;
 };
 
-void FlatExprVisitor::BinaryCondVisitor::PreVisit(const Expr*) {}
+void BinaryCondVisitor::PreVisit(const Expr* expr) {
+  if (expr->call_expr().args().size() != 2) {
+    visitor_->SetProgressStatusError(absl::InvalidArgumentError(
+        "Unexpected number of arguments in a binary function call."));
+  }
+}
 
-void FlatExprVisitor::BinaryCondVisitor::PostVisitArg(int arg_num,
-                                                      const Expr* expr) {
+void BinaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
+  if (!short_circuiting_) {
+    // nothing to do.
+    return;
+  }
   if (arg_num == 0) {
     // If first branch evaluation result is enough to determine output,
     // jump over the second branch and provide result as final output.
@@ -495,16 +526,17 @@ void FlatExprVisitor::BinaryCondVisitor::PostVisitArg(int arg_num,
     visitor_->AddStep(std::move(jump_step_status));
   }
 }
-void FlatExprVisitor::BinaryCondVisitor::PostVisit(const Expr* expr) {
+void BinaryCondVisitor::PostVisit(const Expr* expr) {
   visitor_->AddStep((cond_value_) ? CreateOrStep(expr->id())
                                   : CreateAndStep(expr->id()));
-  jump_step_.set_target(visitor_->GetCurrentIndex());
+  if (short_circuiting_) {
+    jump_step_.set_target(visitor_->GetCurrentIndex());
+  }
 }
 
-void FlatExprVisitor::TernaryCondVisitor::PreVisit(const Expr*) {}
+void TernaryCondVisitor::PreVisit(const Expr*) {}
 
-void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
-                                                       const Expr* expr) {
+void TernaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   // Ternary operator "_?_:_" requires a special handing.
   // In contrary to regular function call, its execution affects the control
   // flow of the overall CEL expression.
@@ -557,7 +589,7 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisitArg(int arg_num,
   // clattered.
 }
 
-void FlatExprVisitor::TernaryCondVisitor::PostVisit(const Expr*) {
+void TernaryCondVisitor::PostVisit(const Expr*) {
   // Determine and set jump offset in jump instruction.
   if (error_jump_.exists()) {
     error_jump_.set_target(visitor_->GetCurrentIndex());
@@ -573,6 +605,10 @@ void FlatExprVisitor::TernaryCondVisitor::PostVisit(const Expr*) {
         "Error configuring ternary operator: jump_after_first_ is null"));
     return;
   }
+}
+
+void ExhaustiveTernaryCondVisitor::PostVisit(const Expr* expr) {
+  visitor_->AddStep(CreateTernaryStep(expr->id()));
 }
 
 const Expr* Int64ConstImpl(int64_t value) {
@@ -598,14 +634,13 @@ const Expr* CurrentValueDummy() {
   return expr;
 }
 
-void FlatExprVisitor::ComprehensionVisitor::PreVisit(const Expr*) {
+void ComprehensionVisitor::PreVisit(const Expr*) {
   const Expr* dummy = LoopStepDummy();
   visitor_->AddStep(CreateConstValueStep(
       ConvertConstant(&dummy->const_expr()).value(), dummy->id(), false));
 }
 
-void FlatExprVisitor::ComprehensionVisitor::PostVisitArg(int arg_num,
-                                                         const Expr* expr) {
+void ComprehensionVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   const Comprehension* comprehension = &expr->comprehension_expr();
   auto accu_var = comprehension->accu_var();
   auto iter_var = comprehension->iter_var();
@@ -630,8 +665,8 @@ void FlatExprVisitor::ComprehensionVisitor::PostVisitArg(int arg_num,
     }
     case LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
-      cond_step_ = new ComprehensionCondStep(
-          accu_var, iter_var, visitor_->shortcircuiting_, expr->id());
+      cond_step_ = new ComprehensionCondStep(accu_var, iter_var,
+                                             short_circuiting_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
       break;
     }
@@ -660,7 +695,7 @@ void FlatExprVisitor::ComprehensionVisitor::PostVisitArg(int arg_num,
   }
 }
 
-void FlatExprVisitor::ComprehensionVisitor::PostVisit(const Expr*) {}
+void ComprehensionVisitor::PostVisit(const Expr*) {}
 
 }  // namespace
 
@@ -700,7 +735,7 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
       absl::make_unique<CelExpressionFlatImpl>(
           expr, std::move(execution_path), comprehension_max_iterations_,
           std::move(iter_variable_names), enable_unknowns_,
-          enable_unknown_function_results_);
+          enable_unknown_function_results_, enable_missing_attribute_errors_);
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

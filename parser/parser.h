@@ -12,6 +12,8 @@ namespace api {
 namespace expr {
 namespace parser {
 
+constexpr int kDefaultMaxRecursionDepth = 250;
+
 class VerboseParsedExpr {
  public:
   VerboseParsedExpr(const google::api::expr::v1alpha1::ParsedExpr& parsed_expr,
@@ -33,14 +35,17 @@ class VerboseParsedExpr {
 
 cel_base::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description = "<input>");
+    const std::string& description = "<input>",
+    int max_recursion_depth = kDefaultMaxRecursionDepth);
 
 cel_base::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
-    const std::string& expression, const std::string& description = "<input>");
+    const std::string& expression, const std::string& description = "<input>",
+    int max_recursion_depth = kDefaultMaxRecursionDepth);
 
 cel_base::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
     const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description = "<input>");
+    const std::string& description = "<input>",
+    int max_recursion_depth = kDefaultMaxRecursionDepth);
 
 }  // namespace parser
 }  // namespace expr

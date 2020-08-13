@@ -25,6 +25,8 @@ struct InterpreterOptions {
   UnknownProcessingOptions unknown_processing =
       UnknownProcessingOptions::kDisabled;
 
+  bool enable_missing_attribute_errors = false;
+
   // Enable short-circuiting of the logical operator evaluation. If enabled,
   // AND, OR, and TERNARY do not evaluate the entire expression once the the
   // resulting value is known from the left-hand side.

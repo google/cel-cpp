@@ -1,12 +1,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_FUNCTION_STEP_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_FUNCTION_STEP_H_
 
+#include <stdint.h>
+
+#include <memory>
+
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
+#include "base/statusor.h"
 
 namespace google {
 namespace api {

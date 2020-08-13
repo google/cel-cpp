@@ -2,8 +2,6 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_
 #include <functional>
 
-#include "google/protobuf/duration.pb.h"
-#include "google/protobuf/timestamp.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"

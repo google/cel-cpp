@@ -1,7 +1,8 @@
-#include "eval/eval/field_backed_map_impl.h"
+#include "eval/public/containers/field_backed_map_impl.h"
+
 #include "google/protobuf/map_field.h"
-#include "eval/eval/field_access.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/field_access.h"
 
 #ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 

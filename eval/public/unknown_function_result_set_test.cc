@@ -14,10 +14,11 @@
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "absl/types/span.h"
-#include "eval/eval/container_backed_list_impl.h"
-#include "eval/eval/container_backed_map_impl.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 namespace google {
 namespace api {
 namespace expr {
@@ -268,12 +269,12 @@ TEST(UnknownFunctionResult, Messages) {
 
   CelFunctionDescriptor desc("OneMessage", false, {CelValue::Type::kMessage});
 
-  UnknownFunctionResult call1(desc, /*expr_id=*/0,
-                              {CelValue::CreateMessage(&message1, &arena)});
-  UnknownFunctionResult call2(desc, /*expr_id=*/0,
-                              {CelValue::CreateMessage(&message2, &arena)});
-  UnknownFunctionResult call3(desc, /*expr_id=*/0,
-                              {CelValue::CreateMessage(&message1, &arena)});
+  UnknownFunctionResult call1(
+      desc, /*expr_id=*/0, {CelProtoWrapper::CreateMessage(&message1, &arena)});
+  UnknownFunctionResult call2(
+      desc, /*expr_id=*/0, {CelProtoWrapper::CreateMessage(&message2, &arena)});
+  UnknownFunctionResult call3(
+      desc, /*expr_id=*/0, {CelProtoWrapper::CreateMessage(&message1, &arena)});
 
   // &message1 == &message2
   EXPECT_FALSE(call1.IsEqualTo(call2));
@@ -329,7 +330,7 @@ TEST(UnknownFunctionResult, DurationHandling) {
                                       {CelValue::CreateDuration(duration1)});
   UnknownFunctionResult callDuration2(
       durationDesc, /*expr_id=*/0,
-      {CelValue::CreateMessage(&duration2, &arena)});
+      {CelProtoWrapper::CreateMessage(&duration2, &arena)});
   UnknownFunctionResult callDuration3(durationDesc, /*expr_id=*/0,
                                       {CelValue::CreateDuration(&duration2)});
 
@@ -348,8 +349,9 @@ TEST(UnknownFunctionResult, TimestampHandling) {
 
   UnknownFunctionResult callTimestamp1(timestampDesc, /*expr_id=*/0,
                                        {CelValue::CreateTimestamp(ts1)});
-  UnknownFunctionResult callTimestamp2(timestampDesc, /*expr_id=*/0,
-                                       {CelValue::CreateMessage(&ts2, &arena)});
+  UnknownFunctionResult callTimestamp2(
+      timestampDesc, /*expr_id=*/0,
+      {CelProtoWrapper::CreateMessage(&ts2, &arena)});
   UnknownFunctionResult callTimestamp3(timestampDesc, /*expr_id=*/0,
                                        {CelValue::CreateTimestamp(&ts2)});
 
@@ -375,7 +377,7 @@ TEST(UnknownFunctionResult, ProtoStructTreatedAsMap) {
   auto& value3 = (*value_struct.mutable_fields())[kFields[2]];
   value3.set_string_value("test");
 
-  CelValue proto_struct = CelValue::CreateMessage(&value_struct, &arena);
+  CelValue proto_struct = CelProtoWrapper::CreateMessage(&value_struct, &arena);
   ASSERT_TRUE(proto_struct.IsMap());
 
   std::vector<std::pair<CelValue, CelValue>> values{
@@ -408,7 +410,7 @@ TEST(UnknownFunctionResult, ProtoListTreatedAsList) {
   list_value.add_values()->set_number_value(1.0);
   list_value.add_values()->set_string_value("test");
 
-  CelValue proto_list = CelValue::CreateMessage(&list_value, &arena);
+  CelValue proto_list = CelProtoWrapper::CreateMessage(&list_value, &arena);
   ASSERT_TRUE(proto_list.IsList());
 
   std::vector<CelValue> list_values{CelValue::CreateBool(true),
@@ -455,7 +457,7 @@ TEST(UnknownFunctionResult, NestedProtoTypes) {
   auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values));
 
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
-  CelValue proto_map = CelValue::CreateMessage(&value_struct, &arena);
+  CelValue proto_map = CelProtoWrapper::CreateMessage(&value_struct, &arena);
 
   CelFunctionDescriptor desc("OneMap", false, {CelValue::Type::kMap});
 

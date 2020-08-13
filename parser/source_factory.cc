@@ -12,11 +12,17 @@ namespace google {
 namespace api {
 namespace expr {
 namespace parser {
+namespace {
+
+const int kMaxErrorsToReport = 100;
 
 using common::CelOperator;
 using google::api::expr::v1alpha1::Expr;
 
-SourceFactory::SourceFactory(const std::string& expression) : next_id_(1) {
+}  // namespace
+
+SourceFactory::SourceFactory(const std::string& expression)
+    : next_id_(1), num_errors_(0) {
   calcLineOffsets(expression);
 }
 
@@ -33,6 +39,10 @@ int64_t SourceFactory::id(const antlr4::Token* token) {
 const SourceFactory::SourceLocation& SourceFactory::getSourceLocation(
     int64_t id) const {
   return positions_.at(id);
+}
+
+const SourceFactory::SourceLocation SourceFactory::noLocation() {
+  return SourceLocation(-1, -1, -1, {});
 }
 
 int64_t SourceFactory::id(antlr4::ParserRuleContext* ctx) {
@@ -402,21 +412,62 @@ Expr SourceFactory::newLiteralNull(antlr4::ParserRuleContext* ctx) {
 
 Expr SourceFactory::reportError(antlr4::ParserRuleContext* ctx,
                                 const std::string& msg) {
+  num_errors_ += 1;
   Expr expr = newExpr(ctx);
-  errors_.emplace_back(msg, positions_.at(expr.id()));
+  if (errors_truncated_.size() < kMaxErrorsToReport) {
+    errors_truncated_.emplace_back(msg, positions_.at(expr.id()));
+  }
   return expr;
 }
 
 Expr SourceFactory::reportError(int32_t line, int32_t col, const std::string& msg) {
+  num_errors_ += 1;
   SourceLocation loc(line, col, /*offset_end=*/-1, line_offsets_);
-  errors_.emplace_back(msg, loc);
+  if (errors_truncated_.size() < kMaxErrorsToReport) {
+    errors_truncated_.emplace_back(msg, loc);
+  }
   return newExpr(id(loc));
 }
 
 Expr SourceFactory::reportError(const SourceFactory::SourceLocation& loc,
                                 const std::string& msg) {
-  errors_.emplace_back(msg, loc);
+  num_errors_ += 1;
+  if (errors_truncated_.size() < kMaxErrorsToReport) {
+    errors_truncated_.emplace_back(msg, loc);
+  }
   return newExpr(id(loc));
+}
+
+std::string SourceFactory::errorMessage(const std::string& description,
+                                        const std::string& expression) const {
+  std::vector<std::string> messages;
+  std::transform(
+      errors_truncated_.begin(), errors_truncated_.end(),
+      std::back_inserter(messages),
+      [this, description, expression](const SourceFactory::Error& error) {
+        std::string s = absl::StrFormat("ERROR: %s:%zu:%zu: %s", description,
+                                        error.location.line,
+                                        // add one to the 0-based column
+                                        error.location.col + 1, error.message);
+        std::string snippet = getSourceLine(error.location.line, expression);
+        std::string::size_type pos = 0;
+        while ((pos = snippet.find("\t", pos)) != std::string::npos) {
+          snippet.replace(pos, 1, " ");
+        }
+        std::string src_line = "\n | " + snippet;
+        std::string ind_line = "\n | ";
+        for (int i = 0; i < error.location.col; ++i) {
+          ind_line += ".";
+        }
+        ind_line += "^";
+        s += src_line + ind_line;
+        return s;
+      });
+  if (num_errors_ > kMaxErrorsToReport) {
+    messages.emplace_back(absl::StrCat(num_errors_ - kMaxErrorsToReport,
+                                       " more errors were truncated."));
+  }
+  return absl::StrJoin(messages, "\n");
 }
 
 bool SourceFactory::isReserved(const std::string& ident_name) {
@@ -452,10 +503,6 @@ EnrichedSourceInfo SourceFactory::enrichedSourceInfo() const {
   return EnrichedSourceInfo(offset);
 }
 
-const std::vector<int32_t>& SourceFactory::line_offsets() const {
-  return line_offsets_;
-}
-
 void SourceFactory::calcLineOffsets(const std::string& expression) {
   std::vector<absl::string_view> lines = absl::StrSplit(expression, '\n');
   int offset = 0;
@@ -463,6 +510,31 @@ void SourceFactory::calcLineOffsets(const std::string& expression) {
   for (size_t i = 0; i < lines.size(); ++i) {
     offset += lines[i].size() + 1;
     line_offsets_[i] = offset;
+  }
+}
+
+absl::optional<int32_t> SourceFactory::findLineOffset(int32_t line) const {
+  // note that err.line is 1-based,
+  // while we need the 0-based index
+  if (line == 1) {
+    return 0;
+  } else if (line > 1 && line <= static_cast<int32_t>(line_offsets_.size())) {
+    return line_offsets_[line - 2];
+  }
+  return {};
+}
+
+std::string SourceFactory::getSourceLine(int32_t line,
+                                         const std::string& expression) const {
+  auto char_start = findLineOffset(line);
+  if (!char_start) {
+    return "";
+  }
+  auto char_end = findLineOffset(line + 1);
+  if (char_end) {
+    return expression.substr(*char_start, *char_end - *char_end - 1);
+  } else {
+    return expression.substr(*char_start);
   }
 }
 

@@ -2,9 +2,9 @@
 
 #include "absl/strings/str_cat.h"
 #include "eval/eval/const_value_step.h"
-#include "eval/eval/container_backed_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/containers/container_backed_list_impl.h"
 
 namespace google {
 namespace api {
@@ -112,7 +112,9 @@ class ConstantFoldingTransform {
               return true;
             }
           }
-          makeConstant(CreateNoMatchingOverloadError(arena_), out);
+          makeConstant(
+              CreateNoMatchingOverloadError(arena_, call_expr->function()),
+              out);
           return true;
         }
         CelValue result;

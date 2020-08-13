@@ -1,7 +1,8 @@
 
-#include "eval/eval/field_backed_list_impl.h"
-#include "eval/eval/field_access.h"
+#include "eval/public/containers/field_backed_list_impl.h"
+
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/field_access.h"
 
 namespace google {
 namespace api {

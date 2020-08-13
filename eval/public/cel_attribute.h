@@ -3,10 +3,12 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <initializer_list>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_internal.h"
 
@@ -248,6 +250,14 @@ class CelAttributePattern {
   std::string variable_;
   std::vector<CelAttributeQualifierPattern> qualifier_path_;
 };
+
+// Short-hand helper for creating |CelAttributePattern|s. string_view arguments
+// must outlive the returned pattern.
+CelAttributePattern CreateCelAttributePattern(
+    absl::string_view variable,
+    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
+                                        CelAttributeQualifierPattern>>
+        path_spec = {});
 
 }  // namespace runtime
 }  // namespace expr

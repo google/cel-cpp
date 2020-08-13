@@ -1,10 +1,19 @@
+// Integration tests for unknown processing in the C++ CEL runtime. The
+// semantics of some of the tested expressions can be complicated because isn't
+// possible to represent unknown values or errors directly in CEL -- declaring
+// the unknowns is particular to the runtime.
+
 #include <memory>
 
+#include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/container/btree_map.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
@@ -13,6 +22,9 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
 #include "base/status_macros.h"
 
@@ -164,8 +176,7 @@ MATCHER_P(AttributeIs, attr, "") {
 
 TEST_F(UnknownsTest, NoUnknowns) {
   PrepareBuilder(UnknownProcessingOptions::kDisabled);
-  // activation_.set_unknown_attribute_patterns({CelAttributePattern("var1",
-  // {})});
+
   activation_.InsertValue("var1", CelValue::CreateInt64(3));
   activation_.InsertValue("var2", CelValue::CreateInt64(5));
   ASSERT_OK(activation_.InsertFunction(
@@ -602,6 +613,489 @@ TEST_F(UnknownsCompCondTest, ErrorConditionReturned) {
 
   ASSERT_TRUE(response.IsError()) << CelValue::TypeName(response.type());
   EXPECT_TRUE(CheckNoMatchingOverloadError(response));
+}
+
+constexpr char kListCompExistsWithAttrExpr[] = R"pb(
+  id: 25
+  comprehension_expr {
+    iter_var: "x"
+    iter_range {
+      id: 1
+      ident_expr { name: "var" }
+    }
+    accu_var: "__result__"
+    accu_init {
+      id: 18
+      const_expr { bool_value: false }
+    }
+    loop_condition {
+      id: 21
+      call_expr {
+        function: "@not_strictly_false"
+        args {
+          id: 20
+          call_expr {
+            function: "!_"
+            args {
+              id: 19
+              ident_expr { name: "__result__" }
+            }
+          }
+        }
+      }
+    }
+    loop_step {
+      id: 23
+      call_expr {
+        function: "_||_"
+        args {
+          id: 22
+          ident_expr { name: "__result__" }
+        }
+        args {
+          id: 16
+          call_expr {
+            function: "Fn"
+            args {
+              id: 15
+              ident_expr { name: "x" }
+            }
+          }
+        }
+      }
+    }
+    result {
+      id: 24
+      ident_expr { name: "__result__" }
+    }
+  })pb";
+
+TEST(UnknownsIterAttrTest, IterAttributeTrail) {
+  InterpreterOptions options;
+  Expr expr;
+  Activation activation;
+  Arena arena;
+
+  protobuf::Value element;
+  protobuf::Value& value =
+      element.mutable_struct_value()->mutable_fields()->operator[]("elem1");
+  value.set_number_value(1);
+  protobuf::ListValue list;
+  *list.add_values() = element;
+  *list.add_values() = element;
+  *list.add_values() = element;
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(builder->GetRegistry()->RegisterLazyFunction(
+      CreateDescriptor("Fn", CelValue::Type::kMap)));
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(kListCompExistsWithAttrExpr, &expr))
+      << "error parsing expr";
+
+  // var.exists(x, Fn(x))
+  auto plan = builder->CreateExpression(&expr, nullptr).value();
+
+  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&list, &arena));
+
+  // var[1]['elem1'] is unknown
+  activation.set_unknown_attribute_patterns({CelAttributePattern(
+      "var", {
+                 CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
+                 CelAttributeQualifierPattern::Create(
+                     CelValue::CreateStringView("elem1")),
+             })});
+
+  ASSERT_OK(activation.InsertFunction(std::make_unique<FunctionImpl>(
+      "Fn", FunctionResponse::kFalse, CelValue::Type::kMap)));
+
+  CelValue response = plan->Evaluate(activation, &arena).value();
+
+  ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
+  ASSERT_EQ(
+      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  // 'var[1]' is partially unknown when we make the function call so we treat it
+  // as unknown.
+  ASSERT_EQ(response.UnknownSetOrDie()
+                ->unknown_attributes()
+                .attributes()[0]
+                ->qualifier_path()
+                .size(),
+            1);
+}
+
+TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypes) {
+  InterpreterOptions options;
+  Expr expr;
+  Activation activation;
+  Arena arena;
+
+  UnknownSet unknown_set;
+  CelError error;
+
+  std::vector<std::pair<CelValue, CelValue>> backing;
+
+  backing.push_back(
+      {CelValue::CreateUnknownSet(&unknown_set), CelValue::CreateBool(false)});
+  backing.push_back(
+      {CelValue::CreateError(&error), CelValue::CreateBool(false)});
+  backing.push_back({CelValue::CreateBool(true), CelValue::CreateBool(false)});
+
+  auto map_impl = CreateContainerBackedMap(absl::MakeSpan(backing));
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(builder->GetRegistry()->RegisterLazyFunction(
+      CreateDescriptor("Fn", CelValue::Type::kBool)));
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(kListCompExistsWithAttrExpr, &expr))
+      << "error parsing expr";
+
+  // var.exists(x, Fn(x))
+  auto plan = builder->CreateExpression(&expr, nullptr).value();
+
+  activation.InsertValue("var", CelValue::CreateMap(map_impl.get()));
+
+  ASSERT_OK(activation.InsertFunction(std::make_unique<FunctionImpl>(
+      "Fn", FunctionResponse::kFalse, CelValue::Type::kBool)));
+
+  CelValue response = plan->Evaluate(activation, &arena).value();
+
+  ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
+  ASSERT_EQ(response.UnknownSetOrDie(), &unknown_set);
+}
+
+TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypesShortcutted) {
+  InterpreterOptions options;
+  Expr expr;
+  Activation activation;
+  Arena arena;
+
+  UnknownSet unknown_set;
+  CelError error;
+
+  std::vector<std::pair<CelValue, CelValue>> backing;
+
+  backing.push_back(
+      {CelValue::CreateUnknownSet(&unknown_set), CelValue::CreateBool(false)});
+  backing.push_back(
+      {CelValue::CreateError(&error), CelValue::CreateBool(false)});
+  backing.push_back({CelValue::CreateBool(true), CelValue::CreateBool(false)});
+
+  auto map_impl = CreateContainerBackedMap(absl::MakeSpan(backing));
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(builder->GetRegistry()->RegisterLazyFunction(
+      CreateDescriptor("Fn", CelValue::Type::kBool)));
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(kListCompExistsWithAttrExpr, &expr))
+      << "error parsing expr";
+
+  // var.exists(x, Fn(x))
+  auto plan = builder->CreateExpression(&expr, nullptr).value();
+
+  activation.InsertValue("var", CelValue::CreateMap(map_impl.get()));
+
+  ASSERT_OK(activation.InsertFunction(std::make_unique<FunctionImpl>(
+      "Fn", FunctionResponse::kTrue, CelValue::Type::kBool)));
+
+  CelValue response = plan->Evaluate(activation, &arena).value();
+  ASSERT_TRUE(response.IsBool()) << CelValue::TypeName(response.type());
+  ASSERT_TRUE(response.BoolOrDie());
+}
+
+constexpr char kMapElementsComp[] = R"pb(
+  id: 25
+  comprehension_expr {
+    iter_var: "x"
+    iter_range {
+      id: 1
+      ident_expr { name: "var" }
+    }
+    accu_var: "__result__"
+    accu_init {
+      id: 2
+      list_expr {}
+    }
+    loop_condition {
+      id: 3
+      const_expr { bool_value: true }
+    }
+    loop_step {
+      id: 4
+      call_expr {
+        function: "_+_"
+        args {
+          id: 5
+          ident_expr { name: "__result__" }
+        }
+        args {
+          id: 6
+          list_expr {
+            elements {
+              id: 9
+              call_expr {
+                function: "Fn"
+                args {
+                  id: 7
+                  select_expr {
+                    field: "key"
+                    operand {
+                      id: 8
+                      ident_expr { name: "x" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    result {
+      id: 9
+      ident_expr { name: "__result__" }
+    }
+  })pb";
+
+// TODO(issues/67): Expected behavior for maps with unknown keys/values in a
+// comprehension is a little unclear and the test coverage is a bit sparse.
+// A few more tests should be added for coverage and to help document.
+TEST(UnknownsIterAttrTest, IterAttributeTrailMap) {
+  InterpreterOptions options;
+  Expr expr;
+  Activation activation;
+  Arena arena;
+
+  protobuf::Value element;
+  protobuf::Value& value =
+      element.mutable_struct_value()->mutable_fields()->operator[]("key");
+  value.set_number_value(1);
+  protobuf::ListValue list;
+  *list.add_values() = element;
+  *list.add_values() = element;
+  *list.add_values() = element;
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(builder->GetRegistry()->RegisterLazyFunction(
+      CreateDescriptor("Fn", CelValue::Type::kDouble)));
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kMapElementsComp, &expr))
+      << "error parsing expr";
+  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&list, &arena));
+
+  // var[1]['key'] is unknown
+  activation.set_unknown_attribute_patterns({CelAttributePattern(
+      "var", {
+                 CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
+                 CelAttributeQualifierPattern::Create(
+                     CelValue::CreateStringView("key")),
+             })});
+
+  ASSERT_OK(activation.InsertFunction(std::make_unique<FunctionImpl>(
+      "Fn", FunctionResponse::kFalse, CelValue::Type::kDouble)));
+
+  auto plan = builder->CreateExpression(&expr, nullptr).value();
+  CelValue response = plan->Evaluate(activation, &arena).value();
+
+  ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
+  ASSERT_EQ(
+      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  // 'var[1].key' is unknown when we make the Fn function call.
+  // comprehension is:  ((([] + false) + unk) + false) -> unk
+  ASSERT_EQ(response.UnknownSetOrDie()
+                ->unknown_attributes()
+                .attributes()[0]
+                ->qualifier_path()
+                .size(),
+            2);
+}
+
+constexpr char kFilterElementsComp[] = R"pb(
+  id: 25
+  comprehension_expr {
+    iter_var: "x"
+    iter_range {
+      id: 1
+      ident_expr { name: "var" }
+    }
+    accu_var: "__result__"
+    accu_init {
+      id: 2
+      list_expr {}
+    }
+    loop_condition {
+      id: 3
+      const_expr { bool_value: true }
+    }
+    loop_step {
+      id: 4
+      call_expr {
+        function: "_?_:_"
+        args {
+          id: 5
+          select_expr {
+            field: "filter_key"
+            operand {
+              id: 6
+              ident_expr { name: "x" }
+            }
+          }
+        }
+        args {
+          id: 7
+          call_expr {
+            function: "_+_"
+            args {
+              id: 8
+              ident_expr { name: "__result__" }
+            }
+            args {
+              id: 9
+              list_expr {
+                elements {
+                  id: 10
+                  select_expr {
+                    field: "value_key"
+                    operand {
+                      id: 12
+                      ident_expr { name: "x" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        args {
+          id: 13
+          ident_expr { name: "__result__" }
+        }
+      }
+    }
+    result {
+      id: 14
+      ident_expr { name: "__result__" }
+    }
+  })pb";
+
+TEST(UnknownsIterAttrTest, IterAttributeTrailFilterValues) {
+  InterpreterOptions options;
+  Expr expr;
+  Activation activation;
+  Arena arena;
+
+  protobuf::Value element;
+  protobuf::Value* value =
+      &element.mutable_struct_value()->mutable_fields()->operator[](
+          "filter_key");
+  value->set_bool_value(true);
+  value = &element.mutable_struct_value()->mutable_fields()->operator[](
+      "value_key");
+  value->set_number_value(1.0);
+  protobuf::ListValue list;
+  *list.add_values() = element;
+  *list.add_values() = element;
+  *list.add_values() = element;
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kFilterElementsComp, &expr))
+      << "error parsing expr";
+  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&list, &arena));
+
+  // var[1]['value_key'] is unknown
+  activation.set_unknown_attribute_patterns({CelAttributePattern(
+      "var", {
+                 CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
+                 CelAttributeQualifierPattern::Create(
+                     CelValue::CreateStringView("value_key")),
+             })});
+
+  auto plan = builder->CreateExpression(&expr, nullptr).value();
+  CelValue response = plan->Evaluate(activation, &arena).value();
+
+  ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
+  ASSERT_EQ(
+      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  // 'var[1].value_key' is unknown when we make the cons function call.
+  // comprehension is:  ((([] + [1]) + unk) + [1]) -> unk
+  ASSERT_EQ(response.UnknownSetOrDie()
+                ->unknown_attributes()
+                .attributes()[0]
+                ->qualifier_path()
+                .size(),
+            2);
+}
+
+TEST(UnknownsIterAttrTest, IterAttributeTrailFilterConditions) {
+  InterpreterOptions options;
+  Expr expr;
+  Activation activation;
+  Arena arena;
+
+  protobuf::Value element;
+  protobuf::Value* value =
+      &element.mutable_struct_value()->mutable_fields()->operator[](
+          "filter_key");
+  value->set_bool_value(true);
+  value = &element.mutable_struct_value()->mutable_fields()->operator[](
+      "value_key");
+  value->set_number_value(1.0);
+  protobuf::ListValue list;
+  *list.add_values() = element;
+  *list.add_values() = element;
+  *list.add_values() = element;
+
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kFilterElementsComp, &expr))
+      << "error parsing expr";
+  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&list, &arena));
+
+  // var[1]['value_key'] is unknown
+  activation.set_unknown_attribute_patterns(
+      {CelAttributePattern(
+           "var",
+           {
+               CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
+               CelAttributeQualifierPattern::Create(
+                   CelValue::CreateStringView("filter_key")),
+           }),
+       CelAttributePattern(
+           "var",
+           {
+               CelAttributeQualifierPattern::Create(CelValue::CreateInt64(0)),
+               CelAttributeQualifierPattern::Create(
+                   CelValue::CreateStringView("filter_key")),
+           })});
+
+  auto plan = builder->CreateExpression(&expr, nullptr).value();
+  CelValue response = plan->Evaluate(activation, &arena).value();
+
+  // 'var[1].filter_key' is unknown when we make the ternary call.
+  // Since the unknown is expressed in a conditional jump, the behavior is to
+  // ignore the possible outcomes
+  // loop0: (unk{0})? [] + [1] : [] -> unk{0}
+  // loop1: (unk{1})? unk{0} + [1] : unk{0} -> unk{1}
+  // loop2: (true)? unk{1} + [1] : unk{1} -> unk{1}
+  // result: unk{1}
+  ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
+  ASSERT_EQ(
+      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  ASSERT_EQ(response.UnknownSetOrDie()
+                ->unknown_attributes()
+                .attributes()[0]
+                ->qualifier_path()
+                .size(),
+            2);
 }
 
 }  // namespace

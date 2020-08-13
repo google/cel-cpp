@@ -12,6 +12,7 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "base/status_macros.h"
@@ -639,7 +640,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   Activation activation;
   TestMessage msg;
   google::protobuf::Arena arena;
-  activation.InsertValue("param", CelValue::CreateMessage(&msg, &arena));
+  activation.InsertValue("param", CelProtoWrapper::CreateMessage(&msg, &arena));
   CelAttributePattern pattern(
       "param",
       {CelAttributeQualifierPattern::Create(CelValue::CreateBool(true))});

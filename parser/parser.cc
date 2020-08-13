@@ -20,14 +20,18 @@ using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::ParsedExpr;
 
 cel_base::StatusOr<ParsedExpr> Parse(const std::string& expression,
-                                 const std::string& description) {
-  return ParseWithMacros(expression, Macro::AllMacros(), description);
+                                 const std::string& description,
+                                 const int max_recursion_depth) {
+  return ParseWithMacros(expression, Macro::AllMacros(), description,
+                         max_recursion_depth);
 }
 
 cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
                                            const std::vector<Macro>& macros,
-                                           const std::string& description) {
-  auto result = EnrichedParse(expression, macros, description);
+                                           const std::string& description,
+                                           const int max_recursion_depth) {
+  auto result =
+      EnrichedParse(expression, macros, description, max_recursion_depth);
   if (result.ok()) {
     return result->parsed_expr();
   }
@@ -36,13 +40,13 @@ cel_base::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
 
 cel_base::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description) {
+    const std::string& description, const int max_recursion_depth) {
   ANTLRInputStream input(expression);
   ::cel_grammar::CelLexer lexer(&input);
   CommonTokenStream tokens(&lexer);
   ::cel_grammar::CelParser parser(&tokens);
 
-  ParserVisitor visitor(description, expression, macros);
+  ParserVisitor visitor(description, expression, max_recursion_depth, macros);
 
   lexer.removeErrorListeners();
   parser.removeErrorListeners();

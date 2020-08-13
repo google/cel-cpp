@@ -38,57 +38,72 @@ using Comprehension = google::api::expr::v1alpha1::Expr::Comprehension;
 class MockAstVisitor : public AstVisitor {
  public:
   // Expr handler.
-  MOCK_METHOD2(PreVisitExpr,
-               void(const Expr* expr, const SourcePosition* position));
+  MOCK_METHOD(void, PreVisitExpr,
+              (const Expr* expr, const SourcePosition* position), (override));
 
   // Expr handler.
-  MOCK_METHOD2(PostVisitExpr,
-               void(const Expr* expr, const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitExpr,
+              (const Expr* expr, const SourcePosition* position), (override));
 
-  MOCK_METHOD3(PostVisitConst,
-               void(const Constant* const_expr, const Expr* expr,
-                    const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitConst,
+              (const Constant* const_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
   // Ident node handler.
-  MOCK_METHOD3(PostVisitIdent, void(const Ident* ident_expr, const Expr* expr,
-                                    const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitIdent,
+              (const Ident* ident_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
   // Select node handler group
-  MOCK_METHOD3(PreVisitSelect, void(const Select* select_expr, const Expr* expr,
-                                    const SourcePosition* position));
+  MOCK_METHOD(void, PreVisitSelect,
+              (const Select* select_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
-  MOCK_METHOD3(PostVisitSelect,
-               void(const Select* select_expr, const Expr* expr,
-                    const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitSelect,
+              (const Select* select_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
   // Call node handler group
-  MOCK_METHOD3(PreVisitCall, void(const Call* call_expr, const Expr* expr,
-                                  const SourcePosition* position));
-  MOCK_METHOD3(PostVisitCall, void(const Call* call_expr, const Expr* expr,
-                                   const SourcePosition* position));
+  MOCK_METHOD(void, PreVisitCall,
+              (const Call* call_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+  MOCK_METHOD(void, PostVisitCall,
+              (const Call* call_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
   // Comprehension node handler group
-  MOCK_METHOD3(PreVisitComprehension,
-               void(const Comprehension* comprehension_expr, const Expr* expr,
-                    const SourcePosition* position));
-  MOCK_METHOD3(PostVisitComprehension,
-               void(const Comprehension* comprehension_expr, const Expr* expr,
-                    const SourcePosition* position));
+  MOCK_METHOD(void, PreVisitComprehension,
+              (const Comprehension* comprehension_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+  MOCK_METHOD(void, PostVisitComprehension,
+              (const Comprehension* comprehension_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
   // We provide finer granularity for Call and Comprehension node callbacks
   // to allow special handling for short-circuiting.
-  MOCK_METHOD3(PostVisitArg, void(int arg_num, const Expr* expr,
-                                  const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitArg,
+              (int arg_num, const Expr* expr, const SourcePosition* position),
+              (override));
 
   // CreateList node handler group
-  MOCK_METHOD3(PostVisitCreateList,
-               void(const CreateList* list_expr, const Expr* expr,
-                    const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitCreateList,
+              (const CreateList* list_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 
   // CreateStruct node handler group
-  MOCK_METHOD3(PostVisitCreateStruct,
-               void(const CreateStruct* struct_expr, const Expr* expr,
-                    const SourcePosition* position));
+  MOCK_METHOD(void, PostVisitCreateStruct,
+              (const CreateStruct* struct_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
 };
 
 TEST(AstCrawlerTest, CheckCrawlConstant) {

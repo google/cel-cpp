@@ -1,9 +1,9 @@
-#include "eval/eval/field_backed_map_impl.h"
-#include "eval/testutil/test_message.pb.h"
-#include "absl/strings/str_cat.h"
+#include "eval/public/containers/field_backed_map_impl.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/strings/str_cat.h"
+#include "eval/testutil/test_message.pb.h"
 
 namespace google {
 namespace api {

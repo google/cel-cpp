@@ -11,6 +11,8 @@
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/tests/request_context.pb.h"
 
 namespace google {
@@ -691,7 +693,8 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   request.set_ip(kIP);
   request.set_path(kPath);
   request.set_token(kToken);
-  activation.InsertValue("request", CelValue::CreateMessage(&request, &arena));
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
@@ -701,6 +704,233 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
 }
 
 BENCHMARK(BM_PolicySymbolicProto);
+
+constexpr char kListSum[] = R"(
+id: 1
+comprehension_expr: <
+  accu_var: "__result__"
+  iter_var: "x"
+  iter_range: <
+    id: 2
+    ident_expr: <
+      name: "list"
+    >
+  >
+  accu_init: <
+    id: 3
+    const_expr: <
+      int64_value: 0
+    >
+  >
+  loop_step: <
+    id: 4
+    call_expr: <
+      function: "_+_"
+      args: <
+        id: 5
+        ident_expr: <
+          name: "__result__"
+        >
+      >
+      args: <
+        id: 6
+        ident_expr: <
+          name: "x"
+        >
+      >
+    >
+  >
+  loop_condition: <
+    id: 7
+    const_expr: <
+      bool_value: true
+    >
+  >
+  result: <
+    id: 8
+    ident_expr: <
+      name: "__result__"
+    >
+  >
+>)";
+
+void BM_Comprehension(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  GOOGLE_CHECK(google::protobuf::TextFormat::ParseFromString(kListSum, &expr));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  auto builder = CreateCelExpressionBuilder();
+  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+  CHECK_OK(expr_plan.status());
+  for (auto _ : state) {
+    auto result = expr_plan.value()->Evaluate(activation, &arena);
+    CHECK_OK(result.status());
+    GOOGLE_CHECK(result->IsInt64());
+    CHECK_EQ(result->Int64OrDie(), len);
+  }
+}
+
+BENCHMARK(BM_Comprehension)->Range(1, 1 << 20);
+
+// Sum a square with a nested comprehension
+constexpr char kNestedListSum[] = R"(
+id: 1
+comprehension_expr: <
+  accu_var: "__result__"
+  iter_var: "x"
+  iter_range: <
+    id: 2
+    ident_expr: <
+      name: "list"
+    >
+  >
+  accu_init: <
+    id: 3
+    const_expr: <
+      int64_value: 0
+    >
+  >
+  loop_step: <
+    id: 4
+    call_expr: <
+      function: "_+_"
+      args: <
+        id: 5
+        ident_expr: <
+          name: "__result__"
+        >
+      >
+      args: <
+        id: 6
+        comprehension_expr: <
+          accu_var: "__result__"
+          iter_var: "x"
+          iter_range: <
+            id: 9
+            ident_expr: <
+              name: "list"
+            >
+          >
+          accu_init: <
+            id: 10
+            const_expr: <
+              int64_value: 0
+            >
+          >
+          loop_step: <
+            id: 11
+            call_expr: <
+              function: "_+_"
+              args: <
+                id: 12
+                ident_expr: <
+                  name: "__result__"
+                >
+              >
+              args: <
+                id: 13
+                ident_expr: <
+                  name: "x"
+                >
+              >
+            >
+          >
+          loop_condition: <
+            id: 14
+            const_expr: <
+              bool_value: true
+            >
+          >
+          result: <
+            id: 15
+            ident_expr: <
+              name: "__result__"
+            >
+          >
+        >
+      >
+    >
+  >
+  loop_condition: <
+    id: 7
+    const_expr: <
+      bool_value: true
+    >
+  >
+  result: <
+    id: 8
+    ident_expr: <
+      name: "__result__"
+    >
+  >
+>)";
+
+void BM_NestedComprehension(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  GOOGLE_CHECK(google::protobuf::TextFormat::ParseFromString(kNestedListSum, &expr));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  auto builder = CreateCelExpressionBuilder();
+  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+  CHECK_OK(expr_plan.status());
+  for (auto _ : state) {
+    auto result = expr_plan.value()->Evaluate(activation, &arena);
+    CHECK_OK(result.status());
+    GOOGLE_CHECK(result->IsInt64());
+    CHECK_EQ(result->Int64OrDie(), len * len);
+  }
+}
+
+BENCHMARK(BM_NestedComprehension)->Range(1, 1 << 10);
+
+void BM_ComprehensionCpp(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  auto op = [&list]() {
+    int sum = 0;
+    for (const auto& value : list) {
+      sum += value.Int64OrDie();
+    }
+    return sum;
+  };
+  for (auto _ : state) {
+    int result = op();
+    CHECK_EQ(result, len);
+  }
+}
+
+BENCHMARK(BM_ComprehensionCpp)->Range(1, 1 << 20);
 
 }  // namespace
 

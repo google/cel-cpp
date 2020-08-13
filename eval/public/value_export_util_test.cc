@@ -5,8 +5,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
-#include "eval/eval/container_backed_list_impl.h"
-#include "eval/eval/container_backed_map_impl.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
 #include "base/status_macros.h"
@@ -102,7 +103,7 @@ TEST(ValueExportUtilTest, ConvertStructMessage) {
   Struct struct_msg;
   (*struct_msg.mutable_fields())["string_value"].set_string_value("test");
   Arena arena;
-  CelValue cel_value = CelValue::CreateMessage(&struct_msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(&struct_msg, &arena);
   Value value;
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -115,7 +116,7 @@ TEST(ValueExportUtilTest, ConvertValueMessage) {
   (*value_in.mutable_struct_value()->mutable_fields())["boolean_value"]
       .set_bool_value(true);
   Arena arena;
-  CelValue cel_value = CelValue::CreateMessage(&value_in, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(&value_in, &arena);
   Value value_out;
   EXPECT_OK(ExportAsProtoValue(cel_value, &value_out));
   EXPECT_THAT(value_in, testutil::EqualsProto(value_out));
@@ -126,7 +127,7 @@ TEST(ValueExportUtilTest, ConvertListValueMessage) {
   list_value.add_values()->set_string_value("test");
   list_value.add_values()->set_bool_value(true);
   Arena arena;
-  CelValue cel_value = CelValue::CreateMessage(&list_value, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(&list_value, &arena);
   Value value_out;
   EXPECT_OK(ExportAsProtoValue(cel_value, &value_out));
   EXPECT_THAT(list_value, testutil::EqualsProto(value_out.list_value()));
@@ -139,7 +140,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBoolValue) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_bool_list(true);
   msg->add_bool_list(false);
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -158,7 +159,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt32Value) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_int32_list(2);
   msg->add_int32_list(3);
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -177,7 +178,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt64Value) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_int64_list(2);
   msg->add_int64_list(3);
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -196,7 +197,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedUint64Value) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_uint64_list(2);
   msg->add_uint64_list(3);
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -215,7 +216,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedDoubleValue) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_double_list(2);
   msg->add_double_list(3);
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -234,7 +235,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedStringValue) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_string_list("test1");
   msg->add_string_list("test2");
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
@@ -253,7 +254,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBytesValue) {
   TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_bytes_list("test1");
   msg->add_bytes_list("test2");
-  CelValue cel_value = CelValue::CreateMessage(msg, &arena);
+  CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);

@@ -47,7 +47,7 @@ class CelValue {
   template <int N>
   class StringHolderBase {
    public:
-    StringHolderBase() : value_() {}
+    StringHolderBase() : value_(absl::string_view()) {}
 
     StringHolderBase(const StringHolderBase &) = default;
     StringHolderBase &operator=(const StringHolderBase &) = default;
@@ -175,6 +175,7 @@ class CelValue {
   // CreateMessage creates CelValue from google::protobuf::Message.
   // As some of CEL basic types are subclassing google::protobuf::Message,
   // this method contains type checking and downcasts.
+  ABSL_DEPRECATED("Use CelProtoWrapper::CreateMessage instead")
   static CelValue CreateMessage(const google::protobuf::Message *value,
                                 google::protobuf::Arena *arena);
 
@@ -429,6 +430,8 @@ CelValue CreateErrorValue(
     int position = -1);
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena);
+CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena,
+                                       absl::string_view fn);
 bool CheckNoMatchingOverloadError(CelValue value);
 
 CelValue CreateNoSuchFieldError(google::protobuf::Arena *arena);
@@ -444,6 +447,15 @@ CelValue CreateUnknownValueError(google::protobuf::Arena *arena,
 // Returns true if this is unknown value error indicating that evaluation
 // encountered a value marked as unknown in Activation unknown_paths.
 bool IsUnknownValueError(const CelValue &value);
+
+// Returns an error indicating that evaluation has accessed an attribute whose
+// value is undefined. For example, this may represent a field in a proto
+// message bound to the activation whose value can't be determined by the
+// hosting application.
+CelValue CreateMissingAttributeError(google::protobuf::Arena *arena,
+                                     absl::string_view missing_attribute_path);
+
+bool IsMissingAttributeError(const CelValue &value);
 
 // Returns error indicating the result of the function is unknown. This is used
 // as a signal to create an unknown set if unknown function handling is opted

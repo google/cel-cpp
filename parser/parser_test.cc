@@ -1,16 +1,18 @@
 #include "parser/parser.h"
 
+#include <algorithm>
 #include <list>
-#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "absl/memory/memory.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/str_replace.h"
-#include "common/escaping.h"
+#include "absl/types/optional.h"
 #include "parser/source_factory.h"
+#include "testutil/expr_printer.h"
 
 namespace google {
 namespace api {
@@ -18,8 +20,8 @@ namespace expr {
 namespace parser {
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::ParsedExpr;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using testing::Not;
 
 struct TestInfo {
@@ -387,6 +389,18 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:1:5: Syntax error: extraneous input 'b' expecting <EOF>\n"
      " | a | b\n"
      " | ....^"},
+    {"?", "",
+     "ERROR: <input>:1:1: Syntax error: mismatched input '?' expecting "
+     "{'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
+     "NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n | ?\n | ^\n"
+     "ERROR: <input>:1:2: Syntax error: mismatched input '<EOF>' expecting "
+     "{'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
+     "NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}\n | ?\n | .^\n"
+     "ERROR: <input>:4294967295:0: <<nil>> parsetree\n | \n | ^"},
+    {"t{>C}", "",
+     "ERROR: <input>:1:3: Syntax error: extraneous input '>' expecting {'}', "
+     "IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: Syntax error: "
+     "mismatched input '}' expecting ':'\n | t{>C}\n | ....^"},
 
     // Macro tests
     {
@@ -789,14 +803,7 @@ std::vector<TestInfo> test_cases = {
      " | [1, 2, 3].map(var, var * var)\n"
      " | ..............^"}};
 
-class ExpressionAdorner {
- public:
-  virtual ~ExpressionAdorner() {}
-  virtual std::string adorn(const Expr& e) const = 0;
-  virtual std::string adorn(const Expr::CreateStruct::Entry& e) const = 0;
-};
-
-class KindAndIdAdorner : public ExpressionAdorner {
+class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
   std::string adorn(const Expr& e) const override {
     if (e.has_const_expr()) {
@@ -835,7 +842,7 @@ class KindAndIdAdorner : public ExpressionAdorner {
   }
 };
 
-class LocationAdorner : public ExpressionAdorner {
+class LocationAdorner : public testutil::ExpressionAdorner {
  public:
   LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
       : source_info_(source_info) {}
@@ -897,256 +904,6 @@ class LocationAdorner : public ExpressionAdorner {
   const google::api::expr::v1alpha1::SourceInfo& source_info_;
 };
 
-class DebugWriter {
- public:
-  DebugWriter(const ExpressionAdorner& adorner)
-      : adorner_(adorner), line_start_(true), indent_(0) {}
-
-  void appendExpr(const Expr& e) {
-    switch (e.expr_kind_case()) {
-      case Expr::kConstExpr:
-        append(formatLiteral(e.const_expr()));
-        break;
-      case Expr::kIdentExpr:
-        append(e.ident_expr().name());
-        break;
-      case Expr::kSelectExpr:
-        appendSelect(e.select_expr());
-        break;
-      case Expr::kCallExpr:
-        appendCall(e.call_expr());
-        break;
-      case Expr::kListExpr:
-        appendList(e.list_expr());
-        break;
-      case Expr::kStructExpr:
-        appendStruct(e.struct_expr());
-        break;
-      case Expr::kComprehensionExpr:
-        appendComprehension(e.comprehension_expr());
-        break;
-      default:
-        break;
-    }
-    appendAdorn(e);
-  }
-
-  void appendSelect(const Expr::Select& sel) {
-    appendExpr(sel.operand());
-    append(".");
-    append(sel.field());
-    if (sel.test_only()) {
-      append("~test-only~");
-    }
-  }
-
-  void appendCall(const Expr::Call& call) {
-    if (call.has_target()) {
-      appendExpr(call.target());
-      s_ += ".";
-    }
-    append(call.function());
-    append("(");
-    if (call.args_size() > 0) {
-      addIndent();
-      appendLine();
-      for (int i = 0; i < call.args_size(); ++i) {
-        const auto& arg = call.args(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        appendExpr(arg);
-      }
-      removeIndent();
-      appendLine();
-    }
-    append(")");
-  }
-
-  void appendList(const Expr::CreateList& list) {
-    append("[");
-    if (list.elements_size() > 0) {
-      appendLine();
-      addIndent();
-      for (int i = 0; i < list.elements_size(); ++i) {
-        const auto& elem = list.elements(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        appendExpr(elem);
-      }
-      removeIndent();
-      appendLine();
-    }
-    append("]");
-  }
-
-  void appendStruct(const Expr::CreateStruct& obj) {
-    if (obj.message_name().empty()) {
-      appendMap(obj);
-    } else {
-      appendObject(obj);
-    }
-  }
-
-  void appendMap(const Expr::CreateStruct& obj) {
-    append("{");
-    if (obj.entries_size() > 0) {
-      appendLine();
-      addIndent();
-      for (int i = 0; i < obj.entries_size(); ++i) {
-        const auto& entry = obj.entries(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        appendExpr(entry.map_key());
-        append(":");
-        appendExpr(entry.value());
-        appendAdorn(entry);
-      }
-      removeIndent();
-      appendLine();
-    }
-    append("}");
-  }
-
-  void appendObject(const Expr::CreateStruct& obj) {
-    append(obj.message_name());
-    append("{");
-    if (obj.entries_size() > 0) {
-      appendLine();
-      addIndent();
-      for (int i = 0; i < obj.entries_size(); ++i) {
-        const auto& entry = obj.entries(i);
-        if (i > 0) {
-          append(",");
-          appendLine();
-        }
-        append(entry.field_key());
-        append(":");
-        appendExpr(entry.value());
-        appendAdorn(entry);
-      }
-      removeIndent();
-      appendLine();
-    }
-    append("}");
-  }
-
-  void appendComprehension(const Expr::Comprehension& comprehension) {
-    append("__comprehension__(");
-    addIndent();
-    appendLine();
-    append("// Variable");
-    appendLine();
-    append(comprehension.iter_var());
-    append(",");
-    appendLine();
-    append("// Target");
-    appendLine();
-    appendExpr(comprehension.iter_range());
-    append(",");
-    appendLine();
-    append("// Accumulator");
-    appendLine();
-    append(comprehension.accu_var());
-    append(",");
-    appendLine();
-    append("// Init");
-    appendLine();
-    appendExpr(comprehension.accu_init());
-    append(",");
-    appendLine();
-    append("// LoopCondition");
-    appendLine();
-    appendExpr(comprehension.loop_condition());
-    append(",");
-    appendLine();
-    append("// LoopStep");
-    appendLine();
-    appendExpr(comprehension.loop_step());
-    append(",");
-    appendLine();
-    append("// Result");
-    appendLine();
-    appendExpr(comprehension.result());
-    append(")");
-    removeIndent();
-  }
-
-  void appendAdorn(const Expr& e) { append(adorner_.adorn(e)); }
-
-  void appendAdorn(const Expr::CreateStruct::Entry& e) {
-    append(adorner_.adorn(e));
-  }
-
-  void append(const std::string& s) {
-    if (line_start_) {
-      line_start_ = false;
-      for (int i = 0; i < indent_; ++i) {
-        s_ += "  ";
-      }
-    }
-    s_ += s;
-  }
-
-  void appendLine() {
-    s_ += "\n";
-    line_start_ = true;
-  }
-
-  void addIndent() { indent_ += 1; }
-
-  void removeIndent() {
-    if (indent_ > 0) {
-      indent_ -= 1;
-    }
-  }
-
-  std::string formatLiteral(const google::api::expr::v1alpha1::Constant& c) {
-    switch (c.constant_kind_case()) {
-      case google::api::expr::v1alpha1::Constant::kBoolValue:
-        return absl::StrFormat("%s", c.bool_value() ? "true" : "false");
-      case google::api::expr::v1alpha1::Constant::kBytesValue:
-        return absl::StrFormat("b\"%s\"", c.bytes_value());
-      case google::api::expr::v1alpha1::Constant::kDoubleValue: {
-        std::string s = absl::StrFormat("%f", c.double_value());
-        // remove trailing zeros, i.e., convert 1.600000 to just 1.6 without
-        // forcing a specific precision. There seems to be no flag to get this
-        // directly from absl::StrFormat.
-        auto idx = std::find_if_not(s.rbegin(), s.rend(),
-                                    [](const char c) { return c == '0'; });
-        s.erase(idx.base(), s.end());
-        return s;
-      }
-      case google::api::expr::v1alpha1::Constant::kInt64Value:
-        return absl::StrFormat("%d", c.int64_value());
-      case google::api::expr::v1alpha1::Constant::kStringValue:
-        return escapeAndQuote(c.string_value());
-      case google::api::expr::v1alpha1::Constant::kUint64Value:
-        return absl::StrFormat("%uu", c.uint64_value());
-      case google::api::expr::v1alpha1::Constant::kNullValue:
-        return "null";
-      default:
-        return "<<ERROR>>";
-    }
-  }
-
-  std::string toAdornedDebugString(const ParsedExpr& parsed_expr) {
-    appendExpr(parsed_expr.expr());
-    return s_;
-  }
-
- private:
-  std::string s_;
-  const ExpressionAdorner& adorner_;
-  bool line_start_;
-  int indent_;
-};
-
 std::string ConvertEnrichedSourceInfoToString(
     const EnrichedSourceInfo& enriched_source_info) {
   std::vector<std::string> offsets;
@@ -1172,18 +929,16 @@ TEST_P(ExpressionTest, Parse) {
 
   if (!test_info.P.empty()) {
     KindAndIdAdorner kind_and_id_adorner;
-    DebugWriter w(kind_and_id_adorner);
-    std::string adorned_string =
-        w.toAdornedDebugString(result.value().parsed_expr());
+    testutil::ExprPrinter w(kind_and_id_adorner);
+    std::string adorned_string = w.print(result.value().parsed_expr().expr());
     EXPECT_EQ(test_info.P, adorned_string);
   }
 
   if (!test_info.L.empty()) {
     LocationAdorner location_adorner(
         result.value().parsed_expr().source_info());
-    DebugWriter w(location_adorner);
-    std::string adorned_string =
-        w.toAdornedDebugString(result.value().parsed_expr());
+    testutil::ExprPrinter w(location_adorner);
+    std::string adorned_string = w.print(result.value().parsed_expr().expr());
     EXPECT_EQ(test_info.L, adorned_string);
   }
 
@@ -1194,7 +949,7 @@ TEST_P(ExpressionTest, Parse) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(CelParserTest2, ExpressionTest,
+INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
                          testing::ValuesIn(test_cases));
 
 }  // namespace

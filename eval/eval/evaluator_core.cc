@@ -2,6 +2,7 @@
 
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
 #include "base/status_macros.h"
 #include "base/statusor.h"
@@ -80,16 +81,22 @@ absl::Status ExecutionFrame::PopIterFrame() {
 }
 
 absl::Status ExecutionFrame::SetIterVar(const std::string& name,
-                                        const CelValue& val) {
+                                        const CelValue& val,
+                                        AttributeTrail trail) {
   RETURN_IF_ERROR(CheckIterAccess(state_, name));
-  state_->IterStackTop()[name] = val;
+  state_->IterStackTop()[name] = {val, trail};
 
   return absl::OkStatus();
 }
 
+absl::Status ExecutionFrame::SetIterVar(const std::string& name,
+                                        const CelValue& val) {
+  return SetIterVar(name, val, AttributeTrail());
+}
+
 absl::Status ExecutionFrame::ClearIterVar(const std::string& name) {
   RETURN_IF_ERROR(CheckIterAccess(state_, name));
-  state_->IterStackTop()[name] = absl::nullopt;
+  state_->IterStackTop().erase(name);
   return absl::OkStatus();
 }
 
@@ -104,10 +111,30 @@ bool ExecutionFrame::GetIterVar(const std::string& name, CelValue* val) const {
     auto& frame = *iter;
     auto frame_iter = frame.find(name);
     if (frame_iter != frame.end()) {
-      if (frame_iter->second.has_value()) {
-        *val = frame_iter->second.value();
-        return true;
-      }
+      const auto& entry = frame_iter->second;
+      *val = entry.value;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool ExecutionFrame::GetIterAttr(const std::string& name,
+                                 const AttributeTrail** val) const {
+  absl::Status status = CheckIterAccess(state_, name);
+  if (!status.ok()) {
+    return false;
+  }
+
+  for (auto iter = state_->iter_stack().rbegin();
+       iter != state_->iter_stack().rend(); ++iter) {
+    auto& frame = *iter;
+    auto frame_iter = frame.find(name);
+    if (frame_iter != frame.end()) {
+      const auto& entry = frame_iter->second;
+      *val = &entry.attr_trail;
+      return true;
     }
   }
 
@@ -141,7 +168,8 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
   }
 
   ExecutionFrame frame(path_, activation, max_iterations_, state,
-                       enable_unknowns_, enable_unknown_function_results_);
+                       enable_unknowns_, enable_unknown_function_results_,
+                       enable_missing_attribute_errors_);
 
   ValueStack* stack = &frame.value_stack();
   size_t initial_stack_size = stack->size();
@@ -159,7 +187,7 @@ cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
       continue;
     }
 
-    if (stack->size() == 0) {
+    if (stack->empty()) {
       GOOGLE_LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
                     "Try to disable short-circuiting.";
       continue;

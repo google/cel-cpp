@@ -15,7 +15,6 @@ cc_library(
     hdrs = [
         "converters.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//common:converters",
         "//common:macros",
@@ -37,7 +36,6 @@ cc_library(
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
-    copts = ["-std=c++17"],
     data = [
         "@com_google_cel_spec//testdata",
     ],
@@ -49,9 +47,9 @@ cc_test(
         "//protoutil:type_registry",
         "//testutil:test_data_io",
         "//testutil:test_data_util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

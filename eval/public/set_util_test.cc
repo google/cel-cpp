@@ -11,9 +11,10 @@
 #include "absl/status/status.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
-#include "eval/eval/container_backed_list_impl.h"
-#include "eval/eval/container_backed_map_impl.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
 
 namespace google {
@@ -53,11 +54,11 @@ std::vector<CelValue> TypeExamples(Arena* arena) {
           CelValue::CreateDouble(0.0),
           CelValue::CreateStringView(kExampleText),
           CelValue::CreateBytes(ExampleStr()),
-          CelValue::CreateMessage(empty, arena),
+          CelProtoWrapper::CreateMessage(empty, arena),
           CelValue::CreateDuration(absl::ZeroDuration()),
           CelValue::CreateTimestamp(absl::Now()),
-          CelValue::CreateMessage(proto_list, arena),
-          CelValue::CreateMessage(proto_map, arena),
+          CelProtoWrapper::CreateMessage(proto_list, arena),
+          CelProtoWrapper::CreateMessage(proto_map, arena),
           CelValue::CreateUnknownSet(unknown_set),
           CreateErrorValue(arena, "test", absl::StatusCode::kInternal)};
 }
@@ -223,8 +224,10 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(CelValueLessThan, PtrCmpMessage) {
   Arena arena;
 
-  CelValue lhs = CelValue::CreateMessage(Arena::Create<Empty>(&arena), &arena);
-  CelValue rhs = CelValue::CreateMessage(Arena::Create<Empty>(&arena), &arena);
+  CelValue lhs =
+      CelProtoWrapper::CreateMessage(Arena::Create<Empty>(&arena), &arena);
+  CelValue rhs =
+      CelProtoWrapper::CreateMessage(Arena::Create<Empty>(&arena), &arena);
 
   if (lhs.MessageOrDie() > rhs.MessageOrDie()) {
     std::swap(lhs, rhs);
@@ -309,7 +312,7 @@ TEST(CelValueLessThan, CelListSupportProtoListCompatible) {
   list_value.add_values()->set_number_value(1.0);
   list_value.add_values()->set_string_value("abc");
 
-  CelValue proto_list = CelValue::CreateMessage(&list_value, &arena);
+  CelValue proto_list = CelProtoWrapper::CreateMessage(&list_value, &arena);
   ASSERT_TRUE(proto_list.IsList());
 
   std::vector<CelValue> list_values{CelValue::CreateBool(true),
@@ -406,7 +409,7 @@ TEST(CelValueLessThan, CelMapSupportProtoMapCompatible) {
   auto& value3 = (*value_struct.mutable_fields())[kFields[2]];
   value3.set_string_value("test");
 
-  CelValue proto_struct = CelValue::CreateMessage(&value_struct, &arena);
+  CelValue proto_struct = CelProtoWrapper::CreateMessage(&value_struct, &arena);
   ASSERT_TRUE(proto_struct.IsMap());
 
   std::vector<std::pair<CelValue, CelValue>> values{
@@ -451,7 +454,7 @@ TEST(CelValueLessThan, NestedMap) {
   auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values));
 
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
-  CelValue proto_map = CelValue::CreateMessage(&value_struct, &arena);
+  CelValue proto_map = CelProtoWrapper::CreateMessage(&value_struct, &arena);
   EXPECT_TRUE(!CelValueLessThan(cel_map, proto_map) &&
               !CelValueLessThan(proto_map, cel_map));
 }

@@ -6,10 +6,10 @@
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
-#include "eval/eval/container_backed_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/containers/container_backed_list_impl.h"
 #include "re2/re2.h"
 
 namespace google {
@@ -17,10 +17,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-using google::protobuf::Duration;
-using google::protobuf::Timestamp;
 using google::protobuf::Arena;
-using google::protobuf::util::TimeUtil;
 
 namespace {
 
@@ -131,7 +128,7 @@ CelValue Inequal(Arena* arena, const google::protobuf::Message* t1,
   if (t2 == nullptr) {
     return CelValue::CreateBool(true);
   }
-  return CreateNoMatchingOverloadError(arena);
+  return CreateNoMatchingOverloadError(arena, builtin::kInequal);
 }
 
 template <>
@@ -143,7 +140,7 @@ CelValue Equal(Arena* arena, const google::protobuf::Message* t1,
   if (t2 == nullptr) {
     return CelValue::CreateBool(false);
   }
-  return CreateNoMatchingOverloadError(arena);
+  return CreateNoMatchingOverloadError(arena, builtin::kEqual);
 }
 
 // Equality specialization for lists
@@ -222,6 +219,8 @@ CelValue Inequal(Arena* arena, const CelMap* t1, const CelMap* t2) {
 template <>
 CelValue Equal(Arena* arena, CelValue t1, CelValue t2) {
   if (t1.type() != t2.type()) {
+    // This is used to implement inequal for some types so we can't determine
+    // the function.
     return CreateNoMatchingOverloadError(arena);
   }
   switch (t1.type()) {
@@ -926,106 +925,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   status = RegisterComparisonFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  // TODO(issues/41): add overloads for unknown sets to work properly with
-  // short circuiting off for AND, OR, and Ternary.
-  // Logical AND
-  // This implementation is used when short-circuiting is off.
-  status = FunctionAdapter<bool, bool, bool>::CreateAndRegister(
-      builtin::kAnd, false,
-      [](Arena*, bool value1, bool value2) -> bool { return value1 && value2; },
-      registry);
-  if (!status.ok()) return status;
-
-  // Special case: one of arguments is error.
-  status = FunctionAdapter<CelValue, const CelError*, bool>::CreateAndRegister(
-      builtin::kAnd, false,
-      [](Arena*, const CelError* value1, bool value2) {
-        return (value2) ? CelValue::CreateError(value1)
-                        : CelValue::CreateBool(false);
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  // Special case: one of arguments is error.
-  status = FunctionAdapter<CelValue, bool, const CelError*>::CreateAndRegister(
-      builtin::kAnd, false,
-      [](Arena*, bool value1, const CelError* value2) {
-        return (value1) ? CelValue::CreateError(value2)
-                        : CelValue::CreateBool(false);
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  // Special case: both arguments are errors.
-  status = FunctionAdapter<const CelError*, const CelError*, const CelError*>::
-      CreateAndRegister(
-          builtin::kAnd, false,
-          [](Arena*, const CelError* value1, const CelError*) {
-            return value1;
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  // Logical OR
-  // This implementation is used when short-circuiting is off.
-  status = FunctionAdapter<bool, bool, bool>::CreateAndRegister(
-      builtin::kOr, false,
-      [](Arena*, bool value1, bool value2) -> bool { return value1 || value2; },
-      registry);
-  if (!status.ok()) return status;
-
-  // Special case: one of arguments is error.
-  status = FunctionAdapter<CelValue, const CelError*, bool>::CreateAndRegister(
-      builtin::kOr, false,
-      [](Arena*, const CelError* value1, bool value2) {
-        return (value2) ? CelValue::CreateBool(true)
-                        : CelValue::CreateError(value1);
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  // Special case: one of arguments is error.
-  status = FunctionAdapter<CelValue, bool, const CelError*>::CreateAndRegister(
-      builtin::kOr, false,
-      [](Arena*, bool value1, const CelError* value2) {
-        return (value1) ? CelValue::CreateBool(true)
-                        : CelValue::CreateError(value2);
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  // Special case: both arguments are errors.
-  status = FunctionAdapter<const CelError*, const CelError*, const CelError*>::
-      CreateAndRegister(
-          builtin::kOr, false,
-          [](Arena*, const CelError* value1, const CelError*) {
-            return value1;
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  // Ternary operator
-  // This implementation is used when short-circuiting is off.
-  status =
-      FunctionAdapter<CelValue, bool, CelValue, CelValue>::CreateAndRegister(
-          builtin::kTernary, false,
-          [](Arena*, bool cond, CelValue value1, CelValue value2) {
-            return (cond) ? value1 : value2;
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  // Ternary operator
-  // Special case: condition is error
-  status = FunctionAdapter<CelValue, const CelError*, CelValue, CelValue>::
-      CreateAndRegister(
-          builtin::kTernary, false,
-          [](Arena*, const CelError* error, CelValue, CelValue) {
-            return CelValue::CreateError(error);
-          },
-          registry);
   if (!status.ok()) return status;
 
   // Strictness
