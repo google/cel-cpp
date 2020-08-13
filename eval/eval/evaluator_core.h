@@ -1,19 +1,30 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include <map>
 #include <memory>
+#include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/eval/unknowns_utility.h"
+#include "eval/eval/attribute_utility.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
+#include "base/statusor.h"
 
 namespace google {
 namespace api {
@@ -173,17 +184,21 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
       size_t value_stack_size, const std::set<std::string>& iter_variable_names,
       google::protobuf::Arena* arena);
 
+  struct IterVarEntry {
+    CelValue value;
+    AttributeTrail attr_trail;
+  };
+
+  // Need pointer stability to avoid copying the attr trail lookups.
+  using IterVarFrame = absl::node_hash_map<std::string, IterVarEntry>;
+
   void Reset();
 
   ValueStack& value_stack() { return value_stack_; }
 
-  std::vector<std::map<std::string, absl::optional<CelValue>>>& iter_stack() {
-    return iter_stack_;
-  }
+  std::vector<IterVarFrame>& iter_stack() { return iter_stack_; }
 
-  std::map<std::string, absl::optional<CelValue>>& IterStackTop() {
-    return iter_stack_[iter_stack().size() - 1];
-  }
+  IterVarFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
   std::set<std::string>& iter_variable_names() { return iter_variable_names_; }
 
@@ -192,7 +207,7 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
  private:
   ValueStack value_stack_;
   std::set<std::string> iter_variable_names_;
-  std::vector<std::map<std::string, absl::optional<CelValue>>> iter_stack_;
+  std::vector<IterVarFrame> iter_stack_;
   google::protobuf::Arena* arena_;
 };
 
@@ -206,14 +221,17 @@ class ExecutionFrame {
 
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
                  int max_iterations, CelExpressionFlatEvaluationState* state,
-                 bool enable_unknowns, bool enable_unknown_function_results)
+                 bool enable_unknowns, bool enable_unknown_function_results,
+                 bool enable_missing_attribute_errors)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
-        unknowns_utility_(&activation.unknown_attribute_patterns(),
-                          state->arena()),
+        enable_missing_attribute_errors_(enable_missing_attribute_errors),
+        attribute_utility_(&activation.unknown_attribute_patterns(),
+                           &activation.missing_attribute_patterns(),
+                           state->arena()),
         max_iterations_(max_iterations),
         iterations_(0),
         state_(state) {}
@@ -239,9 +257,14 @@ class ExecutionFrame {
   bool enable_unknown_function_results() const {
     return enable_unknown_function_results_;
   }
+  bool enable_missing_attribute_errors() const {
+    return enable_missing_attribute_errors_;
+  }
 
   google::protobuf::Arena* arena() { return state_->arena(); }
-  const UnknownsUtility& unknowns_utility() const { return unknowns_utility_; }
+  const AttributeUtility& attribute_utility() const {
+    return attribute_utility_;
+  }
 
   // Returns reference to Activation
   const BaseActivation& activation() const { return activation_; }
@@ -255,13 +278,22 @@ class ExecutionFrame {
   // Sets the value of an iteration variable
   absl::Status SetIterVar(const std::string& name, const CelValue& val);
 
+  // Sets the value of an iteration variable
+  absl::Status SetIterVar(const std::string& name, const CelValue& val,
+                          AttributeTrail trail);
+
   // Clears the value of an iteration variable
   absl::Status ClearIterVar(const std::string& name);
 
   // Gets the current value of an iteration variable.
-  // Returns false if the variable is not currently in use (Set has been called
-  // since init or last clear).
+  // Returns false if the variable is not currently in use (SetIterVar has been
+  // called since init or last clear).
   bool GetIterVar(const std::string& name, CelValue* val) const;
+
+  // Gets the current value of an iteration variable.
+  // Returns false if the variable is not currently in use (SetIterVar has not
+  // been called since init or last clear).
+  bool GetIterAttr(const std::string& name, const AttributeTrail** val) const;
 
   // Increment iterations and return an error if the iteration budget is
   // exceeded
@@ -283,7 +315,8 @@ class ExecutionFrame {
   const BaseActivation& activation_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
-  UnknownsUtility unknowns_utility_;
+  bool enable_missing_attribute_errors_;
+  AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
   CelExpressionFlatEvaluationState* state_;
@@ -302,12 +335,14 @@ class CelExpressionFlatImpl : public CelExpression {
                         ExecutionPath path, int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
-                        bool enable_unknown_function_results = false)
+                        bool enable_unknown_function_results = false,
+                        bool enable_missing_attribute_errors = false)
       : path_(std::move(path)),
         max_iterations_(max_iterations),
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
-        enable_unknown_function_results_(enable_unknown_function_results) {}
+        enable_unknown_function_results_(enable_unknown_function_results),
+        enable_missing_attribute_errors_(enable_missing_attribute_errors) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -342,6 +377,7 @@ class CelExpressionFlatImpl : public CelExpression {
   const std::set<std::string> iter_variable_names_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
+  bool enable_missing_attribute_errors_;
 };
 
 }  // namespace runtime

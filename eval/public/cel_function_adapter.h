@@ -2,8 +2,6 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_
 #include <functional>
 
-#include "google/protobuf/duration.pb.h"
-#include "google/protobuf/timestamp.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"
@@ -117,7 +115,6 @@ class FunctionAdapter : public CelFunction {
     return registry->Register(std::move(status.value()));
   }
 
-#if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)
   template <int arg_index>
   inline absl::Status RunWrap(absl::Span<const CelValue> arguments,
                               std::tuple<::google::protobuf::Arena*, Arguments...> input,
@@ -137,34 +134,6 @@ class FunctionAdapter : public CelFunction {
       ::google::protobuf::Arena* arena) const {
     return CreateReturnValue(absl::apply(handler_, input), arena, result);
   }
-#else
-  inline absl::Status RunWrap(std::function<ReturnType()> func,
-                              const absl::Span<const CelValue> argset,
-                              ::google::protobuf::Arena* arena, CelValue* result,
-                              int arg_index) const {
-    return CreateReturnValue(func(), arena, result);
-  }
-
-  template <typename Arg, typename... Args>
-  inline absl::Status RunWrap(std::function<ReturnType(Arg, Args...)> func,
-                              const absl::Span<const CelValue> argset,
-                              ::google::protobuf::Arena* arena, CelValue* result,
-                              int arg_index) const {
-    Arg argument;
-    if (!ConvertFromValue(argset[arg_index], &argument)) {
-      return absl::Status(absl::StatusCode::kInvalidArgument,
-                          "Type conversion failed");
-    }
-
-    std::function<ReturnType(Args...)> wrapped_func =
-        [func, argument](Args... args) -> ReturnType {
-      return func(argument, args...);
-    };
-
-    return RunWrap(std::move(wrapped_func), argset, arena, result,
-                   arg_index + 1);
-  }
-#endif
 
   absl::Status Evaluate(absl::Span<const CelValue> arguments, CelValue* result,
                         ::google::protobuf::Arena* arena) const override {
@@ -173,18 +142,9 @@ class FunctionAdapter : public CelFunction {
                           "Argument number mismatch");
     }
 
-#if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)
     std::tuple<::google::protobuf::Arena*, Arguments...> input;
     std::get<0>(input) = arena;
     return RunWrap<0>(arguments, input, result, arena);
-#else
-    const auto* handler = &handler_;
-    std::function<ReturnType(Arguments...)> wrapped_handler =
-        [handler, arena](Arguments... args) -> ReturnType {
-      return (*handler)(arena, args...);
-    };
-    return RunWrap(std::move(wrapped_handler), arguments, arena, result, 0);
-#endif
   }
 
  private:

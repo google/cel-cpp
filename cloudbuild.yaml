@@ -1,7 +1,7 @@
 steps:
 - name: 'gcr.io/cel-analysis/bazel:3.0.0'
   entrypoint: bazel
-  args: ['test', '--test_output=errors', '...']
+  args: ['test', '--cxxopt=-std=c++17', '--test_output=errors', '...']
   id: bazel-test
   waitFor: ['-']
 timeout: 1h

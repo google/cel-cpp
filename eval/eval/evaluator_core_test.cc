@@ -4,6 +4,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "eval/eval/attribute_trail.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
@@ -14,6 +15,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+using google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using testing::_;
 using testing::Eq;
@@ -107,11 +109,11 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false);
+  ExecutionFrame frame(path, activation, 0, &state, false, false, false);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -125,29 +127,42 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   const int64_t test_value = 0xF00F00;
 
   Activation activation;
+  google::protobuf::Arena arena;
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_key}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false);
+  ExecutionFrame frame(path, activation, 0, &state, false, false, false);
 
   CelValue original = CelValue::CreateInt64(test_value);
+  Expr ident;
+  ident.mutable_ident_expr()->set_name("var");
+
+  AttributeTrail original_trail =
+      AttributeTrail(ident, &arena)
+          .Step(CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
+                &arena);
   CelValue result;
+  const AttributeTrail* trail;
 
   ASSERT_OK(frame.PushIterFrame());
 
   // Nothing is there yet
   ASSERT_FALSE(frame.GetIterVar(test_key, &result));
-  ASSERT_OK(frame.SetIterVar(test_key, original));
+  ASSERT_OK(frame.SetIterVar(test_key, original, original_trail));
 
   // Make sure its now there
   ASSERT_TRUE(frame.GetIterVar(test_key, &result));
+  ASSERT_TRUE(frame.GetIterAttr(test_key, &trail));
 
   int64_t result_value;
   ASSERT_TRUE(result.GetValue(&result_value));
   EXPECT_EQ(test_value, result_value);
+  ASSERT_TRUE(trail->attribute()->variable().has_ident_expr());
+  ASSERT_EQ(trail->attribute()->variable().ident_expr().name(), "var");
 
   // Test that it goes away properly
   ASSERT_OK(frame.ClearIterVar(test_key));
   ASSERT_FALSE(frame.GetIterVar(test_key, &result));
+  ASSERT_FALSE(frame.GetIterAttr(test_key, &trail));
 
   // Test that bogus names return the right thing
   ASSERT_FALSE(frame.SetIterVar("foo", original).ok());
@@ -178,7 +193,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
 
@@ -195,12 +210,12 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
 
 class MockTraceCallback {
  public:
-  MOCK_METHOD3(Call,
-               void(int64_t expr_id, const CelValue& value, google::protobuf::Arena*));
+  MOCK_METHOD(void, Call,
+              (int64_t expr_id, const CelValue& value, google::protobuf::Arena*));
 };
 
 TEST(EvaluatorCoreTest, TraceTest) {
-  google::api::expr::v1alpha1::Expr expr;
+  Expr expr;
   google::api::expr::v1alpha1::SourceInfo source_info;
 
   // 1 && [1,2,3].all(x, x > 0)

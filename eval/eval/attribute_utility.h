@@ -1,12 +1,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 
-#include <memory>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
@@ -20,14 +19,23 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-// Helper class for handling unknowns logic. Provides helpers for merging
-// unknown sets from arguments on the stack and for identifying unknown
-// attributes based on the patterns for a given Evaluation.
-class UnknownsUtility {
+// Helper class for handling unknowns and missing attribute logic. Provides
+// helpers for merging unknown sets from arguments on the stack and for
+// identifying unknown/missing attributes based on the patterns for a given
+// Evaluation.
+class AttributeUtility {
  public:
-  UnknownsUtility(const std::vector<CelAttributePattern>* unknown_patterns,
-                  google::protobuf::Arena* arena)
-      : unknown_patterns_(unknown_patterns), arena_(arena) {}
+  AttributeUtility(
+      const std::vector<CelAttributePattern>* unknown_patterns,
+      const std::vector<CelAttributePattern>* missing_attribute_patterns,
+      google::protobuf::Arena* arena)
+      : unknown_patterns_(unknown_patterns),
+        missing_attribute_patterns_(missing_attribute_patterns),
+        arena_(arena) {}
+
+  // Checks whether particular corresponds to any patterns that define missing
+  // attribute.
+  bool CheckForMissingAttribute(const AttributeTrail& trail) const;
 
   // Checks whether particular corresponds to any patterns that define unknowns.
   bool CheckForUnknown(const AttributeTrail& trail, bool use_partial) const;
@@ -58,6 +66,7 @@ class UnknownsUtility {
 
  private:
   const std::vector<CelAttributePattern>* unknown_patterns_;
+  const std::vector<CelAttributePattern>* missing_attribute_patterns_;
   google::protobuf::Arena* arena_;
 };
 }  // namespace runtime

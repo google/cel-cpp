@@ -8,6 +8,18 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])  # Apache 2.0
 
 cc_library(
+    name = "expr_printer",
+    srcs = ["expr_printer.cc"],
+    hdrs = ["expr_printer.h"],
+    deps = [
+        "//common:escaping",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
     name = "test_data_util",
     srcs = [
         "test_data_util.cc",
@@ -15,7 +27,6 @@ cc_library(
     hdrs = [
         "test_data_util.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//common:type",
         "//common:value",
@@ -44,10 +55,8 @@ cc_library(
     hdrs = [
         "test_data_io.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//internal:status_util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -55,6 +64,7 @@ cc_library(
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/rpc:status_cc_proto",
+        "@com_google_googletest//:gtest",
         "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
     ],
@@ -69,7 +79,6 @@ cc_binary(
     srcs = [
         "test_data_gen.cc",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":test_data_io",
         ":test_data_util",
@@ -87,16 +96,15 @@ cc_binary(
 cc_test(
     name = "test_data_test",
     srcs = ["test_data_test.cc"],
-    copts = ["-std=c++17"],
     data = [
         "@com_google_cel_spec//testdata",
     ],
     deps = [
         ":test_data_util",
         "//testutil:test_data_io",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_googleapis//google/api/expr/v1beta1:value_cc_proto",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -105,9 +113,8 @@ cc_library(
     hdrs = [
         "util.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
-        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
         "@com_google_protobuf//:protobuf",
     ],
 )

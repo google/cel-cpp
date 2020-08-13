@@ -2,7 +2,11 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "eval/eval/attribute_trail.h"
+#include "eval/eval/ident_step.h"
+#include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
+#include "parser/parser.h"
 #include "base/status_macros.h"
 
 namespace google {
@@ -12,6 +16,7 @@ namespace runtime {
 
 namespace {
 
+using google::api::expr::v1alpha1::Expr;
 using ::google::protobuf::Arena;
 using testing::ElementsAre;
 using testing::Eq;
@@ -22,7 +27,7 @@ using testing::Return;
 
 class MockValueProducer : public CelValueProducer {
  public:
-  MOCK_METHOD1(Produce, CelValue(Arena*));
+  MOCK_METHOD(CelValue, Produce, (Arena*), (override));
 };
 
 // Simple function that takes no args and returns an int64_t.
@@ -199,6 +204,35 @@ TEST(ActivationTest, CheckValueProducerClear) {
   EXPECT_TRUE(opt_value3.has_value());
   EXPECT_THAT(opt_value3.value().StringOrDie().value(), Eq(kValue1));
   EXPECT_EQ(1, activation.ClearCachedValues());
+}
+
+TEST(ActivationTest, ErrorPathTest) {
+  Activation activation;
+  Arena arena;
+
+  Expr expr;
+  auto* select_expr = expr.mutable_select_expr();
+  select_expr->set_field("ip");
+
+  Expr* ident_expr = select_expr->mutable_operand();
+  ident_expr->mutable_ident_expr()->set_name("destination");
+
+  const CelAttributePattern destination_ip_pattern(
+      "destination",
+      {CelAttributeQualifierPattern::Create(CelValue::CreateStringView("ip"))});
+
+  AttributeTrail trail(*ident_expr, &arena);
+  trail = trail.Step(
+      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), &arena);
+
+  ASSERT_EQ(destination_ip_pattern.IsMatch(*trail.attribute()),
+            CelAttributePattern::MatchType::FULL);
+  EXPECT_TRUE(activation.missing_attribute_patterns().empty());
+
+  activation.set_missing_attribute_patterns({destination_ip_pattern});
+  EXPECT_EQ(
+      activation.missing_attribute_patterns()[0].IsMatch(*trail.attribute()),
+      CelAttributePattern::MatchType::FULL);
 }
 
 }  // namespace

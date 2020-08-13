@@ -5,6 +5,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 #include "internal/proto_util.h"
@@ -17,30 +18,35 @@ namespace runtime {
 namespace {
 
 using google::protobuf::Arena;
-using google::protobuf::Message;
 using google::protobuf::Descriptor;
 using google::protobuf::DescriptorPool;
+using google::protobuf::Message;
 
 using google::protobuf::Any;
-using google::protobuf::Duration;
-using google::protobuf::Timestamp;
-using google::protobuf::Value;
-using google::protobuf::Struct;
-using google::protobuf::ListValue;
 using google::protobuf::BoolValue;
 using google::protobuf::BytesValue;
 using google::protobuf::DoubleValue;
+using google::protobuf::Duration;
 using google::protobuf::FloatValue;
 using google::protobuf::Int32Value;
 using google::protobuf::Int64Value;
+using google::protobuf::ListValue;
 using google::protobuf::StringValue;
+using google::protobuf::Struct;
+using google::protobuf::Timestamp;
 using google::protobuf::UInt32Value;
 using google::protobuf::UInt64Value;
+using google::protobuf::Value;
 
 constexpr char kErrNoMatchingOverload[] = "No matching overloads found";
 constexpr char kErrNoSuchKey[] = "Key not found in map";
 constexpr absl::string_view kErrUnknownValue = "Unknown value ";
+// Error name for MissingAttributeError indicating that evaluation has
+// accessed an attribute whose value is undefined. go/terminal-unknown
+constexpr absl::string_view kErrMissingAttribute = "MissingAttributeError: ";
 constexpr absl::string_view kPayloadUrlUnknownPath = "unknown_path";
+constexpr absl::string_view kPayloadUrlMissingAttributePath =
+    "missing_attribute_path";
 constexpr absl::string_view kPayloadUrlUnknownFunctionResult =
     "cel_is_unknown_function_result";
 
@@ -226,7 +232,7 @@ CelValue ValueFromMessage(const StringValue* wrapper, Arena*) {
 CelValue ValueFromMessage(const BytesValue* wrapper, Arena* arena) {
   // BytesValue stores value as Cord
   return CelValue::CreateBytes(
-      Arena::Create<std::string>(arena, wrapper->value()));
+      Arena::Create<std::string>(arena, std::string(wrapper->value())));
 }
 
 CelValue ValueFromMessage(const Value* value, Arena* arena) {
@@ -270,8 +276,14 @@ class CastingValueFromMessageFactory : public ValueFromMessageFactory {
   absl::optional<CelValue> CreateValue(const google::protobuf::Message* msg,
                                        Arena* arena) const override {
     if (MessageType::descriptor() == msg->GetDescriptor()) {
-      return ValueFromMessage(
-          google::protobuf::DynamicCastToGenerated<const MessageType>(msg), arena);
+      const MessageType* message =
+          google::protobuf::DynamicCastToGenerated<const MessageType>(msg);
+      if (message == nullptr) {
+        auto message_copy = Arena::CreateMessage<MessageType>(arena);
+        message_copy->CopyFrom(*msg);
+        message = message_copy;
+      }
+      return ValueFromMessage(message, arena);
     }
     return {};
   }
@@ -351,9 +363,9 @@ std::string CelValue::TypeName(Type value_type) {
     case Type::kBool:
       return "bool";
     case Type::kInt64:
-      return "int64";
+      return "Int64";
     case Type::kUint64:
-      return "uint64";
+      return "Uint64";
     case Type::kDouble:
       return "double";
     case Type::kString:
@@ -390,9 +402,17 @@ CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena) {
                           absl::StatusCode::kUnknown);
 }
 
+CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
+                                       absl::string_view fn) {
+  return CreateErrorValue(arena, absl::StrCat(kErrNoMatchingOverload, " ", fn),
+                          absl::StatusCode::kUnknown);
+}
+
 bool CheckNoMatchingOverloadError(CelValue value) {
   return value.IsError() &&
-         value.ErrorOrDie()->message() == kErrNoMatchingOverload;
+         value.ErrorOrDie()->code() == absl::StatusCode::kUnknown &&
+         value.ErrorOrDie()->message().find(kErrNoMatchingOverload) !=
+             absl::string_view::npos;
 }
 
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
@@ -422,6 +442,26 @@ bool IsUnknownValueError(const CelValue& value) {
   const CelError* error = value.ErrorOrDie();
   if (error && error->code() == absl::StatusCode::kUnavailable) {
     auto path = error->GetPayload(kPayloadUrlUnknownPath);
+    return path.has_value();
+  }
+  return false;
+}
+
+CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
+                                     absl::string_view missing_attribute_path) {
+  CelError* error = Arena::Create<CelError>(
+      arena, absl::StatusCode::kInvalidArgument,
+      absl::StrCat(kErrMissingAttribute, missing_attribute_path));
+  error->SetPayload(kPayloadUrlMissingAttributePath,
+                    absl::Cord(missing_attribute_path));
+  return CelValue::CreateError(error);
+}
+
+bool IsMissingAttributeError(const CelValue& value) {
+  if (!value.IsError()) return false;
+  const CelError* error = value.ErrorOrDie();  // Crash ok
+  if (error && error->code() == absl::StatusCode::kInvalidArgument) {
+    auto path = error->GetPayload(kPayloadUrlMissingAttributePath);
     return path.has_value();
   }
   return false;

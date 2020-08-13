@@ -25,10 +25,13 @@ using google::api::expr::v1alpha1::Expr;
 
 ParserVisitor::ParserVisitor(const std::string& description,
                              const std::string& expression,
+                             const int max_recursion_depth,
                              const std::vector<Macro>& macros)
     : description_(description),
       expression_(expression),
-      sf_(std::make_shared<SourceFactory>(expression)) {
+      sf_(std::make_shared<SourceFactory>(expression)),
+      recursion_depth_(0),
+      max_recursion_depth_(max_recursion_depth) {
   for (const auto& m : macros) {
     macros_.emplace(m.macroKey(), m);
   }
@@ -43,6 +46,13 @@ T* tree_as(antlr4::tree::ParseTree* tree) {
 }
 
 antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
+  recursion_depth_ += 1;
+  if (recursion_depth_ > max_recursion_depth_) {
+    return sf_->reportError(
+        SourceFactory::noLocation(),
+        absl::StrFormat("Exceeded max recursion depth of %d when parsing.",
+                        max_recursion_depth_));
+  }
   if (auto* ctx = tree_as<CelParser::StartContext>(tree)) {
     return visitStart(ctx);
   } else if (auto* ctx = tree_as<CelParser::ExprContext>(tree)) {
@@ -79,12 +89,11 @@ antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
     return visitCreateStruct(ctx);
   }
 
-  std::string text = "<<nil>>";
   if (tree) {
-    text = tree->getText();
+    return sf_->reportError(tree_as<antlr4::ParserRuleContext>(tree),
+                            "unknown parsetree type");
   }
-  return sf_->reportError(tree_as<antlr4::ParserRuleContext>(tree),
-                          "unknown parsetree type");
+  return sf_->reportError(SourceFactory::noLocation(), "<<nil>> parsetree");
 }
 
 antlrcpp::Any ParserVisitor::visitPrimaryExpr(
@@ -146,6 +155,9 @@ antlrcpp::Any ParserVisitor::visitConditionalOr(
   ExpressionBalancer b(sf_, CelOperator::LOGICAL_OR, result);
   for (size_t i = 0; i < ctx->ops.size(); ++i) {
     auto op = ctx->ops[i];
+    if (i >= ctx->e1.size()) {
+      return sf_->reportError(ctx, "unexpected character, wanted '||'");
+    }
     auto next = visit(ctx->e1[i]).as<Expr>();
     int64_t op_id = sf_->id(op);
     b.addTerm(op_id, next);
@@ -162,6 +174,9 @@ antlrcpp::Any ParserVisitor::visitConditionalAnd(
   ExpressionBalancer b(sf_, CelOperator::LOGICAL_AND, result);
   for (size_t i = 0; i < ctx->ops.size(); ++i) {
     auto op = ctx->ops[i];
+    if (i >= ctx->e1.size()) {
+      return sf_->reportError(ctx, "unexpected character, wanted '&&'");
+    }
     auto next = visit(ctx->e1[i]).as<Expr>();
     int64_t op_id = sf_->id(op);
     b.addTerm(op_id, next);
@@ -273,6 +288,10 @@ antlrcpp::Any ParserVisitor::visitFieldInitializerList(
 
   res.resize(ctx->fields.size());
   for (size_t i = 0; i < ctx->fields.size(); ++i) {
+    if (i >= ctx->cols.size() || i >= ctx->values.size()) {
+      // This is the result of a syntax error detected elsewhere.
+      return res;
+    }
     const auto& f = ctx->fields[i];
     int64_t init_id = sf_->id(ctx->cols[i]);
     auto value = visit(ctx->values[i]).as<Expr>();
@@ -458,55 +477,8 @@ void ParserVisitor::syntaxError(antlr4::Recognizer* recognizer,
 
 bool ParserVisitor::hasErrored() const { return !sf_->errors().empty(); }
 
-absl::optional<int32_t> ParserVisitor::findLineOffset(int32_t line) const {
-  // note that err.line is 1-based,
-  // while we need the 0-based index
-  const std::vector<int32_t>& line_offsets = sf_->line_offsets();
-  if (line == 1) {
-    return 0;
-  } else if (line > 1 && line <= static_cast<int32_t>(line_offsets.size())) {
-    return line_offsets[line - 2];
-  }
-  return {};
-}
-
-std::string ParserVisitor::getSourceLine(int32_t line) const {
-  auto char_start = findLineOffset(line);
-  if (!char_start) {
-    return "";
-  }
-  auto char_end = findLineOffset(line + 1);
-  if (char_end) {
-    return expression_.substr(*char_start, *char_end - *char_end - 1);
-  } else {
-    return expression_.substr(*char_start);
-  }
-}
-
 std::string ParserVisitor::errorMessage() const {
-  std::vector<std::string> messages;
-  std::transform(
-      sf_->errors().begin(), sf_->errors().end(), std::back_inserter(messages),
-      [this](const SourceFactory::Error& error) {
-        std::string s = absl::StrFormat("ERROR: %s:%zu:%zu: %s", description_,
-                                        error.location.line,
-                                        // add one to the 0-based column
-                                        error.location.col + 1, error.message);
-        std::string snippet = getSourceLine(error.location.line);
-        std::string::size_type pos = 0;
-        while ((pos = snippet.find("\t", pos)) != std::string::npos) {
-          snippet.replace(pos, 1, " ");
-        }
-        std::string src_line = "\n | " + snippet;
-        std::string ind_line = "\n | ";
-        for (int i = 0; i < error.location.col; ++i) {
-          ind_line += ".";
-        }
-        ind_line += "^";
-        s += src_line + ind_line;
-        return s;
-      });
-  return absl::StrJoin(messages, "\n");
+  return sf_->errorMessage(description_, expression_);
 }
 
 Expr ParserVisitor::globalCallOrMacro(int64_t expr_id, std::string function,

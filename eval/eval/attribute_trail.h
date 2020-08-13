@@ -1,7 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_ATTRIBUTE_TRAIL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_ATTRIBUTE_TRAIL_H_
 
-#include <memory>
+#include <string>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"

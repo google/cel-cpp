@@ -2,6 +2,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 
@@ -57,8 +58,8 @@ class LogicalOpStep : public ExpressionStepBase {
     if (frame->enable_unknowns()) {
       // Check if unknown?
       const UnknownSet* unknown_set =
-          frame->unknowns_utility().MergeUnknowns(args,
-                                                  /*initial_set=*/nullptr);
+          frame->attribute_utility().MergeUnknowns(args,
+                                                   /*initial_set=*/nullptr);
 
       if (unknown_set) {
         *result = CelValue::CreateUnknownSet(unknown_set);
@@ -75,7 +76,9 @@ class LogicalOpStep : public ExpressionStepBase {
     }
 
     // Fallback.
-    *result = CreateNoMatchingOverloadError(frame->arena());
+    *result = CreateNoMatchingOverloadError(
+        frame->arena(),
+        (op_type_ == OpType::OR) ? builtin::kOr : builtin::kAnd);
     return absl::OkStatus();
   }
 
@@ -107,8 +110,6 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-// TODO(issues/41) Make sure Unknowns are properly supported by ternary
-// operation.
 
 // Factory method for "And" Execution step
 cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {

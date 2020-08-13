@@ -14,7 +14,6 @@ cc_test(
     srcs = [
         "benchmark_test.cc",
     ],
-    copts = ["-std=c++17"],
     tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
@@ -23,12 +22,14 @@ cc_test(
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/structs:cel_proto_wrapper",
         "@com_github_google_googlebench//:benchmark",
         "@com_github_google_googlebench//:benchmark_main",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -39,7 +40,6 @@ cc_test(
     srcs = [
         "end_to_end_test.cc",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//base:status_macros",
         "//eval/public:activation",
@@ -47,9 +47,10 @@ cc_test(
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
+        "//eval/public/structs:cel_proto_wrapper",
         "//eval/testutil:test_message_cc_proto",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -60,9 +61,9 @@ cc_test(
     srcs = [
         "unknowns_end_to_end_test.cc",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//base:status_macros",
+        "//eval/eval:evaluator_core",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_attribute",
@@ -72,8 +73,13 @@ cc_test(
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:unknown_set",
-        "@com_github_google_googletest//:gtest_main",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/structs:cel_proto_wrapper",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -94,10 +100,9 @@ cc_library(
     name = "mock_cel_expression",
     testonly = 1,
     hdrs = ["mock_cel_expression.h"],
-    copts = ["-std=c++17"],
     deps = [
         "//eval/public:activation",
         "//eval/public:cel_expression",
-        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest",
     ],
 )

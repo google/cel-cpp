@@ -3,8 +3,9 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/substitute.h"
-#include "eval/eval/container_backed_map_impl.h"
-#include "eval/eval/field_access.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/containers/field_access.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 
 namespace google {
 namespace api {
@@ -61,7 +62,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
   absl::Span<const CelValue> args = frame->value_stack().GetSpan(entries_size);
 
   if (frame->enable_unknowns()) {
-    auto unknown_set = frame->unknowns_utility().MergeUnknowns(
+    auto unknown_set = frame->attribute_utility().MergeUnknowns(
         args, frame->value_stack().GetAttributeSpan(entries_size),
         /*initial_set=*/nullptr,
         /*use_partial=*/true);
@@ -184,7 +185,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
     }
   }
 
-  *result = CelValue::CreateMessage(msg, frame->arena());
+  *result = CelProtoWrapper::CreateMessage(msg, frame->arena());
 
   return absl::OkStatus();
 }
@@ -214,7 +215,7 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
       frame->value_stack().GetSpan(2 * entry_count_);
 
   if (frame->enable_unknowns()) {
-    const UnknownSet* unknown_set = frame->unknowns_utility().MergeUnknowns(
+    const UnknownSet* unknown_set = frame->attribute_utility().MergeUnknowns(
         args, frame->value_stack().GetAttributeSpan(args.size()),
         /*initial_set=*/nullptr, true);
     if (unknown_set != nullptr) {

@@ -13,7 +13,6 @@ cc_library(
     hdrs = [
         "ref_countable.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":holder",
         ":specialize",
@@ -23,12 +22,11 @@ cc_library(
 cc_test(
     name = "ref_countable_test",
     srcs = ["ref_countable_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":ref_countable",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -37,7 +35,6 @@ cc_library(
     hdrs = [
         "handle.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":hash_util",
         ":specialize",
@@ -47,11 +44,10 @@ cc_library(
 cc_test(
     name = "handle_test",
     srcs = ["handle_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":handle",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -60,7 +56,6 @@ cc_library(
     hdrs = [
         "holder.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":port",
         ":specialize",
@@ -72,13 +67,12 @@ cc_library(
 cc_test(
     name = "holder_test",
     srcs = ["holder_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":holder",
         ":types",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -90,7 +84,6 @@ cc_library(
     hdrs = [
         "hash_util.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":port",
         ":specialize",
@@ -107,7 +100,6 @@ cc_library(
     hdrs = [
         "status_util.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc:code_cc_proto",
@@ -120,7 +112,6 @@ cc_library(
     hdrs = [
         "visitor_util.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":specialize",
         ":types",
@@ -133,14 +124,13 @@ cc_library(
 cc_test(
     name = "visitor_util_test",
     srcs = ["visitor_util_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":adapter_util",
         ":visitor_util",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -149,7 +139,6 @@ cc_library(
     hdrs = [
         "adapter_util.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":visitor_util",
     ],
@@ -161,7 +150,6 @@ cc_library(
     hdrs = [
         "cel_printer.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":specialize",
         ":types",
@@ -175,10 +163,9 @@ cc_library(
 cc_test(
     name = "cel_printer_test",
     srcs = ["cel_printer_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":cel_printer",
-        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -186,7 +173,6 @@ cc_library(
     name = "proto_util",
     srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
-    copts = ["-std=c++17"],
     deps = [
         ":status_util",
         "//common:macros",
@@ -202,7 +188,6 @@ cc_library(
     name = "map_impl",
     srcs = ["map_impl.cc"],
     hdrs = ["map_impl.h"],
-    copts = ["-std=c++17"],
     deps = [
         ":status_util",
         "//common:macros",
@@ -214,7 +199,6 @@ cc_library(
 cc_library(
     name = "list_impl",
     hdrs = ["list_impl.h"],
-    copts = ["-std=c++17"],
     deps = [
         ":holder",
         "//common:macros",
@@ -225,7 +209,6 @@ cc_library(
 cc_library(
     name = "value_internal",
     hdrs = ["value_internal.h"],
-    copts = ["-std=c++17"],
     deps = [
         ":adapter_util",
         ":cast",
@@ -244,32 +227,28 @@ cc_library(
 cc_test(
     name = "value_internal_test",
     srcs = ["value_internal_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":value_internal",
         "//testutil:util",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
 cc_library(
     name = "port",
     hdrs = ["port.h"],
-    copts = ["-std=c++17"],
 )
 
 cc_library(
     name = "specialize",
     hdrs = ["specialize.h"],
-    copts = ["-std=c++17"],
 )
 
 cc_library(
     name = "cast",
     hdrs = ["cast.h"],
-    copts = ["-std=c++17"],
     deps = [
         ":port",
         ":specialize",
@@ -282,10 +261,9 @@ cc_library(
 cc_test(
     name = "cast_test",
     srcs = ["cast_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":cast",
-        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -294,7 +272,6 @@ cc_library(
     hdrs = [
         "types.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":port",
         ":specialize",
@@ -306,9 +283,8 @@ cc_library(
 cc_test(
     name = "types_test",
     srcs = ["types_test.cc"],
-    copts = ["-std=c++17"],
     deps = [
         ":types",
-        "@com_github_google_googletest//:gtest_main",
+        "@com_google_googletest//:gtest_main",
     ],
 )

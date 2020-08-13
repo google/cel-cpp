@@ -1,9 +1,9 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-CEL_SPEC_GIT_SHA = "b154461b3a037f9654852087ef96be2b756871a0"  # 10/16/2019
+CEL_SPEC_GIT_SHA = "02a12e7cffe452a611b0e6ef47872963bbd87028" # 4/17/2020
 
-CEL_SPEC_SHA = "a88cf903fc890cb8e53048365d05a5c0c03e35148b03812de7a471d7d2ff8744"
+CEL_SPEC_SHA = "757cfdb00dc76fd0d12dadbae982c22a9218711d5e4cf30c94cfe6c05b1cdf2b"
 
 http_archive(
     name = "com_google_cel_spec",
@@ -28,28 +28,14 @@ http_archive(
 # gRPC dependencies:
 http_archive(
     name = "com_github_grpc_grpc",
-    sha256 = "ffbe61269160ea745e487f79b0fd06b6edd3d50c6d9123f053b5634737cf2f69",
-    strip_prefix = "grpc-1.25.0",
-    urls = ["https://github.com/grpc/grpc/archive/v1.25.0.tar.gz"],
+    sha256 = "1236514199d3deb111a6dd7f6092f67617cd2b147f7eda7adbafccea95de7381",
+    strip_prefix = "grpc-1.31.0",
+    urls = ["https://github.com/grpc/grpc/archive/v1.31.0.tar.gz"],
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
-
-load("@upb//bazel:repository_defs.bzl", "bazel_version_repository")
-
-bazel_version_repository(
-    name = "bazel_version",
-)
-
-load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
-
-apple_rules_dependencies()
-
-load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")
-
-apple_support_dependencies()
 
 GOOGLEAPIS_GIT_SHA = "be480e391cc88a75cf2a81960ef79c80d5012068"  # Jul 24, 2019
 
@@ -73,8 +59,8 @@ switched_rules_by_language(
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "a82a352bffae6bee4e95f68a8d80a70e87f42c4741e6a448bec11998fcc82329",
-    url = "https://github.com/bazelbuild/rules_go/releases/download/0.18.5/rules_go-0.18.5.tar.gz",
+    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.18.6/rules_go-0.18.6.tar.gz"],
+    sha256 = "f04d2373bcaf8aa09bccb08a98a57e721306c8f6043a2a0ee610fd6853dcde3d"
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
@@ -91,7 +77,7 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 git_repository(
     name = "com_google_cel_go",
     remote = "https://github.com/google/cel-go.git",
-    tag = "v0.2.0",
+    tag = "v0.5.1",
 )
 
 go_repository(
@@ -102,9 +88,9 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_antlr",
-    importpath = "github.com/antlr/antlr4",
-    tag = "4.7.2",
+  name = "com_github_antlr",
+  commit = "621b933c7a7f01c67ae9de15103151fa0f9d6d90",
+  importpath = "github.com/antlr/antlr4",
 )
 
 go_rules_dependencies()
@@ -149,3 +135,9 @@ http_archive(
     strip_prefix = "flatbuffers-" + FLAT_BUFFERS_SHA,
     url = "https://github.com/google/flatbuffers/archive/" + FLAT_BUFFERS_SHA + ".tar.gz",
 )
+
+# Needed by gRPC build rules (but not used). Should be after genproto.
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+
+grpc_extra_deps()
+

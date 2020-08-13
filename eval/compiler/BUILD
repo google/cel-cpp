@@ -14,7 +14,6 @@ cc_library(
     hdrs = [
         "flat_expr_builder.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":constant_folding",
         "//base:status_macros",
@@ -30,11 +29,13 @@ cc_library(
         "//eval/eval:jump_step",
         "//eval/eval:logic_step",
         "//eval/eval:select_step",
+        "//eval/eval:ternary_step",
         "//eval/public:ast_traverse",
         "//eval/public:ast_visitor",
         "//eval/public:cel_builtins",
         "//eval/public:cel_expression",
         "//eval/public:cel_function_registry",
+        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -45,7 +46,6 @@ cc_test(
     srcs = [
         "flat_expr_builder_test.cc",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":flat_expr_builder",
         "//base:status_macros",
@@ -57,11 +57,12 @@ cc_test(
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
+        "//eval/public/structs:cel_proto_wrapper",
         "//eval/testutil:test_message_cc_proto",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -71,7 +72,6 @@ cc_test(
     srcs = [
         "flat_expr_builder_comprehensions_test.cc",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":flat_expr_builder",
         "//base:status_macros",
@@ -84,10 +84,10 @@ cc_test(
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
         "//eval/testutil:test_message_cc_proto",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -100,14 +100,13 @@ cc_library(
     hdrs = [
         "constant_folding.h",
     ],
-    copts = ["-std=c++17"],
     deps = [
         "//eval/eval:const_value_step",
-        "//eval/eval:container_backed_list_impl",
         "//eval/public:cel_builtins",
         "//eval/public:cel_function",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_value",
+        "//eval/public/containers:container_backed_list_impl",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -119,16 +118,77 @@ cc_test(
     srcs = [
         "constant_folding_test.cc",
     ],
-    copts = ["-std=c++17"],
     deps = [
         ":constant_folding",
         "//base:status_macros",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_function_registry",
         "//eval/testutil:test_message_cc_proto",
-        "@com_github_google_googletest//:gtest_main",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "qualified_reference_resolver",
+    srcs = [
+        "qualified_reference_resolver.cc",
+    ],
+    hdrs = [
+        "qualified_reference_resolver.h",
+    ],
+    deps = [
+        "//base:status_macros",
+        "//base:statusor",
+        "//eval/eval:const_value_step",
+        "//eval/eval:expression_build_warning",
+        "//eval/public:cel_builtins",
+        "//eval/public:cel_function_registry",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "qualified_reference_resolver_test",
+    srcs = [
+        "qualified_reference_resolver_test.cc",
+    ],
+    deps = [
+        ":qualified_reference_resolver",
+        "//base:status_macros",
+        "//testutil:util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "flat_expr_builder_short_circuiting_conformance_test",
+    srcs = [
+        "flat_expr_builder_short_circuiting_conformance_test.cc",
+    ],
+    deps = [
+        ":flat_expr_builder",
+        "//base:status_macros",
+        "//eval/public:activation",
+        "//eval/public:cel_attribute",
+        "//eval/public:cel_builtins",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public:unknown_attribute_set",
+        "//eval/public:unknown_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

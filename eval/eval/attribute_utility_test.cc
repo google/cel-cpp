@@ -1,4 +1,4 @@
-#include "eval/eval/unknowns_utility.h"
+#include "eval/eval/attribute_utility.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
@@ -13,6 +13,7 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+using google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::IsNull;
 using testing::NotNull;
@@ -21,7 +22,7 @@ using testing::UnorderedPointwise;
 
 TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   google::protobuf::Arena arena;
-  std::vector<CelAttributePattern> patterns = {
+  std::vector<CelAttributePattern> unknown_patterns = {
       CelAttributePattern("unknown0", {CelAttributeQualifierPattern::Create(
                                           CelValue::CreateInt64(1))}),
       CelAttributePattern("unknown0", {CelAttributeQualifierPattern::Create(
@@ -29,7 +30,11 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
       CelAttributePattern("unknown1", {}),
       CelAttributePattern("unknown2", {}),
   };
-  UnknownsUtility utility(&patterns, &arena);
+
+  std::vector<CelAttributePattern> missing_attribute_patterns;
+
+  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+                           &arena);
   // no match for void trail
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), true));
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), false));
@@ -70,13 +75,16 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   google::api::expr::v1alpha1::Expr unknown_expr2;
   unknown_expr2.mutable_ident_expr()->set_name("unknown2");
 
-  std::vector<CelAttributePattern> patterns;
+  std::vector<CelAttributePattern> unknown_patterns;
+
+  std::vector<CelAttributePattern> missing_attribute_patterns;
 
   CelAttribute attribute0(unknown_expr0, {});
   CelAttribute attribute1(unknown_expr1, {});
   CelAttribute attribute2(unknown_expr2, {});
 
-  UnknownsUtility utility(&patterns, &arena);
+  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+                           &arena);
 
   UnknownSet unknown_set0(UnknownAttributeSet({&attribute0}));
   UnknownSet unknown_set1(UnknownAttributeSet({&attribute1}));
@@ -105,10 +113,12 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
 TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   google::protobuf::Arena arena;
 
-  std::vector<CelAttributePattern> patterns = {
+  std::vector<CelAttributePattern> unknown_patterns = {
       CelAttributePattern("unknown0",
                           {CelAttributeQualifierPattern::CreateWildcard()}),
   };
+
+  std::vector<CelAttributePattern> missing_attribute_patterns;
 
   google::api::expr::v1alpha1::Expr unknown_expr0;
   unknown_expr0.mutable_ident_expr()->set_name("unknown0");
@@ -122,7 +132,8 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   CelAttribute attribute1(unknown_expr1, {});
   UnknownSet unknown_set1(UnknownAttributeSet({&attribute1}));
 
-  UnknownsUtility utility(&patterns, &arena);
+  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+                           &arena);
 
   UnknownSet unknown_attr_set(utility.CheckForUnknowns(
       {
@@ -137,6 +148,37 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   UnknownSet unknown_set(unknown_set1, unknown_attr_set);
 
   ASSERT_THAT(unknown_set.unknown_attributes().attributes(), SizeIs(3));
+}
+
+TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
+  google::protobuf::Arena arena;
+
+  std::vector<CelAttributePattern> unknown_patterns;
+
+  std::vector<CelAttributePattern> missing_attribute_patterns;
+
+  Expr expr;
+  auto* select_expr = expr.mutable_select_expr();
+  select_expr->set_field("ip");
+
+  Expr* ident_expr = select_expr->mutable_operand();
+  ident_expr->mutable_ident_expr()->set_name("destination");
+
+  AttributeTrail trail(*ident_expr, &arena);
+  trail = trail.Step(
+      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), &arena);
+
+  AttributeUtility utility0(&unknown_patterns, &missing_attribute_patterns,
+                            &arena);
+  EXPECT_FALSE(utility0.CheckForMissingAttribute(trail));
+
+  missing_attribute_patterns.push_back(CelAttributePattern(
+      "destination", {CelAttributeQualifierPattern::Create(
+                         CelValue::CreateStringView("ip"))}));
+
+  AttributeUtility utility1(&unknown_patterns, &missing_attribute_patterns,
+                            &arena);
+  EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
 
 }  // namespace runtime

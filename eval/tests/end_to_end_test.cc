@@ -7,6 +7,7 @@
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
 #include "base/status_macros.h"
 
@@ -153,8 +154,7 @@ TEST(EndToEndTest, EmptyStringCompare) {
   TestMessage data;
   TextFormat::ParseFromString(kData, &data);
   Arena arena;
-  activation.InsertValue("var", CelValue::CreateMessage(&data, &arena));
-
+  activation.InsertValue("var", CelProtoWrapper::CreateMessage(&data, &arena));
 
   // Run evaluation.
   auto eval_status = cel_expression->Evaluate(activation, &arena);

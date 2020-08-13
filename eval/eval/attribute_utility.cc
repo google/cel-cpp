@@ -1,4 +1,4 @@
-#include "eval/eval/unknowns_utility.h"
+#include "eval/eval/attribute_utility.h"
 
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
@@ -13,9 +13,27 @@ namespace runtime {
 
 using google::protobuf::Arena;
 
+bool AttributeUtility::CheckForMissingAttribute(
+    const AttributeTrail& trail) const {
+  if (trail.empty()) {
+    return false;
+  }
+
+  for (const auto& pattern : *missing_attribute_patterns_) {
+    // (b/161297249) Preserving existing behavior for now, will add a streamz
+    // for partial match, follow up with tightening up which fields are exposed
+    // to the condition (w/ ajay and jim)
+    if (pattern.IsMatch(*trail.attribute()) ==
+        CelAttributePattern::MatchType::FULL) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Checks whether particular corresponds to any patterns that define unknowns.
-bool UnknownsUtility::CheckForUnknown(const AttributeTrail& trail,
-                                      bool use_partial) const {
+bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
+                                       bool use_partial) const {
   if (trail.empty()) {
     return false;
   }
@@ -34,7 +52,7 @@ bool UnknownsUtility::CheckForUnknown(const AttributeTrail& trail,
 // Scans over the args collection, merges any UnknownSets found in
 // it together with initial_set (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-const UnknownSet* UnknownsUtility::MergeUnknowns(
+const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const CelValue> args, const UnknownSet* initial_set) const {
   const UnknownSet* result = initial_set;
 
@@ -57,7 +75,7 @@ const UnknownSet* UnknownsUtility::MergeUnknowns(
 // patterns, merges attributes together with those from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-UnknownAttributeSet UnknownsUtility::CheckForUnknowns(
+UnknownAttributeSet AttributeUtility::CheckForUnknowns(
     absl::Span<const AttributeTrail> args, bool use_partial) const {
   std::vector<const CelAttribute*> unknown_attrs;
 
@@ -76,7 +94,7 @@ UnknownAttributeSet UnknownsUtility::CheckForUnknowns(
 // patterns, and attributes from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-const UnknownSet* UnknownsUtility::MergeUnknowns(
+const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const CelValue> args, absl::Span<const AttributeTrail> attrs,
     const UnknownSet* initial_set, bool use_partial) const {
   UnknownAttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
