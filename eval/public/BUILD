@@ -156,6 +156,7 @@ cc_library(
     deps = [
         ":activation",
         ":cel_function",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
@@ -428,6 +429,7 @@ cc_test(
         ":cel_function_provider",
         ":cel_function_registry",
         "//base:status_macros",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
 )

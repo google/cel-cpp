@@ -1,5 +1,7 @@
 #include "eval/public/cel_function_provider.h"
 
+#include "absl/status/statusor.h"
+
 namespace google {
 namespace api {
 namespace expr {

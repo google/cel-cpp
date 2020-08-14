@@ -1,6 +1,7 @@
 #include "eval/eval/ident_step.h"
 
 #include "google/protobuf/arena.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/substitute.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"

@@ -4,6 +4,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
 #include "base/status_macros.h"

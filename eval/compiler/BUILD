@@ -36,6 +36,7 @@ cc_library(
         "//eval/public:cel_expression",
         "//eval/public:cel_function_registry",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],

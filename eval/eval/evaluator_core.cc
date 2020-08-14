@@ -1,6 +1,7 @@
 #include "eval/eval/evaluator_core.h"
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"

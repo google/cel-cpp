@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/containers/container_backed_map_impl.h"
