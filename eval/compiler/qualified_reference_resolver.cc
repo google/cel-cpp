@@ -1,7 +1,7 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include "absl/status/status.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "eval/eval/const_value_step.h"
@@ -28,8 +28,8 @@ class ReferenceResolver {
 
   // Attempt to resolve references in expr. Return true if part of the
   // expression was rewritten.
-  cel_base::StatusOr<bool> Rewrite(Expr* out) {
-    cel_base::StatusOr<bool> maybe_rewrite_result = MaybeRewriteReferences(out);
+  absl::StatusOr<bool> Rewrite(Expr* out) {
+    absl::StatusOr<bool> maybe_rewrite_result = MaybeRewriteReferences(out);
     RETURN_IF_ERROR(maybe_rewrite_result.status());
 
     if (maybe_rewrite_result.value()) {
@@ -51,13 +51,13 @@ class ReferenceResolver {
         const int arg_num = call_expr->args_size();
         bool args_updated = false;
         if (receiver_style) {
-          cel_base::StatusOr<bool> rewrite_result =
+          absl::StatusOr<bool> rewrite_result =
               Rewrite(call_expr->mutable_target());
           RETURN_IF_ERROR(rewrite_result.status());
           args_updated = args_updated || rewrite_result.value();
         }
         for (int i = 0; i < arg_num; i++) {
-          cel_base::StatusOr<bool> rewrite_result =
+          absl::StatusOr<bool> rewrite_result =
               Rewrite(call_expr->mutable_args(i));
           RETURN_IF_ERROR(rewrite_result.status());
           args_updated = args_updated || rewrite_result.value();
@@ -69,7 +69,7 @@ class ReferenceResolver {
         int list_size = list_expr->elements_size();
         bool args_updated = false;
         for (int i = 0; i < list_size; i++) {
-          cel_base::StatusOr<bool> rewrite_result =
+          absl::StatusOr<bool> rewrite_result =
               Rewrite(list_expr->mutable_elements(i));
           RETURN_IF_ERROR(rewrite_result.status());
           args_updated = args_updated || rewrite_result.value();
@@ -103,7 +103,7 @@ class ReferenceResolver {
       case Expr::kComprehensionExpr: {
         auto* out_expr = out->mutable_comprehension_expr();
         bool args_updated = false;
-        cel_base::StatusOr<bool> rewrite_result;
+        absl::StatusOr<bool> rewrite_result;
 
         rewrite_result = Rewrite(out_expr->mutable_accu_init());
         RETURN_IF_ERROR(rewrite_result.status());
@@ -136,7 +136,7 @@ class ReferenceResolver {
  private:
   // Attempts to apply rewrites for reference map. Returns true if rewrites
   // occur.
-  cel_base::StatusOr<bool> MaybeRewriteReferences(Expr* expr) {
+  absl::StatusOr<bool> MaybeRewriteReferences(Expr* expr) {
     const auto iter = reference_map_.find(expr->id());
     if (iter == reference_map_.end()) {
       return false;
@@ -188,12 +188,12 @@ class ReferenceResolver {
 
 }  // namespace
 
-cel_base::StatusOr<absl::optional<Expr>> ResolveReferences(
+absl::StatusOr<absl::optional<Expr>> ResolveReferences(
     const Expr& expr, const google::protobuf::Map<int64_t, Reference>& reference_map,
     BuilderWarnings* warnings) {
   Expr out(expr);
   ReferenceResolver resolver(reference_map, warnings);
-  cel_base::StatusOr<bool> rewrite_result = resolver.Rewrite(&out);
+  absl::StatusOr<bool> rewrite_result = resolver.Rewrite(&out);
   if (!rewrite_result.ok()) {
     return rewrite_result.status();
   } else if (rewrite_result.value()) {

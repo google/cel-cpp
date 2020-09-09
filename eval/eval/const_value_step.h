@@ -14,11 +14,11 @@ absl::optional<CelValue> ConvertConstant(
     const google::api::expr::v1alpha1::Constant* const_expr);
 
 // Factory method for Constant - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     CelValue value, int64_t expr_id, bool comes_from_ast = true);
 
 // Factory method for Constant(Enum value) - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     const google::protobuf::EnumValueDescriptor* value_descriptor, int64_t expr_id);
 
 }  // namespace runtime

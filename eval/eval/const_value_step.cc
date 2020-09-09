@@ -1,7 +1,9 @@
 #include "eval/eval/const_value_step.h"
-#include "eval/eval/expression_step_base.h"
+
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "absl/status/statusor.h"
+#include "eval/eval/expression_step_base.h"
 
 namespace google {
 namespace api {
@@ -70,7 +72,7 @@ absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
   return value;
 }
 
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     CelValue value, int64_t expr_id, bool comes_from_ast) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
@@ -78,7 +80,7 @@ cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 }
 
 // Factory method for Constant(Enum value) - based Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     const google::protobuf::EnumValueDescriptor* value_descriptor, int64_t expr_id) {
   CelValue value = CelValue::CreateInt64(value_descriptor->number());
 

@@ -13,10 +13,10 @@ namespace expr {
 namespace runtime {
 
 // Factory method for "And" Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id);
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id);
 
 // Factory method for "Or" Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id);
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id);
 
 }  // namespace runtime
 }  // namespace expr

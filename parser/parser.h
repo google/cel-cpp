@@ -5,7 +5,7 @@
 #include "absl/types/optional.h"
 #include "parser/macro.h"
 #include "parser/source_factory.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {
@@ -33,16 +33,16 @@ class VerboseParsedExpr {
   EnrichedSourceInfo enriched_source_info_;
 };
 
-cel_base::StatusOr<VerboseParsedExpr> EnrichedParse(
+absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
     const std::string& description = "<input>",
     int max_recursion_depth = kDefaultMaxRecursionDepth);
 
-cel_base::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
+absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
     const std::string& expression, const std::string& description = "<input>",
     int max_recursion_depth = kDefaultMaxRecursionDepth);
 
-cel_base::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
+absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
     const std::string& expression, const std::vector<Macro>& macros,
     const std::string& description = "<input>",
     int max_recursion_depth = kDefaultMaxRecursionDepth);

@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/containers/container_backed_map_impl.h"
@@ -25,7 +26,7 @@ using testutil::EqualsProto;
 using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
-cel_base::StatusOr<CelValue> RunExpression(const CelValue target,
+absl::StatusOr<CelValue> RunExpression(const CelValue target,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path,
@@ -63,7 +64,7 @@ cel_base::StatusOr<CelValue> RunExpression(const CelValue target,
   return cel_expr.Evaluate(activation, arena);
 }
 
-cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
+absl::StatusOr<CelValue> RunExpression(const TestMessage* message,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path,
@@ -72,14 +73,14 @@ cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
                        test, arena, unknown_path, enable_unknowns);
 }
 
-cel_base::StatusOr<CelValue> RunExpression(const TestMessage* message,
+absl::StatusOr<CelValue> RunExpression(const TestMessage* message,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        bool enable_unknowns) {
   return RunExpression(message, field, test, arena, "", enable_unknowns);
 }
 
-cel_base::StatusOr<CelValue> RunExpression(const CelMap* map_value,
+absl::StatusOr<CelValue> RunExpression(const CelMap* map_value,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        absl::string_view unknown_path,
@@ -88,7 +89,7 @@ cel_base::StatusOr<CelValue> RunExpression(const CelMap* map_value,
                        unknown_path, enable_unknowns);
 }
 
-cel_base::StatusOr<CelValue> RunExpression(const CelMap* map_value,
+absl::StatusOr<CelValue> RunExpression(const CelMap* map_value,
                                        absl::string_view field, bool test,
                                        google::protobuf::Arena* arena,
                                        bool enable_unknowns) {

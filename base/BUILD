@@ -5,22 +5,6 @@ package(
 )
 
 cc_library(
-    name = "statusor",
-    srcs = [
-        "statusor.cc",
-    ],
-    hdrs = [
-        "statusor.h",
-        "statusor_internals.h",
-    ],
-    deps = [
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/meta:type_traits",
-        "@com_google_absl//absl/status",
-    ],
-)
-
-cc_library(
     name = "status_macros",
     hdrs = [
         "status_macros.h",

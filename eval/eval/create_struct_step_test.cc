@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/containers/container_backed_list_impl.h"
@@ -32,7 +33,7 @@ using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
-cel_base::StatusOr<CelValue> RunExpression(absl::string_view field,
+absl::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        const CelValue& value,
                                        google::protobuf::Arena* arena,
                                        bool enable_unknowns) {
@@ -111,7 +112,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds Map and runs it.
-cel_base::StatusOr<CelValue> RunCreateMapExpression(
+absl::StatusOr<CelValue> RunCreateMapExpression(
     const std::vector<std::pair<CelValue, CelValue>> values,
     google::protobuf::Arena* arena, bool enable_unknowns) {
   ExecutionPath path;

@@ -1,5 +1,6 @@
 #include "eval/eval/logic_step.h"
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_builtins.h"
@@ -112,7 +113,7 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
 
 // Factory method for "And" Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
 
@@ -120,7 +121,7 @@ cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_i
 }
 
 // Factory method for "Or" Execution step
-cel_base::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
   std::unique_ptr<ExpressionStep> step =
       absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
 

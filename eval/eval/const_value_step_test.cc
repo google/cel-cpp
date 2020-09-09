@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
 #include "base/status_macros.h"
 
@@ -20,7 +21,7 @@ using google::api::expr::v1alpha1::Expr;
 
 using google::protobuf::Arena;
 
-cel_base::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
+absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
                                                const Constant* const_expr,
                                                Arena* arena) {
   auto step_status =

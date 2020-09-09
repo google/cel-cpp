@@ -4,6 +4,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/statusor.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
 #include "base/status_macros.h"
@@ -22,7 +23,7 @@ class NullLazyFunctionProvider : public virtual CelFunctionProvider {
  public:
   NullLazyFunctionProvider() {}
   // Just return nullptr indicating no matching function.
-  cel_base::StatusOr<const CelFunction*> GetFunction(
+  absl::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& desc,
       const BaseActivation& activation) const override {
     return nullptr;

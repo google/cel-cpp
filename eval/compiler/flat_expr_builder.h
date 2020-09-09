@@ -63,11 +63,11 @@ class FlatExprBuilder : public CelExpressionBuilder {
     fail_on_warnings_ = should_fail;
   }
 
-  cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
 
-  cel_base::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info,
       std::vector<absl::Status>* warnings) const override;

@@ -24,7 +24,7 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {
@@ -352,22 +352,22 @@ class CelExpressionFlatImpl : public CelExpression {
       google::protobuf::Arena* arena) const override;
 
   // Implementation of CelExpression evaluate method.
-  cel_base::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
+  absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
                                     google::protobuf::Arena* arena) const override {
     return Evaluate(activation, InitializeState(arena).get());
   }
 
-  cel_base::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
+  absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
                                     CelEvaluationState* state) const override;
 
   // Implementation of CelExpression trace method.
-  cel_base::StatusOr<CelValue> Trace(
+  absl::StatusOr<CelValue> Trace(
       const BaseActivation& activation, google::protobuf::Arena* arena,
       CelEvaluationListener callback) const override {
     return Trace(activation, InitializeState(arena).get(), callback);
   }
 
-  cel_base::StatusOr<CelValue> Trace(const BaseActivation& activation,
+  absl::StatusOr<CelValue> Trace(const BaseActivation& activation,
                                  CelEvaluationState* state,
                                  CelEvaluationListener callback) const override;
 

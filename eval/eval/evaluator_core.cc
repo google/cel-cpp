@@ -1,11 +1,12 @@
 #include "eval/eval/evaluator_core.h"
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
 #include "base/status_macros.h"
-#include "base/statusor.h"
+#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {
@@ -147,12 +148,12 @@ std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
       path_.size(), iter_variable_names_, arena);
 }
 
-cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
+absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
     const BaseActivation& activation, CelEvaluationState* state) const {
   return Trace(activation, state, CelEvaluationListener());
 }
 
-cel_base::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
+absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,
     CelEvaluationListener callback) const {
   auto state = down_cast<CelExpressionFlatEvaluationState*>(_state);

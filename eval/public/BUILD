@@ -24,10 +24,10 @@ cc_library(
     ],
     deps = [
         ":cel_value_internal",
-        "//base:statusor",
         "//internal:proto_util",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
@@ -139,8 +139,8 @@ cc_library(
     deps = [
         ":cel_function",
         ":cel_function_registry",
-        "//base:statusor",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -156,6 +156,7 @@ cc_library(
     deps = [
         ":activation",
         ":cel_function",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 
@@ -428,6 +429,7 @@ cc_test(
         ":cel_function_provider",
         ":cel_function_registry",
         "//base:status_macros",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
 )
