@@ -9,7 +9,7 @@ RUN rm -rf /var/lib/apt/lists/* \
 
 RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.5.0/bazelisk-linux-amd64 && chmod +x bazelisk-linux-amd64 && mv bazelisk-linux-amd64 /bin/bazel
 
-ENV CC=clang
-ENV CXX=clang++
+ENV CC=clang-10
+ENV CXX=clang++-10
 
 ENTRYPOINT ["/bin/bazel"]
