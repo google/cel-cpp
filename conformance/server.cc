@@ -174,7 +174,7 @@ class ConformanceServiceImpl final
       issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
     } else {
       google::api::expr::v1alpha1::ParsedExpr out;
-      out = parse_status.value();
+      (out).MergeFrom(parse_status.value());
       response->mutable_parsed_expr()->CopyFrom(out);
     }
     return Status::OK;
@@ -197,7 +197,7 @@ class ConformanceServiceImpl final
     Arena arena;
     google::api::expr::v1alpha1::SourceInfo source_info;
     google::api::expr::v1alpha1::Expr out;
-    out = *expr;
+    (out).MergeFrom(*expr);
     auto cel_expression_status = builder_->CreateExpression(&out, &source_info);
 
     if (!cel_expression_status.ok()) {

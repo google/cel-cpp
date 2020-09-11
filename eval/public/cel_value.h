@@ -136,6 +136,9 @@ class CelValue {
   // Returns Type that describes the type of value stored.
   Type type() const { return Type(value_.index()); }
 
+  // Returns debug string describing a value
+  const std::string DebugString() const;
+
   // We will use factory methods instead of public constructors
   // The reason for this is the high risk of implicit type conversions
   // between bool/int/pointer types.

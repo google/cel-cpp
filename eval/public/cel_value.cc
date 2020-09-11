@@ -5,6 +5,8 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/match.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
@@ -391,6 +393,57 @@ std::string CelValue::TypeName(Type value_type) {
   }
 }
 
+// Returns debug string describing a value
+const std::string CelValue::DebugString() const {
+  switch (type()) {
+    case Type::kBool:
+      return absl::StrFormat("bool: %d", BoolOrDie());
+      break;
+    case Type::kInt64:
+      return absl::StrFormat("int64: %lld", Int64OrDie());
+      break;
+    case Type::kUint64:
+      return absl::StrFormat("uint64: %llu", Uint64OrDie());
+      break;
+    case Type::kDouble:
+      return absl::StrFormat("double: %f", DoubleOrDie());
+      break;
+    case Type::kString:
+      return absl::StrFormat("string: %s", StringOrDie().value());
+      break;
+    case Type::kBytes:
+      return absl::StrFormat("bytes: %s", BytesOrDie().value());
+      break;
+    case Type::kMessage:
+      return absl::StrFormat(
+          "Message: %s",
+          IsNull() ? "NULL" : MessageOrDie()->ShortDebugString());
+      break;
+    case Type::kDuration:
+      return absl::StrFormat("Duration: %s",
+                             absl::FormatDuration(DurationOrDie()));
+      break;
+    case Type::kTimestamp:
+      return absl::StrFormat("Time: %s", absl::FormatTime(TimestampOrDie()));
+      break;
+    case Type::kList:
+      return absl::StrFormat("List, size: %lld", ListOrDie()->size());
+      break;
+    case Type::kMap:
+      return absl::StrFormat("Map, size: %lld", MapOrDie()->size());
+      break;
+    case Type::kUnknownSet:
+      return "UnknownSet";
+      break;
+    case Type::kError:
+      return absl::StrFormat("Error: %s", ErrorOrDie()->ToString());
+      break;
+    case Type::kAny:
+      return "Any";
+      break;
+  }
+}
+
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
                           absl::StatusCode error_code, int) {
   CelError* error = Arena::Create<CelError>(arena, error_code, message);
@@ -411,8 +464,8 @@ CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
 bool CheckNoMatchingOverloadError(CelValue value) {
   return value.IsError() &&
          value.ErrorOrDie()->code() == absl::StatusCode::kUnknown &&
-         value.ErrorOrDie()->message().find(kErrNoMatchingOverload) !=
-             absl::string_view::npos;
+         absl::StrContains(value.ErrorOrDie()->message(),
+                           kErrNoMatchingOverload);
 }
 
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {

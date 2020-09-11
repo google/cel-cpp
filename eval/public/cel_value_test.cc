@@ -1,18 +1,23 @@
 #include "eval/public/cel_value.h"
 
 #include "google/protobuf/any.pb.h"
+#include "google/protobuf/empty.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "net/proto2/contrib/parse_proto/parse_text_proto.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
+#include "absl/strings/match.h"
+#include "absl/time/time.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
+#include "util/task/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -887,6 +892,54 @@ TEST(CelValueTest, DynamicBytesWrapper) {
   ASSERT_TRUE(value.IsBytes());
 
   EXPECT_EQ(value.BytesOrDie().value(), wrapper.value());
+}
+
+TEST(CelValueTest, DebugString) {
+  EXPECT_EQ(CelValue::CreateBool(true).DebugString(), "bool: 1");
+  EXPECT_EQ(CelValue::CreateInt64(-12345).DebugString(), "int64: -12345");
+  EXPECT_EQ(CelValue::CreateUint64(12345).DebugString(), "uint64: 12345");
+  EXPECT_TRUE(absl::StartsWith(CelValue::CreateDouble(0.12345).DebugString(),
+                               "double: 0.12345"));
+  const std::string abc("abc");
+  EXPECT_EQ(CelValue::CreateString(&abc).DebugString(), "string: abc");
+  EXPECT_EQ(CelValue::CreateBytes(&abc).DebugString(), "bytes: abc");
+
+  google::protobuf::Empty e;
+  ::google::protobuf::Arena arena;
+  EXPECT_EQ(CelValue::CreateMessage(&e, &arena).DebugString(), "Message: ");
+
+  EXPECT_EQ(CelValue::CreateDuration(absl::Hours(24)).DebugString(),
+            "Duration: 24h");
+
+  EXPECT_EQ(
+      CelValue::CreateTimestamp(absl::FromUnixSeconds(86400)).DebugString(),
+      "Time: 1970-01-01T16:00:00-08:00");
+
+  ListValue list_value;
+  list_value.add_values()->set_bool_value(true);
+  list_value.add_values()->set_number_value(1.0);
+  list_value.add_values()->set_string_value("test");
+  CelValue value = CelProtoWrapper::CreateMessage(&list_value, &arena);
+  EXPECT_EQ(value.DebugString(), "List, size: 3");
+
+  Struct value_struct;
+  auto& value1 = (*value_struct.mutable_fields())["a"];
+  value1.set_bool_value(true);
+  auto& value2 = (*value_struct.mutable_fields())["b"];
+  value2.set_number_value(1.0);
+  auto& value3 = (*value_struct.mutable_fields())["c"];
+  value3.set_string_value("test");
+
+  value = CelProtoWrapper::CreateMessage(&value_struct, &arena);
+  EXPECT_EQ(value.DebugString(), "Map, size: 3");
+
+  UnknownSet unknown_set;
+  EXPECT_EQ(CelValue::CreateUnknownSet(&unknown_set).DebugString(),
+            "UnknownSet");
+
+  util::Status error = util::InternalError("Blah...");
+  EXPECT_EQ(CelValue::CreateError(&error).DebugString(),
+            "Error: INTERNAL: Blah...");
 }
 
 }  // namespace runtime
