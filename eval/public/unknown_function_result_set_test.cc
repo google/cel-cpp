@@ -331,8 +331,9 @@ TEST(UnknownFunctionResult, DurationHandling) {
   UnknownFunctionResult callDuration2(
       durationDesc, /*expr_id=*/0,
       {CelProtoWrapper::CreateMessage(&duration2, &arena)});
-  UnknownFunctionResult callDuration3(durationDesc, /*expr_id=*/0,
-                                      {CelValue::CreateDuration(&duration2)});
+  UnknownFunctionResult callDuration3(
+      durationDesc, /*expr_id=*/0,
+      {CelProtoWrapper::CreateDuration(&duration2)});
 
   EXPECT_TRUE(callDuration1.IsEqualTo(callDuration2));
   EXPECT_TRUE(callDuration1.IsEqualTo(callDuration3));
@@ -352,8 +353,8 @@ TEST(UnknownFunctionResult, TimestampHandling) {
   UnknownFunctionResult callTimestamp2(
       timestampDesc, /*expr_id=*/0,
       {CelProtoWrapper::CreateMessage(&ts2, &arena)});
-  UnknownFunctionResult callTimestamp3(timestampDesc, /*expr_id=*/0,
-                                       {CelValue::CreateTimestamp(&ts2)});
+  UnknownFunctionResult callTimestamp3(
+      timestampDesc, /*expr_id=*/0, {CelProtoWrapper::CreateTimestamp(&ts2)});
 
   EXPECT_TRUE(callTimestamp1.IsEqualTo(callTimestamp2));
   EXPECT_TRUE(callTimestamp1.IsEqualTo(callTimestamp3));

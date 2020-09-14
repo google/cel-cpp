@@ -63,6 +63,7 @@ cc_library(
         "//eval/public:activation",
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
+        "//eval/public/structs:cel_proto_wrapper",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

@@ -7,6 +7,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
 
 namespace google {
@@ -135,7 +136,7 @@ class FieldAccessor {
       }
       case FieldDescriptor::CPPTYPE_MESSAGE: {
         const google::protobuf::Message* msg_value = GetMessage();
-        *result = CelValue::CreateMessage(msg_value, arena);
+        *result = CelProtoWrapper::CreateMessage(msg_value, arena);
         break;
       }
       case FieldDescriptor::CPPTYPE_ENUM: {

@@ -5,6 +5,7 @@
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 
 namespace google {
 namespace api {
@@ -139,12 +140,14 @@ void TestAllCelValueMismatches(const CelAttributeQualifierPattern& qualifier) {
   Duration msg_duration;
   msg_duration.set_seconds(0);
   msg_duration.set_nanos(0);
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateDuration(&msg_duration)));
+  EXPECT_FALSE(
+      qualifier.IsMatch(CelProtoWrapper::CreateDuration(&msg_duration)));
 
   Timestamp msg_timestamp;
   msg_timestamp.set_seconds(0);
   msg_timestamp.set_nanos(0);
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateTimestamp(&msg_timestamp)));
+  EXPECT_FALSE(
+      qualifier.IsMatch(CelProtoWrapper::CreateTimestamp(&msg_timestamp)));
 
   DummyList dummy_list;
   EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateList(&dummy_list)));

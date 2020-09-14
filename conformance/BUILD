@@ -36,6 +36,7 @@ cc_binary(
         "//eval/public:cel_expr_builder_factory",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
+        "//internal:proto_util",
         "//parser",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status:statusor",

@@ -17,14 +17,13 @@
 //    CelValue value = CelValue::CreateString(msg);
 // (c) For messages:
 //    const MyMessage * msg = google::protobuf::Arena::CreateMessage<MyMessage>(arena);
-//    CelValue value = CelValue::CreateMessage(msg, &arena);
+//    CelValue value = CelProtoWrapper::CreateMessage(msg, &arena);
 
-#include "google/protobuf/duration.pb.h"
-#include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/message.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
-#include "internal/proto_util.h"
 #include "absl/status/statusor.h"
 
 namespace google {
@@ -175,23 +174,8 @@ class CelValue {
     return CelValue(BytesHolder(str));
   }
 
-  // CreateMessage creates CelValue from google::protobuf::Message.
-  // As some of CEL basic types are subclassing google::protobuf::Message,
-  // this method contains type checking and downcasts.
-  ABSL_DEPRECATED("Use CelProtoWrapper::CreateMessage instead")
-  static CelValue CreateMessage(const google::protobuf::Message *value,
-                                google::protobuf::Arena *arena);
-
-  static CelValue CreateDuration(const google::protobuf::Duration *value) {
-    return CelValue(expr::internal::DecodeDuration(*value));
-  }
-
   static CelValue CreateDuration(absl::Duration value) {
     return CelValue(value);
-  }
-
-  static CelValue CreateTimestamp(const google::protobuf::Timestamp *value) {
-    return CelValue(expr::internal::DecodeTime(*value));
   }
 
   static CelValue CreateTimestamp(absl::Time value) { return CelValue(value); }
@@ -386,6 +370,8 @@ class CelValue {
     }
     return *value_ptr;
   }
+
+  friend class CelProtoWrapper;
 };
 
 // CelList is a base class for list adapting classes.
@@ -401,7 +387,7 @@ class CelList {
   virtual ~CelList() {}
 };
 
-// MapAccessor is a base class for map accessors.
+// CelMap is a base class for map accessors.
 class CelMap {
  public:
   // Map lookup. If value found,

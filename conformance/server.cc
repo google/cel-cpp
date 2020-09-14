@@ -4,7 +4,9 @@
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
 #include "grpcpp/grpcpp.h"
 #include "absl/strings/str_split.h"
@@ -12,6 +14,7 @@
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "internal/proto_util.h"
 #include "parser/parser.h"
 #include "absl/status/statusor.h"
 

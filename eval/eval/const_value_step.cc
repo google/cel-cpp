@@ -4,6 +4,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 
 namespace google {
 namespace api {
@@ -59,10 +60,10 @@ absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
       value = CelValue::CreateBytes(&const_expr->bytes_value());
       break;
     case Constant::kDurationValue:
-      value = CelValue::CreateDuration(&const_expr->duration_value());
+      value = CelProtoWrapper::CreateDuration(&const_expr->duration_value());
       break;
     case Constant::kTimestampValue:
-      value = CelValue::CreateTimestamp(&const_expr->timestamp_value());
+      value = CelProtoWrapper::CreateTimestamp(&const_expr->timestamp_value());
       break;
     default:
       // constant with no kind specified

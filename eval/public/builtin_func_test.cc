@@ -375,8 +375,8 @@ TEST_F(BuiltinsTest, TestDurationComparisons) {
   lesser.set_nanos(2);
 
   TestComparisonsForType(CelValue::Type::kDuration,
-                         CelValue::CreateDuration(&ref),
-                         CelValue::CreateDuration(&lesser));
+                         CelProtoWrapper::CreateDuration(&ref),
+                         CelProtoWrapper::CreateDuration(&lesser));
 }
 
 // Test Equality/Non-Equality operation for messages
@@ -411,11 +411,11 @@ TEST_F(BuiltinsTest, TestTimestampDurationArithmeticalOperation) {
   d2.set_seconds(10);
   d2.set_nanos(10);
 
-  cel_d0 = CelValue::CreateDuration(&d0);
-  cel_d1 = CelValue::CreateDuration(&d1);
-  cel_d2 = CelValue::CreateDuration(&d2);
-  cel_ts0 = CelValue::CreateTimestamp(&ts0);
-  cel_ts1 = CelValue::CreateTimestamp(&ts1);
+  cel_d0 = CelProtoWrapper::CreateDuration(&d0);
+  cel_d1 = CelProtoWrapper::CreateDuration(&d1);
+  cel_d2 = CelProtoWrapper::CreateDuration(&d2);
+  cel_ts0 = CelProtoWrapper::CreateTimestamp(&ts0);
+  cel_ts1 = CelProtoWrapper::CreateTimestamp(&ts1);
 
   // ts0 - ts1 = d0
   ASSERT_NO_FATAL_FAILURE(
@@ -467,18 +467,24 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   ref.set_seconds(93541L);
   ref.set_nanos(11000000L);
 
-  TestFunctions(builtin::kHours, CelValue::CreateDuration(&ref), 25L);
-  TestFunctions(builtin::kMinutes, CelValue::CreateDuration(&ref), 1559L);
-  TestFunctions(builtin::kSeconds, CelValue::CreateDuration(&ref), 93541L);
-  TestFunctions(builtin::kMilliseconds, CelValue::CreateDuration(&ref), 11L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateDuration(&ref), 25L);
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateDuration(&ref),
+                1559L);
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateDuration(&ref),
+                93541L);
+  TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateDuration(&ref),
+                11L);
 
   ref.set_seconds(-93541L);
   ref.set_nanos(-11000000L);
 
-  TestFunctions(builtin::kHours, CelValue::CreateDuration(&ref), -25L);
-  TestFunctions(builtin::kMinutes, CelValue::CreateDuration(&ref), -1559L);
-  TestFunctions(builtin::kSeconds, CelValue::CreateDuration(&ref), -93541L);
-  TestFunctions(builtin::kMilliseconds, CelValue::CreateDuration(&ref), -11L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateDuration(&ref), -25L);
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateDuration(&ref),
+                -1559L);
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateDuration(&ref),
+                -93541L);
+  TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateDuration(&ref),
+                -11L);
 }
 
 // Test functions for Timestamp
@@ -488,19 +494,24 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   // Test timestamp functions w/o timezone
   ref.set_seconds(1L);
   ref.set_nanos(11000000L);
-  TestFunctions(builtin::kFullYear, CelValue::CreateTimestamp(&ref), 1970L);
-  TestFunctions(builtin::kMonth, CelValue::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kDayOfYear, CelValue::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kDayOfMonth, CelValue::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kDate, CelValue::CreateTimestamp(&ref), 1L);
-  TestFunctions(builtin::kHours, CelValue::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kMinutes, CelValue::CreateTimestamp(&ref), 0L);
-  TestFunctions(builtin::kSeconds, CelValue::CreateTimestamp(&ref), 1L);
-  TestFunctions(builtin::kMilliseconds, CelValue::CreateTimestamp(&ref), 11L);
+  TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
+                1970L);
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 0L);
+  TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
+                0L);
+  TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                0L);
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 1L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 0L);
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 0L);
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 1L);
+  TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateTimestamp(&ref),
+                11L);
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
-  TestFunctions(builtin::kDayOfWeek, CelValue::CreateTimestamp(&ref), 0L);
+  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
+                0L);
 
   // Test timestamp functions w/ timezone
   ref.set_seconds(1L);
@@ -509,49 +520,54 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   const std::string timezone = "America/Los_Angeles";
   params.push_back(CelValue::CreateString(&timezone));
 
-  TestFunctionsWithParams(builtin::kFullYear, CelValue::CreateTimestamp(&ref),
-                          params, 1969L);
-  TestFunctionsWithParams(builtin::kMonth, CelValue::CreateTimestamp(&ref),
-                          params, 11L);
-  TestFunctionsWithParams(builtin::kDayOfYear, CelValue::CreateTimestamp(&ref),
-                          params, 364L);
-  TestFunctionsWithParams(builtin::kDayOfMonth, CelValue::CreateTimestamp(&ref),
-                          params, 30L);
-  TestFunctionsWithParams(builtin::kDate, CelValue::CreateTimestamp(&ref),
-                          params, 31L);
-  TestFunctionsWithParams(builtin::kHours, CelValue::CreateTimestamp(&ref),
-                          params, 16L);
-  TestFunctionsWithParams(builtin::kMinutes, CelValue::CreateTimestamp(&ref),
-                          params, 0L);
-  TestFunctionsWithParams(builtin::kSeconds, CelValue::CreateTimestamp(&ref),
-                          params, 1L);
+  TestFunctionsWithParams(builtin::kFullYear,
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          1969L);
+  TestFunctionsWithParams(builtin::kMonth,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+  TestFunctionsWithParams(builtin::kDayOfYear,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 364L);
+  TestFunctionsWithParams(builtin::kDayOfMonth,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 30L);
+  TestFunctionsWithParams(builtin::kDate,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 31L);
+  TestFunctionsWithParams(builtin::kHours,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 16L);
+  TestFunctionsWithParams(builtin::kMinutes,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 0L);
+  TestFunctionsWithParams(builtin::kSeconds,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 1L);
   TestFunctionsWithParams(builtin::kMilliseconds,
-                          CelValue::CreateTimestamp(&ref), params, 11L);
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
-  TestFunctionsWithParams(builtin::kDayOfWeek, CelValue::CreateTimestamp(&ref),
-                          params, 6L);
+  TestFunctionsWithParams(builtin::kDayOfWeek,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 6L);
 
   // Test timestamp functions with negative value
   ref.set_seconds(-1L);
   ref.set_nanos(0L);
 
-  TestFunctions(builtin::kFullYear, CelValue::CreateTimestamp(&ref), 1969L);
-  TestFunctions(builtin::kMonth, CelValue::CreateTimestamp(&ref), 11L);
-  TestFunctions(builtin::kDayOfYear, CelValue::CreateTimestamp(&ref), 364L);
-  TestFunctions(builtin::kDayOfMonth, CelValue::CreateTimestamp(&ref), 30L);
-  TestFunctions(builtin::kDate, CelValue::CreateTimestamp(&ref), 31L);
-  TestFunctions(builtin::kHours, CelValue::CreateTimestamp(&ref), 23L);
-  TestFunctions(builtin::kMinutes, CelValue::CreateTimestamp(&ref), 59L);
-  TestFunctions(builtin::kSeconds, CelValue::CreateTimestamp(&ref), 59L);
-  TestFunctions(builtin::kDayOfWeek, CelValue::CreateTimestamp(&ref), 3L);
+  TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
+                1969L);
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 11L);
+  TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
+                364L);
+  TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                30L);
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 31L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 23L);
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
+                3L);
 }
 
 TEST_F(BuiltinsTest, TestTypeConversions_Timestamp) {
   Timestamp ref;
   ref.set_seconds(100);
-  TestTypeConverts(builtin::kInt, CelValue::CreateTimestamp(&ref), 100L);
+  TestTypeConverts(builtin::kInt, CelProtoWrapper::CreateTimestamp(&ref), 100L);
 }
 
 TEST_F(BuiltinsTest, TestTypeConversions_double) {
@@ -575,8 +591,8 @@ TEST_F(BuiltinsTest, TestTimestampComparisons) {
   lesser.set_nanos(2);
 
   TestComparisonsForType(CelValue::Type::kTimestamp,
-                         CelValue::CreateTimestamp(&ref),
-                         CelValue::CreateTimestamp(&lesser));
+                         CelProtoWrapper::CreateTimestamp(&ref),
+                         CelProtoWrapper::CreateTimestamp(&lesser));
 }
 
 TEST_F(BuiltinsTest, TestLogicalOr) {
@@ -1028,8 +1044,8 @@ TEST_F(BuiltinsTest, TestNestedEqual) {
   const FakeList kList5({CelValue::CreateString(&test)});
   const FakeList kList6({CelValue::CreateBytes(&test)});
   const FakeList kList7({CelValue::CreateNull()});
-  const FakeList kList8({CelValue::CreateDuration(&dur)});
-  const FakeList kList9({CelValue::CreateTimestamp(&ts)});
+  const FakeList kList8({CelProtoWrapper::CreateDuration(&dur)});
+  const FakeList kList9({CelProtoWrapper::CreateTimestamp(&ts)});
   const FakeList kList10({CelValue::CreateList(&kList1)});
   const FakeList kList11({CelValue::CreateMap(&kMap)});
 
