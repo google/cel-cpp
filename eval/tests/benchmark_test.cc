@@ -67,6 +67,48 @@ static void BM_Eval(benchmark::State& state) {
 
 BENCHMARK(BM_Eval)->Range(1, 32768);
 
+// Benchmark test
+// Evaluates cel expression:
+// '"a" + "a" + "a" .... + "a"'
+static void BM_EvalString(benchmark::State& state) {
+  auto builder = CreateCelExpressionBuilder();
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  CHECK_OK(reg_status);
+
+  int len = state.range(0);
+
+  Expr root_expr;
+  Expr* cur_expr = &root_expr;
+
+  for (int i = 0; i < len; i++) {
+    Expr::Call* call = cur_expr->mutable_call_expr();
+    call->set_function("_+_");
+    call->add_args()->mutable_const_expr()->set_string_value("a");
+    cur_expr = call->add_args();
+  }
+
+  cur_expr->mutable_const_expr()->set_string_value("a");
+
+  SourceInfo source_info;
+  auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
+  CHECK_OK(cel_expr_status.status());
+
+  std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
+
+  for (auto _ : state) {
+    google::protobuf::Arena arena;
+    Activation activation;
+    auto eval_result = cel_expr->Evaluate(activation, &arena);
+    CHECK_OK(eval_result.status());
+
+    CelValue result = eval_result.value();
+    GOOGLE_CHECK(result.IsString());
+    GOOGLE_CHECK(result.StringOrDie().value().size() == len + 1);
+  }
+}
+
+BENCHMARK(BM_EvalString)->Range(1, 32768);
+
 std::string CELAstFlattenedMap() {
   return R"(
 call_expr: <
