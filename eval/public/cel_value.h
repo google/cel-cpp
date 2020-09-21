@@ -373,6 +373,9 @@ class CelValue {
 
   friend class CelProtoWrapper;
 };
+static_assert(absl::is_trivially_destructible<CelValue>::value,
+              "Non-trivially-destructible CelValue impacts "
+              "performance");
 
 // CelList is a base class for list adapting classes.
 class CelList {
