@@ -816,22 +816,12 @@ std::vector<TestInfo> test_cases = {
      "]]]]]]",
      "", "Expression recursion limit exceeded. limit: 250"},
     {
-        "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
-        "[["
-        "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
-        "[["
-        "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
-        "[["
-        "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['just "
-        "fine'],[1],[2],[3],[4],[5]]]]]]]]]]"
-        "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
-        "]]"
-        "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
-        "]]"
-        "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
-        "]]"
-        "]]]]]]]]]]]]]]]]]]]]]",
-        ""  // parse output not validated as it is too largeZ.
+        // Note, the ANTLR parse stack may recurse much more deeply and permit
+        // more detailed expressions than the visitor can recurse over in
+        // practice.
+        "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['just fine'],[1],[2],[3],[4],[5]]]]]]]"
+        "]]]]]]]]]]]]]]]]]]]]]]]]",
+        ""  // parse output not validated as it is too large.
     }};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {

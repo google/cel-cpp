@@ -25,10 +25,13 @@ using google::api::expr::v1alpha1::Expr;
 
 ParserVisitor::ParserVisitor(const std::string& description,
                              const std::string& expression,
+                             const int max_recursion_depth,
                              const std::vector<Macro>& macros)
     : description_(description),
       expression_(expression),
-      sf_(std::make_shared<SourceFactory>(expression)) {
+      sf_(std::make_shared<SourceFactory>(expression)),
+      recursion_depth_(0),
+      max_recursion_depth_(max_recursion_depth) {
   for (const auto& m : macros) {
     macros_.emplace(m.macroKey(), m);
   }
@@ -43,6 +46,13 @@ T* tree_as(antlr4::tree::ParseTree* tree) {
 }
 
 antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
+  recursion_depth_ += 1;
+  if (recursion_depth_ > max_recursion_depth_) {
+    return sf_->reportError(
+        SourceFactory::noLocation(),
+        absl::StrFormat("Exceeded max recursion depth of %d when parsing.",
+                        max_recursion_depth_));
+  }
   if (auto* ctx = tree_as<CelParser::StartContext>(tree)) {
     return visitStart(ctx);
   } else if (auto* ctx = tree_as<CelParser::ExprContext>(tree)) {

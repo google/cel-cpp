@@ -18,6 +18,7 @@ class ParserVisitor : public ::cel_grammar::CelBaseVisitor,
                       public antlr4::BaseErrorListener {
  public:
   ParserVisitor(const std::string& description, const std::string& expression,
+                const int max_recursion_depth,
                 const std::vector<Macro>& macros = {});
   virtual ~ParserVisitor();
 
@@ -104,6 +105,8 @@ class ParserVisitor : public ::cel_grammar::CelBaseVisitor,
   std::string expression_;
   std::shared_ptr<SourceFactory> sf_;
   std::map<std::string, Macro> macros_;
+  int recursion_depth_;
+  const int max_recursion_depth_;
 };
 
 }  // namespace parser
