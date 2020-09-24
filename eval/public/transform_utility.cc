@@ -4,9 +4,13 @@
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "net/proto2/contrib/hashcode/hashcode.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
 #include "base/status_macros.h"
 
@@ -95,6 +99,59 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
                        " to Constant."));
   }
   return absl::OkStatus();
+}
+
+absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
+                                         google::protobuf::Arena* arena) {
+  switch (value.kind_case()) {
+    case Value::KIND_NOT_SET:
+      return absl::InvalidArgumentError("Value proto is not set");
+    case Value::kBoolValue:
+      return CelValue::CreateBool(value.bool_value());
+    case Value::kBytesValue:
+      return CelValue::CreateBytes(CelValue::BytesHolder(&value.bytes_value()));
+    case Value::kDoubleValue:
+      return CelValue::CreateDouble(value.double_value());
+    case Value::kEnumValue:
+      return CelValue::CreateInt64(value.enum_value().value());
+    case Value::kInt64Value:
+      return CelValue::CreateInt64(value.int64_value());
+    case Value::kListValue: {
+      std::vector<CelValue> list;
+      for (const auto& subvalue : value.list_value().values()) {
+        ASSIGN_OR_RETURN(auto list_value, ValueToCelValue(subvalue, arena));
+        list.push_back(list_value);
+      }
+      return CelValue::CreateList(
+          arena->Create<ContainerBackedListImpl>(arena, list));
+    }
+    case Value::kMapValue: {
+      std::vector<std::pair<CelValue, CelValue>> key_values;
+      for (const auto& entry : value.map_value().entries()) {
+        ASSIGN_OR_RETURN(auto map_key, ValueToCelValue(entry.key(), arena));
+        ASSIGN_OR_RETURN(auto map_value, ValueToCelValue(entry.value(), arena));
+        key_values.push_back(std::pair<CelValue, CelValue>(map_key, map_value));
+      }
+      auto cel_map =
+          CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
+                                       key_values.data(), key_values.size()))
+              .release();
+      arena->Own(cel_map);
+      return CelValue::CreateMap(cel_map);
+    }
+    case Value::kNullValue:
+      return CelValue::CreateNull();
+    case Value::kObjectValue:
+      return CelProtoWrapper::CreateMessage(&value.object_value(), arena);
+    case Value::kStringValue:
+      return CelValue::CreateString(
+          CelValue::StringHolder(&value.string_value()));
+    case Value::kTypeValue:
+      return CelValue::CreateString(
+          CelValue::StringHolder(&value.type_value()));
+    case Value::kUint64Value:
+      return CelValue::CreateUint64(value.uint64_value());
+  }
 }
 
 size_t ValueInterner::operator()(const Value& value) const {

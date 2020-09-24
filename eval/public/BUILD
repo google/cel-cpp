@@ -603,6 +603,9 @@ cc_library(
     deps = [
         ":cel_value",
         "//base:status_macros",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/structs:cel_proto_wrapper",
         "//internal:proto_util",
         "@com_google_absl//absl/status",
         "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
