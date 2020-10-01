@@ -5,6 +5,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/base/attributes.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/strings/match.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -587,7 +588,7 @@ const char kToken[] = "admin";
 ABSL_ATTRIBUTE_NOINLINE
 bool NativeCheck(std::map<std::string, std::string>& attributes,
                  const std::unordered_set<std::string>& blacklists,
-                 const std::unordered_set<std::string>& whitelists) {
+                 const absl::node_hash_set<std::string>& whitelists) {
   auto& ip = attributes["ip"];
   auto& path = attributes["path"];
   auto& token = attributes["token"];
@@ -616,7 +617,7 @@ void BM_PolicyNative(benchmark::State& state) {
   const auto blacklists =
       std::unordered_set<std::string>{"10.0.1.4", "10.0.1.5", "10.0.1.6"};
   const auto whitelists =
-      std::unordered_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
+      absl::node_hash_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
   auto attributes = std::map<std::string, std::string>{
       {"ip", kIP}, {"token", kToken}, {"path", kPath}};
   for (auto _ : state) {
