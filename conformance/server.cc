@@ -149,11 +149,6 @@ void ExportValue(const CelValue& result, v1alpha1::Value* out) {
       }
       break;
     }
-    case CelValue::Type::kCelType: {
-      *out->mutable_type_value() = std::string(result.CelTypeOrDie().value());
-      break;
-    }
-
     case CelValue::Type::kUnknownSet:
     case CelValue::Type::kError:
     case CelValue::Type::kAny:

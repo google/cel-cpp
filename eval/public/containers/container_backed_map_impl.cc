@@ -39,10 +39,6 @@ class HasherOp {
     return absl::Hash<absl::string_view>()(arg.value());
   }
 
-  size_t operator()(const CelValue::CelTypeHolder& arg) {
-    return absl::Hash<absl::string_view>()(arg.value());
-  }
-
   // Needed for successful compilation resolution.
   size_t operator()(const std::nullptr_t&) { return 0; }
 };

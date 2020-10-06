@@ -4,7 +4,6 @@
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
-#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -230,42 +229,6 @@ TEST(CelValueTest, TestMap) {
   EXPECT_TRUE(value.GetValue(&value2));
   EXPECT_THAT(value2, Eq(&dummy_map));
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
-}
-
-TEST(CelValueTest, TestCelType) {
-  ::google::protobuf::Arena arena;
-
-  CelValue value_bool = CelValue::CreateBool(false);
-  EXPECT_THAT(value_bool.ObtainCelType().CelTypeOrDie().value(), Eq("bool"));
-
-  CelValue value_int64 = CelValue::CreateInt64(0);
-  EXPECT_THAT(value_int64.ObtainCelType().CelTypeOrDie().value(), Eq("int"));
-
-  CelValue value_uint64 = CelValue::CreateUint64(0);
-  EXPECT_THAT(value_uint64.ObtainCelType().CelTypeOrDie().value(), Eq("uint"));
-
-  CelValue value_double = CelValue::CreateDouble(1.0);
-  EXPECT_THAT(value_double.ObtainCelType().CelTypeOrDie().value(),
-              Eq("double"));
-
-  std::string str = "test";
-  CelValue value_str = CelValue::CreateString(&str);
-  EXPECT_THAT(value_str.ObtainCelType().CelTypeOrDie().value(), Eq("string"));
-
-  std::string bytes_str = "bytes";
-  CelValue value_bytes = CelValue::CreateBytes(&bytes_str);
-  EXPECT_THAT(value_bytes.type(), Eq(CelValue::Type::kBytes));
-  EXPECT_THAT(value_bytes.ObtainCelType().CelTypeOrDie().value(), Eq("bytes"));
-
-  UnknownSet unknown_set;
-  CelValue value_unknown = CelValue::CreateUnknownSet(&unknown_set);
-  EXPECT_THAT(value_unknown.type(), Eq(CelValue::Type::kUnknownSet));
-  EXPECT_TRUE(value_unknown.ObtainCelType().IsUnknownSet());
-
-  CelValue missing_attribute_error =
-      CreateMissingAttributeError(&arena, "destination.ip");
-  EXPECT_TRUE(IsMissingAttributeError(missing_attribute_error));
-  EXPECT_TRUE(missing_attribute_error.ObtainCelType().IsError());
 }
 
 // This test verifies CelValue support of Unknown type.
