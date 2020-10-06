@@ -112,6 +112,48 @@ TEST(DebugString, UnknownSet) {
             "functions:[IntFn(<int64,1>)]}>");  // no transform
 }
 
+TEST(DebugString, Type) {
+  constexpr char data[] = {
+      '\x01', '\x01', '\x00', '\xc0', '\xff',
+  };
+  std::string bytestring(data, 5);
+  EXPECT_EQ(
+      DebugString(CelValue::CreateStringView("hello world").ObtainCelType()),
+      "<CelType,'string'>");
+  EXPECT_EQ(DebugString(CelValue::CreateBytes(&bytestring).ObtainCelType()),
+            "<CelType,'bytes'>");
+  EXPECT_EQ(DebugString(CelValue::CreateBool(false).ObtainCelType()),
+            "<CelType,'bool'>");
+  EXPECT_EQ(DebugString(CelValue::CreateDouble(1.5).ObtainCelType()),
+            "<CelType,'double'>");
+  EXPECT_EQ(
+      DebugString(CelValue::CreateDuration(absl::Seconds(2)).ObtainCelType()),
+      "<CelType,'google.protobuf.Duration'>");
+  EXPECT_EQ(
+      DebugString(
+          CelValue::CreateTimestamp(absl::FromUnixSeconds(1)).ObtainCelType()),
+      "<CelType,'google.protobuf.Timestamp'>");
+  EXPECT_EQ(DebugString(CelValue::CreateInt64(-1).ObtainCelType()),
+            "<CelType,'int'>");
+
+  EXPECT_EQ(DebugString(CelValue::CreateUint64(1).ObtainCelType()),
+            "<CelType,'uint'>");
+
+  google::protobuf::Arena arena;
+
+  protobuf::ListValue list_msg;
+  EXPECT_EQ(
+      DebugString(
+          CelProtoWrapper::CreateMessage(&list_msg, &arena).ObtainCelType()),
+      "<CelType,'list'>");
+  // Converted to a map on CelValue::Create.
+  protobuf::Struct struct_msg;
+  EXPECT_EQ(
+      DebugString(
+          CelProtoWrapper::CreateMessage(&struct_msg, &arena).ObtainCelType()),
+      "<CelType,'map'>");
+}
+
 }  // namespace
 }  // namespace test
 }  // namespace runtime
