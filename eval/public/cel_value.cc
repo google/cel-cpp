@@ -1,6 +1,7 @@
 #include "eval/public/cel_value.h"
 
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 
 namespace google {
@@ -64,49 +65,38 @@ const std::string CelValue::DebugString() const {
   switch (type()) {
     case Type::kBool:
       return absl::StrFormat("bool: %d", BoolOrDie());
-      break;
     case Type::kInt64:
       return absl::StrFormat("int64: %lld", Int64OrDie());
-      break;
     case Type::kUint64:
       return absl::StrFormat("uint64: %llu", Uint64OrDie());
-      break;
     case Type::kDouble:
       return absl::StrFormat("double: %f", DoubleOrDie());
-      break;
     case Type::kString:
       return absl::StrFormat("string: %s", StringOrDie().value());
-      break;
     case Type::kBytes:
       return absl::StrFormat("bytes: %s", BytesOrDie().value());
-      break;
     case Type::kMessage:
       return absl::StrFormat(
           "Message: %s",
           IsNull() ? "NULL" : MessageOrDie()->ShortDebugString());
-      break;
     case Type::kDuration:
       return absl::StrFormat("Duration: %s",
                              absl::FormatDuration(DurationOrDie()));
-      break;
     case Type::kTimestamp:
-      return absl::StrFormat("Time: %s", absl::FormatTime(TimestampOrDie()));
-      break;
+      return absl::StrFormat(
+          "Time: %s", absl::FormatTime(TimestampOrDie(), absl::UTCTimeZone()));
     case Type::kList:
       return absl::StrFormat("List, size: %lld", ListOrDie()->size());
-      break;
     case Type::kMap:
       return absl::StrFormat("Map, size: %lld", MapOrDie()->size());
-      break;
     case Type::kUnknownSet:
       return "UnknownSet";
-      break;
     case Type::kError:
       return absl::StrFormat("Error: %s", ErrorOrDie()->ToString());
-      break;
     case Type::kAny:
       return "Any";
-      break;
+    default:
+      return "unknown_type";
   }
 }
 

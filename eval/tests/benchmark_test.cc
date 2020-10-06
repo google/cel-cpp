@@ -587,12 +587,12 @@ const char kToken[] = "admin";
 
 ABSL_ATTRIBUTE_NOINLINE
 bool NativeCheck(std::map<std::string, std::string>& attributes,
-                 const std::unordered_set<std::string>& blacklists,
-                 const absl::node_hash_set<std::string>& whitelists) {
+                 const std::unordered_set<std::string>& denylists,
+                 const absl::node_hash_set<std::string>& allowlists) {
   auto& ip = attributes["ip"];
   auto& path = attributes["path"];
   auto& token = attributes["token"];
-  if (blacklists.find(ip) != blacklists.end()) {
+  if (denylists.find(ip) != denylists.end()) {
     return false;
   }
   if (absl::StartsWith(path, "v1")) {
@@ -605,7 +605,7 @@ bool NativeCheck(std::map<std::string, std::string>& attributes,
     }
   } else if (absl::StartsWith(path, "/admin")) {
     if (token == "admin") {
-      if (whitelists.find(ip) != whitelists.end()) {
+      if (allowlists.find(ip) != allowlists.end()) {
         return true;
       }
     }
@@ -614,14 +614,14 @@ bool NativeCheck(std::map<std::string, std::string>& attributes,
 }
 
 void BM_PolicyNative(benchmark::State& state) {
-  const auto blacklists =
+  const auto denylists =
       std::unordered_set<std::string>{"10.0.1.4", "10.0.1.5", "10.0.1.6"};
-  const auto whitelists =
+  const auto allowlists =
       absl::node_hash_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
   auto attributes = std::map<std::string, std::string>{
       {"ip", kIP}, {"token", kToken}, {"path", kPath}};
   for (auto _ : state) {
-    auto result = NativeCheck(attributes, blacklists, whitelists);
+    auto result = NativeCheck(attributes, denylists, allowlists);
     GOOGLE_CHECK(result);
   }
 }

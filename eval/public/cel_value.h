@@ -22,6 +22,7 @@
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
 #include "absl/status/statusor.h"

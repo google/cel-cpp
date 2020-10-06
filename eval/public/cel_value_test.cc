@@ -7,7 +7,6 @@
 #include "absl/time/time.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "util/task/canonical_errors.h"
 
 namespace google {
 namespace api {
@@ -270,13 +269,13 @@ TEST(CelValueTest, DebugString) {
 
   EXPECT_EQ(
       CelValue::CreateTimestamp(absl::FromUnixSeconds(86400)).DebugString(),
-      "Time: 1970-01-01T16:00:00-08:00");
+      "Time: 1970-01-02T00:00:00+00:00");
 
   UnknownSet unknown_set;
   EXPECT_EQ(CelValue::CreateUnknownSet(&unknown_set).DebugString(),
             "UnknownSet");
 
-  util::Status error = util::InternalError("Blah...");
+  absl::Status error = absl::InternalError("Blah...");
   EXPECT_EQ(CelValue::CreateError(&error).DebugString(),
             "Error: INTERNAL: Blah...");
 }
