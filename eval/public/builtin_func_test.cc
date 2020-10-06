@@ -131,6 +131,17 @@ class BuiltinsTest : public ::testing::Test {
         << operation << " for " << CelValue::TypeName(ref.type());
   }
 
+  // Helper method. Attempts to perform a type conversion and expects an error
+  // as the result.
+  void TestTypeConversionError(absl::string_view operation,
+                               const CelValue& ref) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsError(), true);
+  }
+
   // Helper method. Looks up in registry and tests functions without params.
   void TestFunctions(absl::string_view operation, const CelValue& ref,
                      int64_t result) {
@@ -578,6 +589,21 @@ TEST_F(BuiltinsTest, TestTypeConversions_double) {
 TEST_F(BuiltinsTest, TestTypeConversions_uint64) {
   uint64_t ref = 100;
   TestTypeConverts(builtin::kInt, CelValue::CreateUint64(ref), 100L);
+}
+
+TEST_F(BuiltinsTest, TestTypeConversionError_doubleNegRange) {
+  double range = -1.0e99;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestTypeConversionError_doublePosRange) {
+  double range = 1.0e99;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestTypeConversionError_uint64Range) {
+  uint64_t range = 18446744073709551615UL;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateUint64(range));
 }
 
 TEST_F(BuiltinsTest, TestTimestampComparisons) {
