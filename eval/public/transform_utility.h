@@ -10,6 +10,8 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+using google::api::expr::v1alpha1::Value;
+
 // Translates a CelValue into a google::api::expr::v1alpha1::Value. Returns an error if
 // translation is not supported.
 absl::Status CelValueToValue(const CelValue& value, Value* result);
@@ -20,13 +22,6 @@ absl::Status CelValueToValue(const CelValue& value, Value* result);
 absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
                                          google::protobuf::Arena* arena);
 
-// TODO(issues/88) Add the notion of hashing and equivalence to CelValue and
-// use that instead.
-struct ValueInterner {
-  size_t operator()(const Value& value) const;
-
-  bool operator()(const Value& lhs, const Value& rhs) const;
-};
 
 }  // namespace runtime
 

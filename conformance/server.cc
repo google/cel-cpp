@@ -14,6 +14,7 @@
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/transform_utility.h"
 #include "internal/proto_util.h"
 #include "parser/parser.h"
 #include "absl/status/statusor.h"
@@ -27,142 +28,6 @@ namespace google {
 namespace api {
 namespace expr {
 namespace runtime {
-
-namespace {
-CelValue ImportValue(Arena* arena, const v1alpha1::Value& value) {
-  switch (value.kind_case()) {
-    case v1alpha1::Value::KindCase::kNullValue:
-      return CelValue::CreateNull();
-    case v1alpha1::Value::KindCase::kBoolValue:
-      return CelValue::CreateBool(value.bool_value());
-    case v1alpha1::Value::KindCase::kInt64Value:
-      return CelValue::CreateInt64(value.int64_value());
-    case v1alpha1::Value::KindCase::kUint64Value:
-      return CelValue::CreateUint64(value.uint64_value());
-    case v1alpha1::Value::KindCase::kDoubleValue:
-      return CelValue::CreateDouble(value.double_value());
-    case v1alpha1::Value::KindCase::kStringValue:
-      return CelValue::CreateString(&value.string_value());
-    case v1alpha1::Value::KindCase::kBytesValue:
-      return CelValue::CreateBytes(&value.bytes_value());
-    case v1alpha1::Value::KindCase::kListValue: {
-      std::vector<CelValue> list;
-      int size = value.list_value().values_size();
-
-      list.reserve(size);
-      for (int i = 0; i < size; i++) {
-        list.push_back(ImportValue(arena, value.list_value().values(i)));
-      }
-
-      return CelValue::CreateList(
-          Arena::Create<ContainerBackedListImpl>(arena, list));
-    }
-    case v1alpha1::Value::KindCase::kMapValue: {
-      std::vector<std::pair<CelValue, CelValue>> pairs;
-
-      pairs.reserve(value.map_value().entries_size());
-      for (const auto& entry : value.map_value().entries()) {
-        auto key = ImportValue(arena, entry.key());
-        if (!key.IsBool() && !key.IsInt64() && !key.IsUint64() &&
-            !key.IsString()) {
-          return CreateErrorValue(arena, "invalid key type in a map");
-        }
-        pairs.push_back({key, ImportValue(arena, entry.value())});
-      }
-
-      auto cel_map =
-          CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
-              pairs.data(), pairs.size()));
-      if (cel_map == nullptr) {
-        return CreateErrorValue(arena, "invalid pairs in map constructor");
-      }
-
-      auto result = CelValue::CreateMap(cel_map.get());
-
-      // Pass object ownership to Arena.
-      arena->Own(cel_map.release());
-
-      return result;
-    }
-    default:
-      // unsupported values
-      return CreateErrorValue(arena, "unsupported import value type");
-  }
-}
-void ExportValue(const CelValue& result, v1alpha1::Value* out) {
-  switch (result.type()) {
-    case CelValue::Type::kBool:
-      out->set_bool_value(result.BoolOrDie());
-      break;
-    case CelValue::Type::kInt64:
-      out->set_int64_value(result.Int64OrDie());
-      break;
-    case CelValue::Type::kUint64:
-      out->set_uint64_value(result.Uint64OrDie());
-      break;
-    case CelValue::Type::kDouble:
-      out->set_double_value(result.DoubleOrDie());
-      break;
-    case CelValue::Type::kString:
-      *out->mutable_string_value() = std::string(result.StringOrDie().value());
-      break;
-    case CelValue::Type::kBytes:
-      *out->mutable_bytes_value() = std::string(result.BytesOrDie().value());
-      break;
-    case CelValue::Type::kMessage: {
-      if (result.IsNull()) {
-        out->set_null_value(google::protobuf::NullValue::NULL_VALUE);
-      } else {
-        auto msg = result.MessageOrDie();
-        out->mutable_object_value()->PackFrom(*msg);
-      }
-      break;
-    }
-    case CelValue::Type::kDuration: {
-      google::protobuf::Duration duration;
-      expr::internal::EncodeDuration(result.DurationOrDie(), &duration);
-      out->mutable_object_value()->PackFrom(duration);
-      break;
-    }
-    case CelValue::Type::kTimestamp: {
-      google::protobuf::Timestamp timestamp;
-      expr::internal::EncodeTime(result.TimestampOrDie(), &timestamp);
-      out->mutable_object_value()->PackFrom(timestamp);
-      break;
-    }
-    case CelValue::Type::kList: {
-      auto list = result.ListOrDie();
-      auto values = out->mutable_list_value();
-      for (int i = 0; i < list->size(); i++) {
-        ExportValue((*list)[i], values->add_values());
-      }
-      break;
-    }
-    case CelValue::Type::kMap: {
-      auto map = result.MapOrDie();
-      auto list = map->ListKeys();
-      auto values = out->mutable_map_value();
-      for (int i = 0; i < list->size(); i++) {
-        auto entry = values->add_entries();
-        ExportValue((*list)[i], entry->mutable_key());
-        ExportValue((*map)[(*list)[i]].value(), entry->mutable_value());
-      }
-      break;
-    }
-    case CelValue::Type::kCelType: {
-      *out->mutable_type_value() = std::string(result.CelTypeOrDie().value());
-      break;
-    }
-
-    case CelValue::Type::kUnknownSet:
-    case CelValue::Type::kError:
-    case CelValue::Type::kAny:
-      // do nothing for special values
-      break;
-  }
-}
-
-}  // namespace
 
 class ConformanceServiceImpl final
     : public v1alpha1::ConformanceService::Service {
@@ -217,8 +82,14 @@ class ConformanceServiceImpl final
     Activation activation;
 
     for (const auto& pair : request->bindings()) {
-      auto value = ImportValue(&arena, pair.second.value());
-      activation.InsertValue(pair.first, value);
+      auto* import_value =
+          Arena::CreateMessage<google::api::expr::v1alpha1::Value>(&arena);
+      (*import_value).MergeFrom(pair.second.value());
+      auto import_status = ValueToCelValue(*import_value, &arena);
+      if (!import_status.ok()) {
+        return Status(StatusCode::INTERNAL, import_status.status().ToString());
+      }
+      activation.InsertValue(pair.first, import_status.value());
     }
 
     auto eval_status = cel_expression->Evaluate(activation, &arena);
@@ -234,7 +105,13 @@ class ConformanceServiceImpl final
            ->add_errors()
            ->mutable_message() = std::string(result.ErrorOrDie()->message());
     } else {
-      ExportValue(result, response->mutable_result()->mutable_value());
+      google::api::expr::v1alpha1::Value export_value;
+      auto export_status = CelValueToValue(result, &export_value);
+      if (!export_status.ok()) {
+        return Status(StatusCode::INTERNAL, export_status.ToString());
+      }
+      auto* result_value = response->mutable_result()->mutable_value();
+      (*result_value).MergeFrom(export_value);
     }
     return Status::OK;
   }

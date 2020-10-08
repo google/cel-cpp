@@ -49,6 +49,7 @@ cc_binary(
     deps = [
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
+        "//eval/public:transform_utility",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//internal:proto_util",
