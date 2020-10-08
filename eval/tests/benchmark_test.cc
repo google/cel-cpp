@@ -5,6 +5,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/base/attributes.h"
+#include "absl/container/node_hash_set.h"
 #include "absl/strings/match.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -66,6 +67,48 @@ static void BM_Eval(benchmark::State& state) {
 }
 
 BENCHMARK(BM_Eval)->Range(1, 32768);
+
+// Benchmark test
+// Evaluates cel expression:
+// '"a" + "a" + "a" .... + "a"'
+static void BM_EvalString(benchmark::State& state) {
+  auto builder = CreateCelExpressionBuilder();
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  CHECK_OK(reg_status);
+
+  int len = state.range(0);
+
+  Expr root_expr;
+  Expr* cur_expr = &root_expr;
+
+  for (int i = 0; i < len; i++) {
+    Expr::Call* call = cur_expr->mutable_call_expr();
+    call->set_function("_+_");
+    call->add_args()->mutable_const_expr()->set_string_value("a");
+    cur_expr = call->add_args();
+  }
+
+  cur_expr->mutable_const_expr()->set_string_value("a");
+
+  SourceInfo source_info;
+  auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
+  CHECK_OK(cel_expr_status.status());
+
+  std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
+
+  for (auto _ : state) {
+    google::protobuf::Arena arena;
+    Activation activation;
+    auto eval_result = cel_expr->Evaluate(activation, &arena);
+    CHECK_OK(eval_result.status());
+
+    CelValue result = eval_result.value();
+    GOOGLE_CHECK(result.IsString());
+    GOOGLE_CHECK(result.StringOrDie().value().size() == len + 1);
+  }
+}
+
+BENCHMARK(BM_EvalString)->Range(1, 32768);
 
 std::string CELAstFlattenedMap() {
   return R"(
@@ -544,12 +587,12 @@ const char kToken[] = "admin";
 
 ABSL_ATTRIBUTE_NOINLINE
 bool NativeCheck(std::map<std::string, std::string>& attributes,
-                 const std::unordered_set<std::string>& blacklists,
-                 const std::unordered_set<std::string>& whitelists) {
+                 const std::unordered_set<std::string>& denylists,
+                 const absl::node_hash_set<std::string>& allowlists) {
   auto& ip = attributes["ip"];
   auto& path = attributes["path"];
   auto& token = attributes["token"];
-  if (blacklists.find(ip) != blacklists.end()) {
+  if (denylists.find(ip) != denylists.end()) {
     return false;
   }
   if (absl::StartsWith(path, "v1")) {
@@ -562,7 +605,7 @@ bool NativeCheck(std::map<std::string, std::string>& attributes,
     }
   } else if (absl::StartsWith(path, "/admin")) {
     if (token == "admin") {
-      if (whitelists.find(ip) != whitelists.end()) {
+      if (allowlists.find(ip) != allowlists.end()) {
         return true;
       }
     }
@@ -571,14 +614,14 @@ bool NativeCheck(std::map<std::string, std::string>& attributes,
 }
 
 void BM_PolicyNative(benchmark::State& state) {
-  const auto blacklists =
+  const auto denylists =
       std::unordered_set<std::string>{"10.0.1.4", "10.0.1.5", "10.0.1.6"};
-  const auto whitelists =
-      std::unordered_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
+  const auto allowlists =
+      absl::node_hash_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
   auto attributes = std::map<std::string, std::string>{
       {"ip", kIP}, {"token", kToken}, {"path", kPath}};
   for (auto _ : state) {
-    auto result = NativeCheck(attributes, blacklists, whitelists);
+    auto result = NativeCheck(attributes, denylists, allowlists);
     GOOGLE_CHECK(result);
   }
 }

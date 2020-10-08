@@ -34,6 +34,16 @@
   } while (false)
 #endif
 
+#if !defined(ASSIGN_OR_RETURN)
+#define CEL_CONCAT_(x, y) x##y
+#define CEL_CONCAT(x, y) CEL_CONCAT_(x, y)
+#define ASSIGN_OR_RETURN(lhs, rexpr)                         \
+  auto CEL_CONCAT(_statusor, __LINE__) =                     \
+      static_cast<decltype(rexpr)&&>(rexpr);                 \
+  RETURN_IF_ERROR(CEL_CONCAT(_statusor, __LINE__).status()); \
+  lhs = std::move(CEL_CONCAT(_statusor, __LINE__).value());
+#endif
+
 template <typename To, typename From>  // use like this: down_cast<T*>(foo);
 inline To down_cast(From* f) {         // so we only accept pointers
   static_assert(

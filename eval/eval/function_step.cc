@@ -45,7 +45,7 @@ bool IsNonStrict(const std::string& name) {
 }
 
 // Determine if the overload should be considered. Overloads that can consume
-// errors or unknown sets must be whitelisted as a non-strict function.
+// errors or unknown sets must be allowed as a non-strict function.
 bool ShouldAcceptOverload(const CelFunction* function,
                           absl::Span<const CelValue> arguments) {
   if (function == nullptr) {

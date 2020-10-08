@@ -24,12 +24,11 @@ cc_library(
     ],
     deps = [
         ":cel_value_internal",
-        "//internal:proto_util",
-        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
@@ -139,6 +138,7 @@ cc_library(
     deps = [
         ":cel_function",
         ":cel_function_registry",
+        "//eval/public/structs:cel_proto_wrapper",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -181,8 +181,8 @@ cc_library(
         ":cel_function_adapter",
         ":cel_function_registry",
         ":cel_options",
-        "//base:status_macros",
         "//eval/public/containers:container_backed_list_impl",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
@@ -306,6 +306,7 @@ cc_library(
     ],
     deps = [
         ":cel_value",
+        "//internal:proto_util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -336,12 +337,11 @@ cc_test(
         ":cel_value",
         ":unknown_attribute_set",
         ":unknown_set",
-        "//eval/public/structs:cel_proto_wrapper",
-        "//eval/testutil:test_message_cc_proto",
-        "//testutil:util",
+        "//base:status_macros",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
         "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -354,6 +354,7 @@ cc_test(
     deps = [
         ":cel_attribute",
         ":cel_value",
+        "//eval/public/structs:cel_proto_wrapper",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
@@ -587,6 +588,28 @@ cc_test(
         ":unknown_set",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "transform_utility",
+    srcs = [
+        "transform_utility.cc",
+    ],
+    hdrs = [
+        "transform_utility.h",
+    ],
+    deps = [
+        ":cel_value",
+        "//base:status_macros",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/structs:cel_proto_wrapper",
+        "//internal:proto_util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

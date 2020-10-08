@@ -331,7 +331,7 @@ TEST_P(CreateCreateStructStepTest, TestSetDurationField) {
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "duration_value", CelValue::CreateDuration(&test_duration), &arena,
+      "duration_value", CelProtoWrapper::CreateDuration(&test_duration), &arena,
       &test_msg, GetParam()));
   EXPECT_THAT(test_msg.duration_value(), EqualsProto(test_duration));
 }
@@ -346,8 +346,8 @@ TEST_P(CreateCreateStructStepTest, TestSetTimestampField) {
   TestMessage test_msg;
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
-      "timestamp_value", CelValue::CreateTimestamp(&test_timestamp), &arena,
-      &test_msg, GetParam()));
+      "timestamp_value", CelProtoWrapper::CreateTimestamp(&test_timestamp),
+      &arena, &test_msg, GetParam()));
   EXPECT_THAT(test_msg.timestamp_value(), EqualsProto(test_timestamp));
 }
 

@@ -74,6 +74,10 @@ struct ValueStringVisitor {
     return absl::Substitute("{$0}", absl::StrJoin(elements, ", "));
   }
 
+  std::string operator()(CelValue::CelTypeHolder arg) {
+    return absl::StrFormat("'%s'", arg.value());
+  }
+
   std::string operator()(const CelError* arg) { return arg->ToString(); }
 
   std::string operator()(const UnknownSet* arg) {

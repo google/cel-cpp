@@ -6,6 +6,7 @@
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "absl/status/statusor.h"
 
 namespace google {
@@ -241,7 +242,7 @@ class FunctionAdapter : public CelFunction {
       return absl::Status(absl::StatusCode::kInvalidArgument,
                           "Null Message pointer returned");
     }
-    *result = CelValue::CreateMessage(value, arena);
+    *result = CelProtoWrapper::CreateMessage(value, arena);
     return absl::OkStatus();
   }
 

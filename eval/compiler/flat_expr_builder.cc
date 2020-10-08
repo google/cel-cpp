@@ -643,8 +643,8 @@ void ComprehensionVisitor::PreVisit(const Expr*) {
 
 void ComprehensionVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   const Comprehension* comprehension = &expr->comprehension_expr();
-  auto accu_var = comprehension->accu_var();
-  auto iter_var = comprehension->iter_var();
+  const auto accu_var = comprehension->accu_var();
+  const auto iter_var = comprehension->iter_var();
   // TODO(issues/20): Consider refactoring the comprehension prologue step.
   switch (arg_num) {
     case ITER_RANGE: {

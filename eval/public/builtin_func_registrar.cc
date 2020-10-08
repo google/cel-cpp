@@ -1,8 +1,10 @@
 #include "eval/public/builtin_func_registrar.h"
 
 #include <functional>
+#include <limits>
 
 #include "google/protobuf/util/time_util.h"
+#include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
@@ -1300,8 +1302,16 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       [](Arena*, absl::Time t) { return absl::ToUnixSeconds(t); }, registry);
   if (!status.ok()) return status;
 
-  status = FunctionAdapter<int64_t, double>::CreateAndRegister(
-      builtin::kInt, false, [](Arena*, double v) { return (int64_t)v; },
+  status = FunctionAdapter<CelValue, double>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena* arena, double v) {
+        if ((v > (double)std::numeric_limits<int64_t>::max()) ||
+            (v < (double)std::numeric_limits<int64_t>::min())) {
+          return CreateErrorValue(arena, "double out of int range",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        return CelValue::CreateInt64((int64_t)v);
+      },
       registry);
   if (!status.ok()) return status;
 
@@ -1309,8 +1319,15 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       builtin::kInt, false, [](Arena*, bool v) { return (int64_t)v; }, registry);
   if (!status.ok()) return status;
 
-  status = FunctionAdapter<int64_t, uint64_t>::CreateAndRegister(
-      builtin::kInt, false, [](Arena*, uint64_t v) { return (int64_t)v; },
+  status = FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena* arena, uint64_t v) {
+        if (v > (uint64_t)std::numeric_limits<int64_t>::max()) {
+          return CreateErrorValue(arena, "uint out of int range",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        return CelValue::CreateInt64((int64_t)v);
+      },
       registry);
   if (!status.ok()) return status;
 

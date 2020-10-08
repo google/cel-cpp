@@ -29,6 +29,7 @@ cc_library(
         ":visitor",
         "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],

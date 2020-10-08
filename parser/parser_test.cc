@@ -629,6 +629,10 @@ std::vector<TestInfo> test_cases = {
      "    1^#13:int64#\n"
      "  )^#12:Expr.Call#\n"
      ")^#10:Expr.Call#"},
+    {"---a",
+     "-_(\n"
+     "  a^#2:Expr.Ident#\n"
+     ")^#1:Expr.Call#"},
     {"1 + +", "",
      "ERROR: <input>:1:5: Syntax error: mismatched input '+' expecting {'[', "
      "'{',"
@@ -801,7 +805,24 @@ std::vector<TestInfo> test_cases = {
      " | .........................^\n"
      "ERROR: <input>:1:15: argument is not an identifier\n"
      " | [1, 2, 3].map(var, var * var)\n"
-     " | ..............^"}};
+     " | ..............^"},
+    {"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+     "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+     "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+     "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['too many']]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+     "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+     "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+     "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+     "]]]]]]",
+     "", "Expression recursion limit exceeded. limit: 250"},
+    {
+        // Note, the ANTLR parse stack may recurse much more deeply and permit
+        // more detailed expressions than the visitor can recurse over in
+        // practice.
+        "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['just fine'],[1],[2],[3],[4],[5]]]]]]]"
+        "]]]]]]]]]]]]]]]]]]]]]]]]",
+        ""  // parse output not validated as it is too large.
+    }};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:

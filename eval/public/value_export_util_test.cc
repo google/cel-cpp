@@ -81,7 +81,7 @@ TEST(ValueExportUtilTest, ConvertDurationValue) {
   Duration duration;
   duration.set_seconds(2);
   duration.set_nanos(3);
-  CelValue cel_value = CelValue::CreateDuration(&duration);
+  CelValue cel_value = CelProtoWrapper::CreateDuration(&duration);
   Value value;
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStringValue);
@@ -92,7 +92,7 @@ TEST(ValueExportUtilTest, ConvertTimestampValue) {
   Timestamp timestamp;
   timestamp.set_seconds(1000000000);
   timestamp.set_nanos(3);
-  CelValue cel_value = CelValue::CreateTimestamp(&timestamp);
+  CelValue cel_value = CelProtoWrapper::CreateTimestamp(&timestamp);
   Value value;
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStringValue);

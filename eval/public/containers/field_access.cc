@@ -7,6 +7,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
 
 namespace google {
@@ -135,7 +136,7 @@ class FieldAccessor {
       }
       case FieldDescriptor::CPPTYPE_MESSAGE: {
         const google::protobuf::Message* msg_value = GetMessage();
-        *result = CelValue::CreateMessage(msg_value, arena);
+        *result = CelProtoWrapper::CreateMessage(msg_value, arena);
         break;
       }
       case FieldDescriptor::CPPTYPE_ENUM: {
@@ -723,9 +724,9 @@ absl::Status SetValueToSingleField(const CelValue& value,
              ? absl::OkStatus()
              : absl::InvalidArgumentError(absl::Substitute(
                    "Could not assign supplied argument to message \"$0\" field "
-                   "\"$1\" of type $2: type was $3",
+                   "\"$1\" of type $2: value was \"$3\"",
                    msg->GetDescriptor()->name(), desc->name(),
-                   desc->type_name(), absl::StrCat(value.type())));
+                   desc->type_name(), value.DebugString()));
 }
 
 absl::Status AddValueToRepeatedField(const CelValue& value,
@@ -735,9 +736,10 @@ absl::Status AddValueToRepeatedField(const CelValue& value,
   return (setter.SetFieldFromCelValue(value))
              ? absl::OkStatus()
              : absl::InvalidArgumentError(absl::Substitute(
-                   "Could not add supplied argument to message \"$0\" field "
-                   "\"$1\".",
-                   msg->GetDescriptor()->name(), desc->name()));
+                   "Could not add supplied argument \"$2\" to message \"$0\" "
+                   "field \"$1\".",
+                   msg->GetDescriptor()->name(), desc->name(),
+                   value.DebugString()));
 }
 
 absl::Status AddValueToMapField(const CelValue& key, const CelValue& value,
@@ -750,17 +752,17 @@ absl::Status AddValueToMapField(const CelValue& key, const CelValue& value,
   ScalarFieldSetter value_setter(entry_msg, value_field_desc);
 
   if (!key_setter.SetFieldFromCelValue(key)) {
-    return absl::InvalidArgumentError(
-        absl::Substitute("Could not assign supplied argument to message \"$0\" "
-                         "field \"$1\" map key.",
-                         msg->GetDescriptor()->name(), desc->name()));
+    return absl::InvalidArgumentError(absl::Substitute(
+        "Could not assign supplied argument \"$2\" to message "
+        "\"$0\" field \"$1\" map key.",
+        msg->GetDescriptor()->name(), desc->name(), key.DebugString()));
   }
 
   if (!value_setter.SetFieldFromCelValue(value)) {
-    return absl::InvalidArgumentError(
-        absl::Substitute("Could not assign supplied argument to message \"$0\" "
-                         "field \"$1\" map value.",
-                         msg->GetDescriptor()->name(), desc->name()));
+    return absl::InvalidArgumentError(absl::Substitute(
+        "Could not assign supplied argument \"$2\" to message \"$0\" "
+        "field \"$1\" map value.",
+        msg->GetDescriptor()->name(), desc->name(), value.DebugString()));
   }
 
   return absl::OkStatus();
