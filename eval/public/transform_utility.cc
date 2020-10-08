@@ -88,6 +88,9 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       // TODO(issues/87): Migrate to google.api.expr.ExprValue
       result->set_string_value("CelValue::Type::kError");
       break;
+    case CelValue::Type::kCelType:
+      result->set_type_value(value.CelTypeOrDie().value());
+      break;
     case CelValue::Type::kAny:
       // kAny is a special value used in function descriptors.
       return absl::Status(absl::StatusCode::kInternal,
@@ -147,8 +150,8 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
       return CelValue::CreateString(
           CelValue::StringHolder(&value.string_value()));
     case Value::kTypeValue:
-      return CelValue::CreateString(
-          CelValue::StringHolder(&value.type_value()));
+      return CelValue::CreateCelType(
+          CelValue::CelTypeHolder(&value.type_value()));
     case Value::kUint64Value:
       return CelValue::CreateUint64(value.uint64_value());
   }

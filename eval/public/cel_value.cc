@@ -1,8 +1,10 @@
 #include "eval/public/cel_value.h"
 
+#include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/string_view.h"
 
 namespace google {
 namespace api {
@@ -24,6 +26,20 @@ constexpr absl::string_view kPayloadUrlMissingAttributePath =
     "missing_attribute_path";
 constexpr absl::string_view kPayloadUrlUnknownFunctionResult =
     "cel_is_unknown_function_result";
+
+constexpr absl::string_view kNullTypeName = "null_type";
+constexpr absl::string_view kBoolTypeName = "bool";
+constexpr absl::string_view kInt64TypeName = "int";
+constexpr absl::string_view kUInt64TypeName = "uint";
+constexpr absl::string_view kDoubleTypeName = "double";
+constexpr absl::string_view kStringTypeName = "string";
+constexpr absl::string_view kBytesTypeName = "bytes";
+constexpr absl::string_view kDurationTypeName = "google.protobuf.Duration";
+constexpr absl::string_view kTimestampTypeName = "google.protobuf.Timestamp";
+// Leading "." to prevent potential namespace clash.
+constexpr absl::string_view kListTypeName = "list";
+constexpr absl::string_view kMapTypeName = "map";
+constexpr absl::string_view kCelTypeTypeName = "type";
 
 }  // namespace
 
@@ -51,12 +67,59 @@ std::string CelValue::TypeName(Type value_type) {
       return "CelList";
     case Type::kMap:
       return "CelMap";
+    case Type::kCelType:
+      return "CelType";
     case Type::kUnknownSet:
       return "UnknownSet";
     case Type::kError:
       return "CelError";
-    default:
-      return "Unknown Type";
+    case Type::kAny:
+      return "Any type";
+  }
+}
+
+CelValue CelValue::ObtainCelType() const {
+  switch (type()) {
+    case Type::kBool:
+      return CreateCelType(CelTypeHolder(kBoolTypeName));
+    case Type::kInt64:
+      return CreateCelType(CelTypeHolder(kInt64TypeName));
+    case Type::kUint64:
+      return CreateCelType(CelTypeHolder(kUInt64TypeName));
+    case Type::kDouble:
+      return CreateCelType(CelTypeHolder(kDoubleTypeName));
+    case Type::kString:
+      return CreateCelType(CelTypeHolder(kStringTypeName));
+    case Type::kBytes:
+      return CreateCelType(CelTypeHolder(kBytesTypeName));
+    case Type::kMessage: {
+      auto msg = MessageOrDie();
+      if (msg == nullptr) {
+        return CreateCelType(CelTypeHolder(kNullTypeName));
+      }
+      // Descritptor::full_name() returns const reference, so using pointer
+      // should be safe.
+      return CreateCelType(CelTypeHolder(msg->GetDescriptor()->full_name()));
+    }
+    case Type::kDuration:
+      return CreateCelType(CelTypeHolder(kDurationTypeName));
+    case Type::kTimestamp:
+      return CreateCelType(CelTypeHolder(kTimestampTypeName));
+    case Type::kList:
+      return CreateCelType(CelTypeHolder(kListTypeName));
+    case Type::kMap:
+      return CreateCelType(CelTypeHolder(kMapTypeName));
+    case Type::kCelType:
+      return CreateCelType(CelTypeHolder(kCelTypeTypeName));
+    case Type::kUnknownSet:
+      return *this;
+    case Type::kError:
+      return *this;
+    case Type::kAny: {
+      static const CelError* invalid_type_error =
+          new CelError(absl::InvalidArgumentError("Unsupported CelValue type"));
+      return CreateError(invalid_type_error);
+    }
   }
 }
 
@@ -91,6 +154,9 @@ const std::string CelValue::DebugString() const {
       return absl::StrFormat("Map, size: %lld", MapOrDie()->size());
     case Type::kUnknownSet:
       return "UnknownSet";
+    case Type::kCelType:
+      return absl::StrFormat("CelType, %s", CelTypeOrDie().value());
+      break;
     case Type::kError:
       return absl::StrFormat("Error: %s", ErrorOrDie()->ToString());
     case Type::kAny:

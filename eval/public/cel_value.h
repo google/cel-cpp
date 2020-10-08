@@ -99,11 +99,16 @@ class CelValue {
   // Helper structure for Bytes datatype.
   using BytesHolder = StringHolderBase<1>;
 
+  // Helper structure for CelType datatype.
+  using CelTypeHolder = StringHolderBase<2>;
+
  private:
+  // CelError MUST BE the last in the declaration - it is a ceiling for Type
+  // enum
   using ValueHolder = internal::ValueHolder<
       bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
       const google::protobuf::Message *, absl::Duration, absl::Time, const CelList *,
-      const CelMap *, const UnknownSet *, const CelError *>;
+      const CelMap *, const UnknownSet *, CelTypeHolder, const CelError *>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -125,6 +130,7 @@ class CelValue {
     kList = IndexOf<const CelList *>::value,
     kMap = IndexOf<const CelMap *>::value,
     kUnknownSet = IndexOf<const UnknownSet *>::value,
+    kCelType = IndexOf<CelTypeHolder>::value,
     kError = IndexOf<const CelError *>::value,
     kAny  // Special value. Used in function descriptors.
   };
@@ -196,10 +202,17 @@ class CelValue {
     return CelValue(value);
   }
 
+  static CelValue CreateCelType(CelTypeHolder holder) {
+    return CelValue(holder);
+  }
+
   static CelValue CreateError(const CelError *value) {
     CheckNullPointer(value, Type::kError);
     return CelValue(value);
   }
+
+  // Obtain the CelType of the value.
+  CelValue ObtainCelType() const;
 
   // Methods for accessing values of specific type
   // They have the common usage pattern - prior to accessing the
@@ -262,6 +275,12 @@ class CelValue {
     return GetValueOrDie<const CelMap *>(Type::kMap);
   }
 
+  // Returns stored const CelTypeHolder value.
+  // Fails if stored value type is not CelTypeHolder.
+  CelTypeHolder CelTypeOrDie() const {
+    return GetValueOrDie<CelTypeHolder>(Type::kCelType);
+  }
+
   // Returns stored const UnknownAttributeSet * value.
   // Fails if stored value type is not const UnknownAttributeSet *.
   const UnknownSet *UnknownSetOrDie() const {
@@ -299,6 +318,8 @@ class CelValue {
   bool IsMap() const { return value_.is<const CelMap *>(); }
 
   bool IsUnknownSet() const { return value_.is<const UnknownSet *>(); }
+
+  bool IsCelType() const { return value_.is<CelTypeHolder>(); }
 
   bool IsError() const { return value_.is<const CelError *>(); }
 
