@@ -194,12 +194,14 @@ CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
   return CreateErrorValue(arena, "no_such_field", absl::StatusCode::kNotFound);
 }
 
-CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view) {
-  return CreateErrorValue(arena, kErrNoSuchKey, absl::StatusCode::kNotFound);
+CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key) {
+  return CreateErrorValue(arena, absl::StrCat(kErrNoSuchKey, " : ", key),
+                          absl::StatusCode::kNotFound);
 }
 
 bool CheckNoSuchKeyError(CelValue value) {
-  return value.IsError() && value.ErrorOrDie()->message() == kErrNoSuchKey;
+  return value.IsError() &&
+         absl::StartsWith(value.ErrorOrDie()->message(), kErrNoSuchKey);
 }
 
 CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
