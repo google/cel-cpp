@@ -266,6 +266,12 @@ class FunctionAdapter : public CelFunction {
     return absl::OkStatus();
   }
 
+  static absl::Status CreateReturnValue(CelValue::CelTypeHolder value,
+                                        ::google::protobuf::Arena*, CelValue* result) {
+    *result = CelValue::CreateCelType(value);
+    return absl::OkStatus();
+  }
+
   static absl::Status CreateReturnValue(const CelError* value, ::google::protobuf::Arena*,
                                         CelValue* result) {
     if (value == nullptr) {

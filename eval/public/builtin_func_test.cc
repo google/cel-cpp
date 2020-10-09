@@ -1526,6 +1526,61 @@ TEST_F(BuiltinsTest, StringToString) {
   EXPECT_EQ(result_value.StringOrDie().value(), "abcd");
 }
 
+// Type operations
+TEST_F(BuiltinsTest, TypeComparisons) {
+  ::google::protobuf::Arena arena;
+
+  std::vector<std::pair<CelValue, CelValue>> paired_values;
+
+  paired_values.push_back(
+      {CelValue::CreateBool(false), CelValue::CreateBool(true)});
+  paired_values.push_back(
+      {CelValue::CreateInt64(-1), CelValue::CreateInt64(1)});
+  paired_values.push_back(
+      {CelValue::CreateUint64(1), CelValue::CreateUint64(2)});
+  paired_values.push_back(
+      {CelValue::CreateDouble(1.), CelValue::CreateDouble(2.)});
+
+  std::string str1 = "test1";
+  std::string str2 = "test2";
+  paired_values.push_back(
+      {CelValue::CreateString(&str1), CelValue::CreateString(&str2)});
+  paired_values.push_back(
+      {CelValue::CreateBytes(&str1), CelValue::CreateBytes(&str2)});
+
+  FakeList cel_list1({CelValue::CreateBool(false)});
+  FakeList cel_list2({CelValue::CreateBool(true)});
+  paired_values.push_back(
+      {CelValue::CreateList(&cel_list1), CelValue::CreateList(&cel_list2)});
+
+  std::map<int64_t, CelValue> data1;
+  std::map<int64_t, CelValue> data2;
+  FakeInt64Map cel_map1(data1);
+  FakeInt64Map cel_map2(data2);
+  paired_values.push_back(
+      {CelValue::CreateMap(&cel_map1), CelValue::CreateMap(&cel_map2)});
+
+  for (int i = 0; i < paired_values.size(); i++) {
+    for (int j = 0; j < paired_values.size(); j++) {
+      CelValue result1;
+      CelValue result2;
+
+      PerformRun(builtin::kType, {}, {paired_values[i].first}, &result1);
+      PerformRun(builtin::kType, {}, {paired_values[j].second}, &result2);
+
+      ASSERT_TRUE(result1.IsCelType()) << "Unexpected result for value at index"
+                                       << i << ":" << result1.DebugString();
+      ASSERT_TRUE(result2.IsCelType()) << "Unexpected result for value at index"
+                                       << j << ":" << result2.DebugString();
+      if (i == j) {
+        ASSERT_EQ(result1.CelTypeOrDie(), result2.CelTypeOrDie());
+      } else {
+        ASSERT_TRUE(result1.CelTypeOrDie() != result2.CelTypeOrDie());
+      }
+    }
+  }
+}
+
 }  // namespace
 
 }  // namespace runtime

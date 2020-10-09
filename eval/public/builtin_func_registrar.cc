@@ -253,6 +253,9 @@ CelValue Equal(Arena* arena, CelValue t1, CelValue t2) {
       return Equal<const CelList*>(arena, t1.ListOrDie(), t2.ListOrDie());
     case CelValue::Type::kMap:
       return Equal<const CelMap*>(arena, t1.MapOrDie(), t2.MapOrDie());
+    case CelValue::Type::kCelType:
+      return Equal<CelValue::CelTypeHolder>(arena, t1.CelTypeOrDie(),
+                                            t2.CelTypeOrDie());
     default:
       break;
   }
@@ -705,6 +708,9 @@ absl::Status RegisterComparisonFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   status = RegisterEqualityFunctionsForType<const CelMap*>(registry);
+  if (!status.ok()) return status;
+
+  status = RegisterEqualityFunctionsForType<CelValue::CelTypeHolder>(registry);
   if (!status.ok()) return status;
 
   return absl::OkStatus();
@@ -1451,6 +1457,15 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
             registry);
     if (!status.ok()) return status;
   }
+
+  status =
+      FunctionAdapter<CelValue::CelTypeHolder, CelValue>::CreateAndRegister(
+          builtin::kType, false,
+          [](Arena*, CelValue value) -> CelValue::CelTypeHolder {
+            return value.ObtainCelType().CelTypeOrDie();
+          },
+          registry);
+  if (!status.ok()) return status;
 
   return absl::OkStatus();
 }
