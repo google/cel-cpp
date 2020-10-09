@@ -8,6 +8,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_replace.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
@@ -491,15 +492,33 @@ const absl::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
                                      absl::TimeZone::CivilInfo* breakdown) {
   absl::TimeZone time_zone;
 
-  if (!tz.empty()) {
-    bool found = absl::LoadTimeZone(std::string(tz), &time_zone);
-    if (!found) {
-      return absl::InvalidArgumentError("Invalid timezone");
+  // Early return if there is no timezone.
+  if (tz.empty()) {
+    *breakdown = time_zone.At(timestamp);
+    return absl::OkStatus();
+  }
+
+  // Check to see whether the timezone is an IANA timezone.
+  if (absl::LoadTimeZone(std::string(tz), &time_zone)) {
+    *breakdown = time_zone.At(timestamp);
+    return absl::OkStatus();
+  }
+
+  // Check for times of the format: [+-]HH:MM and convert them into durations
+  // specified as [+-]HHhMMm.
+  if (absl::StrContains(tz, ":")) {
+    std::string dur = absl::StrCat(tz, "m");
+    absl::StrReplaceAll({{":", "h"}}, &dur);
+    absl::Duration d;
+    if (absl::ParseDuration(dur, &d)) {
+      timestamp += d;
+      *breakdown = time_zone.At(timestamp);
+      return absl::OkStatus();
     }
   }
 
-  *breakdown = time_zone.At(timestamp);
-  return absl::OkStatus();
+  // Otherwise, error.
+  return absl::InvalidArgumentError("Invalid timezone");
 }
 
 CelValue GetTimeBreakdownPart(

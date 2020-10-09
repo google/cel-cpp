@@ -524,12 +524,62 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
                 0L);
 
-  // Test timestamp functions w/ timezone
+  // Test timestamp functions w/ IANA timezone
   ref.set_seconds(1L);
   ref.set_nanos(11000000L);
   std::vector<CelValue> params;
   const std::string timezone = "America/Los_Angeles";
   params.push_back(CelValue::CreateString(&timezone));
+
+  TestFunctionsWithParams(builtin::kFullYear,
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          1969L);
+  TestFunctionsWithParams(builtin::kMonth,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+  TestFunctionsWithParams(builtin::kDayOfYear,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 364L);
+  TestFunctionsWithParams(builtin::kDayOfMonth,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 30L);
+  TestFunctionsWithParams(builtin::kDate,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 31L);
+  TestFunctionsWithParams(builtin::kHours,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 16L);
+  TestFunctionsWithParams(builtin::kMinutes,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 0L);
+  TestFunctionsWithParams(builtin::kSeconds,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 1L);
+  TestFunctionsWithParams(builtin::kMilliseconds,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+
+  ref.set_seconds(259200L);
+  ref.set_nanos(0L);
+  TestFunctionsWithParams(builtin::kDayOfWeek,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 6L);
+
+  // Test timestamp functions with negative value
+  ref.set_seconds(-1L);
+  ref.set_nanos(0L);
+
+  TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
+                1969L);
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 11L);
+  TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
+                364L);
+  TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                30L);
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 31L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 23L);
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
+                3L);
+
+  // Test timestamp functions w/ fixed timezone
+  ref.set_seconds(1L);
+  ref.set_nanos(11000000L);
+  const std::string fixedzone = "-08:00";
+  params.clear();
+  params.push_back(CelValue::CreateString(&fixedzone));
 
   TestFunctionsWithParams(builtin::kFullYear,
                           CelProtoWrapper::CreateTimestamp(&ref), params,

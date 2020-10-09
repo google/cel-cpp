@@ -21,6 +21,7 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
 ]
 
@@ -39,6 +40,7 @@ DASHBOARD_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
 ]
 
@@ -52,13 +54,13 @@ cc_binary(
         "//eval/public:transform_utility",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
+        "//google/api/expr/v1alpha1:conformance_service_proto_grpc_cc",
         "//internal:proto_util",
+        "//net/grpc:grpc++",
         "//parser",
-        "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:conformance_service_cc_grpc",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
@@ -72,7 +74,12 @@ cc_binary(
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
             "--server=$(location :server)",
-            "--check_server=$(location @com_google_cel_go//server/main:cel_server)",
+            "--check_server=$(location //third_party/cel/go/server/main:cel_server)",
+            # Missing proto-based test support
+            "--skip_test=timestamps/duration_converters/get_milliseconds",
+            # Missing timestamp conversion functions (type / string)
+            "--skip_test=timestamps/timestamp_conversions/toType_timestamp,toString_timestamp",
+            "--skip_test=timestamps/duration_conversions/toType_duration,toString_duration",
             # TODO(issues/78): Missing bytes() conversion functions
             "--skip_test=conversions/bytes",
             # TODO(issues/79): Missing double() conversion functions
@@ -111,7 +118,7 @@ cc_binary(
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",
-            "@com_google_cel_go//server/main:cel_server",
+            "//third_party/cel/go/server/main:cel_server",
             "@com_google_cel_spec//tests/simple:simple_test",
         ] + ALL_TESTS,
     )
@@ -127,11 +134,11 @@ sh_test(
     args = [
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
         "--server=$(location :server)",
-        "--check_server=$(location @com_google_cel_go//server/main:cel_server)",
+        "--check_server=$(location //third_party/cel/go/server/main:cel_server)",
     ] + ["$(location " + test + ")" for test in DASHBOARD_TESTS],
     data = [
         ":server",
-        "@com_google_cel_go//server/main:cel_server",
+        "//third_party/cel/go/server/main:cel_server",
         "@com_google_cel_spec//tests/simple:simple_test",
     ] + DASHBOARD_TESTS,
     visibility = [

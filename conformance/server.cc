@@ -8,7 +8,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
-#include "grpcpp/grpcpp.h"
+#include "net/grpc/public/include/grpcpp/grpcpp.h"
 #include "absl/strings/str_split.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -17,7 +17,7 @@
 #include "eval/public/transform_utility.h"
 #include "internal/proto_util.h"
 #include "parser/parser.h"
-#include "absl/status/statusor.h"
+#include "util/task/statusor.h"
 
 
 using ::grpc::Status;
@@ -30,7 +30,7 @@ namespace expr {
 namespace runtime {
 
 class ConformanceServiceImpl final
-    : public v1alpha1::ConformanceService::Service {
+    : public v1alpha1::grpc_gen::ConformanceService::Service {
  public:
   ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
       : builder_(std::move(builder)) {}
@@ -145,7 +145,7 @@ int RunServer(std::string server_address) {
                                 grpc::InsecureServerCredentials(), &port);
   grpc_builder.RegisterService(&service);
   std::unique_ptr<grpc::Server> server(grpc_builder.BuildAndStart());
-  std::cout << "Listening on 127.0.0.1:" << port << std::endl;
+  std::cout << "Listening on [::1]:" << port << std::endl;
   fflush(stdout);
   server->Wait();
   return 0;
@@ -157,6 +157,6 @@ int RunServer(std::string server_address) {
 }  // namespace google
 
 int main(int argc, char** argv) {
-  std::string server_address = "127.0.0.1:0";
+  std::string server_address = "[::1]:0";
   return google::api::expr::runtime::RunServer(server_address);
 }

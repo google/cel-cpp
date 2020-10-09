@@ -7,7 +7,7 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "absl/status/statusor.h"
+#include "util/task/statusor.h"
 
 namespace google {
 namespace api {
