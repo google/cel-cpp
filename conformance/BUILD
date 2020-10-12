@@ -58,7 +58,6 @@ cc_binary(
         "//internal:proto_util",
         "//net/grpc:grpc++",
         "//parser",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
