@@ -124,7 +124,7 @@ std::vector<TestInfo> test_cases = {
     {"{", "",
      "ERROR: <input>:1:2: Syntax error: mismatched input '<EOF>' expecting "
      "{'[', "
-     "'{', '}', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
+     "'{', '}', '(', '.', ',', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
      "NUM_INT, "
      "NUM_UINT, STRING, BYTES, IDENTIFIER}\n | {\n"
      " | .^"},
@@ -399,7 +399,7 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:4294967295:0: <<nil>> parsetree\n | \n | ^"},
     {"t{>C}", "",
      "ERROR: <input>:1:3: Syntax error: extraneous input '>' expecting {'}', "
-     "IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: Syntax error: "
+     "',', IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: Syntax error: "
      "mismatched input '}' expecting ':'\n | t{>C}\n | ....^"},
 
     // Macro tests
