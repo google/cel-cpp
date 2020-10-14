@@ -107,7 +107,6 @@ cc_binary(
             "--skip_test=fields/in/singleton",
             # Requires qualified bindings error message relaxation
             "--skip_test=fields/qualified_identifier_resolution/ident_with_longest_prefix_check,int64_field_select_unsupported,list_field_select_unsupported,map_key_null,qualified_identifier_resolution_unchecked",
-            "--skip_test=integer_math/int64_math/int64_overflow_positive,int64_overflow_negative,uint64_overflow_positive,uint64_overflow_negative",
             "--skip_test=string/size/one_unicode,unicode",
             "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/85): The exists one macro should not short-circuit false.

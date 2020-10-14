@@ -2,6 +2,7 @@
 #include "google/protobuf/util/time_util.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -221,6 +222,17 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_EQ(result_value.Int64OrDie(), result) << operation;
   }
 
+  // Helper for testing invalid signed integer arithmetic operations.
+  void TestArithmeticalErrorInt64(absl::string_view operation, int64_t v1,
+                                  int64_t v2, absl::StatusCode code) {
+    CelValue result_value;
+    ASSERT_NO_FATAL_FAILURE(PerformRun(
+        operation, {}, {CelValue::CreateInt64(v1), CelValue::CreateInt64(v2)},
+        &result_value));
+    ASSERT_EQ(result_value.IsError(), true);
+    ASSERT_EQ(result_value.ErrorOrDie()->code(), code) << operation;
+  }
+
   // Helper method to test arithmetical operations for Uint64
   void TestArithmeticalOperationUint64(absl::string_view operation, uint64_t v1,
                                        uint64_t v2, uint64_t result) {
@@ -230,6 +242,17 @@ class BuiltinsTest : public ::testing::Test {
         &result_value));
     ASSERT_EQ(result_value.IsUint64(), true);
     ASSERT_EQ(result_value.Uint64OrDie(), result) << operation;
+  }
+
+  // Helper for testing invalid unsigned integer arithmetic operations.
+  void TestArithmeticalErrorUint64(absl::string_view operation, uint64_t v1,
+                                   uint64_t v2, absl::StatusCode code) {
+    CelValue result_value;
+    ASSERT_NO_FATAL_FAILURE(PerformRun(
+        operation, {}, {CelValue::CreateUint64(v1), CelValue::CreateUint64(v2)},
+        &result_value));
+    ASSERT_EQ(result_value.IsError(), true);
+    ASSERT_EQ(result_value.ErrorOrDie()->code(), code) << operation;
   }
 
   // Helper method to test arithmetical operations for Double
@@ -329,6 +352,29 @@ TEST_F(BuiltinsTest, TestNotOp) {
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
+}
+
+// Test negation operation for numeric types.
+TEST_F(BuiltinsTest, TestNegOp) {
+  CelValue result;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kNeg, {}, {CelValue::CreateInt64(-1)}, &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_EQ(result.Int64OrDie(), 1);
+
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kNeg, {}, {CelValue::CreateDouble(-1.0)}, &result));
+  ASSERT_TRUE(result.IsDouble());
+  EXPECT_EQ(result.DoubleOrDie(), 1.0);
+}
+
+// Test integer negation overflow.
+TEST_F(BuiltinsTest, TestNegIntOverflow) {
+  CelValue result;
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kNeg, {},
+      {CelValue::CreateInt64(std::numeric_limits<int64_t>::min())}, &result));
+  ASSERT_TRUE(result.IsError());
 }
 
 // Test Equality/Non-Equality operation for Bool
@@ -1309,32 +1355,41 @@ TEST_F(BuiltinsTest, TestInt64Arithmetics) {
   TestArithmeticalOperationInt64(builtin::kDivide, 10, 5, 2);
 }
 
-TEST_F(BuiltinsTest, TestInt64DivisionByZero) {
-  CelValue result_value;
-
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kDivide, {},
-      {CelValue::CreateInt64(1), CelValue::CreateInt64(0)}, &result_value));
-
-  ASSERT_TRUE(result_value.IsError());
+TEST_F(BuiltinsTest, TestInt64ArithmeticOverflow) {
+  int64_t min = std::numeric_limits<int64_t>::min();
+  int64_t max = std::numeric_limits<int64_t>::max();
+  TestArithmeticalErrorInt64(builtin::kAdd, max, 1,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kSubtract, min, max,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kMultiply, max, 2,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kModulo, min, -1,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kDivide, min, -1,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kDivide, min, 0,
+                             absl::StatusCode::kUnknown);
 }
 
 TEST_F(BuiltinsTest, TestUint64Arithmetics) {
   TestArithmeticalOperationUint64(builtin::kAdd, 2, 3, 5);
-  TestArithmeticalOperationUint64(builtin::kSubtract, 2, 3,
-                                  static_cast<uint64_t>(-1));
+  TestArithmeticalOperationUint64(builtin::kSubtract, 3, 2, 1);
   TestArithmeticalOperationUint64(builtin::kMultiply, 2, 3, 6);
   TestArithmeticalOperationUint64(builtin::kDivide, 10, 5, 2);
 }
 
-TEST_F(BuiltinsTest, TestUint64DivisionByZero) {
+TEST_F(BuiltinsTest, TestUint64ArithmeticOverflow) {
   CelValue result_value;
-
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kDivide, {},
-      {CelValue::CreateUint64(1), CelValue::CreateUint64(0)}, &result_value));
-
-  ASSERT_TRUE(result_value.IsError());
+  uint64_t max = std::numeric_limits<uint64_t>::max();
+  TestArithmeticalErrorUint64(builtin::kAdd, max, 1,
+                              absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorUint64(builtin::kSubtract, 2, 3,
+                              absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorUint64(builtin::kMultiply, max, 2,
+                              absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorUint64(builtin::kDivide, 1, 0,
+                              absl::StatusCode::kUnknown);
 }
 
 TEST_F(BuiltinsTest, TestDoubleArithmetics) {
