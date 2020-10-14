@@ -283,7 +283,8 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
 
     if (desc == nullptr) {
       return absl::InvalidArgumentError(
-          "Error configuring message creation: message descriptor not found");
+          "Error configuring message creation: message descriptor not found: " +
+          create_struct_expr->message_name());
     }
 
     for (const auto& entry : create_struct_expr->entries()) {

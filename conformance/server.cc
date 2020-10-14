@@ -17,6 +17,8 @@
 #include "eval/public/transform_utility.h"
 #include "internal/proto_util.h"
 #include "parser/parser.h"
+#include "proto/test/v1/proto2/test_all_types.pb.h"
+#include "proto/test/v1/proto3/test_all_types.pb.h"
 
 
 using ::grpc::Status;
@@ -32,7 +34,12 @@ class ConformanceServiceImpl final
     : public v1alpha1::grpc_gen::ConformanceService::Service {
  public:
   ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
-      : builder_(std::move(builder)) {}
+      : builder_(std::move(builder)),
+        proto2Tests_(&google::api::expr::test::v1::proto2::TestAllTypes::
+                         default_instance()),
+        proto3Tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
+                         default_instance()) {}
+
   Status Parse(grpc::ServerContext* context,
                const v1alpha1::ParseRequest* request,
                v1alpha1::ParseResponse* response) override {
@@ -51,11 +58,13 @@ class ConformanceServiceImpl final
     }
     return Status::OK;
   }
+
   Status Check(grpc::ServerContext* context,
                const v1alpha1::CheckRequest* request,
                v1alpha1::CheckResponse* response) override {
     return Status(StatusCode::UNIMPLEMENTED, "Check is not supported");
   }
+
   Status Eval(grpc::ServerContext* context,
               const v1alpha1::EvalRequest* request,
               v1alpha1::EvalResponse* response) override {
@@ -117,6 +126,8 @@ class ConformanceServiceImpl final
 
  private:
   std::unique_ptr<CelExpressionBuilder> builder_;
+  const google::api::expr::test::v1::proto2::TestAllTypes* proto2Tests_;
+  const google::api::expr::test::v1::proto3::TestAllTypes* proto3Tests_;
 };
 
 int RunServer(std::string server_address) {
@@ -132,6 +143,14 @@ int RunServer(std::string server_address) {
 
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
+  builder->AddResolvableEnum(
+      google::api::expr::test::v1::proto2::GlobalEnum_descriptor());
+  builder->AddResolvableEnum(
+      google::api::expr::test::v1::proto3::GlobalEnum_descriptor());
+  builder->AddResolvableEnum(google::api::expr::test::v1::proto2::TestAllTypes::
+                                 NestedEnum_descriptor());
+  builder->AddResolvableEnum(google::api::expr::test::v1::proto3::TestAllTypes::
+                                 NestedEnum_descriptor());
   auto register_status = RegisterBuiltinFunctions(builder->GetRegistry());
   if (!register_status.ok()) {
     return 1;
