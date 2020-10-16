@@ -104,6 +104,7 @@ cc_library(
     deps = [
         "//eval/public:activation",
         "//eval/public:cel_expression",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest",
     ],
 )

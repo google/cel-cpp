@@ -4,6 +4,7 @@
 #include <functional>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_function.h"

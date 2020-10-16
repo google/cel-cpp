@@ -25,7 +25,6 @@ cc_library(
     deps = [
         ":cel_value_internal",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
@@ -218,6 +217,7 @@ cc_library(
         ":cel_function",
         ":cel_function_registry",
         ":cel_value",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -610,6 +610,7 @@ cc_library(
         "//eval/public/structs:cel_proto_wrapper",
         "//internal:proto_util",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_protobuf//:protobuf",

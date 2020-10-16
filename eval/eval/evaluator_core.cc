@@ -6,7 +6,6 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
 #include "base/status_macros.h"
-#include "util/task/statusor.h"
 
 namespace google {
 namespace api {
