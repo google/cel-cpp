@@ -131,7 +131,7 @@ class TypeRegistry {
    * callable it is.
    *
    * @tparam ProtoType the concrete protobuf message class.
-   * @tparam C the constructor type. Templitzed to allow inline of lambda
+   * @tparam C the constructor type. Templatized to allow inline of lambda
    * invocation.
    * @returns false if a constructor was previously registered.
    */
