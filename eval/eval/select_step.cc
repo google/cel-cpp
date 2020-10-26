@@ -51,7 +51,7 @@ absl::Status SelectStep::CreateValueFromField(const google::protobuf::Message* m
   const FieldDescriptor* field_desc = desc->FindFieldByName(field_);
 
   if (field_desc == nullptr) {
-    *result = CreateNoSuchFieldError(arena);
+    *result = CreateNoSuchFieldError(arena, field_);
     return absl::OkStatus();
   }
 
