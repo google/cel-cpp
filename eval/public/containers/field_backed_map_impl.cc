@@ -122,6 +122,10 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
   // Fast implementation.
   google::protobuf::MapKey inner_key;
   switch (key.type()) {
+    case CelValue::Type::kBool: {
+      inner_key.SetBoolValue(key.BoolOrDie());
+      break;
+    }
     case CelValue::Type::kInt64: {
       inner_key.SetInt64Value(key.Int64OrDie());
       break;
@@ -201,6 +205,9 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 
     bool match = false;
     switch (key.type()) {
+      case CelValue::Type::kBool:
+        match = key.BoolOrDie() == inner_key.BoolOrDie();
+        break;
       case CelValue::Type::kInt64:
         match = key.Int64OrDie() == inner_key.Int64OrDie();
         break;

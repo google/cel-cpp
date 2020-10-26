@@ -64,6 +64,7 @@ message TestMessage {
   map<int64, int32> int64_int32_map = 201;
   map<uint64, int32> uint64_int32_map = 202;
   map<string, int32> string_int32_map = 203;
+  map<bool, int32> bool_int32_map = 204;
 
   // Well-known types.
   google.protobuf.Any any_value = 300;

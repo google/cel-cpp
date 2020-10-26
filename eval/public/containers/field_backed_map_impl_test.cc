@@ -41,6 +41,23 @@ TEST(FieldBackedMapImplTest, IntKeyTest) {
   EXPECT_EQ((*cel_map)[CelValue::CreateInt64(3)].has_value(), false);
 }
 
+TEST(FieldBackedMapImplTest, BoolKeyTest) {
+  TestMessage message;
+  auto field_map = message.mutable_bool_int32_map();
+  (*field_map)[false] = 1;
+
+  google::protobuf::Arena arena;
+
+  auto cel_map = CreateMap(&message, "bool_int32_map", &arena);
+
+  EXPECT_EQ((*cel_map)[CelValue::CreateBool(false)]->Int64OrDie(), 1);
+  // Look up nonexistent key
+  EXPECT_EQ((*cel_map)[CelValue::CreateBool(true)].has_value(), false);
+
+  (*field_map)[true] = 2;
+  EXPECT_EQ((*cel_map)[CelValue::CreateBool(true)]->Int64OrDie(), 2);
+}
+
 TEST(FieldBackedMapImplTest, UintKeyTest) {
   TestMessage message;
   auto field_map = message.mutable_uint64_int32_map();
