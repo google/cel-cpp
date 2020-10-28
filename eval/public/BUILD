@@ -229,7 +229,6 @@ cc_library(
     hdrs = ["source_position.h"],
     deps = [
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf_lite",
     ],
 )
 
