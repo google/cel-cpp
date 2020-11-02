@@ -655,6 +655,37 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
 }
 
+TEST(FlatExprBuilderTest, SimpleEnumIdentTest) {
+  TestMessage message;
+
+  Expr expr;
+  SourceInfo source_info;
+
+  constexpr char enum_name[] =
+      "google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_1";
+
+  Expr* cur_expr = &expr;
+  cur_expr->mutable_ident_expr()->set_name(enum_name);
+
+  FlatExprBuilder builder;
+  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
+
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  auto eval_status = cel_expr->Evaluate(activation, &arena);
+
+  ASSERT_OK(eval_status);
+  CelValue result = eval_status.value();
+
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
 TEST(FlatExprBuilderTest, ContainerStringFormat) {
   Expr expr;
   SourceInfo source_info;
@@ -776,6 +807,99 @@ TEST(FlatExprBuilderTest, PartialQualifiedEnumResolution) {
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, MapFieldPresence) {
+  SourceInfo source_info;
+  Expr expr;
+  google::protobuf::TextFormat::ParseFromString(R"(
+    id: 1,
+    select_expr{
+      operand {
+        id: 2
+        ident_expr{ name: "msg" }
+      }
+      field: "string_int32_map"
+      test_only: true
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+  auto cel_expr = std::move(build_status.value());
+
+  google::protobuf::Arena arena;
+  {
+    TestMessage message;
+    auto strMap = message.mutable_string_int32_map();
+    strMap->insert({"key", 1});
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+  {
+    TestMessage message;
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_FALSE(result.BoolOrDie());
+  }
+}
+
+TEST(FlatExprBuilderTest, RepeatedFieldPresence) {
+  SourceInfo source_info;
+  Expr expr;
+  google::protobuf::TextFormat::ParseFromString(R"(
+    id: 1,
+    select_expr{
+      operand {
+        id: 2
+        ident_expr{ name: "msg" }
+      }
+      field: "int32_list"
+      test_only: true
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+  auto cel_expr = std::move(build_status.value());
+
+  google::protobuf::Arena arena;
+  {
+    TestMessage message;
+    message.add_int32_list(1);
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+  {
+    TestMessage message;
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_FALSE(result.BoolOrDie());
+  }
 }
 
 absl::Status RunTernaryExpression(CelValue selector, CelValue value1,

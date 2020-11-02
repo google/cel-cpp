@@ -230,11 +230,14 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
 
-    // Generate namespace map
-
+    // Attempt to resolve the identifier as an enum.
     const google::protobuf::EnumValueDescriptor* value_desc = nullptr;
+    auto it = enum_map_.find(path);
+    if (it != enum_map_.end()) {
+      value_desc = it->second;
+    }
 
-    // Fill out namespace map for wrapping Select's
+    // Attempt to resolve a parsed-only expression as a namespaced identifier.
     while (!namespace_stack_.empty()) {
       const auto& select_node = namespace_stack_.back();
       // Generate path in format "<ident>.<field 0>.<field 1>...".
@@ -247,7 +250,6 @@ class FlatExprVisitor : public AstVisitor {
         resolved_select_expr_ = select_node.first;
         value_desc = it->second;
       }
-
       namespace_stack_.pop_back();
     }
 
@@ -257,6 +259,10 @@ class FlatExprVisitor : public AstVisitor {
         return;
       }
       AddStep(CreateConstValueStep(value_desc, resolved_select_expr_->id()));
+      return;
+    }
+    if (value_desc) {
+      AddStep(CreateConstValueStep(value_desc, expr->id()));
       return;
     }
     AddStep(CreateIdentStep(ident_expr, expr->id()));
@@ -430,7 +436,6 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-
     AddStep(CreateCreateStructStep(struct_expr, expr->id()));
   }
 

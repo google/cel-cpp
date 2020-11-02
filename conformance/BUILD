@@ -5,7 +5,6 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
-# TODO(issues/77): Add support for the proto2, proto3 conformance tests.
 ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
     "@com_google_cel_spec//tests/simple:testdata/comparisons.textproto",
@@ -101,17 +100,16 @@ cc_binary(
             "--skip_test=conversions/type",
             # TODO(issues/84): Missing uint() conversion functions
             "--skip_test=conversions/uint",
-            # TODO(issues/96):
+            # TODO(issues/96): Well-known type conversion support.
             "--skip_test=proto2/literal_wellknown",
             "--skip_test=proto3/literal_wellknown",
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
-            # TODO(issues/86):
-            "--skip_test=proto2/has/undefined,repeated_none_implicit,repeated_none_explicit,repeated_one,repeated_many,map_none_implicit,map_none_explicit,map_one_default,map_one,map_many,optional_enum_set,optional_enum_set_zero,oneof_other_set,oneof_set_default",
-            "--skip_test=proto3/has/undefined,repeated_none_implicit,repeated_none_explicit,repeated_one,repeated_many,map_none_implicit,map_none_explicit,map_one_default,map_one,map_many,optional_enum_set,optional_enum_set_zero,oneof_other_set,oneof_set_default,single_enum_set,single_enum_set_zero",
+            # TODO(issues/92): Support for parse-only proto message creation within a container.
+            "--skip_test=proto2/has/undefined",
+            "--skip_test=proto3/has/undefined",
             # Requires container support
             "--skip_test=namespace/namespace/self_eval_container_lookup_unchecked",
-            "--skip_test=basic/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
             "--skip_test=basic/self_eval_nonzeroish/self_eval_bytes_invalid_utf8",
             # Requires heteregenous equality spec clarification
             "--skip_test=comparisons/eq_literal/eq_bytes",
@@ -120,7 +118,7 @@ cc_binary(
             "--skip_test=comparisons/in_map_literal/key_in_mixed_key_type_map_error",
             "--skip_test=fields/in/singleton",
             # Requires qualified bindings error message relaxation
-            "--skip_test=fields/qualified_identifier_resolution/ident_with_longest_prefix_check,int64_field_select_unsupported,list_field_select_unsupported,map_key_null,qualified_identifier_resolution_unchecked",
+            "--skip_test=fields/qualified_identifier_resolution/int64_field_select_unsupported,list_field_select_unsupported,map_key_null,qualified_identifier_resolution_unchecked",
             "--skip_test=string/size/one_unicode,unicode",
             "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/85): The exists one macro should not short-circuit false.

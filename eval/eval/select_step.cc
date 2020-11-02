@@ -56,16 +56,36 @@ absl::Status SelectStep::CreateValueFromField(const google::protobuf::Message* m
   }
 
   if (field_desc->is_map()) {
-    *result = CelValue::CreateMap(google::protobuf::Arena::Create<FieldBackedMapImpl>(
-        arena, msg, field_desc, arena));
+    // When the map field appears in a has(msg.map_field) expression, the map
+    // is considered 'present' when it is non-empty. Since maps are repeated
+    // fields they don't participate with standard proto presence testing since
+    // the repeated field is always at least empty.
+    if (test_field_presence_) {
+      *result =
+          CelValue::CreateBool(reflection->FieldSize(*msg, field_desc) != 0);
+      return absl::OkStatus();
+    }
+    CelMap* map = google::protobuf::Arena::Create<FieldBackedMapImpl>(arena, msg,
+                                                            field_desc, arena);
+    *result = CelValue::CreateMap(map);
     return absl::OkStatus();
   }
   if (field_desc->is_repeated()) {
-    *result = CelValue::CreateList(google::protobuf::Arena::Create<FieldBackedListImpl>(
-        arena, msg, field_desc, arena));
+    // When the list field appears in a has(msg.list_field) expression, the list
+    // is considered 'present' when it is non-empty.
+    if (test_field_presence_) {
+      *result =
+          CelValue::CreateBool(reflection->FieldSize(*msg, field_desc) != 0);
+      return absl::OkStatus();
+    }
+    CelList* list = google::protobuf::Arena::Create<FieldBackedListImpl>(
+        arena, msg, field_desc, arena);
+    *result = CelValue::CreateList(list);
     return absl::OkStatus();
   }
+
   if (test_field_presence_) {
+    // Standard proto presence test for non-repeated fields.
     *result = CelValue::CreateBool(reflection->HasField(*msg, field_desc));
     return absl::OkStatus();
   }
