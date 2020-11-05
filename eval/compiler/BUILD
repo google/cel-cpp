@@ -164,6 +164,10 @@ cc_test(
     deps = [
         ":qualified_reference_resolver",
         "//base:status_macros",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_builtins",
+        "//eval/public:cel_function",
+        "//eval/public:cel_function_registry",
         "//testutil:util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
