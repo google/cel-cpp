@@ -80,8 +80,13 @@ class AstVisitorBase : public AstVisitor {
   // Invoked after each argument node processed.
   // For Call arg_num is the index of the argument.
   // For Comprehension arg_num is specified by ComprehensionArg.
+  // Expr is the call expression.
   void PostVisitArg(int, const google::api::expr::v1alpha1::Expr*,
                     const SourcePosition*) override {}
+
+  // Invoked after target node processed.
+  void PostVisitTarget(const google::api::expr::v1alpha1::Expr*,
+                       const SourcePosition*) override {}
 
   // CreateList node handler
   // Invoked after child nodes are processed.

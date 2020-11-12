@@ -37,6 +37,7 @@ namespace {
 struct StackRecord {
  public:
   static constexpr int kNotCallArg = -1;
+  static constexpr int kTarget = -2;
 
   StackRecord(const Expr *e, const SourceInfo *info)
       : expr(e),
@@ -116,7 +117,11 @@ void PostVisit(const StackRecord &record, AstVisitor *visitor) {
 
   if (record.call_arg != StackRecord::kNotCallArg &&
       record.calling_expr != nullptr) {
-    visitor->PostVisitArg(record.call_arg, record.calling_expr, &position);
+    if (record.call_arg == StackRecord::kTarget) {
+      visitor->PostVisitTarget(record.calling_expr, &position);
+    } else {
+      visitor->PostVisitArg(record.call_arg, record.calling_expr, &position);
+    }
   }
   visitor->PostVisitExpr(expr, &position);
 }
@@ -138,7 +143,8 @@ void PushCallDeps(const Call *call_expr, const Expr *expr,
   }
   // Are we receiver-style?
   if (call_expr->has_target()) {
-    stack->push(StackRecord(&call_expr->target(), record.source_info));
+    stack->push(StackRecord(&call_expr->target(), record.source_info, expr,
+                            StackRecord::kTarget));
   }
 }
 

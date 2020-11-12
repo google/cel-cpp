@@ -239,7 +239,6 @@ cc_library(
     ],
     deps = [
         ":source_position",
-        "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
@@ -266,7 +265,6 @@ cc_library(
     deps = [
         ":ast_visitor",
         ":source_position",
-        "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )

@@ -98,6 +98,11 @@ class AstVisitor {
                              const google::api::expr::v1alpha1::Expr*,
                              const SourcePosition*) = 0;
 
+  // Invoked after target node is processed.
+  // Expr is the call expression.
+  virtual void PostVisitTarget(const google::api::expr::v1alpha1::Expr*,
+                               const SourcePosition*) = 0;
+
   // Invoked before all child nodes are processed.
   virtual void PreVisitComprehension(
       const google::api::expr::v1alpha1::Expr::Comprehension*,
@@ -111,6 +116,7 @@ class AstVisitor {
   // Invoked after each argument node processed.
   // For Call arg_num is the index of the argument.
   // For Comprehension arg_num is specified by ComprehensionArg.
+  // Expr is the call expression.
   virtual void PostVisitArg(int arg_num, const google::api::expr::v1alpha1::Expr*,
                             const SourcePosition*) = 0;
 

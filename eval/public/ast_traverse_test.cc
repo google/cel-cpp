@@ -89,6 +89,8 @@ class MockAstVisitor : public AstVisitor {
 
   // We provide finer granularity for Call and Comprehension node callbacks
   // to allow special handling for short-circuiting.
+  MOCK_METHOD(void, PostVisitTarget,
+              (const Expr* expr, const SourcePosition* position), (override));
   MOCK_METHOD(void, PostVisitArg,
               (int arg_num, const Expr* expr, const SourcePosition* position),
               (override));
@@ -163,8 +165,8 @@ TEST(AstCrawlerTest, CheckCrawlSelect) {
   AstTraverse(&expr, &source_info, &handler);
 }
 
-// Test handling of Call node
-TEST(AstCrawlerTest, CheckCrawlCall) {
+// Test handling of Call node without receiver
+TEST(AstCrawlerTest, CheckCrawlCallNoReceiver) {
   SourceInfo source_info;
   MockAstVisitor handler;
 
@@ -179,6 +181,36 @@ TEST(AstCrawlerTest, CheckCrawlCall) {
 
   // Lowest level entry will be called first
   EXPECT_CALL(handler, PreVisitCall(call_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitTarget(_, _)).Times(0);
+  EXPECT_CALL(handler, PostVisitConst(const_expr, arg0, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(0, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(ident_expr, arg1, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitArg(1, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitCall(call_expr, &expr, _)).Times(1);
+
+  AstTraverse(&expr, &source_info, &handler);
+}
+
+// Test handling of Call node with receiver
+TEST(AstCrawlerTest, CheckCrawlCallReceiver) {
+  SourceInfo source_info;
+  MockAstVisitor handler;
+
+  Expr expr;
+  auto call_expr = expr.mutable_call_expr();
+  auto target = call_expr->mutable_target();
+  auto target_ident = target->mutable_ident_expr();
+  auto arg0 = call_expr->add_args();
+  auto const_expr = arg0->mutable_const_expr();
+  auto arg1 = call_expr->add_args();
+  auto ident_expr = arg1->mutable_ident_expr();
+
+  testing::InSequence seq;
+
+  // Lowest level entry will be called first
+  EXPECT_CALL(handler, PreVisitCall(call_expr, &expr, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(target_ident, target, _)).Times(1);
+  EXPECT_CALL(handler, PostVisitTarget(&expr, _)).Times(1);
   EXPECT_CALL(handler, PostVisitConst(const_expr, arg0, _)).Times(1);
   EXPECT_CALL(handler, PostVisitArg(0, &expr, _)).Times(1);
   EXPECT_CALL(handler, PostVisitIdent(ident_expr, arg1, _)).Times(1);

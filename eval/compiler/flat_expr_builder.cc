@@ -418,6 +418,9 @@ class FlatExprVisitor : public AstVisitor {
     }
   }
 
+  // Nothing to do.
+  void PostVisitTarget(const Expr* expr, const SourcePosition*) override {}
+
   // CreateList node handler.
   // Invoked after child nodes are processed.
   void PostVisitCreateList(const CreateList* list_expr, const Expr* expr,
