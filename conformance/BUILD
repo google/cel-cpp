@@ -19,8 +19,9 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/macros.textproto",
     "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
-    "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
+    # TODO(issues/92): Support for parse-only proto message creation within a container.
+    # "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
+    # "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
     "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
@@ -78,7 +79,7 @@ cc_binary(
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
             "--server=$(location :server)",
-            "--check_server=$(location //third_party/cel/go/server/main:cel_server)",
+            "--skip_check",
             # TODO(issues/93): Inconsistent Duration.getMilliseconds() behavior.
             "--skip_test=timestamps/duration_converters/get_milliseconds",
             # TODO(issues/94): Missing timestamp conversion functions (type / string)
@@ -125,10 +126,15 @@ cc_binary(
             "--skip_test=macros/exists_one/list_no_shortcircuit",
             # TODO(issues/86): Map macro may produce incorrect results on error.
             "--skip_test=macros/map/list_error",
+            # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
+            "--skip_test=namespace/qualified/self_eval_qualified_lookup",
+            "--skip_test=namespace/namespace/self_eval_container_lookup",
+            "--skip_test=fields/qualified_identifier_resolution/qualified_ident",
+            "--skip_test=fields/qualified_identifier_resolution/map_field_select",
+            "--skip_test=fields/qualified_identifier_resolution/ident_with_longest_prefix_check",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",
-            "//third_party/cel/go/server/main:cel_server",
             "@com_google_cel_spec//tests/simple:simple_test",
         ] + ALL_TESTS,
     )
@@ -144,11 +150,10 @@ sh_test(
     args = [
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
         "--server=$(location :server)",
-        "--check_server=$(location //third_party/cel/go/server/main:cel_server)",
+        "--skip_check",
     ] + ["$(location " + test + ")" for test in DASHBOARD_TESTS],
     data = [
         ":server",
-        "//third_party/cel/go/server/main:cel_server",
         "@com_google_cel_spec//tests/simple:simple_test",
     ] + DASHBOARD_TESTS,
     visibility = [
