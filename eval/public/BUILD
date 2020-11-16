@@ -219,6 +219,7 @@ cc_library(
         ":cel_value",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )

@@ -1,5 +1,6 @@
 #include "eval/compiler/flat_expr_builder.h"
 
+#include "google/api/expr/v1alpha1/checked.pb.h"
 #include "stack"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/statusor.h"
@@ -7,6 +8,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/constant_folding.h"
+#include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_access_step.h"
@@ -535,7 +537,10 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
     visitor_->AddStep(std::move(jump_step_status));
   }
 }
+
 void BinaryCondVisitor::PostVisit(const Expr* expr) {
+  // TODO(issues/41): shortcircuit behavior is non-obvious: should add
+  // documentation and structure the code a bit better.
   visitor_->AddStep((cond_value_) ? CreateOrStep(expr->id())
                                   : CreateAndStep(expr->id()));
   if (short_circuiting_) {
@@ -709,9 +714,10 @@ void ComprehensionVisitor::PostVisit(const Expr*) {}
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const Expr* expr,
-                                  const SourceInfo* source_info,
-                                  std::vector<absl::Status>* warnings) const {
+FlatExprBuilder::CreateExpressionImpl(
+    const Expr* expr, const SourceInfo* source_info,
+    const google::protobuf::Map<int64_t, Reference>* reference_map,
+    std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
   BuilderWarnings warnings_builder(fail_on_warnings_);
 
@@ -722,10 +728,34 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
 
   absl::flat_hash_map<std::string, CelValue> idents;
 
+  const Expr* effective_expr = expr;
   // transformed expression preserving expression IDs
-  Expr out;
+  Expr rewrite_buffer;
+  // TODO(issues/98): A type checker may perform these rewrites, but there
+  // currently  isn't a signal to expose that in an expression. If that becomes
+  // available, we can skip the reference resolve step here if it's already
+  // done.
+  if (reference_map != nullptr && !reference_map->empty()) {
+    absl::StatusOr<absl::optional<Expr>> rewritten =
+        ResolveReferences(*effective_expr, *reference_map, *GetRegistry(),
+                          container(), &warnings_builder);
+    if (!rewritten.ok()) {
+      return rewritten.status();
+    }
+    if (rewritten.value().has_value()) {
+      rewrite_buffer = std::move(rewritten)->value();
+      effective_expr = &rewrite_buffer;
+    }
+    // TODO(issues/99): we could setup a check step here that confirms all of
+    // references are defined before actually evaluating.
+  }
+
   if (constant_folding_) {
-    FoldConstants(*expr, *this->GetRegistry(), constant_arena_, idents, &out);
+    Expr buffer;
+    FoldConstants(*effective_expr, *this->GetRegistry(), constant_arena_,
+                  idents, &buffer);
+    rewrite_buffer = std::move(buffer);
+    effective_expr = &rewrite_buffer;
   }
 
   std::set<std::string> iter_variable_names;
@@ -734,7 +764,7 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
                           idents, enable_comprehension_, &warnings_builder,
                           &iter_variable_names);
 
-  AstTraverse(constant_folding_ ? &out : expr, source_info, &visitor);
+  AstTraverse(effective_expr, source_info, &visitor);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();
@@ -754,8 +784,33 @@ FlatExprBuilder::CreateExpression(const Expr* expr,
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpression(const Expr* expr,
+                                  const SourceInfo* source_info,
+                                  std::vector<absl::Status>* warnings) const {
+  return CreateExpressionImpl(expr, source_info, /*reference_map=*/nullptr,
+                              warnings);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const Expr* expr,
                                   const SourceInfo* source_info) const {
-  return CreateExpression(expr, source_info, nullptr);
+  return CreateExpressionImpl(expr, source_info, /*reference_map=*/nullptr,
+                              /*warnings=*/nullptr);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr,
+                                  std::vector<absl::Status>* warnings) const {
+  return CreateExpressionImpl(&checked_expr->expr(),
+                              &checked_expr->source_info(),
+                              &checked_expr->reference_map(), warnings);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr) const {
+  return CreateExpressionImpl(&checked_expr->expr(),
+                              &checked_expr->source_info(),
+                              &checked_expr->reference_map(),
+                              /*warnings=*/nullptr);
 }
 
 }  // namespace runtime

@@ -3,6 +3,7 @@
 
 #include <functional>
 
+#include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -75,7 +76,7 @@ class CelExpression {
 class CelExpressionBuilder {
  public:
   CelExpressionBuilder()
-      : registry_(absl::make_unique<CelFunctionRegistry>()) {}
+      : registry_(absl::make_unique<CelFunctionRegistry>()), container_("") {}
 
   virtual ~CelExpressionBuilder() {}
 
@@ -92,6 +93,28 @@ class CelExpressionBuilder {
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info,
       std::vector<absl::Status>* warnings) const = 0;
+
+  // Creates CelExpression object from a checked expression.
+  // This includes an AST, source info, type hints and ident hints.
+  // checked_expr ptr must outlive any expressions that are built from it.
+  virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+      const google::api::expr::v1alpha1::CheckedExpr* checked_expr) const {
+    // Default implementation just passes through the expr and source info.
+    return CreateExpression(&checked_expr->expr(),
+                            &checked_expr->source_info());
+  }
+
+  // Creates CelExpression object from a checked expression.
+  // This includes an AST, source info, type hints and ident hints.
+  // checked_expr ptr must outlive any expressions that are built from it.
+  // non-fatal build warnings are written to warnings if encountered.
+  virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+      const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
+      std::vector<absl::Status>* warnings) const {
+    // Default implementation just passes through the expr and source_info.
+    return CreateExpression(&checked_expr->expr(), &checked_expr->source_info(),
+                            warnings);
+  }
 
   // CelFunction registry. Extension function should be registered with it
   // prior to expression creation.
