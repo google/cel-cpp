@@ -180,6 +180,59 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
           "Reference map points to a presence test -- has(container.attr)"))));
 }
 
+// foo.bar.var1 == bar.foo.Enum.ENUM_VAL1
+constexpr char kEnumExpr[] = R"(
+  id: 1
+  call_expr {
+    function: "_==_"
+    args {
+      id: 2
+      select_expr {
+        field: "var1"
+        operand {
+          id: 3
+          select_expr {
+            field: "bar"
+            operand {
+              id: 4
+              ident_expr { name: "foo" }
+            }
+          }
+        }
+      }
+    }
+    args {
+      id: 5
+      ident_expr { name: "bar.foo.Enum.ENUM_VAL1" }
+    }
+  }
+)";
+TEST(ResolveReferences, EnumConstReferenceUsed) {
+  Expr expr = ParseTestProto(kEnumExpr);
+  google::protobuf::Map<int64_t, Reference> reference_map;
+  CelFunctionRegistry registry;
+  ASSERT_OK(RegisterBuiltinFunctions(&registry));
+  reference_map[2].set_name("foo.bar.var1");
+  reference_map[5].set_name("bar.foo.Enum.ENUM_VAL1");
+  reference_map[5].mutable_value()->set_int64_value(9);
+  BuilderWarnings warnings;
+  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+  ASSERT_OK(result);
+  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
+                id: 1
+                call_expr {
+                  function: "_==_"
+                  args {
+                    id: 2
+                    ident_expr { name: "foo.bar.var1" }
+                  }
+                  args {
+                    id: 5
+                    const_expr { int64_value: 9 }
+                  }
+                })")));
+}
+
 TEST(ResolveReferences, ConstReferenceSkipped) {
   Expr expr = ParseTestProto(kExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;

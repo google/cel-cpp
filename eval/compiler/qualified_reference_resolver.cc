@@ -141,9 +141,17 @@ class ReferenceResolver {
     const Reference* reference = nullptr;
     if (reference_iter != reference_map_.end()) {
       if (!reference_iter->second.has_value()) {
-        // TODO(issues/71): Add support for compile time constants like enum
-        // values.
         reference = &reference_iter->second;
+      } else {
+        if (out->expr_kind_case() == Expr::kIdentExpr &&
+            reference_iter->second.value().constant_kind_case() ==
+                Constant::kInt64Value) {
+          // Replace enum idents with const reference value.
+          out->clear_ident_expr();
+          out->mutable_const_expr()->set_int64_value(
+              reference_iter->second.value().int64_value());
+          return true;
+        }
       }
     }
     bool updated = false;

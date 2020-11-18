@@ -16,8 +16,9 @@ namespace expr {
 namespace runtime {
 
 // A transformation over input expression that produces a new expression with
-// select subexpressions replaced by appropriate expressions referring to the
-// fully-qualified entity name. Returns modified expr if updates found.
+// subexpressions replaced by appropriate expressions referring to the
+// fully-qualified entity name or constant expressions in case of enums.
+// Returns modified expr if updates found.
 // Otherwise, returns nullopt.
 absl::StatusOr<absl::optional<google::api::expr::v1alpha1::Expr>> ResolveReferences(
     const google::api::expr::v1alpha1::Expr& expr,
