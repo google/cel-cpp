@@ -58,14 +58,14 @@ cc_binary(
         "//eval/public:transform_utility",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
-        "//google/api/expr/v1alpha1:conformance_service_proto_grpc_cc",
         "//internal:proto_util",
-        "//net/grpc:grpc++",
         "//parser",
+        "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:conformance_service_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
@@ -74,12 +74,13 @@ cc_binary(
 
 [
     sh_test(
-        name = "simple-" + driver,
-        srcs = [":" + driver],
+        name = "simple" + arg,
+        srcs = ["@com_google_cel_spec//tests:conftest.sh"],
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=$(location :server)",
+            "--server=\"$(location :server) " + arg + "\"",
             "--skip_check",
+            "--pipe",
             # TODO(issues/93): Inconsistent Duration.getMilliseconds() behavior.
             "--skip_test=timestamps/duration_converters/get_milliseconds",
             # TODO(issues/94): Missing timestamp conversion functions (type / string)
@@ -138,9 +139,9 @@ cc_binary(
             "@com_google_cel_spec//tests/simple:simple_test",
         ] + ALL_TESTS,
     )
-    for driver in [
-        "test.sh",
-        "opt-test.sh",
+    for arg in [
+        "",
+        "--opt",
     ]
 ]
 
@@ -151,6 +152,7 @@ sh_test(
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
         "--server=$(location :server)",
         "--skip_check",
+        "--pipe",
     ] + ["$(location " + test + ")" for test in DASHBOARD_TESTS],
     data = [
         ":server",

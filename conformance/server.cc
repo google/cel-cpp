@@ -1,6 +1,8 @@
+#include <iostream>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/conformance_service.grpc.pb.h"
+#include "google/api/expr/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
@@ -8,7 +10,8 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
-#include "net/grpc/public/include/grpcpp/grpcpp.h"
+#include "google/protobuf/util/json_util.h"
+#include "absl/flags/parse.h"
 #include "absl/strings/str_split.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -21,17 +24,20 @@
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 
 
-using ::grpc::Status;
-using ::grpc::StatusCode;
+using absl::Status;
+using absl::StatusCode;
 using ::google::protobuf::Arena;
+using ::google::protobuf::util::JsonStringToMessage;
+using ::google::protobuf::util::MessageToJsonString;
+
+ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
 
 namespace google {
 namespace api {
 namespace expr {
 namespace runtime {
 
-class ConformanceServiceImpl final
-    : public v1alpha1::grpc_gen::ConformanceService::Service {
+class ConformanceServiceImpl {
  public:
   ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
       : builder_(std::move(builder)),
@@ -40,11 +46,10 @@ class ConformanceServiceImpl final
         proto3Tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
                          default_instance()) {}
 
-  Status Parse(grpc::ServerContext* context,
-               const v1alpha1::ParseRequest* request,
-               v1alpha1::ParseResponse* response) override {
+  Status Parse(const v1alpha1::ParseRequest* request,
+               v1alpha1::ParseResponse* response) {
     if (request->cel_source().empty()) {
-      return Status(StatusCode::INVALID_ARGUMENT, "No source code.");
+      return Status(StatusCode::kInvalidArgument, "No source code.");
     }
     auto parse_status = parser::Parse(request->cel_source(), "");
     if (!parse_status.ok()) {
@@ -56,18 +61,16 @@ class ConformanceServiceImpl final
       (out).MergeFrom(parse_status.value());
       response->mutable_parsed_expr()->CopyFrom(out);
     }
-    return Status::OK;
+    return absl::OkStatus();
   }
 
-  Status Check(grpc::ServerContext* context,
-               const v1alpha1::CheckRequest* request,
-               v1alpha1::CheckResponse* response) override {
-    return Status(StatusCode::UNIMPLEMENTED, "Check is not supported");
+  Status Check(const v1alpha1::CheckRequest* request,
+               v1alpha1::CheckResponse* response) {
+    return Status(StatusCode::kUnimplemented, "Check is not supported");
   }
 
-  Status Eval(grpc::ServerContext* context,
-              const v1alpha1::EvalRequest* request,
-              v1alpha1::EvalResponse* response) override {
+  Status Eval(const v1alpha1::EvalRequest* request,
+              v1alpha1::EvalResponse* response) {
     const v1alpha1::Expr* expr = nullptr;
     if (request->has_parsed_expr()) {
       expr = &request->parsed_expr().expr();
@@ -82,7 +85,7 @@ class ConformanceServiceImpl final
     auto cel_expression_status = builder_->CreateExpression(&out, &source_info);
 
     if (!cel_expression_status.ok()) {
-      return Status(StatusCode::INTERNAL,
+      return Status(StatusCode::kInternal,
                     std::string(cel_expression_status.status().message()));
     }
 
@@ -95,14 +98,14 @@ class ConformanceServiceImpl final
       (*import_value).MergeFrom(pair.second.value());
       auto import_status = ValueToCelValue(*import_value, &arena);
       if (!import_status.ok()) {
-        return Status(StatusCode::INTERNAL, import_status.status().ToString());
+        return Status(StatusCode::kInternal, import_status.status().ToString());
       }
       activation.InsertValue(pair.first, import_status.value());
     }
 
     auto eval_status = cel_expression->Evaluate(activation, &arena);
     if (!eval_status.ok()) {
-      return Status(StatusCode::INTERNAL,
+      return Status(StatusCode::kInternal,
                     std::string(eval_status.status().message()));
     }
 
@@ -116,12 +119,12 @@ class ConformanceServiceImpl final
       google::api::expr::v1alpha1::Value export_value;
       auto export_status = CelValueToValue(result, &export_value);
       if (!export_status.ok()) {
-        return Status(StatusCode::INTERNAL, export_status.ToString());
+        return Status(StatusCode::kInternal, export_status.ToString());
       }
       auto* result_value = response->mutable_result()->mutable_value();
       (*result_value).MergeFrom(export_value);
     }
-    return Status::OK;
+    return absl::OkStatus();
   }
 
  private:
@@ -130,13 +133,12 @@ class ConformanceServiceImpl final
   const google::api::expr::test::v1::proto3::TestAllTypes* proto3Tests_;
 };
 
-int RunServer(std::string server_address) {
+int RunServer(bool optimize) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
 
-  const char* enable_constant_folding =
-      getenv("CEL_CPP_ENABLE_CONSTANT_FOLDING");
-  if (enable_constant_folding != nullptr) {
+  if (optimize) {
+    std::cerr << "Enabling optimizations" << std::endl;
     options.constant_folding = true;
     options.constant_arena = &arena;
   }
@@ -153,19 +155,42 @@ int RunServer(std::string server_address) {
                                  NestedEnum_descriptor());
   auto register_status = RegisterBuiltinFunctions(builder->GetRegistry());
   if (!register_status.ok()) {
+    std::cerr << "Failed to initialize: " << register_status.ToString()
+              << std::endl;
     return 1;
   }
 
   ConformanceServiceImpl service(std::move(builder));
-  grpc::ServerBuilder grpc_builder;
-  int port;
-  grpc_builder.AddListeningPort(server_address,
-                                grpc::InsecureServerCredentials(), &port);
-  grpc_builder.RegisterService(&service);
-  std::unique_ptr<grpc::Server> server(grpc_builder.BuildAndStart());
-  std::cout << "Listening on [::1]:" << port << std::endl;
-  fflush(stdout);
-  server->Wait();
+
+  // Implementation of a simple pipe protocol:
+  // INPUT LINE 1: parse/check/eval
+  // INPUT LINE 2: JSON of the corresponding request protobuf
+  // OUTPUT LINE 1: JSON of the coressponding response protobuf
+  while (true) {
+    std::string cmd, input, output;
+    std::getline(std::cin, cmd);
+    std::getline(std::cin, input);
+    if (cmd == "parse") {
+      v1alpha1::ParseRequest request;
+      v1alpha1::ParseResponse response;
+      CHECK_OK(JsonStringToMessage(input, &request));
+      CHECK_OK(service.Parse(&request, &response));
+      CHECK_OK(MessageToJsonString(response, &output));
+    } else if (cmd == "eval") {
+      v1alpha1::EvalRequest request;
+      v1alpha1::EvalResponse response;
+      CHECK_OK(JsonStringToMessage(input, &request));
+      CHECK_OK(service.Eval(&request, &response));
+      CHECK_OK(MessageToJsonString(response, &output));
+    } else if (cmd.empty()) {
+      return 0;
+    } else {
+      std::cerr << "Unexpected command: " << cmd << std::endl;
+      return 2;
+    }
+    std::cout << output << std::endl;
+  }
+
   return 0;
 }
 
@@ -175,6 +200,6 @@ int RunServer(std::string server_address) {
 }  // namespace google
 
 int main(int argc, char** argv) {
-  std::string server_address = "[::1]:0";
-  return google::api::expr::runtime::RunServer(server_address);
+  absl::ParseCommandLine(argc, argv);
+  return google::api::expr::runtime::RunServer(absl::GetFlag(FLAGS_opt));
 }
