@@ -1,5 +1,8 @@
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <memory>
+
+#include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
@@ -8,12 +11,15 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -27,11 +33,13 @@ namespace runtime {
 
 namespace {
 
+using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::FieldMask;
 using testing::Eq;
+using testing::HasSubstr;
 using testing::Not;
 
 class ConcatFunction : public CelFunction {
@@ -337,6 +345,273 @@ TEST(FlatExprBuilderTest, MapComprehension) {
   CelValue result = result_or.value();
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
+  CheckedExpr expr;
+  // foo && bar
+  google::protobuf::TextFormat::ParseFromString(R"(
+    expr {
+      id: 1
+      call_expr {
+        function: "_&&_"
+        args {
+          id: 2
+          ident_expr {
+            name: "foo"
+          }
+        }
+        args {
+          id: 3
+          ident_expr {
+            name: "bar"
+          }
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  auto build_status = builder.CreateExpression(&expr);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  Activation activation;
+  activation.InsertValue("foo", CelValue::CreateBool(true));
+  activation.InsertValue("bar", CelValue::CreateBool(true));
+  google::protobuf::Arena arena;
+  auto result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(result_or);
+  CelValue result = result_or.value();
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
+  CheckedExpr expr;
+  // `foo.var1` && `bar.var2`
+  google::protobuf::TextFormat::ParseFromString(R"(
+    reference_map {
+      key: 2
+      value {
+        name: "foo.var1"
+      }
+    }
+    reference_map {
+      key: 4
+      value {
+        name: "bar.var2"
+      }
+    }
+    expr {
+      id: 1
+      call_expr {
+        function: "_&&_"
+        args {
+          id: 2
+          select_expr {
+            field: "var1"
+            operand {
+              id: 3
+              ident_expr {
+                name: "foo"
+              }
+            }
+          }
+        }
+        args {
+          id: 4
+          select_expr {
+            field: "var2"
+            operand {
+              ident_expr {
+                name: "bar"
+              }
+            }
+          }
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  auto build_status = builder.CreateExpression(&expr);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  Activation activation;
+  activation.InsertValue("foo.var1", CelValue::CreateBool(true));
+  activation.InsertValue("bar.var2", CelValue::CreateBool(true));
+  google::protobuf::Arena arena;
+  auto result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(result_or);
+  CelValue result = result_or.value();
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
+  CheckedExpr expr;
+  // ext.and(var1, bar.var2)
+  google::protobuf::TextFormat::ParseFromString(R"(
+    reference_map {
+      key: 1
+      value {
+        overload_id: "com.foo.ext.and"
+      }
+    }
+    reference_map {
+      key: 3
+      value {
+        name: "com.foo.var1"
+      }
+    }
+    reference_map {
+      key: 4
+      value {
+        name: "bar.var2"
+      }
+    }
+    expr {
+      id: 1
+      call_expr {
+        function: "and"
+        target {
+          id: 2
+          ident_expr {
+            name: "ext"
+          }
+        }
+        args {
+          id: 3
+          ident_expr {
+            name: "var1"
+          }
+        }
+        args {
+          id: 4
+          select_expr {
+            field: "var2"
+            operand {
+              id: 5
+              ident_expr {
+                name: "bar"
+              }
+            }
+          }
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_container("com.foo");
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool, bool>::CreateAndRegister(
+      "com.foo.ext.and", false,
+      [](google::protobuf::Arena*, bool lhs, bool rhs) { return lhs && rhs; },
+      builder.GetRegistry())));
+  auto build_status = builder.CreateExpression(&expr);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  Activation activation;
+  activation.InsertValue("com.foo.var1", CelValue::CreateBool(true));
+  activation.InsertValue("bar.var2", CelValue::CreateBool(true));
+  google::protobuf::Arena arena;
+  auto result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(result_or);
+  CelValue result = result_or.value();
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
+  CheckedExpr expr;
+  // <foo.var1> && <bar>.<var2>
+  google::protobuf::TextFormat::ParseFromString(R"(
+    reference_map {
+      key: 2
+      value {
+        name: "foo.var1"
+      }
+    }
+    reference_map {
+      key: 5
+      value {
+        name: "bar"
+      }
+    }
+    expr {
+      id: 1
+      call_expr {
+        function: "_&&_"
+        args {
+          id: 2
+          select_expr {
+            field: "var1"
+            operand {
+              id: 3
+              ident_expr {
+                name: "foo"
+              }
+            }
+          }
+        }
+        args {
+          id: 4
+          select_expr {
+            field: "var2"
+            operand {
+              id: 5
+              ident_expr {
+                name: "bar"
+              }
+            }
+          }
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  auto build_status = builder.CreateExpression(&expr);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  Activation activation;
+  activation.InsertValue("foo.var1", CelValue::CreateBool(true));
+  // Activation tries to bind a namespaced variable but the reference map refers
+  // to the container 'bar'.
+  activation.InsertValue("bar.var2", CelValue::CreateBool(true));
+  google::protobuf::Arena arena;
+  auto result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(result_or);
+  CelValue result = result_or.value();
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(
+      *result.ErrorOrDie(),
+      Eq(absl::UnknownError("No value with name \"bar\" found in Activation")));
+
+  // Re-run with the expected interpretation of `bar`.`var2`
+  std::vector<std::pair<CelValue, CelValue>> map_pairs{
+      {CelValue::CreateStringView("var2"), CelValue::CreateBool(false)}};
+
+  std::unique_ptr<CelMap> map_value =
+      CreateContainerBackedMap(absl::MakeSpan(map_pairs));
+  activation.InsertValue("bar", CelValue::CreateMap(map_value.get()));
+  result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(result_or);
+  result = result_or.value();
+  ASSERT_TRUE(result.IsBool());
+  EXPECT_FALSE(result.BoolOrDie());
 }
 
 TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
@@ -655,6 +930,37 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
 }
 
+TEST(FlatExprBuilderTest, SimpleEnumIdentTest) {
+  TestMessage message;
+
+  Expr expr;
+  SourceInfo source_info;
+
+  constexpr char enum_name[] =
+      "google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_1";
+
+  Expr* cur_expr = &expr;
+  cur_expr->mutable_ident_expr()->set_name(enum_name);
+
+  FlatExprBuilder builder;
+  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
+
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  google::protobuf::Arena arena;
+  Activation activation;
+  auto eval_status = cel_expr->Evaluate(activation, &arena);
+
+  ASSERT_OK(eval_status);
+  CelValue result = eval_status.value();
+
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
 TEST(FlatExprBuilderTest, ContainerStringFormat) {
   Expr expr;
   SourceInfo source_info;
@@ -776,6 +1082,99 @@ TEST(FlatExprBuilderTest, PartialQualifiedEnumResolution) {
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
+}
+
+TEST(FlatExprBuilderTest, MapFieldPresence) {
+  SourceInfo source_info;
+  Expr expr;
+  google::protobuf::TextFormat::ParseFromString(R"(
+    id: 1,
+    select_expr{
+      operand {
+        id: 2
+        ident_expr{ name: "msg" }
+      }
+      field: "string_int32_map"
+      test_only: true
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+  auto cel_expr = std::move(build_status.value());
+
+  google::protobuf::Arena arena;
+  {
+    TestMessage message;
+    auto strMap = message.mutable_string_int32_map();
+    strMap->insert({"key", 1});
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+  {
+    TestMessage message;
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_FALSE(result.BoolOrDie());
+  }
+}
+
+TEST(FlatExprBuilderTest, RepeatedFieldPresence) {
+  SourceInfo source_info;
+  Expr expr;
+  google::protobuf::TextFormat::ParseFromString(R"(
+    id: 1,
+    select_expr{
+      operand {
+        id: 2
+        ident_expr{ name: "msg" }
+      }
+      field: "int32_list"
+      test_only: true
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_OK(build_status);
+  auto cel_expr = std::move(build_status.value());
+
+  google::protobuf::Arena arena;
+  {
+    TestMessage message;
+    message.add_int32_list(1);
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+  {
+    TestMessage message;
+    Activation activation;
+    activation.InsertValue("msg",
+                           CelProtoWrapper::CreateMessage(&message, &arena));
+    auto eval_status = cel_expr->Evaluate(activation, &arena);
+    ASSERT_OK(eval_status);
+    auto result = eval_status.value();
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_FALSE(result.BoolOrDie());
+  }
 }
 
 absl::Status RunTernaryExpression(CelValue selector, CelValue value1,

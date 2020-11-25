@@ -274,6 +274,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
     int64_t expr_id) {
   if (!create_struct_expr->message_name().empty()) {
+    // TODO(issues/92): Support resolving a type name within a container.
     // Make message-creating step.
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
@@ -283,7 +284,8 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
 
     if (desc == nullptr) {
       return absl::InvalidArgumentError(
-          "Error configuring message creation: message descriptor not found");
+          "Error configuring message creation: message descriptor not found: " +
+          create_struct_expr->message_name());
     }
 
     for (const auto& entry : create_struct_expr->entries()) {

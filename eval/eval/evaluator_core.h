@@ -14,6 +14,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -24,7 +25,6 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
-#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {

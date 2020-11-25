@@ -119,12 +119,12 @@ std::string FunctionCallString(const UnknownFunctionResult* fn) {
       absl::StrAppend(&call, DebugString(fn->arguments()[0]), ".");
     }
     absl::StrAppend(&call, fn->descriptor().name());
-    for (int i = 1; i < fn->arguments().size(); i++) {
+    for (size_t i = 1; i < fn->arguments().size(); i++) {
       args.push_back(DebugString(fn->arguments()[i]));
     }
   } else {
     absl::StrAppend(&call, fn->descriptor().name());
-    for (int i = 0; i < fn->arguments().size(); i++) {
+    for (size_t i = 0; i < fn->arguments().size(); i++) {
       args.push_back(DebugString(fn->arguments()[i]));
     }
   }

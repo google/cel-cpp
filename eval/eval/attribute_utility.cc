@@ -4,7 +4,6 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {

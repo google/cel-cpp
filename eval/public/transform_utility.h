@@ -3,6 +3,7 @@
 
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "eval/public/cel_value.h"
 
 namespace google {

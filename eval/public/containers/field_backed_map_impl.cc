@@ -23,11 +23,11 @@ class CelMapReflectionFriend {
     return reflection->ContainsMapKey(message, field, key);
   }
 
-  static bool InsertOrLookupMapValue(const Reflection* reflection,
-                                     Message* message,
-                                     const FieldDescriptor* field,
-                                     const MapKey& key, MapValueRef* val) {
-    return reflection->InsertOrLookupMapValue(message, field, key, val);
+  static bool LookupMapValue(const Reflection* reflection,
+                             const Message& message,
+                             const FieldDescriptor* field, const MapKey& key,
+                             MapValueConstRef* val) {
+    return reflection->LookupMapValue(message, field, key, val);
   }
 };
 
@@ -46,7 +46,7 @@ namespace {
 using google::protobuf::Arena;
 using google::protobuf::Descriptor;
 using google::protobuf::FieldDescriptor;
-using google::protobuf::MapValueRef;
+using google::protobuf::MapValueConstRef;
 using google::protobuf::Message;
 
 // Map entries have two field tags
@@ -122,6 +122,10 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
   // Fast implementation.
   google::protobuf::MapKey inner_key;
   switch (key.type()) {
+    case CelValue::Type::kBool: {
+      inner_key.SetBoolValue(key.BoolOrDie());
+      break;
+    }
     case CelValue::Type::kInt64: {
       inner_key.SetInt64Value(key.Int64OrDie());
       break;
@@ -135,27 +139,20 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
       inner_key.SetStringValue(std::string(str.begin(), str.end()));
       break;
     }
-    default: { return {}; }
+    default: {
+      return {};
+    }
   }
-  // Performance issue. Currently the only way to do a lookup is
-  // InsertOrLookupMapValue. This function will modify the map if the key
-  // doesn't exist, that is why we have to call ContainsMapKey first, which
-  // results in hashing the key more than once.
-  if (!google::protobuf::expr::CelMapReflectionFriend::ContainsMapKey(
-          reflection_, *message_, descriptor_, inner_key)) {
+  MapValueConstRef value_ref;
+  // Look the value up
+  if (!google::protobuf::expr::CelMapReflectionFriend::LookupMapValue(
+          reflection_, *message_, descriptor_, inner_key, &value_ref)) {
     return {};
   }
-  MapValueRef value_ref;
-  // InsertOrLookupMapValue is not marked as const (but it is const in this
-  // scenario when ContainsMapKey returns true), so we use const_cast.
-  if (google::protobuf::expr::CelMapReflectionFriend::InsertOrLookupMapValue(
-          reflection_, const_cast<google::protobuf::Message*>(message_), descriptor_,
-          inner_key, &value_ref)) {
-    GOOGLE_LOG(ERROR) << "The map was expected to have the key, but it didn't.";
-  }
+
   // Get value descriptor treating it as a repeated field.
   // All values in protobuf map have the same type.
-  // The map is not empty, because ContainsMapKey returned true.
+  // The map is not empty, because LookuMapValue returned true.
   const Message* entry =
       &reflection_->GetRepeatedMessage(*message_, descriptor_, 0);
   if (entry == nullptr) {
@@ -172,7 +169,7 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
     return CreateErrorValue(arena_, status.message());
   }
   return result;
-#else   // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+#else  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
   // Slow implementation.
   CelValue result = CelValue::CreateNull();
   CelValue inner_key = CelValue::CreateNull();
@@ -201,6 +198,9 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 
     bool match = false;
     switch (key.type()) {
+      case CelValue::Type::kBool:
+        match = key.BoolOrDie() == inner_key.BoolOrDie();
+        break;
       case CelValue::Type::kInt64:
         match = key.Int64OrDie() == inner_key.Int64OrDie();
         break;

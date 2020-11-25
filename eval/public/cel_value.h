@@ -25,7 +25,6 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
-#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {
@@ -448,7 +447,8 @@ CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena,
                                        absl::string_view fn);
 bool CheckNoMatchingOverloadError(CelValue value);
 
-CelValue CreateNoSuchFieldError(google::protobuf::Arena *arena);
+CelValue CreateNoSuchFieldError(google::protobuf::Arena *arena,
+                                absl::string_view field = "");
 
 CelValue CreateNoSuchKeyError(google::protobuf::Arena *arena, absl::string_view key);
 bool CheckNoSuchKeyError(CelValue value);

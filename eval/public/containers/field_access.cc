@@ -19,7 +19,7 @@ namespace {
 
 using ::google::protobuf::Arena;
 using ::google::protobuf::FieldDescriptor;
-using ::google::protobuf::MapValueRef;
+using ::google::protobuf::MapValueConstRef;
 using ::google::protobuf::Message;
 using ::google::protobuf::Reflection;
 
@@ -265,7 +265,7 @@ class RepeatedFieldAccessor : public FieldAccessor<RepeatedFieldAccessor> {
 class MapValueAccessor : public FieldAccessor<MapValueAccessor> {
  public:
   MapValueAccessor(const Message* msg, const FieldDescriptor* field_desc,
-                   const MapValueRef* value_ref)
+                   const MapValueConstRef* value_ref)
       : FieldAccessor(msg, field_desc), value_ref_(value_ref) {}
 
   bool GetBool() const { return value_ref_->GetBoolValue(); }
@@ -293,7 +293,7 @@ class MapValueAccessor : public FieldAccessor<MapValueAccessor> {
   const Reflection* GetReflection() const { return msg_->GetReflection(); }
 
  private:
-  const MapValueRef* value_ref_;
+  const MapValueConstRef* value_ref_;
 };
 
 // Helper classes that should retrieve values from CelValue,
@@ -345,7 +345,7 @@ absl::Status CreateValueFromRepeatedField(const google::protobuf::Message* msg,
 
 absl::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
                                      const FieldDescriptor* desc,
-                                     const MapValueRef* value_ref,
+                                     const MapValueConstRef* value_ref,
                                      google::protobuf::Arena* arena, CelValue* result) {
   MapValueAccessor accessor(msg, desc, value_ref);
   return accessor.CreateValueFromFieldAccessor(arena, result);

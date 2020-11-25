@@ -2,6 +2,7 @@
 #include "google/protobuf/util/time_util.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -221,6 +222,17 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_EQ(result_value.Int64OrDie(), result) << operation;
   }
 
+  // Helper for testing invalid signed integer arithmetic operations.
+  void TestArithmeticalErrorInt64(absl::string_view operation, int64_t v1,
+                                  int64_t v2, absl::StatusCode code) {
+    CelValue result_value;
+    ASSERT_NO_FATAL_FAILURE(PerformRun(
+        operation, {}, {CelValue::CreateInt64(v1), CelValue::CreateInt64(v2)},
+        &result_value));
+    ASSERT_EQ(result_value.IsError(), true);
+    ASSERT_EQ(result_value.ErrorOrDie()->code(), code) << operation;
+  }
+
   // Helper method to test arithmetical operations for Uint64
   void TestArithmeticalOperationUint64(absl::string_view operation, uint64_t v1,
                                        uint64_t v2, uint64_t result) {
@@ -230,6 +242,17 @@ class BuiltinsTest : public ::testing::Test {
         &result_value));
     ASSERT_EQ(result_value.IsUint64(), true);
     ASSERT_EQ(result_value.Uint64OrDie(), result) << operation;
+  }
+
+  // Helper for testing invalid unsigned integer arithmetic operations.
+  void TestArithmeticalErrorUint64(absl::string_view operation, uint64_t v1,
+                                   uint64_t v2, absl::StatusCode code) {
+    CelValue result_value;
+    ASSERT_NO_FATAL_FAILURE(PerformRun(
+        operation, {}, {CelValue::CreateUint64(v1), CelValue::CreateUint64(v2)},
+        &result_value));
+    ASSERT_EQ(result_value.IsError(), true);
+    ASSERT_EQ(result_value.ErrorOrDie()->code(), code) << operation;
   }
 
   // Helper method to test arithmetical operations for Double
@@ -329,6 +352,29 @@ TEST_F(BuiltinsTest, TestNotOp) {
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
+}
+
+// Test negation operation for numeric types.
+TEST_F(BuiltinsTest, TestNegOp) {
+  CelValue result;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kNeg, {}, {CelValue::CreateInt64(-1)}, &result));
+  ASSERT_TRUE(result.IsInt64());
+  EXPECT_EQ(result.Int64OrDie(), 1);
+
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kNeg, {}, {CelValue::CreateDouble(-1.0)}, &result));
+  ASSERT_TRUE(result.IsDouble());
+  EXPECT_EQ(result.DoubleOrDie(), 1.0);
+}
+
+// Test integer negation overflow.
+TEST_F(BuiltinsTest, TestNegIntOverflow) {
+  CelValue result;
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kNeg, {},
+      {CelValue::CreateInt64(std::numeric_limits<int64_t>::min())}, &result));
+  ASSERT_TRUE(result.IsError());
 }
 
 // Test Equality/Non-Equality operation for Bool
@@ -524,12 +570,62 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
                 0L);
 
-  // Test timestamp functions w/ timezone
+  // Test timestamp functions w/ IANA timezone
   ref.set_seconds(1L);
   ref.set_nanos(11000000L);
   std::vector<CelValue> params;
   const std::string timezone = "America/Los_Angeles";
   params.push_back(CelValue::CreateString(&timezone));
+
+  TestFunctionsWithParams(builtin::kFullYear,
+                          CelProtoWrapper::CreateTimestamp(&ref), params,
+                          1969L);
+  TestFunctionsWithParams(builtin::kMonth,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+  TestFunctionsWithParams(builtin::kDayOfYear,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 364L);
+  TestFunctionsWithParams(builtin::kDayOfMonth,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 30L);
+  TestFunctionsWithParams(builtin::kDate,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 31L);
+  TestFunctionsWithParams(builtin::kHours,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 16L);
+  TestFunctionsWithParams(builtin::kMinutes,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 0L);
+  TestFunctionsWithParams(builtin::kSeconds,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 1L);
+  TestFunctionsWithParams(builtin::kMilliseconds,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 11L);
+
+  ref.set_seconds(259200L);
+  ref.set_nanos(0L);
+  TestFunctionsWithParams(builtin::kDayOfWeek,
+                          CelProtoWrapper::CreateTimestamp(&ref), params, 6L);
+
+  // Test timestamp functions with negative value
+  ref.set_seconds(-1L);
+  ref.set_nanos(0L);
+
+  TestFunctions(builtin::kFullYear, CelProtoWrapper::CreateTimestamp(&ref),
+                1969L);
+  TestFunctions(builtin::kMonth, CelProtoWrapper::CreateTimestamp(&ref), 11L);
+  TestFunctions(builtin::kDayOfYear, CelProtoWrapper::CreateTimestamp(&ref),
+                364L);
+  TestFunctions(builtin::kDayOfMonth, CelProtoWrapper::CreateTimestamp(&ref),
+                30L);
+  TestFunctions(builtin::kDate, CelProtoWrapper::CreateTimestamp(&ref), 31L);
+  TestFunctions(builtin::kHours, CelProtoWrapper::CreateTimestamp(&ref), 23L);
+  TestFunctions(builtin::kMinutes, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+  TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
+  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
+                3L);
+
+  // Test timestamp functions w/ fixed timezone
+  ref.set_seconds(1L);
+  ref.set_nanos(11000000L);
+  const std::string fixedzone = "-08:00";
+  params.clear();
+  params.push_back(CelValue::CreateString(&fixedzone));
 
   TestFunctionsWithParams(builtin::kFullYear,
                           CelProtoWrapper::CreateTimestamp(&ref), params,
@@ -1259,32 +1355,41 @@ TEST_F(BuiltinsTest, TestInt64Arithmetics) {
   TestArithmeticalOperationInt64(builtin::kDivide, 10, 5, 2);
 }
 
-TEST_F(BuiltinsTest, TestInt64DivisionByZero) {
-  CelValue result_value;
-
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kDivide, {},
-      {CelValue::CreateInt64(1), CelValue::CreateInt64(0)}, &result_value));
-
-  ASSERT_TRUE(result_value.IsError());
+TEST_F(BuiltinsTest, TestInt64ArithmeticOverflow) {
+  int64_t min = std::numeric_limits<int64_t>::min();
+  int64_t max = std::numeric_limits<int64_t>::max();
+  TestArithmeticalErrorInt64(builtin::kAdd, max, 1,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kSubtract, min, max,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kMultiply, max, 2,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kModulo, min, -1,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kDivide, min, -1,
+                             absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorInt64(builtin::kDivide, min, 0,
+                             absl::StatusCode::kUnknown);
 }
 
 TEST_F(BuiltinsTest, TestUint64Arithmetics) {
   TestArithmeticalOperationUint64(builtin::kAdd, 2, 3, 5);
-  TestArithmeticalOperationUint64(builtin::kSubtract, 2, 3,
-                                  static_cast<uint64_t>(-1));
+  TestArithmeticalOperationUint64(builtin::kSubtract, 3, 2, 1);
   TestArithmeticalOperationUint64(builtin::kMultiply, 2, 3, 6);
   TestArithmeticalOperationUint64(builtin::kDivide, 10, 5, 2);
 }
 
-TEST_F(BuiltinsTest, TestUint64DivisionByZero) {
+TEST_F(BuiltinsTest, TestUint64ArithmeticOverflow) {
   CelValue result_value;
-
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kDivide, {},
-      {CelValue::CreateUint64(1), CelValue::CreateUint64(0)}, &result_value));
-
-  ASSERT_TRUE(result_value.IsError());
+  uint64_t max = std::numeric_limits<uint64_t>::max();
+  TestArithmeticalErrorUint64(builtin::kAdd, max, 1,
+                              absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorUint64(builtin::kSubtract, 2, 3,
+                              absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorUint64(builtin::kMultiply, max, 2,
+                              absl::StatusCode::kOutOfRange);
+  TestArithmeticalErrorUint64(builtin::kDivide, 1, 0,
+                              absl::StatusCode::kUnknown);
 }
 
 TEST_F(BuiltinsTest, TestDoubleArithmetics) {
@@ -1474,6 +1579,61 @@ TEST_F(BuiltinsTest, StringToString) {
       PerformRun(builtin::kString, {}, args, &result_value));
   ASSERT_TRUE(result_value.IsString());
   EXPECT_EQ(result_value.StringOrDie().value(), "abcd");
+}
+
+// Type operations
+TEST_F(BuiltinsTest, TypeComparisons) {
+  ::google::protobuf::Arena arena;
+
+  std::vector<std::pair<CelValue, CelValue>> paired_values;
+
+  paired_values.push_back(
+      {CelValue::CreateBool(false), CelValue::CreateBool(true)});
+  paired_values.push_back(
+      {CelValue::CreateInt64(-1), CelValue::CreateInt64(1)});
+  paired_values.push_back(
+      {CelValue::CreateUint64(1), CelValue::CreateUint64(2)});
+  paired_values.push_back(
+      {CelValue::CreateDouble(1.), CelValue::CreateDouble(2.)});
+
+  std::string str1 = "test1";
+  std::string str2 = "test2";
+  paired_values.push_back(
+      {CelValue::CreateString(&str1), CelValue::CreateString(&str2)});
+  paired_values.push_back(
+      {CelValue::CreateBytes(&str1), CelValue::CreateBytes(&str2)});
+
+  FakeList cel_list1({CelValue::CreateBool(false)});
+  FakeList cel_list2({CelValue::CreateBool(true)});
+  paired_values.push_back(
+      {CelValue::CreateList(&cel_list1), CelValue::CreateList(&cel_list2)});
+
+  std::map<int64_t, CelValue> data1;
+  std::map<int64_t, CelValue> data2;
+  FakeInt64Map cel_map1(data1);
+  FakeInt64Map cel_map2(data2);
+  paired_values.push_back(
+      {CelValue::CreateMap(&cel_map1), CelValue::CreateMap(&cel_map2)});
+
+  for (size_t i = 0; i < paired_values.size(); i++) {
+    for (size_t j = 0; j < paired_values.size(); j++) {
+      CelValue result1;
+      CelValue result2;
+
+      PerformRun(builtin::kType, {}, {paired_values[i].first}, &result1);
+      PerformRun(builtin::kType, {}, {paired_values[j].second}, &result2);
+
+      ASSERT_TRUE(result1.IsCelType()) << "Unexpected result for value at index"
+                                       << i << ":" << result1.DebugString();
+      ASSERT_TRUE(result2.IsCelType()) << "Unexpected result for value at index"
+                                       << j << ":" << result2.DebugString();
+      if (i == j) {
+        ASSERT_EQ(result1.CelTypeOrDie(), result2.CelTypeOrDie());
+      } else {
+        ASSERT_TRUE(result1.CelTypeOrDie() != result2.CelTypeOrDie());
+      }
+    }
+  }
 }
 
 }  // namespace

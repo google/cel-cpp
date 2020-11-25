@@ -2,10 +2,10 @@
 #define THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "parser/macro.h"
 #include "parser/source_factory.h"
-#include "absl/status/statusor.h"
 
 namespace google {
 namespace api {

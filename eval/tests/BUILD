@@ -17,6 +17,7 @@ cc_test(
     tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
+        "//base:status_macros",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -24,8 +25,8 @@ cc_test(
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/structs:cel_proto_wrapper",
-        "@com_github_google_googlebench//:benchmark",
-        "@com_github_google_googlebench//:benchmark_main",
+        "@com_github_google_benchmark//:benchmark",
+        "@com_github_google_benchmark//:benchmark_main",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
@@ -104,6 +105,7 @@ cc_library(
     deps = [
         "//eval/public:activation",
         "//eval/public:cel_expression",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest",
     ],
 )

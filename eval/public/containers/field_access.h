@@ -39,7 +39,7 @@ absl::Status CreateValueFromRepeatedField(const google::protobuf::Message* msg,
 // result pointer to CelValue to store the result in.
 absl::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
                                      const google::protobuf::FieldDescriptor* desc,
-                                     const google::protobuf::MapValueRef* value_ref,
+                                     const google::protobuf::MapValueConstRef* value_ref,
                                      google::protobuf::Arena* arena, CelValue* result);
 
 // Assigns content of CelValue to singular message field.

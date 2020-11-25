@@ -16,6 +16,7 @@ namespace {
 using google::protobuf::Arena;
 
 constexpr char kErrNoMatchingOverload[] = "No matching overloads found";
+constexpr char kErrNoSuchField[] = "no_such_field";
 constexpr char kErrNoSuchKey[] = "Key not found in map";
 constexpr absl::string_view kErrUnknownValue = "Unknown value ";
 // Error name for MissingAttributeError indicating that evaluation has
@@ -190,8 +191,10 @@ bool CheckNoMatchingOverloadError(CelValue value) {
                            kErrNoMatchingOverload);
 }
 
-CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena) {
-  return CreateErrorValue(arena, "no_such_field", absl::StatusCode::kNotFound);
+CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena, absl::string_view field) {
+  return CreateErrorValue(
+      arena, absl::StrCat(kErrNoSuchField, !field.empty() ? " : " : "", field),
+      absl::StatusCode::kNotFound);
 }
 
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key) {

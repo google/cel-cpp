@@ -1,7 +1,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_
 
+#include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/statusor.h"
 #include "eval/public/cel_expression.h"
 
 namespace google {
@@ -71,6 +73,19 @@ class FlatExprBuilder : public CelExpressionBuilder {
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info,
       std::vector<absl::Status>* warnings) const override;
+
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+      const google::api::expr::v1alpha1::CheckedExpr* checked_expr) const override;
+
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
+      const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
+      std::vector<absl::Status>* warnings) const override;
+
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
+      const google::api::expr::v1alpha1::Expr* expr,
+      const google::api::expr::v1alpha1::SourceInfo* source_info,
+      const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
+      std::vector<absl::Status>* warnings) const;
 
  private:
   bool enable_unknowns_;

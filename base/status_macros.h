@@ -67,4 +67,8 @@ inline To down_cast(From* f) {         // so we only accept pointers
 #define EXPECT_OK(expression) EXPECT_TRUE(expression.ok())
 #endif
 
+#if !defined(CHECK_OK)
+#define CHECK_OK(expression) assert(expression.ok())
+#endif
+
 #endif  // THIRD_PARTY_CEL_CPP_BASE_STATUS_MACROS_H_

@@ -25,7 +25,6 @@ cc_library(
     deps = [
         ":cel_value_internal",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
@@ -182,6 +181,7 @@ cc_library(
         ":cel_function_registry",
         ":cel_options",
         "//eval/public/containers:container_backed_list_impl",
+        "@com_google_absl//absl/numeric:int128",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -217,7 +217,9 @@ cc_library(
         ":cel_function",
         ":cel_function_registry",
         ":cel_value",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
@@ -228,7 +230,6 @@ cc_library(
     hdrs = ["source_position.h"],
     deps = [
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf_lite",
     ],
 )
 
@@ -239,7 +240,6 @@ cc_library(
     ],
     deps = [
         ":source_position",
-        "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
@@ -266,7 +266,6 @@ cc_library(
     deps = [
         ":ast_visitor",
         ":source_position",
-        "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
@@ -464,6 +463,7 @@ cc_test(
         ":cel_function_registry",
         "//base:status_macros",
         "//eval/public/structs:cel_proto_wrapper",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -608,6 +608,7 @@ cc_library(
         "//eval/public/structs:cel_proto_wrapper",
         "//internal:proto_util",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:value_cc_proto",
         "@com_google_protobuf//:protobuf",

@@ -5,6 +5,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
