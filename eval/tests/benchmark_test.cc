@@ -15,6 +15,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/tests/request_context.pb.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -32,7 +33,7 @@ using google::api::expr::v1alpha1::SourceInfo;
 static void BM_Eval(benchmark::State& state) {
   auto builder = CreateCelExpressionBuilder();
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  CHECK_OK(reg_status);
+  ASSERT_OK(reg_status);
 
   int len = state.range(0);
 
@@ -50,7 +51,7 @@ static void BM_Eval(benchmark::State& state) {
 
   SourceInfo source_info;
   auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
-  CHECK_OK(cel_expr_status.status());
+  ASSERT_OK(cel_expr_status.status());
 
   std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
 
@@ -58,11 +59,11 @@ static void BM_Eval(benchmark::State& state) {
     google::protobuf::Arena arena;
     Activation activation;
     auto eval_result = cel_expr->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
+    ASSERT_OK(eval_result.status());
 
     CelValue result = eval_result.value();
-    GOOGLE_CHECK(result.IsInt64());
-    GOOGLE_CHECK(result.Int64OrDie() == len + 1);
+    ASSERT_TRUE(result.IsInt64());
+    ASSERT_TRUE(result.Int64OrDie() == len + 1);
   }
 }
 
@@ -74,7 +75,7 @@ BENCHMARK(BM_Eval)->Range(1, 32768);
 static void BM_EvalString(benchmark::State& state) {
   auto builder = CreateCelExpressionBuilder();
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  CHECK_OK(reg_status);
+  ASSERT_OK(reg_status);
 
   int len = state.range(0);
 
@@ -92,7 +93,7 @@ static void BM_EvalString(benchmark::State& state) {
 
   SourceInfo source_info;
   auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
-  CHECK_OK(cel_expr_status.status());
+  ASSERT_OK(cel_expr_status.status());
 
   std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
 
@@ -100,11 +101,11 @@ static void BM_EvalString(benchmark::State& state) {
     google::protobuf::Arena arena;
     Activation activation;
     auto eval_result = cel_expr->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
+    ASSERT_OK(eval_result.status());
 
     CelValue result = eval_result.value();
-    GOOGLE_CHECK(result.IsString());
-    GOOGLE_CHECK(result.StringOrDie().value().size() == len + 1);
+    ASSERT_TRUE(result.IsString());
+    ASSERT_TRUE(result.StringOrDie().value().size() == len + 1);
   }
 }
 
@@ -622,7 +623,7 @@ void BM_PolicyNative(benchmark::State& state) {
       {"ip", kIP}, {"token", kToken}, {"path", kPath}};
   for (auto _ : state) {
     auto result = NativeCheck(attributes, denylists, allowlists);
-    GOOGLE_CHECK(result);
+    ASSERT_TRUE(result);
   }
 }
 
@@ -649,11 +650,11 @@ void BM_PolicySymbolic(benchmark::State& state) {
   options.constant_arena = &arena;
 
   auto builder = CreateCelExpressionBuilder(options);
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  CHECK_OK(cel_expression_status.status());
+  ASSERT_OK(cel_expression_status.status());
 
   auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
@@ -663,8 +664,8 @@ void BM_PolicySymbolic(benchmark::State& state) {
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
-    GOOGLE_CHECK(eval_result.value().BoolOrDie());
+    ASSERT_OK(eval_result.status());
+    ASSERT_TRUE(eval_result.value().BoolOrDie());
   }
 }
 
@@ -697,11 +698,11 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
   google::protobuf::TextFormat::ParseFromString(CELAst(), &expr);
 
   auto builder = CreateCelExpressionBuilder();
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  CHECK_OK(cel_expression_status.status());
+  ASSERT_OK(cel_expression_status.status());
 
   auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
@@ -710,8 +711,8 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
-    GOOGLE_CHECK(eval_result.value().BoolOrDie());
+    ASSERT_OK(eval_result.status());
+    ASSERT_TRUE(eval_result.value().BoolOrDie());
   }
 }
 
@@ -724,11 +725,11 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   google::protobuf::TextFormat::ParseFromString(CELAst(), &expr);
 
   auto builder = CreateCelExpressionBuilder();
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
   auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  CHECK_OK(cel_expression_status.status());
+  ASSERT_OK(cel_expression_status.status());
 
   auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
@@ -741,8 +742,8 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
 
   for (auto _ : state) {
     auto eval_result = cel_expression->Evaluate(activation, &arena);
-    CHECK_OK(eval_result.status());
-    GOOGLE_CHECK(eval_result.value().BoolOrDie());
+    ASSERT_OK(eval_result.status());
+    ASSERT_TRUE(eval_result.value().BoolOrDie());
   }
 }
 
@@ -801,7 +802,7 @@ void BM_Comprehension(benchmark::State& state) {
   google::protobuf::Arena arena;
   Expr expr;
   Activation activation;
-  GOOGLE_CHECK(google::protobuf::TextFormat::ParseFromString(kListSum, &expr));
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kListSum, &expr));
 
   int len = state.range(0);
   std::vector<CelValue> list;
@@ -813,14 +814,14 @@ void BM_Comprehension(benchmark::State& state) {
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
   auto builder = CreateCelExpressionBuilder();
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   auto expr_plan = builder->CreateExpression(&expr, nullptr);
-  CHECK_OK(expr_plan.status());
+  ASSERT_OK(expr_plan.status());
   for (auto _ : state) {
     auto result = expr_plan.value()->Evaluate(activation, &arena);
-    CHECK_OK(result.status());
-    GOOGLE_CHECK(result->IsInt64());
-    CHECK_EQ(result->Int64OrDie(), len);
+    ASSERT_OK(result.status());
+    ASSERT_TRUE(result->IsInt64());
+    ASSERT_EQ(result->Int64OrDie(), len);
   }
 }
 
@@ -923,7 +924,7 @@ void BM_NestedComprehension(benchmark::State& state) {
   google::protobuf::Arena arena;
   Expr expr;
   Activation activation;
-  GOOGLE_CHECK(google::protobuf::TextFormat::ParseFromString(kNestedListSum, &expr));
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kNestedListSum, &expr));
 
   int len = state.range(0);
   std::vector<CelValue> list;
@@ -935,14 +936,14 @@ void BM_NestedComprehension(benchmark::State& state) {
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
   auto builder = CreateCelExpressionBuilder();
-  CHECK_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   auto expr_plan = builder->CreateExpression(&expr, nullptr);
-  CHECK_OK(expr_plan.status());
+  ASSERT_OK(expr_plan.status());
   for (auto _ : state) {
     auto result = expr_plan.value()->Evaluate(activation, &arena);
-    CHECK_OK(result.status());
-    GOOGLE_CHECK(result->IsInt64());
-    CHECK_EQ(result->Int64OrDie(), len * len);
+    ASSERT_OK(result.status());
+    ASSERT_TRUE(result->IsInt64());
+    ASSERT_EQ(result->Int64OrDie(), len * len);
   }
 }
 
@@ -969,7 +970,7 @@ void BM_ComprehensionCpp(benchmark::State& state) {
   };
   for (auto _ : state) {
     int result = op();
-    CHECK_EQ(result, len);
+    ASSERT_EQ(result, len);
   }
 }
 

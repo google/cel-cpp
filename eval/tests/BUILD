@@ -17,6 +17,7 @@ cc_test(
     tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
+        "//base:status_macros",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",

@@ -11,6 +11,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/code.pb.h"
 #include "google/protobuf/util/json_util.h"
+#include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/strings/str_split.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -22,6 +23,7 @@
 #include "parser/parser.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "base/status_macros.h"
 
 
 using absl::Status;
@@ -105,8 +107,11 @@ class ConformanceServiceImpl {
 
     auto eval_status = cel_expression->Evaluate(activation, &arena);
     if (!eval_status.ok()) {
-      return Status(StatusCode::kInternal,
-                    std::string(eval_status.status().message()));
+      *response->mutable_result()
+           ->mutable_error()
+           ->add_errors()
+           ->mutable_message() = eval_status.status().ToString();
+      return absl::OkStatus();
     }
 
     CelValue result = eval_status.value();

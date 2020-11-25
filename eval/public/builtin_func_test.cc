@@ -1615,8 +1615,8 @@ TEST_F(BuiltinsTest, TypeComparisons) {
   paired_values.push_back(
       {CelValue::CreateMap(&cel_map1), CelValue::CreateMap(&cel_map2)});
 
-  for (int i = 0; i < paired_values.size(); i++) {
-    for (int j = 0; j < paired_values.size(); j++) {
+  for (size_t i = 0; i < paired_values.size(); i++) {
+    for (size_t j = 0; j < paired_values.size(); j++) {
       CelValue result1;
       CelValue result2;
 

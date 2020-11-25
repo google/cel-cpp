@@ -33,6 +33,7 @@ namespace runtime {
 
 namespace {
 
+using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
@@ -593,7 +594,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
   google::protobuf::Arena arena;
   auto result_or = cel_expr->Evaluate(activation, &arena);
   ASSERT_OK(result_or);
-  CelValue result = result_or.ValueOrDie();
+  CelValue result = result_or.value();
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(
       *result.ErrorOrDie(),
@@ -608,7 +609,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
   activation.InsertValue("bar", CelValue::CreateMap(map_value.get()));
   result_or = cel_expr->Evaluate(activation, &arena);
   ASSERT_OK(result_or);
-  result = result_or.ValueOrDie();
+  result = result_or.value();
   ASSERT_TRUE(result.IsBool());
   EXPECT_FALSE(result.BoolOrDie());
 }
