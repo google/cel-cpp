@@ -7,6 +7,7 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/match.h"
 #include "common/escaping.h"
 #include "common/operators.h"
 #include "parser/balancer.h"
@@ -400,9 +401,13 @@ antlrcpp::Any ParserVisitor::visitInt(CelParser::IntContext* ctx) {
   if (ctx->sign) {
     value = ctx->sign->getText();
   }
+  int base = 10;
+  if (absl::StartsWith(ctx->tok->getText(), "0x")) {
+    base = 16;
+  }
   value += ctx->tok->getText();
   int64_t int_value;
-  if (absl::SimpleAtoi(value, &int_value)) {
+  if (absl::numbers_internal::safe_strto64_base(value, &int_value, base)) {
     return sf_->newLiteralInt(ctx, int_value);
   } else {
     return sf_->reportError(ctx, "invalid int literal");
@@ -415,8 +420,12 @@ antlrcpp::Any ParserVisitor::visitUint(CelParser::UintContext* ctx) {
   if (!value.empty()) {
     value.resize(value.size() - 1);
   }
+  int base = 10;
+  if (absl::StartsWith(value, "0x")) {
+    base = 16;
+  }
   uint64_t uint_value;
-  if (absl::SimpleAtoi(value, &uint_value)) {
+  if (absl::numbers_internal::safe_strtou64_base(value, &uint_value, base)) {
     return sf_->newLiteralUint(ctx, uint_value);
   } else {
     return sf_->reportError(ctx, "invalid uint literal");
