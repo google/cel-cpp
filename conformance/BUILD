@@ -136,9 +136,6 @@ cc_binary(
             "--skip_test=fields/qualified_identifier_resolution/map_field_select",
             "--skip_test=fields/qualified_identifier_resolution/ident_with_longest_prefix_check",
             # New conformance tests awaiting synchronization.
-            "--skip_test=basic/self_eval_nonzeroish/self_eval_int_hex",
-            "--skip_test=basic/self_eval_nonzeroish/self_eval_int_hex_negative",
-            "--skip_test=basic/self_eval_nonzeroish/self_eval_uint_hex",
             "--skip_test=basic/functions/unbound",
             "--skip_test=basic/functions/unbound_is_runtime_error",
             "--skip_test=comparisons/eq_literal/not_eq_list_false_vs_types",
