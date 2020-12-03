@@ -23,7 +23,6 @@
 #include "parser/parser.h"
 #include "proto/test/v1/proto2/test_all_types.pb.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
-#include "base/status_macros.h"
 
 
 using absl::Status;
@@ -48,10 +47,13 @@ class ConformanceServiceImpl {
         proto3Tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
                          default_instance()) {}
 
-  Status Parse(const v1alpha1::ParseRequest* request,
-               v1alpha1::ParseResponse* response) {
+  void Parse(const v1alpha1::ParseRequest* request,
+             v1alpha1::ParseResponse* response) {
     if (request->cel_source().empty()) {
-      return Status(StatusCode::kInvalidArgument, "No source code.");
+      auto issue = response->add_issues();
+      issue->set_message("No source code");
+      issue->set_code(google::rpc::Code::INVALID_ARGUMENT);
+      return;
     }
     auto parse_status = parser::Parse(request->cel_source(), "");
     if (!parse_status.ok()) {
@@ -63,16 +65,17 @@ class ConformanceServiceImpl {
       (out).MergeFrom(parse_status.value());
       response->mutable_parsed_expr()->CopyFrom(out);
     }
-    return absl::OkStatus();
   }
 
-  Status Check(const v1alpha1::CheckRequest* request,
-               v1alpha1::CheckResponse* response) {
-    return Status(StatusCode::kUnimplemented, "Check is not supported");
+  void Check(const v1alpha1::CheckRequest* request,
+             v1alpha1::CheckResponse* response) {
+    auto issue = response->add_issues();
+    issue->set_message("Check is not supported");
+    issue->set_code(google::rpc::Code::UNIMPLEMENTED);
   }
 
-  Status Eval(const v1alpha1::EvalRequest* request,
-              v1alpha1::EvalResponse* response) {
+  void Eval(const v1alpha1::EvalRequest* request,
+            v1alpha1::EvalResponse* response) {
     const v1alpha1::Expr* expr = nullptr;
     if (request->has_parsed_expr()) {
       expr = &request->parsed_expr().expr();
@@ -87,8 +90,10 @@ class ConformanceServiceImpl {
     auto cel_expression_status = builder_->CreateExpression(&out, &source_info);
 
     if (!cel_expression_status.ok()) {
-      return Status(StatusCode::kInternal,
-                    std::string(cel_expression_status.status().message()));
+      auto issue = response->add_issues();
+      issue->set_message(cel_expression_status.status().ToString());
+      issue->set_code(google::rpc::Code::INTERNAL);
+      return;
     }
 
     auto cel_expression = std::move(cel_expression_status.value());
@@ -100,7 +105,10 @@ class ConformanceServiceImpl {
       (*import_value).MergeFrom(pair.second.value());
       auto import_status = ValueToCelValue(*import_value, &arena);
       if (!import_status.ok()) {
-        return Status(StatusCode::kInternal, import_status.status().ToString());
+        auto issue = response->add_issues();
+        issue->set_message(import_status.status().ToString());
+        issue->set_code(google::rpc::Code::INTERNAL);
+        return;
       }
       activation.InsertValue(pair.first, import_status.value());
     }
@@ -111,7 +119,7 @@ class ConformanceServiceImpl {
            ->mutable_error()
            ->add_errors()
            ->mutable_message() = eval_status.status().ToString();
-      return absl::OkStatus();
+      return;
     }
 
     CelValue result = eval_status.value();
@@ -124,12 +132,14 @@ class ConformanceServiceImpl {
       google::api::expr::v1alpha1::Value export_value;
       auto export_status = CelValueToValue(result, &export_value);
       if (!export_status.ok()) {
-        return Status(StatusCode::kInternal, export_status.ToString());
+        auto issue = response->add_issues();
+        issue->set_message(export_status.ToString());
+        issue->set_code(google::rpc::Code::INTERNAL);
+        return;
       }
       auto* result_value = response->mutable_result()->mutable_value();
       (*result_value).MergeFrom(export_value);
     }
-    return absl::OkStatus();
   }
 
  private:
@@ -178,15 +188,23 @@ int RunServer(bool optimize) {
     if (cmd == "parse") {
       v1alpha1::ParseRequest request;
       v1alpha1::ParseResponse response;
-      CHECK_OK(JsonStringToMessage(input, &request));
-      CHECK_OK(service.Parse(&request, &response));
-      CHECK_OK(MessageToJsonString(response, &output));
+      if (!JsonStringToMessage(input, &request).ok()) {
+        std::cerr << "Failed to parse JSON" << std::endl;
+      }
+      service.Parse(&request, &response);
+      if (!MessageToJsonString(response, &output).ok()) {
+        std::cerr << "Failed to convert to JSON" << std::endl;
+      }
     } else if (cmd == "eval") {
       v1alpha1::EvalRequest request;
       v1alpha1::EvalResponse response;
-      CHECK_OK(JsonStringToMessage(input, &request));
-      CHECK_OK(service.Eval(&request, &response));
-      CHECK_OK(MessageToJsonString(response, &output));
+      if (!JsonStringToMessage(input, &request).ok()) {
+        std::cerr << "Failed to parse JSON" << std::endl;
+      }
+      service.Eval(&request, &response);
+      if (!MessageToJsonString(response, &output).ok()) {
+        std::cerr << "Failed to convert to JSON" << std::endl;
+      }
     } else if (cmd.empty()) {
       return 0;
     } else {

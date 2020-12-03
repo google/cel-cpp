@@ -53,7 +53,6 @@ cc_binary(
     testonly = 1,
     srcs = ["server.cc"],
     deps = [
-        "//base:status_macros",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:transform_utility",
