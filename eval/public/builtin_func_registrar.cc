@@ -438,6 +438,9 @@ CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
 
 template <>
 CelValue Div<double>(Arena*, double v0, double v1) {
+  static_assert(std::numeric_limits<double>::is_iec559,
+                "Division by zero for doubles must be supported");
+
   // For double, division will result in +/- inf
   return CelValue::CreateDouble(v0 / v1);
 }
