@@ -1,5 +1,8 @@
 #include "parser/source_factory.h"
 
+#include <algorithm>
+#include <limits>
+
 #include "google/protobuf/struct.pb.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/numbers.h"
@@ -18,6 +21,10 @@ const int kMaxErrorsToReport = 100;
 
 using common::CelOperator;
 using google::api::expr::v1alpha1::Expr;
+
+int32_t PositiveOrMax(int32_t value) {
+  return value >= 0 ? value : std::numeric_limits<int32_t>::max();
+}
 
 }  // namespace
 
@@ -440,30 +447,60 @@ Expr SourceFactory::reportError(const SourceFactory::SourceLocation& loc,
 
 std::string SourceFactory::errorMessage(const std::string& description,
                                         const std::string& expression) const {
+  // Errors are collected as they are encountered, not by their location within
+  // the source. To have a more stable error message as implementation
+  // details change, we sort the collected errors by their source location
+  // first.
+
+  // Use pointer arithmetic to avoid making unnecessary copies of Error when
+  // sorting.
+  std::vector<const Error*> errors_sorted;
+  errors_sorted.reserve(errors_truncated_.size());
+  for (auto& error : errors_truncated_) {
+    errors_sorted.push_back(&error);
+  }
+  std::stable_sort(errors_sorted.begin(), errors_sorted.end(),
+                   [](const Error* lhs, const Error* rhs) {
+                     // SourceLocation::noLocation uses -1 and we ideally want
+                     // those to be last.
+                     auto lhs_line = PositiveOrMax(lhs->location.line);
+                     auto lhs_col = PositiveOrMax(lhs->location.col);
+                     auto rhs_line = PositiveOrMax(rhs->location.line);
+                     auto rhs_col = PositiveOrMax(rhs->location.col);
+
+                     return lhs_line < rhs_line ||
+                            (lhs_line == rhs_line && lhs_col < rhs_col);
+                   });
+
+  // Build the summary error message using the sorted errors.
+  bool errors_truncated = num_errors_ > kMaxErrorsToReport;
   std::vector<std::string> messages;
+  messages.reserve(
+      errors_sorted.size() +
+      errors_truncated);  // Reserve space for the transform and an
+                          // additional element when truncation occurs.
   std::transform(
-      errors_truncated_.begin(), errors_truncated_.end(),
-      std::back_inserter(messages),
-      [this, description, expression](const SourceFactory::Error& error) {
-        std::string s = absl::StrFormat("ERROR: %s:%zu:%zu: %s", description,
-                                        error.location.line,
-                                        // add one to the 0-based column
-                                        error.location.col + 1, error.message);
-        std::string snippet = getSourceLine(error.location.line, expression);
+      errors_sorted.begin(), errors_sorted.end(), std::back_inserter(messages),
+      [this, &description, &expression](const SourceFactory::Error* error) {
+        std::string s = absl::StrFormat(
+            "ERROR: %s:%zu:%zu: %s", description, error->location.line,
+            // add one to the 0-based column
+            error->location.col + 1, error->message);
+        std::string snippet = getSourceLine(error->location.line, expression);
         std::string::size_type pos = 0;
         while ((pos = snippet.find("\t", pos)) != std::string::npos) {
           snippet.replace(pos, 1, " ");
         }
         std::string src_line = "\n | " + snippet;
         std::string ind_line = "\n | ";
-        for (int i = 0; i < error.location.col; ++i) {
+        for (int i = 0; i < error->location.col; ++i) {
           ind_line += ".";
         }
         ind_line += "^";
         s += src_line + ind_line;
         return s;
       });
-  if (num_errors_ > kMaxErrorsToReport) {
+  if (errors_truncated) {
     messages.emplace_back(absl::StrCat(num_errors_ - kMaxErrorsToReport,
                                        " more errors were truncated."));
   }

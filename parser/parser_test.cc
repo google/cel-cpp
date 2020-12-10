@@ -21,7 +21,6 @@ namespace parser {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
 using testing::Not;
 
 struct TestInfo {
@@ -370,15 +369,15 @@ std::vector<TestInfo> test_cases = {
 
     // Parse error tests
     {"*@a | b", "",
-     "ERROR: <input>:1:2: Syntax error: token recognition error at: '@'\n"
-     " | *@a | b\n"
-     " | .^\n"
      "ERROR: <input>:1:1: Syntax error: extraneous input '*' expecting {'[', "
      "'{', "
      "'(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, "
      "NUM_UINT, STRING, BYTES, IDENTIFIER}\n"
      " | *@a | b\n"
      " | ^\n"
+     "ERROR: <input>:1:2: Syntax error: token recognition error at: '@'\n"
+     " | *@a | b\n"
+     " | .^\n"
      "ERROR: <input>:1:5: Syntax error: token recognition error at: '| '\n"
      " | *@a | b\n"
      " | ....^\n"
@@ -800,15 +799,15 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:1:15: reserved identifier: var\n"
      " | [1, 2, 3].map(var, var * var)\n"
      " | ..............^\n"
+     "ERROR: <input>:1:15: argument is not an identifier\n"
+     " | [1, 2, 3].map(var, var * var)\n"
+     " | ..............^\n"
      "ERROR: <input>:1:20: reserved identifier: var\n"
      " | [1, 2, 3].map(var, var * var)\n"
      " | ...................^\n"
      "ERROR: <input>:1:26: reserved identifier: var\n"
      " | [1, 2, 3].map(var, var * var)\n"
-     " | .........................^\n"
-     "ERROR: <input>:1:15: argument is not an identifier\n"
-     " | [1, 2, 3].map(var, var * var)\n"
-     " | ..............^"},
+     " | .........................^"},
     {"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
