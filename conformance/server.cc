@@ -40,7 +40,7 @@ namespace runtime {
 
 class ConformanceServiceImpl {
  public:
-  ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
+  explicit ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
       : builder_(std::move(builder)),
         proto2Tests_(&google::api::expr::test::v1::proto2::TestAllTypes::
                          default_instance()),

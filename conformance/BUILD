@@ -93,16 +93,14 @@ cc_binary(
             "--skip_test=conversions/double",
             # TODO(issues/80): Missing dyn() conversion functions
             "--skip_test=conversions/dyn/dyn_heterogeneous_list",
-            # TODO(issues/81): Conversion functions for int() which can be
-            # uncommented when the spec changes to truncation rather than
-            # rounding.
+            # TODO(issues/81): Conversion functions for int(), uint() which can be
+            # uncommented when the spec changes to truncation rather than rounding.
             "--skip_test=conversions/int/double_nearest,double_nearest_neg,double_half_away_neg,double_half_away_pos",
+            "--skip_test=conversions/uint/double_nearest,double_nearest_int,double_half_away",
             # TODO(issues/82): Unexpected behavior when converting invalid bytes to string.
             "--skip_test=conversions/string/bytes_invalid",
             # TODO(issues/83): Missing type() conversion functions
             "--skip_test=conversions/type",
-            # TODO(issues/84): Missing uint() conversion functions
-            "--skip_test=conversions/uint",
             # TODO(issues/96): Well-known type conversion support.
             "--skip_test=proto2/literal_wellknown",
             "--skip_test=proto3/literal_wellknown",

@@ -132,6 +132,17 @@ class BuiltinsTest : public ::testing::Test {
         << operation << " for " << CelValue::TypeName(ref.type());
   }
 
+  void TestTypeConverts(absl::string_view operation, const CelValue& ref,
+                        uint64_t result) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsUint64(), true);
+    ASSERT_EQ(result_value.Uint64OrDie(), result)
+        << operation << " for " << CelValue::TypeName(ref.type());
+  }
+
   // Helper method. Attempts to perform a type conversion and expects an error
   // as the result.
   void TestTypeConversionError(absl::string_view operation,
@@ -671,35 +682,83 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
                 3L);
 }
 
-TEST_F(BuiltinsTest, TestTypeConversions_Timestamp) {
+TEST_F(BuiltinsTest, TestIntConversions_int) {
+  TestTypeConverts(builtin::kInt, CelValue::CreateInt64(100L), 100L);
+}
+
+TEST_F(BuiltinsTest, TestIntConversions_Timestamp) {
   Timestamp ref;
   ref.set_seconds(100);
   TestTypeConverts(builtin::kInt, CelProtoWrapper::CreateTimestamp(&ref), 100L);
 }
 
-TEST_F(BuiltinsTest, TestTypeConversions_double) {
+TEST_F(BuiltinsTest, TestIntConversions_double) {
   double ref = 100.1;
   TestTypeConverts(builtin::kInt, CelValue::CreateDouble(ref), 100L);
 }
 
-TEST_F(BuiltinsTest, TestTypeConversions_uint64) {
+TEST_F(BuiltinsTest, TestIntConversions_string) {
+  std::string ref = "100";
+  TestTypeConverts(builtin::kInt, CelValue::CreateString(&ref), 100L);
+}
+
+TEST_F(BuiltinsTest, TestIntConversions_uint) {
   uint64_t ref = 100;
   TestTypeConverts(builtin::kInt, CelValue::CreateUint64(ref), 100L);
 }
 
-TEST_F(BuiltinsTest, TestTypeConversionError_doubleNegRange) {
+TEST_F(BuiltinsTest, TestIntConversionError_doubleNegRange) {
   double range = -1.0e99;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 
-TEST_F(BuiltinsTest, TestTypeConversionError_doublePosRange) {
+TEST_F(BuiltinsTest, TestIntConversionError_doublePosRange) {
   double range = 1.0e99;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 
-TEST_F(BuiltinsTest, TestTypeConversionError_uint64Range) {
+TEST_F(BuiltinsTest, TestIntConversionError_uintRange) {
   uint64_t range = 18446744073709551615UL;
   TestTypeConversionError(builtin::kInt, CelValue::CreateUint64(range));
+}
+
+TEST_F(BuiltinsTest, TestUintConversions_double) {
+  double ref = 100.1;
+  TestTypeConverts(builtin::kUint, CelValue::CreateDouble(ref), 100UL);
+}
+
+TEST_F(BuiltinsTest, TestUintConversions_int) {
+  int64_t ref = 100L;
+  TestTypeConverts(builtin::kUint, CelValue::CreateInt64(ref), 100UL);
+}
+
+TEST_F(BuiltinsTest, TestUintConversions_string) {
+  std::string ref = "100";
+  TestTypeConverts(builtin::kUint, CelValue::CreateString(&ref), 100UL);
+}
+
+TEST_F(BuiltinsTest, TestUintConversions_uint) {
+  TestTypeConverts(builtin::kUint, CelValue::CreateUint64(100UL), 100UL);
+}
+
+TEST_F(BuiltinsTest, TestUintConversionError_doubleNegRange) {
+  double range = -1.0e99;
+  TestTypeConversionError(builtin::kUint, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestUintConversionError_doublePosRange) {
+  double range = 1.0e99;
+  TestTypeConversionError(builtin::kUint, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestUintConversionError_intRange) {
+  int64_t range = -1L;
+  TestTypeConversionError(builtin::kUint, CelValue::CreateInt64(range));
+}
+
+TEST_F(BuiltinsTest, TestUintConversionError_stringInvalid) {
+  string invalid = "-100";
+  TestTypeConversionError(builtin::kUint, CelValue::CreateString(&invalid));
 }
 
 TEST_F(BuiltinsTest, TestTimestampComparisons) {
@@ -1515,15 +1574,6 @@ TEST_F(BuiltinsTest, MatchesMaxSize) {
   ASSERT_NO_FATAL_FAILURE(
       PerformRun(builtin::kRegexMatch, {}, args, &result_value, options));
   EXPECT_TRUE(result_value.IsError());
-}
-
-TEST_F(BuiltinsTest, StringToInt) {
-  std::string target = "-42";
-  std::vector<CelValue> args = {CelValue::CreateString(&target)};
-  CelValue result_value;
-  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kInt, {}, args, &result_value));
-  ASSERT_TRUE(result_value.IsInt64());
-  EXPECT_EQ(result_value.Int64OrDie(), -42);
 }
 
 TEST_F(BuiltinsTest, StringToIntNonInt) {

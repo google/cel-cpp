@@ -74,6 +74,7 @@ constexpr char kMilliseconds[] = "getMilliseconds";
 constexpr char kInt[] = "int";
 constexpr char kString[] = "string";
 constexpr char kType[] = "type";
+constexpr char kUint[] = "uint";
 
 }  // namespace builtin
 
