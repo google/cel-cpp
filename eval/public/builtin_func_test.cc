@@ -718,6 +718,12 @@ TEST_F(BuiltinsTest, TestDoubleConversionError_stringInvalid) {
   TestTypeConversionError(builtin::kDouble, CelValue::CreateString(&invalid));
 }
 
+TEST_F(BuiltinsTest, TestDynConversions) {
+  TestTypeConverts(builtin::kDyn, CelValue::CreateDouble(100.1), 100.1);
+  TestTypeConverts(builtin::kDyn, CelValue::CreateInt64(100L), 100L);
+  TestTypeConverts(builtin::kDyn, CelValue::CreateUint64(100UL), 100UL);
+}
+
 TEST_F(BuiltinsTest, TestIntConversions_int) {
   TestTypeConverts(builtin::kInt, CelValue::CreateInt64(100L), 100L);
 }

@@ -1237,6 +1237,12 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
       builtin::kDuration, false, CreateDurationFromString, registry);
   if (!status.ok()) return status;
 
+  // dyn() identity function.
+  // TODO(issues/102): strip dyn() function references at type-check time.
+  status = FunctionAdapter<CelValue, CelValue>::CreateAndRegister(
+      builtin::kDyn, false,
+      [](Arena*, CelValue value) -> CelValue { return value; }, registry);
+
   status = RegisterIntConversionFunctions(registry, options);
   if (!status.ok()) return status;
 

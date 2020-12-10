@@ -89,8 +89,6 @@ cc_binary(
             "--skip_test=timestamps/duration_conversions/toType_duration,toString_duration",
             # TODO(issues/78): Missing bytes() conversion functions
             "--skip_test=conversions/bytes",
-            # TODO(issues/80): Missing dyn() conversion functions
-            "--skip_test=conversions/dyn/dyn_heterogeneous_list",
             # TODO(issues/81): Conversion functions for int(), uint() which can be
             # uncommented when the spec changes to truncation rather than rounding.
             "--skip_test=conversions/int/double_nearest,double_nearest_neg,double_half_away_neg,double_half_away_pos",
