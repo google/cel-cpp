@@ -122,6 +122,17 @@ class BuiltinsTest : public ::testing::Test {
 
   // Helper method. Looks up in registry and tests Type conversions.
   void TestTypeConverts(absl::string_view operation, const CelValue& ref,
+                        double result) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsDouble(), true);
+    ASSERT_EQ(result_value.DoubleOrDie(), result)
+        << operation << " for " << CelValue::TypeName(ref.type());
+  }
+
+  void TestTypeConverts(absl::string_view operation, const CelValue& ref,
                         int64_t result) {
     CelValue result_value;
 
@@ -680,6 +691,31 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
                 3L);
+}
+
+TEST_F(BuiltinsTest, TestDoubleConversions_double) {
+  double ref = 100.1;
+  TestTypeConverts(builtin::kDouble, CelValue::CreateDouble(ref), 100.1);
+}
+
+TEST_F(BuiltinsTest, TestDoubleConversions_int) {
+  int64_t ref = 100L;
+  TestTypeConverts(builtin::kDouble, CelValue::CreateInt64(ref), 100.0);
+}
+
+TEST_F(BuiltinsTest, TestDoubleConversions_string) {
+  std::string ref = "-100.1";
+  TestTypeConverts(builtin::kDouble, CelValue::CreateString(&ref), -100.1);
+}
+
+TEST_F(BuiltinsTest, TestDoubleConversions_uint) {
+  uint64_t ref = 100UL;
+  TestTypeConverts(builtin::kDouble, CelValue::CreateUint64(ref), 100.0);
+}
+
+TEST_F(BuiltinsTest, TestDoubleConversionError_stringInvalid) {
+  string invalid = "-100e-10.0";
+  TestTypeConversionError(builtin::kDouble, CelValue::CreateString(&invalid));
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_int) {

@@ -89,8 +89,6 @@ cc_binary(
             "--skip_test=timestamps/duration_conversions/toType_duration,toString_duration",
             # TODO(issues/78): Missing bytes() conversion functions
             "--skip_test=conversions/bytes",
-            # TODO(issues/79): Missing double() conversion functions
-            "--skip_test=conversions/double",
             # TODO(issues/80): Missing dyn() conversion functions
             "--skip_test=conversions/dyn/dyn_heterogeneous_list",
             # TODO(issues/81): Conversion functions for int(), uint() which can be
@@ -113,13 +111,11 @@ cc_binary(
             "--skip_test=namespace/namespace/self_eval_container_lookup_unchecked",
             "--skip_test=basic/self_eval_nonzeroish/self_eval_bytes_invalid_utf8",
             # Requires heteregenous equality spec clarification
-            "--skip_test=comparisons/eq_literal/eq_bytes",
-            "--skip_test=comparisons/ne_literal/not_ne_bytes",
             "--skip_test=comparisons/in_list_literal/elem_in_mixed_type_list_error",
             "--skip_test=comparisons/in_map_literal/key_in_mixed_key_type_map_error",
             "--skip_test=fields/in/singleton",
             # Requires qualified bindings error message relaxation
-            "--skip_test=fields/qualified_identifier_resolution/int64_field_select_unsupported,list_field_select_unsupported,map_key_null,qualified_identifier_resolution_unchecked",
+            "--skip_test=fields/qualified_identifier_resolution/qualified_identifier_resolution_unchecked",
             "--skip_test=string/size/one_unicode,unicode",
             "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/85): The exists one macro should not short-circuit false.
