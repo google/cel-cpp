@@ -1013,6 +1013,30 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
   return absl::OkStatus();
 }
 
+absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
+                                              const InterpreterOptions&) {
+  // bytes -> bytes
+  auto status = FunctionAdapter<CelValue::BytesHolder, CelValue::BytesHolder>::
+      CreateAndRegister(
+          builtin::kBytes, false,
+          [](Arena*, CelValue::BytesHolder value) -> CelValue::BytesHolder {
+            return value;
+          },
+          registry);
+  if (!status.ok()) return status;
+
+  // string -> bytes
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kBytes, false,
+      [](Arena* arena, CelValue::StringHolder value) -> CelValue {
+        return CelValue::CreateBytesView(value.value());
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
 absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
                                                const InterpreterOptions&) {
   // double -> double
@@ -1121,6 +1145,8 @@ absl::Status RegisterStringConversionFunctions(
     return absl::OkStatus();
   }
 
+  // TODO(issues/82): ensure the bytes conversion to string handles UTF-8
+  // properly, and avoids unncessary allocations.
   // bytes -> string
   auto status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
       CreateAndRegister(
@@ -1229,7 +1255,10 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
 
 absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
                                          const InterpreterOptions& options) {
-  auto status = RegisterDoubleConversionFunctions(registry, options);
+  auto status = RegisterBytesConversionFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  status = RegisterDoubleConversionFunctions(registry, options);
   if (!status.ok()) return status;
 
   // duration() conversion from string.

@@ -122,6 +122,17 @@ class BuiltinsTest : public ::testing::Test {
 
   // Helper method. Looks up in registry and tests Type conversions.
   void TestTypeConverts(absl::string_view operation, const CelValue& ref,
+                        CelValue::BytesHolder result) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsBytes(), true);
+    ASSERT_EQ(result_value.BytesOrDie(), result)
+        << operation << " for " << CelValue::TypeName(ref.type());
+  }
+
+  void TestTypeConverts(absl::string_view operation, const CelValue& ref,
                         double result) {
     CelValue result_value;
 
@@ -691,6 +702,18 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
                 3L);
+}
+
+TEST_F(BuiltinsTest, TestBytesConversions_bytes) {
+  std::string txt = "hello";
+  CelValue::BytesHolder result = CelValue::BytesHolder(&txt);
+  TestTypeConverts(builtin::kBytes, CelValue::CreateBytes(&txt), result);
+}
+
+TEST_F(BuiltinsTest, TestBytesConversions_string) {
+  std::string txt = "hello";
+  CelValue::BytesHolder result = CelValue::BytesHolder(&txt);
+  TestTypeConverts(builtin::kBytes, CelValue::CreateString(&txt), result);
 }
 
 TEST_F(BuiltinsTest, TestDoubleConversions_double) {
