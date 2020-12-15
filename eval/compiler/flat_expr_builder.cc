@@ -1,5 +1,7 @@
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <memory>
+
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "stack"
 #include "absl/container/node_hash_map.h"
@@ -658,8 +660,8 @@ void ComprehensionVisitor::PreVisit(const Expr*) {
 
 void ComprehensionVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   const Comprehension* comprehension = &expr->comprehension_expr();
-  const auto accu_var = comprehension->accu_var();
-  const auto iter_var = comprehension->iter_var();
+  const auto& accu_var = comprehension->accu_var();
+  const auto& iter_var = comprehension->iter_var();
   // TODO(issues/20): Consider refactoring the comprehension prologue step.
   switch (arg_num) {
     case ITER_RANGE: {
@@ -732,7 +734,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   const Expr* effective_expr = expr;
   // transformed expression preserving expression IDs
-  Expr rewrite_buffer;
+  std::unique_ptr<Expr> rewrite_buffer = nullptr;
   // TODO(issues/98): A type checker may perform these rewrites, but there
   // currently  isn't a signal to expose that in an expression. If that becomes
   // available, we can skip the reference resolve step here if it's already
@@ -745,19 +747,19 @@ FlatExprBuilder::CreateExpressionImpl(
       return rewritten.status();
     }
     if (rewritten.value().has_value()) {
-      rewrite_buffer = std::move(rewritten)->value();
-      effective_expr = &rewrite_buffer;
+      rewrite_buffer =
+          std::make_unique<Expr>(std::move(rewritten).value().value());
+      effective_expr = rewrite_buffer.get();
     }
     // TODO(issues/99): we could setup a check step here that confirms all of
     // references are defined before actually evaluating.
   }
 
+  Expr const_fold_buffer;
   if (constant_folding_) {
-    Expr buffer;
     FoldConstants(*effective_expr, *this->GetRegistry(), constant_arena_,
-                  idents, &buffer);
-    rewrite_buffer = std::move(buffer);
-    effective_expr = &rewrite_buffer;
+                  idents, &const_fold_buffer);
+    effective_expr = &const_fold_buffer;
   }
 
   std::set<std::string> iter_variable_names;
@@ -776,7 +778,8 @@ FlatExprBuilder::CreateExpressionImpl(
       absl::make_unique<CelExpressionFlatImpl>(
           expr, std::move(execution_path), comprehension_max_iterations_,
           std::move(iter_variable_names), enable_unknowns_,
-          enable_unknown_function_results_, enable_missing_attribute_errors_);
+          enable_unknown_function_results_, enable_missing_attribute_errors_,
+          std::move(rewrite_buffer));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();
