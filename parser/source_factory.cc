@@ -488,7 +488,7 @@ std::string SourceFactory::errorMessage(const std::string& description,
             error->location.col + 1, error->message);
         std::string snippet = getSourceLine(error->location.line, expression);
         std::string::size_type pos = 0;
-        while ((pos = snippet.find("\t", pos)) != std::string::npos) {
+        while ((pos = snippet.find('\t', pos)) != std::string::npos) {
           snippet.replace(pos, 1, " ");
         }
         std::string src_line = "\n | " + snippet;

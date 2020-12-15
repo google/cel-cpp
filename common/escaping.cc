@@ -294,7 +294,7 @@ absl::optional<std::string> unescape(const std::string& s, bool is_bytes) {
   }
   value = value.substr(1, n - 2);
   // If there is nothing to escape, then return.
-  if (is_raw_literal || (value.find("\\") == std::string::npos)) {
+  if (is_raw_literal || (value.find('\\') == std::string::npos)) {
     return value;
   }
 
