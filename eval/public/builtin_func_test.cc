@@ -737,7 +737,7 @@ TEST_F(BuiltinsTest, TestDoubleConversions_uint) {
 }
 
 TEST_F(BuiltinsTest, TestDoubleConversionError_stringInvalid) {
-  string invalid = "-100e-10.0";
+  std::string invalid = "-100e-10.0";
   TestTypeConversionError(builtin::kDouble, CelValue::CreateString(&invalid));
 }
 
@@ -822,7 +822,7 @@ TEST_F(BuiltinsTest, TestUintConversionError_intRange) {
 }
 
 TEST_F(BuiltinsTest, TestUintConversionError_stringInvalid) {
-  string invalid = "-100";
+  std::string invalid = "-100";
   TestTypeConversionError(builtin::kUint, CelValue::CreateString(&invalid));
 }
 

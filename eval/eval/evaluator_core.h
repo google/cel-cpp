@@ -34,6 +34,8 @@ namespace runtime {
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
 class ExecutionFrame;
 
+using Expr = google::api::expr::v1alpha1::Expr;
+
 // Class Expression represents single execution step.
 class ExpressionStep {
  public:
