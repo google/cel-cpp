@@ -13,6 +13,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "re2/re2.h"
 
@@ -67,63 +68,63 @@ bool GreaterThanOrEqual(Arena* arena, Type t1, Type t2) {
 // Duration comparison specializations
 template <>
 CelValue Inequal(Arena*, absl::Duration t1, absl::Duration t2) {
-  return CelValue::CreateBool(operator!=(t1, t2));
+  return CelValue::CreateBool(absl::operator!=(t1, t2));
 }
 
 template <>
 CelValue Equal(Arena*, absl::Duration t1, absl::Duration t2) {
-  return CelValue::CreateBool(operator==(t1, t2));
+  return CelValue::CreateBool(absl::operator==(t1, t2));
 }
 
 template <>
 bool LessThan(Arena*, absl::Duration t1, absl::Duration t2) {
-  return operator<(t1, t2);
+  return absl::operator<(t1, t2);
 }
 
 template <>
 bool LessThanOrEqual(Arena*, absl::Duration t1, absl::Duration t2) {
-  return operator<=(t1, t2);
+  return absl::operator<=(t1, t2);
 }
 
 template <>
 bool GreaterThan(Arena*, absl::Duration t1, absl::Duration t2) {
-  return operator>(t1, t2);
+  return absl::operator>(t1, t2);
 }
 
 template <>
 bool GreaterThanOrEqual(Arena*, absl::Duration t1, absl::Duration t2) {
-  return operator>=(t1, t2);
+  return absl::operator>=(t1, t2);
 }
 
 // Timestamp comparison specializations
 template <>
 CelValue Inequal(Arena*, absl::Time t1, absl::Time t2) {
-  return CelValue::CreateBool(operator!=(t1, t2));
+  return CelValue::CreateBool(absl::operator!=(t1, t2));
 }
 
 template <>
 CelValue Equal(Arena*, absl::Time t1, absl::Time t2) {
-  return CelValue::CreateBool(operator==(t1, t2));
+  return CelValue::CreateBool(absl::operator==(t1, t2));
 }
 
 template <>
 bool LessThan(Arena*, absl::Time t1, absl::Time t2) {
-  return operator<(t1, t2);
+  return absl::operator<(t1, t2);
 }
 
 template <>
 bool LessThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
-  return operator<=(t1, t2);
+  return absl::operator<=(t1, t2);
 }
 
 template <>
 bool GreaterThan(Arena*, absl::Time t1, absl::Time t2) {
-  return operator>(t1, t2);
+  return absl::operator>(t1, t2);
 }
 
 template <>
 bool GreaterThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
-  return operator>=(t1, t2);
+  return absl::operator>=(t1, t2);
 }
 
 // Message specializations
@@ -438,6 +439,9 @@ CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
 
 template <>
 CelValue Div<double>(Arena*, double v0, double v1) {
+  static_assert(std::numeric_limits<double>::is_iec559,
+                "Division by zero for doubles must be supported");
+
   // For double, division will result in +/- inf
   return CelValue::CreateDouble(v0 / v1);
 }
@@ -590,7 +594,7 @@ const absl::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
   }
 
   // Check to see whether the timezone is an IANA timezone.
-  if (absl::LoadTimeZone(std::string(tz), &time_zone)) {
+  if (absl::LoadTimeZone(tz, &time_zone)) {
     *breakdown = time_zone.At(timestamp);
     return absl::OkStatus();
   }
@@ -629,8 +633,7 @@ CelValue GetTimeBreakdownPart(
 CelValue CreateTimestampFromString(Arena* arena,
                                    CelValue::StringHolder time_str) {
   absl::Time ts;
-  if (!absl::ParseTime(absl::RFC3339_full, std::string(time_str.value()), &ts,
-                       nullptr)) {
+  if (!absl::ParseTime(absl::RFC3339_full, time_str.value(), &ts, nullptr)) {
     return CreateErrorValue(arena, "String to Timestamp conversion failed",
                             absl::StatusCode::kInvalidArgument);
   }
@@ -722,7 +725,7 @@ CelValue GetMilliseconds(Arena* arena, absl::Time timestamp,
 CelValue CreateDurationFromString(Arena* arena,
                                   CelValue::StringHolder dur_str) {
   absl::Duration d;
-  if (!absl::ParseDuration(std::string(dur_str.value()), &d)) {
+  if (!absl::ParseDuration(dur_str.value(), &d)) {
     return CreateErrorValue(arena, "String to Duration conversion failed",
                             absl::StatusCode::kInvalidArgument);
   }
@@ -847,15 +850,7 @@ absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
 
 absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
                                         const InterpreterOptions& options) {
-  // Timestamp
-  //
-  // timestamp() conversion from string..
-  auto status =
-      FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
-          builtin::kTimestamp, false, CreateTimestampFromString, registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
+  auto status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
           builtin::kFullYear, true,
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
@@ -1018,6 +1013,282 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
   return absl::OkStatus();
 }
 
+absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
+                                              const InterpreterOptions&) {
+  // bytes -> bytes
+  auto status = FunctionAdapter<CelValue::BytesHolder, CelValue::BytesHolder>::
+      CreateAndRegister(
+          builtin::kBytes, false,
+          [](Arena*, CelValue::BytesHolder value) -> CelValue::BytesHolder {
+            return value;
+          },
+          registry);
+  if (!status.ok()) return status;
+
+  // string -> bytes
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kBytes, false,
+      [](Arena* arena, CelValue::StringHolder value) -> CelValue {
+        return CelValue::CreateBytesView(value.value());
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
+                                               const InterpreterOptions&) {
+  // double -> double
+  auto status = FunctionAdapter<double, double>::CreateAndRegister(
+      builtin::kDouble, false, [](Arena*, double v) { return v; }, registry);
+  if (!status.ok()) return status;
+
+  // int -> double
+  status = FunctionAdapter<double, int64_t>::CreateAndRegister(
+      builtin::kDouble, false,
+      [](Arena*, int64_t v) { return static_cast<double>(v); }, registry);
+  if (!status.ok()) return status;
+
+  // string -> double
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kDouble, false,
+      [](Arena* arena, CelValue::StringHolder s) {
+        double result;
+        if (absl::SimpleAtod(s.value(), &result)) {
+          return CelValue::CreateDouble(result);
+        } else {
+          return CreateErrorValue(arena, "cannot convert string to double",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // uint -> double
+  status = FunctionAdapter<double, uint64_t>::CreateAndRegister(
+      builtin::kDouble, false,
+      [](Arena*, uint64_t v) { return static_cast<double>(v); }, registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
+                                            const InterpreterOptions&) {
+  // bool -> int
+  auto status = FunctionAdapter<int64_t, bool>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena*, bool v) { return static_cast<int64_t>(v); }, registry);
+  if (!status.ok()) return status;
+
+  // double -> int
+  status = FunctionAdapter<CelValue, double>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena* arena, double v) {
+        if ((v > static_cast<double>(kIntMax)) ||
+            (v < static_cast<double>(kIntMin))) {
+          return CreateErrorValue(arena, "double out of int range",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        return CelValue::CreateInt64(static_cast<int64_t>(v));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // int -> int
+  status = FunctionAdapter<int64_t, int64_t>::CreateAndRegister(
+      builtin::kInt, false, [](Arena*, int64_t v) { return v; }, registry);
+  if (!status.ok()) return status;
+
+  // string -> int
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena* arena, CelValue::StringHolder s) {
+        int64_t result;
+        if (absl::SimpleAtoi(s.value(), &result)) {
+          return CelValue::CreateInt64(result);
+        } else {
+          return CreateErrorValue(arena, "cannot convert string to int",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // time -> int
+  status = FunctionAdapter<int64_t, absl::Time>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena*, absl::Time t) { return absl::ToUnixSeconds(t); }, registry);
+  if (!status.ok()) return status;
+
+  // uint -> int
+  status = FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
+      builtin::kInt, false,
+      [](Arena* arena, uint64_t v) {
+        if (v > static_cast<uint64_t>(kIntMax)) {
+          return CreateErrorValue(arena, "uint out of int range",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        return CelValue::CreateInt64(static_cast<int64_t>(v));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterStringConversionFunctions(
+    CelFunctionRegistry* registry, const InterpreterOptions& options) {
+  // May be optionally disabled to reduce potential allocs.
+  if (!options.enable_string_conversion) {
+    return absl::OkStatus();
+  }
+
+  // TODO(issues/82): ensure the bytes conversion to string handles UTF-8
+  // properly, and avoids unncessary allocations.
+  // bytes -> string
+  auto status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
+      CreateAndRegister(
+          builtin::kString, false,
+          [](Arena* arena,
+             CelValue::BytesHolder value) -> CelValue::StringHolder {
+            return CelValue::StringHolder(
+                Arena::Create<std::string>(arena, std::string(value.value())));
+          },
+          registry);
+  if (!status.ok()) return status;
+
+  // double -> string
+  status = FunctionAdapter<CelValue::StringHolder, double>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, double value) -> CelValue::StringHolder {
+        return CelValue::StringHolder(
+            Arena::Create<std::string>(arena, absl::StrCat(value)));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // int -> string
+  status = FunctionAdapter<CelValue::StringHolder, int64_t>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, int64_t value) -> CelValue::StringHolder {
+        return CelValue::StringHolder(
+            Arena::Create<std::string>(arena, absl::StrCat(value)));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // string -> string
+  status = FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
+      CreateAndRegister(
+          builtin::kString, false,
+          [](Arena*, CelValue::StringHolder value) -> CelValue::StringHolder {
+            return value;
+          },
+          registry);
+  if (!status.ok()) return status;
+
+  // uint -> string
+  status = FunctionAdapter<CelValue::StringHolder, uint64_t>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, uint64_t value) -> CelValue::StringHolder {
+        return CelValue::StringHolder(
+            Arena::Create<std::string>(arena, absl::StrCat(value)));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
+                                             const InterpreterOptions&) {
+  // double -> uint
+  auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
+      builtin::kUint, false,
+      [](Arena* arena, double v) {
+        if ((v > static_cast<double>(kUintMax)) || (v < 0)) {
+          return CreateErrorValue(arena, "double out of uint range",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        return CelValue::CreateUint64(static_cast<uint64_t>(v));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // int -> uint
+  status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
+      builtin::kUint, false,
+      [](Arena* arena, int64_t v) {
+        if (v < 0) {
+          return CreateErrorValue(arena, "int out of uint range",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        return CelValue::CreateUint64(static_cast<uint64_t>(v));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // string -> uint
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kUint, false,
+      [](Arena* arena, CelValue::StringHolder s) {
+        uint64_t result;
+        if (absl::SimpleAtoi(s.value(), &result)) {
+          return CelValue::CreateUint64(result);
+        } else {
+          return CreateErrorValue(arena, "doesn't convert to a string",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // uint -> uint
+  status = FunctionAdapter<uint64_t, uint64_t>::CreateAndRegister(
+      builtin::kUint, false, [](Arena*, uint64_t v) { return v; }, registry);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
+                                         const InterpreterOptions& options) {
+  auto status = RegisterBytesConversionFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  status = RegisterDoubleConversionFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  // duration() conversion from string.
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kDuration, false, CreateDurationFromString, registry);
+  if (!status.ok()) return status;
+
+  // dyn() identity function.
+  // TODO(issues/102): strip dyn() function references at type-check time.
+  status = FunctionAdapter<CelValue, CelValue>::CreateAndRegister(
+      builtin::kDyn, false,
+      [](Arena*, CelValue value) -> CelValue { return value; }, registry);
+
+  status = RegisterIntConversionFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  status = RegisterStringConversionFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  // timestamp() conversion from string.
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kTimestamp, false, CreateTimestampFromString, registry);
+  if (!status.ok()) return status;
+
+  status = RegisterUintConversionFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
@@ -1048,6 +1319,9 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   status = RegisterComparisonFunctions(registry, options);
+  if (!status.ok()) return status;
+
+  status = RegisterConversionFunctions(registry, options);
   if (!status.ok()) return status;
 
   // Strictness
@@ -1415,63 +1689,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = RegisterTimestampFunctions(registry, options);
   if (!status.ok()) return status;
 
-  // type conversion to int
-  // TODO(issues/26): To return errors on loss of precision
-  // (overflow/underflow) by returning StatusOr<RawType>.
-  status = FunctionAdapter<int64_t, absl::Time>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena*, absl::Time t) { return absl::ToUnixSeconds(t); }, registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, double>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena* arena, double v) {
-        if ((v > (double)kIntMax) || (v < (double)kIntMin)) {
-          return CreateErrorValue(arena, "double out of int range",
-                                  absl::StatusCode::kInvalidArgument);
-        }
-        return CelValue::CreateInt64((int64_t)v);
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<int64_t, bool>::CreateAndRegister(
-      builtin::kInt, false, [](Arena*, bool v) { return (int64_t)v; }, registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena* arena, uint64_t v) {
-        if (v > (uint64_t)kIntMax) {
-          return CreateErrorValue(arena, "uint out of int range",
-                                  absl::StatusCode::kInvalidArgument);
-        }
-        return CelValue::CreateInt64((int64_t)v);
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena* arena, CelValue::StringHolder s) {
-        int64_t result;
-        if (absl::SimpleAtoi(s.value(), &result)) {
-          return CelValue::CreateInt64(result);
-        } else {
-          return CreateErrorValue(arena, "doesn't convert to a string",
-                                  absl::StatusCode::kInvalidArgument);
-        }
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  // duration
-
-  // duration() conversion from string..
-  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kDuration, false, CreateDurationFromString, registry);
-  if (!status.ok()) return status;
-
+  // duration functions
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kHours, true,
       [](Arena* arena, absl::Duration d) -> CelValue {
@@ -1503,55 +1721,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       },
       registry);
   if (!status.ok()) return status;
-
-  if (options.enable_string_conversion) {
-    status = FunctionAdapter<CelValue::StringHolder, int64_t>::CreateAndRegister(
-        builtin::kString, false,
-        [](Arena* arena, int64_t value) -> CelValue::StringHolder {
-          return CelValue::StringHolder(
-              Arena::Create<std::string>(arena, absl::StrCat(value)));
-        },
-        registry);
-    if (!status.ok()) return status;
-
-    status = FunctionAdapter<CelValue::StringHolder, uint64_t>::CreateAndRegister(
-        builtin::kString, false,
-        [](Arena* arena, uint64_t value) -> CelValue::StringHolder {
-          return CelValue::StringHolder(
-              Arena::Create<std::string>(arena, absl::StrCat(value)));
-        },
-        registry);
-    if (!status.ok()) return status;
-
-    status = FunctionAdapter<CelValue::StringHolder, double>::CreateAndRegister(
-        builtin::kString, false,
-        [](Arena* arena, double value) -> CelValue::StringHolder {
-          return CelValue::StringHolder(
-              Arena::Create<std::string>(arena, absl::StrCat(value)));
-        },
-        registry);
-    if (!status.ok()) return status;
-
-    status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
-        CreateAndRegister(
-            builtin::kString, false,
-            [](Arena* arena,
-               CelValue::BytesHolder value) -> CelValue::StringHolder {
-              return CelValue::StringHolder(Arena::Create<std::string>(
-                  arena, std::string(value.value())));
-            },
-            registry);
-    if (!status.ok()) return status;
-
-    status = FunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
-        CreateAndRegister(
-            builtin::kString, false,
-            [](Arena*, CelValue::StringHolder value) -> CelValue::StringHolder {
-              return value;
-            },
-            registry);
-    if (!status.ok()) return status;
-  }
 
   status =
       FunctionAdapter<CelValue::CelTypeHolder, CelValue>::CreateAndRegister(

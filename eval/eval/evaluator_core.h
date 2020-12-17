@@ -34,6 +34,8 @@ namespace runtime {
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
 class ExecutionFrame;
 
+using Expr = google::api::expr::v1alpha1::Expr;
+
 // Class Expression represents single execution step.
 class ExpressionStep {
  public:
@@ -67,7 +69,7 @@ using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;
 // stack as Span<>.
 class ValueStack {
  public:
-  ValueStack(size_t max_size) : current_size_(0) {
+  explicit ValueStack(size_t max_size) : current_size_(0) {
     stack_.resize(max_size);
     attribute_stack_.resize(max_size);
   }
@@ -336,8 +338,10 @@ class CelExpressionFlatImpl : public CelExpression {
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
                         bool enable_unknown_function_results = false,
-                        bool enable_missing_attribute_errors = false)
-      : path_(std::move(path)),
+                        bool enable_missing_attribute_errors = false,
+                        std::unique_ptr<Expr> rewritten_expr = nullptr)
+      : rewritten_expr_(std::move(rewritten_expr)),
+        path_(std::move(path)),
         max_iterations_(max_iterations),
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
@@ -372,6 +376,8 @@ class CelExpressionFlatImpl : public CelExpression {
                                  CelEvaluationListener callback) const override;
 
  private:
+  // Maintain lifecycle of a modified expression.
+  std::unique_ptr<Expr> rewritten_expr_;
   const ExecutionPath path_;
   const int max_iterations_;
   const std::set<std::string> iter_variable_names_;

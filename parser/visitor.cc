@@ -4,10 +4,10 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
-#include "absl/strings/match.h"
 #include "common/escaping.h"
 #include "common/operators.h"
 #include "parser/balancer.h"
@@ -421,7 +421,7 @@ antlrcpp::Any ParserVisitor::visitUint(CelParser::UintContext* ctx) {
     value.resize(value.size() - 1);
   }
   int base = 10;
-  if (absl::StartsWith(value, "0x")) {
+  if (absl::StartsWith(ctx->tok->getText(), "0x")) {
     base = 16;
   }
   uint64_t uint_value;

@@ -71,9 +71,13 @@ constexpr char kMilliseconds[] = "getMilliseconds";
 
 // Type conversions
 // TODO(issues/23): Add other type conversion methods.
+constexpr char kBytes[] = "bytes";
+constexpr char kDouble[] = "double";
+constexpr char kDyn[] = "dyn";
 constexpr char kInt[] = "int";
 constexpr char kString[] = "string";
 constexpr char kType[] = "type";
+constexpr char kUint[] = "uint";
 
 }  // namespace builtin
 

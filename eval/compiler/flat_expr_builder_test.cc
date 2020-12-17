@@ -614,6 +614,60 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
   EXPECT_FALSE(result.BoolOrDie());
 }
 
+TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
+  CheckedExpr expr;
+  // {`var1`: 'hello'}
+  google::protobuf::TextFormat::ParseFromString(R"(
+    reference_map {
+      key: 3
+      value {
+        name: "var1"
+        value {
+          int64_value: 1
+        }
+      }
+    }
+    expr {
+      id: 1
+      struct_expr {
+        entries {
+          id: 2
+          map_key {
+            id: 3
+            ident_expr {
+              name: "var1"
+            }
+          }
+          value {
+            id: 4
+            const_expr {
+              string_value: "hello"
+            }
+          }
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  google::protobuf::Arena arena;
+  builder.set_constant_folding(true, &arena);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  auto build_status = builder.CreateExpression(&expr);
+  ASSERT_OK(build_status);
+
+  auto cel_expr = std::move(build_status.value());
+
+  Activation activation;
+  auto result_or = cel_expr->Evaluate(activation, &arena);
+  ASSERT_OK(result_or);
+  CelValue result = result_or.value();
+  ASSERT_TRUE(result.IsMap());
+  auto m = result.MapOrDie();
+  auto v = (*m)[CelValue::CreateInt64(1L)];
+  EXPECT_THAT(v.value().StringOrDie().value(), Eq("hello"));
+}
+
 TEST(FlatExprBuilderTest, ComprehensionWorksForError) {
   Expr expr;
   // {}[0].all(x, x) should evaluate OK but return an error value

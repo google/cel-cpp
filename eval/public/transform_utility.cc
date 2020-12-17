@@ -114,7 +114,8 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
     case Value::kBoolValue:
       return CelValue::CreateBool(value.bool_value());
     case Value::kBytesValue:
-      return CelValue::CreateBytes(CelValue::BytesHolder(&value.bytes_value()));
+      return CelValue::CreateBytes(CelValue::BytesHolder(
+          arena->Create<std::string>(arena, value.bytes_value())));
     case Value::kDoubleValue:
       return CelValue::CreateDouble(value.double_value());
     case Value::kEnumValue:
@@ -146,14 +147,18 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
     }
     case Value::kNullValue:
       return CelValue::CreateNull();
-    case Value::kObjectValue:
-      return CelProtoWrapper::CreateMessage(&value.object_value(), arena);
+    case Value::kObjectValue: {
+      auto cel_value =
+          CelProtoWrapper::CreateMessage(&value.object_value(), arena);
+      if (cel_value.IsError()) return *cel_value.ErrorOrDie();
+      return cel_value;
+    }
     case Value::kStringValue:
-      return CelValue::CreateString(
-          CelValue::StringHolder(&value.string_value()));
+      return CelValue::CreateString(CelValue::StringHolder(
+          arena->Create<std::string>(arena, value.string_value())));
     case Value::kTypeValue:
-      return CelValue::CreateCelType(
-          CelValue::CelTypeHolder(&value.type_value()));
+      return CelValue::CreateCelType(CelValue::CelTypeHolder(
+          arena->Create<std::string>(arena, value.type_value())));
     case Value::kUint64Value:
       return CelValue::CreateUint64(value.uint64_value());
     case Value::KIND_NOT_SET:
