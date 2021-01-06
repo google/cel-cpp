@@ -7,7 +7,7 @@
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
 #include "parser/source_factory.h"
 #include "parser/visitor.h"
-#include "antlr4-runtime.h"
+#include "third_party/java/antlr4/v4_7_1/Cpp/src/antlr4-runtime.h"
 
 namespace google {
 namespace api {

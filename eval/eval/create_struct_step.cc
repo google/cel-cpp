@@ -280,7 +280,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
 
     const Descriptor* desc =
         DescriptorPool::generated_pool()->FindMessageTypeByName(
-            create_struct_expr->message_name());
+            create_struct_expr.data()->message_name());
 
     if (desc == nullptr) {
       return absl::InvalidArgumentError(

@@ -84,7 +84,7 @@ class Activation : public BaseActivation {
                                      google::protobuf::Arena* arena) const override;
 
   bool IsPathUnknown(absl::string_view path) const override {
-    return google::protobuf::util::FieldMaskUtil::IsPathInFieldMask(std::string(path),
+    return google::protobuf::util::FieldMaskUtil::IsPathInFieldMask(std.data()::string(path),
                                                           unknown_paths_);
   }
 
