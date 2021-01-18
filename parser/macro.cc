@@ -26,8 +26,8 @@ std::vector<Macro> Macro::AllMacros() {
       // The macro "has(m.f)" which tests the presence of a field, avoiding the
       // need to specify the field as a string.
       Macro(CelOperator::HAS, 1,
-            [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-               const std::vector<Expr>& args) {
+            [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+               const Expr& target, const std::vector<Expr>& args) {
               if (!args.empty() && args[0].has_select_expr()) {
                 const auto& sel_expr = args[0].select_expr();
                 return sf->newPresenceTestForMacro(macro_id, sel_expr.operand(),
@@ -43,8 +43,8 @@ std::vector<Macro> Macro::AllMacros() {
       // in range the predicate holds.
       Macro(
           CelOperator::ALL, 2,
-          [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-             const std::vector<Expr>& args) {
+          [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+             const Expr& target, const std::vector<Expr>& args) {
             return sf->newQuantifierExprForMacro(SourceFactory::QUANTIFIER_ALL,
                                                  macro_id, target, args);
           },
@@ -54,8 +54,8 @@ std::vector<Macro> Macro::AllMacros() {
       // one element in range the predicate holds.
       Macro(
           CelOperator::EXISTS, 2,
-          [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-             const std::vector<Expr>& args) {
+          [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+             const Expr& target, const std::vector<Expr>& args) {
             return sf->newQuantifierExprForMacro(
                 SourceFactory::QUANTIFIER_EXISTS, macro_id, target, args);
           },
@@ -65,8 +65,8 @@ std::vector<Macro> Macro::AllMacros() {
       // exactly one element in range the predicate holds.
       Macro(
           CelOperator::EXISTS_ONE, 2,
-          [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-             const std::vector<Expr>& args) {
+          [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+             const Expr& target, const std::vector<Expr>& args) {
             return sf->newQuantifierExprForMacro(
                 SourceFactory::QUANTIFIER_EXISTS_ONE, macro_id, target, args);
           },
@@ -77,8 +77,8 @@ std::vector<Macro> Macro::AllMacros() {
       // the range.
       Macro(
           CelOperator::MAP, 2,
-          [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-             const std::vector<Expr>& args) {
+          [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+             const Expr& target, const std::vector<Expr>& args) {
             return sf->newMapForMacro(macro_id, target, args);
           },
           /* receiver style*/ true),
@@ -89,8 +89,8 @@ std::vector<Macro> Macro::AllMacros() {
       // variables are filtered out.
       Macro(
           CelOperator::MAP, 3,
-          [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-             const std::vector<Expr>& args) {
+          [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+             const Expr& target, const std::vector<Expr>& args) {
             return sf->newMapForMacro(macro_id, target, args);
           },
           /* receiver style*/ true),
@@ -100,8 +100,8 @@ std::vector<Macro> Macro::AllMacros() {
       // predicate is false.
       Macro(
           CelOperator::FILTER, 2,
-          [](std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-             const std::vector<Expr>& args) {
+          [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+             const Expr& target, const std::vector<Expr>& args) {
             return sf->newFilterExprForMacro(macro_id, target, args);
           },
           /* receiver style*/ true),

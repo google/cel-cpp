@@ -1,5 +1,7 @@
 #include "eval/eval/create_struct_step.h"
 
+#include <memory>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -303,12 +305,12 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
       entries.push_back({field_desc});
     }
 
-    return absl::WrapUnique<ExpressionStep>(
-        new CreateStructStepForMessage(expr_id, desc, std::move(entries)));
+    return std::make_unique<CreateStructStepForMessage>(expr_id, desc,
+                                                        std::move(entries));
   } else {
     // Make map-creating step.
-    return absl::WrapUnique<ExpressionStep>(new CreateStructStepForMap(
-        expr_id, create_struct_expr->entries_size()));
+    return std::make_unique<CreateStructStepForMap>(
+        expr_id, create_struct_expr->entries_size());
   }
 }
 

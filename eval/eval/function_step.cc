@@ -293,9 +293,8 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
       function_registry.FindLazyOverloads(name, receiver_style, args);
 
   if (!lazy_overloads.empty()) {
-    std::unique_ptr<ExpressionStep> step = absl::make_unique<LazyFunctionStep>(
-        name, num_args, receiver_style, lazy_overloads, expr_id);
-    return std::move(step);
+    return absl::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
+                                               lazy_overloads, expr_id);
   }
 
   auto overloads = function_registry.FindOverloads(name, receiver_style, args);
@@ -307,9 +306,8 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
                      "No overloads provided for FunctionStep creation")));
   }
 
-  std::unique_ptr<ExpressionStep> step = absl::make_unique<EagerFunctionStep>(
-      std::move(overloads), name, num_args, expr_id);
-  return std::move(step);
+  return absl::make_unique<EagerFunctionStep>(std::move(overloads), name,
+                                              num_args, expr_id);
 }
 
 }  // namespace runtime

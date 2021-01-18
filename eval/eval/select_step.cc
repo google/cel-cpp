@@ -229,9 +229,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id,
     absl::string_view select_path) {
-  std::unique_ptr<ExpressionStep> step = absl::make_unique<SelectStep>(
+  return absl::make_unique<SelectStep>(
       select_expr->field(), select_expr->test_only(), expr_id, select_path);
-  return std::move(step);
 }
 
 }  // namespace runtime

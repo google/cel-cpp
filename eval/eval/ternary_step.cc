@@ -69,10 +69,7 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateTernaryStep(
     int64_t expr_id) {
-  std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<TernaryStep>(expr_id);
-
-  return step;
+  return absl::make_unique<TernaryStep>(expr_id);
 }
 
 }  // namespace runtime

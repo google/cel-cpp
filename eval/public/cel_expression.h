@@ -121,6 +121,10 @@ class CelExpressionBuilder {
   CelFunctionRegistry* GetRegistry() const { return registry_.get(); }
 
   // Enums registered with the builder.
+  //
+  // TODO(issues/105): this should not be std::set as the ordering of pointers
+  // is inconsistent across processes and should be absl::node_hash_map or
+  // absl::flat_hash_map
   const std::set<const google::protobuf::EnumDescriptor*>& resolvable_enums() const {
     return resolvable_enums_;
   }

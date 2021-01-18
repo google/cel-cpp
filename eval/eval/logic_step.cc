@@ -111,21 +111,14 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-
 // Factory method for "And" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
-  std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
-
-  return std::move(step);
+  return absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
 }
 
 // Factory method for "Or" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
-  std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
-
-  return std::move(step);
+  return absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
 }
 
 }  // namespace runtime

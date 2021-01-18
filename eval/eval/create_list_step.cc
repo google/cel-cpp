@@ -65,9 +65,8 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
     int64_t expr_id) {
-  std::unique_ptr<ExpressionStep> step = absl::make_unique<CreateListStep>(
-      expr_id, create_list_expr->elements_size());
-  return std::move(step);
+  return absl::make_unique<CreateListStep>(expr_id,
+                                           create_list_expr->elements_size());
 }
 
 }  // namespace runtime

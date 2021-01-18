@@ -330,7 +330,7 @@ class Container : public SharedValue {
   }
   template <Value::Kind ValueKind, typename V>
   static Value GetValue(V&& value) {
-    return Value::From<ValueKind>(std::move(value));
+    return Value::From<ValueKind>(std::forward<V>(value));
   }
 
  private:
