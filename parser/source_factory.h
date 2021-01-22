@@ -8,7 +8,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
-#include "third_party/java/antlr4/v4_7_1/Cpp/src/antlr4-runtime.h"
+#include "antlr4-runtime.h"
 
 namespace google {
 namespace api {
