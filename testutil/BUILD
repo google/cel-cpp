@@ -49,6 +49,7 @@ cc_library(
 
 cc_library(
     name = "test_data_io",
+    testonly = True,
     srcs = [
         "test_data_io.cc",
     ],
@@ -76,6 +77,7 @@ cc_library(
 #        third_party/cel/spec/testdata/unique_values.textpb
 cc_binary(
     name = "test_data_gen",
+    testonly = True,
     srcs = [
         "test_data_gen.cc",
     ],
@@ -110,6 +112,7 @@ cc_test(
 
 cc_library(
     name = "util",
+    testonly = True,
     hdrs = [
         "util.h",
     ],

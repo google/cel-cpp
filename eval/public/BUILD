@@ -180,6 +180,7 @@ cc_library(
         ":cel_function_adapter",
         ":cel_function_registry",
         ":cel_options",
+        "//base:unilib",
         "//eval/public/containers:container_backed_list_impl",
         "@com_google_absl//absl/numeric:int128",
         "@com_google_absl//absl/status",

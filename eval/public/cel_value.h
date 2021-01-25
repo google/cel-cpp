@@ -162,6 +162,9 @@ class CelValue {
 
   static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
 
+  // Returns a string value from a string_view. Warning: the caller is
+  // responsible for the lifecycle of the backing string. Prefer CreateString
+  // instead.
   static CelValue CreateStringView(absl::string_view value) {
     return CelValue(StringHolder(value));
   }

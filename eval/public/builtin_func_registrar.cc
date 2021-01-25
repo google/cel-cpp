@@ -16,6 +16,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "re2/re2.h"
+#include "base/unilib.h"
 
 namespace google {
 namespace api {
@@ -1145,16 +1146,15 @@ absl::Status RegisterStringConversionFunctions(
     return absl::OkStatus();
   }
 
-  // TODO(issues/82): ensure the bytes conversion to string handles UTF-8
-  // properly, and avoids unncessary allocations.
-  // bytes -> string
-  auto status = FunctionAdapter<CelValue::StringHolder, CelValue::BytesHolder>::
-      CreateAndRegister(
+  auto status =
+      FunctionAdapter<CelValue, CelValue::BytesHolder>::CreateAndRegister(
           builtin::kString, false,
-          [](Arena* arena,
-             CelValue::BytesHolder value) -> CelValue::StringHolder {
-            return CelValue::StringHolder(
-                Arena::Create<std::string>(arena, std::string(value.value())));
+          [](Arena* arena, CelValue::BytesHolder value) -> CelValue {
+            if (UniLib::IsStructurallyValid(value.value())) {
+              return CelValue::CreateStringView(value.value());
+            }
+            return CreateErrorValue(arena, "invalid UTF-8 bytes value",
+                                    absl::StatusCode::kInvalidArgument);
           },
           registry);
   if (!status.ok()) return status;
