@@ -2,6 +2,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_EXPRESSION_H_
 
 #include <functional>
+#include <memory>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -10,6 +11,7 @@
 #include "eval/public/activation.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 
 namespace google {
@@ -76,7 +78,9 @@ class CelExpression {
 class CelExpressionBuilder {
  public:
   CelExpressionBuilder()
-      : registry_(absl::make_unique<CelFunctionRegistry>()), container_("") {}
+      : func_registry_(absl::make_unique<CelFunctionRegistry>()),
+        type_registry_(absl::make_unique<CelTypeRegistry>()),
+        container_("") {}
 
   virtual ~CelExpressionBuilder() {}
 
@@ -118,25 +122,17 @@ class CelExpressionBuilder {
 
   // CelFunction registry. Extension function should be registered with it
   // prior to expression creation.
-  CelFunctionRegistry* GetRegistry() const { return registry_.get(); }
+  CelFunctionRegistry* GetRegistry() const { return func_registry_.get(); }
 
-  // Enums registered with the builder.
-  //
-  // TODO(issues/105): this should not be std::set as the ordering of pointers
-  // is inconsistent across processes and should be absl::node_hash_map or
-  // absl::flat_hash_map
-  const std::set<const google::protobuf::EnumDescriptor*>& resolvable_enums() const {
-    return resolvable_enums_;
-  }
+  // CEL Type registry. Provides a means to resolve the CEL built-in types to
+  // CelValue instances, and to extend the set of types and enums known to
+  // expressions by registering them ahead of time.
+  CelTypeRegistry* GetTypeRegistry() const { return type_registry_.get(); }
 
   // Add Enum to the list of resolvable by the builder.
-  void AddResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
-    resolvable_enums_.emplace(enum_descriptor);
-  }
-
-  // Remove Enum from the list of resolvable by the builder.
-  void RemoveResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
-    resolvable_enums_.erase(enum_descriptor);
+  void ABSL_DEPRECATED("Use GetTypeRegistry()->Register() instead")
+      AddResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
+    type_registry_->Register(enum_descriptor);
   }
 
   void set_container(std::string container) {
@@ -146,8 +142,8 @@ class CelExpressionBuilder {
   absl::string_view container() const { return container_; }
 
  private:
-  std::unique_ptr<CelFunctionRegistry> registry_;
-  std::set<const google::protobuf::EnumDescriptor*> resolvable_enums_;
+  std::unique_ptr<CelFunctionRegistry> func_registry_;
+  std::unique_ptr<CelTypeRegistry> type_registry_;
   std::string container_;
 };
 

@@ -24,7 +24,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
         constant_arena_(nullptr),
         enable_comprehension_(true),
         comprehension_max_iterations_(0),
-        fail_on_warnings_(true) {}
+        fail_on_warnings_(true),
+        enable_qualified_type_identifiers_(false) {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -65,6 +66,12 @@ class FlatExprBuilder : public CelExpressionBuilder {
     fail_on_warnings_ = should_fail;
   }
 
+  // set_enable_qualified_type_identifiers controls whether select expressions
+  // may be treated as constant type identifiers during CelExpression creation.
+  void set_enable_qualified_type_identifiers(bool enabled) {
+    enable_qualified_type_identifiers_ = enabled;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -98,6 +105,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_comprehension_;
   int comprehension_max_iterations_;
   bool fail_on_warnings_;
+  bool enable_qualified_type_identifiers_;
 };
 
 }  // namespace runtime

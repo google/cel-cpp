@@ -17,6 +17,7 @@ cc_library(
     deps = [
         ":constant_folding",
         ":qualified_reference_resolver",
+        ":resolver",
         "//base:status_macros",
         "//eval/eval:comprehension_step",
         "//eval/eval:const_value_step",
@@ -30,6 +31,7 @@ cc_library(
         "//eval/eval:jump_step",
         "//eval/eval:logic_step",
         "//eval/eval:select_step",
+        "//eval/eval:shadowable_value_step",
         "//eval/eval:ternary_step",
         "//eval/public:ast_traverse",
         "//eval/public:ast_visitor",
@@ -147,6 +149,7 @@ cc_library(
         "qualified_reference_resolver.h",
     ],
     deps = [
+        ":resolver",
         "//base:status_macros",
         "//eval/eval:const_value_step",
         "//eval/eval:expression_build_warning",
@@ -158,6 +161,21 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "resolver",
+    srcs = ["resolver.cc"],
+    hdrs = ["resolver.h"],
+    deps = [
+        "//eval/public:cel_builtins",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_type_registry",
+        "//eval/public:cel_value",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -174,6 +192,7 @@ cc_test(
         "//eval/public:cel_builtins",
         "//eval/public:cel_function",
         "//eval/public:cel_function_registry",
+        "//eval/public:cel_type_registry",
         "//testutil:util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
@@ -201,5 +220,20 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "resolver_test",
+    size = "small",
+    srcs = ["resolver_test.cc"],
+    deps = [
+        ":resolver",
+        "//eval/public:cel_function",
+        "//eval/public:cel_function_registry",
+        "//eval/public:cel_type_registry",
+        "//eval/testutil:test_message_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_googletest//:gtest_main",
     ],
 )

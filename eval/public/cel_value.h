@@ -205,6 +205,14 @@ class CelValue {
     return CelValue(holder);
   }
 
+  static CelValue CreateCelTypeView(absl::string_view value) {
+    // This factory method is used for dealing with string references which
+    // come from protobuf objects or other containers which promise pointer
+    // stability. In general, this is a risky method to use and should not
+    // be invoked outside the core CEL library.
+    return CelValue(CelTypeHolder(value));
+  }
+
   static CelValue CreateError(const CelError *value) {
     CheckNullPointer(value, Type::kError);
     return CelValue(value);

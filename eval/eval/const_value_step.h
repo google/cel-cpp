@@ -3,7 +3,6 @@
 
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/activation.h"
 #include "eval/public/cel_value.h"
 
 namespace google {
@@ -17,10 +16,6 @@ absl::optional<CelValue> ConvertConstant(
 // Factory method for Constant - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     CelValue value, int64_t expr_id, bool comes_from_ast = true);
-
-// Factory method for Constant(Enum value) - based Execution step
-absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const google::protobuf::EnumValueDescriptor* value_descriptor, int64_t expr_id);
 
 }  // namespace runtime
 }  // namespace expr

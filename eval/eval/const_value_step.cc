@@ -12,7 +12,6 @@ namespace expr {
 namespace runtime {
 
 using google::api::expr::v1alpha1::Constant;
-using google::api::expr::v1alpha1::Expr;
 
 namespace {
 

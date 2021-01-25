@@ -60,13 +60,9 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
-        "//eval/public:activation",
-        "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -131,7 +127,6 @@ cc_library(
         "//eval/public:cel_builtins",
         "//eval/public:cel_function",
         "//eval/public:cel_function_provider",
-        "//eval/public:cel_function_registry",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_function_result_set",
@@ -206,6 +201,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -381,6 +377,7 @@ cc_test(
         "//base:status_macros",
         "//eval/public:cel_attribute",
         "//eval/public:cel_function",
+        "//eval/public:cel_function_registry",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:unknown_function_result_set",
@@ -461,11 +458,13 @@ cc_test(
         ":create_struct_step",
         ":ident_step",
         "//base:status_macros",
+        "//eval/public:cel_type_registry",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -601,6 +600,34 @@ cc_test(
         "//base:status_macros",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "shadowable_value_step",
+    srcs = ["shadowable_value_step.cc"],
+    hdrs = ["shadowable_value_step.h"],
+    deps = [
+        ":evaluator_core",
+        ":expression_step_base",
+        "//eval/public:activation",
+        "//eval/public:cel_value",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "shadowable_value_step_test",
+    size = "small",
+    srcs = ["shadowable_value_step_test.cc"],
+    deps = [
+        ":evaluator_core",
+        ":shadowable_value_step",
+        "//base:status_macros",
+        "//eval/public:cel_value",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
     ],
 )

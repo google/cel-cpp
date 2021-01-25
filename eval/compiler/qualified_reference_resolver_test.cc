@@ -9,6 +9,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_type_registry.h"
 #include "testutil/util.h"
 #include "base/status_macros.h"
 
@@ -84,8 +85,11 @@ TEST(ResolveReferences, Basic) {
   reference_map[2].set_name("foo.bar.var1");
   reference_map[5].set_name("bar.foo.var2");
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
   EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
                 id: 1
@@ -106,8 +110,11 @@ TEST(ResolveReferences, ReturnsNulloptIfNoChanges) {
   Expr expr = ParseTestProto(kExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
 }
@@ -116,11 +123,13 @@ TEST(ResolveReferences, NamespacedIdent) {
   Expr expr = ParseTestProto(kExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
-
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[7].set_name("namespace_x.bar");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
                 id: 1
@@ -168,9 +177,12 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
     })");
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[1].set_name("foo.bar.var1");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(
@@ -210,13 +222,16 @@ constexpr char kEnumExpr[] = R"(
 TEST(ResolveReferences, EnumConstReferenceUsed) {
   Expr expr = ParseTestProto(kEnumExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
-  CelFunctionRegistry registry;
-  ASSERT_OK(RegisterBuiltinFunctions(&registry));
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[5].set_name("bar.foo.Enum.ENUM_VAL1");
   reference_map[5].mutable_value()->set_int64_value(9);
   BuilderWarnings warnings;
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
   EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
                 id: 1
@@ -236,13 +251,16 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
 TEST(ResolveReferences, ConstReferenceSkipped) {
   Expr expr = ParseTestProto(kExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
-  CelFunctionRegistry registry;
-  ASSERT_OK(RegisterBuiltinFunctions(&registry));
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[2].mutable_value()->set_bool_value(true);
   reference_map[5].set_name("bar.foo.var2");
   BuilderWarnings warnings;
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
   EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
                 id: 1
@@ -292,16 +310,19 @@ call_expr {
 TEST(ResolveReferences, FunctionReferenceBasic) {
   Expr expr = ParseTestProto(kExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
-  CelFunctionRegistry registry;
-  ASSERT_OK(registry.RegisterLazyFunction(
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(func_registry.RegisterLazyFunction(
       CelFunctionDescriptor("boolean_and", false,
                             {
                                 CelValue::Type::kBool,
                                 CelValue::Type::kBool,
                             })));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   BuilderWarnings warnings;
   reference_map[1].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
 }
@@ -309,10 +330,13 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
 TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
   Expr expr = ParseTestProto(kExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
-  CelFunctionRegistry registry;
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   BuilderWarnings warnings;
   reference_map[1].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(),
@@ -339,12 +363,14 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
   for (const char* builtin_fn : special_builtins) {
     google::protobuf::Map<int64_t, Reference> reference_map;
     // Builtins aren't in the function registry.
-    CelFunctionRegistry registry;
+    CelFunctionRegistry func_registry;
+    CelTypeRegistry type_registry;
+    Resolver registry("", &func_registry, &type_registry);
     BuilderWarnings warnings;
     reference_map[1].add_overload_id(absl::StrCat("builtin.", builtin_fn));
     expr.mutable_call_expr()->set_function(builtin_fn);
-    auto result =
-        ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+    auto result = ResolveReferences(expr, reference_map, registry, &warnings);
     ASSERT_OK(result.status());
     EXPECT_THAT(result.value(), Eq(absl::nullopt));
     EXPECT_THAT(warnings.warnings(), IsEmpty());
@@ -355,10 +381,13 @@ TEST(ResolveReferences,
      FunctionReferenceMissingOverloadDetectedAndMissingReference) {
   Expr expr = ParseTestProto(kExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
-  CelFunctionRegistry registry;
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   BuilderWarnings warnings;
   reference_map[1].set_name("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(
@@ -374,9 +403,12 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   Expr expr = ParseTestProto(kExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[2].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(),
@@ -405,11 +437,14 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
-  ASSERT_OK(registry.RegisterLazyFunction(CelFunctionDescriptor(
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[1].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
@@ -420,9 +455,12 @@ TEST(ResolveReferences,
   Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
+  CelFunctionRegistry func_registry;
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[1].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(),
@@ -433,11 +471,14 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
-  ASSERT_OK(registry.RegisterLazyFunction(CelFunctionDescriptor(
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[1].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
                 id: 1
@@ -456,13 +497,15 @@ TEST(ResolveReferences,
      FunctionReferenceWithTargetToNamespacedFunctionInContainer) {
   Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
-  BuilderWarnings warnings;
-  CelFunctionRegistry registry;
   reference_map[1].add_overload_id("udf_boolean_and");
-  ASSERT_OK(registry.RegisterLazyFunction(CelFunctionDescriptor(
+  BuilderWarnings warnings;
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
-  auto result =
-      ResolveReferences(expr, reference_map, registry, "com.google", &warnings);
+  CelTypeRegistry type_registry;
+  Resolver registry("com.google", &func_registry, &type_registry);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
                 id: 1
@@ -507,17 +550,175 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   Expr expr = ParseTestProto(kReceiverCallHasExtensionAndExpr);
   google::protobuf::Map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
-  CelFunctionRegistry registry;
-  ASSERT_OK(registry.RegisterLazyFunction(CelFunctionDescriptor(
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
-  ASSERT_OK(registry.RegisterLazyFunction(CelFunctionDescriptor(
+  ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.option.boolean_and", true, {CelValue::Type::kBool})));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
   reference_map[1].add_overload_id("udf_boolean_and");
-  auto result = ResolveReferences(expr, reference_map, registry, "", &warnings);
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result.status());
   // The target is unchanged because it is a test_only select.
   EXPECT_THAT(result.value(), Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
+}
+
+constexpr char kComprehensionExpr[] = R"(
+id:17
+comprehension_expr: {
+  iter_var:"i"
+  iter_range:{
+    id:1
+    list_expr:{
+      elements:{
+        id:2
+        const_expr:{int64_value:1}
+      }
+      elements:{
+        id:3
+        ident_expr:{name:"ENUM"}
+      }
+      elements:{
+        id:4
+        const_expr:{int64_value:3}
+      }
+    }
+  }
+  accu_var:"__result__"
+  accu_init: {
+    id:10
+    const_expr:{bool_value:false}
+  }
+  loop_condition:{
+    id:13
+    call_expr:{
+      function:"@not_strictly_false"
+      args:{
+        id:12
+        call_expr:{
+          function:"!_"
+          args:{
+            id:11
+            ident_expr:{name:"__result__"}
+          }
+        }
+      }
+    }
+  }
+  loop_step:{
+    id:15
+    call_expr: {
+      function:"_||_"
+      args:{
+        id:14
+        ident_expr: {name:"__result__"}
+      }
+      args:{
+        id:8
+        call_expr:{
+          function:"_==_"
+          args:{
+            id:7 ident_expr:{name:"ENUM"}
+          }
+          args:{
+            id:9 ident_expr:{name:"i"}
+          }
+        }
+      }
+    }
+  }
+  result:{id:16 ident_expr:{name:"__result__"}}
+}
+)";
+TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
+  Expr expr = ParseTestProto(kComprehensionExpr);
+  google::protobuf::Map<int64_t, Reference> reference_map;
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
+  reference_map[3].set_name("ENUM");
+  reference_map[3].mutable_value()->set_int64_value(2);
+  reference_map[7].set_name("ENUM");
+  reference_map[7].mutable_value()->set_int64_value(2);
+  BuilderWarnings warnings;
+
+  auto result = ResolveReferences(expr, reference_map, registry, &warnings);
+  ASSERT_OK(result);
+  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
+                id: 17
+                comprehension_expr {
+                  iter_var: "i"
+                  iter_range {
+                    id: 1
+                    list_expr {
+                      elements {
+                        id: 2
+                        const_expr { int64_value: 1 }
+                      }
+                      elements {
+                        id: 3
+                        const_expr { int64_value: 2 }
+                      }
+                      elements {
+                        id: 4
+                        const_expr { int64_value: 3 }
+                      }
+                    }
+                  }
+                  accu_var: "__result__"
+                  accu_init {
+                    id: 10
+                    const_expr { bool_value: false }
+                  }
+                  loop_condition {
+                    id: 13
+                    call_expr {
+                      function: "@not_strictly_false"
+                      args {
+                        id: 12
+                        call_expr {
+                          function: "!_"
+                          args {
+                            id: 11
+                            ident_expr { name: "__result__" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  loop_step {
+                    id: 15
+                    call_expr {
+                      function: "_||_"
+                      args {
+                        id: 14
+                        ident_expr { name: "__result__" }
+                      }
+                      args {
+                        id: 8
+                        call_expr {
+                          function: "_==_"
+                          args {
+                            id: 7
+                            const_expr { int64_value: 2 }
+                          }
+                          args {
+                            id: 9
+                            ident_expr { name: "i" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  result {
+                    id: 16
+                    ident_expr { name: "__result__" }
+                  }
+                })")));
 }
 
 }  // namespace

@@ -19,9 +19,8 @@ ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/macros.textproto",
     "@com_google_cel_spec//tests/simple:testdata/namespace.textproto",
     "@com_google_cel_spec//tests/simple:testdata/plumbing.textproto",
-    # TODO(issues/92): Support for parse-only proto message creation within a container.
-    # "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
-    # "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/proto2.textproto",
+    "@com_google_cel_spec//tests/simple:testdata/proto3.textproto",
     "@com_google_cel_spec//tests/simple:testdata/string.textproto",
     "@com_google_cel_spec//tests/simple:testdata/timestamps.textproto",
     "@com_google_cel_spec//tests/simple:testdata/unknowns.textproto",
@@ -93,16 +92,11 @@ cc_binary(
             "--skip_test=conversions/uint/double_nearest,double_nearest_int,double_half_away",
             # TODO(issues/82): Unexpected behavior when converting invalid bytes to string.
             "--skip_test=conversions/string/bytes_invalid",
-            # TODO(issues/83): Missing type() conversion functions
-            "--skip_test=conversions/type",
             # TODO(issues/96): Well-known type conversion support.
             "--skip_test=proto2/literal_wellknown",
             "--skip_test=proto3/literal_wellknown",
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
-            # TODO(issues/92): Support for parse-only proto message creation within a container.
-            "--skip_test=proto2/has/undefined",
-            "--skip_test=proto3/has/undefined",
             # Requires container support
             "--skip_test=namespace/namespace/self_eval_container_lookup_unchecked",
             "--skip_test=basic/self_eval_nonzeroish/self_eval_bytes_invalid_utf8",

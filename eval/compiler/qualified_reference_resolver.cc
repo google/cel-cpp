@@ -55,81 +55,40 @@ absl::optional<std::string> ToNamespace(const Expr& expr) {
   }
 }
 
-// Shape matcher for CelFunctions.
-// TODO(issues/91): this is the same behavior as parsed exprs in the CPP
-// evaluator (just check the right call style and number of arguments), but we
-// should have enough type information in a checked expr to  find a more
-// specific candidate list.
-std::vector<CelValue::Type> ArgumentMatcher(int argument_count) {
-  std::vector<CelValue::Type> argument_matcher(argument_count);
-  for (int i = 0; i < argument_count; i++) {
-    argument_matcher[i] = CelValue::Type::kAny;
-  }
-  return argument_matcher;
-}
-
-bool OverloadExists(const CelFunctionRegistry& registry, absl::string_view name,
-                    const std::vector<CelValue::Type>& argument_matcher,
+bool OverloadExists(const Resolver& resolver, absl::string_view name,
+                    const std::vector<CelValue::Type>& arguments_matcher,
                     bool receiver_style = false) {
-  return !registry.FindOverloads(name, receiver_style, argument_matcher)
+  return !resolver.FindOverloads(name, receiver_style, arguments_matcher)
               .empty() ||
-         !registry.FindLazyOverloads(name, receiver_style, argument_matcher)
+         !resolver.FindLazyOverloads(name, receiver_style, arguments_matcher)
               .empty();
 }
 
-// Handles checking for the most specific (most qualified) function that matches
-// the call shape.
-class ContainerLookupHelper {
- public:
-  ContainerLookupHelper(absl::string_view container,
-                        const CelFunctionRegistry& registry)
-      : registry_(registry) {
-    auto container_elements = absl::StrSplit(container, '.');
-    std::string prefix = "";
-    namespace_prefixes_.push_back(prefix);
-    for (const auto& elem : container_elements) {
-      // Tolerate trailing / leading '.'.
-      if (elem.empty()) {
-        continue;
-      }
-      absl::StrAppend(&prefix, elem, ".");
-      namespace_prefixes_.insert(namespace_prefixes_.begin(), prefix);
+// Return the qualified name of the most qualified matching overload, or
+// nullopt if no matches are found.
+absl::optional<std::string> BestOverloadMatch(const Resolver& resolver,
+                                              absl::string_view base_name,
+                                              int argument_count) {
+  if (IsSpecialFunction(base_name)) {
+    return std::string(base_name);
+  }
+  auto arguments_matcher = ArgumentsMatcher(argument_count);
+  // Check from most qualified to least qualified for a matching overload.
+  auto names = resolver.FullyQualifiedNames(base_name);
+  for (auto name = names.begin(); name != names.end(); ++name) {
+    if (OverloadExists(resolver, *name, arguments_matcher)) {
+      return *name;
     }
   }
-
-  // Return the qualified name of the most qualified matching overload, or
-  // nullopt if no matches are found.
-  absl::optional<std::string> BestOverloadMatch(absl::string_view base_name,
-                                                int argument_count) {
-    if (IsSpecialFunction(base_name)) {
-      return std::string(base_name);
-    }
-    auto argument_matcher = ArgumentMatcher(argument_count);
-    // Check from most qualified to least qualified for a matching overload.
-    for (auto iter = namespace_prefixes_.begin();
-         iter != namespace_prefixes_.end(); ++iter) {
-      std::string resolved_name = absl::StrCat(*iter, base_name);
-      if (OverloadExists(registry_, resolved_name, argument_matcher)) {
-        return resolved_name;
-      }
-    }
-    return absl::nullopt;
-  }
-
- private:
-  // Namespace prefixes to check in most to least specific order.
-  std::vector<std::string> namespace_prefixes_;
-  const CelFunctionRegistry& registry_;
-};
+  return absl::nullopt;
+}
 
 class ReferenceResolver {
  public:
   ReferenceResolver(const google::protobuf::Map<int64_t, Reference>& reference_map,
-                    const CelFunctionRegistry& registry,
-                    BuilderWarnings* warnings, absl::string_view container)
+                    const Resolver& resolver, BuilderWarnings* warnings)
       : reference_map_(reference_map),
-        container_lookup_helper_(container, registry),
-        registry_(registry),
+        resolver_(resolver),
         warnings_(warnings) {}
 
   // Attempt to resolve references in expr. Return true if part of the
@@ -247,8 +206,7 @@ class ReferenceResolver {
           std::string resolved_name =
               absl::StrCat(maybe_namespace.value(), ".", call_expr->function());
           auto maybe_resolved_function =
-              container_lookup_helper_.BestOverloadMatch(resolved_name,
-                                                         arg_num);
+              BestOverloadMatch(resolver_, resolved_name, arg_num);
           if (maybe_resolved_function.has_value()) {
             call_expr->set_function(maybe_resolved_function.value());
             call_expr->clear_target();
@@ -259,8 +217,8 @@ class ReferenceResolver {
     } else {
       // Not a receiver style function call. Check to see if it is a namespaced
       // function using a shorthand inside the expression container.
-      auto maybe_resolved_function = container_lookup_helper_.BestOverloadMatch(
-          call_expr->function(), arg_num);
+      auto maybe_resolved_function =
+          BestOverloadMatch(resolver_, call_expr->function(), arg_num);
       if (!maybe_resolved_function.has_value()) {
         RETURN_IF_ERROR(warnings_->AddWarning(absl::InvalidArgumentError(
             absl::StrCat("No overload found in reference resolve step for ",
@@ -273,8 +231,8 @@ class ReferenceResolver {
     // For parity, if we didn't rewrite the receiver call style function,
     // check that an overload is provided in the builder.
     if (call_expr->has_target() &&
-        !OverloadExists(registry_, call_expr->function(),
-                        ArgumentMatcher(arg_num + 1),
+        !OverloadExists(resolver_, call_expr->function(),
+                        ArgumentsMatcher(arg_num + 1),
                         /* receiver_style= */ true)) {
       RETURN_IF_ERROR(warnings_->AddWarning(absl::InvalidArgumentError(
           absl::StrCat("No overload found in reference resolve step for ",
@@ -353,8 +311,7 @@ class ReferenceResolver {
   }
 
   const google::protobuf::Map<int64_t, Reference>& reference_map_;
-  ContainerLookupHelper container_lookup_helper_;
-  const CelFunctionRegistry& registry_;
+  const Resolver& resolver_;
   BuilderWarnings* warnings_;
 };
 
@@ -362,11 +319,10 @@ class ReferenceResolver {
 
 absl::StatusOr<absl::optional<Expr>> ResolveReferences(
     const Expr& expr, const google::protobuf::Map<int64_t, Reference>& reference_map,
-    const CelFunctionRegistry& registry, absl::string_view container,
-    BuilderWarnings* warnings) {
+    const Resolver& resolver, BuilderWarnings* warnings) {
   Expr out(expr);
-  ReferenceResolver resolver(reference_map, registry, warnings, container);
-  absl::StatusOr<bool> rewrite_result = resolver.Rewrite(&out);
+  ReferenceResolver ref_resolver(reference_map, resolver, warnings);
+  absl::StatusOr<bool> rewrite_result = ref_resolver.Rewrite(&out);
   if (!rewrite_result.ok()) {
     return rewrite_result.status();
   } else if (rewrite_result.value()) {

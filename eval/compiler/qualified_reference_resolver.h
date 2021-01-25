@@ -7,8 +7,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
-#include "eval/public/cel_function_registry.h"
 
 namespace google {
 namespace api {
@@ -23,8 +23,7 @@ namespace runtime {
 absl::StatusOr<absl::optional<google::api::expr::v1alpha1::Expr>> ResolveReferences(
     const google::api::expr::v1alpha1::Expr& expr,
     const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>& reference_map,
-    const CelFunctionRegistry& registry, absl::string_view container,
-    BuilderWarnings* warnings);
+    const Resolver& resolver, BuilderWarnings* warnings);
 
 }  // namespace runtime
 }  // namespace expr
