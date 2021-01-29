@@ -1,6 +1,6 @@
 #include "eval/public/cel_type_registry.h"
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/any.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
@@ -45,9 +45,9 @@ TEST(CelTypeRegistryTest, TestRegisterTypeName) {
 
 TEST(CelTypeRegistryTest, TestFindDescriptorFound) {
   CelTypeRegistry registry;
-  auto desc = registry.FindDescriptor("google.api.expr.Expr");
+  auto desc = registry.FindDescriptor("google.protobuf.Any");
   ASSERT_TRUE(desc != nullptr);
-  EXPECT_THAT(desc->full_name(), Eq("google.api.expr.Expr"));
+  EXPECT_THAT(desc->full_name(), Eq("google.protobuf.Any"));
 }
 
 TEST(CelTypeRegistryTest, TestFindDescriptorNotFound) {
@@ -66,10 +66,10 @@ TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
 
 TEST(CelTypeRegistryTest, TestFindTypeProtobufTypeFound) {
   CelTypeRegistry registry;
-  auto type = registry.FindType("google.api.expr.Expr");
+  auto type = registry.FindType("google.protobuf.Any");
   ASSERT_TRUE(type.has_value());
   EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("google.api.expr.Expr"));
+  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("google.protobuf.Any"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {

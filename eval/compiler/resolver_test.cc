@@ -9,6 +9,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/testutil/test_message.pb.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {

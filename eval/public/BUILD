@@ -473,8 +473,8 @@ cc_test(
         ":cel_type_registry",
         "//eval/testutil:test_message_cc_proto",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

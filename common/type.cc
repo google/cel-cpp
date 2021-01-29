@@ -72,7 +72,7 @@ UnrecognizedType::UnrecognizedType(absl::string_view full_name)
     : string_rep_(absl::StrCat("type(\"", full_name, "\")")),
       hash_code_(internal::Hash(full_name)) {
   assert(google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
-             std.data()::string(full_name)) == nullptr);
+             full_name.data()) == nullptr);
 }
 
 absl::string_view UnrecognizedType::full_name() const {

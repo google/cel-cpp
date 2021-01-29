@@ -229,6 +229,7 @@ cc_test(
     srcs = ["resolver_test.cc"],
     deps = [
         ":resolver",
+        "//base:status_macros",
         "//eval/public:cel_function",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_type_registry",

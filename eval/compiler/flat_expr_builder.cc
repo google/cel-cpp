@@ -256,7 +256,7 @@ class FlatExprVisitor : public AstVisitor {
       // - id: 'google.type.Expr'
       // - id: 'google.type', field: 'Expr'
       // - id: 'google', field: 'type', field: 'Expr'
-      for (int i = 0; i < namespace_stack_.size(); i++) {
+      for (size_t i = 0; i < namespace_stack_.size(); i++) {
         auto ns = namespace_stack_[i];
         namespace_stack_[i] = {
             ns.first, absl::StrCat(select_expr->field(), ".", ns.second)};
