@@ -11,6 +11,7 @@
 #include "absl/strings/string_view.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
+#include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/container_access_step.h"
@@ -23,6 +24,7 @@
 #include "eval/eval/jump_step.h"
 #include "eval/eval/logic_step.h"
 #include "eval/eval/select_step.h"
+#include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
 #include "eval/public/ast_traverse.h"
 #include "eval/public/ast_visitor.h"
@@ -149,59 +151,20 @@ class ComprehensionVisitor : public CondVisitor {
 class FlatExprVisitor : public AstVisitor {
  public:
   FlatExprVisitor(
-      const CelFunctionRegistry* function_registry, ExecutionPath* path,
-      bool short_circuiting,
-      const std::set<const google::protobuf::EnumDescriptor*>& enums,
-      absl::string_view container,
+      const Resolver& resolver, ExecutionPath* path, bool short_circuiting,
       const absl::flat_hash_map<std::string, CelValue>& constant_idents,
       bool enable_comprehension, BuilderWarnings* warnings,
       std::set<std::string>* iter_variable_names)
-      : flattened_path_(path),
+      : resolver_(resolver),
+        flattened_path_(path),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
-        function_registry_(function_registry),
         short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
         enable_comprehension_(enable_comprehension),
         builder_warnings_(warnings),
         iter_variable_names_(iter_variable_names) {
     GOOGLE_CHECK(iter_variable_names_);
-
-    auto container_elements = absl::StrSplit(container, '.');
-
-    // Build list of prefixes from container. Non-empty prefixes must end with
-    // ".", otherwise prefix "abc.xy" will match "abc.xyz.EnumName".
-    std::string prefix = "";
-    std::vector<std::string> prefixes;
-    prefixes.push_back(prefix);
-    for (const auto& elem : container_elements) {
-      absl::StrAppend(&prefix, elem, ".");
-      prefixes.push_back(prefix);
-    }
-
-    for (const auto& prefix : prefixes) {
-      for (auto enum_desc : enums) {
-        absl::string_view enum_name = enum_desc->full_name();
-        if (!absl::StartsWith(enum_name, prefix)) {
-          continue;
-        }
-
-        auto remainder = absl::StripPrefix(enum_name, prefix);
-        for (int i = 0; i < enum_desc->value_count(); i++) {
-          auto value_desc = enum_desc->value(i);
-          if (value_desc) {
-            // "prefixes" container is ascending-ordered. As such, we will be
-            // assigning enum reference to the deepest available.
-            // E.g. if both a.b.c.Name and a.b.Name are available, and
-            // we try to reference "Name" with the scope of "a.b.c",
-            // it will be resolved to "a.b.c.Name".
-            auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
-                                    value_desc->name());
-            enum_map_[key] = value_desc;
-          }
-        }
-      }
-    }
   }
 
   void PostVisitConst(const Constant* const_expr, const Expr* expr,
@@ -227,7 +190,7 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
 
-    std::string path(ident_expr->name());
+    const std::string& path = ident_expr->name();
 
     // Automatically replace constant idents with the backing CEL values.
     auto constant = constant_idents_.find(path);
@@ -236,41 +199,38 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
 
-    // Attempt to resolve the identifier as an enum.
-    const google::protobuf::EnumValueDescriptor* value_desc = nullptr;
-    auto it = enum_map_.find(path);
-    if (it != enum_map_.end()) {
-      value_desc = it->second;
-    }
-
-    // Attempt to resolve a parsed-only expression as a namespaced identifier.
+    // Attempt to resolve a select expression as a namespaced identifier for an
+    // enum or type constant value.
+    absl::optional<CelValue> const_value = absl::nullopt;
     while (!namespace_stack_.empty()) {
-      const auto& select_node = namespace_stack_.back();
+      const auto& select_node = namespace_stack_.front();
       // Generate path in format "<ident>.<field 0>.<field 1>...".
-      absl::StrAppend(&path, ".", select_node.second);
-      namespace_map_[select_node.first] = path;
+      auto select_expr = select_node.first;
+      auto qualified_path = absl::StrCat(path, ".", select_node.second);
+      namespace_map_[select_expr] = qualified_path;
 
-      // Attempt to match namespace
-      auto it = enum_map_.find(path);
-      if (it != enum_map_.end()) {
-        resolved_select_expr_ = select_node.first;
-        value_desc = it->second;
-      }
-      namespace_stack_.pop_back();
-    }
-
-    if (resolved_select_expr_) {
-      if (!resolved_select_expr_->has_select_expr()) {
-        progress_status_ = absl::InternalError("Unexpected Expr type");
+      // Attempt to find a constant enum or type value which matches the
+      // qualified path present in the expression. Whether the identifier
+      // can be resolved to a type instance depends on whether the option to
+      // 'enable_qualified_type_identifiers' is set to true.
+      const_value = resolver_.FindConstant(qualified_path, select_expr->id());
+      if (const_value.has_value()) {
+        AddStep(CreateShadowableValueStep(qualified_path, const_value.value(),
+                                          select_expr->id()));
+        resolved_select_expr_ = select_expr;
+        namespace_stack_.clear();
         return;
       }
-      AddStep(CreateConstValueStep(value_desc, resolved_select_expr_->id()));
+      namespace_stack_.pop_front();
+    }
+
+    // Attempt to resolve a simple identifier as an enum or type constant value.
+    const_value = resolver_.FindConstant(path, expr->id());
+    if (const_value.has_value()) {
+      AddStep(CreateShadowableValueStep(path, const_value.value(), expr->id()));
       return;
     }
-    if (value_desc) {
-      AddStep(CreateConstValueStep(value_desc, expr->id()));
-      return;
-    }
+
     AddStep(CreateIdentStep(ident_expr, expr->id()));
   }
 
@@ -283,8 +243,24 @@ class FlatExprVisitor : public AstVisitor {
     // select_expr.
     // Chain of multiple SELECT ending with IDENT can represent namespaced
     // entity.
-    if (select_expr->operand().has_ident_expr() ||
-        select_expr->operand().has_select_expr()) {
+    if (!select_expr->test_only() &&
+        (select_expr->operand().has_ident_expr() ||
+         select_expr->operand().has_select_expr())) {
+      // select expressions are pushed in reverse order:
+      // google.type.Expr is pushed as:
+      // - field: 'Expr'
+      // - field: 'type'
+      // - id: 'google'
+      //
+      // The search order though is as follows:
+      // - id: 'google.type.Expr'
+      // - id: 'google.type', field: 'Expr'
+      // - id: 'google', field: 'type', field: 'Expr'
+      for (size_t i = 0; i < namespace_stack_.size(); i++) {
+        auto ns = namespace_stack_[i];
+        namespace_stack_[i] = {
+            ns.first, absl::StrCat(select_expr->field(), ".", ns.second)};
+      }
       namespace_stack_.push_back({expr, select_expr->field()});
     } else {
       namespace_stack_.clear();
@@ -311,7 +287,6 @@ class FlatExprVisitor : public AstVisitor {
     }
 
     std::string select_path = "";
-
     auto it = namespace_map_.find(expr);
     if (it != namespace_map_.end()) {
       select_path = it->second;
@@ -364,16 +339,47 @@ class FlatExprVisitor : public AstVisitor {
     if (cond_visitor) {
       cond_visitor->PostVisit(expr);
       cond_visitor_stack_.pop();
-    } else {
-      // Special case for "_[_]".
-      if (call_expr->function() == builtin::kIndex) {
-        AddStep(CreateContainerAccessStep(call_expr, expr->id()));
+      return;
+    }
+
+    // Special case for "_[_]".
+    if (call_expr->function() == builtin::kIndex) {
+      AddStep(CreateContainerAccessStep(call_expr, expr->id()));
+      return;
+    }
+
+    // Establish the search criteria for a given function.
+    absl::string_view function = call_expr->function();
+    bool receiver_style = call_expr->has_target();
+    size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
+    auto arguments_matcher = ArgumentsMatcher(num_args);
+
+    // First, search for lazily defined function overloads.
+    // Lazy functions shadow eager functions with the same signature.
+    auto lazy_overloads = resolver_.FindLazyOverloads(
+        function, receiver_style, arguments_matcher, expr->id());
+    if (!lazy_overloads.empty()) {
+      AddStep(CreateFunctionStep(call_expr, expr->id(), lazy_overloads));
+      return;
+    }
+
+    // Second, search for eagerly defined function overloads.
+    auto overloads = resolver_.FindOverloads(function, receiver_style,
+                                             arguments_matcher, expr->id());
+    if (overloads.empty()) {
+      // Create a warning that the overload could not be found. Depending on the
+      // builder_warnings configuration, this could result in termination of the
+      // CelExpression creation or an inspectable warning for use within runtime
+      // logging.
+      auto status = builder_warnings_->AddWarning(
+          absl::Status(absl::StatusCode::kInvalidArgument,
+                       "No overloads provided for FunctionStep creation"));
+      if (!status.ok()) {
+        SetProgressStatusError(status);
         return;
       }
-      // For regular functions, just create one based on registry.
-      AddStep(CreateFunctionStep(call_expr, expr->id(), *function_registry_,
-                                 builder_warnings_));
     }
+    AddStep(CreateFunctionStep(call_expr, expr->id(), overloads));
   }
 
   void PreVisitComprehension(const Comprehension*, const Expr* expr,
@@ -445,7 +451,27 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    AddStep(CreateCreateStructStep(struct_expr, expr->id()));
+
+    // If the message name is empty, this signals that a map should be created.
+    auto message_name = struct_expr->message_name();
+    if (message_name.empty()) {
+      AddStep(CreateCreateStructStep(struct_expr, expr->id()));
+      return;
+    }
+
+    // If the message name is not empty, then the message name must be resolved
+    // within the container, and if a descriptor is found, then a proto message
+    // creation step will be created.
+    auto message_desc = resolver_.FindDescriptor(message_name, expr->id());
+    if (message_desc != nullptr) {
+      AddStep(CreateCreateStructStep(struct_expr, message_desc, expr->id()));
+      return;
+    }
+
+    // Otherwise, the message descriptor was not linked into the binary.
+    SetProgressStatusError(absl::InvalidArgumentError(
+        "Error configuring message creation: message descriptor not found: " +
+        message_name));
   }
 
   absl::Status progress_status() const { return progress_status_; }
@@ -484,6 +510,7 @@ class FlatExprVisitor : public AstVisitor {
   }
 
  private:
+  const Resolver& resolver_;
   ExecutionPath* flattened_path_;
   absl::Status progress_status_;
 
@@ -499,12 +526,6 @@ class FlatExprVisitor : public AstVisitor {
   // When multiple SELECT-...SELECT-IDENT chain is resolved as namespace, this
   // field is used as marker suppressing CelExpression creation for SELECTs.
   const Expr* resolved_select_expr_;
-
-  // Fully resolved enum value names.
-  absl::node_hash_map<std::string, const google::protobuf::EnumValueDescriptor*>
-      enum_map_;
-
-  const CelFunctionRegistry* function_registry_;
 
   bool short_circuiting_;
 
@@ -724,6 +745,8 @@ FlatExprBuilder::CreateExpressionImpl(
     std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
   BuilderWarnings warnings_builder(fail_on_warnings_);
+  Resolver resolver(container(), GetRegistry(), GetTypeRegistry(),
+                    enable_qualified_type_identifiers_);
 
   if (absl::StartsWith(container(), ".") || absl::EndsWith(container(), ".")) {
     return absl::InvalidArgumentError(
@@ -740,9 +763,8 @@ FlatExprBuilder::CreateExpressionImpl(
   // available, we can skip the reference resolve step here if it's already
   // done.
   if (reference_map != nullptr && !reference_map->empty()) {
-    absl::StatusOr<absl::optional<Expr>> rewritten =
-        ResolveReferences(*effective_expr, *reference_map, *GetRegistry(),
-                          container(), &warnings_builder);
+    absl::StatusOr<absl::optional<Expr>> rewritten = ResolveReferences(
+        *effective_expr, *reference_map, resolver, &warnings_builder);
     if (!rewritten.ok()) {
       return rewritten.status();
     }
@@ -763,9 +785,8 @@ FlatExprBuilder::CreateExpressionImpl(
   }
 
   std::set<std::string> iter_variable_names;
-  FlatExprVisitor visitor(this->GetRegistry(), &execution_path,
-                          shortcircuiting_, resolvable_enums(), container(),
-                          idents, enable_comprehension_, &warnings_builder,
+  FlatExprVisitor visitor(resolver, &execution_path, shortcircuiting_, idents,
+                          enable_comprehension_, &warnings_builder,
                           &iter_variable_names);
 
   AstTraverse(effective_expr, source_info, &visitor);

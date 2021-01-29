@@ -9,10 +9,13 @@ namespace parser {
 
 ExpressionBalancer::ExpressionBalancer(std::shared_ptr<SourceFactory> sf,
                                        std::string function, Expr expr)
-    : sf_(sf), function_(function), terms_{expr}, ops_{} {}
+    : sf_(std::move(sf)),
+      function_(std::move(function)),
+      terms_{std::move(expr)},
+      ops_{} {}
 
 void ExpressionBalancer::addTerm(int64_t op, Expr term) {
-  terms_.push_back(term);
+  terms_.push_back(std::move(term));
   ops_.push_back(op);
 }
 
@@ -39,7 +42,8 @@ Expr ExpressionBalancer::balancedTree(int lo, int hi) {
   } else {
     right = balancedTree(mid + 1, hi);
   }
-  return sf_->newGlobalCall(ops_[mid], function_, {left, right});
+  return sf_->newGlobalCall(ops_[mid], function_,
+                            {std::move(left), std::move(right)});
 }
 
 }  // namespace parser

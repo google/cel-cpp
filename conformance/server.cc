@@ -25,8 +25,6 @@
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 
 
-using absl::Status;
-using absl::StatusCode;
 using ::google::protobuf::Arena;
 using ::google::protobuf::util::JsonStringToMessage;
 using ::google::protobuf::util::MessageToJsonString;
@@ -42,10 +40,10 @@ class ConformanceServiceImpl {
  public:
   explicit ConformanceServiceImpl(std::unique_ptr<CelExpressionBuilder> builder)
       : builder_(std::move(builder)),
-        proto2Tests_(&google::api::expr::test::v1::proto2::TestAllTypes::
-                         default_instance()),
-        proto3Tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
-                         default_instance()) {}
+        proto2_tests_(&google::api::expr::test::v1::proto2::TestAllTypes::
+                          default_instance()),
+        proto3_tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
+                          default_instance()) {}
 
   void Parse(const v1alpha1::ParseRequest* request,
              v1alpha1::ParseResponse* response) {
@@ -63,7 +61,7 @@ class ConformanceServiceImpl {
     } else {
       google::api::expr::v1alpha1::ParsedExpr out;
       (out).MergeFrom(parse_status.value());
-      response->mutable_parsed_expr()->CopyFrom(out);
+      *response->mutable_parsed_expr() = out;
     }
   }
 
@@ -87,6 +85,7 @@ class ConformanceServiceImpl {
     google::api::expr::v1alpha1::SourceInfo source_info;
     google::api::expr::v1alpha1::Expr out;
     (out).MergeFrom(*expr);
+    builder_->set_container(request->container());
     auto cel_expression_status = builder_->CreateExpression(&out, &source_info);
 
     if (!cel_expression_status.ok()) {
@@ -144,13 +143,14 @@ class ConformanceServiceImpl {
 
  private:
   std::unique_ptr<CelExpressionBuilder> builder_;
-  const google::api::expr::test::v1::proto2::TestAllTypes* proto2Tests_;
-  const google::api::expr::test::v1::proto3::TestAllTypes* proto3Tests_;
+  const google::api::expr::test::v1::proto2::TestAllTypes* proto2_tests_;
+  const google::api::expr::test::v1::proto3::TestAllTypes* proto3_tests_;
 };
 
 int RunServer(bool optimize) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
+  options.enable_qualified_type_identifiers = true;
 
   if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
@@ -160,14 +160,15 @@ int RunServer(bool optimize) {
 
   std::unique_ptr<CelExpressionBuilder> builder =
       CreateCelExpressionBuilder(options);
-  builder->AddResolvableEnum(
+  auto type_registry = builder->GetTypeRegistry();
+  type_registry->Register(
       google::api::expr::test::v1::proto2::GlobalEnum_descriptor());
-  builder->AddResolvableEnum(
+  type_registry->Register(
       google::api::expr::test::v1::proto3::GlobalEnum_descriptor());
-  builder->AddResolvableEnum(google::api::expr::test::v1::proto2::TestAllTypes::
-                                 NestedEnum_descriptor());
-  builder->AddResolvableEnum(google::api::expr::test::v1::proto3::TestAllTypes::
-                                 NestedEnum_descriptor());
+  type_registry->Register(google::api::expr::test::v1::proto2::TestAllTypes::
+                              NestedEnum_descriptor());
+  type_registry->Register(google::api::expr::test::v1::proto3::TestAllTypes::
+                              NestedEnum_descriptor());
   auto register_status = RegisterBuiltinFunctions(builder->GetRegistry());
   if (!register_status.ok()) {
     std::cerr << "Failed to initialize: " << register_status.ToString()

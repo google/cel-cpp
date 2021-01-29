@@ -15,7 +15,6 @@ namespace expr {
 namespace runtime {
 
 using testing::Eq;
-using testing::UnorderedPointwise;
 
 class DummyMap : public CelMap {
  public:
@@ -256,6 +255,13 @@ TEST(CelValueTest, TestCelType) {
   CelValue value_bytes = CelValue::CreateBytes(&bytes_str);
   EXPECT_THAT(value_bytes.type(), Eq(CelValue::Type::kBytes));
   EXPECT_THAT(value_bytes.ObtainCelType().CelTypeOrDie().value(), Eq("bytes"));
+
+  std::string msg_type_str = "google.api.expr.runtime.TestMessage";
+  CelValue msg_type = CelValue::CreateCelTypeView(msg_type_str);
+  EXPECT_TRUE(msg_type.IsCelType());
+  EXPECT_THAT(msg_type.CelTypeOrDie().value(),
+              Eq("google.api.expr.runtime.TestMessage"));
+  EXPECT_THAT(msg_type.type(), Eq(CelValue::Type::kCelType));
 
   UnknownSet unknown_set;
   CelValue value_unknown = CelValue::CreateUnknownSet(&unknown_set);

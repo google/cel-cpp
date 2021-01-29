@@ -72,6 +72,14 @@ struct InterpreterOptions {
 
   // Treat builder warnings as fatal errors.
   bool fail_on_warnings = true;
+
+  // Enable the resolution of qualified type identifiers as type values instead
+  // of field selections.
+  //
+  // This toggle may cause certain identifiers which overlap with CEL built-in
+  // type or with protobuf message types linked into the binary to be resolved
+  // as static type values rather than as per-eval variables.
+  bool enable_qualified_type_identifiers = false;
 };
 
 }  // namespace runtime

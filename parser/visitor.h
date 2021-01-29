@@ -89,12 +89,13 @@ class ParserVisitor : public ::cel_grammar::CelBaseVisitor,
   std::string errorMessage() const;
 
  private:
-  Expr globalCallOrMacro(int64_t expr_id, std::string function,
-                         std::vector<Expr> args);
-  Expr receiverCallOrMacro(int64_t expr_id, std::string function, Expr target,
-                           std::vector<Expr> args);
-  bool expandMacro(int64_t expr_id, std::string function, Expr* target,
-                   std::vector<Expr> args, Expr* macro_expr);
+  Expr globalCallOrMacro(int64_t expr_id, const std::string& function,
+                         const std::vector<Expr>& args);
+  Expr receiverCallOrMacro(int64_t expr_id, const std::string& function,
+                           const Expr& target, const std::vector<Expr>& args);
+  bool expandMacro(int64_t expr_id, const std::string& function,
+                   const Expr& target, const std::vector<Expr>& args,
+                   Expr* macro_expr);
   std::string unquote(antlr4::ParserRuleContext* ctx, const std::string& s,
                       bool is_bytes);
   std::string extractQualifiedName(antlr4::ParserRuleContext* ctx,

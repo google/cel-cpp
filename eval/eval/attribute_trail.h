@@ -32,7 +32,7 @@ class AttributeTrail {
   AttributeTrail() : attribute_(nullptr) {}
   AttributeTrail(google::api::expr::v1alpha1::Expr root, google::protobuf::Arena* arena)
       : AttributeTrail(google::protobuf::Arena::Create<CelAttribute>(
-            arena, root, std::vector<CelAttributeQualifier>())) {}
+            arena, std::move(root), std::vector<CelAttributeQualifier>())) {}
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(CelAttributeQualifier qualifier,
@@ -52,7 +52,8 @@ class AttributeTrail {
   bool empty() const { return !attribute_; }
 
  private:
-  AttributeTrail(const CelAttribute* attribute) : attribute_(attribute) {}
+  explicit AttributeTrail(const CelAttribute* attribute)
+      : attribute_(attribute) {}
   const CelAttribute* attribute_;
 };
 }  // namespace runtime

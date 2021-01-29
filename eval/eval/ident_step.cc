@@ -46,7 +46,7 @@ void IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
   if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
     google::api::expr::v1alpha1::Expr expr;
     expr.mutable_ident_expr()->set_name(name_);
-    *trail = AttributeTrail(expr, frame->arena());
+    *trail = AttributeTrail(std::move(expr), frame->arena());
   }
 
   if (frame->enable_missing_attribute_errors() && !name_.empty() &&
@@ -102,9 +102,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const google::api::expr::v1alpha1::Expr::Ident* ident_expr, int64_t expr_id) {
-  std::unique_ptr<ExpressionStep> step =
-      absl::make_unique<IdentStep>(ident_expr->name(), expr_id);
-  return std::move(step);
+  return absl::make_unique<IdentStep>(ident_expr->name(), expr_id);
 }
 
 }  // namespace runtime

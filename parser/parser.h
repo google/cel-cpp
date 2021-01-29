@@ -16,10 +16,10 @@ constexpr int kDefaultMaxRecursionDepth = 250;
 
 class VerboseParsedExpr {
  public:
-  VerboseParsedExpr(const google::api::expr::v1alpha1::ParsedExpr& parsed_expr,
-                    const EnrichedSourceInfo& enriched_source_info)
-      : parsed_expr_(parsed_expr),
-        enriched_source_info_(enriched_source_info) {}
+  VerboseParsedExpr(google::api::expr::v1alpha1::ParsedExpr parsed_expr,
+                    EnrichedSourceInfo enriched_source_info)
+      : parsed_expr_(std::move(parsed_expr)),
+        enriched_source_info_(std::move(enriched_source_info)) {}
 
   const google::api::expr::v1alpha1::ParsedExpr& parsed_expr() const {
     return parsed_expr_;

@@ -1,5 +1,8 @@
 #include "eval/eval/function_step.h"
 
+#include <memory>
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -10,6 +13,7 @@
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
@@ -171,6 +175,32 @@ void AddDefaults(CelFunctionRegistry& registry) {
           .ok());
 }
 
+std::vector<CelValue::Type> ArgumentMatcher(int argument_count) {
+  std::vector<CelValue::Type> argument_matcher(argument_count);
+  for (int i = 0; i < argument_count; i++) {
+    argument_matcher[i] = CelValue::Type::kAny;
+  }
+  return argument_matcher;
+}
+
+std::vector<CelValue::Type> ArgumentMatcher(const Expr::Call* call) {
+  return ArgumentMatcher(call->has_target() ? call->args_size() + 1
+                                            : call->args_size());
+}
+
+absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
+    const Expr::Call* call, const CelFunctionRegistry& registry) {
+  auto argument_matcher = ArgumentMatcher(call);
+  auto lazy_overloads = registry.FindLazyOverloads(
+      call->function(), call->has_target(), argument_matcher);
+  if (!lazy_overloads.empty()) {
+    return CreateFunctionStep(call, GetExprId(), lazy_overloads);
+  }
+  auto overloads = registry.FindOverloads(call->function(), call->has_target(),
+                                          argument_matcher);
+  return CreateFunctionStep(call, GetExprId(), overloads);
+}
+
 // Test common functions with varying levels of unknown support.
 class FunctionStepTest
     : public testing::TestWithParam<UnknownProcessingOptions> {
@@ -213,12 +243,9 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
   Expr::Call call2 = ConstFunction::MakeCall("Const2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -254,10 +281,8 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
   Expr::Call call1 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step2_status);
@@ -272,50 +297,6 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
 
   auto status = impl->Evaluate(activation, &arena);
   EXPECT_FALSE(status.ok());
-}
-
-// Test that creation fails if fail on warnings is set in the warnings
-// collection.
-TEST(FunctionStepTest, TestNoOverloadsOnCreation) {
-  CelFunctionRegistry registry;
-  BuilderWarnings warnings(true);
-
-  Expr::Call call = ConstFunction::MakeCall("Const0");
-
-  // function step with empty overloads
-  auto step0_status =
-      CreateFunctionStep(&call, GetExprId(), registry, &warnings);
-
-  EXPECT_FALSE(step0_status.ok());
-}
-
-// Test that no overloads error is warned, actual error delayed to runtime by
-// default.
-TEST_P(FunctionStepTest, TestNoOverloadsOnCreationDelayedError) {
-  CelFunctionRegistry registry;
-  ExecutionPath path;
-  Expr::Call call = ConstFunction::MakeCall("Const0");
-  BuilderWarnings warnings;
-
-  // function step with empty overloads
-  auto step0_status =
-      CreateFunctionStep(&call, GetExprId(), registry, &warnings);
-
-  EXPECT_TRUE(step0_status.ok());
-  EXPECT_THAT(warnings.warnings(), testing::SizeIs(1));
-
-  path.push_back(std::move(step0_status.value()));
-
-  std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
-
-  Activation activation;
-  google::protobuf::Arena arena;
-
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-  ASSERT_TRUE(value.IsError());
 }
 
 // Test situation when no overloads match input arguments during evaluation.
@@ -336,12 +317,9 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   // Add expects {int64_t, int64_t} but it's {int64_t, uint64_t}.
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -368,8 +346,6 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 TEST_P(FunctionStepTest,
        TestNoMatchingOverloadsDuringEvaluationErrorForwarding) {
   ExecutionPath path;
-  BuilderWarnings warnings;
-
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
@@ -390,12 +366,9 @@ TEST_P(FunctionStepTest,
   Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -443,12 +416,9 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   Expr::Call call2 = ConstFunction::MakeCall("Const2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -479,7 +449,6 @@ TEST_P(FunctionStepTest,
   Activation activation;
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  BuilderWarnings warnings;
 
   AddDefaults(registry);
 
@@ -506,12 +475,9 @@ TEST_P(FunctionStepTest,
   Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -564,18 +530,17 @@ class FunctionStepTestUnknowns
         unknown_functions = false;
         break;
     }
-    return absl::make_unique<CelExpressionFlatImpl>(&expr, std::move(path), 0,
+    return absl::make_unique<CelExpressionFlatImpl>(&expr_, std::move(path), 0,
                                                     std::set<std::string>(),
                                                     true, unknown_functions);
   }
 
  private:
-  Expr expr;
+  Expr expr_;
 };
 
 TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   ExecutionPath path;
-  BuilderWarnings warnings;
 
   CelFunctionRegistry registry;
   AddDefaults(registry);
@@ -584,12 +549,9 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -626,8 +588,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   Expr::Call call1 = SinkFunction::MakeCall();
 
   auto step0_status = CreateIdentStep(&ident1, GetExprId());
-  auto step1_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
+  auto step1_status = MakeTestFunctionStep(&call1, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -660,8 +621,6 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
 
 TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   ExecutionPath path;
-  BuilderWarnings warnings;
-
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
@@ -677,12 +636,9 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -725,8 +681,6 @@ MATCHER_P2(IsAdd, a, b, "") {
 
 TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   ExecutionPath path;
-  BuilderWarnings warnings;
-
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
@@ -740,12 +694,9 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   Expr::Call call2 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -777,8 +728,6 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
 
 TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   ExecutionPath path;
-  BuilderWarnings warnings;
-
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
@@ -794,20 +743,13 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   Expr::Call call2 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
-  auto step3_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step4_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step5_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
-  auto step6_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  auto step3_status = MakeTestFunctionStep(&call1, registry);
+  auto step4_status = MakeTestFunctionStep(&call2, registry);
+  auto step5_status = MakeTestFunctionStep(&add_call, registry);
+  auto step6_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -847,8 +789,6 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
 
 TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   ExecutionPath path;
-  BuilderWarnings warnings;
-
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
@@ -864,20 +804,13 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   Expr::Call call2 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
-  auto step3_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step4_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step5_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
-  auto step6_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  auto step3_status = MakeTestFunctionStep(&call2, registry);
+  auto step4_status = MakeTestFunctionStep(&call1, registry);
+  auto step5_status = MakeTestFunctionStep(&add_call, registry);
+  auto step6_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -907,7 +840,7 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
 
   auto value = status.value();
 
-  ASSERT_TRUE(value.IsUnknownSet()) << value.ErrorOrDie()->ToString();
+  ASSERT_TRUE(value.IsUnknownSet()) << *value.ErrorOrDie();
   // Arguments captured.
   EXPECT_THAT(value.UnknownSetOrDie()
                   ->unknown_function_results()
@@ -917,8 +850,6 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
 
 TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ExecutionPath path;
-  BuilderWarnings warnings;
-
   CelFunctionRegistry registry;
 
   CelError error0;
@@ -937,12 +868,9 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status =
-      CreateFunctionStep(&call1, GetExprId(), registry, &warnings);
-  auto step1_status =
-      CreateFunctionStep(&call2, GetExprId(), registry, &warnings);
-  auto step2_status =
-      CreateFunctionStep(&add_call, GetExprId(), registry, &warnings);
+  auto step0_status = MakeTestFunctionStep(&call1, registry);
+  auto step1_status = MakeTestFunctionStep(&call2, registry);
+  auto step2_status = MakeTestFunctionStep(&add_call, registry);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);

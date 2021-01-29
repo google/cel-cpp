@@ -3,9 +3,11 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/cel_type_registry.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
@@ -38,6 +40,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        google::protobuf::Arena* arena,
                                        bool enable_unknowns) {
   ExecutionPath path;
+  CelTypeRegistry type_registry;
 
   Expr expr0;
   Expr expr1;
@@ -55,8 +58,12 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   if (!step0_status.ok()) {
     return step0_status.status();
   }
-
-  auto step1_status = CreateCreateStructStep(create_struct, expr1.id());
+  auto desc = type_registry.FindDescriptor(create_struct->message_name());
+  if (desc == nullptr) {
+    return absl::Status(absl::StatusCode::kFailedPrecondition,
+                        "missing proto message type");
+  }
+  auto step1_status = CreateCreateStructStep(create_struct, desc, expr1.id());
 
   if (!step1_status.ok()) {
     return step1_status.status();
@@ -113,7 +120,7 @@ void RunExpressionAndGetMessage(absl::string_view field,
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds Map and runs it.
 absl::StatusOr<CelValue> RunCreateMapExpression(
-    const std::vector<std::pair<CelValue, CelValue>> values,
+    const std::vector<std::pair<CelValue, CelValue>>& values,
     google::protobuf::Arena* arena, bool enable_unknowns) {
   ExecutionPath path;
   Activation activation;
@@ -174,14 +181,16 @@ class CreateCreateStructStepTest : public testing::TestWithParam<bool> {};
 
 TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ExecutionPath path;
+  CelTypeRegistry type_registry;
 
   Expr expr1;
 
   auto create_struct = expr1.mutable_struct_expr();
   create_struct->set_message_name("google.api.expr.runtime.TestMessage");
+  auto desc = type_registry.FindDescriptor(create_struct->message_name());
+  ASSERT_TRUE(desc != nullptr);
 
-  auto step_status = CreateCreateStructStep(create_struct, expr1.id());
-
+  auto step_status = CreateCreateStructStep(create_struct, desc, expr1.id());
   ASSERT_OK(step_status);
 
   path.push_back(std::move(step_status.value()));

@@ -18,6 +18,8 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   builder->set_comprehension_max_iterations(
       options.comprehension_max_iterations);
   builder->set_fail_on_warnings(options.fail_on_warnings);
+  builder->set_enable_qualified_type_identifiers(
+      options.enable_qualified_type_identifiers);
 
   switch (options.unknown_processing) {
     case UnknownProcessingOptions::kAttributeAndFunction:

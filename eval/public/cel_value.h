@@ -162,6 +162,9 @@ class CelValue {
 
   static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
 
+  // Returns a string value from a string_view. Warning: the caller is
+  // responsible for the lifecycle of the backing string. Prefer CreateString
+  // instead.
   static CelValue CreateStringView(absl::string_view value) {
     return CelValue(StringHolder(value));
   }
@@ -203,6 +206,14 @@ class CelValue {
 
   static CelValue CreateCelType(CelTypeHolder holder) {
     return CelValue(holder);
+  }
+
+  static CelValue CreateCelTypeView(absl::string_view value) {
+    // This factory method is used for dealing with string references which
+    // come from protobuf objects or other containers which promise pointer
+    // stability. In general, this is a risky method to use and should not
+    // be invoked outside the core CEL library.
+    return CelValue(CelTypeHolder(value));
   }
 
   static CelValue CreateError(const CelError *value) {

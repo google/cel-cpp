@@ -490,35 +490,40 @@ std::string ParserVisitor::errorMessage() const {
   return sf_->errorMessage(description_, expression_);
 }
 
-Expr ParserVisitor::globalCallOrMacro(int64_t expr_id, std::string function,
-                                      std::vector<Expr> args) {
+Expr ParserVisitor::globalCallOrMacro(int64_t expr_id,
+                                      const std::string& function,
+                                      const std::vector<Expr>& args) {
   Expr macro_expr;
-  if (expandMacro(expr_id, function, nullptr, args, &macro_expr)) {
+  if (expandMacro(expr_id, function, Expr::default_instance(), args,
+                  &macro_expr)) {
     return macro_expr;
   }
 
   return sf_->newGlobalCall(expr_id, function, args);
 }
 
-Expr ParserVisitor::receiverCallOrMacro(int64_t expr_id, std::string function,
-                                        Expr target, std::vector<Expr> args) {
+Expr ParserVisitor::receiverCallOrMacro(int64_t expr_id,
+                                        const std::string& function,
+                                        const Expr& target,
+                                        const std::vector<Expr>& args) {
   Expr macro_expr;
-  if (expandMacro(expr_id, function, &target, args, &macro_expr)) {
+  if (expandMacro(expr_id, function, target, args, &macro_expr)) {
     return macro_expr;
   }
 
   return sf_->newReceiverCall(expr_id, function, target, args);
 }
 
-bool ParserVisitor::expandMacro(int64_t expr_id, std::string function,
-                                Expr* target, std::vector<Expr> args,
+bool ParserVisitor::expandMacro(int64_t expr_id, const std::string& function,
+                                const Expr& target,
+                                const std::vector<Expr>& args,
                                 Expr* macro_expr) {
   std::string macro_key = absl::StrFormat("%s:%d:%s", function, args.size(),
-                                          target ? "true" : "false");
+                                          target.id() != 0 ? "true" : "false");
   auto m = macros_.find(macro_key);
   if (m == macros_.end()) {
-    std::string var_arg_macro_key =
-        absl::StrFormat("%s:*:%s", function, target ? "true" : "false");
+    std::string var_arg_macro_key = absl::StrFormat(
+        "%s:*:%s", function, target.id() != 0 ? "true" : "false");
     m = macros_.find(var_arg_macro_key);
     if (m == macros_.end()) {
       return false;
@@ -527,7 +532,7 @@ bool ParserVisitor::expandMacro(int64_t expr_id, std::string function,
 
   Expr expr = m->second.expand(sf_, expr_id, target, args);
   if (expr.expr_kind_case() != Expr::EXPR_KIND_NOT_SET) {
-    macro_expr->CopyFrom(expr);
+    *macro_expr = std::move(expr);
     return true;
   }
   return false;

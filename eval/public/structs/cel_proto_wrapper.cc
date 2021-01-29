@@ -155,7 +155,7 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
 
   std::string full_name = std::string(type_url.substr(pos + 1));
   const Descriptor* nested_descriptor =
-      DescriptorPool::generated_pool()->FindMessageTypeByName(full_name);
+      DescriptorPool::generated_pool()->FindMessageTypeByName(full_name.data());
 
   if (nested_descriptor == nullptr) {
     // Descriptor not found for the type

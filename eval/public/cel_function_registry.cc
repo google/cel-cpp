@@ -41,7 +41,7 @@ std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(
     const std::vector<CelValue::Type>& types) const {
   std::vector<const CelFunction*> matched_funcs;
 
-  auto overloads = functions_.find(std::string(name));
+  auto overloads = functions_.find(name);
   if (overloads == functions_.end()) {
     return matched_funcs;
   }
@@ -60,7 +60,7 @@ std::vector<const CelFunctionProvider*> CelFunctionRegistry::FindLazyOverloads(
     const std::vector<CelValue::Type>& types) const {
   std::vector<const CelFunctionProvider*> matched_funcs;
 
-  auto overloads = functions_.find(std::string(name));
+  auto overloads = functions_.find(name);
   if (overloads == functions_.end()) {
     return matched_funcs;
   }

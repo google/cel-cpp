@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 
@@ -19,11 +20,11 @@ class SourceFactory;
 // MacroExpander converts the target and args of a function call that matches a
 // Macro.
 //
-// Note: when the Macros.IsReceiverStyle() is true, the target argument will be
-// empty.
+// Note: when the Macros.IsReceiverStyle() is true, the target argument will
+// be Expr::default_instance().
 using MacroExpander =
-    std::function<Expr(std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr*,
-                       const std::vector<Expr>&)>;
+    std::function<Expr(const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+                       const Expr&, const std::vector<Expr>&)>;
 
 // Macro interface for describing the function signature to match and the
 // MacroExpander to apply.
@@ -39,7 +40,7 @@ class Macro {
         receiver_style_(receiver_style),
         var_arg_style_(false),
         arg_count_(arg_count),
-        expander_(expander) {}
+        expander_(std::move(expander)) {}
 
   Macro(const std::string& function, MacroExpander expander,
         bool receiver_style = false)
@@ -47,7 +48,7 @@ class Macro {
         receiver_style_(receiver_style),
         var_arg_style_(true),
         arg_count_(0),
-        expander_(expander) {}
+        expander_(std::move(expander)) {}
 
   // Function name to match.
   std::string function() const { return function_; }
@@ -73,9 +74,9 @@ class Macro {
   // parsed call signature.
   const MacroExpander& expander() const { return expander_; }
 
-  Expr expand(std::shared_ptr<SourceFactory> sf, int64_t macro_id, Expr* target,
-              const std::vector<Expr>& args) {
-    return expander_(sf, macro_id, target, args);
+  Expr expand(const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
+              const Expr& target, const std::vector<Expr>& args) {
+    return expander_(std::move(sf), macro_id, target, args);
   }
 
   static std::vector<Macro> AllMacros();

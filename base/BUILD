@@ -10,3 +10,17 @@ cc_library(
         "status_macros.h",
     ],
 )
+
+cc_library(
+    name = "unilib",
+    srcs = [
+        "unilib.cc",
+    ],
+    hdrs = [
+        "unilib.h",
+    ],
+    deps = [
+        "@com_github_google_flatbuffers//:flatbuffers",
+        "@com_google_absl//absl/strings",
+    ],
+)

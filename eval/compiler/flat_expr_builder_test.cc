@@ -146,7 +146,6 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
   CelValue result = eval_status.value();
 
   ASSERT_TRUE(result.IsError());
-
   EXPECT_THAT(result.ErrorOrDie()->message(),
               Eq("No matching overloads found"));
 
@@ -966,7 +965,7 @@ TEST(FlatExprBuilderTest, SimpleEnumTest) {
   cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
 
   FlatExprBuilder builder;
-  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
+  builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
   ASSERT_OK(build_status);
@@ -997,7 +996,7 @@ TEST(FlatExprBuilderTest, SimpleEnumIdentTest) {
   cur_expr->mutable_ident_expr()->set_name(enum_name);
 
   FlatExprBuilder builder;
-  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
+  builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
 
   auto build_status = builder.CreateExpression(&expr, &source_info);
   ASSERT_OK(build_status);
@@ -1068,8 +1067,8 @@ void EvalExpressionWithEnum(absl::string_view enum_name,
   cur_expr->mutable_ident_expr()->set_name(enum_name_parts[0]);
 
   FlatExprBuilder builder;
-  builder.AddResolvableEnum(TestMessage::TestEnum_descriptor());
-  builder.AddResolvableEnum(TestEnum_descriptor());
+  builder.GetTypeRegistry()->Register(TestMessage::TestEnum_descriptor());
+  builder.GetTypeRegistry()->Register(TestEnum_descriptor());
   builder.set_container(std::string(container));
 
   auto build_status = builder.CreateExpression(&expr, &source_info);

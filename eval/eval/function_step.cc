@@ -22,7 +22,6 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
-#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
@@ -194,7 +193,7 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
 
 class EagerFunctionStep : public AbstractFunctionStep {
  public:
-  EagerFunctionStep(std::vector<const CelFunction*>&& overloads,
+  EagerFunctionStep(std::vector<const CelFunction*>& overloads,
                     const std::string& name, size_t num_args, int64_t expr_id)
       : AbstractFunctionStep(name, num_args, expr_id), overloads_(overloads) {}
 
@@ -230,7 +229,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
   // at runtime.
   LazyFunctionStep(const std::string& name, size_t num_args,
                    bool receiver_style,
-                   const std::vector<const CelFunctionProvider*>& providers,
+                   std::vector<const CelFunctionProvider*>& providers,
                    int64_t expr_id)
       : AbstractFunctionStep(name, num_args, expr_id),
         receiver_style_(receiver_style),
@@ -281,35 +280,23 @@ absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
-    const CelFunctionRegistry& function_registry,
-    BuilderWarnings* builder_warnings) {
+    std::vector<const CelFunctionProvider*>& lazy_overloads) {
   bool receiver_style = call_expr->has_target();
   size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr->function();
-
   std::vector<CelValue::Type> args(num_args, CelValue::Type::kAny);
+  return absl::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
+                                             lazy_overloads, expr_id);
+}
 
-  std::vector<const CelFunctionProvider*> lazy_overloads =
-      function_registry.FindLazyOverloads(name, receiver_style, args);
-
-  if (!lazy_overloads.empty()) {
-    std::unique_ptr<ExpressionStep> step = absl::make_unique<LazyFunctionStep>(
-        name, num_args, receiver_style, lazy_overloads, expr_id);
-    return std::move(step);
-  }
-
-  auto overloads = function_registry.FindOverloads(name, receiver_style, args);
-
-  // No overloads found.
-  if (overloads.empty()) {
-    RETURN_IF_ERROR(builder_warnings->AddWarning(
-        absl::Status(absl::StatusCode::kInvalidArgument,
-                     "No overloads provided for FunctionStep creation")));
-  }
-
-  std::unique_ptr<ExpressionStep> step = absl::make_unique<EagerFunctionStep>(
-      std::move(overloads), name, num_args, expr_id);
-  return std::move(step);
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
+    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
+    std::vector<const CelFunction*>& overloads) {
+  bool receiver_style = call_expr->has_target();
+  size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
+  const std::string& name = call_expr->function();
+  return absl::make_unique<EagerFunctionStep>(overloads, name, num_args,
+                                              expr_id);
 }
 
 }  // namespace runtime

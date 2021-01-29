@@ -1686,6 +1686,15 @@ TEST_F(BuiltinsTest, BytesToString) {
   EXPECT_EQ(result_value.StringOrDie().value(), "abcd");
 }
 
+TEST_F(BuiltinsTest, BytesToStringInvalid) {
+  std::string input = "\xFF";
+  std::vector<CelValue> args = {CelValue::CreateBytes(&input)};
+  CelValue result_value;
+  ASSERT_NO_FATAL_FAILURE(
+      PerformRun(builtin::kString, {}, args, &result_value));
+  ASSERT_TRUE(result_value.IsError());
+}
+
 TEST_F(BuiltinsTest, StringToString) {
   std::string input = "abcd";
   std::vector<CelValue> args = {CelValue::CreateString(&input)};

@@ -19,8 +19,8 @@ using google::api::expr::v1alpha1::Expr;
 
 class EnrichedSourceInfo {
  public:
-  EnrichedSourceInfo(const std::map<int64_t, std::pair<int32_t, int32_t>>& offsets)
-      : offsets_(offsets) {}
+  EnrichedSourceInfo(std::map<int64_t, std::pair<int32_t, int32_t>> offsets)
+      : offsets_(std::move(offsets)) {}
 
   const std::map<int64_t, std::pair<int32_t, int32_t>>& offsets() const {
     return offsets_;
@@ -56,7 +56,7 @@ class SourceFactory {
 
   struct Error {
     Error(std::string message, SourceLocation location)
-        : message(message), location(location) {}
+        : message(std::move(message)), location(location) {}
     std::string message;
     SourceLocation location;
   };
@@ -86,15 +86,15 @@ class SourceFactory {
                      const std::vector<Expr>& args);
   Expr newGlobalCallForMacro(int64_t macro_id, const std::string& function,
                              const std::vector<Expr>& args);
-  Expr newReceiverCall(int64_t id, const std::string& function, Expr& target,
-                       const std::vector<Expr>& args);
+  Expr newReceiverCall(int64_t id, const std::string& function,
+                       const Expr& target, const std::vector<Expr>& args);
   Expr newIdent(const antlr4::Token* token, const std::string& ident_name);
   Expr newIdentForMacro(int64_t macro_id, const std::string& ident_name);
   Expr newSelect(::cel_grammar::CelParser::SelectOrCallContext* ctx,
                  Expr& operand, const std::string& field);
   Expr newPresenceTestForMacro(int64_t macro_id, const Expr& operand,
                                const std::string& field);
-  Expr newObject(int64_t obj_id, std::string type_name,
+  Expr newObject(int64_t obj_id, const std::string& type_name,
                  const std::vector<Expr::CreateStruct::Entry>& entries);
   Expr::CreateStruct::Entry newObjectField(int64_t field_id,
                                            const std::string& field,
@@ -109,15 +109,16 @@ class SourceFactory {
                     const Expr& accu_init, const Expr& condition,
                     const Expr& step, const Expr& result);
   Expr newQuantifierExprForMacro(QuantifierKind kind, int64_t macro_id,
-                                 Expr* target, const std::vector<Expr>& args);
-  Expr newFilterExprForMacro(int64_t macro_id, Expr* target,
+                                 const Expr& target,
+                                 const std::vector<Expr>& args);
+  Expr newFilterExprForMacro(int64_t macro_id, const Expr& target,
                              const std::vector<Expr>& args);
 
   Expr newList(int64_t list_id, const std::vector<Expr>& elems);
   Expr newListForMacro(int64_t macro_id, const std::vector<Expr>& elems);
   Expr newMap(int64_t map_id,
               const std::vector<Expr::CreateStruct::Entry>& entries);
-  Expr newMapForMacro(int64_t macro_id, Expr* target,
+  Expr newMapForMacro(int64_t macro_id, const Expr& target,
                       const std::vector<Expr>& args);
   Expr::CreateStruct::Entry newMapEntry(int64_t entry_id, const Expr& key,
                                         const Expr& value);
