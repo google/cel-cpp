@@ -274,8 +274,6 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
     const Descriptor* message_desc, int64_t expr_id) {
   if (message_desc != nullptr) {
-    // TODO(issues/92): Support resolving a type name within a container.
-    // Make message-creating step.
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
     for (const auto& entry : create_struct_expr->entries()) {
