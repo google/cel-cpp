@@ -1,5 +1,6 @@
 #include "eval/public/builtin_func_registrar.h"
 
+#include <cmath>
 #include <functional>
 #include <limits>
 
@@ -1088,7 +1089,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
       builtin::kInt, false,
       [](Arena* arena, double v) {
         if ((v > static_cast<double>(kIntMax)) ||
-            (v < static_cast<double>(kIntMin))) {
+            (v < static_cast<double>(kIntMin)) || std::isnan(v)) {
           return CreateErrorValue(arena, "double out of int range",
                                   absl::StatusCode::kInvalidArgument);
         }
@@ -1208,7 +1209,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, double v) {
-        if ((v > static_cast<double>(kUintMax)) || (v < 0)) {
+        if ((v > static_cast<double>(kUintMax)) || (v < 0) || std::isnan(v)) {
           return CreateErrorValue(arena, "double out of uint range",
                                   absl::StatusCode::kInvalidArgument);
         }
