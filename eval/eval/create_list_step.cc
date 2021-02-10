@@ -1,5 +1,6 @@
 #include "eval/eval/create_list_step.h"
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 
@@ -35,6 +36,14 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   auto args = frame->value_stack().GetSpan(list_size_);
 
   CelValue result;
+  for (const auto& arg : args) {
+    if (arg.IsError()) {
+      result = arg;
+      frame->value_stack().Pop(list_size_);
+      frame->value_stack().Push(result);
+      return absl::OkStatus();
+    }
+  }
 
   const UnknownSet* unknown_set = nullptr;
   if (frame->enable_unknowns()) {
@@ -44,18 +53,17 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
         /*use_partial=*/true);
     if (unknown_set != nullptr) {
       result = CelValue::CreateUnknownSet(unknown_set);
+      frame->value_stack().Pop(list_size_);
+      frame->value_stack().Push(result);
+      return absl::OkStatus();
     }
   }
 
-  if (unknown_set == nullptr) {
-    CelList* cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
-        frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
-    result = CelValue::CreateList(cel_list);
-  }
-
+  CelList* cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
+      frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+  result = CelValue::CreateList(cel_list);
   frame->value_stack().Pop(list_size_);
   frame->value_stack().Push(result);
-
   return absl::OkStatus();
 }
 

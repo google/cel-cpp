@@ -100,7 +100,7 @@ class CreateListStepTest : public testing::TestWithParam<bool> {};
 
 // Tests error when not enough list elements are on the stack during list
 // creation.
-TEST(CreateListStepTest, TestCreateListStackUndeflow) {
+TEST(CreateListStepTest, TestCreateListStackUnderflow) {
   ExecutionPath path;
   Expr dummy_expr;
 
@@ -142,6 +142,42 @@ TEST_P(CreateListStepTest, CreateListOne) {
   ASSERT_TRUE(result_value.IsList());
   EXPECT_THAT(result_value.ListOrDie()->size(), Eq(1));
   EXPECT_THAT((*result_value.ListOrDie())[0].Int64OrDie(), Eq(100));
+}
+
+TEST_P(CreateListStepTest, CreateListWithError) {
+  google::protobuf::Arena arena;
+  std::vector<CelValue> values;
+  CelError error = absl::InvalidArgumentError("bad arg");
+  values.push_back(CelValue::CreateError(&error));
+  auto eval_result = RunExpressionWithCelValues(values, &arena, GetParam());
+
+  ASSERT_OK(eval_result);
+  const CelValue result_value = eval_result.value();
+  ASSERT_TRUE(result_value.IsError());
+  EXPECT_THAT(*result_value.ErrorOrDie(),
+              Eq(absl::InvalidArgumentError("bad arg")));
+}
+
+TEST_P(CreateListStepTest, CreateListWithErrorAndUnknown) {
+  google::protobuf::Arena arena;
+  // list composition is: {unknown, error}
+  std::vector<CelValue> values;
+  Expr expr0;
+  expr0.mutable_ident_expr()->set_name("name0");
+  CelAttribute attr0(expr0, {});
+  UnknownSet unknown_set0(UnknownAttributeSet({&attr0}));
+  values.push_back(CelValue::CreateUnknownSet(&unknown_set0));
+  CelError error = absl::InvalidArgumentError("bad arg");
+  values.push_back(CelValue::CreateError(&error));
+
+  auto eval_result = RunExpressionWithCelValues(values, &arena, GetParam());
+
+  // The bad arg should win.
+  ASSERT_OK(eval_result);
+  const CelValue result_value = eval_result.value();
+  ASSERT_TRUE(result_value.IsError());
+  EXPECT_THAT(*result_value.ErrorOrDie(),
+              Eq(absl::InvalidArgumentError("bad arg")));
 }
 
 TEST_P(CreateListStepTest, CreateListHundred) {

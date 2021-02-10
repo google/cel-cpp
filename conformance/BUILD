@@ -108,8 +108,6 @@ cc_binary(
             "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/85): The exists one macro should not short-circuit false.
             "--skip_test=macros/exists_one/list_no_shortcircuit",
-            # TODO(issues/86): Map macro may produce incorrect results on error.
-            "--skip_test=macros/map/list_error",
             # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
             "--skip_test=namespace/qualified/self_eval_qualified_lookup",
             "--skip_test=namespace/namespace/self_eval_container_lookup",
