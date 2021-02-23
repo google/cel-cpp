@@ -108,7 +108,7 @@ cc_library(
         "//eval/public/containers:field_access",
         "//eval/public/containers:field_backed_list_impl",
         "//eval/public/containers:field_backed_map_impl",
-        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -402,8 +402,8 @@ cc_test(
         "//base:status_macros",
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
+        "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
