@@ -250,8 +250,7 @@ Expr SourceFactory::newQuantifierExprForMacro(
       Expr zero_expr = newLiteralIntForMacro(macro_id, 0);
       Expr one_expr = newLiteralIntForMacro(macro_id, 1);
       init = zero_expr;
-      condition = newGlobalCallForMacro(macro_id, CelOperator::LESS_EQUALS,
-                                        {accu_ident(), one_expr});
+      condition = newLiteralBoolForMacro(macro_id, true);
       step = newGlobalCallForMacro(
           macro_id, CelOperator::CONDITIONAL,
           {args[1],
