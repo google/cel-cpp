@@ -471,7 +471,10 @@ class FieldSetter {
       return false;
     }
     google::protobuf::Duration duration;
-    google::api::expr::internal::EncodeDuration(d, &duration);
+    auto status = google::api::expr::internal::EncodeDuration(d, &duration);
+    if (!status.ok()) {
+      return false;
+    }
     static_cast<const Derived*>(this)->SetMessage(&duration);
     return true;
   }
@@ -483,7 +486,10 @@ class FieldSetter {
       return false;
     }
     google::protobuf::Timestamp timestamp;
-    google::api::expr::internal::EncodeTime(t, &timestamp);
+    auto status = google::api::expr::internal::EncodeTime(t, &timestamp);
+    if (!status.ok()) {
+      return false;
+    }
     static_cast<const Derived*>(this)->SetMessage(&timestamp);
     return true;
   }

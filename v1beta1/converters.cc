@@ -81,6 +81,16 @@ struct ToExprValue {
     return true;
   }
 
+  google::rpc::Status StatusToRpcStatus(const absl::Status& value) {
+    if (value.ok()) {
+      return OkStatus();
+    }
+    google::rpc::Status error;
+    error.set_code(static_cast<int>(value.code()));
+    error.set_message(value.message().data(), value.message().size());
+    return error;
+  }
+
   void EncodeMessage(const google::protobuf::Message& value) {
     result->mutable_value()->mutable_object_value()->PackFrom(value);
   }
@@ -99,7 +109,7 @@ struct ToExprValue {
 
   google::rpc::Status operator()(absl::Duration value) {
     google::protobuf::Duration duration;
-    auto status = EncodeDuration(value, &duration);
+    auto status = StatusToRpcStatus(EncodeDuration(value, &duration));
     if (CheckAndEncodeIfError(status)) {
       EncodeMessage(duration);
     }
@@ -108,7 +118,7 @@ struct ToExprValue {
 
   google::rpc::Status operator()(absl::Time value) {
     google::protobuf::Timestamp time;
-    auto status = EncodeTime(value, &time);
+    auto status = StatusToRpcStatus(EncodeTime(value, &time));
     if (CheckAndEncodeIfError(status)) {
       EncodeMessage(time);
     }

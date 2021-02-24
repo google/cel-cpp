@@ -181,7 +181,7 @@ int RunServer(bool optimize) {
   // Implementation of a simple pipe protocol:
   // INPUT LINE 1: parse/check/eval
   // INPUT LINE 2: JSON of the corresponding request protobuf
-  // OUTPUT LINE 1: JSON of the coressponding response protobuf
+  // OUTPUT LINE 1: JSON of the corresponding response protobuf
   while (true) {
     std::string cmd, input, output;
     std::getline(std::cin, cmd);

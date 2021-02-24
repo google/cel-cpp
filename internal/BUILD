@@ -174,12 +174,12 @@ cc_library(
     srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
     deps = [
-        ":status_util",
+        "//base:status_macros",
         "//common:macros",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-        "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

@@ -103,10 +103,6 @@ TEST(FieldBackedMapImplTest, EmptySizeTest) {
   google::protobuf::Arena arena;
 
   auto cel_map = CreateMap(&message, "string_int32_map", &arena);
-
-  std::string test0 = "test0";
-  std::string test1 = "test1";
-
   EXPECT_EQ(cel_map->size(), 0);
 }
 

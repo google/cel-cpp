@@ -77,13 +77,21 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
     }
     case CelValue::Type::kDuration: {
       Duration duration;
-      expr::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
+      auto status =
+          expr::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
+      if (!status.ok()) {
+        return status;
+      }
       out_value->set_string_value(TimeUtil::ToString(duration));
       break;
     }
     case CelValue::Type::kTimestamp: {
       Timestamp timestamp;
-      expr::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
+      auto status =
+          expr::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
+      if (!status.ok()) {
+        return status;
+      }
       out_value->set_string_value(TimeUtil::ToString(timestamp));
       break;
     }

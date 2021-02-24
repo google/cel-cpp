@@ -373,7 +373,7 @@ TestValue NewValue(const google::protobuf::Message& value, absl::string_view nam
 TestValue NewValue(absl::Duration value, absl::string_view name) {
   google::protobuf::Duration duration;
   auto status = expr::internal::EncodeDuration(value, &duration);
-  assert(status.code() == google::rpc::Code::OK);
+  assert(status.ok());
   auto result = NewValue(duration, name);
   *AddProto(&result, "single_duration")->mutable_single_duration() = duration;
   return result;
@@ -382,7 +382,7 @@ TestValue NewValue(absl::Duration value, absl::string_view name) {
 TestValue NewValue(absl::Time value, absl::string_view name) {
   google::protobuf::Timestamp timestamp;
   auto status = expr::internal::EncodeTime(value, &timestamp);
-  assert(status.code() == google::rpc::Code::OK);
+  assert(status.ok());
   auto result = NewValue(timestamp, name);
   *AddProto(&result, "single_timestamp")->mutable_single_timestamp() =
       timestamp;

@@ -11,11 +11,13 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
+#include "absl/time/time.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "internal/proto_util.h"
 #include "re2/re2.h"
 #include "base/unilib.h"
 
@@ -1196,6 +1198,38 @@ absl::Status RegisterStringConversionFunctions(
       [](Arena* arena, uint64_t value) -> CelValue::StringHolder {
         return CelValue::StringHolder(
             Arena::Create<std::string>(arena, absl::StrCat(value)));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // duration -> string
+  status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, absl::Duration value) -> CelValue {
+        google::protobuf::Duration d;
+        auto status = google::api::expr::internal::EncodeDuration(value, &d);
+        if (!status.ok()) {
+          return CreateErrorValue(arena, status.message(), status.code());
+        }
+        return CelValue::CreateString(
+            CelValue::StringHolder(Arena::Create<std::string>(
+                arena, google::protobuf::util::TimeUtil::ToString(d))));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // timestamp -> string
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, absl::Time value) -> CelValue {
+        google::protobuf::Timestamp ts;
+        auto status = google::api::expr::internal::EncodeTime(value, &ts);
+        if (!status.ok()) {
+          return CreateErrorValue(arena, status.message(), status.code());
+        }
+        return CelValue::CreateString(
+            CelValue::StringHolder(Arena::Create<std::string>(
+                arena, google::protobuf::util::TimeUtil::ToString(ts))));
       },
       registry);
   if (!status.ok()) return status;

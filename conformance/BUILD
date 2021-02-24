@@ -83,9 +83,6 @@ cc_binary(
             "--pipe",
             # TODO(issues/93): Deprecate Duration.getMilliseconds.
             "--skip_test=timestamps/duration_converters/get_milliseconds",
-            # TODO(issues/94): Missing timestamp conversion functions (type / string)
-            "--skip_test=timestamps/timestamp_conversions/toString_timestamp",
-            "--skip_test=timestamps/duration_conversions/toString_duration",
             # TODO(issues/81): Conversion functions for int(), uint() which can be
             # uncommented when the spec changes to truncation rather than rounding.
             "--skip_test=conversions/int/double_nearest,double_nearest_neg,double_half_away_neg,double_half_away_pos",
@@ -161,6 +158,7 @@ sh_test(
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
         "--server=$(location :server)",
         "--skip_check",
+        "--skip_test=dynamic/list/var",
         "--pipe",
     ] + ["$(location " + test + ")" for test in DASHBOARD_TESTS],
     data = [

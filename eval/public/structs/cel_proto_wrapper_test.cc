@@ -80,7 +80,8 @@ TEST(CelProtoWrapperTest, TestDuration) {
   //  CelValue value = CelValue::CreateString("test");
   EXPECT_TRUE(value.IsDuration());
   Duration out;
-  expr::internal::EncodeDuration(value.DurationOrDie(), &out);
+  auto status = expr::internal::EncodeDuration(value.DurationOrDie(), &out);
+  EXPECT_TRUE(status.ok());
   EXPECT_THAT(out, testutil::EqualsProto(msg_duration));
 }
 
@@ -102,7 +103,8 @@ TEST(CelProtoWrapperTest, TestTimestamp) {
   //  CelValue value = CelValue::CreateString("test");
   EXPECT_TRUE(value.IsTimestamp());
   Timestamp out;
-  expr::internal::EncodeTime(value.TimestampOrDie(), &out);
+  auto status = expr::internal::EncodeTime(value.TimestampOrDie(), &out);
+  EXPECT_TRUE(status.ok());
   EXPECT_THAT(out, testutil::EqualsProto(msg_timestamp));
 }
 

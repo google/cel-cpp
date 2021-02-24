@@ -3,9 +3,9 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
-#include "google/rpc/status.pb.h"
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/memory/memory.h"
+#include "absl/status/status.h"
 #include "absl/time/time.h"
 
 namespace google {
@@ -21,12 +21,11 @@ struct DefaultProtoEqual {
 };
 
 /** Helper function to encode a duration in a google::protobuf::Duration. */
-google::rpc::Status EncodeDuration(absl::Duration duration,
-                                   google::protobuf::Duration* proto);
+absl::Status EncodeDuration(absl::Duration duration,
+                            google::protobuf::Duration* proto);
 
 /** Helper function to encode a time in a google::protobuf::Timestamp. */
-google::rpc::Status EncodeTime(absl::Time time,
-                               google::protobuf::Timestamp* proto);
+absl::Status EncodeTime(absl::Time time, google::protobuf::Timestamp* proto);
 
 /** Helper function to decode a duration from a google::protobuf::Duration. */
 absl::Duration DecodeDuration(const google::protobuf::Duration& proto);
