@@ -19,7 +19,6 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/proto_util.h"
 #include "re2/re2.h"
-#include "util/utf8/public/unicodetext.h"
 #include "base/unilib.h"
 
 namespace google {
@@ -34,6 +33,17 @@ namespace {
 const int64_t kIntMax = std::numeric_limits<int64_t>::max();
 const int64_t kIntMin = std::numeric_limits<int64_t>::min();
 const uint64_t kUintMax = std::numeric_limits<uint64_t>::max();
+
+// Returns the number of UTF8 codepoints within a string.
+// The input string must first be checked to see if it is valid UTF8.
+static int UTF8CodepointCount(absl::string_view str) {
+  int n = 0;
+  // Increment the codepoint count on non-trail-byte characters.
+  for (const auto p : str) {
+    n += (*reinterpret_cast<const signed char*>(&p) >= -0x40);
+  }
+  return n;
+}
 
 // Comparison template functions
 template <class Type>
@@ -1388,15 +1398,15 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
 
   // String size
   auto size_func = [=](Arena* arena, CelValue::StringHolder value) -> CelValue {
+    absl::string_view str = value.value();
     if (options.enable_string_size_as_unicode_codepoints) {
-      auto status = UnownedUnicodeTextFromUTF8(value.value());
-      if (!status.ok()) {
+      if (!UniLib::IsStructurallyValid(str)) {
         return CreateErrorValue(arena, "invalid utf-8 string",
                                 absl::StatusCode::kInvalidArgument);
       }
-      return CelValue::CreateInt64(status.value().size());
+      return CelValue::CreateInt64(UTF8CodepointCount(str));
     }
-    return CelValue::CreateInt64(value.value().size());
+    return CelValue::CreateInt64(str.size());
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.

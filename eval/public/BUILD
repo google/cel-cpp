@@ -183,7 +183,6 @@ cc_library(
         "//base:unilib",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:proto_util",
-        "//util/utf8/public:unicodetext",
         "@com_google_absl//absl/numeric:int128",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
