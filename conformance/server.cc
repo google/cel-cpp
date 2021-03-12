@@ -151,6 +151,7 @@ int RunServer(bool optimize) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
+  options.enable_string_size_as_unicode_codepoints = true;
 
   if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
@@ -169,7 +170,8 @@ int RunServer(bool optimize) {
                               NestedEnum_descriptor());
   type_registry->Register(google::api::expr::test::v1::proto3::TestAllTypes::
                               NestedEnum_descriptor());
-  auto register_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  auto register_status =
+      RegisterBuiltinFunctions(builder->GetRegistry(), options);
   if (!register_status.ok()) {
     std::cerr << "Failed to initialize: " << register_status.ToString()
               << std::endl;

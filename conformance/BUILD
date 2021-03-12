@@ -75,6 +75,7 @@ cc_binary(
             # Broken test cases which should be supported.
             # TODO(issues/111): Byte literal decoding of invalid UTF-8 results in incorrect bytes output.
             "--skip_test=basic/self_eval_nonzeroish/self_eval_bytes_invalid_utf8",
+            "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/112): Unbound functions result in empty eval response.
             "--skip_test=basic/functions/unbound",
             "--skip_test=basic/functions/unbound_is_runtime_error",
@@ -113,9 +114,6 @@ cc_binary(
             "--skip_test=proto3/literal_wellknown",
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
-            # TODO(issues/120): Ensure that string size refers to the number of code points.
-            "--skip_test=string/size/one_unicode,unicode",
-            "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/117): Integer overflow on enum assignments should error.
             "--skip_test=enums/legacy_proto2/select_big,select_neg,assign_standalone_int_too_big,assign_standalone_int_too_neg",
             "--skip_test=enums/legacy_proto3/assign_standalone_int_too_big,assign_standalone_int_too_neg",

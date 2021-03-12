@@ -19,6 +19,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/proto_util.h"
 #include "re2/re2.h"
+#include "util/utf8/public/unicodetext.h"
 #include "base/unilib.h"
 
 namespace google {
@@ -1386,16 +1387,24 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // String size
-  auto string_size_func = [](Arena*, CelValue::StringHolder value) -> int64_t {
-    return value.value().size();
+  auto size_func = [=](Arena* arena, CelValue::StringHolder value) -> CelValue {
+    if (options.enable_string_size_as_unicode_codepoints) {
+      auto status = UnownedUnicodeTextFromUTF8(value.value());
+      if (!status.ok()) {
+        return CreateErrorValue(arena, "invalid utf-8 string",
+                                absl::StatusCode::kInvalidArgument);
+      }
+      return CelValue::CreateInt64(status.value().size());
+    }
+    return CelValue::CreateInt64(value.value().size());
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.
-  status = FunctionAdapter<int64_t, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kSize, true, string_size_func, registry);
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kSize, true, size_func, registry);
   if (!status.ok()) return status;
-  status = FunctionAdapter<int64_t, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kSize, false, string_size_func, registry);
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kSize, false, size_func, registry);
   if (!status.ok()) return status;
 
   // Bytes size
