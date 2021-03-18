@@ -1101,8 +1101,10 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, double v) {
-        if ((v > static_cast<double>(kIntMax)) ||
-            (v < static_cast<double>(kIntMin)) || std::isnan(v)) {
+        // NaN and -+infinite numbers cannot be represented as int values,
+        // nor can double values which exceed the integer 64-bit range.
+        if (!std::isfinite(v) || v > static_cast<double>(kIntMax) ||
+            v < static_cast<double>(kIntMin)) {
           return CreateErrorValue(arena, "double out of int range",
                                   absl::StatusCode::kInvalidArgument);
         }
@@ -1254,7 +1256,16 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, double v) {
-        if ((v > static_cast<double>(kUintMax)) || (v < 0) || std::isnan(v)) {
+        // NaN and -+infinite numbers cannot be represented as uint values,
+        // nor doubles that exceed the uint64_t range. In some limited cases,
+        // like 1.84467e+19, the value appears to fit within the uint64_t range
+        // but type conversion results in rounding that overflows.
+        //
+        // Note, the double is checked to make sure it is not greater than 2^64
+        // before it is converted to a uint128 value, as the type conversion
+        // may check-fail for some double inputs that exceed this value.
+        if (!std::isfinite(v) || v < 0 || v > std::ldexp(1.0, 64) ||
+            absl::uint128(v) > kUintMax) {
           return CreateErrorValue(arena, "double out of uint range",
                                   absl::StatusCode::kInvalidArgument);
         }
