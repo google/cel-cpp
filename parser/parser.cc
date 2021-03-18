@@ -36,9 +36,10 @@ namespace {
 // as to prevent stack overflows.
 class ExprRecursionListener : public ParseTreeListener {
  public:
-  ExprRecursionListener(
+  explicit ExprRecursionListener(
       const int max_recursion_depth = kDefaultMaxRecursionDepth)
       : max_recursion_depth_(max_recursion_depth), recursion_depth_(0) {}
+  ~ExprRecursionListener() override {}
 
   void visitTerminal(TerminalNode* node) override{};
   void visitErrorNode(ErrorNode* error) override{};
@@ -70,21 +71,53 @@ void ExprRecursionListener::exitEveryRule(ParserRuleContext* ctx) {
   }
 }
 
+class RecoveryLimitErrorStrategy : public antlr4::DefaultErrorStrategy {
+ public:
+  explicit RecoveryLimitErrorStrategy(
+      int recovery_limit = kDefaultErrorRecoveryLimit)
+      : recovery_limit_(recovery_limit), recovery_attempts_(0) {}
+
+  void recover(antlr4::Parser* recognizer, std::exception_ptr e) override {
+    checkRecoveryLimit(recognizer);
+    antlr4::DefaultErrorStrategy::recover(recognizer, e);
+  }
+
+  antlr4::Token* recoverInline(antlr4::Parser* recognizer) override {
+    checkRecoveryLimit(recognizer);
+    return antlr4::DefaultErrorStrategy::recoverInline(recognizer);
+  }
+
+ private:
+  void checkRecoveryLimit(antlr4::Parser* recognizer) {
+    if (recovery_attempts_++ >= recovery_limit_) {
+      std::string too_many_errors =
+          absl::StrFormat("More than %d parse errors.", recovery_limit_);
+      recognizer->notifyErrorListeners(too_many_errors);
+      throw ParseCancellationException(too_many_errors);
+    }
+  }
+
+  int recovery_limit_;
+  int recovery_attempts_;
+};
+
 }  // namespace
 
 absl::StatusOr<ParsedExpr> Parse(const std::string& expression,
                                  const std::string& description,
-                                 const int max_recursion_depth) {
+                                 int max_recursion_depth,
+                                 int error_recovery_limit) {
   return ParseWithMacros(expression, Macro::AllMacros(), description,
-                         max_recursion_depth);
+                         max_recursion_depth, error_recovery_limit);
 }
 
 absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
                                            const std::vector<Macro>& macros,
                                            const std::string& description,
-                                           const int max_recursion_depth) {
-  auto result =
-      EnrichedParse(expression, macros, description, max_recursion_depth);
+                                           int max_recursion_depth,
+                                           int error_recovery_limit) {
+  auto result = EnrichedParse(expression, macros, description,
+                              max_recursion_depth, error_recovery_limit);
   if (result.ok()) {
     return result->parsed_expr();
   }
@@ -93,7 +126,8 @@ absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
 
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description, const int max_recursion_depth) {
+    const std::string& description, int max_recursion_depth,
+    int error_recovery_limit) {
   ANTLRInputStream input(expression);
   CelLexer lexer(&input);
   CommonTokenStream tokens(&lexer);
@@ -107,21 +141,25 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   parser.addErrorListener(&visitor);
   parser.addParseListener(&listener);
 
-  // if we were to ignore errors completely:
-  // std::shared_ptr<BailErrorStrategy> error_strategy(new BailErrorStrategy());
-  // parser.setErrorHandler(error_strategy);
+  // Limit the number of error recovery attempts to prevent bad expressions
+  // from consuming lots of cpu / memory.
+  std::shared_ptr<RecoveryLimitErrorStrategy> error_strategy(
+      new RecoveryLimitErrorStrategy(error_recovery_limit));
+  parser.setErrorHandler(error_strategy);
 
   CelParser::StartContext* root;
   try {
     root = parser.start();
   } catch (const ParseCancellationException& e) {
+    if (visitor.hasErrored()) {
+      return absl::InvalidArgumentError(visitor.errorMessage());
+    }
     return absl::CancelledError(e.what());
   } catch (const std::exception& e) {
     return absl::AbortedError(e.what());
   }
 
   Expr expr = visitor.visit(root).as<Expr>();
-
   if (visitor.hasErrored()) {
     return absl::InvalidArgumentError(visitor.errorMessage());
   }

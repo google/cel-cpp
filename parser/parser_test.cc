@@ -989,6 +989,18 @@ TEST(ExpressionTest, TsanOom) {
       .IgnoreError();
 }
 
+TEST(ExpressionTest, ErrorRecoveryLimits) {
+  auto result = Parse("......", "", kDefaultMaxRecursionDepth, 1);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.status().message(),
+            "ERROR: :1:2: Syntax error: missing IDENTIFIER at '.'\n"
+            " | ......\n"
+            " | .^\n"
+            "ERROR: :1:3: Syntax error: More than 1 parse errors.\n"
+            " | ......\n"
+            " | ..^");
+}
+
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
                          testing::ValuesIn(test_cases));
 
