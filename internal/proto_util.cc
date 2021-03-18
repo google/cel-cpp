@@ -14,17 +14,6 @@ namespace internal {
 
 namespace {
 
-absl::Status Validate(absl::Duration duration) {
-  if (duration < MakeGoogleApiDurationMin()) {
-    return absl::InvalidArgumentError("duration below min");
-  }
-
-  if (duration > MakeGoogleApiDurationMax()) {
-    return absl::InvalidArgumentError("duration above max");
-  }
-  return absl::OkStatus();
-}
-
 absl::Status Validate(absl::Time time) {
   if (time < MakeGoogleApiTimeMin()) {
     return absl::InvalidArgumentError("time below min");
@@ -38,6 +27,17 @@ absl::Status Validate(absl::Time time) {
 
 }  // namespace
 
+absl::Status ValidateDuration(absl::Duration duration) {
+  if (duration < MakeGoogleApiDurationMin()) {
+    return absl::InvalidArgumentError("duration below min");
+  }
+
+  if (duration > MakeGoogleApiDurationMax()) {
+    return absl::InvalidArgumentError("duration above max");
+  }
+  return absl::OkStatus();
+}
+
 absl::Duration DecodeDuration(const google::protobuf::Duration& proto) {
   return absl::Seconds(proto.seconds()) + absl::Nanoseconds(proto.nanos());
 }
@@ -49,7 +49,7 @@ absl::Time DecodeTime(const google::protobuf::Timestamp& proto) {
 
 absl::Status EncodeDuration(absl::Duration duration,
                             google::protobuf::Duration* proto) {
-  RETURN_IF_ERROR(Validate(duration));
+  RETURN_IF_ERROR(ValidateDuration(duration));
   // s and n may both be negative, per the Duration proto spec.
   const int64_t s = absl::IDivDuration(duration, absl::Seconds(1), &duration);
   const int64_t n = absl::IDivDuration(duration, absl::Nanoseconds(1), &duration);

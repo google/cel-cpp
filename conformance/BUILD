@@ -118,7 +118,7 @@ cc_binary(
             "--skip_test=enums/legacy_proto2/select_big,select_neg,assign_standalone_int_too_big,assign_standalone_int_too_neg",
             "--skip_test=enums/legacy_proto3/assign_standalone_int_too_big,assign_standalone_int_too_neg",
             # TODO(issues/118): Duration and timestamp range errors should result in evaluation errors.
-            "--skip_test=timestamps/duration_range",
+            "--skip_test=timestamps/duration_range/add_over,add_under",
             "--skip_test=timestamps/timestamp_range",
 
             # Future features for CEL 1.0

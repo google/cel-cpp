@@ -182,6 +182,18 @@ class BuiltinsTest : public ::testing::Test {
         << operation << " for " << CelValue::TypeName(ref.type());
   }
 
+  void TestTypeConverts(absl::string_view operation, const CelValue& ref,
+                        Duration& result) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsDuration(), true);
+    ASSERT_EQ(result_value.DurationOrDie(),
+              CelProtoWrapper::CreateDuration(&result).DurationOrDie())
+        << operation << " for " << CelValue::TypeName(ref.type());
+  }
+
   // Helper method. Attempts to perform a type conversion and expects an error
   // as the result.
   void TestTypeConversionError(absl::string_view operation,
@@ -585,6 +597,7 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   std::string result = "93541.011s";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateDuration(&ref),
                    CelValue::StringHolder(&result));
+  TestTypeConverts(builtin::kDuration, CelValue::CreateString(&result), ref);
 
   ref.set_seconds(-93541L);
   ref.set_nanos(-11000000L);
@@ -600,12 +613,22 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   result = "-93541.011s";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateDuration(&ref),
                    CelValue::StringHolder(&result));
+  TestTypeConverts(builtin::kDuration, CelValue::CreateString(&result), ref);
 
   absl::Duration d = MakeGoogleApiDurationMin() + absl::Seconds(-1);
   TestTypeConversionError(builtin::kString, CelValue::CreateDuration(d));
+  result = absl::FormatDuration(d);
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
 
   d = MakeGoogleApiDurationMax() + absl::Seconds(1);
   TestTypeConversionError(builtin::kString, CelValue::CreateDuration(d));
+  result = absl::FormatDuration(d);
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
+
+  std::string inf = "inf";
+  std::string ninf = "-inf";
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&inf));
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&ninf));
 }
 
 // Test functions for Timestamp

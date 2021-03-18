@@ -20,6 +20,9 @@ struct DefaultProtoEqual {
   }
 };
 
+/** Validate that the duration is in the valid protobuf duration range. */
+absl::Status ValidateDuration(absl::Duration duration);
+
 /** Helper function to encode a duration in a google::protobuf::Duration. */
 absl::Status EncodeDuration(absl::Duration duration,
                             google::protobuf::Duration* proto);
