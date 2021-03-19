@@ -63,6 +63,9 @@ bool AddType(std::vector<CelValue::Type>* arg_types) {
 // It accepts method implementations as std::function, allowing
 // them to be lambdas/regular C++ functions. CEL method descriptors are
 // deduced based on C++ function signatures.
+// CelFunction::Evaluate will set result to the value returned by the handler.
+// To handle errors, choose CelValue as the return type, and use the
+// CreateError/Create* helpers in cel_value.h.
 //
 // Usage example:
 //
