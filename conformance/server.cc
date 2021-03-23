@@ -1,8 +1,6 @@
-#include <iostream>
-
+#include "google/api/expr/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
