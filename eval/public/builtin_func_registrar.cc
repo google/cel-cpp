@@ -745,12 +745,6 @@ CelValue CreateDurationFromString(Arena* arena,
                             absl::StatusCode::kInvalidArgument);
   }
 
-  absl::Status status = google::api::expr::internal::ValidateDuration(d);
-  if (!status.ok()) {
-    return CreateErrorValue(arena, "Duration is out of range",
-                            absl::StatusCode::kInvalidArgument);
-  }
-
   return CelValue::CreateDuration(d);
 }
 

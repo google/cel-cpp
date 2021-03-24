@@ -42,7 +42,24 @@ constexpr absl::string_view kListTypeName = "list";
 constexpr absl::string_view kMapTypeName = "map";
 constexpr absl::string_view kCelTypeTypeName = "type";
 
+// Exclusive bounds for valid duration values.
+constexpr absl::Duration kDurationHigh = absl::Seconds(315576000001);
+constexpr absl::Duration kDurationLow = absl::Seconds(-315576000001);
+
+const absl::Status* DurationOverflowError() {
+  static const auto* const kDurationOverflow = new absl::Status(
+      absl::StatusCode::kInvalidArgument, "Duration is out of range");
+  return kDurationOverflow;
+}
+
 }  // namespace
+
+CelValue CelValue::CreateDuration(absl::Duration value) {
+  if (value >= kDurationHigh || value <= kDurationLow) {
+    return CelValue(DurationOverflowError());
+  }
+  return CelValue(value);
+}
 
 std::string CelValue::TypeName(Type value_type) {
   switch (value_type) {

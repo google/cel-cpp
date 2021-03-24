@@ -183,9 +183,7 @@ class CelValue {
     return CelValue(BytesHolder(str));
   }
 
-  static CelValue CreateDuration(absl::Duration value) {
-    return CelValue(value);
-  }
+  static CelValue CreateDuration(absl::Duration value);
 
   static CelValue CreateTimestamp(absl::Time value) { return CelValue(value); }
 

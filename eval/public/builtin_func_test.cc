@@ -577,6 +577,20 @@ TEST_F(BuiltinsTest, TestTimestampDurationArithmeticalOperation) {
   ASSERT_EQ(result_value.IsDuration(), true);
   ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
             TimeUtil::DurationToNanoseconds(d0));
+
+  const auto min = CelValue::CreateDuration(MakeGoogleApiDurationMin());
+  ASSERT_TRUE(min.IsDuration());
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kSubtract, {},
+      {min, CelValue::CreateDuration(absl::Nanoseconds(1))}, &result_value));
+  ASSERT_TRUE(result_value.IsError());
+
+  const auto max = CelValue::CreateDuration(MakeGoogleApiDurationMax());
+  ASSERT_TRUE(max.IsDuration());
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kAdd, {}, {max, CelValue::CreateDuration(absl::Nanoseconds(1))},
+      &result_value));
+  ASSERT_TRUE(result_value.IsError());
 }
 
 // Test functions for Duration
@@ -616,12 +630,10 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   TestTypeConverts(builtin::kDuration, CelValue::CreateString(&result), ref);
 
   absl::Duration d = MakeGoogleApiDurationMin() + absl::Seconds(-1);
-  TestTypeConversionError(builtin::kString, CelValue::CreateDuration(d));
   result = absl::FormatDuration(d);
   TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
 
   d = MakeGoogleApiDurationMax() + absl::Seconds(1);
-  TestTypeConversionError(builtin::kString, CelValue::CreateDuration(d));
   result = absl::FormatDuration(d);
   TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
 
