@@ -149,7 +149,7 @@ TEST(Holder, UnownedPtr) {
   EXPECT_TRUE(std::is_move_assignable<HolderType>::value);
 
   // Null cannot be accessed.
-  HolderType holder(static_cast<int*>(0));
+  HolderType holder(static_cast<int*>(nullptr));
 #ifndef NDEBUG  // Assert only throws when debugging.
   EXPECT_DEATH(holder.value(), "null");
   holder = HolderType(nullptr);
@@ -185,7 +185,7 @@ TEST(Holder, UnownedPtr_const) {
   EXPECT_TRUE(std::is_move_assignable<HolderType>::value);
 
   // Null cannot be accessed.
-  HolderType holder(static_cast<int*>(0));
+  HolderType holder(static_cast<int*>(nullptr));
 #ifndef NDEBUG  // Assert only throws when debugging.
   EXPECT_DEATH(holder.value(), "null");
   holder = HolderType(nullptr);

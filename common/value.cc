@@ -20,8 +20,6 @@ namespace api {
 namespace expr {
 namespace common {
 
-using ::google::api::expr::internal::NotFoundError;
-
 namespace {
 
 static constexpr const Value::Kind kIndexToKind[] = {

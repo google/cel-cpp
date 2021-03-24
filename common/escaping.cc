@@ -241,7 +241,7 @@ inline std::tuple<std::string, absl::string_view, std::string> unescape_char(
   }
 
   if (value < 0x80 || !encode) {
-    char tmp[2] = {(char)value, '\0'};
+    char tmp[2] = {static_cast<char>(value), '\0'};
     return std::make_tuple(std::string(tmp), s, "");
   } else {
     char tmp[5];
@@ -294,7 +294,7 @@ absl::optional<std::string> unescape(const std::string& s, bool is_bytes) {
   }
   value = value.substr(1, n - 2);
   // If there is nothing to escape, then return.
-  if (is_raw_literal || (value.find('\\') == std::string::npos)) {
+  if (is_raw_literal || (!absl::StrContains(value, '\\'))) {
     return value;
   }
 

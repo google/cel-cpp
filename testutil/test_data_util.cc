@@ -345,7 +345,7 @@ TestValue NewBytesValue(absl::string_view value, absl::string_view name) {
 
   // wrapped values.
   google::protobuf::BytesValue wrapped_bytes;
-  wrapped_bytes.set_value(std::string(value));
+  wrapped_bytes.set_value(value.data());
   *AddProto(&result, "wrapped_bytes")->mutable_wrapped_bytes() = wrapped_bytes;
   AddProto(&result, "single_any")
       ->mutable_single_any()

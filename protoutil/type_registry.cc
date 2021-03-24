@@ -150,7 +150,8 @@ template <typename HolderPolicy>
 class UnrecognizedMessageObject final : public common::Object {
  public:
   template <typename T>
-  UnrecognizedMessageObject(T&& value) : holder_(std::forward<T>(value)) {}
+  explicit UnrecognizedMessageObject(T&& value)
+      : holder_(std::forward<T>(value)) {}
 
   common::Value GetMember(absl::string_view name) const override {
     return common::Value::FromError(

@@ -86,7 +86,7 @@ TestData UniqueValues() {
       expr::internal::MakeGoogleApiDurationMin() + absl::Nanoseconds(1),
       "min+1");
   add_val = NewValue(absl::Nanoseconds(-1), "-1");
-  add_val = NewValue(absl::Nanoseconds(0), "0");
+  add_val = NewValue(absl::ZeroDuration(), "0");
   add_val = NewValue(absl::Nanoseconds(1), "1");
   add_val = NewValue(
       expr::internal::MakeGoogleApiDurationMax() - absl::Nanoseconds(1),

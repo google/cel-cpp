@@ -42,7 +42,7 @@ class CelValueEqualImpl : public MatcherInterface<CelValue> {
 template <typename UnderlyingType>
 class CelValueMatcherImpl : public testing::MatcherInterface<const CelValue&> {
  public:
-  CelValueMatcherImpl(testing::Matcher<UnderlyingType> m)
+  explicit CelValueMatcherImpl(testing::Matcher<UnderlyingType> m)
       : underlying_type_matcher_(m) {}
   bool MatchAndExplain(const CelValue& v,
                        testing::MatchResultListener* listener) const override {

@@ -864,7 +864,7 @@ class KindAndIdAdorner : public testutil::ExpressionAdorner {
 
 class LocationAdorner : public testutil::ExpressionAdorner {
  public:
-  LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
+  explicit LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
       : source_info_(source_info) {}
 
   absl::optional<std::pair<int32_t, int32_t>> getLocation(int64_t id) const {

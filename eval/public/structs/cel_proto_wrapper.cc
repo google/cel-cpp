@@ -3,7 +3,7 @@
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "absl/container/node_hash_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 
@@ -146,7 +146,7 @@ CelValue ValueFromMessage(const Struct* struct_value, Arena* arena) {
 CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
   auto type_url = any_value->type_url();
 
-  auto pos = type_url.find_last_of("/");
+  auto pos = type_url.find_last_of('/');
   if (pos == absl::string_view::npos) {
     // TODO(issues/25) What error code?
     // Malformed type_url
@@ -320,7 +320,7 @@ class ValueFromMessageMaker {
     factories_.emplace(desc, std::move(factory));
   }
 
-  absl::node_hash_map<const google::protobuf::Descriptor*,
+  absl::flat_hash_map<const google::protobuf::Descriptor*,
                       std::unique_ptr<ValueFromMessageFactory>>
       factories_;
 };

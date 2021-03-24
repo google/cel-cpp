@@ -89,7 +89,7 @@ int ComparisonImpl(const CelMap* lhs, const CelMap* rhs) {
 
 struct ComparisonVisitor {
   CelValue rhs;
-  ComparisonVisitor(CelValue rhs) : rhs(rhs) {}
+  explicit ComparisonVisitor(CelValue rhs) : rhs(rhs) {}
   template <typename T>
   int operator()(T lhs_value) {
     T rhs_value;

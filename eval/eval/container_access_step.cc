@@ -22,7 +22,7 @@ constexpr int NUM_CONTAINER_ACCESS_ARGUMENTS = 2;
 // message.
 class ContainerAccessStep : public ExpressionStepBase {
  public:
-  ContainerAccessStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
+  explicit ContainerAccessStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
@@ -54,7 +54,7 @@ inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
       break;
     }
   }
-  return CreateNoSuchKeyError(arena, absl::StrCat("Key not found in map"));
+  return CreateNoSuchKeyError(arena, "Key not found in map");
 }
 
 inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,

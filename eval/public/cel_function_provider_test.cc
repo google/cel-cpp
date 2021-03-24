@@ -10,7 +10,6 @@ namespace expr {
 namespace runtime {
 namespace {
 
-using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Ne;

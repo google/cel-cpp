@@ -15,11 +15,11 @@ using ::google::api::expr::v1alpha1::Expr;
 
 class EmptyAdorner : public ExpressionAdorner {
  public:
-  ~EmptyAdorner() {}
+  ~EmptyAdorner() override {}
 
-  std::string adorn(const Expr& e) const { return ""; }
+  std::string adorn(const Expr& e) const override { return ""; }
 
-  std::string adorn(const Expr::CreateStruct::Entry& e) const {
+  std::string adorn(const Expr::CreateStruct::Entry& e) const override {
     return "";
   }
 };
@@ -28,7 +28,7 @@ const EmptyAdorner the_empty_adorner;
 
 class Writer {
  public:
-  Writer(const ExpressionAdorner& adorner)
+  explicit Writer(const ExpressionAdorner& adorner)
       : adorner_(adorner), line_start_(true), indent_(0) {}
 
   void appendExpr(const Expr& e) {

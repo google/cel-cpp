@@ -12,12 +12,8 @@ namespace expr {
 namespace runtime {
 
 using google::protobuf::Duration;
-using google::protobuf::ListValue;
-using google::protobuf::Struct;
 using google::protobuf::Timestamp;
 using google::protobuf::Value;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::Message;
 using google::protobuf::util::TimeUtil;
 
 absl::Status KeyAsString(const CelValue& value, std::string* key) {

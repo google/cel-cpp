@@ -13,7 +13,7 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "//internal:proto_util",
-        "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",

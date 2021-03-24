@@ -34,7 +34,7 @@ class FlatBuffersListImpl : public CelList {
 
 class StringListImpl : public CelList {
  public:
-  StringListImpl(
+  explicit StringListImpl(
       const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>* list)
       : list_(list) {}
   int size() const override { return list_ ? list_->size() : 0; }

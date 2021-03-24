@@ -277,7 +277,7 @@ TEST_F(UnknownsTest, UnknownFunctions) {
   ASSERT_OK(maybe_response);
   CelValue response = maybe_response.value();
 
-  ASSERT_TRUE(response.IsUnknownSet()) << response.ErrorOrDie()->ToString();
+  ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
   EXPECT_THAT(response.UnknownSetOrDie()
                   ->unknown_function_results()
                   .unknown_function_results(),
@@ -302,7 +302,7 @@ TEST_F(UnknownsTest, UnknownsMerge) {
   ASSERT_OK(maybe_response);
   CelValue response = maybe_response.value();
 
-  ASSERT_TRUE(response.IsUnknownSet()) << response.ErrorOrDie()->ToString();
+  ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
   EXPECT_THAT(response.UnknownSetOrDie()
                   ->unknown_function_results()
                   .unknown_function_results(),
@@ -454,7 +454,7 @@ TEST_F(UnknownsCompTest, UnknownsMerge) {
   ASSERT_OK(eval_status);
   CelValue response = eval_status.value();
 
-  ASSERT_TRUE(response.IsUnknownSet()) << response.ErrorOrDie()->ToString();
+  ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
   EXPECT_THAT(response.UnknownSetOrDie()
                   ->unknown_function_results()
                   .unknown_function_results(),
@@ -589,7 +589,7 @@ TEST_F(UnknownsCompCondTest, UnknownConditionReturned) {
   ASSERT_OK(eval_status);
   CelValue response = eval_status.value();
 
-  ASSERT_TRUE(response.IsUnknownSet()) << response.ErrorOrDie()->ToString();
+  ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
   // The comprehension ends on the first non-bool condition, so we only get one
   // call captured in the UnknownSet.
   EXPECT_THAT(response.UnknownSetOrDie()

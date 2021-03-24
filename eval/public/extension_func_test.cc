@@ -13,8 +13,6 @@ namespace expr {
 namespace runtime {
 
 namespace {
-using google::protobuf::Duration;
-using google::protobuf::Timestamp;
 using google::protobuf::Arena;
 
 static const int kNanosPerSecond = 1000000000;
