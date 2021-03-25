@@ -2,6 +2,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_replace.h"
 #include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelLexer.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
@@ -30,6 +31,17 @@ using ::cel_grammar::CelLexer;
 using ::cel_grammar::CelParser;
 
 namespace {
+
+// Replacements for absl::StrReplaceAll for escaping standard whitespace
+// characters.
+static constexpr auto kStandardReplacements =
+    std::array<std::pair<absl::string_view, absl::string_view>, 3>{
+        std::make_pair("\n", "\\n"),
+        std::make_pair("\r", "\\r"),
+        std::make_pair("\t", "\\t"),
+    };
+
+static constexpr absl::string_view kSingleQuote = "'";
 
 // ExprRecursionListener extends the standard ANTLR CelParser to ensure that
 // recursive entries into the 'expr' rule are limited to a configurable depth so
@@ -85,6 +97,15 @@ class RecoveryLimitErrorStrategy : public antlr4::DefaultErrorStrategy {
   antlr4::Token* recoverInline(antlr4::Parser* recognizer) override {
     checkRecoveryLimit(recognizer);
     return antlr4::DefaultErrorStrategy::recoverInline(recognizer);
+  }
+
+ protected:
+  std::string escapeWSAndQuote(const std::string& s) const override {
+    std::string result;
+    result.reserve(s.size() + 2);
+    absl::StrAppend(&result, kSingleQuote, s, kSingleQuote);
+    absl::StrReplaceAll(kStandardReplacements, &result);
+    return result;
   }
 
  private:

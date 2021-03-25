@@ -821,6 +821,14 @@ std::vector<TestInfo> test_cases = {
         "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['just fine'],[1],[2],[3],[4],[5]]]]]]]"
         "]]]]]]]]]]]]]]]]]]]]]]]]",
         ""  // parse output not validated as it is too large.
+    },
+    {
+        "[\n\t\r[\n\t\r[\n\t\r]\n\t\r]\n\t\r",
+        "",  // parse output not validated as it is too large.
+        "ERROR: <input>:6:3: Syntax error: mismatched input '<EOF>' expecting "
+        "{']', ','}\n"
+        " |  \r\n"
+        " | ..^",
     }};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
