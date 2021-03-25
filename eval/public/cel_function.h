@@ -1,8 +1,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 
+#include <string>
+#include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "eval/public/cel_value.h"
 
@@ -15,9 +19,11 @@ namespace runtime {
 // This complex structure is needed for overloads support.
 class CelFunctionDescriptor {
  public:
-  CelFunctionDescriptor(const std::string& name, bool receiver_style,
-                        const std::vector<CelValue::Type> types)
-      : name_(name), receiver_style_(receiver_style), types_(types) {}
+  CelFunctionDescriptor(absl::string_view name, bool receiver_style,
+                        std::vector<CelValue::Type> types)
+      : name_(name),
+        receiver_style_(receiver_style),
+        types_(std::move(types)) {}
 
   // Function name.
   const std::string& name() const { return name_; }
@@ -56,8 +62,8 @@ class CelFunctionDescriptor {
 class CelFunction {
  public:
   // Build CelFunction from descriptor
-  explicit CelFunction(const CelFunctionDescriptor& descriptor)
-      : descriptor_(descriptor) {}
+  explicit CelFunction(CelFunctionDescriptor descriptor)
+      : descriptor_(std::move(descriptor)) {}
 
   // Non-copyable
   CelFunction(const CelFunction& other) = delete;
