@@ -54,12 +54,12 @@ class BaseValue {
  protected:
   // The return type of `Value::get_if` call for T.
   template <typename T>
-  using GetIfType =
-      conditional_t<is_direct_type<T>::value, const T*, absl::optional<T>>;
+  using GetIfType = absl::conditional_t<is_direct_type<T>::value, const T*,
+                                        absl::optional<T>>;
 
   // The return type of `Value::get` call for T.
   template <typename T>
-  using GetType = conditional_t<is_direct_type<T>::value, const T&, T>;
+  using GetType = absl::conditional_t<is_direct_type<T>::value, const T&, T>;
 
   // If the string is 8 bytes, it is assumed to be copy-on-write and is stored
   // inline. Otherwise it is held in a ref-counted container.
@@ -178,18 +178,18 @@ class BaseValue {
   friend class ValueAdapterTest;
 
   template <typename T>
-  using NumericValueType =
-      conditional_t<is_int<T>::value, int64_t,
-                    conditional_t<is_uint<T>::value, uint64_t, double>>;
+  using NumericValueType = absl::conditional_t<
+      is_int<T>::value, int64_t,
+      absl::conditional_t<is_uint<T>::value, uint64_t, double>>;
   template <typename T>
-  using CustomValueType = conditional_t<
+  using CustomValueType = absl::conditional_t<
       std::is_convertible<T*, const common::Map*>::value, common::Map,
-      conditional_t<std::is_convertible<T*, const common::List*>::value,
-                    common::List, common::Object>>;
+      absl::conditional_t<std::is_convertible<T*, const common::List*>::value,
+                          common::List, common::Object>>;
 
   template <typename T>
-  using HolderType = conditional_t<type_in<T, InlineTypes>::value,
-                                   CopyHolder<T>, RefCopyHolder<T>>;
+  using HolderType = absl::conditional_t<type_in<T, InlineTypes>::value,
+                                         CopyHolder<T>, RefCopyHolder<T>>;
 
   // A ValueData visitor that, for any type in 'Alts', returns the associated
   // value as T.

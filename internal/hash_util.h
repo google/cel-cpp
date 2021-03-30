@@ -6,9 +6,9 @@
 
 #include "google/protobuf/any.pb.h"
 #include "google/rpc/status.pb.h"
+#include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "internal/port.h"
 #include "internal/specialize.h"
 
 namespace google {

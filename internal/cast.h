@@ -5,8 +5,8 @@
 #include <memory>
 
 #include "absl/memory/memory.h"
+#include "absl/meta/type_traits.h"
 #include "absl/types/optional.h"
-#include "internal/port.h"
 #include "internal/specialize.h"
 #include "internal/types.h"
 
@@ -63,7 +63,7 @@ struct StaticDownCastHelper<std::unique_ptr<T>> {
 template <typename T, typename U, typename = specialize>
 struct RepresentableAsHelper {
   static constexpr bool check(const U&) {
-    return std::is_same<remove_cvref_t<T>, U>::value;
+    return std::is_same<absl::remove_cvref_t<T>, U>::value;
   }
 };
 

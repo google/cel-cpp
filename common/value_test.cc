@@ -10,6 +10,7 @@
 #include "google/type/money.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/meta/type_traits.h"
 #include "absl/strings/str_cat.h"
 #include "common/custom_object.h"
 #include "internal/status_util.h"
@@ -709,7 +710,7 @@ class ValueVisitTest : public ::testing::Test {
 
   template <typename H>
   void TestGetPtrVisitor() {
-    using T = remove_reference_t<decltype(*inst_of<H&>())>;
+    using T = absl::remove_reference_t<decltype(*inst_of<H&>())>;
     ExpectSameType<const T*, GetPtrVisitorType<H, T>>();
     // Return by const ref.
     ExpectSameType<const T&, GetVisitorType<H, const T&, T>>();
@@ -717,7 +718,7 @@ class ValueVisitTest : public ::testing::Test {
 
   template <typename H, typename U>
   void TestGetVisitor() {
-    using T = remove_reference_t<decltype(*inst_of<H&>())>;
+    using T = absl::remove_reference_t<decltype(*inst_of<H&>())>;
     // Return by optional.
     ExpectSameType<absl::optional<U>,
                    GetVisitorType<H, absl::optional<U>, T>>();
@@ -727,7 +728,7 @@ class ValueVisitTest : public ::testing::Test {
 
   template <typename H>
   void TestValueAdapter() {
-    using T = remove_reference_t<decltype(*inst_of<H&>())>;
+    using T = absl::remove_reference_t<decltype(*inst_of<H&>())>;
     ExpectSameType<T&, ValueAdapterType<H&>>();
     ExpectSameType<const T&, ValueAdapterType<const H&>>();
   }

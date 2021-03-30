@@ -6,6 +6,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/meta/type_traits.h"
 #include "internal/holder.h"
 #include "internal/specialize.h"
 
@@ -240,8 +241,9 @@ using RefCopyHolder = Holder<T, Ref<Copy>>;
 // If the size of T is smaller than MAX, it is stored inline, otherwise
 // it is stored in a heap allocated, reference counted holder.
 template <typename T, std::size_t MAX = sizeof(void*)>
-using SizeLimitHolder = conditional_t<sizeof(T) <= MAX, Holder<const T, Copy>,
-                                      Holder<const T, Ref<Copy>>>;
+using SizeLimitHolder =
+    absl::conditional_t<sizeof(T) <= MAX, Holder<const T, Copy>,
+                        Holder<const T, Ref<Copy>>>;
 
 template <typename T>
 void ReffedPtr<T>::reset() {

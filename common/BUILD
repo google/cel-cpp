@@ -196,6 +196,7 @@ cc_test(
         "//internal:types",
         "//internal:value_internal",
         "//testutil:util",
+        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
@@ -218,6 +219,7 @@ cc_library(
         "//internal:list_impl",
         "//internal:map_impl",
         "//internal:types",
+        "@com_google_absl//absl/meta:type_traits",
     ],
 )
 
