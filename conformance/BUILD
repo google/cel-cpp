@@ -91,27 +91,10 @@ cc_binary(
             "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
             "--skip_test=namespace/qualified/self_eval_qualified_lookup",
             "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
-            # TODO(issues/96): Well-known type conversion support.
-            "--skip_test=dynamic/int32/field_assign_proto2,field_assign_proto2_zero,field_read_proto2,field_read_proto2_zero,field_read_proto2_unset,field_assign_proto3,field_assign_proto3_zero,field_read_proto3,field_read_proto3_zero,field_read_proto3_unset",
-            "--skip_test=dynamic/int64/field_assign_proto2,field_assign_proto2_zero,field_assign_proto3,field_assign_proto3_zero",
-            "--skip_test=dynamic/uint32/field_assign_proto2,field_assign_proto2_zero,field_read_proto2,field_read_proto2_zero,field_read_proto2_unset,field_assign_proto3,field_assign_proto3_zero,field_read_proto3,field_read_proto3_zero,field_read_proto3_unset",
-            "--skip_test=dynamic/uint64/field_assign_proto2,field_assign_proto2_zero,field_read_proto2,field_read_proto2_zero,field_read_proto2_unset,field_assign_proto3,field_assign_proto3_zero",
-            "--skip_test=dynamic/float/field_assign_proto2,field_assign_proto2_zero,field_read_proto2,field_read_proto2_zero,field_read_proto2_unset,field_assign_proto3,field_assign_proto3_zero,field_read_proto3,field_read_proto3_zero,field_read_proto3_unset",
-            "--skip_test=dynamic/double/field_assign_proto2,field_assign_proto2_zero,field_assign_proto2_range,field_read_proto2,field_read_proto2_zero,field_read_proto2_unset,field_assign_proto3,field_assign_proto3_zero,field_assign_proto3_range,field_read_proto3,field_read_proto3_zero,field_read_proto3_unset",
-            "--skip_test=dynamic/string/field_assign_proto2,field_assign_proto2_empty,field_assign_proto3,field_assign_proto3_empty",
-            "--skip_test=dynamic/bytes/field_assign_proto2,field_assign_proto2_empty,field_assign_proto3,field_assign_proto3_empty",
-            "--skip_test=dynamic/bool/field_assign_proto2,field_assign_proto2_false,field_assign_proto3,field_assign_proto3_false",
-            "--skip_test=dynamic/list",
-            "--skip_test=dynamic/struct",
-            "--skip_test=dynamic/value_null",
-            "--skip_test=dynamic/value_number",
-            "--skip_test=dynamic/value_string",
-            "--skip_test=dynamic/value_bool",
-            "--skip_test=dynamic/value_struct",
-            "--skip_test=dynamic/value_list",
-            "--skip_test=dynamic/complex/any_list_map",
-            "--skip_test=proto2/literal_wellknown",
-            "--skip_test=proto3/literal_wellknown",
+            # TODO(issues/116): Debug why dynamic/list/var fails to JSON parse correctly.
+            "--skip_test=dynamic/list/var",
+            # TODO(issues/109): Ensure that unset wrapper fields return 'null' rather than the default value of the wrapper.
+            "--skip_test=dynamic/int32/field_read_proto2_unset,field_read_proto3_unset;uint32/field_read_proto2_unset;uint64/field_read_proto2_unset;float/field_read_proto2_unset,field_read_proto3_unset;double/field_read_proto2_unset,field_read_proto3_unset",
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
             # TODO(issues/117): Integer overflow on enum assignments should error.
@@ -124,6 +107,8 @@ cc_binary(
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
+            # Bad tests, temporarily disable.
+            "--skip_test=dynamic/float/field_assign_proto2_range,field_assign_proto3_range",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",

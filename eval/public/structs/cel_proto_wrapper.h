@@ -27,6 +27,19 @@ class CelProtoWrapper {
   static CelValue CreateTimestamp(const google::protobuf::Timestamp *value) {
     return CelValue(expr::internal::DecodeTime(*value));
   }
+
+  // MaybeWrapValue attempts to wrap the input value in a proto message with
+  // the given type_name. If the value can be wrapped, it is returned as a
+  // CelValue pointing to the protobuf message. Otherwise, the result will be
+  // empty.
+  //
+  // This method is the complement to CreateMessage which may unwrap a protobuf
+  // message to native CelValue representation during a protobuf field read.
+  // Just as CreateMessage should only be used when reading protobuf values,
+  // MaybeWrapValue should only be used when assigning protobuf fields.
+  static absl::optional<CelValue> MaybeWrapValue(absl::string_view type_name,
+                                                 const CelValue &value,
+                                                 google::protobuf::Arena *arena);
 };
 
 }  // namespace runtime

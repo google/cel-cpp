@@ -1,6 +1,8 @@
 #include "eval/public/cel_type_registry.h"
 
+#include "google/protobuf/struct.pb.h"
 #include "google/protobuf/descriptor.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
@@ -30,9 +32,19 @@ const absl::node_hash_set<std::string>& GetCoreTypes() {
   return *kCoreTypes;
 }
 
+const absl::flat_hash_set<const google::protobuf::EnumDescriptor*> GetCoreEnums() {
+  static const auto* const kCoreEnums =
+      new absl::flat_hash_set<const google::protobuf::EnumDescriptor*>{
+          // Register the NULL_VALUE enum.
+          google::protobuf::NullValue_descriptor(),
+      };
+  return *kCoreEnums;
+}
+
 }  // namespace
 
-CelTypeRegistry::CelTypeRegistry() : types_(GetCoreTypes()), enums_() {}
+CelTypeRegistry::CelTypeRegistry()
+    : types_(GetCoreTypes()), enums_(GetCoreEnums()) {}
 
 void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
   // Registers the fully qualified type name as a CEL type.

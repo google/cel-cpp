@@ -147,12 +147,13 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
         }
 
         Message* entry_msg = msg->GetReflection()->AddMessage(msg, entry.field);
-        status = SetValueToSingleField(key, key_field_descriptor, entry_msg);
+        status = SetValueToSingleField(key, key_field_descriptor, entry_msg,
+                                       frame->arena());
         if (!status.ok()) {
           break;
         }
         status = SetValueToSingleField(value.value(), value_field_descriptor,
-                                       entry_msg);
+                                       entry_msg, frame->arena());
         if (!status.ok()) {
           break;
         }
@@ -170,11 +171,12 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
       }
 
       for (int i = 0; i < cel_list->size(); i++) {
-        status = AddValueToRepeatedField((*cel_list)[i], entry.field, msg);
+        status = AddValueToRepeatedField((*cel_list)[i], entry.field, msg,
+                                         frame->arena());
         if (!status.ok()) break;
       }
     } else {
-      status = SetValueToSingleField(arg, entry.field, msg);
+      status = SetValueToSingleField(arg, entry.field, msg, frame->arena());
     }
 
     if (!status.ok()) {

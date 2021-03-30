@@ -63,7 +63,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       break;
     }
     case CelValue::Type::kMessage:
-      if (value.MessageOrDie() == nullptr) {
+      if (value.IsNull()) {
         result->set_null_value(google::protobuf::NullValue::NULL_VALUE);
       } else {
         result->mutable_object_value()->PackFrom(*value.MessageOrDie());

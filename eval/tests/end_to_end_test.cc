@@ -1,4 +1,5 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/struct.pb.h"
 #include "google/protobuf/text_format.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -9,6 +10,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
+#include "testutil/util.h"
 #include "base/status_macros.h"
 
 namespace google {
@@ -165,6 +167,56 @@ TEST(EndToEndTest, EmptyStringCompare) {
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(EndToEndTest, NullLiteral) {
+  // AST CEL equivalent of "Value{null_value: NullValue.NULL_VALUE}"
+  constexpr char kExpr0[] = R"(
+    struct_expr: <
+      message_name: "Value"
+      entries: <
+        field_key: "null_value"
+        value: <
+          select_expr: <
+            operand: <
+              ident_expr: <
+                name: "NullValue"
+              >
+            >
+            field: "NULL_VALUE"
+          >
+        >
+      >
+    >
+  )";
+
+  Expr expr;
+  SourceInfo source_info;
+  TextFormat::ParseFromString(kExpr0, &expr);
+
+  // Obtain CEL Expression builder.
+  std::unique_ptr<CelExpressionBuilder> builder = CreateCelExpressionBuilder();
+  builder->set_container("google.protobuf");
+
+  // Builtin registration.
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  // Create CelExpression from AST (Expr object).
+  auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
+  ASSERT_OK(cel_expression_status);
+
+  auto cel_expression = std::move(cel_expression_status.value());
+  Activation activation;
+  Arena arena;
+  // Run evaluation.
+  auto eval_status = cel_expression->Evaluate(activation, &arena);
+
+  ASSERT_OK(eval_status);
+
+  google::protobuf::Value null_value;
+  null_value.set_null_value(protobuf::NULL_VALUE);
+  CelValue result = eval_status.value();
+  ASSERT_TRUE(result.IsNull());
 }
 
 }  // namespace

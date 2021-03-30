@@ -6,6 +6,7 @@
 #include "google/protobuf/util/message_differencer.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/time/time.h"
 
 namespace google {
@@ -27,8 +28,14 @@ absl::Status ValidateDuration(absl::Duration duration);
 absl::Status EncodeDuration(absl::Duration duration,
                             google::protobuf::Duration* proto);
 
+/** Helper function to encode an absl::Duration to a JSON-formatted string. */
+absl::StatusOr<std::string> EncodeDurationToString(absl::Duration duration);
+
 /** Helper function to encode a time in a google::protobuf::Timestamp. */
 absl::Status EncodeTime(absl::Time time, google::protobuf::Timestamp* proto);
+
+/** Helper function to encode an absl::Time to a JSON-formatted string. */
+absl::StatusOr<std::string> EncodeTimeToString(absl::Time time);
 
 /** Helper function to decode a duration from a google::protobuf::Duration. */
 absl::Duration DecodeDuration(const google::protobuf::Duration& proto);

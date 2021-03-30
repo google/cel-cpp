@@ -2,6 +2,7 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/util/time_util.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "common/macros.h"
@@ -58,12 +59,30 @@ absl::Status EncodeDuration(absl::Duration duration,
   return absl::OkStatus();
 }
 
+absl::StatusOr<std::string> EncodeDurationToString(absl::Duration duration) {
+  google::protobuf::Duration d;
+  auto status = EncodeDuration(duration, &d);
+  if (!status.ok()) {
+    return status;
+  }
+  return google::protobuf::util::TimeUtil::ToString(d);
+}
+
 absl::Status EncodeTime(absl::Time time, google::protobuf::Timestamp* proto) {
   RETURN_IF_ERROR(Validate(time));
   const int64_t s = absl::ToUnixSeconds(time);
   proto->set_seconds(s);
   proto->set_nanos((time - absl::FromUnixSeconds(s)) / absl::Nanoseconds(1));
   return absl::OkStatus();
+}
+
+absl::StatusOr<std::string> EncodeTimeToString(absl::Time time) {
+  google::protobuf::Timestamp t;
+  auto status = EncodeTime(time, &t);
+  if (!status.ok()) {
+    return status;
+  }
+  return google::protobuf::util::TimeUtil::ToString(t);
 }
 
 }  // namespace internal

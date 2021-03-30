@@ -46,25 +46,20 @@ absl::Status CreateValueFromMapValue(const google::protobuf::Message* msg,
 // Returns status of the operation.
 // msg Message containing the field.
 // desc Descriptor of the field to access.
+// arena Arena to perform allocations, if necessary, when setting the field.
 absl::Status SetValueToSingleField(const CelValue& value,
                                    const google::protobuf::FieldDescriptor* desc,
-                                   google::protobuf::Message* msg);
+                                   google::protobuf::Message* msg, google::protobuf::Arena* arena);
+
 // Adds content of CelValue to repeated message field.
 // Returns status of the operation.
 // msg Message containing the field.
 // desc Descriptor of the field to access.
+// arena Arena to perform allocations, if necessary, when adding the value.
 absl::Status AddValueToRepeatedField(const CelValue& value,
                                      const google::protobuf::FieldDescriptor* desc,
-                                     google::protobuf::Message* msg);
-
-// Adds content of CelValue to repeated message field.
-// Returns status of the operation.
-// msg Message containing the field.
-// desc Descriptor of the field to access.
-
-absl::Status AddValueToMapField(const CelValue& key, const CelValue& value,
-                                const google::protobuf::FieldDescriptor* desc,
-                                google::protobuf::Message* msg);
+                                     google::protobuf::Message* msg,
+                                     google::protobuf::Arena* arena);
 
 }  // namespace runtime
 }  // namespace expr

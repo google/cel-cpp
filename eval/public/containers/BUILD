@@ -17,7 +17,6 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
-        "//internal:proto_util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",

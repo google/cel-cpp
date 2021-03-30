@@ -4,7 +4,6 @@
 #include <functional>
 #include <limits>
 
-#include "google/protobuf/util/time_util.h"
 #include "absl/numeric/int128.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
@@ -31,7 +30,7 @@ using google::protobuf::Arena;
 namespace {
 
 const int64_t kIntMax = std::numeric_limits<int64_t>::max();
-const int64_t kIntMin = std::numeric_limits<int64_t>::min();
+const int64_t kIntMin = std::numeric_limits<int64_t>::lowest();
 const uint64_t kUintMax = std::numeric_limits<uint64_t>::max();
 
 // Returns the number of UTF8 codepoints within a string.
@@ -1219,14 +1218,14 @@ absl::Status RegisterStringConversionFunctions(
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kString, false,
       [](Arena* arena, absl::Duration value) -> CelValue {
-        google::protobuf::Duration d;
-        auto status = google::api::expr::internal::EncodeDuration(value, &d);
-        if (!status.ok()) {
+        auto encode =
+            google::api::expr::internal::EncodeDurationToString(value);
+        if (!encode.ok()) {
+          const auto& status = encode.status();
           return CreateErrorValue(arena, status.message(), status.code());
         }
-        return CelValue::CreateString(
-            CelValue::StringHolder(Arena::Create<std::string>(
-                arena, google::protobuf::util::TimeUtil::ToString(d))));
+        return CelValue::CreateString(CelValue::StringHolder(
+            Arena::Create<std::string>(arena, encode.value())));
       },
       registry);
   if (!status.ok()) return status;
@@ -1235,14 +1234,13 @@ absl::Status RegisterStringConversionFunctions(
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kString, false,
       [](Arena* arena, absl::Time value) -> CelValue {
-        google::protobuf::Timestamp ts;
-        auto status = google::api::expr::internal::EncodeTime(value, &ts);
-        if (!status.ok()) {
+        auto encode = google::api::expr::internal::EncodeTimeToString(value);
+        if (!encode.ok()) {
+          const auto& status = encode.status();
           return CreateErrorValue(arena, status.message(), status.code());
         }
-        return CelValue::CreateString(
-            CelValue::StringHolder(Arena::Create<std::string>(
-                arena, google::protobuf::util::TimeUtil::ToString(ts))));
+        return CelValue::CreateString(CelValue::StringHolder(
+            Arena::Create<std::string>(arena, encode.value())));
       },
       registry);
   if (!status.ok()) return status;

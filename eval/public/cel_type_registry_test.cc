@@ -24,6 +24,7 @@ TEST(CelTypeRegistryTest, TestRegisterEnumDescriptor) {
     enum_set.insert(enum_desc->full_name());
   }
   absl::flat_hash_set<std::string> expected_set;
+  expected_set.insert({"google.protobuf.NullValue"});
   expected_set.insert({"google.api.expr.runtime.TestMessage.TestEnum"});
   EXPECT_THAT(enum_set, Eq(expected_set));
 }
