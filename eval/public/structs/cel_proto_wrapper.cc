@@ -380,11 +380,11 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
 
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
                                                         BytesValue* wrapper) {
-  CelValue::BytesHolder val;
-  if (!value.GetValue(&val)) {
+  CelValue::BytesHolder view_val;
+  if (!value.GetValue(&view_val)) {
     return {};
   }
-  wrapper->set_value(val.value());
+  wrapper->set_value(view_val.value().data());
   return wrapper;
 }
 
@@ -444,11 +444,11 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
 
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
                                                         StringValue* wrapper) {
-  CelValue::StringHolder val;
-  if (!value.GetValue(&val)) {
+  CelValue::StringHolder view_val;
+  if (!value.GetValue(&view_val)) {
     return {};
   }
-  wrapper->set_value(val.value());
+  wrapper->set_value(view_val.value().data());
   return wrapper;
 }
 
@@ -644,74 +644,85 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
 
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
                                                         Any* any) {
+  // In open source, any->PackFrom() returns void rather than boolean.
   switch (value.type()) {
     case CelValue::Type::kBool: {
       BoolValue v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kBytes: {
       BytesValue v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kDouble: {
       DoubleValue v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kDuration: {
       Duration v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kInt64: {
       Int64Value v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kString: {
       StringValue v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kTimestamp: {
       Timestamp v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kUint64: {
       UInt64Value v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kList: {
       ListValue v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
     case CelValue::Type::kMap: {
       Struct v;
       auto msg = MessageFromValue(value, &v);
-      if (msg.has_value() && any->PackFrom(**msg)) {
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
         return any;
       }
     } break;
@@ -719,10 +730,12 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       if (value.IsNull()) {
         Value v;
         auto msg = MessageFromValue(value, &v);
-        if (msg.has_value() && any->PackFrom(**msg)) {
+        if (msg.has_value()) {
+          any->PackFrom(**msg);
           return any;
         }
-      } else if (any->PackFrom(*(value.MessageOrDie()))) {
+      } else {
+        any->PackFrom(*(value.MessageOrDie()));
         return any;
       }
     } break;
