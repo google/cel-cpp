@@ -15,7 +15,6 @@ namespace runtime {
 
 using google::api::expr::v1alpha1::Expr;
 using testing::Eq;
-using testing::IsNull;
 using testing::NotNull;
 using testing::SizeIs;
 using testing::UnorderedPointwise;

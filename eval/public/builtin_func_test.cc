@@ -9,7 +9,9 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/proto_util.h"
 #include "base/status_macros.h"
 
 namespace google {
@@ -28,6 +30,9 @@ using google::api::expr::v1alpha1::SourceInfo;
 using google::protobuf::Arena;
 using google::protobuf::util::TimeUtil;
 
+using ::google::api::expr::internal::MakeGoogleApiDurationMax;
+using ::google::api::expr::internal::MakeGoogleApiDurationMin;
+using ::google::api::expr::internal::MakeGoogleApiTimeMin;
 using testing::Eq;
 
 class BuiltinsTest : public ::testing::Test {
@@ -132,6 +137,18 @@ class BuiltinsTest : public ::testing::Test {
         << operation << " for " << CelValue::TypeName(ref.type());
   }
 
+  // Helper method. Looks up in registry and tests Type conversions.
+  void TestTypeConverts(absl::string_view operation, const CelValue& ref,
+                        CelValue::StringHolder result) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsString(), true);
+    ASSERT_EQ(result_value.StringOrDie().value(), result.value())
+        << operation << " for " << CelValue::TypeName(ref.type());
+  }
+
   void TestTypeConverts(absl::string_view operation, const CelValue& ref,
                         double result) {
     CelValue result_value;
@@ -162,6 +179,18 @@ class BuiltinsTest : public ::testing::Test {
 
     ASSERT_EQ(result_value.IsUint64(), true);
     ASSERT_EQ(result_value.Uint64OrDie(), result)
+        << operation << " for " << CelValue::TypeName(ref.type());
+  }
+
+  void TestTypeConverts(absl::string_view operation, const CelValue& ref,
+                        Duration& result) {
+    CelValue result_value;
+
+    ASSERT_NO_FATAL_FAILURE(PerformRun(operation, {}, {ref}, &result_value));
+
+    ASSERT_EQ(result_value.IsDuration(), true);
+    ASSERT_EQ(result_value.DurationOrDie(),
+              CelProtoWrapper::CreateDuration(&result).DurationOrDie())
         << operation << " for " << CelValue::TypeName(ref.type());
   }
 
@@ -548,6 +577,20 @@ TEST_F(BuiltinsTest, TestTimestampDurationArithmeticalOperation) {
   ASSERT_EQ(result_value.IsDuration(), true);
   ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
             TimeUtil::DurationToNanoseconds(d0));
+
+  const auto min = CelValue::CreateDuration(MakeGoogleApiDurationMin());
+  ASSERT_TRUE(min.IsDuration());
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kSubtract, {},
+      {min, CelValue::CreateDuration(absl::Nanoseconds(1))}, &result_value));
+  ASSERT_TRUE(result_value.IsError());
+
+  const auto max = CelValue::CreateDuration(MakeGoogleApiDurationMax());
+  ASSERT_TRUE(max.IsDuration());
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kAdd, {}, {max, CelValue::CreateDuration(absl::Nanoseconds(1))},
+      &result_value));
+  ASSERT_TRUE(result_value.IsError());
 }
 
 // Test functions for Duration
@@ -565,6 +608,11 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateDuration(&ref),
                 11L);
 
+  std::string result = "93541.011s";
+  TestTypeConverts(builtin::kString, CelProtoWrapper::CreateDuration(&ref),
+                   CelValue::StringHolder(&result));
+  TestTypeConverts(builtin::kDuration, CelValue::CreateString(&result), ref);
+
   ref.set_seconds(-93541L);
   ref.set_nanos(-11000000L);
 
@@ -575,6 +623,24 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
                 -93541L);
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateDuration(&ref),
                 -11L);
+
+  result = "-93541.011s";
+  TestTypeConverts(builtin::kString, CelProtoWrapper::CreateDuration(&ref),
+                   CelValue::StringHolder(&result));
+  TestTypeConverts(builtin::kDuration, CelValue::CreateString(&result), ref);
+
+  absl::Duration d = MakeGoogleApiDurationMin() + absl::Seconds(-1);
+  result = absl::FormatDuration(d);
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
+
+  d = MakeGoogleApiDurationMax() + absl::Seconds(1);
+  result = absl::FormatDuration(d);
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
+
+  std::string inf = "inf";
+  std::string ninf = "-inf";
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&inf));
+  TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&ninf));
 }
 
 // Test functions for Timestamp
@@ -598,10 +664,18 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateTimestamp(&ref),
                 11L);
 
+  std::string result = "1970-01-01T00:00:01.011Z";
+  TestTypeConverts(builtin::kString, CelProtoWrapper::CreateTimestamp(&ref),
+                   CelValue::StringHolder(&result));
+
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
                 0L);
+
+  result = "1970-01-04T00:00:00Z";
+  TestTypeConverts(builtin::kString, CelProtoWrapper::CreateTimestamp(&ref),
+                   CelValue::StringHolder(&result));
 
   // Test timestamp functions w/ IANA timezone
   ref.set_seconds(1L);
@@ -702,6 +776,10 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kSeconds, CelProtoWrapper::CreateTimestamp(&ref), 59L);
   TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
                 3L);
+
+  TestTypeConversionError(
+      builtin::kString,
+      CelValue::CreateTimestamp(MakeGoogleApiTimeMin() + absl::Seconds(-1)));
 }
 
 TEST_F(BuiltinsTest, TestBytesConversions_bytes) {
@@ -1327,8 +1405,28 @@ TEST_F(BuiltinsTest, StringSize) {
       builtin::kSize, {}, {CelValue::CreateString(&test)}, &result_value));
 
   ASSERT_EQ(result_value.IsInt64(), true);
+  ASSERT_EQ(result_value.Int64OrDie(), 9);
+}
 
-  ASSERT_EQ(result_value.Int64OrDie(), test.size());
+TEST_F(BuiltinsTest, StringUnicodeSize) {
+  std::string test = "πέντε";
+  CelValue result_value;
+  InterpreterOptions options;
+  options.enable_string_size_as_unicode_codepoints = true;
+  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kSize, {},
+                                     {CelValue::CreateString(&test)},
+                                     &result_value, options));
+  ASSERT_EQ(result_value.IsInt64(), true);
+  ASSERT_EQ(result_value.Int64OrDie(), 5);
+
+  // Disable the option to measure string size by codepoints, and the return
+  // value should be equal to the number of bytes in the string (10).
+  options.enable_string_size_as_unicode_codepoints = false;
+  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kSize, {},
+                                     {CelValue::CreateString(&test)},
+                                     &result_value, options));
+  ASSERT_EQ(result_value.IsInt64(), true);
+  ASSERT_EQ(result_value.Int64OrDie(), 10);
 }
 
 TEST_F(BuiltinsTest, BytesSize) {

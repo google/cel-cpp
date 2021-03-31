@@ -209,7 +209,7 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
 
 class ListKeysStep : public ExpressionStepBase {
  public:
-  ListKeysStep(int64_t expr_id) : ExpressionStepBase(expr_id, false) {}
+  explicit ListKeysStep(int64_t expr_id) : ExpressionStepBase(expr_id, false) {}
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:

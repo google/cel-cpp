@@ -1,20 +1,22 @@
 #include "eval/public/builtin_func_registrar.h"
 
+#include <cmath>
 #include <functional>
 #include <limits>
 
-#include "google/protobuf/util/time_util.h"
 #include "absl/numeric/int128.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
+#include "absl/time/time.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "internal/proto_util.h"
 #include "re2/re2.h"
 #include "base/unilib.h"
 
@@ -28,8 +30,19 @@ using google::protobuf::Arena;
 namespace {
 
 const int64_t kIntMax = std::numeric_limits<int64_t>::max();
-const int64_t kIntMin = std::numeric_limits<int64_t>::min();
+const int64_t kIntMin = std::numeric_limits<int64_t>::lowest();
 const uint64_t kUintMax = std::numeric_limits<uint64_t>::max();
+
+// Returns the number of UTF8 codepoints within a string.
+// The input string must first be checked to see if it is valid UTF8.
+static int UTF8CodepointCount(absl::string_view str) {
+  int n = 0;
+  // Increment the codepoint count on non-trail-byte characters.
+  for (const auto p : str) {
+    n += (*reinterpret_cast<const signed char*>(&p) >= -0x40);
+  }
+  return n;
+}
 
 // Comparison template functions
 template <class Type>
@@ -1087,8 +1100,10 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, double v) {
-        if ((v > static_cast<double>(kIntMax)) ||
-            (v < static_cast<double>(kIntMin))) {
+        // NaN and -+infinite numbers cannot be represented as int values,
+        // nor can double values which exceed the integer 64-bit range.
+        if (!std::isfinite(v) || v > static_cast<double>(kIntMax) ||
+            v < static_cast<double>(kIntMin)) {
           return CreateErrorValue(arena, "double out of int range",
                                   absl::StatusCode::kInvalidArgument);
         }
@@ -1199,6 +1214,37 @@ absl::Status RegisterStringConversionFunctions(
       registry);
   if (!status.ok()) return status;
 
+  // duration -> string
+  status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, absl::Duration value) -> CelValue {
+        auto encode =
+            google::api::expr::internal::EncodeDurationToString(value);
+        if (!encode.ok()) {
+          const auto& status = encode.status();
+          return CreateErrorValue(arena, status.message(), status.code());
+        }
+        return CelValue::CreateString(CelValue::StringHolder(
+            Arena::Create<std::string>(arena, encode.value())));
+      },
+      registry);
+  if (!status.ok()) return status;
+
+  // timestamp -> string
+  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+      builtin::kString, false,
+      [](Arena* arena, absl::Time value) -> CelValue {
+        auto encode = google::api::expr::internal::EncodeTimeToString(value);
+        if (!encode.ok()) {
+          const auto& status = encode.status();
+          return CreateErrorValue(arena, status.message(), status.code());
+        }
+        return CelValue::CreateString(CelValue::StringHolder(
+            Arena::Create<std::string>(arena, encode.value())));
+      },
+      registry);
+  if (!status.ok()) return status;
+
   return absl::OkStatus();
 }
 
@@ -1208,7 +1254,16 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, double v) {
-        if ((v > static_cast<double>(kUintMax)) || (v < 0)) {
+        // NaN and -+infinite numbers cannot be represented as uint values,
+        // nor doubles that exceed the uint64_t range. In some limited cases,
+        // like 1.84467e+19, the value appears to fit within the uint64_t range
+        // but type conversion results in rounding that overflows.
+        //
+        // Note, the double is checked to make sure it is not greater than 2^64
+        // before it is converted to a uint128 value, as the type conversion
+        // may check-fail for some double inputs that exceed this value.
+        if (!std::isfinite(v) || v < 0 || v > std::ldexp(1.0, 64) ||
+            absl::uint128(v) > kUintMax) {
           return CreateErrorValue(arena, "double out of uint range",
                                   absl::StatusCode::kInvalidArgument);
         }
@@ -1351,16 +1406,24 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // String size
-  auto string_size_func = [](Arena*, CelValue::StringHolder value) -> int64_t {
-    return value.value().size();
+  auto size_func = [=](Arena* arena, CelValue::StringHolder value) -> CelValue {
+    absl::string_view str = value.value();
+    if (options.enable_string_size_as_unicode_codepoints) {
+      if (!UniLib::IsStructurallyValid(str)) {
+        return CreateErrorValue(arena, "invalid utf-8 string",
+                                absl::StatusCode::kInvalidArgument);
+      }
+      return CelValue::CreateInt64(UTF8CodepointCount(str));
+    }
+    return CelValue::CreateInt64(str.size());
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.
-  status = FunctionAdapter<int64_t, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kSize, true, string_size_func, registry);
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kSize, true, size_func, registry);
   if (!status.ok()) return status;
-  status = FunctionAdapter<int64_t, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kSize, false, string_size_func, registry);
+  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+      builtin::kSize, false, size_func, registry);
   if (!status.ok()) return status;
 
   // Bytes size

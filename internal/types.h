@@ -7,8 +7,8 @@
 #include <type_traits>
 
 #include "absl/memory/memory.h"
+#include "absl/meta/type_traits.h"
 #include "absl/strings/string_view.h"
-#include "internal/port.h"
 #include "internal/specialize.h"
 
 namespace google {
@@ -18,11 +18,11 @@ namespace internal {
 
 // Short names for AND, OR and NOT.
 template <typename... T>
-using and_t = conjunction<T...>;
+using and_t = absl::conjunction<T...>;
 template <typename... T>
-using or_t = disjunction<T...>;
+using or_t = absl::disjunction<T...>;
 template <typename T>
-using not_t = negation<T>;
+using not_t = absl::negation<T>;
 
 // Holder for a static list of types.
 template <typename... Args>
@@ -33,7 +33,7 @@ template <typename T>
 using types_size = std::tuple_size<T>;
 
 template <typename... T>
-using types_cat = decltype(std::tuple_cat(inst_of<decay_t<T>>()...));
+using types_cat = decltype(std::tuple_cat(inst_of<absl::decay_t<T>>()...));
 
 // Helper that resolves to the Ith type in T.
 template <std::size_t I, typename T>
@@ -77,7 +77,7 @@ template <typename T, typename S>
 using type_is = std::is_same<T, S>;
 
 template <typename T, typename S>
-using type_not = negation<type_is<T, S>>;
+using type_not = absl::negation<type_is<T, S>>;
 
 /**
  * Tests if a type is a raw or smart pointer.
@@ -85,39 +85,39 @@ using type_not = negation<type_is<T, S>>;
  * Any type that defines overloads for * and -> is considered a smart pointer.
  */
 template <typename T, typename = specialize>
-struct is_ptr : std::is_pointer<decay_t<T>> {};
+struct is_ptr : std::is_pointer<absl::decay_t<T>> {};
 template <typename T>
-struct is_ptr<T, specialize_for<decltype(&decay_t<T>::operator*),
-                                decltype(&decay_t<T>::operator->)>>
+struct is_ptr<T, specialize_for<decltype(&absl::decay_t<T>::operator*),
+                                decltype(&absl::decay_t<T>::operator->)>>
     : std::true_type {};
 
 /**
  * Tests if a type is convertible to absl::string_view.
  */
 template <typename T>
-using is_string = and_t<type_not<remove_cvref_t<T>, std::nullptr_t>,
+using is_string = and_t<type_not<absl::remove_cvref_t<T>, std::nullptr_t>,
                         std::is_convertible<T, absl::string_view>>;
 
 /**
  * Tests if a type is a signed integer type.
  */
 template <typename T>
-using is_int = conjunction<std::is_integral<remove_cvref_t<T>>,
-                           std::is_signed<decay_t<T>>>;
+using is_int = absl::conjunction<std::is_integral<absl::remove_cvref_t<T>>,
+                                 std::is_signed<absl::decay_t<T>>>;
 
 /**
  * Tests if a type is an unsigned integer type.
  */
 template <typename T>
-using is_uint =
-    conjunction<type_not<remove_cvref_t<T>, bool>, std::is_integral<decay_t<T>>,
-                std::is_unsigned<decay_t<T>>>;
+using is_uint = absl::conjunction<type_not<absl::remove_cvref_t<T>, bool>,
+                                  std::is_integral<absl::decay_t<T>>,
+                                  std::is_unsigned<absl::decay_t<T>>>;
 
 /**
  * Tests if a type is a floating point type.
  */
 template <typename T>
-using is_float = std::is_floating_point<decay_t<T>>;
+using is_float = std::is_floating_point<absl::decay_t<T>>;
 
 template <typename T>
 using is_numeric = or_t<is_int<T>, is_uint<T>, is_float<T>>;
@@ -128,20 +128,21 @@ using is_numeric = or_t<is_int<T>, is_uint<T>, is_float<T>>;
 template <typename T, typename = specialize>
 struct is_container : public std::false_type {};
 template <typename T>
-struct is_container<T, specialize_for<typename remove_cvref_t<T>::value_type,
-                                      typename remove_cvref_t<T>::iterator>>
+struct is_container<T,
+                    specialize_for<typename absl::remove_cvref_t<T>::value_type,
+                                   typename absl::remove_cvref_t<T>::iterator>>
     : public std::true_type {};
 
 // Maps are containers that also define a "mapped_type".
 template <typename T, typename = specialize>
 struct is_map : public std::false_type {};
 template <typename T>
-struct is_map<T, specialize_for<typename remove_cvref_t<T>::mapped_type>>
+struct is_map<T, specialize_for<typename absl::remove_cvref_t<T>::mapped_type>>
     : public is_container<T> {};
 
 // Lists are containers that are not maps.
 template <typename T>
-using is_list = bool_constant<is_container<T>::value && !is_map<T>::value>;
+using is_list = std::bool_constant<is_container<T>::value && !is_map<T>::value>;
 
 // Used to create a compiler error when a specialized function/class is
 // instantiated with an unsupported type.

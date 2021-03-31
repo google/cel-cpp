@@ -1,6 +1,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_
+
 #include <functional>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -63,6 +65,9 @@ bool AddType(std::vector<CelValue::Type>* arg_types) {
 // It accepts method implementations as std::function, allowing
 // them to be lambdas/regular C++ functions. CEL method descriptors are
 // deduced based on C++ function signatures.
+// CelFunction::Evaluate will set result to the value returned by the handler.
+// To handle errors, choose CelValue as the return type, and use the
+// CreateError/Create* helpers in cel_value.h.
 //
 // Usage example:
 //
@@ -81,13 +86,14 @@ class FunctionAdapter : public CelFunction {
  public:
   using FuncType = std::function<ReturnType(::google::protobuf::Arena*, Arguments...)>;
 
-  FunctionAdapter(const CelFunctionDescriptor& descriptor, FuncType handler)
-      : CelFunction(descriptor), handler_(std::move(handler)) {}
+  FunctionAdapter(CelFunctionDescriptor descriptor, FuncType handler)
+      : CelFunction(std::move(descriptor)), handler_(std::move(handler)) {}
 
   static absl::StatusOr<std::unique_ptr<CelFunction>> Create(
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler) {
     std::vector<CelValue::Type> arg_types;
+    arg_types.reserve(sizeof...(Arguments));
 
     if (!internal::AddType<0, Arguments...>(&arg_types)) {
       return absl::Status(
@@ -96,10 +102,9 @@ class FunctionAdapter : public CelFunction {
                        ": failed to determine input parameter type"));
     }
 
-    std::unique_ptr<CelFunction> cel_func = absl::make_unique<FunctionAdapter>(
-        CelFunctionDescriptor(std::string(name), receiver_type, arg_types),
+    return absl::make_unique<FunctionAdapter>(
+        CelFunctionDescriptor(name, receiver_type, std::move(arg_types)),
         std::move(handler));
-    return std::move(cel_func);
   }
 
   // Creates function handler and attempts to register it with
@@ -113,7 +118,7 @@ class FunctionAdapter : public CelFunction {
       return status.status();
     }
 
-    return registry->Register(std::move(status.value()));
+    return registry->Register(std::move(status).value());
   }
 
 #if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)

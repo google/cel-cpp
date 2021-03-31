@@ -44,18 +44,26 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       break;
     case CelValue::Type::kDuration: {
       google::protobuf::Duration duration;
-      expr::internal::EncodeDuration(value.DurationOrDie(), &duration);
+      auto status =
+          expr::internal::EncodeDuration(value.DurationOrDie(), &duration);
+      if (!status.ok()) {
+        return status;
+      }
       result->mutable_object_value()->PackFrom(duration);
       break;
     }
     case CelValue::Type::kTimestamp: {
       google::protobuf::Timestamp timestamp;
-      expr::internal::EncodeTime(value.TimestampOrDie(), &timestamp);
+      auto status =
+          expr::internal::EncodeTime(value.TimestampOrDie(), &timestamp);
+      if (!status.ok()) {
+        return status;
+      }
       result->mutable_object_value()->PackFrom(timestamp);
       break;
     }
     case CelValue::Type::kMessage:
-      if (value.MessageOrDie() == nullptr) {
+      if (value.IsNull()) {
         result->set_null_value(google::protobuf::NullValue::NULL_VALUE);
       } else {
         result->mutable_object_value()->PackFrom(*value.MessageOrDie());

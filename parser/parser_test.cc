@@ -423,24 +423,21 @@ std::vector<TestInfo> test_cases = {
      "  // Init\n"
      "  0^#5:int64#,\n"
      "  // LoopCondition\n"
-     "  _<=_(\n"
-     "    __result__^#7:Expr.Ident#,\n"
-     "    1^#6:int64#\n"
-     "  )^#8:Expr.Call#,\n"
+     "  true^#7:bool#,\n"
      "  // LoopStep\n"
      "  _?_:_(\n"
      "    f^#4:Expr.Ident#,\n"
      "    _+_(\n"
-     "      __result__^#9:Expr.Ident#,\n"
+     "      __result__^#8:Expr.Ident#,\n"
      "      1^#6:int64#\n"
-     "    )^#10:Expr.Call#,\n"
-     "    __result__^#11:Expr.Ident#\n"
-     "  )^#12:Expr.Call#,\n"
+     "    )^#9:Expr.Call#,\n"
+     "    __result__^#10:Expr.Ident#\n"
+     "  )^#11:Expr.Call#,\n"
      "  // Result\n"
      "  _==_(\n"
-     "    __result__^#13:Expr.Ident#,\n"
+     "    __result__^#12:Expr.Ident#,\n"
      "    1^#6:int64#\n"
-     "  )^#14:Expr.Call#)^#15:Expr.Comprehension#"},
+     "  )^#13:Expr.Call#)^#14:Expr.Comprehension#"},
     {"m.map(v, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -824,6 +821,14 @@ std::vector<TestInfo> test_cases = {
         "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['just fine'],[1],[2],[3],[4],[5]]]]]]]"
         "]]]]]]]]]]]]]]]]]]]]]]]]",
         ""  // parse output not validated as it is too large.
+    },
+    {
+        "[\n\t\r[\n\t\r[\n\t\r]\n\t\r]\n\t\r",
+        "",  // parse output not validated as it is too large.
+        "ERROR: <input>:6:3: Syntax error: mismatched input '<EOF>' expecting "
+        "{']', ','}\n"
+        " |  \r\n"
+        " | ..^",
     }};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
@@ -867,7 +872,7 @@ class KindAndIdAdorner : public testutil::ExpressionAdorner {
 
 class LocationAdorner : public testutil::ExpressionAdorner {
  public:
-  LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
+  explicit LocationAdorner(const google::api::expr::v1alpha1::SourceInfo& source_info)
       : source_info_(source_info) {}
 
   absl::optional<std::pair<int32_t, int32_t>> getLocation(int64_t id) const {
@@ -970,6 +975,38 @@ TEST_P(ExpressionTest, Parse) {
                   result.value().enriched_source_info()),
               test_info.R);
   }
+}
+
+TEST(ExpressionTest, TsanOom) {
+  Parse(
+      "[[a([[???[a[[??[a([[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+      "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[???["
+      "a([[????")
+      .IgnoreError();
+}
+
+TEST(ExpressionTest, ErrorRecoveryLimits) {
+  auto result = Parse("......", "", kDefaultMaxRecursionDepth, 1);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(result.status().message(),
+            "ERROR: :1:2: Syntax error: missing IDENTIFIER at '.'\n"
+            " | ......\n"
+            " | .^\n"
+            "ERROR: :1:3: Syntax error: More than 1 parse errors.\n"
+            " | ......\n"
+            " | ..^");
 }
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,

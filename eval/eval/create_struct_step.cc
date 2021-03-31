@@ -147,12 +147,13 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
         }
 
         Message* entry_msg = msg->GetReflection()->AddMessage(msg, entry.field);
-        status = SetValueToSingleField(key, key_field_descriptor, entry_msg);
+        status = SetValueToSingleField(key, key_field_descriptor, entry_msg,
+                                       frame->arena());
         if (!status.ok()) {
           break;
         }
         status = SetValueToSingleField(value.value(), value_field_descriptor,
-                                       entry_msg);
+                                       entry_msg, frame->arena());
         if (!status.ok()) {
           break;
         }
@@ -170,11 +171,12 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
       }
 
       for (int i = 0; i < cel_list->size(); i++) {
-        status = AddValueToRepeatedField((*cel_list)[i], entry.field, msg);
+        status = AddValueToRepeatedField((*cel_list)[i], entry.field, msg,
+                                         frame->arena());
         if (!status.ok()) break;
       }
     } else {
-      status = SetValueToSingleField(arg, entry.field, msg);
+      status = SetValueToSingleField(arg, entry.field, msg, frame->arena());
     }
 
     if (!status.ok()) {
@@ -274,8 +276,6 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
     const Descriptor* message_desc, int64_t expr_id) {
   if (message_desc != nullptr) {
-    // TODO(issues/92): Support resolving a type name within a container.
-    // Make message-creating step.
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
     for (const auto& entry : create_struct_expr->entries()) {

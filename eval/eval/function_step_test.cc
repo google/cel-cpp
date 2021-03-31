@@ -122,7 +122,8 @@ class AddFunction : public CelFunction {
 
 class SinkFunction : public CelFunction {
  public:
-  SinkFunction(CelValue::Type type) : CelFunction(CreateDescriptor(type)) {}
+  explicit SinkFunction(CelValue::Type type)
+      : CelFunction(CreateDescriptor(type)) {}
 
   static CelFunctionDescriptor CreateDescriptor(CelValue::Type type) {
     return CelFunctionDescriptor{"Sink", false, {type}};

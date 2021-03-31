@@ -2,6 +2,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
 #include "eval/public/activation.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
@@ -125,6 +126,17 @@ TEST(ActivationBindHelperTest, TestBindDefaultFields) {
   EXPECT_NE(nullptr, result.value().MessageOrDie());
   EXPECT_THAT(TestMessage::default_instance(),
               EqualsProto(*result.value().MessageOrDie()));
+}
+
+TEST(ActivationBindHelperTest, RejectsNullArena) {
+  TestMessage message;
+  message.set_bool_value(true);
+
+  Activation activation;
+
+  ASSERT_EQ(BindProtoToActivation(&message, /*arena=*/nullptr, &activation),
+            absl::InvalidArgumentError(
+                "arena must not be null for BindProtoToActivation."));
 }
 
 }  // namespace

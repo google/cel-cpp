@@ -3,12 +3,15 @@
 #include <type_traits>
 
 #include "google/protobuf/any.pb.h"
+#include "google/protobuf/struct.pb.h"
+#include "google/protobuf/wrappers.pb.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/map_field.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "internal/proto_util.h"
 
 namespace google {
 namespace api {
@@ -24,11 +27,8 @@ using ::google::protobuf::Message;
 using ::google::protobuf::Reflection;
 
 // Well-known type protobuf type names which require special get / set behavior.
-constexpr const char kProtobufDuration[] = "google.protobuf.Duration";
-constexpr const char kProtobufTimestamp[] = "google.protobuf.Timestamp";
-constexpr const char kProtobufAny[] = "google.protobuf.Any";
-
-const char kTypeGoogleApisComPrefix[] = "type.googleapis.com/";
+constexpr absl::string_view kProtobufAny = "google.protobuf.Any";
+constexpr absl::string_view kTypeGoogleApisComPrefix = "type.googleapis.com/";
 
 // Singular message fields and repeated message fields have similar access model
 // To provide common approach, we implement accessor classes, based on CRTP.
@@ -197,6 +197,8 @@ class ScalarFieldAccessor : public FieldAccessor<ScalarFieldAccessor> {
   }
 
   const Message* GetMessage() const {
+    // TODO(issues/109): When the field descriptor is a wrapper type, check if
+    // the field is set. If set, return the unwrapped value, else return 'null'.
     return &GetReflection()->GetMessage(*msg_, field_desc_);
   }
 
@@ -456,35 +458,10 @@ class FieldSetter {
         MessageRetrieverOp());
 
     if (!value.has_value()) {
-      GOOGLE_LOG(ERROR) << "Has No Value";
       return false;
     }
 
     static_cast<const Derived*>(this)->SetMessage(value.value());
-    return true;
-  }
-
-  bool AssignDuration(const CelValue& cel_value) const {
-    absl::Duration d;
-    if (!cel_value.GetValue(&d)) {
-      GOOGLE_LOG(ERROR) << "Unable to retrieve duration";
-      return false;
-    }
-    google::protobuf::Duration duration;
-    google::api::expr::internal::EncodeDuration(d, &duration);
-    static_cast<const Derived*>(this)->SetMessage(&duration);
-    return true;
-  }
-
-  bool AssignTimestamp(const CelValue& cel_value) const {
-    absl::Time t;
-    if (!cel_value.GetValue(&t)) {
-      GOOGLE_LOG(ERROR) << "Unable to retrieve timestamp";
-      return false;
-    }
-    google::protobuf::Timestamp timestamp;
-    google::api::expr::internal::EncodeTime(t, &timestamp);
-    static_cast<const Derived*>(this)->SetMessage(&timestamp);
     return true;
   }
 
@@ -528,16 +505,14 @@ class FieldSetter {
         break;
       }
       case FieldDescriptor::CPPTYPE_MESSAGE: {
-        const std::string& type_name = field_desc_->message_type()->full_name();
+        const absl::string_view type_name =
+            field_desc_->message_type()->full_name();
         // When the field is a message, it might be a well-known type with a
         // non-proto representation that requires special handling before it
         // can be set on the field.
-        if (type_name == kProtobufTimestamp) {
-          return AssignTimestamp(value);
-        } else if (type_name == kProtobufDuration) {
-          return AssignDuration(value);
-        }
-        return AssignMessage(value);
+        auto wrapped_value =
+            CelProtoWrapper::MaybeWrapValue(type_name, value, arena_);
+        return AssignMessage(wrapped_value.value_or(value));
       }
       case FieldDescriptor::CPPTYPE_ENUM: {
         return AssignEnum(value);
@@ -550,18 +525,20 @@ class FieldSetter {
   }
 
  protected:
-  FieldSetter(Message* msg, const FieldDescriptor* field_desc)
-      : msg_(msg), field_desc_(field_desc) {}
+  FieldSetter(Message* msg, const FieldDescriptor* field_desc, Arena* arena)
+      : msg_(msg), field_desc_(field_desc), arena_(arena) {}
 
   Message* msg_;
   const FieldDescriptor* field_desc_;
+  Arena* arena_;
 };
 
 // Accessor class, to work with singular fields
 class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
  public:
-  ScalarFieldSetter(Message* msg, const FieldDescriptor* field_desc)
-      : FieldSetter(msg, field_desc) {}
+  ScalarFieldSetter(Message* msg, const FieldDescriptor* field_desc,
+                    Arena* arena)
+      : FieldSetter(msg, field_desc, arena) {}
 
   bool SetBool(bool value) const {
     GetReflection()->SetBool(msg_, field_desc_, value);
@@ -645,8 +622,9 @@ class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
 // Appender class, to work with repeated fields
 class RepeatedFieldSetter : public FieldSetter<RepeatedFieldSetter> {
  public:
-  RepeatedFieldSetter(Message* msg, const FieldDescriptor* field_desc)
-      : FieldSetter(msg, field_desc) {}
+  RepeatedFieldSetter(Message* msg, const FieldDescriptor* field_desc,
+                      Arena* arena)
+      : FieldSetter(msg, field_desc, arena) {}
 
   bool SetBool(bool value) const {
     GetReflection()->AddBool(msg_, field_desc_, value);
@@ -718,8 +696,9 @@ class RepeatedFieldSetter : public FieldSetter<RepeatedFieldSetter> {
 // arena Arena to use for allocations if needed.
 // result pointer to object to store value in.
 absl::Status SetValueToSingleField(const CelValue& value,
-                                   const FieldDescriptor* desc, Message* msg) {
-  ScalarFieldSetter setter(msg, desc);
+                                   const FieldDescriptor* desc, Message* msg,
+                                   Arena* arena) {
+  ScalarFieldSetter setter(msg, desc, arena);
   return (setter.SetFieldFromCelValue(value))
              ? absl::OkStatus()
              : absl::InvalidArgumentError(absl::Substitute(
@@ -730,9 +709,9 @@ absl::Status SetValueToSingleField(const CelValue& value,
 }
 
 absl::Status AddValueToRepeatedField(const CelValue& value,
-                                     const FieldDescriptor* desc,
-                                     Message* msg) {
-  RepeatedFieldSetter setter(msg, desc);
+                                     const FieldDescriptor* desc, Message* msg,
+                                     Arena* arena) {
+  RepeatedFieldSetter setter(msg, desc, arena);
   return (setter.SetFieldFromCelValue(value))
              ? absl::OkStatus()
              : absl::InvalidArgumentError(absl::Substitute(
@@ -740,32 +719,6 @@ absl::Status AddValueToRepeatedField(const CelValue& value,
                    "field \"$1\".",
                    msg->GetDescriptor()->name(), desc->name(),
                    value.DebugString()));
-}
-
-absl::Status AddValueToMapField(const CelValue& key, const CelValue& value,
-                                const FieldDescriptor* desc, Message* msg) {
-  auto entry_msg = msg->GetReflection()->AddMessage(msg, desc);
-  auto key_field_desc = entry_msg->GetDescriptor()->FindFieldByNumber(1);
-  auto value_field_desc = entry_msg->GetDescriptor()->FindFieldByNumber(2);
-
-  ScalarFieldSetter key_setter(entry_msg, key_field_desc);
-  ScalarFieldSetter value_setter(entry_msg, value_field_desc);
-
-  if (!key_setter.SetFieldFromCelValue(key)) {
-    return absl::InvalidArgumentError(absl::Substitute(
-        "Could not assign supplied argument \"$2\" to message "
-        "\"$0\" field \"$1\" map key.",
-        msg->GetDescriptor()->name(), desc->name(), key.DebugString()));
-  }
-
-  if (!value_setter.SetFieldFromCelValue(value)) {
-    return absl::InvalidArgumentError(absl::Substitute(
-        "Could not assign supplied argument \"$2\" to message \"$0\" "
-        "field \"$1\" map value.",
-        msg->GetDescriptor()->name(), desc->name(), value.DebugString()));
-  }
-
-  return absl::OkStatus();
 }
 
 }  // namespace runtime

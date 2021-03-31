@@ -12,12 +12,8 @@ namespace expr {
 namespace runtime {
 
 using google::protobuf::Duration;
-using google::protobuf::ListValue;
-using google::protobuf::Struct;
 using google::protobuf::Timestamp;
 using google::protobuf::Value;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::Message;
 using google::protobuf::util::TimeUtil;
 
 absl::Status KeyAsString(const CelValue& value, std::string* key) {
@@ -77,13 +73,21 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
     }
     case CelValue::Type::kDuration: {
       Duration duration;
-      expr::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
+      auto status =
+          expr::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
+      if (!status.ok()) {
+        return status;
+      }
       out_value->set_string_value(TimeUtil::ToString(duration));
       break;
     }
     case CelValue::Type::kTimestamp: {
       Timestamp timestamp;
-      expr::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
+      auto status =
+          expr::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
+      if (!status.ok()) {
+        return status;
+      }
       out_value->set_string_value(TimeUtil::ToString(timestamp));
       break;
     }

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "internal/port.h"
+#include "absl/meta/type_traits.h"
 #include "internal/specialize.h"
 #include "internal/types.h"
 #include "internal/visitor_util.h"
@@ -69,7 +69,7 @@ struct Copy : BaseHolderPolicy {
   constexpr static const bool kOwnsValue = true;
 
   template <typename T>
-  using ValueType = remove_const_t<T>;
+  using ValueType = absl::remove_const_t<T>;
 
   template <typename T>
   static T& get(T& value) {

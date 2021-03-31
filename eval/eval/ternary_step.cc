@@ -17,7 +17,7 @@ namespace {
 class TernaryStep : public ExpressionStepBase {
  public:
   // Constructs FunctionStep that uses overloads specified.
-  TernaryStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
+  explicit TernaryStep(int64_t expr_id) : ExpressionStepBase(expr_id) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 };

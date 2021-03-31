@@ -5,6 +5,7 @@
 
 #include <memory>
 
+#include "absl/meta/type_traits.h"
 #include "common/parent_ref.h"
 #include "common/value.h"
 #include "internal/list_impl.h"
@@ -53,7 +54,7 @@ template <Value::Kind ValueKind, typename T>
 Value ValueFromList(T&& value) {
   static_assert(!std::is_pointer<T>::value, "use ValueForList");
   return Value::MakeList<
-      internal::ListWrapper<ValueKind, internal::remove_cvref_t<T>>>(
+      internal::ListWrapper<ValueKind, absl::remove_cvref_t<T>>>(
       std::forward<T>(value));
 }
 
@@ -92,7 +93,7 @@ template <Value::Kind KeyKind, Value::Kind ValueKind, typename T>
 Value ValueFromMap(T&& value) {
   static_assert(!std::is_pointer<T>::value, "use ValueForList");
   return Value::MakeMap<
-      internal::MapWrapper<KeyKind, ValueKind, internal::remove_cvref_t<T>>>(
+      internal::MapWrapper<KeyKind, ValueKind, absl::remove_cvref_t<T>>>(
       std::forward<T>(value));
 }
 

@@ -16,6 +16,7 @@ cc_library(
     deps = [
         ":holder",
         ":specialize",
+        "@com_google_absl//absl/meta:type_traits",
     ],
 )
 
@@ -57,10 +58,10 @@ cc_library(
         "holder.h",
     ],
     deps = [
-        ":port",
         ":specialize",
         ":types",
         ":visitor_util",
+        "@com_google_absl//absl/meta:type_traits",
     ],
 )
 
@@ -85,8 +86,8 @@ cc_library(
         "hash_util.h",
     ],
     deps = [
-        ":port",
         ":specialize",
+        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_googleapis//google/rpc:status_cc_proto",
@@ -129,7 +130,6 @@ cc_test(
         ":visitor_util",
         "//testutil:util",
         "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -174,12 +174,13 @@ cc_library(
     srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
     deps = [
-        ":status_util",
+        "//base:status_macros",
         "//common:macros",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-        "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -237,11 +238,6 @@ cc_test(
 )
 
 cc_library(
-    name = "port",
-    hdrs = ["port.h"],
-)
-
-cc_library(
     name = "specialize",
     hdrs = ["specialize.h"],
 )
@@ -250,10 +246,10 @@ cc_library(
     name = "cast",
     hdrs = ["cast.h"],
     deps = [
-        ":port",
         ":specialize",
         ":types",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -273,9 +269,9 @@ cc_library(
         "types.h",
     ],
     deps = [
-        ":port",
         ":specialize",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/meta:type_traits",
         "@com_google_absl//absl/strings",
     ],
 )

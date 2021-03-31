@@ -1,8 +1,6 @@
-#include <iostream>
-
+#include "google/api/expr/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/eval.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/value.pb.h"
@@ -151,6 +149,7 @@ int RunServer(bool optimize) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
+  options.enable_string_size_as_unicode_codepoints = true;
 
   if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
@@ -169,7 +168,8 @@ int RunServer(bool optimize) {
                               NestedEnum_descriptor());
   type_registry->Register(google::api::expr::test::v1::proto3::TestAllTypes::
                               NestedEnum_descriptor());
-  auto register_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  auto register_status =
+      RegisterBuiltinFunctions(builder->GetRegistry(), options);
   if (!register_status.ok()) {
     std::cerr << "Failed to initialize: " << register_status.ToString()
               << std::endl;
@@ -181,7 +181,7 @@ int RunServer(bool optimize) {
   // Implementation of a simple pipe protocol:
   // INPUT LINE 1: parse/check/eval
   // INPUT LINE 2: JSON of the corresponding request protobuf
-  // OUTPUT LINE 1: JSON of the coressponding response protobuf
+  // OUTPUT LINE 1: JSON of the corresponding response protobuf
   while (true) {
     std::string cmd, input, output;
     std::getline(std::cin, cmd);

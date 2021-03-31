@@ -17,7 +17,8 @@ enum class ProtoUnsetFieldOptions {
 };
 
 // Utility method, that takes a protobuf Message and interprets it as a
-// namespace, binding its fields to Activation.
+// namespace, binding its fields to Activation. |arena| must be non-null.
+//
 // Field names and values become respective names and values of parameters
 // bound to the Activation object.
 // Example:

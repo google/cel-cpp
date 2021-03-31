@@ -17,7 +17,6 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
-        "//internal:proto_util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
@@ -121,9 +120,22 @@ cc_test(
     ],
     deps = [
         ":field_backed_map_impl",
-        "//eval/eval:evaluator_core",
         "//eval/testutil:test_message_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "field_access_test",
+    srcs = ["field_access_test.cc"],
+    deps = [
+        ":field_access",
+        "//internal:proto_util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )
