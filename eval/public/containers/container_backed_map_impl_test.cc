@@ -16,16 +16,18 @@ namespace runtime {
 namespace {
 
 using testing::Eq;
-using testing::Not;
 using testing::IsNull;
+using testing::Not;
 
 TEST(ContainerBackedMapImplTest, TestMapInt64) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(3)}};
 
-  auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()));
+  auto cel_map =
+      CreateContainerBackedMap(
+          absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
+          .value();
 
   ASSERT_THAT(cel_map, Not(IsNull()));
 
@@ -56,8 +58,10 @@ TEST(ContainerBackedMapImplTest, TestMapUint64) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateUint64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateUint64(2), CelValue::CreateInt64(3)}};
-  auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()));
+  auto cel_map =
+      CreateContainerBackedMap(
+          absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
+          .value();
 
   ASSERT_THAT(cel_map, Not(IsNull()));
 
@@ -92,8 +96,10 @@ TEST(ContainerBackedMapImplTest, TestMapString) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateString(&kKey1), CelValue::CreateInt64(2)},
       {CelValue::CreateString(&kKey2), CelValue::CreateInt64(3)}};
-  auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()));
+  auto cel_map =
+      CreateContainerBackedMap(
+          absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
+          .value();
 
   ASSERT_THAT(cel_map, Not(IsNull()));
 

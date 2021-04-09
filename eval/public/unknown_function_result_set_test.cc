@@ -183,8 +183,8 @@ TEST(UnknownFunctionResult, MapsEqual) {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)}};
 
-  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values));
-  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values)).value();
+  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   CelFunctionDescriptor desc("OneMap", false, {CelValue::Type::kMap});
 
@@ -202,14 +202,14 @@ TEST(UnknownFunctionResult, MapsDifferentSizes) {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)}};
 
-  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values2{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(6)}};
 
-  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2));
+  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2)).value();
 
   CelFunctionDescriptor desc("OneMap", false, {CelValue::Type::kMap});
 
@@ -229,21 +229,21 @@ TEST(UnknownFunctionResult, MapsDifferentElements) {
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(6)}};
 
-  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values2{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(4), CelValue::CreateInt64(8)}};
 
-  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2));
+  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values3{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(5)}};
 
-  auto cel_map_3 = CreateContainerBackedMap(absl::MakeSpan(values3));
+  auto cel_map_3 = CreateContainerBackedMap(absl::MakeSpan(values3)).value();
 
   CelFunctionDescriptor desc("OneMap", false, {CelValue::Type::kMap});
 
@@ -387,7 +387,7 @@ TEST(UnknownFunctionResult, ProtoStructTreatedAsMap) {
       {CelValue::CreateStringView(kFields[1]), CelValue::CreateDouble(1.0)},
       {CelValue::CreateStringView(kFields[0]), CelValue::CreateBool(true)}};
 
-  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
 
@@ -455,7 +455,7 @@ TEST(UnknownFunctionResult, NestedProtoTypes) {
   std::vector<std::pair<CelValue, CelValue>> values{
       {CelValue::CreateStringView("field"), cel_list}};
 
-  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
   CelValue proto_map = CelProtoWrapper::CreateMessage(&value_struct, &arena);

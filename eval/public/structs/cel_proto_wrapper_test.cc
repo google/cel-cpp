@@ -750,8 +750,10 @@ TEST_F(CelProtoWrapperTest, WrapStruct) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateString(CelValue::StringHolder(&kField1)),
        CelValue::CreateBool(true)}};
-  auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()));
+  auto cel_map =
+      CreateContainerBackedMap(
+          absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
+          .value();
   auto cel_value = CelValue::CreateMap(cel_map.get());
 
   Value json;
@@ -768,8 +770,10 @@ TEST_F(CelProtoWrapperTest, WrapStruct) {
 TEST_F(CelProtoWrapperTest, WrapFailureStructBadKeyType) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateInt64(1L), CelValue::CreateBool(true)}};
-  auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()));
+  auto cel_map =
+      CreateContainerBackedMap(
+          absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
+          .value();
   auto cel_value = CelValue::CreateMap(cel_map.get());
 
   Value json;
@@ -782,8 +786,10 @@ TEST_F(CelProtoWrapperTest, WrapFailureStructBadValueType) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateString(CelValue::StringHolder(&kField1)),
        CelProtoWrapper::CreateMessage(&bad_value, arena())}};
-  auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()));
+  auto cel_map =
+      CreateContainerBackedMap(
+          absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
+          .value();
   auto cel_value = CelValue::CreateMap(cel_map.get());
   Value json;
   ExpectNotWrapped(cel_value, json);

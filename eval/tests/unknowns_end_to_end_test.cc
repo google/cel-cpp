@@ -742,7 +742,7 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypes) {
       {CelValue::CreateError(&error), CelValue::CreateBool(false)});
   backing.push_back({CelValue::CreateBool(true), CelValue::CreateBool(false)});
 
-  auto map_impl = CreateContainerBackedMap(absl::MakeSpan(backing));
+  auto map_impl = CreateContainerBackedMap(absl::MakeSpan(backing)).value();
 
   options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
   auto builder = CreateCelExpressionBuilder(options);
@@ -784,7 +784,7 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypesShortcutted) {
       {CelValue::CreateError(&error), CelValue::CreateBool(false)});
   backing.push_back({CelValue::CreateBool(true), CelValue::CreateBool(false)});
 
-  auto map_impl = CreateContainerBackedMap(absl::MakeSpan(backing));
+  auto map_impl = CreateContainerBackedMap(absl::MakeSpan(backing)).value();
 
   options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
   auto builder = CreateCelExpressionBuilder(options);

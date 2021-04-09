@@ -331,19 +331,22 @@ TEST(CelValueLessThan, CelMapSameSize) {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(6)}};
 
-  auto cel_map_backing_1 = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto cel_map_backing_1 =
+      CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values2{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(4), CelValue::CreateInt64(6)}};
 
-  auto cel_map_backing_2 = CreateContainerBackedMap(absl::MakeSpan(values2));
+  auto cel_map_backing_2 =
+      CreateContainerBackedMap(absl::MakeSpan(values2)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values3{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(8)}};
 
-  auto cel_map_backing_3 = CreateContainerBackedMap(absl::MakeSpan(values3));
+  auto cel_map_backing_3 =
+      CreateContainerBackedMap(absl::MakeSpan(values3)).value();
 
   CelValue map1 = CelValue::CreateMap(cel_map_backing_1.get());
   CelValue map2 = CelValue::CreateMap(cel_map_backing_2.get());
@@ -359,14 +362,14 @@ TEST(CelValueLessThan, CelMapDifferentSizes) {
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)}};
 
-  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values2{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(6)}};
 
-  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2));
+  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2)).value();
 
   EXPECT_TRUE(CelValueLessThan(CelValue::CreateMap(cel_map_1.get()),
                                CelValue::CreateMap(cel_map_2.get())));
@@ -378,14 +381,14 @@ TEST(CelValueLessThan, CelMapEqual) {
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(6)}};
 
-  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto cel_map_1 = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   std::vector<std::pair<CelValue, CelValue>> values2{
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)},
       {CelValue::CreateInt64(2), CelValue::CreateInt64(4)},
       {CelValue::CreateInt64(3), CelValue::CreateInt64(6)}};
 
-  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2));
+  auto cel_map_2 = CreateContainerBackedMap(absl::MakeSpan(values2)).value();
 
   EXPECT_FALSE(CelValueLessThan(CelValue::CreateMap(cel_map_1.get()),
                                 CelValue::CreateMap(cel_map_2.get())));
@@ -418,7 +421,7 @@ TEST(CelValueLessThan, CelMapSupportProtoMapCompatible) {
       {CelValue::CreateStringView(kFields[1]), CelValue::CreateDouble(1.0)},
       {CelValue::CreateStringView(kFields[0]), CelValue::CreateBool(true)}};
 
-  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
 
@@ -451,7 +454,7 @@ TEST(CelValueLessThan, NestedMap) {
   std::vector<std::pair<CelValue, CelValue>> values{
       {CelValue::CreateStringView("field"), cel_list}};
 
-  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values));
+  auto backing_map = CreateContainerBackedMap(absl::MakeSpan(values)).value();
 
   CelValue cel_map = CelValue::CreateMap(backing_map.get());
   CelValue proto_map = CelProtoWrapper::CreateMessage(&value_struct, &arena);

@@ -147,7 +147,8 @@ TEST_P(SelectStepTest, MapPresenseIsFalseTest) {
       {CelValue::CreateString(&key1), CelValue::CreateInt64(1)}};
 
   auto map_value = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(key_values));
+                       absl::Span<std::pair<CelValue, CelValue>>(key_values))
+                       .value();
 
   google::protobuf::Arena arena;
 
@@ -165,7 +166,8 @@ TEST_P(SelectStepTest, MapPresenseIsTrueTest) {
       {CelValue::CreateString(&key1), CelValue::CreateInt64(1)}};
 
   auto map_value = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(key_values));
+                       absl::Span<std::pair<CelValue, CelValue>>(key_values))
+                       .value();
 
   google::protobuf::Arena arena;
 
@@ -185,7 +187,8 @@ TEST(SelectStepTest, MapPresenseIsTrueWithUnknownTest) {
        CelValue::CreateUnknownSet(&unknown_set)}};
 
   auto map_value = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(key_values));
+                       absl::Span<std::pair<CelValue, CelValue>>(key_values))
+                       .value();
 
   google::protobuf::Arena arena;
 
@@ -427,7 +430,8 @@ TEST_P(SelectStepTest, MapSimpleInt32Test) {
       {CelValue::CreateString(&key2), CelValue::CreateInt64(2)}};
 
   auto map_value = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(key_values));
+                       absl::Span<std::pair<CelValue, CelValue>>(key_values))
+                       .value();
 
   google::protobuf::Arena arena;
 

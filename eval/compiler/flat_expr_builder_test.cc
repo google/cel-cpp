@@ -604,7 +604,7 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
       {CelValue::CreateStringView("var2"), CelValue::CreateBool(false)}};
 
   std::unique_ptr<CelMap> map_value =
-      CreateContainerBackedMap(absl::MakeSpan(map_pairs));
+      CreateContainerBackedMap(absl::MakeSpan(map_pairs)).value();
   activation.InsertValue("bar", CelValue::CreateMap(map_value.get()));
   result_or = cel_expr->Evaluate(activation, &arena);
   ASSERT_OK(result_or);
