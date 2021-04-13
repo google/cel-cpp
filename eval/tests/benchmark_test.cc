@@ -13,6 +13,7 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/tests/request_context.pb.h"
 #include "base/status_macros.h"
@@ -826,6 +827,91 @@ void BM_Comprehension(benchmark::State& state) {
 }
 
 BENCHMARK(BM_Comprehension)->Range(1, 1 << 20);
+
+// has(request.path) && !has(request.ip)
+constexpr char kHas[] = R"(
+call_expr: <
+  function: "_&&_"
+  args: <
+    select_expr: <
+      operand: <
+        ident_expr: <
+          name: "request"
+        >
+      >
+      field: "path"
+      test_only: true
+    >
+  >
+  args: <
+    call_expr: <
+      function: "!_"
+      args: <
+        select_expr: <
+          operand: <
+            ident_expr: <
+              name: "request"
+            >
+          >
+          field: "ip"
+          test_only: true
+        >
+      >
+    >
+  >
+>)";
+
+void BM_HasMap(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHas, &expr));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+
+  std::vector<std::pair<CelValue, CelValue>> map_pairs{
+      {CelValue::CreateStringView("path"), CelValue::CreateStringView("path")}};
+  auto cel_map =
+      CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
+          map_pairs.data(), map_pairs.size()));
+
+  activation.InsertValue("request", CelValue::CreateMap((*cel_map).get()));
+  ASSERT_OK(expr_plan.status());
+  for (auto _ : state) {
+    auto result = expr_plan.value()->Evaluate(activation, &arena);
+    ASSERT_OK(result.status());
+    ASSERT_TRUE(result->IsBool());
+    ASSERT_TRUE(result->BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_HasMap);
+
+void BM_HasProto(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHas, &expr));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+
+  RequestContext request;
+  request.set_path(kPath);
+  request.set_token(kToken);
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+  ASSERT_OK(expr_plan.status());
+  for (auto _ : state) {
+    auto result = expr_plan.value()->Evaluate(activation, &arena);
+    ASSERT_OK(result.status());
+    ASSERT_TRUE(result->IsBool());
+    ASSERT_TRUE(result->BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_HasProto);
 
 // Sum a square with a nested comprehension
 constexpr char kNestedListSum[] = R"(
