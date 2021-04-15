@@ -9,4 +9,5 @@ message RequestContext {
   string ip = 1;
   string path = 2;
   string token = 3;
+  map<string, string> headers = 4;
 }

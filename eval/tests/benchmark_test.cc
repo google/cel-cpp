@@ -913,6 +913,123 @@ void BM_HasProto(benchmark::State& state) {
 
 BENCHMARK(BM_HasProto);
 
+// has(request.headers.create_time) && !has(request.headers.update_time)
+constexpr char kHasProtoMap[] = R"(
+call_expr: <
+  function: "_&&_"
+  args: <
+    select_expr: <
+      operand: <
+        select_expr: <
+          operand: <
+            ident_expr: <
+              name: "request"
+            >
+          >
+          field: "headers"
+        >
+      >
+      field: "create_time"
+      test_only: true
+    >
+  >
+  args: <
+    call_expr: <
+      function: "!_"
+      args: <
+        select_expr: <
+          operand: <
+            select_expr: <
+              operand: <
+                ident_expr: <
+                  name: "request"
+                >
+              >
+              field: "headers"
+            >
+          >
+          field: "update_time"
+          test_only: true
+        >
+      >
+    >
+  >
+>)";
+
+void BM_HasProtoMap(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHasProtoMap, &expr));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+
+  RequestContext request;
+  request.mutable_headers()->insert({"create_time", "2021-01-01"});
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+  ASSERT_OK(expr_plan.status());
+  for (auto _ : state) {
+    auto result = expr_plan.value()->Evaluate(activation, &arena);
+    ASSERT_OK(result.status());
+    ASSERT_TRUE(result->IsBool());
+    ASSERT_TRUE(result->BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_HasProtoMap);
+
+// has(request.headers.create_time) && !has(request.headers.update_time)
+constexpr char kReadProtoMap[] = R"(
+call_expr: <
+  function: "_==_"
+  args: <
+    select_expr: <
+      operand: <
+        select_expr: <
+          operand: <
+            ident_expr: <
+              name: "request"
+            >
+          >
+          field: "headers"
+        >
+      >
+      field: "create_time"
+    >
+  >
+  args: <
+    const_expr: <
+      string_value: "2021-01-01"
+    >
+  >
+>)";
+
+void BM_ReadProtoMap(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kReadProtoMap, &expr));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+
+  RequestContext request;
+  request.mutable_headers()->insert({"create_time", "2021-01-01"});
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+  ASSERT_OK(expr_plan.status());
+  for (auto _ : state) {
+    auto result = expr_plan.value()->Evaluate(activation, &arena);
+    ASSERT_OK(result.status());
+    ASSERT_TRUE(result->IsBool());
+    ASSERT_TRUE(result->BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_ReadProtoMap);
+
 // Sum a square with a nested comprehension
 constexpr char kNestedListSum[] = R"(
 id: 1
