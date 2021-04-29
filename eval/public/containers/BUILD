@@ -48,6 +48,7 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
