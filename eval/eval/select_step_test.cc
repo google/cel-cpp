@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
@@ -32,7 +33,6 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
                                        absl::string_view unknown_path,
                                        bool enable_unknowns) {
   ExecutionPath path;
-
   Expr dummy_expr;
 
   auto select = dummy_expr.mutable_select_expr();
@@ -177,6 +177,43 @@ TEST_P(SelectStepTest, MapPresenseIsTrueTest) {
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
+}
+
+TEST(SelectStepTest, MapPresenseIsErrorTest) {
+  TestMessage message;
+  google::protobuf::Arena arena;
+
+  Expr select_expr;
+  auto select = select_expr.mutable_select_expr();
+  select->set_field("1");
+  select->set_test_only(true);
+  Expr* expr1 = select->mutable_operand();
+  auto select_map = expr1->mutable_select_expr();
+  select_map->set_field("int32_int32_map");
+  Expr* expr0 = select_map->mutable_operand();
+  auto ident = expr0->mutable_ident_expr();
+  ident->set_name("target");
+
+  auto step0_status = CreateIdentStep(ident, expr0->id());
+  auto step1_status = CreateSelectStep(select_map, expr1->id(), "");
+  auto step2_status = CreateSelectStep(select, select_expr.id(), "");
+  ASSERT_OK(step0_status);
+  ASSERT_OK(step1_status);
+  ASSERT_OK(step2_status);
+
+  ExecutionPath path;
+  path.push_back(std::move(step0_status.value()));
+  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step2_status.value()));
+  CelExpressionFlatImpl cel_expr(&select_expr, std::move(path), 0, {}, false);
+  Activation activation;
+  activation.InsertValue("target",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
+  auto status = cel_expr.Evaluate(activation, &arena);
+  CelValue result = status.value();
+
+  EXPECT_TRUE(result.IsError());
+  EXPECT_EQ(result.ErrorOrDie()->code(), absl::StatusCode::kInvalidArgument);
 }
 
 TEST(SelectStepTest, MapPresenseIsTrueWithUnknownTest) {

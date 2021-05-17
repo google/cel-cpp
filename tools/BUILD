@@ -18,6 +18,10 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "@com_github_google_flatbuffers//:flatbuffers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 

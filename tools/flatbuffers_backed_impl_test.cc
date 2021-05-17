@@ -178,11 +178,17 @@ TEST_F(FlatBuffersTest, PrimitiveFields) {
     EXPECT_TRUE(f.value().IsString());
     EXPECT_EQ("test", f.value().StringOrDie().value());
   }
-  // missing field
+  // bad field type
   {
-    auto f = value[CelValue::CreateInt64(1)];
-    EXPECT_FALSE(f.has_value());
+    CelValue bad_field = CelValue::CreateInt64(1);
+    auto f = value[bad_field];
+    EXPECT_TRUE(f.has_value());
+    EXPECT_TRUE(f->IsError());
+    auto presence = value.Has(bad_field);
+    EXPECT_FALSE(presence.ok());
+    EXPECT_EQ(presence.status().code(), absl::StatusCode::kInvalidArgument);
   }
+  // missing field
   {
     auto f = value[CelValue::CreateStringView(kUnknownField)];
     EXPECT_FALSE(f.has_value());
@@ -228,22 +234,47 @@ TEST_F(FlatBuffersTest, ObjectField) {
                                       f_int: 16
                                     }
                                     })");
-  auto f = value[CelValue::CreateStringView(kObjField)];
+  CelValue field = CelValue::CreateStringView(kObjField);
+  auto presence = value.Has(field);
+  EXPECT_OK(presence);
+  EXPECT_TRUE(*presence);
+  auto f = value[field];
   EXPECT_TRUE(f.has_value());
   EXPECT_TRUE(f.value().IsMap());
   const CelMap& m = *f.value().MapOrDie();
   EXPECT_EQ(2, m.size());
   {
-    auto mf = m[CelValue::CreateStringView(kStringField)];
+    auto obj_field = CelValue::CreateStringView(kStringField);
+    auto member_presence = m.Has(obj_field);
+    EXPECT_OK(member_presence);
+    EXPECT_TRUE(*member_presence);
+    auto mf = m[obj_field];
     EXPECT_TRUE(mf.has_value());
     EXPECT_TRUE(mf.value().IsString());
     EXPECT_EQ("entry", mf.value().StringOrDie().value());
   }
   {
-    auto mf = m[CelValue::CreateStringView(kIntField)];
+    auto obj_field = CelValue::CreateStringView(kIntField);
+    auto member_presence = m.Has(obj_field);
+    EXPECT_OK(member_presence);
+    EXPECT_TRUE(*member_presence);
+    auto mf = m[obj_field];
     EXPECT_TRUE(mf.has_value());
     EXPECT_TRUE(mf.value().IsInt64());
     EXPECT_EQ(16, mf.value().Int64OrDie());
+  }
+  {
+    std::string undefined = "f_undefined";
+    CelValue undefined_field = CelValue::CreateStringView(undefined);
+    auto presence = m.Has(undefined_field);
+    EXPECT_OK(presence);
+    EXPECT_FALSE(*presence);
+    auto v = m[undefined_field];
+    EXPECT_FALSE(v.has_value());
+
+    presence = m.Has(CelValue::CreateBool(false));
+    EXPECT_FALSE(presence.ok());
+    EXPECT_EQ(presence.status().code(), absl::StatusCode::kInvalidArgument);
   }
 }
 
@@ -389,13 +420,21 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
     const CelMap& m = *l[0].MapOrDie();
     EXPECT_EQ(2, m.size());
     {
-      auto mf = m[CelValue::CreateStringView(kStringField)];
+      CelValue field = CelValue::CreateStringView(kStringField);
+      auto presence = m.Has(field);
+      EXPECT_OK(presence);
+      EXPECT_TRUE(*presence);
+      auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
       EXPECT_TRUE(mf.value().IsString());
       EXPECT_EQ("entry", mf.value().StringOrDie().value());
     }
     {
-      auto mf = m[CelValue::CreateStringView(kIntField)];
+      CelValue field = CelValue::CreateStringView(kIntField);
+      auto presence = m.Has(field);
+      EXPECT_OK(presence);
+      EXPECT_TRUE(*presence);
+      auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
       EXPECT_TRUE(mf.value().IsInt64());
       EXPECT_EQ(16, mf.value().Int64OrDie());
@@ -406,16 +445,35 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
     const CelMap& m = *l[1].MapOrDie();
     EXPECT_EQ(2, m.size());
     {
-      auto mf = m[CelValue::CreateStringView(kStringField)];
+      CelValue field = CelValue::CreateStringView(kStringField);
+      auto presence = m.Has(field);
+      EXPECT_OK(presence);
+      // Note, the presence checks on flat buffers seem to only apply to whether
+      // the field is defined.
+      EXPECT_TRUE(*presence);
+      auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
       EXPECT_TRUE(mf.value().IsString());
       EXPECT_EQ("", mf.value().StringOrDie().value());
     }
     {
-      auto mf = m[CelValue::CreateStringView(kIntField)];
+      CelValue field = CelValue::CreateStringView(kIntField);
+      auto presence = m.Has(field);
+      EXPECT_OK(presence);
+      EXPECT_TRUE(*presence);
+      auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
       EXPECT_TRUE(mf.value().IsInt64());
       EXPECT_EQ(32, mf.value().Int64OrDie());
+    }
+    {
+      std::string undefined = "f_undefined";
+      CelValue field = CelValue::CreateStringView(undefined);
+      auto presence = m.Has(field);
+      EXPECT_OK(presence);
+      EXPECT_FALSE(*presence);
+      auto mf = m[field];
+      EXPECT_FALSE(mf.has_value());
     }
   }
 }
@@ -522,17 +580,39 @@ TEST_F(FlatBuffersTest, IndexedObjectVectorFieldDefaults) {
                                     }
                                     ]
                                     })");
-  auto f = value[CelValue::CreateStringView(kIndexedField)];
+  CelValue field = CelValue::CreateStringView(kIndexedField);
+  auto presence = value.Has(field);
+  EXPECT_OK(presence);
+  EXPECT_TRUE(*presence);
+  auto f = value[field];
   EXPECT_TRUE(f.has_value());
   EXPECT_TRUE(f.value().IsMap());
   const CelMap& m = *f.value().MapOrDie();
+
   EXPECT_EQ(1, m.size());
   const CelList& l = *m.ListKeys();
   EXPECT_EQ(1, l.size());
   EXPECT_TRUE(l[0].IsString());
   EXPECT_EQ("", l[0].StringOrDie().value());
-  auto v = m[CelValue::CreateStringView(absl::string_view())];
+
+  CelValue map_field = CelValue::CreateStringView(absl::string_view());
+  presence = m.Has(map_field);
+  EXPECT_OK(presence);
+  EXPECT_TRUE(*presence);
+  auto v = m[map_field];
   EXPECT_TRUE(v.has_value());
+
+  std::string undefined = "f_undefined";
+  CelValue undefined_field = CelValue::CreateStringView(undefined);
+  presence = m.Has(undefined_field);
+  EXPECT_OK(presence);
+  EXPECT_FALSE(*presence);
+  v = m[undefined_field];
+  EXPECT_FALSE(v.has_value());
+
+  presence = m.Has(CelValue::CreateBool(false));
+  EXPECT_FALSE(presence.ok());
+  EXPECT_EQ(presence.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 }  // namespace

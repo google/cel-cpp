@@ -15,6 +15,7 @@ cc_library(
         "//eval/testutil:test_message_cc_proto",
         "//internal:proto_util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_protobuf//:protobuf",

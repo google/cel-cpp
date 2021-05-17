@@ -2,6 +2,11 @@
 
 #include <algorithm>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/types/optional.h"
+#include "eval/public/cel_value.h"
 #include "flatbuffers/flatbuffers.h"
 
 namespace google {
@@ -80,12 +85,29 @@ class ObjectStringIndexedMapImpl : public CelMap {
         schema_(schema),
         object_(object),
         index_(index) {
-    keys_.parent_ = this;
+    keys_.parent = this;
   }
+
   int size() const override { return list_ ? list_->size() : 0; }
+
+  absl::StatusOr<bool> Has(const CelValue& key) const override {
+    auto lookup_result = (*this)[key];
+    if (!lookup_result.has_value()) {
+      return false;
+    }
+    auto result = *lookup_result;
+    if (result.IsError()) {
+      return *(result.ErrorOrDie());
+    }
+    return true;
+  }
+
   absl::optional<CelValue> operator[](CelValue cel_key) const override {
     if (!cel_key.IsString()) {
-      return {};
+      return CreateErrorValue(arena_,
+                              absl::InvalidArgumentError(absl::StrCat(
+                                  "invalid map key type. wanted: string, got: ",
+                                  cel_key.DebugString())));
     }
     const absl::string_view key = cel_key.StringOrDie().value();
     const auto it = std::lower_bound(
@@ -105,23 +127,24 @@ class ObjectStringIndexedMapImpl : public CelMap {
             arena_, **it, schema_, object_, arena_));
       }
     }
-    return {};
+    return absl::nullopt;
   }
+
   const CelList* ListKeys() const override { return &keys_; }
 
  private:
   struct KeyList : public CelList {
-    int size() const override { return parent_->size(); }
+    int size() const override { return parent->size(); }
     CelValue operator[](int index) const override {
-      auto value = flatbuffers::GetFieldS(*(parent_->list_->Get(index)),
-                                          parent_->index_);
+      auto value =
+          flatbuffers::GetFieldS(*(parent->list_->Get(index)), parent->index_);
       if (value == nullptr) {
         return CelValue::CreateStringView(absl::string_view());
       }
       return CelValue::CreateStringView(
           absl::string_view(value->c_str(), value->size()));
     }
-    ObjectStringIndexedMapImpl* parent_;
+    ObjectStringIndexedMapImpl* parent;
   };
   google::protobuf::Arena* arena_;
   const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::Table>>* list_;
@@ -143,14 +166,29 @@ const reflection::Field* findStringKeyField(const reflection::Object& object) {
 
 }  // namespace
 
+absl::StatusOr<bool> FlatBuffersMapImpl::Has(const CelValue& key) const {
+  auto lookup_result = (*this)[key];
+  if (!lookup_result.has_value()) {
+    return false;
+  }
+  auto result = *lookup_result;
+  if (result.IsError()) {
+    return *(result.ErrorOrDie());
+  }
+  return true;
+}
+
 absl::optional<CelValue> FlatBuffersMapImpl::operator[](
     CelValue cel_key) const {
   if (!cel_key.IsString()) {
-    return {};
+    return CreateErrorValue(
+        arena_, absl::InvalidArgumentError(
+                    absl::StrCat("invalid map key type. wanted: string, got: ",
+                                 cel_key.DebugString())));
   }
-  auto field = keys_.fields_->LookupByKey(cel_key.StringOrDie().value().data());
+  auto field = keys_.fields->LookupByKey(cel_key.StringOrDie().value().data());
   if (field == nullptr) {
-    return {};
+    return absl::nullopt;
   }
   switch (field->type()->base_type()) {
     case reflection::Byte:
@@ -285,15 +323,15 @@ absl::optional<CelValue> FlatBuffersMapImpl::operator[](
         }
         default:
           // Unsupported vector base types
-          return {};
+          return absl::nullopt;
       }
       break;
     }
     default:
       // Unsupported types: enums, unions, arrays
-      return {};
+      return absl::nullopt;
   }
-  return {};
+  return absl::nullopt;
 }
 
 const CelMap* CreateFlatBuffersBackedObject(const uint8_t* flatbuf,

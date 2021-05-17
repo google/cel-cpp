@@ -3,6 +3,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <vector>
 
 #include "absl/numeric/int128.h"
 #include "absl/status/status.h"
@@ -10,6 +11,7 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
@@ -321,11 +323,8 @@ absl::Status RegisterComparisonFunctionsForType(CelFunctionRegistry* registry) {
   if (!status.ok()) return status;
 
   // Greater than or Equal
-  status = FunctionAdapter<bool, Type, Type>::CreateAndRegister(
+  return FunctionAdapter<bool, Type, Type>::CreateAndRegister(
       builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>, registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 // Template functions providing arithmetic operations
@@ -638,7 +637,7 @@ CelValue GetTimeBreakdownPart(
   auto status = FindTimeBreakdown(timestamp, tz, &breakdown);
 
   if (!status.ok()) {
-    return CreateErrorValue(arena, status.message());
+    return CreateErrorValue(arena, status);
   }
 
   return extractor_func(breakdown);
@@ -815,9 +814,95 @@ absl::Status RegisterComparisonFunctions(CelFunctionRegistry* registry,
   status = RegisterEqualityFunctionsForType<const CelMap*>(registry);
   if (!status.ok()) return status;
 
-  status = RegisterEqualityFunctionsForType<CelValue::CelTypeHolder>(registry);
-  if (!status.ok()) return status;
+  return RegisterEqualityFunctionsForType<CelValue::CelTypeHolder>(registry);
+}
 
+absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
+                                            const InterpreterOptions& options) {
+  constexpr std::array<absl::string_view, 3> in_operators = {
+      builtin::kIn,            // @in for map and list types.
+      builtin::kInFunction,    // deprecated in() -- for backwards compat
+      builtin::kInDeprecated,  // deprecated _in_ -- for backwards compat
+  };
+
+  if (options.enable_list_contains) {
+    for (absl::string_view op : in_operators) {
+      auto status =
+          FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
+              op, false, In<bool>, registry);
+      if (!status.ok()) return status;
+      status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
+          op, false, In<int64_t>, registry);
+      if (!status.ok()) return status;
+      status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
+          op, false, In<uint64_t>, registry);
+      if (!status.ok()) return status;
+      status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
+          op, false, In<double>, registry);
+      if (!status.ok()) return status;
+      status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
+          CreateAndRegister(op, false, In<CelValue::StringHolder>, registry);
+      if (!status.ok()) return status;
+      status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
+          CreateAndRegister(op, false, In<CelValue::BytesHolder>, registry);
+      if (!status.ok()) return status;
+    }
+  }
+
+  auto boolKeyInSet = [](Arena* arena, bool key,
+                         const CelMap* cel_map) -> CelValue {
+    const auto& result = cel_map->Has(CelValue::CreateBool(key));
+    if (!result.ok()) {
+      return CreateErrorValue(arena, result.status());
+    }
+    return CelValue::CreateBool(*result);
+  };
+  auto intKeyInSet = [](Arena* arena, int64_t key,
+                        const CelMap* cel_map) -> CelValue {
+    const auto& result = cel_map->Has(CelValue::CreateInt64(key));
+    if (!result.ok()) {
+      return CreateErrorValue(arena, result.status());
+    }
+    return CelValue::CreateBool(*result);
+  };
+  auto stringKeyInSet = [](Arena* arena, CelValue::StringHolder key,
+                           const CelMap* cel_map) -> CelValue {
+    const auto& result = cel_map->Has(CelValue::CreateString(key));
+    if (!result.ok()) {
+      return CreateErrorValue(arena, result.status());
+    }
+    return CelValue::CreateBool(*result);
+  };
+  auto uintKeyInSet = [](Arena* arena, uint64_t key,
+                         const CelMap* cel_map) -> CelValue {
+    const auto& result = cel_map->Has(CelValue::CreateUint64(key));
+    if (!result.ok()) {
+      return CreateErrorValue(arena, result.status());
+    }
+    return CelValue::CreateBool(*result);
+  };
+
+  for (auto op : in_operators) {
+    auto status =
+        FunctionAdapter<CelValue, CelValue::StringHolder,
+                        const CelMap*>::CreateAndRegister(op, false,
+                                                          stringKeyInSet,
+                                                          registry);
+    if (!status.ok()) return status;
+
+    status = FunctionAdapter<CelValue, bool, const CelMap*>::CreateAndRegister(
+        op, false, boolKeyInSet, registry);
+    if (!status.ok()) return status;
+
+    status = FunctionAdapter<CelValue, int64_t, const CelMap*>::CreateAndRegister(
+        op, false, intKeyInSet, registry);
+    if (!status.ok()) return status;
+
+    status =
+        FunctionAdapter<CelValue, uint64_t, const CelMap*>::CreateAndRegister(
+            op, false, uintKeyInSet, registry);
+    if (!status.ok()) return status;
+  }
   return absl::OkStatus();
 }
 
@@ -853,13 +938,9 @@ absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
                             registry);
   if (!status.ok()) return status;
 
-  status =
-      FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(builtin::kStringStartsWith, true, StringStartsWith,
-                            registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
+  return FunctionAdapter<bool, CelValue::StringHolder, CelValue::StringHolder>::
+      CreateAndRegister(builtin::kStringStartsWith, true, StringStartsWith,
+                        registry);
 }
 
 absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
@@ -1016,15 +1097,12 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
           registry);
   if (!status.ok()) return status;
 
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+  return FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kMilliseconds, true,
       [](Arena* arena, absl::Time ts) -> CelValue {
         return GetMilliseconds(arena, ts, "");
       },
       registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
@@ -1040,15 +1118,12 @@ absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // string -> bytes
-  status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
+  return FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
       builtin::kBytes, false,
       [](Arena* arena, CelValue::StringHolder value) -> CelValue {
         return CelValue::CreateBytesView(value.value());
       },
       registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
@@ -1080,12 +1155,9 @@ absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // uint -> double
-  status = FunctionAdapter<double, uint64_t>::CreateAndRegister(
+  return FunctionAdapter<double, uint64_t>::CreateAndRegister(
       builtin::kDouble, false,
       [](Arena*, uint64_t v) { return static_cast<double>(v); }, registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
@@ -1139,7 +1211,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // uint -> int
-  status = FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
+  return FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, uint64_t v) {
         if (v > static_cast<uint64_t>(kIntMax)) {
@@ -1149,9 +1221,6 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
         return CelValue::CreateInt64(static_cast<int64_t>(v));
       },
       registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 absl::Status RegisterStringConversionFunctions(
@@ -1231,7 +1300,7 @@ absl::Status RegisterStringConversionFunctions(
   if (!status.ok()) return status;
 
   // timestamp -> string
-  status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
+  return FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kString, false,
       [](Arena* arena, absl::Time value) -> CelValue {
         auto encode = google::api::expr::internal::EncodeTimeToString(value);
@@ -1243,9 +1312,6 @@ absl::Status RegisterStringConversionFunctions(
             Arena::Create<std::string>(arena, encode.value())));
       },
       registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
@@ -1301,11 +1367,8 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // uint -> uint
-  status = FunctionAdapter<uint64_t, uint64_t>::CreateAndRegister(
+  return FunctionAdapter<uint64_t, uint64_t>::CreateAndRegister(
       builtin::kUint, false, [](Arena*, uint64_t v) { return v; }, registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
 }
 
 absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
@@ -1338,10 +1401,7 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
       builtin::kTimestamp, false, CreateTimestampFromString, registry);
   if (!status.ok()) return status;
 
-  status = RegisterUintConversionFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
+  return RegisterUintConversionFunctions(registry, options);
 }
 
 }  // namespace
@@ -1452,76 +1512,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       builtin::kSize, false, list_size_func, registry);
   if (!status.ok()) return status;
 
-  // List in operator: @in
-  if (options.enable_list_contains) {
-    status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
-        builtin::kIn, false, In<bool>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-        builtin::kIn, false, In<int64_t>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-        builtin::kIn, false, In<uint64_t>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
-        builtin::kIn, false, In<double>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
-        CreateAndRegister(builtin::kIn, false, In<CelValue::StringHolder>,
-                          registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
-        CreateAndRegister(builtin::kIn, false, In<CelValue::BytesHolder>,
-                          registry);
-    if (!status.ok()) return status;
-
-    // List in operator: _in_ (deprecated)
-    // Bindings preserved for backward compatibility with stored expressions.
-    status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
-        builtin::kInDeprecated, false, In<bool>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-        builtin::kInDeprecated, false, In<int64_t>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-        builtin::kInDeprecated, false, In<uint64_t>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
-        builtin::kInDeprecated, false, In<double>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
-        CreateAndRegister(builtin::kInDeprecated, false,
-                          In<CelValue::StringHolder>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
-        CreateAndRegister(builtin::kInDeprecated, false,
-                          In<CelValue::BytesHolder>, registry);
-    if (!status.ok()) return status;
-
-    // List in() function (deprecated)
-    // Bindings preserved for backward compatibility with stored expressions.
-    status = FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
-        builtin::kInFunction, false, In<bool>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-        builtin::kInFunction, false, In<int64_t>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-        builtin::kInFunction, false, In<uint64_t>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
-        builtin::kInFunction, false, In<double>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, CelValue::StringHolder, const CelList*>::
-        CreateAndRegister(builtin::kInFunction, false,
-                          In<CelValue::StringHolder>, registry);
-    if (!status.ok()) return status;
-    status = FunctionAdapter<bool, CelValue::BytesHolder, const CelList*>::
-        CreateAndRegister(builtin::kInFunction, false,
-                          In<CelValue::BytesHolder>, registry);
-    if (!status.ok()) return status;
-  }
-
   // Map size
   auto map_size_func = [](Arena*, const CelMap* cel_map) -> int64_t {
     return (*cel_map).size();
@@ -1534,86 +1524,8 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       builtin::kSize, false, map_size_func, registry);
   if (!status.ok()) return status;
 
-  // Map in operator: @in
-  status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
-      CreateAndRegister(
-          builtin::kIn, false,
-          [](Arena*, CelValue::StringHolder key,
-             const CelMap* cel_map) -> bool {
-            return (*cel_map)[CelValue::CreateString(key)].has_value();
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
-      builtin::kIn, false,
-      [](Arena*, int64_t key, const CelMap* cel_map) -> bool {
-        return (*cel_map)[CelValue::CreateInt64(key)].has_value();
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
-      builtin::kIn, false,
-      [](Arena*, uint64_t key, const CelMap* cel_map) -> bool {
-        return (*cel_map)[CelValue::CreateUint64(key)].has_value();
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  // Map in operators: _in_ (deprecated).
-  // Bindings preserved for backward compatibility with stored expressions.
-  status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
-      builtin::kInDeprecated, false,
-      [](Arena*, int64_t key, const CelMap* cel_map) -> bool {
-        return (*cel_map)[CelValue::CreateInt64(key)].has_value();
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
-      builtin::kInDeprecated, false,
-      [](Arena*, uint64_t key, const CelMap* cel_map) -> bool {
-        return (*cel_map)[CelValue::CreateUint64(key)].has_value();
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
-      CreateAndRegister(
-          builtin::kInDeprecated, false,
-          [](Arena*, CelValue::StringHolder key,
-             const CelMap* cel_map) -> bool {
-            return (*cel_map)[CelValue::CreateString(key)].has_value();
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  // Map in() function (deprecated)
-  status = FunctionAdapter<bool, CelValue::StringHolder, const CelMap*>::
-      CreateAndRegister(
-          builtin::kInFunction, false,
-          [](Arena*, CelValue::StringHolder key,
-             const CelMap* cel_map) -> bool {
-            return (*cel_map)[CelValue::CreateString(key)].has_value();
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<bool, int64_t, const CelMap*>::CreateAndRegister(
-      builtin::kInFunction, false,
-      [](Arena*, int64_t key, const CelMap* cel_map) -> bool {
-        return (*cel_map)[CelValue::CreateInt64(key)].has_value();
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status = FunctionAdapter<bool, uint64_t, const CelMap*>::CreateAndRegister(
-      builtin::kInFunction, false,
-      [](Arena*, uint64_t key, const CelMap* cel_map) -> bool {
-        return (*cel_map)[CelValue::CreateUint64(key)].has_value();
-      },
-      registry);
+  // Register set membership tests with the 'in' operator and its variants.
+  status = RegisterSetMembershipFunctions(registry, options);
   if (!status.ok()) return status;
 
   // basic Arithmetic functions for numeric types
@@ -1785,16 +1697,12 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       registry);
   if (!status.ok()) return status;
 
-  status =
-      FunctionAdapter<CelValue::CelTypeHolder, CelValue>::CreateAndRegister(
-          builtin::kType, false,
-          [](Arena*, CelValue value) -> CelValue::CelTypeHolder {
-            return value.ObtainCelType().CelTypeOrDie();
-          },
-          registry);
-  if (!status.ok()) return status;
-
-  return absl::OkStatus();
+  return FunctionAdapter<CelValue::CelTypeHolder, CelValue>::CreateAndRegister(
+      builtin::kType, false,
+      [](Arena*, CelValue value) -> CelValue::CelTypeHolder {
+        return value.ObtainCelType().CelTypeOrDie();
+      },
+      registry);
 }
 
 }  // namespace runtime

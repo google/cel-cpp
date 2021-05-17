@@ -1,10 +1,10 @@
-
-
 #include "eval/public/containers/container_backed_map_impl.h"
 
 #include "absl/container/node_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "eval/public/cel_value.h"
 
@@ -107,7 +107,6 @@ class ContainerBackedMapImpl : public CelMap {
   static absl::StatusOr<std::unique_ptr<CelMap>> Create(
       absl::Span<std::pair<CelValue, CelValue>> key_values) {
     auto cel_map = absl::WrapUnique(new ContainerBackedMapImpl());
-
     auto status = cel_map->AddItems(key_values);
     if (!status.ok()) {
       return status;
@@ -122,9 +121,13 @@ class ContainerBackedMapImpl : public CelMap {
   absl::optional<CelValue> operator[](CelValue cel_key) const override {
     auto item = values_map_.find(cel_key);
     if (item == values_map_.end()) {
-      return {};
+      return absl::nullopt;
     }
     return item->second;
+  }
+
+  absl::StatusOr<bool> Has(const CelValue& cel_key) const override {
+    return values_map_.contains(cel_key);
   }
 
   const CelList* ListKeys() const override { return &key_list_; }
