@@ -980,7 +980,7 @@ void BM_HasProtoMap(benchmark::State& state) {
 
 BENCHMARK(BM_HasProtoMap);
 
-// has(request.headers.create_time) && !has(request.headers.update_time)
+// request.headers.create_time == "2021-01-01"
 constexpr char kReadProtoMap[] = R"(
 call_expr: <
   function: "_==_"
