@@ -34,17 +34,6 @@ absl::Status CheckIterAccess(CelExpressionFlatEvaluationState* state,
 
 }  // namespace
 
-void ValueStack::Clear() {
-  for (auto& v : stack_) {
-    v = CelValue();
-  }
-  for (auto& attr : attribute_stack_) {
-    attr = AttributeTrail();
-  }
-
-  current_size_ = 0;
-}
-
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     size_t value_stack_size, const std::set<std::string>& iter_variable_names,
     google::protobuf::Arena* arena)
@@ -171,7 +160,7 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
                        enable_unknowns_, enable_unknown_function_results_,
                        enable_missing_attribute_errors_);
 
-  ValueStack* stack = &frame.value_stack();
+  EvaluatorStack* stack = &frame.value_stack();
   size_t initial_stack_size = stack->size();
   const ExpressionStep* expr;
   while ((expr = frame.Next()) != nullptr) {

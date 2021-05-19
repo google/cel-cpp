@@ -17,6 +17,7 @@ cc_library(
     deps = [
         ":attribute_trail",
         ":attribute_utility",
+        ":evaluator_stack",
         "//base:status_macros",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
@@ -30,6 +31,31 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "evaluator_stack",
+    srcs = [
+        "evaluator_stack.cc",
+    ],
+    hdrs = [
+        "evaluator_stack.h",
+    ],
+    deps = [
+        ":attribute_trail",
+        "//eval/public:cel_value",
+    ],
+)
+
+cc_test(
+    name = "evaluator_stack_test",
+    srcs = [
+        "evaluator_stack_test.cc",
+    ],
+    deps = [
+        ":evaluator_stack",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
