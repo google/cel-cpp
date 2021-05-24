@@ -50,7 +50,7 @@ using google::protobuf::UInt64Value;
 using google::protobuf::Value;
 
 // kMaxIntJSON is defined as the Number.MAX_SAFE_INTEGER value per EcmaScript 6.
-constexpr int64_t kMaxIntJSON = (1l << 53) - 1;
+constexpr int64_t kMaxIntJSON = (1ll << 53) - 1;
 
 // kMinIntJSON is defined as the Number.MIN_SAFE_INTEGER value per EcmaScript 6.
 constexpr int64_t kMinIntJSON = -kMaxIntJSON;
