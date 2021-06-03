@@ -4,7 +4,6 @@
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/set_util.h"
-#include "eval/public/testing/debug_string.h"
 
 namespace google {
 namespace api {
@@ -12,7 +11,7 @@ namespace expr {
 namespace runtime {
 
 void PrintTo(const CelValue& value, std::ostream* os) {
-  *os << test::DebugString(value);
+  *os << value.DebugString();
 }
 
 namespace test {
@@ -31,7 +30,7 @@ class CelValueEqualImpl : public MatcherInterface<CelValue> {
   }
 
   void DescribeTo(std::ostream* os) const override {
-    *os << DebugString(value_);
+    *os << value_.DebugString();
   }
 
  private:

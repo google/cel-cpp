@@ -10,7 +10,6 @@
 #include "absl/time/time.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/set_util.h"
-#include "eval/public/testing/debug_string.h"
 #include "eval/public/unknown_set.h"
 
 namespace google {
