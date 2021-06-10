@@ -30,6 +30,7 @@ cc_test(
     ],
     deps = [
         ":cel_proto_wrapper",
+        "//base:status_macros",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",

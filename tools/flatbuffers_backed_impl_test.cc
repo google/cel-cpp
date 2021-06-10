@@ -4,6 +4,7 @@
 #include "gtest/gtest.h"
 #include "flatbuffers/idl.h"
 #include "flatbuffers/reflection.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {

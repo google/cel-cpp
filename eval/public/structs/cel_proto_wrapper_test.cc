@@ -21,6 +21,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/proto_util.h"
 #include "testutil/util.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
