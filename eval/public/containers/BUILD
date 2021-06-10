@@ -48,6 +48,10 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -78,6 +82,8 @@ cc_library(
     deps = [
         ":field_access",
         "//eval/public:cel_value",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
@@ -121,6 +127,7 @@ cc_test(
     deps = [
         ":field_backed_map_impl",
         "//eval/testutil:test_message_cc_proto",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],

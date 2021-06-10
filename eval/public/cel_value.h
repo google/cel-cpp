@@ -21,6 +21,7 @@
 
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
@@ -423,11 +424,30 @@ class CelList {
 // CelMap is a base class for map accessors.
 class CelMap {
  public:
-  // Map lookup. If value found,
-  // returns CelValue in return type.
+  // Map lookup. If value found, returns CelValue in return type.
   // Per Protobuffer specification, acceptable key types are
-  // int64_t,uint64,string.
+  // bool, int64_t, uint64_t, string.
+  // TODO(issues/122): Make this method const correct.
   virtual absl::optional<CelValue> operator[](CelValue key) const = 0;
+
+  // Return whether the key is present within the map.
+  //
+  // Typically, key resolution will be a simple boolean result; however, there
+  // are scenarios where the conversion of the input key to the underlying
+  // key-type held by the map may result in an IllegalArgument error.
+  //
+  // Evaluators are responsible for handling non-OK results by propagating the
+  // error, as appropriate, up the evaluation stack either as a `StatusOr` or
+  // as a `CelError` value, depending on the context.
+  virtual absl::StatusOr<bool> Has(const CelValue &key) const {
+    // This implementation preserves the prior behavior for any derived classes
+    // which have not overridden the method. Note, it is possible that this
+    // implementation will return 'true' when the key lookup fails with an
+    // error. All core-CEL implementations override this method to provide
+    // semantics consistent with the CEL spec.
+    auto lookup_result = (*this)[key];
+    return lookup_result.has_value();
+  }
 
   // Map size
   virtual int size() const = 0;
@@ -450,6 +470,12 @@ CelValue CreateErrorValue(
     google::protobuf::Arena *arena, absl::string_view message,
     absl::StatusCode error_code = absl::StatusCode::kUnknown,
     int position = -1);
+
+// Utility method for generating a CelValue from an absl::Status.
+inline CelValue CreateErrorValue(google::protobuf::Arena *arena,
+                                 const absl::Status &status) {
+  return CreateErrorValue(arena, status.message(), status.code());
+}
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena);
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena,

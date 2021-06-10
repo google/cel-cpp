@@ -24,6 +24,7 @@ cc_test(
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "@com_github_google_benchmark//:benchmark",
         "@com_github_google_benchmark//:benchmark_main",

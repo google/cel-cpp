@@ -1,11 +1,13 @@
 #include "parser/parser.h"
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
 #include "absl/types/optional.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelLexer.h"
 #include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
+#include "parser/options.h"
 #include "parser/source_factory.h"
 #include "parser/visitor.h"
 #include "antlr4-runtime.h"
@@ -126,19 +128,15 @@ class RecoveryLimitErrorStrategy : public antlr4::DefaultErrorStrategy {
 
 absl::StatusOr<ParsedExpr> Parse(const std::string& expression,
                                  const std::string& description,
-                                 int max_recursion_depth,
-                                 int error_recovery_limit) {
-  return ParseWithMacros(expression, Macro::AllMacros(), description,
-                         max_recursion_depth, error_recovery_limit);
+                                 const ParserOptions& options) {
+  return ParseWithMacros(expression, Macro::AllMacros(), description, options);
 }
 
 absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
                                            const std::vector<Macro>& macros,
                                            const std::string& description,
-                                           int max_recursion_depth,
-                                           int error_recovery_limit) {
-  auto result = EnrichedParse(expression, macros, description,
-                              max_recursion_depth, error_recovery_limit);
+                                           const ParserOptions& options) {
+  auto result = EnrichedParse(expression, macros, description, options);
   if (result.ok()) {
     return result->parsed_expr();
   }
@@ -147,14 +145,19 @@ absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
 
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description, int max_recursion_depth,
-    int error_recovery_limit) {
+    const std::string& description, const ParserOptions& options) {
   ANTLRInputStream input(expression);
+  if (input.size() > options.expression_size_codepoint_limit) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "expression size exceeds codepoint limit.", " input size: ",
+        input.size(), ", limit: ", options.expression_size_codepoint_limit));
+  }
   CelLexer lexer(&input);
   CommonTokenStream tokens(&lexer);
   CelParser parser(&tokens);
-  ExprRecursionListener listener(max_recursion_depth);
-  ParserVisitor visitor(description, expression, max_recursion_depth, macros);
+  ExprRecursionListener listener(options.max_recursion_depth);
+  ParserVisitor visitor(description, expression, options.max_recursion_depth,
+                        macros);
 
   lexer.removeErrorListeners();
   parser.removeErrorListeners();
@@ -165,7 +168,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   // Limit the number of error recovery attempts to prevent bad expressions
   // from consuming lots of cpu / memory.
   std::shared_ptr<RecoveryLimitErrorStrategy> error_strategy(
-      new RecoveryLimitErrorStrategy(error_recovery_limit));
+      new RecoveryLimitErrorStrategy(options.error_recovery_limit));
   parser.setErrorHandler(error_strategy);
 
   CelParser::StartContext* root;

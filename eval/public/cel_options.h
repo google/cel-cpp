@@ -29,8 +29,7 @@ struct InterpreterOptions {
 
   // Enable functions which return the string.size() as the number of unicode
   // codepoints.
-  // Starting on 4/7/2021 this will default to 'true'
-  bool enable_string_size_as_unicode_codepoints = false;
+  bool enable_string_size_as_unicode_codepoints = true;
 
   // Enable short-circuiting of the logical operator evaluation. If enabled,
   // AND, OR, and TERNARY do not evaluate the entire expression once the the

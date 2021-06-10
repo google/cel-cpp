@@ -1,6 +1,13 @@
 #include "eval/public/containers/field_backed_map_impl.h"
 
+#include <limits>
+
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
+#include "google/protobuf/message.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/field_access.h"
 
@@ -17,12 +24,6 @@ namespace expr {
 // of macros usage.
 class CelMapReflectionFriend {
  public:
-  static bool ContainsMapKey(const Reflection* reflection,
-                             const Message& message,
-                             const FieldDescriptor* field, const MapKey& key) {
-    return reflection->ContainsMapKey(message, field, key);
-  }
-
   static bool LookupMapValue(const Reflection* reflection,
                              const Message& message,
                              const FieldDescriptor* field, const MapKey& key,
@@ -88,7 +89,7 @@ class KeyList : public CelList {
 
     auto status = CreateValueFromSingleField(entry, key_desc, arena_, &key);
     if (!status.ok()) {
-      return CreateErrorValue(arena_, status.message());
+      return CreateErrorValue(arena_, status);
     }
     return key;
   }
@@ -100,6 +101,32 @@ class KeyList : public CelList {
   google::protobuf::Arena* arena_;
 };
 
+bool MatchesMapKeyType(const FieldDescriptor* key_desc, const CelValue& key) {
+  switch (key_desc->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      return key.IsBool();
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      // fall through
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      return key.IsInt64();
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      // fall through
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      return key.IsUint64();
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+      return key.IsString();
+    default:
+      return false;
+  }
+}
+
+absl::Status InvalidMapKeyType(absl::string_view key_type,
+                               const CelValue& key) {
+  return absl::InvalidArgumentError(absl::StrCat("invalid map key type.",
+                                                 " wanted: ", key_type,
+                                                 " got: ", key.DebugString()));
+}
+
 }  // namespace
 
 FieldBackedMapImpl::FieldBackedMapImpl(
@@ -107,6 +134,8 @@ FieldBackedMapImpl::FieldBackedMapImpl(
     google::protobuf::Arena* arena)
     : message_(message),
       descriptor_(descriptor),
+      key_desc_(descriptor_->message_type()->FindFieldByNumber(kKeyTag)),
+      value_desc_(descriptor_->message_type()->FindFieldByNumber(kValueTag)),
       reflection_(message_->GetReflection()),
       arena_(arena),
       key_list_(absl::make_unique<KeyList>(message, descriptor, arena)) {}
@@ -117,119 +146,174 @@ int FieldBackedMapImpl::size() const {
 
 const CelList* FieldBackedMapImpl::ListKeys() const { return key_list_.get(); }
 
+absl::StatusOr<bool> FieldBackedMapImpl::Has(const CelValue& key) const {
+#ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+  MapValueConstRef value_ref;
+  return LookupMapValue(key, &value_ref);
+#else   // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+  return LegacyHasMapValue(key);
+#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+}
+
 absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
 #ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-  // Fast implementation.
-  google::protobuf::MapKey inner_key;
-  switch (key.type()) {
-    case CelValue::Type::kBool: {
-      inner_key.SetBoolValue(key.BoolOrDie());
-      break;
-    }
-    case CelValue::Type::kInt64: {
-      inner_key.SetInt64Value(key.Int64OrDie());
-      break;
-    }
-    case CelValue::Type::kUint64: {
-      inner_key.SetUInt64Value(key.Uint64OrDie());
-      break;
-    }
-    case CelValue::Type::kString: {
-      auto str = key.StringOrDie().value();
-      inner_key.SetStringValue(std::string(str.begin(), str.end()));
-      break;
-    }
-    default: {
-      return {};
-    }
-  }
+  // Fast implementation which uses a friend method to do a hash-based key
+  // lookup.
   MapValueConstRef value_ref;
-  // Look the value up
-  if (!google::protobuf::expr::CelMapReflectionFriend::LookupMapValue(
-          reflection_, *message_, descriptor_, inner_key, &value_ref)) {
-    return {};
+  auto lookup_result = LookupMapValue(key, &value_ref);
+  if (!lookup_result.ok()) {
+    return CreateErrorValue(arena_, lookup_result.status());
+  }
+  if (!*lookup_result) {
+    return absl::nullopt;
   }
 
   // Get value descriptor treating it as a repeated field.
   // All values in protobuf map have the same type.
-  // The map is not empty, because LookuMapValue returned true.
-  const Message* entry =
-      &reflection_->GetRepeatedMessage(*message_, descriptor_, 0);
-  if (entry == nullptr) {
-    return {};
-  }
-  const Descriptor* entry_descriptor = entry->GetDescriptor();
-  const FieldDescriptor* value_desc =
-      entry_descriptor->FindFieldByNumber(kValueTag);
-
+  // The map is not empty, because LookupMapValue returned true.
   CelValue result = CelValue::CreateNull();
-  auto status = CreateValueFromMapValue(message_, value_desc, &value_ref,
-                                        arena_, &result);
+  const auto& status = CreateValueFromMapValue(message_, value_desc_,
+                                               &value_ref, arena_, &result);
   if (!status.ok()) {
-    return CreateErrorValue(arena_, status.message());
+    return CreateErrorValue(arena_, status);
   }
   return result;
-#else  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-  // Slow implementation.
-  CelValue result = CelValue::CreateNull();
-  CelValue inner_key = CelValue::CreateNull();
 
+#else  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+  // Default proto implementation, does not use fast-path key lookup.
+  return LegacyLookupMapValue(key);
+#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+}
+
+absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
+    const CelValue& key, MapValueConstRef* value_ref) const {
+#ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+
+  if (!MatchesMapKeyType(key_desc_, key)) {
+    return InvalidMapKeyType(key_desc_->cpp_type_name(), key);
+  }
+
+  google::protobuf::MapKey proto_key;
+  switch (key_desc_->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL: {
+      bool key_value;
+      key.GetValue(&key_value);
+      proto_key.SetBoolValue(key_value);
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32: {
+      int64_t key_value;
+      key.GetValue(&key_value);
+      if (key_value > std::numeric_limits<int32_t>::max() ||
+          key_value < std::numeric_limits<int32_t>::lowest()) {
+        return absl::OutOfRangeError("integer overlow");
+      }
+      proto_key.SetInt32Value(key_value);
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64: {
+      int64_t key_value;
+      key.GetValue(&key_value);
+      proto_key.SetInt64Value(key_value);
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
+      CelValue::StringHolder key_value;
+      key.GetValue(&key_value);
+      auto str = key_value.value();
+      proto_key.SetStringValue(std::string(str.begin(), str.end()));
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32: {
+      uint64_t key_value;
+      key.GetValue(&key_value);
+      if (key_value > std::numeric_limits<uint32_t>::max()) {
+        return absl::OutOfRangeError("unsigned integer overlow");
+      }
+      proto_key.SetUInt32Value(key_value);
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64: {
+      uint64_t key_value;
+      key.GetValue(&key_value);
+      proto_key.SetUInt64Value(key_value);
+    } break;
+    default:
+      return InvalidMapKeyType(key_desc_->cpp_type_name(), key);
+  }
+  // Look the value up
+  return google::protobuf::expr::CelMapReflectionFriend::LookupMapValue(
+      reflection_, *message_, descriptor_, proto_key, value_ref);
+#else   // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+  return absl::UnimplementedError("fast-path key lookup not implemented");
+#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+}
+
+absl::StatusOr<bool> FieldBackedMapImpl::LegacyHasMapValue(
+    const CelValue& key) const {
+  auto lookup_result = LegacyLookupMapValue(key);
+  if (!lookup_result.has_value()) {
+    return false;
+  }
+  auto result = *lookup_result;
+  if (result.IsError()) {
+    return *(result.ErrorOrDie());
+  }
+  return true;
+}
+
+absl::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
+    const CelValue& key) const {
+  // Ensure that the key matches the key type.
+  if (!MatchesMapKeyType(key_desc_, key)) {
+    return CreateErrorValue(arena_,
+                            InvalidMapKeyType(key_desc_->cpp_type_name(), key));
+  }
+
+  CelValue proto_key = CelValue::CreateNull();
   int map_size = size();
   for (int i = 0; i < map_size; i++) {
     const Message* entry =
         &reflection_->GetRepeatedMessage(*message_, descriptor_, i);
-
     if (entry == nullptr) continue;
 
-    const Descriptor* entry_descriptor = entry->GetDescriptor();
     // Key Tag == 1
-    const FieldDescriptor* key_desc =
-        entry_descriptor->FindFieldByNumber(kKeyTag);
-
     auto status =
-        CreateValueFromSingleField(entry, key_desc, arena_, &inner_key);
+        CreateValueFromSingleField(entry, key_desc_, arena_, &proto_key);
     if (!status.ok()) {
-      return CreateErrorValue(arena_, status.ToString());
-    }
-
-    if (key.type() != inner_key.type()) {
-      continue;
+      return CreateErrorValue(arena_, status);
     }
 
     bool match = false;
-    switch (key.type()) {
-      case CelValue::Type::kBool:
-        match = key.BoolOrDie() == inner_key.BoolOrDie();
+    switch (key_desc_->cpp_type()) {
+      case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+        match = key.BoolOrDie() == proto_key.BoolOrDie();
         break;
-      case CelValue::Type::kInt64:
-        match = key.Int64OrDie() == inner_key.Int64OrDie();
+      case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+        // fall through
+      case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+        match = key.Int64OrDie() == proto_key.Int64OrDie();
         break;
-      case CelValue::Type::kUint64:
-        match = key.Uint64OrDie() == inner_key.Uint64OrDie();
+      case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+        // fall through
+      case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+        match = key.Uint64OrDie() == proto_key.Uint64OrDie();
         break;
-      case CelValue::Type::kString:
-        match = key.StringOrDie() == inner_key.StringOrDie();
+      case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+        match = key.StringOrDie() == proto_key.StringOrDie();
         break;
       default:
-        match = false;
+        // this would normally indicate a bad key type, which should not be
+        // possible based on the earlier test.
+        break;
     }
 
     if (match) {
-      const FieldDescriptor* value_desc =
-          entry_descriptor->FindFieldByNumber(kValueTag);
-
+      CelValue result = CelValue::CreateNull();
       auto status =
-          CreateValueFromSingleField(entry, value_desc, arena_, &result);
+          CreateValueFromSingleField(entry, value_desc_, arena_, &result);
       if (!status.ok()) {
-        return CreateErrorValue(arena_, status.message());
+        return CreateErrorValue(arena_, status);
       }
-
       return result;
     }
   }
-
   return {};
-#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 }
 
 }  // namespace runtime

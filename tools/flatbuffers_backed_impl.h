@@ -15,21 +15,26 @@ class FlatBuffersMapImpl : public CelMap {
                      const reflection::Schema& schema,
                      const reflection::Object& object, google::protobuf::Arena* arena)
       : arena_(arena), table_(table), schema_(schema) {
-    keys_.fields_ = object.fields();
+    keys_.fields = object.fields();
   }
-  int size() const override { return keys_.fields_->size(); }
+
+  int size() const override { return keys_.fields->size(); }
+
+  absl::StatusOr<bool> Has(const CelValue& key) const override;
+
   absl::optional<CelValue> operator[](CelValue cel_key) const override;
+
   const CelList* ListKeys() const override { return &keys_; }
 
  private:
   struct FieldList : public CelList {
-    int size() const override { return fields_->size(); }
+    int size() const override { return fields->size(); }
     CelValue operator[](int index) const override {
-      auto name = fields_->Get(index)->name();
+      auto name = fields->Get(index)->name();
       return CelValue::CreateStringView(
           absl::string_view(name->c_str(), name->size()));
     }
-    const flatbuffers::Vector<flatbuffers::Offset<reflection::Field>>* fields_;
+    const flatbuffers::Vector<flatbuffers::Offset<reflection::Field>>* fields;
   };
   FieldList keys_;
   google::protobuf::Arena* arena_;

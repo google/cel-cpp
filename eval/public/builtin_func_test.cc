@@ -1071,6 +1071,23 @@ class FakeList : public CelList {
   std::vector<CelValue> values_;
 };
 
+class FakeErrorMap : public CelMap {
+ public:
+  FakeErrorMap() {}
+
+  int size() const override { return 0; }
+
+  absl::StatusOr<bool> Has(const CelValue& key) const override {
+    return absl::InvalidArgumentError("bad key type");
+  }
+
+  absl::optional<CelValue> operator[](CelValue key) const override {
+    return absl::nullopt;
+  }
+
+  const CelList* ListKeys() const override { return nullptr; }
+};
+
 template <typename T>
 class FakeMap : public CelMap {
  public:
@@ -1106,6 +1123,18 @@ class FakeMap : public CelMap {
   std::map<T, CelValue> data_;
   std::unique_ptr<FakeList> keys_;
   std::function<absl::optional<T>(CelValue)> get_cel_value_;
+};
+
+class FakeBoolMap : public FakeMap<bool> {
+ public:
+  explicit FakeBoolMap(const std::map<bool, CelValue>& data)
+      : FakeMap(data, CelValue::CreateBool,
+                [](CelValue v) -> absl::optional<bool> {
+                  if (!v.IsBool()) {
+                    return absl::nullopt;
+                  }
+                  return v.BoolOrDie();
+                }) {}
 };
 
 class FakeInt64Map : public FakeMap<int64_t> {
@@ -1144,18 +1173,6 @@ class FakeStringMap : public FakeMap<CelValue::StringHolder> {
               }
               return v.StringOrDie();
             }) {}
-};
-
-class FakeBoolMap : public FakeMap<bool> {
- public:
-  explicit FakeBoolMap(const std::map<bool, CelValue>& data)
-      : FakeMap(data, CelValue::CreateBool,
-                [](CelValue v) -> absl::optional<bool> {
-                  if (!v.IsBool()) {
-                    return absl::nullopt;
-                  }
-                  return v.BoolOrDie();
-                }) {}
 };
 
 // Test list index access function
@@ -1532,6 +1549,39 @@ TEST_F(BuiltinsTest, TestBytesListIn) {
 
   TestInList(&cel_list, CelValue::CreateBytes(&v1), true);
   TestInList(&cel_list, CelValue::CreateBytes(&v2), false);
+}
+
+TEST_F(BuiltinsTest, TestMapInError) {
+  Arena arena;
+  FakeErrorMap cel_map;
+  std::vector<CelValue> kValues = {
+      CelValue::CreateBool(true),
+      CelValue::CreateInt64(1),
+      CelValue::CreateStringView("hello"),
+      CelValue::CreateUint64(2),
+  };
+  for (auto key : kValues) {
+    CelValue result_value;
+    ASSERT_NO_FATAL_FAILURE(PerformRun(
+        builtin::kIn, {}, {key, CelValue::CreateMap(&cel_map)}, &result_value));
+
+    EXPECT_TRUE(result_value.IsError());
+    EXPECT_EQ(result_value.ErrorOrDie()->message(), "bad key type");
+    EXPECT_EQ(result_value.ErrorOrDie()->code(),
+              absl::StatusCode::kInvalidArgument);
+  }
+}
+
+TEST_F(BuiltinsTest, TestBoolMapIn) {
+  constexpr bool kValues[] = {true, true};
+  std::map<bool, CelValue> data;
+  for (auto value : kValues) {
+    data[value] = CelValue::CreateBool(value);
+  }
+  FakeBoolMap cel_map(data);
+  TestInMap(&cel_map, CelValue::CreateBool(true), true);
+  TestInMap(&cel_map, CelValue::CreateBool(false), false);
+  TestInMap(&cel_map, CelValue::CreateUint64(3), false);
 }
 
 TEST_F(BuiltinsTest, TestInt64MapIn) {

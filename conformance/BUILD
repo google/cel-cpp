@@ -85,8 +85,6 @@ cc_binary(
             # TODO(issues/114): Ensure the 'in' operator is a logical OR of element equality results.
             "--skip_test=comparisons/in_list_literal/elem_in_mixed_type_list_error",
             "--skip_test=comparisons/in_map_literal/key_in_mixed_key_type_map_error",
-            # TODO(issues/115): The 'in' operator fails with maps containing boolean keys.
-            "--skip_test=fields/in/singleton",
             # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
             "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
             "--skip_test=namespace/qualified/self_eval_qualified_lookup",

@@ -25,9 +25,11 @@ cc_library(
     deps = [
         ":cel_cc_parser",
         ":macro",
+        ":options",
         ":source_factory",
         ":visitor",
         "@antlr4_runtimes//:cpp",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
@@ -108,10 +110,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "options",
+    hdrs = ["options.h"],
+)
+
 cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
     deps = [
+        ":options",
         ":parser",
         ":source_factory",
         "//testutil:expr_printer",

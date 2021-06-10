@@ -146,12 +146,13 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
         ASSIGN_OR_RETURN(auto map_value, ValueToCelValue(entry.value(), arena));
         key_values.push_back(std::pair<CelValue, CelValue>(map_key, map_value));
       }
-      auto cel_map =
+      ASSIGN_OR_RETURN(
+          auto cel_map,
           CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
-                                       key_values.data(), key_values.size()))
-              .release();
-      arena->Own(cel_map);
-      return CelValue::CreateMap(cel_map);
+              key_values.data(), key_values.size())));
+      auto* cel_map_ptr = cel_map.release();
+      arena->Own(cel_map_ptr);
+      return CelValue::CreateMap(cel_map_ptr);
     }
     case Value::kNullValue:
       return CelValue::CreateNull();

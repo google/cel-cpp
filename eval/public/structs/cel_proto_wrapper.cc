@@ -11,6 +11,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/message.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -49,7 +50,7 @@ using google::protobuf::UInt64Value;
 using google::protobuf::Value;
 
 // kMaxIntJSON is defined as the Number.MAX_SAFE_INTEGER value per EcmaScript 6.
-constexpr int64_t kMaxIntJSON = (1l << 53) - 1;
+constexpr int64_t kMaxIntJSON = (1ll << 53) - 1;
 
 // kMinIntJSON is defined as the Number.MIN_SAFE_INTEGER value per EcmaScript 6.
 constexpr int64_t kMinIntJSON = -kMaxIntJSON;
@@ -93,15 +94,30 @@ class DynamicMap : public CelMap {
   DynamicMap(const Struct* values, Arena* arena)
       : arena_(arena), values_(values), key_list_(values) {}
 
+  absl::StatusOr<bool> Has(const CelValue& key) const override {
+    CelValue::StringHolder str_key;
+    if (!key.GetValue(&str_key)) {
+      // Not a string key.
+      return absl::InvalidArgumentError(absl::StrCat(
+          "invalid map key type. wanted: string, got: ", key.DebugString()));
+    }
+
+    return values_->fields().contains(std::string(str_key.value()));
+  }
+
   absl::optional<CelValue> operator[](CelValue key) const override {
     CelValue::StringHolder str_key;
     if (!key.GetValue(&str_key)) {
-      return {};  // Not a string key
+      // Not a string key.
+      return CreateErrorValue(arena_,
+                              absl::InvalidArgumentError(absl::StrCat(
+                                  "invalid map key type. wanted: string, got: ",
+                                  key.DebugString())));
     }
 
     auto it = values_->fields().find(std::string(str_key.value()));
     if (it == values_->fields().end()) {
-      return {};
+      return absl::nullopt;
     }
 
     return ValueFromMessage(&it->second, arena_);

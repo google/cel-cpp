@@ -1,8 +1,10 @@
-
-
 #include "eval/public/containers/container_backed_map_impl.h"
 
 #include "absl/container/node_hash_map.h"
+#include "absl/hash/hash.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "eval/public/cel_value.h"
 
@@ -102,14 +104,14 @@ class Equal {
 // type of key in STL map.
 class ContainerBackedMapImpl : public CelMap {
  public:
-  static std::unique_ptr<CelMap> Create(
+  static absl::StatusOr<std::unique_ptr<CelMap>> Create(
       absl::Span<std::pair<CelValue, CelValue>> key_values) {
     auto cel_map = absl::WrapUnique(new ContainerBackedMapImpl());
-
-    if (!cel_map->AddItems(key_values)) {
-      return nullptr;
+    auto status = cel_map->AddItems(key_values);
+    if (!status.ok()) {
+      return status;
     }
-    return std::move(cel_map);
+    return cel_map;
   }
 
   // Map size.
@@ -119,9 +121,13 @@ class ContainerBackedMapImpl : public CelMap {
   absl::optional<CelValue> operator[](CelValue cel_key) const override {
     auto item = values_map_.find(cel_key);
     if (item == values_map_.end()) {
-      return {};
+      return absl::nullopt;
     }
     return item->second;
+  }
+
+  absl::StatusOr<bool> Has(const CelValue& cel_key) const override {
+    return values_map_.contains(cel_key);
   }
 
   const CelList* ListKeys() const override { return &key_list_; }
@@ -141,17 +147,17 @@ class ContainerBackedMapImpl : public CelMap {
 
   ContainerBackedMapImpl() = default;
 
-  bool AddItems(absl::Span<std::pair<CelValue, CelValue>> key_values) {
+  absl::Status AddItems(absl::Span<std::pair<CelValue, CelValue>> key_values) {
     for (const auto& item : key_values) {
       auto result = values_map_.emplace(item.first, item.second);
 
       // Failed to insert pair into map - addition failed.
       if (!result.second) {
-        return false;
+        return absl::InvalidArgumentError("duplicate map keys");
       }
       key_list_.Add(item.first);
     }
-    return true;
+    return absl::OkStatus();
   }
 
   absl::node_hash_map<CelValue, CelValue, Hasher, Equal> values_map_;
@@ -160,7 +166,7 @@ class ContainerBackedMapImpl : public CelMap {
 
 }  // namespace
 
-std::unique_ptr<CelMap> CreateContainerBackedMap(
+absl::StatusOr<std::unique_ptr<CelMap>> CreateContainerBackedMap(
     absl::Span<std::pair<CelValue, CelValue>> key_values) {
   return ContainerBackedMapImpl::Create(key_values);
 }

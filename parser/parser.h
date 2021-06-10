@@ -5,15 +5,13 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "parser/macro.h"
+#include "parser/options.h"
 #include "parser/source_factory.h"
 
 namespace google {
 namespace api {
 namespace expr {
 namespace parser {
-
-constexpr int kDefaultErrorRecoveryLimit = 30;
-constexpr int kDefaultMaxRecursionDepth = 250;
 
 class VerboseParsedExpr {
  public:
@@ -37,19 +35,16 @@ class VerboseParsedExpr {
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
     const std::string& description = "<input>",
-    int max_recursion_depth = kDefaultMaxRecursionDepth,
-    int error_recovery_limit = kDefaultErrorRecoveryLimit);
+    const ParserOptions& options = ParserOptions());
 
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
     const std::string& expression, const std::string& description = "<input>",
-    int max_recursion_depth = kDefaultMaxRecursionDepth,
-    int error_recovery_limit = kDefaultErrorRecoveryLimit);
+    const ParserOptions& options = ParserOptions());
 
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
     const std::string& expression, const std::vector<Macro>& macros,
     const std::string& description = "<input>",
-    int max_recursion_depth = kDefaultMaxRecursionDepth,
-    int error_recovery_limit = kDefaultErrorRecoveryLimit);
+    const ParserOptions& options = ParserOptions());
 
 }  // namespace parser
 }  // namespace expr

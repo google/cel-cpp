@@ -1,6 +1,7 @@
 #include "eval/eval/create_struct_step.h"
 
 #include <memory>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
@@ -233,15 +234,16 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
     map_entries.push_back({args[2 * i], args[2 * i + 1]});
   }
 
-  auto cel_map =
+  auto status_or_cel_map =
       CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
           map_entries.data(), map_entries.size()));
-
-  if (cel_map == nullptr) {
-    *result = CreateErrorValue(frame->arena(), "Failed to create map");
-
+  if (!status_or_cel_map.ok()) {
+    *result =
+        CreateErrorValue(frame->arena(), status_or_cel_map.status().message());
     return absl::OkStatus();
   }
+
+  auto cel_map = std::move(*status_or_cel_map);
 
   *result = CelValue::CreateMap(cel_map.get());
 

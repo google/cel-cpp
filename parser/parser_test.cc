@@ -11,6 +11,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/optional.h"
+#include "parser/options.h"
 #include "parser/source_factory.h"
 #include "testutil/expr_printer.h"
 
@@ -998,7 +999,9 @@ TEST(ExpressionTest, TsanOom) {
 }
 
 TEST(ExpressionTest, ErrorRecoveryLimits) {
-  auto result = Parse("......", "", kDefaultMaxRecursionDepth, 1);
+  ParserOptions options;
+  options.error_recovery_limit = 1;
+  auto result = Parse("......", "", options);
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.status().message(),
             "ERROR: :1:2: Syntax error: missing IDENTIFIER at '.'\n"
@@ -1007,6 +1010,16 @@ TEST(ExpressionTest, ErrorRecoveryLimits) {
             "ERROR: :1:3: Syntax error: More than 1 parse errors.\n"
             " | ......\n"
             " | ..^");
+}
+
+TEST(ExpressionTest, ExpressionSizeLimit) {
+  ParserOptions options;
+  options.expression_size_codepoint_limit = 10;
+  auto result = Parse("...............", "", options);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ(
+      result.status().message(),
+      "expression size exceeds codepoint limit. input size: 15, limit: 10");
 }
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,

@@ -298,7 +298,8 @@ TEST(ValueExportUtilTest, ConvertCelMapWithStringKey) {
       {CelValue::CreateString(&key2), CelValue::CreateString(&value2)});
 
   auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(map_entries));
+                     absl::Span<std::pair<CelValue, CelValue>>(map_entries))
+                     .value();
   CelValue cel_value = CelValue::CreateMap(cel_map.get());
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
@@ -325,7 +326,8 @@ TEST(ValueExportUtilTest, ConvertCelMapWithInt64Key) {
       {CelValue::CreateInt64(key2), CelValue::CreateString(&value2)});
 
   auto cel_map = CreateContainerBackedMap(
-      absl::Span<std::pair<CelValue, CelValue>>(map_entries));
+                     absl::Span<std::pair<CelValue, CelValue>>(map_entries))
+                     .value();
   CelValue cel_value = CelValue::CreateMap(cel_map.get());
 
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));

@@ -1,5 +1,6 @@
 #include "eval/eval/select_step.h"
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/evaluator_core.h"
@@ -155,7 +156,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       }
 
       absl::Status status = CreateValueFromField(msg, frame->arena(), &result);
-
       if (status.ok()) {
         frame->value_stack().PopAndPush(result, result_trail);
       }
@@ -178,15 +178,23 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
         return absl::OkStatus();
       }
 
-      auto lookup_result = (*cel_map)[CelValue::CreateString(&field_)];
-
-      // Test only Select expression.
+      CelValue field_name = CelValue::CreateString(&field_);
       if (test_field_presence_) {
-        result = CelValue::CreateBool(lookup_result.has_value());
+        // Field presence only supports string keys containing valid identifier
+        // characters.
+        auto presence = cel_map->Has(field_name);
+        if (!presence.ok()) {
+          CelValue error_value =
+              CreateErrorValue(frame->arena(), presence.status());
+          frame->value_stack().PopAndPush(error_value);
+          return absl::OkStatus();
+        }
+        result = CelValue::CreateBool(*presence);
         frame->value_stack().PopAndPush(result);
         return absl::OkStatus();
       }
 
+      auto lookup_result = (*cel_map)[field_name];
       if (frame->enable_unknowns()) {
         result_trail = trail.Step(&field_, frame->arena());
         if (frame->attribute_utility().CheckForUnknown(result_trail, false)) {
@@ -205,7 +213,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
         result = CreateNoSuchKeyError(frame->arena(), field_);
       }
       frame->value_stack().PopAndPush(result, result_trail);
-
       return absl::OkStatus();
     }
     case CelValue::Type::kUnknownSet: {

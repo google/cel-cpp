@@ -15,6 +15,7 @@ cc_library(
         "//eval/testutil:test_message_cc_proto",
         "//internal:proto_util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_protobuf//:protobuf",
@@ -29,6 +30,7 @@ cc_test(
     ],
     deps = [
         ":cel_proto_wrapper",
+        "//base:status_macros",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
