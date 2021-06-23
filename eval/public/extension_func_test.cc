@@ -1,10 +1,24 @@
+#include <string>
+#include <vector>
+
+#include "google/type/timeofday.pb.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/util/time_util.h"
 #include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/time/civil_time.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
+#include "absl/types/span.h"
 #include "eval/public/builtin_func_registrar.h"
+#include "eval/public/cel_expr_builder_factory.h"
+#include "eval/public/cel_expression.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/extension_func_registrar.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "base/status_macros.h"
 
 namespace google {
@@ -81,6 +95,151 @@ class ExtensionTest : public ::testing::Test {
     ASSERT_OK(status);
   }
 
+  void PerformBetweenTest(Arena* arena, absl::Time time_stamp,
+                          absl::Time start_ts, absl::Time stop_ts,
+                          CelValue* result) {
+    auto functions = registry_.FindOverloads(
+        "between", false,
+        {CelValue::Type::kTimestamp, CelValue::Type::kTimestamp,
+         CelValue::Type::kTimestamp});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {CelValue::CreateTimestamp(time_stamp),
+                                  CelValue::CreateTimestamp(start_ts),
+                                  CelValue::CreateTimestamp(stop_ts)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformBetweenStrTest(Arena* arena, absl::Time time_stamp,
+                             std::string* start, std::string* stop,
+                             CelValue* result) {
+    auto functions = registry_.FindOverloads(
+        "between", false,
+        {CelValue::Type::kTimestamp, CelValue::Type::kString,
+         CelValue::Type::kString});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {CelValue::CreateTimestamp(time_stamp),
+                                  CelValue::CreateString(start),
+                                  CelValue::CreateString(stop)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformGetDateTest(Arena* arena, absl::Time time_stamp,
+                          std::string* time_zone, CelValue* result) {
+    auto functions = registry_.FindOverloads(
+        "date", false, {CelValue::Type::kTimestamp, CelValue::Type::kString});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {CelValue::CreateTimestamp(time_stamp),
+                                  CelValue::CreateString(time_zone)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformGetDateUTCTest(Arena* arena, absl::Time time_stamp,
+                             CelValue* result) {
+    auto functions =
+        registry_.FindOverloads("date", false, {CelValue::Type::kTimestamp});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {CelValue::CreateTimestamp(time_stamp)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformGetTimeOfDayTest(Arena* arena, absl::Time time_stamp,
+                               std::string* time_zone, CelValue* result) {
+    auto functions = registry_.FindOverloads(
+        "timeOfDay", false,
+        {CelValue::Type::kTimestamp, CelValue::Type::kString});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {CelValue::CreateTimestamp(time_stamp),
+                                  CelValue::CreateString(time_zone)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformGetTimeOfDayUTCTest(Arena* arena, absl::Time time_stamp,
+                                  CelValue* result) {
+    auto functions = registry_.FindOverloads("timeOfDay", false,
+                                             {CelValue::Type::kTimestamp});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {CelValue::CreateTimestamp(time_stamp)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformBetweenToDTest(Arena* arena, const google::protobuf::Message* time_of_day,
+                             const google::protobuf::Message* start,
+                             const google::protobuf::Message* stop, CelValue* result) {
+    auto functions = registry_.FindOverloads(
+        "between", false,
+        {CelValue::Type::kMessage, CelValue::Type::kMessage,
+         CelValue::Type::kMessage});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {
+        CelProtoWrapper::CreateMessage(time_of_day, arena),
+        CelProtoWrapper::CreateMessage(start, arena),
+        CelProtoWrapper::CreateMessage(stop, arena)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
+  void PerformBetweenToDStrTest(Arena* arena,
+                                const google::protobuf::Message* time_of_day,
+                                std::string* start, std::string* stop,
+                                CelValue* result) {
+    auto functions = registry_.FindOverloads(
+        "between", false,
+        {CelValue::Type::kMessage, CelValue::Type::kString,
+         CelValue::Type::kString});
+    ASSERT_EQ(functions.size(), 1);
+
+    auto func = functions[0];
+
+    std::vector<CelValue> args = {
+        CelProtoWrapper::CreateMessage(time_of_day, arena),
+        CelValue::CreateString(start), CelValue::CreateString(stop)};
+    absl::Span<CelValue> arg_span(&args[0], args.size());
+    auto status = func->Evaluate(arg_span, result, arena);
+
+    ASSERT_OK(status);
+  }
+
   // Helper method to test duration() function
   void PerformDurationConversion(Arena* arena, std::string ts_str,
                                  CelValue* result) {
@@ -99,6 +258,7 @@ class ExtensionTest : public ::testing::Test {
 
   // Function registry object
   CelFunctionRegistry registry_;
+  Arena arena_;
 };
 
 // Test string startsWith() function.
@@ -207,6 +367,226 @@ TEST_F(ExtensionTest, TestDurationFromString) {
   // Invalid duration.
   EXPECT_NO_FATAL_FAILURE(PerformDurationConversion(&arena, "100", &result));
   ASSERT_TRUE(result.IsError());
+}
+
+TEST_F(ExtensionTest, TestBetweenTs) {
+  absl::Time time_1;
+  absl::Time time_2;
+  absl::Time time_3;
+  std::string time_stampstr = "1997-07-16T19:50:30.45+01:00";
+  std::string time_start = "1997-07-16T19:20:30.45+01:00";
+  std::string time_stop = "1997-07-16T20:20:30.45+01:00";
+  Arena arena;
+  CelValue result;
+
+  absl::ParseTime(absl::RFC3339_full, time_stampstr, &time_2, nullptr);
+  absl::ParseTime(absl::RFC3339_full, time_start, &time_1, nullptr);
+  absl::ParseTime(absl::RFC3339_full, time_stop, &time_3, nullptr);
+
+  PerformBetweenTest(&arena, time_2, time_1, time_3, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+  PerformBetweenTest(&arena, time_1, time_2, time_3, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+  PerformBetweenTest(&arena, time_1, time_1, time_3, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+  PerformBetweenTest(&arena, time_3, time_1, time_2, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+  PerformBetweenTest(&arena, time_3, time_1, time_3, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+}
+
+TEST_F(ExtensionTest, TestBetweenStr) {
+  Arena arena;
+  absl::Time time_stamp;
+  CelValue result;
+  std::string time_stampstr = "1997-07-16T19:50:30.45+01:00";
+  std::string time_start = "1997-07-16T19:20:30.45+01:00";
+  std::string time_stop = "1997-07-16T20:20:30.45+01:00";
+
+  absl::ParseTime(absl::RFC3339_full, time_stampstr, &time_stamp, nullptr);
+  PerformBetweenStrTest(&arena, time_stamp, &time_start, &time_stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  absl::ParseTime(absl::RFC3339_full, time_start, &time_stamp, nullptr);
+  PerformBetweenStrTest(&arena, time_stamp, &time_start, &time_stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  absl::ParseTime(absl::RFC3339_full, time_stop, &time_stamp, nullptr);
+  PerformBetweenStrTest(&arena, time_stamp, &time_start, &time_stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+
+  time_stampstr = "1997-07-16T18:20:30.45+01:00";
+  absl::ParseTime(absl::RFC3339_full, time_stampstr, &time_stamp, nullptr);
+  PerformBetweenStrTest(&arena, time_stamp, &time_start, &time_stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+
+  time_stampstr = "1997-07-16T21:20:30.45+01:00";
+  absl::ParseTime(absl::RFC3339_full, time_stampstr, &time_stamp, nullptr);
+  PerformBetweenStrTest(&arena, time_stamp, &time_start, &time_stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+}
+
+TEST_F(ExtensionTest, TestGetDate) {
+  Arena arena;
+  CelValue result;
+  absl::CivilSecond date(2015, 2, 3, 4, 5, 6);
+  absl::CivilSecond normal_date(2015, 2, 3);
+  absl::TimeZone time_zone = absl::LocalTimeZone();
+  std::string time_zonestr = "America/Los_Angeles";
+
+  absl::Time expected_val = absl::FromCivil(normal_date, time_zone);
+  absl::Time input_val = absl::FromCivil(date, time_zone);
+
+  PerformGetDateTest(&arena, input_val, &time_zonestr, &result);
+  ASSERT_EQ(result.TimestampOrDie(), expected_val);
+}
+
+TEST_F(ExtensionTest, TestGetDateUTC) {
+  Arena arena;
+  CelValue result;
+  absl::CivilSecond date(2015, 2, 3, 4, 5, 6);
+  absl::CivilSecond normal_date(2015, 2, 3);
+  absl::TimeZone time_zone = absl::UTCTimeZone();
+
+  absl::Time expected_val = absl::FromCivil(normal_date, time_zone);
+  absl::Time input_val = absl::FromCivil(date, time_zone);
+
+  PerformGetDateUTCTest(&arena, input_val, &result);
+  ASSERT_EQ(result.TimestampOrDie(), expected_val);
+}
+
+TEST_F(ExtensionTest, TestGetTimeOfDay) {
+  Arena arena;
+  CelValue result;
+  absl::CivilSecond date(2015, 2, 3, 4, 5, 6);
+  absl::TimeZone time_zone;
+  std::string time_zonestr = "America/Los_Angeles";
+  google::type::TimeOfDay* tod_message =
+      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+
+  absl::LoadTimeZone(time_zonestr, &time_zone);
+  absl::Time input_val = absl::FromCivil(date, time_zone);
+
+  tod_message->set_seconds(date.second());
+  tod_message->set_minutes(date.minute());
+  tod_message->set_hours(date.hour());
+
+  PerformGetTimeOfDayTest(&arena, input_val, &time_zonestr, &result);
+  const google::type::TimeOfDay* time_of_day_tod =
+      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(
+          result.MessageOrDie());
+
+  ASSERT_EQ(time_of_day_tod->seconds(), tod_message->seconds());
+  ASSERT_EQ(time_of_day_tod->minutes(), tod_message->minutes());
+  ASSERT_EQ(time_of_day_tod->hours(), tod_message->hours());
+}
+
+TEST_F(ExtensionTest, TestGetTimeOfDayUTC) {
+  Arena arena;
+  CelValue result;
+  absl::TimeZone time_zone = absl::UTCTimeZone();
+  absl::CivilSecond date(2015, 2, 3, 4, 5, 6);
+  absl::Time input_time = absl::FromCivil(date, time_zone);
+  google::type::TimeOfDay* tod_message =
+      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+
+  tod_message->set_seconds(date.second());
+  tod_message->set_minutes(date.minute());
+  tod_message->set_hours(date.hour());
+
+  PerformGetTimeOfDayUTCTest(&arena, input_time, &result);
+  const google::type::TimeOfDay* time_of_day_tod =
+      google::protobuf::DynamicCastToGenerated<const google::type::TimeOfDay>(
+          result.MessageOrDie());
+
+  ASSERT_EQ(time_of_day_tod->seconds(), tod_message->seconds());
+  ASSERT_EQ(time_of_day_tod->minutes(), tod_message->minutes());
+  ASSERT_EQ(time_of_day_tod->hours(), tod_message->hours());
+}
+
+TEST_F(ExtensionTest, TestBetweenToD) {
+  Arena arena;
+  CelValue result;
+  google::type::TimeOfDay* time_of_day =
+      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+  google::type::TimeOfDay* start =
+      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+  google::type::TimeOfDay* stop =
+      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+
+  start->set_hours(20);
+  start->set_minutes(0);
+  start->set_seconds(0);
+  stop->set_hours(21);
+  stop->set_minutes(0);
+  stop->set_seconds(0);
+  time_of_day->set_hours(20);
+  time_of_day->set_minutes(30);
+  time_of_day->set_seconds(0);
+
+  PerformBetweenToDTest(&arena, time_of_day, start, stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  time_of_day->set_minutes(0);
+  PerformBetweenToDTest(&arena, time_of_day, start, stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  time_of_day->set_hours(19);
+  PerformBetweenToDTest(&arena, time_of_day, start, stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+
+  time_of_day->set_hours(21);
+  PerformBetweenToDTest(&arena, time_of_day, start, stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+
+  time_of_day->set_seconds(1);
+  PerformBetweenToDTest(&arena, time_of_day, start, stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+}
+
+TEST_F(ExtensionTest, TestBetweenTodStr) {
+  Arena arena;
+  CelValue result;
+  std::string start = "18:20:30";
+  std::string stop = "19:20:30";
+  google::type::TimeOfDay* time_of_day =
+      Arena::CreateMessage<google::type::TimeOfDay>(&arena);
+
+  time_of_day->set_hours(19);
+  time_of_day->set_minutes(0);
+  time_of_day->set_seconds(0);
+
+  PerformBetweenToDStrTest(&arena, time_of_day, &start, &stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  time_of_day->set_hours(18);
+  time_of_day->set_minutes(20);
+  time_of_day->set_seconds(30);
+
+  PerformBetweenToDStrTest(&arena, time_of_day, &start, &stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  time_of_day->set_seconds(29);
+
+  PerformBetweenToDStrTest(&arena, time_of_day, &start, &stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+
+  time_of_day->set_hours(19);
+  time_of_day->set_minutes(20);
+  time_of_day->set_seconds(30);
+
+  PerformBetweenToDStrTest(&arena, time_of_day, &start, &stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
+
+  time_of_day->set_seconds(29);
+
+  PerformBetweenToDStrTest(&arena, time_of_day, &start, &stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), true);
+
+  time_of_day->set_seconds(31);
+
+  PerformBetweenToDStrTest(&arena, time_of_day, &start, &stop, &result);
+  ASSERT_EQ(result.BoolOrDie(), false);
 }
 
 }  // namespace
