@@ -1,5 +1,5 @@
 #include "google/api/expr/v1beta1/value.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "testutil/test_data_io.h"
 #include "testutil/test_data_util.h"

@@ -1,6 +1,6 @@
 #include "eval/public/cel_function_provider.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "base/status_macros.h"
 

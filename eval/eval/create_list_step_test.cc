@@ -1,6 +1,6 @@
 #include "eval/eval/create_list_step.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -19,6 +19,7 @@ namespace {
 
 using testing::Eq;
 using testing::Not;
+using cel_base::testing::IsOk;
 
 using google::api::expr::v1alpha1::Expr;
 
@@ -120,7 +121,7 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
   google::protobuf::Arena arena;
 
   auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_FALSE(status.ok());
+  ASSERT_THAT(status, Not(IsOk()));
 }
 
 TEST_P(CreateListStepTest, CreateListEmpty) {

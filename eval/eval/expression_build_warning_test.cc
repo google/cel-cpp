@@ -1,6 +1,6 @@
 #include "eval/eval/expression_build_warning.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 
@@ -10,14 +10,15 @@ namespace expr {
 namespace runtime {
 namespace {
 
+using cel_base::testing::IsOk;
 
 TEST(BuilderWarnings, NoFailCollects) {
   BuilderWarnings warnings(false);
 
   auto status = warnings.AddWarning(absl::InternalError("internal"));
-  EXPECT_TRUE(status.ok());
+  EXPECT_THAT(status, IsOk());
   auto status2 = warnings.AddWarning(absl::InternalError("internal error 2"));
-  EXPECT_TRUE(status2.ok());
+  EXPECT_THAT(status2, IsOk());
 
   EXPECT_THAT(warnings.warnings(), testing::SizeIs(2));
 }

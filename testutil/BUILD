@@ -30,6 +30,8 @@ cc_library(
     deps = [
         "//common:type",
         "//common:value",
+        "//google/api/expr/v1beta1:eval_cc_proto",
+        "//google/api/expr/v1beta1:value_cc_proto",
         "//internal:cel_printer",
         "//internal:proto_util",
         "//internal:types",
@@ -40,8 +42,6 @@ cc_library(
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:span",
         "@com_google_cel_spec//testdata:test_value_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1beta1:eval_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1beta1:value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -57,6 +57,7 @@ cc_library(
         "test_data_io.h",
     ],
     deps = [
+        "//base:testing",
         "//internal:status_util",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/memory",
@@ -65,7 +66,6 @@ cc_library(
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/rpc:status_cc_proto",
-        "@com_google_googletest//:gtest",
         "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
     ],
@@ -103,10 +103,10 @@ cc_test(
     ],
     deps = [
         ":test_data_util",
+        "//base:testing",
+        "//google/api/expr/v1beta1:value_cc_proto",
         "//testutil:test_data_io",
         "@com_google_cel_spec//testdata:test_data_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1beta1:value_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -117,7 +117,7 @@ cc_library(
         "util.h",
     ],
     deps = [
-        "@com_google_googletest//:gtest",
+        "//base:testing",
         "@com_google_protobuf//:protobuf",
     ],
 )

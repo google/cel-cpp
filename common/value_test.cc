@@ -8,7 +8,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/status.pb.h"
 #include "google/type/money.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/str_cat.h"

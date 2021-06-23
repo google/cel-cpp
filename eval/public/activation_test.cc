@@ -1,6 +1,6 @@
 #include "eval/public/activation.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/ident_step.h"

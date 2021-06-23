@@ -31,6 +31,7 @@ cc_test(
     deps = [
         ":cel_proto_wrapper",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
@@ -40,7 +41,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

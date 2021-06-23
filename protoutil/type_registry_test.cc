@@ -2,7 +2,7 @@
 
 #include "google/protobuf/struct.pb.h"
 #include "google/type/money.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "common/value.h"
 #include "internal/ref_countable.h"

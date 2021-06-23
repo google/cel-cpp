@@ -31,11 +31,11 @@ cc_test(
     srcs = ["type_registry_test.cc"],
     deps = [
         ":type_registry",
+        "//base:testing",
         "//common:value",
         "//internal:ref_countable",
         "//testutil:util",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -76,6 +76,7 @@ cc_test(
     deps = [
         ":converters",
         ":type_registry",
+        "//base:testing",
         "//common:value",
         "//testutil:test_data_io",
         "//testutil:test_data_util",
@@ -84,7 +85,6 @@ cc_test(
         "@com_google_cel_spec//testdata:test_data_cc_proto",
         "@com_google_cel_spec//testdata:test_value_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

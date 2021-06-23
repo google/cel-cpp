@@ -1,6 +1,6 @@
 #include "eval/public/activation_bind_helper.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "eval/public/activation.h"

@@ -55,7 +55,7 @@ cc_test(
     ],
     deps = [
         ":evaluator_stack",
-        "@com_google_googletest//:gtest_main",
+        "//base:testing",
     ],
 )
 
@@ -303,6 +303,7 @@ cc_test(
         ":evaluator_core",
         ":ident_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_attribute",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
@@ -310,7 +311,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -325,12 +325,12 @@ cc_test(
         ":attribute_trail",
         ":evaluator_core",
         "//base:status_macros",
+        "//base:testing",
         "//eval/compiler:flat_expr_builder",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -344,9 +344,9 @@ cc_test(
         ":const_value_step",
         ":evaluator_core",
         "//base:status_macros",
+        "//base:testing",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -360,13 +360,13 @@ cc_test(
         ":container_access_step",
         ":ident_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_attribute",
         "//eval/public:cel_builtins",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -381,8 +381,8 @@ cc_test(
         ":evaluator_core",
         ":ident_step",
         "//base:status_macros",
+        "//base:testing",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -398,6 +398,7 @@ cc_test(
         ":function_step",
         ":ident_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_attribute",
         "//eval/public:cel_function",
         "//eval/public:cel_function_registry",
@@ -409,7 +410,6 @@ cc_test(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -423,9 +423,9 @@ cc_test(
         ":ident_step",
         ":logic_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -439,6 +439,7 @@ cc_test(
         ":ident_step",
         ":select_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_attribute",
         "//eval/public:unknown_attribute_set",
         "//eval/public/containers:container_backed_map_impl",
@@ -448,7 +449,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -463,12 +463,12 @@ cc_test(
         ":create_list_step",
         ":ident_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
         "//eval/public:unknown_attribute_set",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -482,6 +482,7 @@ cc_test(
         ":create_struct_step",
         ":ident_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_type_registry",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
@@ -492,7 +493,6 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -517,8 +517,8 @@ cc_test(
     ],
     deps = [
         ":expression_build_warning",
+        "//base:testing",
         "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -547,10 +547,10 @@ cc_test(
     ],
     deps = [
         ":attribute_trail",
+        "//base:testing",
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -581,12 +581,12 @@ cc_test(
     ],
     deps = [
         ":attribute_utility",
+        "//base:testing",
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -622,9 +622,9 @@ cc_test(
         ":ident_step",
         ":ternary_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -649,9 +649,9 @@ cc_test(
         ":evaluator_core",
         ":shadowable_value_step",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_value",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )

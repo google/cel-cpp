@@ -1,6 +1,6 @@
 #include "eval/public/cel_value.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
@@ -312,15 +312,17 @@ TEST(CelValueTest, DebugString) {
 
   EXPECT_EQ(
       CelValue::CreateTimestamp(absl::FromUnixSeconds(86400)).DebugString(),
-      "Time: 1970-01-02T00:00:00+00:00");
+      "Timestamp: 1970-01-02T00:00:00+00:00");
 
   UnknownSet unknown_set;
   EXPECT_EQ(CelValue::CreateUnknownSet(&unknown_set).DebugString(),
-            "UnknownSet");
+            "UnknownSet: ?");
 
   absl::Status error = absl::InternalError("Blah...");
   EXPECT_EQ(CelValue::CreateError(&error).DebugString(),
-            "Error: INTERNAL: Blah...");
+            "CelError: INTERNAL: Blah...");
+
+  // List and map DebugString() test coverage is in cel_proto_wrapper_test.cc.
 }
 
 }  // namespace runtime

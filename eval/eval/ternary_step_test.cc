@@ -1,6 +1,6 @@
 #include "eval/eval/ternary_step.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/unknown_attribute_set.h"

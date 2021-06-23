@@ -8,8 +8,6 @@ def base_deps():
     """Base evaluator and test dependencies."""
     http_archive(
         name = "com_google_absl",
-        patches = ["//bazel:abseil.patch"],
-        patch_args = ["-p1"],
         strip_prefix = "abseil-cpp-master",
         urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
     )
@@ -28,8 +26,8 @@ def base_deps():
 
     http_archive(
         name = "com_googlesource_code_re2",
-        strip_prefix = "re2-main",
-        urls = ["https://github.com/google/re2/archive/main.zip"],
+        strip_prefix = "re2-master",
+        urls = ["https://github.com/google/re2/archive/master.zip"],
     )
 
     PROTOBUF_VERSION = "3.14.0"

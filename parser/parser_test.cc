@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
@@ -23,6 +23,7 @@ namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
 using testing::Not;
+using cel_base::testing::IsOk;
 
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,
@@ -950,9 +951,9 @@ TEST_P(ExpressionTest, Parse) {
 
   auto result = EnrichedParse(test_info.I, Macro::AllMacros());
   if (test_info.E.empty()) {
-    EXPECT_TRUE(result.ok());
+    EXPECT_THAT(result, IsOk());
   } else {
-    EXPECT_FALSE(result.ok());
+    EXPECT_THAT(result, Not(IsOk()));
     EXPECT_EQ(result.status().message(), test_info.E);
   }
 
@@ -1002,7 +1003,7 @@ TEST(ExpressionTest, ErrorRecoveryLimits) {
   ParserOptions options;
   options.error_recovery_limit = 1;
   auto result = Parse("......", "", options);
-  EXPECT_FALSE(result.ok());
+  EXPECT_THAT(result, Not(IsOk()));
   EXPECT_EQ(result.status().message(),
             "ERROR: :1:2: Syntax error: missing IDENTIFIER at '.'\n"
             " | ......\n"
@@ -1016,7 +1017,7 @@ TEST(ExpressionTest, ExpressionSizeLimit) {
   ParserOptions options;
   options.expression_size_codepoint_limit = 10;
   auto result = Parse("...............", "", options);
-  EXPECT_FALSE(result.ok());
+  EXPECT_THAT(result, Not(IsOk()));
   EXPECT_EQ(
       result.status().message(),
       "expression size exceeds codepoint limit. input size: 15, limit: 10");

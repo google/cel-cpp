@@ -1,7 +1,7 @@
 #include "eval/public/cel_attribute.h"
 
 #include "google/protobuf/arena.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"

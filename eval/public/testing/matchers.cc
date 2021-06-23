@@ -1,6 +1,6 @@
 #include "eval/public/testing/matchers.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/set_util.h"

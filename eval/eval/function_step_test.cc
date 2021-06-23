@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
@@ -32,6 +32,7 @@ using testing::ElementsAre;
 using testing::Eq;
 using testing::Not;
 using testing::UnorderedElementsAre;
+using cel_base::testing::IsOk;
 
 using google::api::expr::v1alpha1::Expr;
 
@@ -297,7 +298,7 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
   google::protobuf::Arena arena;
 
   auto status = impl->Evaluate(activation, &arena);
-  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(status, Not(IsOk()));
 }
 
 // Test situation when no overloads match input arguments during evaluation.

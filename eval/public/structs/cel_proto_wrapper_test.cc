@@ -10,7 +10,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -854,7 +854,8 @@ TEST_F(CelProtoWrapperTest, DebugString) {
   list_value.add_values()->set_number_value(1.0);
   list_value.add_values()->set_string_value("test");
   CelValue value = CelProtoWrapper::CreateMessage(&list_value, arena());
-  EXPECT_EQ(value.DebugString(), "List, size: 3");
+  EXPECT_EQ(value.DebugString(),
+            "CelList: [bool: 1, double: 1.000000, string: test]");
 
   Struct value_struct;
   auto& value1 = (*value_struct.mutable_fields())["a"];
@@ -865,7 +866,12 @@ TEST_F(CelProtoWrapperTest, DebugString) {
   value3.set_string_value("test");
 
   value = CelProtoWrapper::CreateMessage(&value_struct, arena());
-  EXPECT_EQ(value.DebugString(), "Map, size: 3");
+  EXPECT_THAT(
+      value.DebugString(),
+      testing::AllOf(testing::StartsWith("CelMap: {"),
+                     testing::HasSubstr("<string: a>: <bool: 1>"),
+                     testing::HasSubstr("<string: b>: <double: 1.0"),
+                     testing::HasSubstr("<string: c>: <string: test>")));
 }
 
 }  // namespace

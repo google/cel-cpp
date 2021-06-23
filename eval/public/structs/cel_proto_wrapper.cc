@@ -548,7 +548,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     if (!result.has_value()) {
       return {};
     }
-    (*fields)[std::string(key)] = field_value;
+    (*fields)[key] = field_value;
   }
   return json_struct;
 }

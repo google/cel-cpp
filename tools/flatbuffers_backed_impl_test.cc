@@ -1,6 +1,6 @@
 #include "tools/flatbuffers_backed_impl.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "flatbuffers/idl.h"
 #include "flatbuffers/reflection.h"

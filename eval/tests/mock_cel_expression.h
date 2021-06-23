@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "absl/status/statusor.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_expression.h"

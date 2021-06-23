@@ -1,5 +1,5 @@
 #include "google/protobuf/util/time_util.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/builtin_func_registrar.h"

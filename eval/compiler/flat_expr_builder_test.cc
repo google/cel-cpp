@@ -6,7 +6,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
@@ -41,6 +41,7 @@ using google::protobuf::FieldMask;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Not;
+using cel_base::testing::IsOk;
 
 class ConcatFunction : public CelFunction {
  public:
@@ -1037,14 +1038,14 @@ TEST(FlatExprBuilderTest, ContainerStringFormat) {
   builder.set_container(".random.namespace");
   {
     auto build_status = builder.CreateExpression(&expr, &source_info);
-    ASSERT_FALSE(build_status.status().ok());
+    ASSERT_THAT(build_status.status(), Not(IsOk()));
   }
 
   // Trailing '.'
   builder.set_container("random.namespace.");
   {
     auto build_status = builder.CreateExpression(&expr, &source_info);
-    ASSERT_FALSE(build_status.status().ok());
+    ASSERT_THAT(build_status.status(), Not(IsOk()));
   }
 }
 

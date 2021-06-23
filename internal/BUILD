@@ -25,9 +25,9 @@ cc_test(
     srcs = ["ref_countable_test.cc"],
     deps = [
         ":ref_countable",
+        "//base:testing",
         "//testutil:util",
         "@com_google_absl//absl/memory",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -47,8 +47,8 @@ cc_test(
     srcs = ["handle_test.cc"],
     deps = [
         ":handle",
+        "//base:testing",
         "@com_google_absl//absl/container:node_hash_set",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -71,9 +71,9 @@ cc_test(
     deps = [
         ":holder",
         ":types",
+        "//base:testing",
         "//testutil:util",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -128,9 +128,9 @@ cc_test(
     deps = [
         ":adapter_util",
         ":visitor_util",
+        "//base:testing",
         "//testutil:util",
         "@com_google_absl//absl/memory",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -165,7 +165,7 @@ cc_test(
     srcs = ["cel_printer_test.cc"],
     deps = [
         ":cel_printer",
-        "@com_google_googletest//:gtest_main",
+        "//base:testing",
     ],
 )
 
@@ -230,10 +230,10 @@ cc_test(
     srcs = ["value_internal_test.cc"],
     deps = [
         ":value_internal",
+        "//base:testing",
         "//testutil:util",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -259,7 +259,7 @@ cc_test(
     srcs = ["cast_test.cc"],
     deps = [
         ":cast",
-        "@com_google_googletest//:gtest_main",
+        "//base:testing",
     ],
 )
 
@@ -281,6 +281,6 @@ cc_test(
     srcs = ["types_test.cc"],
     deps = [
         ":types",
-        "@com_google_googletest//:gtest_main",
+        "//base:testing",
     ],
 )

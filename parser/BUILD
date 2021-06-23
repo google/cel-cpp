@@ -122,10 +122,10 @@ cc_test(
         ":options",
         ":parser",
         ":source_factory",
+        "//base:testing",
         "//testutil:expr_printer",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googletest//:gtest_main",
     ],
 )

@@ -147,7 +147,7 @@ cc_test(
     srcs = ["escaping_test.cc"],
     deps = [
         ":escaping",
-        "@com_google_googletest//:gtest_main",
+        "//base:testing",
     ],
 )
 
@@ -192,6 +192,7 @@ cc_test(
     deps = [
         ":custom_object",
         ":value",
+        "//base:testing",
         "//internal:status_util",
         "//internal:types",
         "//internal:value_internal",
@@ -200,7 +201,6 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -229,7 +229,7 @@ cc_test(
     deps = [
         ":converters",
         ":value",
+        "//base:testing",
         "@com_google_absl//absl/memory",
-        "@com_google_googletest//:gtest_main",
     ],
 )

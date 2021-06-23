@@ -14,7 +14,7 @@
 
 #include "eval/public/ast_traverse.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 
 namespace google {

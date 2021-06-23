@@ -1,6 +1,6 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/util/time_util.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"

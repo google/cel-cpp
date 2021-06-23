@@ -1,7 +1,7 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"

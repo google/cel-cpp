@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
