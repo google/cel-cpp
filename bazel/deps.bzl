@@ -8,6 +8,8 @@ def base_deps():
     """Base evaluator and test dependencies."""
     http_archive(
         name = "com_google_absl",
+        patches = ["//bazel:abseil.patch"],
+        patch_args = ["-p1"],
         strip_prefix = "abseil-cpp-master",
         urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
     )
