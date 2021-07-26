@@ -1,6 +1,7 @@
 #include "parser/visitor.h"
 
 #include <memory>
+#include <string>
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/memory/memory.h"
@@ -17,12 +18,30 @@ namespace google {
 namespace api {
 namespace expr {
 namespace parser {
+namespace {
 
 using common::CelOperator;
 using common::ReverseLookupOperator;
 
 using ::cel_grammar::CelParser;
 using google::api::expr::v1alpha1::Expr;
+
+// Scoped helper for incrementing the parse recursion count.
+// Increments on creation, decrements on destruction (stack unwind).
+class ScopedIncrement {
+ public:
+  explicit ScopedIncrement(int& recursion_depth)
+      : recursion_depth_(recursion_depth) {
+    ++recursion_depth_;
+  }
+
+  ~ScopedIncrement() { --recursion_depth_; }
+
+ private:
+  int& recursion_depth_;
+};
+
+}  // namespace
 
 ParserVisitor::ParserVisitor(const std::string& description,
                              const std::string& expression,
@@ -47,7 +66,7 @@ T* tree_as(antlr4::tree::ParseTree* tree) {
 }
 
 antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
-  recursion_depth_ += 1;
+  ScopedIncrement inc(recursion_depth_);
   if (recursion_depth_ > max_recursion_depth_) {
     return sf_->reportError(
         SourceFactory::noLocation(),

@@ -22,6 +22,7 @@ namespace parser {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
+using testing::HasSubstr;
 using testing::Not;
 using cel_base::testing::IsOk;
 
@@ -1021,6 +1022,39 @@ TEST(ExpressionTest, ExpressionSizeLimit) {
   EXPECT_EQ(
       result.status().message(),
       "expression size exceeds codepoint limit. input size: 15, limit: 10");
+}
+
+TEST(ExpressionTest, RecursionDepthLongArgList) {
+  ParserOptions options;
+  // The particular number here is an implementation detail: the underlying
+  // visitor will recurse up to 8 times before branching to the create list or
+  // const steps. The call graph looks something like:
+  // visit->visitStart->visit->visitExpr->visit->visitOr->visit->visitAnd->visit
+  // ->visitRelation->visit->visitCalc->visit->visitUnary->visit->visitPrimary
+  // ->visitCreateList->visit[arg]->visitExpr...
+  // The expected max depth for create list with an arbitrary number of elements
+  // is 15.
+  options.max_recursion_depth = 16;
+
+  EXPECT_THAT(Parse("[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", "", options), IsOk());
+}
+
+TEST(ExpressionTest, RecursionDepthExceeded) {
+  ParserOptions options;
+  // The particular number here is an implementation detail: the underlying
+  // visitor will recurse up to 8 times before branching to the create list or
+  // const steps. The call graph looks something like:
+  // visit->visitStart->visit->visitExpr->visit->visitOr->visit->visitAnd->visit
+  // ->visitRelation->visit->visitCalc->visit->visitUnary->visit->visitPrimary
+  // ->visitCreateList->visit[arg]->visitExpr...
+  // The expected max depth for the triply nested create list is
+  // (8 + 7 + 7 + 7) = 29.
+  options.max_recursion_depth = 16;
+  auto result = Parse("[[[1, 2, 3]]]", "", options);
+
+  EXPECT_THAT(result, Not(IsOk()));
+  EXPECT_THAT(result.status().message(),
+              HasSubstr("Exceeded max recursion depth of 16 when parsing."));
 }
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
