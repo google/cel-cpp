@@ -1,8 +1,10 @@
 #include "eval/eval/ident_step.h"
 
+#include <string>
+
 #include "google/protobuf/arena.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/substitute.h"
+#include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
@@ -82,8 +84,7 @@ void IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
   } else {
     *result = CreateErrorValue(
         frame->arena(),
-        absl::Substitute("No value with name \"$0\" found in Activation",
-                         name_));
+        absl::StrCat("No value with name \"", name_, "\" found in Activation"));
   }
 }
 

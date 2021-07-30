@@ -6,6 +6,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
@@ -197,7 +198,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < entries_.size()) {
     return absl::Status(absl::StatusCode::kInternal,
-                        "CreateStructStepForMessage: stack undeflow");
+                        "CreateStructStepForMessage: stack underflow");
   }
 
   CelValue result;
@@ -256,7 +257,7 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
 absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < 2 * entry_count_) {
     return absl::Status(absl::StatusCode::kInternal,
-                        "CreateStructStepForMap: stack undeflow");
+                        "CreateStructStepForMap: stack underflow");
   }
 
   CelValue result;
@@ -281,16 +282,12 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
     for (const auto& entry : create_struct_expr->entries()) {
-      if (entry.field_key().empty()) {
-        return absl::InvalidArgumentError(
-            "Error configuring message creation: field name missing");
-      }
-
       const FieldDescriptor* field_desc =
           message_desc->FindFieldByName(entry.field_key());
       if (field_desc == nullptr) {
         return absl::InvalidArgumentError(
-            "Error configuring message creation: field name not found");
+            absl::StrCat("Invalid message creation: field '", entry.field_key(),
+                         "' not found in '", message_desc->full_name(), "'"));
       }
       entries.push_back({field_desc});
     }

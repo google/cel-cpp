@@ -189,8 +189,12 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-
     const std::string& path = ident_expr->name();
+    if (path.empty()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid expression: identifier 'name' must not be empty"));
+      return;
+    }
 
     // Automatically replace constant idents with the backing CEL values.
     auto constant = constant_idents_.find(path);
@@ -239,6 +243,12 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
+    if (select_expr->field().empty()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid expression: select 'field' must not be empty"));
+      return;
+    }
+
     // Not exactly the cleanest solution - we peek into child of
     // select_expr.
     // Chain of multiple SELECT ending with IDENT can represent namespaced
@@ -382,14 +392,40 @@ class FlatExprVisitor : public AstVisitor {
     AddStep(CreateFunctionStep(call_expr, expr->id(), overloads));
   }
 
-  void PreVisitComprehension(const Comprehension*, const Expr* expr,
-                             const SourcePosition*) override {
+  void PreVisitComprehension(const Comprehension* comprehension,
+                             const Expr* expr, const SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
     if (!enable_comprehension_) {
       SetProgressStatusError(absl::Status(absl::StatusCode::kInvalidArgument,
                                           "Comprehension support is disabled"));
+    }
+    const auto& accu_var = comprehension->accu_var();
+    if (accu_var.empty()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid comprehension: 'accu_var' must not be empty"));
+    }
+    const auto& iter_var = comprehension->iter_var();
+    if (iter_var.empty()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid comprehension: 'iter_var' must not be empty"));
+    }
+    if (!comprehension->has_accu_init()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid comprehension: 'accu_init' must be set"));
+    }
+    if (!comprehension->has_loop_condition()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid comprehension: 'loop_condition' must be set"));
+    }
+    if (!comprehension->has_loop_step()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid comprehension: 'loop_step' must be set"));
+    }
+    if (!comprehension->has_result()) {
+      SetProgressStatusError(absl::InvalidArgumentError(
+          "Invalid comprehension: 'result' must be set"));
     }
     cond_visitor_stack_.emplace(
         expr, absl::make_unique<ComprehensionVisitor>(this, short_circuiting_));
@@ -470,8 +506,8 @@ class FlatExprVisitor : public AstVisitor {
 
     // Otherwise, the message descriptor was not linked into the binary.
     SetProgressStatusError(absl::InvalidArgumentError(
-        "Error configuring message creation: message descriptor not found: " +
-        message_name));
+        absl::StrCat("Invalid message creation: missing descriptor for '",
+                     message_name, "'")));
   }
 
   absl::Status progress_status() const { return progress_status_; }
@@ -750,7 +786,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   if (absl::StartsWith(container(), ".") || absl::EndsWith(container(), ".")) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Invalid expression container:", container()));
+        absl::StrCat("Invalid expression container: '", container(), "'"));
   }
 
   absl::flat_hash_map<std::string, CelValue> idents;

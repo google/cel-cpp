@@ -288,6 +288,156 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
   EXPECT_THAT(count, Eq(3));
 }
 
+TEST(FlatExprBuilderTest, IdentExprUnsetName) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(ident_expr {})", &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'name' must not be empty"));
+}
+
+TEST(FlatExprBuilderTest, SelectExprUnsetField) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(select_expr{
+    operand{ ident_expr {name: 'var'} }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'field' must not be empty"));
+}
+
+TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuVar) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(comprehension_expr{})", &expr);
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'accu_var' must not be empty"));
+}
+
+TEST(FlatExprBuilderTest, ComprehensionExprUnsetIterVar) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(
+      comprehension_expr{accu_var: "a"}
+    )",
+                                      &expr);
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'iter_var' must not be empty"));
+}
+
+TEST(FlatExprBuilderTest, ComprehensionExprUnsetAccuInit) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(
+    comprehension_expr{
+      accu_var: "a"
+      iter_var: "b"}
+    )",
+                                      &expr);
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'accu_init' must be set"));
+}
+
+TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopCondition) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(
+    comprehension_expr{
+      accu_var: 'a'
+      iter_var: 'b'
+      accu_init {
+        const_expr {bool_value: true}
+      }}
+    )",
+                                      &expr);
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'loop_condition' must be set"));
+}
+
+TEST(FlatExprBuilderTest, ComprehensionExprUnsetLoopStep) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(
+    comprehension_expr{
+      accu_var: 'a'
+      iter_var: 'b'
+      accu_init {
+        const_expr {bool_value: true}
+      }
+      loop_condition {
+        const_expr {bool_value: true}
+      }}
+    )",
+                                      &expr);
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'loop_step' must be set"));
+}
+
+TEST(FlatExprBuilderTest, ComprehensionExprUnsetResult) {
+  Expr expr;
+  // An empty ident without the name set should error.
+  google::protobuf::TextFormat::ParseFromString(R"(
+    comprehension_expr{
+      accu_var: 'a'
+      iter_var: 'b'
+      accu_init {
+        const_expr {bool_value: true}
+      }
+      loop_condition {
+        const_expr {bool_value: true}
+      }
+      loop_step {
+        const_expr {bool_value: false}
+      }}
+    )",
+                                      &expr);
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  SourceInfo source_info;
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("'result' must be set"));
+}
+
 TEST(FlatExprBuilderTest, MapComprehension) {
   Expr expr;
   // {1: "", 2: ""}.all(x, x > 0)
@@ -345,6 +495,42 @@ TEST(FlatExprBuilderTest, MapComprehension) {
   CelValue result = result_or.value();
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());
+}
+
+TEST(FlatExprBuilderTest, InvalidContainer) {
+  Expr expr;
+  // foo && bar
+  google::protobuf::TextFormat::ParseFromString(R"(
+    call_expr {
+      function: "_&&_"
+      args {
+        ident_expr {
+          name: "foo"
+        }
+      }
+      args {
+        ident_expr {
+          name: "bar"
+        }
+      }
+    })",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  SourceInfo source_info;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  builder.set_container(".bad");
+  auto build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("container: '.bad'"));
+
+  builder.set_container("bad.");
+  build_status = builder.CreateExpression(&expr, &source_info);
+  ASSERT_THAT(build_status.status(), Not(IsOk()));
+  ASSERT_THAT(build_status.status().message(),
+              ::testing::HasSubstr("container: 'bad.'"));
 }
 
 TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {

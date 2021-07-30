@@ -32,6 +32,7 @@ using testing::Pointwise;
 using testutil::EqualsProto;
 
 using google::api::expr::v1alpha1::Expr;
+using cel_base::testing::IsOk;
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
@@ -210,6 +211,28 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ASSERT_THAT(msg, Not(IsNull()));
 
   ASSERT_EQ(msg->GetDescriptor(), TestMessage::descriptor());
+}
+
+TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
+  ExecutionPath path;
+  CelTypeRegistry type_registry;
+  Expr expr1;
+
+  auto create_struct = expr1.mutable_struct_expr();
+  create_struct->set_message_name("google.api.expr.runtime.TestMessage");
+  auto entry = create_struct->add_entries();
+  entry->set_field_key("bad_field");
+  auto value = entry->mutable_value();
+  value->mutable_const_expr()->set_bool_value(true);
+  auto desc = type_registry.FindDescriptor(create_struct->message_name());
+  ASSERT_TRUE(desc != nullptr);
+
+  auto step_status = CreateCreateStructStep(create_struct, desc, expr1.id());
+  ASSERT_THAT(step_status.status(), Not(IsOk()));
+  ASSERT_THAT(step_status.status().message(),
+              ::testing::HasSubstr("'bad_field'"));
+  ASSERT_THAT(step_status.status().message(),
+              ::testing::HasSubstr("'google.api.expr.runtime.TestMessage'"));
 }
 
 // Test message creation if unknown argument is passed
