@@ -165,6 +165,30 @@ TEST(CelFunctionAdapterTest, TestTypeDeductionForCelValueBasicTypes) {
   ASSERT_EQ(descriptor.types()[pos++], CelValue::Type::kError);
 }
 
+TEST(CelFunctionAdapterTest, TestAdapterStatusOrMessage) {
+  auto func =
+      [](google::protobuf::Arena* arena) -> absl::StatusOr<const google::protobuf::Message*> {
+    auto* ret =
+        google::protobuf::Arena::CreateMessage<google::protobuf::Timestamp>(arena);
+    ret->set_seconds(123);
+    return ret;
+  };
+
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_func,
+      (FunctionAdapter<absl::StatusOr<const google::protobuf::Message*>>::Create(
+          "const", false, func)));
+
+  absl::Span<CelValue> args;
+
+  CelValue result = CelValue::CreateNull();
+  google::protobuf::Arena arena;
+  ASSERT_OK(cel_func->Evaluate(args, &result, &arena));
+
+  ASSERT_TRUE(result.IsTimestamp());
+  EXPECT_EQ(result.TimestampOrDie(), absl::FromUnixSeconds(123));
+}
+
 }  // namespace
 
 }  // namespace runtime

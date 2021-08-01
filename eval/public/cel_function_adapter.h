@@ -295,11 +295,12 @@ class FunctionAdapter : public CelFunction {
 
   template <typename T>
   static absl::Status CreateReturnValue(const absl::StatusOr<T>& value,
-                                        ::google::protobuf::Arena*, CelValue*) {
-    if (!value) {
+                                        ::google::protobuf::Arena* arena,
+                                        CelValue* result) {
+    if (!value.ok()) {
       return value.status();
     }
-    return CreateReturnValue(value.value());
+    return CreateReturnValue(value.value(), arena, result);
   }
 
   FuncType handler_;
