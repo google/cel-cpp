@@ -95,9 +95,13 @@ struct DebugStringVisitor {
     std::vector<std::string> elements;
     elements.reserve(keys->size());
     for (int i = 0; i < keys->size(); i++) {
-      elements.push_back(
-          absl::StrCat("<", (*keys)[i].DebugString(), ">: <",
-                       arg->operator[]((*keys)[i]).value().DebugString(), ">"));
+      const auto& key = (*keys)[i];
+      const auto& optional_value = arg->operator[](key);
+      elements.push_back(absl::StrCat("<", key.DebugString(), ">: <",
+                                      optional_value.has_value()
+                                          ? optional_value.value().DebugString()
+                                          : "nullopt",
+                                      ">"));
     }
     return absl::StrCat("{", absl::StrJoin(elements, ", "), "}");
   }
