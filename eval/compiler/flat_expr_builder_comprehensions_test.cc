@@ -27,6 +27,8 @@ namespace {
 
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
+using testing::HasSubstr;
+using cel_base::testing::StatusIs;
 
 // [1, 2].filter(x, [3, 4].all(y, x < y))
 const char kNestedComprehension[] = R"pb(
@@ -170,6 +172,40 @@ TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
   CelValue result = result_or.value();
   ASSERT_TRUE(result.IsList());
   EXPECT_THAT(*result.ListOrDie(), testing::SizeIs(2));
+}
+
+TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
+  CheckedExpr expr;
+  // The rewrite step which occurs when an identifier gets a more qualified name
+  // from the reference map has the potential to make invalid comprehensions
+  // appear valid, by populating missing fields with default values.
+  // var.<macro>(x, <missing>)
+  google::protobuf::TextFormat::ParseFromString(R"pb(
+                                        reference_map {
+                                          key: 1
+                                          value { name: "qualified.var" }
+                                        }
+                                        expr {
+                                          comprehension_expr {
+                                            iter_var: "x"
+                                            iter_range {
+                                              id: 1
+                                              ident_expr { name: "var" }
+                                            }
+                                            accu_var: "y"
+                                            accu_init {
+                                              id: 1
+                                              const_expr { bool_value: true }
+                                            }
+                                          }
+                                        })pb",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid comprehension")));
 }
 
 }  // namespace

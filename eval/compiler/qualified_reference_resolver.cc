@@ -143,27 +143,36 @@ class ReferenceResolver {
       }
       case Expr::kComprehensionExpr: {
         auto* out_expr = out->mutable_comprehension_expr();
-        absl::StatusOr<bool> rewrite_result;
+        bool rewrite_result;
 
-        rewrite_result = Rewrite(out_expr->mutable_accu_init());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_accu_init()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_accu_init()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_iter_range());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_iter_range()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_iter_range()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_loop_condition());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_loop_condition()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_loop_condition()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_loop_step());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_loop_step()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_loop_step()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_result());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_result()) {
+          ASSIGN_OR_RETURN(rewrite_result, Rewrite(out_expr->mutable_result()));
+          updated = updated || rewrite_result;
+        }
 
         return updated;
       }
