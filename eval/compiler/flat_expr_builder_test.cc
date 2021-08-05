@@ -42,6 +42,7 @@ using testing::Eq;
 using testing::HasSubstr;
 using testing::Not;
 using cel_base::testing::IsOk;
+using cel_base::testing::StatusIs;
 
 class ConcatFunction : public CelFunction {
  public:
@@ -109,6 +110,66 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   ASSERT_TRUE(result.IsString());
 
   EXPECT_THAT(result.StringOrDie().value(), Eq("prefixtest"));
+}
+
+TEST(FlatExprBuilderTest, ExprUnset) {
+  Expr expr;
+  SourceInfo source_info;
+  FlatExprBuilder builder;
+
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid empty expression")));
+}
+
+TEST(FlatExprBuilderTest, ConstValueUnset) {
+  Expr expr;
+  SourceInfo source_info;
+  FlatExprBuilder builder;
+  // Create an empty constant expression to ensure that it triggers an error.
+  expr.mutable_const_expr();
+
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Unsupported constant type")));
+}
+
+TEST(FlatExprBuilderTest, MapKeyValueUnset) {
+  Expr expr;
+  SourceInfo source_info;
+  FlatExprBuilder builder;
+
+  // Don't set either the key or the value for the map creation step.
+  auto* entry = expr.mutable_struct_expr()->add_entries();
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Map entry missing key")));
+
+  // Set the entry key, but not the value.
+  entry->mutable_map_key()->mutable_const_expr()->set_bool_value(true);
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Map entry missing value")));
+}
+
+TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
+  Expr expr;
+  SourceInfo source_info;
+  FlatExprBuilder builder;
+
+  // Don't set either the field or the value for the message creation step.
+  auto* create_message = expr.mutable_struct_expr();
+  create_message->set_message_name("google.protobuf.Value");
+  auto* entry = create_message->add_entries();
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Message entry missing field name")));
+
+  // Set the entry field, but not the value.
+  entry->set_field_key("bool_value");
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Message entry missing value")));
 }
 
 TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {

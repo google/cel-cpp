@@ -5,8 +5,10 @@
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "stack"
 #include "absl/container/node_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/constant_folding.h"
@@ -30,6 +32,7 @@
 #include "eval/public/ast_visitor.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/source_position.h"
 
 namespace google {
 namespace api {
@@ -167,6 +170,11 @@ class FlatExprVisitor : public AstVisitor {
     GOOGLE_CHECK(iter_variable_names_);
   }
 
+  void PreVisitExpr(const Expr* expr, const SourcePosition*) override {
+    ValidateOrError(expr->expr_kind_case() != Expr::EXPR_KIND_NOT_SET,
+                    "Invalid empty expression");
+  }
+
   void PostVisitConst(const Constant* const_expr, const Expr* expr,
                       const SourcePosition*) override {
     if (!progress_status_.ok()) {
@@ -174,11 +182,8 @@ class FlatExprVisitor : public AstVisitor {
     }
 
     auto value = ConvertConstant(const_expr);
-    if (value.has_value()) {
+    if (ValidateOrError(value.has_value(), "Unsupported constant type")) {
       AddStep(CreateConstValueStep(value.value(), expr->id()));
-    } else {
-      SetProgressStatusError(absl::Status(absl::StatusCode::kInvalidArgument,
-                                          "Unsupported constant type"));
     }
   }
 
@@ -190,9 +195,9 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
     const std::string& path = ident_expr->name();
-    if (path.empty()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid expression: identifier 'name' must not be empty"));
+    if (!ValidateOrError(
+            !path.empty(),
+            "Invalid expression: identifier 'name' must not be empty")) {
       return;
     }
 
@@ -243,9 +248,9 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    if (select_expr->field().empty()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid expression: select 'field' must not be empty"));
+    if (!ValidateOrError(
+            !select_expr->field().empty(),
+            "Invalid expression: select 'field' must not be empty")) {
       return;
     }
 
@@ -381,9 +386,8 @@ class FlatExprVisitor : public AstVisitor {
       // builder_warnings configuration, this could result in termination of the
       // CelExpression creation or an inspectable warning for use within runtime
       // logging.
-      auto status = builder_warnings_->AddWarning(
-          absl::Status(absl::StatusCode::kInvalidArgument,
-                       "No overloads provided for FunctionStep creation"));
+      auto status = builder_warnings_->AddWarning(absl::InvalidArgumentError(
+          "No overloads provided for FunctionStep creation"));
       if (!status.ok()) {
         SetProgressStatusError(status);
         return;
@@ -397,36 +401,24 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    if (!enable_comprehension_) {
-      SetProgressStatusError(absl::Status(absl::StatusCode::kInvalidArgument,
-                                          "Comprehension support is disabled"));
+    if (!ValidateOrError(enable_comprehension_,
+                         "Comprehension support is disabled")) {
+      return;
     }
     const auto& accu_var = comprehension->accu_var();
-    if (accu_var.empty()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid comprehension: 'accu_var' must not be empty"));
-    }
     const auto& iter_var = comprehension->iter_var();
-    if (iter_var.empty()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid comprehension: 'iter_var' must not be empty"));
-    }
-    if (!comprehension->has_accu_init()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid comprehension: 'accu_init' must be set"));
-    }
-    if (!comprehension->has_loop_condition()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid comprehension: 'loop_condition' must be set"));
-    }
-    if (!comprehension->has_loop_step()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid comprehension: 'loop_step' must be set"));
-    }
-    if (!comprehension->has_result()) {
-      SetProgressStatusError(absl::InvalidArgumentError(
-          "Invalid comprehension: 'result' must be set"));
-    }
+    ValidateOrError(!accu_var.empty(),
+                    "Invalid comprehension: 'accu_var' must not be empty");
+    ValidateOrError(!iter_var.empty(),
+                    "Invalid comprehension: 'iter_var' must not be empty");
+    ValidateOrError(comprehension->has_accu_init(),
+                    "Invalid comprehension: 'accu_init' must be set");
+    ValidateOrError(comprehension->has_loop_condition(),
+                    "Invalid comprehension: 'loop_condition' must be set");
+    ValidateOrError(comprehension->has_loop_step(),
+                    "Invalid comprehension: 'loop_step' must be set");
+    ValidateOrError(comprehension->has_result(),
+                    "Invalid comprehension: 'result' must be set");
     cond_visitor_stack_.emplace(
         expr, absl::make_unique<ComprehensionVisitor>(this, short_circuiting_));
     auto cond_visitor = FindCondVisitor(expr);
@@ -491,6 +483,10 @@ class FlatExprVisitor : public AstVisitor {
     // If the message name is empty, this signals that a map should be created.
     auto message_name = struct_expr->message_name();
     if (message_name.empty()) {
+      for (const auto& entry : struct_expr->entries()) {
+        ValidateOrError(entry.has_map_key(), "Map entry missing key");
+        ValidateOrError(entry.has_value(), "Map entry missing value");
+      }
       AddStep(CreateCreateStructStep(struct_expr, expr->id()));
       return;
     }
@@ -499,15 +495,16 @@ class FlatExprVisitor : public AstVisitor {
     // within the container, and if a descriptor is found, then a proto message
     // creation step will be created.
     auto message_desc = resolver_.FindDescriptor(message_name, expr->id());
-    if (message_desc != nullptr) {
+    if (ValidateOrError(message_desc != nullptr,
+                        "Invalid message creation: missing descriptor for '",
+                        message_name, "'")) {
+      for (const auto& entry : struct_expr->entries()) {
+        ValidateOrError(entry.has_field_key(),
+                        "Message entry missing field name");
+        ValidateOrError(entry.has_value(), "Message entry missing value");
+      }
       AddStep(CreateCreateStructStep(struct_expr, message_desc, expr->id()));
-      return;
     }
-
-    // Otherwise, the message descriptor was not linked into the binary.
-    SetProgressStatusError(absl::InvalidArgumentError(
-        absl::StrCat("Invalid message creation: missing descriptor for '",
-                     message_name, "'")));
   }
 
   absl::Status progress_status() const { return progress_status_; }
@@ -545,6 +542,20 @@ class FlatExprVisitor : public AstVisitor {
     return (latest.first == expr) ? latest.second.get() : nullptr;
   }
 
+  // Tests the boolean predicate, and if false produces an InvalidArgumentError
+  // which concatenates the error_message and any optional message_parts as the
+  // error status message.
+  template <typename... MP>
+  bool ValidateOrError(bool valid_expression, absl::string_view error_message,
+                       MP... message_parts) {
+    if (valid_expression) {
+      return true;
+    }
+    SetProgressStatusError(absl::InvalidArgumentError(
+        absl::StrCat(error_message, message_parts...)));
+    return false;
+  }
+
  private:
   const Resolver& resolver_;
   ExecutionPath* flattened_path_;
@@ -575,10 +586,9 @@ class FlatExprVisitor : public AstVisitor {
 };
 
 void BinaryCondVisitor::PreVisit(const Expr* expr) {
-  if (expr->call_expr().args().size() != 2) {
-    visitor_->SetProgressStatusError(absl::InvalidArgumentError(
-        "Unexpected number of arguments in a binary function call."));
-  }
+  visitor_->ValidateOrError(
+      expr->call_expr().args().size() == 2,
+      "Unexpected number of arguments in a binary function call.");
 }
 
 void BinaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
@@ -652,11 +662,10 @@ void TernaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
     }
     visitor_->AddStep(std::move(jump_after_first_status));
 
-    if (jump_to_second_.exists()) {
+    if (visitor_->ValidateOrError(
+            jump_to_second_.exists(),
+            "Error configuring ternary operator: jump_to_second_ is null")) {
       jump_to_second_.set_target(visitor_->GetCurrentIndex());
-    } else {
-      visitor_->SetProgressStatusError(absl::InvalidArgumentError(
-          "Error configuring ternary operator: jump_to_second_ is null"));
     }
   }
   // Code executed after traversing the final branch of execution
@@ -666,19 +675,15 @@ void TernaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
 
 void TernaryCondVisitor::PostVisit(const Expr*) {
   // Determine and set jump offset in jump instruction.
-  if (error_jump_.exists()) {
+  if (visitor_->ValidateOrError(
+          error_jump_.exists(),
+          "Error configuring ternary operator: error_jump_ is null")) {
     error_jump_.set_target(visitor_->GetCurrentIndex());
-  } else {
-    visitor_->SetProgressStatusError(absl::InvalidArgumentError(
-        "Error configuring ternary operator: error_jump_ is null"));
-    return;
   }
-  if (jump_after_first_.exists()) {
+  if (visitor_->ValidateOrError(
+          jump_after_first_.exists(),
+          "Error configuring ternary operator: jump_after_first_ is null")) {
     jump_after_first_.set_target(visitor_->GetCurrentIndex());
-  } else {
-    visitor_->SetProgressStatusError(absl::InvalidArgumentError(
-        "Error configuring ternary operator: jump_after_first_ is null"));
-    return;
   }
 }
 
