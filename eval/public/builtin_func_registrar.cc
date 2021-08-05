@@ -217,13 +217,10 @@ CelValue Equal(Arena* arena, const CelMap* t1, const CelMap* t2) {
     if (!v2.has_value()) {
       return CelValue::CreateBool(false);
     }
-    const CelValue eq = Equal<CelValue>(arena, v1, v2.value());
-    if (eq.IsBool()) {
-      if (!eq.BoolOrDie()) {
-        return CelValue::CreateBool(false);
-      }
-    } else {
-      // propagate errors
+    const CelValue eq = Equal<CelValue>(arena, v1, *v2);
+    bool bool_value = false;
+    if (!eq.GetValue(&bool_value) || !bool_value) {
+      // Shortcircuit on value comparison errors and 'false' results.
       return eq;
     }
   }
@@ -234,10 +231,12 @@ CelValue Equal(Arena* arena, const CelMap* t1, const CelMap* t2) {
 template <>
 CelValue Inequal(Arena* arena, const CelMap* t1, const CelMap* t2) {
   const CelValue eq = Equal<const CelMap*>(arena, t1, t2);
-  if (eq.IsBool()) {
-    return CelValue::CreateBool(!eq.BoolOrDie());
+  bool bool_value = false;
+  if (!eq.GetValue(&bool_value)) {
+    // Propagate comparison errors.
+    return eq;
   }
-  return eq;
+  return CelValue::CreateBool(!bool_value);
 }
 
 // Generic equality for CEL values

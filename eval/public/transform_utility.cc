@@ -20,6 +20,17 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+namespace {
+
+// IsValidMapKey returns true if the key is a scalar protobuf type that is not
+// floating point or bytes.
+bool IsValidMapKey(const CelValue& value) {
+  return value.IsString() || value.IsInt64() || value.IsUint64() ||
+         value.IsBool();
+}
+
+}  // namespace
+
 absl::Status CelValueToValue(const CelValue& value, Value* result) {
   switch (value.type()) {
     case CelValue::Type::kBool:
@@ -143,6 +154,9 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
       std::vector<std::pair<CelValue, CelValue>> key_values;
       for (const auto& entry : value.map_value().entries()) {
         ASSIGN_OR_RETURN(auto map_key, ValueToCelValue(entry.key(), arena));
+        if (!IsValidMapKey(map_key)) {
+          return absl::InvalidArgumentError("Invalid map key type");
+        }
         ASSIGN_OR_RETURN(auto map_value, ValueToCelValue(entry.value(), arena));
         key_values.push_back(std::pair<CelValue, CelValue>(map_key, map_value));
       }
