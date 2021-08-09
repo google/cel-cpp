@@ -19,18 +19,21 @@ namespace parser {
 
 using ::antlr4::ANTLRInputStream;
 using ::antlr4::CommonTokenStream;
+using ::antlr4::DefaultErrorStrategy;
 using ::antlr4::ParseCancellationException;
+using ::antlr4::Parser;
 using ::antlr4::ParserRuleContext;
-
+using ::antlr4::Token;
+using ::antlr4::misc::IntervalSet;
 using ::antlr4::tree::ErrorNode;
 using ::antlr4::tree::ParseTreeListener;
 using ::antlr4::tree::TerminalNode;
 
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::ParsedExpr;
-
 using ::cel_grammar::CelLexer;
 using ::cel_grammar::CelParser;
+
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
 
 namespace {
 
@@ -85,20 +88,43 @@ void ExprRecursionListener::exitEveryRule(ParserRuleContext* ctx) {
   }
 }
 
-class RecoveryLimitErrorStrategy : public antlr4::DefaultErrorStrategy {
+class RecoveryLimitErrorStrategy : public DefaultErrorStrategy {
  public:
   explicit RecoveryLimitErrorStrategy(
-      int recovery_limit = kDefaultErrorRecoveryLimit)
-      : recovery_limit_(recovery_limit), recovery_attempts_(0) {}
+      int recovery_limit = kDefaultErrorRecoveryLimit,
+      int recovery_token_lookahead_limit =
+          kDefaultErrorRecoveryTokenLookaheadLimit)
+      : recovery_limit_(recovery_limit),
+        recovery_attempts_(0),
+        recovery_token_lookahead_limit_(recovery_token_lookahead_limit) {}
 
-  void recover(antlr4::Parser* recognizer, std::exception_ptr e) override {
+  void recover(Parser* recognizer, std::exception_ptr e) override {
     checkRecoveryLimit(recognizer);
-    antlr4::DefaultErrorStrategy::recover(recognizer, e);
+    DefaultErrorStrategy::recover(recognizer, e);
   }
 
-  antlr4::Token* recoverInline(antlr4::Parser* recognizer) override {
+  Token* recoverInline(Parser* recognizer) override {
     checkRecoveryLimit(recognizer);
-    return antlr4::DefaultErrorStrategy::recoverInline(recognizer);
+    return DefaultErrorStrategy::recoverInline(recognizer);
+  }
+
+  // Override the ANTLR implementation to introduce a token lookahead limit as
+  // this prevents pathologically constructed, yet small (< 16kb) inputs from
+  // consuming inordinate amounts of compute.
+  //
+  // This method is only called on error recovery paths.
+  void consumeUntil(Parser* recognizer, const IntervalSet& set) override {
+    size_t ttype = recognizer->getInputStream()->LA(1);
+    int recovery_search_depth = 0;
+    while (ttype != Token::EOF && !set.contains(ttype) &&
+           recovery_search_depth++ < recovery_token_lookahead_limit_) {
+      recognizer->consume();
+      ttype = recognizer->getInputStream()->LA(1);
+    }
+    // Halt all parsing if the lookahead limit is reached during error recovery.
+    if (recovery_search_depth == recovery_token_lookahead_limit_) {
+      throw ParseCancellationException("Unable to find a recovery token");
+    }
   }
 
  protected:
@@ -111,7 +137,7 @@ class RecoveryLimitErrorStrategy : public antlr4::DefaultErrorStrategy {
   }
 
  private:
-  void checkRecoveryLimit(antlr4::Parser* recognizer) {
+  void checkRecoveryLimit(Parser* recognizer) {
     if (recovery_attempts_++ >= recovery_limit_) {
       std::string too_many_errors =
           absl::StrFormat("More than %d parse errors.", recovery_limit_);
@@ -122,6 +148,7 @@ class RecoveryLimitErrorStrategy : public antlr4::DefaultErrorStrategy {
 
   int recovery_limit_;
   int recovery_attempts_;
+  int recovery_token_lookahead_limit_;
 };
 
 }  // namespace
@@ -168,7 +195,9 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   // Limit the number of error recovery attempts to prevent bad expressions
   // from consuming lots of cpu / memory.
   std::shared_ptr<RecoveryLimitErrorStrategy> error_strategy(
-      new RecoveryLimitErrorStrategy(options.error_recovery_limit));
+      new RecoveryLimitErrorStrategy(
+          options.error_recovery_limit,
+          options.error_recovery_token_lookahead_limit));
   parser.setErrorHandler(error_strategy);
 
   CelParser::StartContext* root;
