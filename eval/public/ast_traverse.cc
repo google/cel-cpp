@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "eval/public/ast_traverse.h"
+
 #include <stack>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "eval/public/ast_traverse.h"
+#include "absl/types/variant.h"
 #include "eval/public/source_position.h"
 
 namespace google {
@@ -34,29 +36,11 @@ using Comprehension = google::api::expr::v1alpha1::Expr::Comprehension;
 
 namespace {
 
-struct StackRecord {
- public:
-  static constexpr int kNotCallArg = -1;
-  static constexpr int kTarget = -2;
-
-  StackRecord(const Expr *e, const SourceInfo *info)
-      : expr(e),
-        source_info(info),
-        visited(false),
-        calling_expr(nullptr),
-        call_arg(kNotCallArg) {}
-
-  StackRecord(const Expr *e, const SourceInfo *info, const Expr *call,
-              int argnum)
-      : expr(e),
-        source_info(info),
-        visited(false),
-        calling_expr(call),
-        call_arg(argnum) {}
-
+struct ArgRecord {
+  // Not null.
   const Expr *expr;
+  // Not null.
   const SourceInfo *source_info;
-  bool visited;
 
   // For records that are direct arguments to call, we need to call
   // the CallArg visitor immediately after the argument is evaluated.
@@ -64,100 +48,153 @@ struct StackRecord {
   int call_arg;
 };
 
-void PreVisit(const StackRecord &record, AstVisitor *visitor) {
-  const Expr *expr = record.expr;
-  const SourcePosition position(expr->id(), record.source_info);
-  visitor->PreVisitExpr(expr, &position);
-  switch (expr->expr_kind_case()) {
-    case Expr::kSelectExpr:
-      visitor->PreVisitSelect(&expr->select_expr(), expr, &position);
-      break;
-    case Expr::kCallExpr:
-      visitor->PreVisitCall(&expr->call_expr(), expr, &position);
-      break;
-    case Expr::kComprehensionExpr:
-      visitor->PreVisitComprehension(&expr->comprehension_expr(), expr,
-                                     &position);
-      break;
-    default:
-      // No pre-visit action.
-      break;
+struct ExprRecord {
+  // Not null.
+  const Expr *expr;
+  // Not null.
+  const SourceInfo *source_info;
+};
+
+using StackRecordKind = absl::variant<ExprRecord, ArgRecord>;
+
+struct StackRecord {
+ public:
+  static constexpr int kNotCallArg = -1;
+  static constexpr int kTarget = -2;
+
+  StackRecord(const Expr *e, const SourceInfo *info)
+      : record_variant(ExprRecord{.expr = e, .source_info = info}),
+        visited(false) {}
+
+  StackRecord(const Expr *e, const SourceInfo *info, const Expr *call,
+              int argnum)
+      : record_variant(ArgRecord{.expr = e,
+                                 .source_info = info,
+                                 .calling_expr = call,
+                                 .call_arg = argnum}),
+        visited(false) {}
+
+  StackRecordKind record_variant;
+  bool visited;
+};
+
+struct PreVisitor {
+  void operator()(const ExprRecord &record) {
+    const Expr *expr = record.expr;
+    const SourcePosition position(expr->id(), record.source_info);
+    visitor->PreVisitExpr(expr, &position);
+    switch (expr->expr_kind_case()) {
+      case Expr::kSelectExpr:
+        visitor->PreVisitSelect(&expr->select_expr(), expr, &position);
+        break;
+      case Expr::kCallExpr:
+        visitor->PreVisitCall(&expr->call_expr(), expr, &position);
+        break;
+      case Expr::kComprehensionExpr:
+        visitor->PreVisitComprehension(&expr->comprehension_expr(), expr,
+                                       &position);
+        break;
+      default:
+        // No pre-visit action.
+        break;
+    }
   }
+
+  // Do nothing for Arg variant.
+  void operator()(const ArgRecord &) {}
+
+  AstVisitor *visitor;
+};
+
+void PreVisit(const StackRecord &record, AstVisitor *visitor) {
+  absl::visit(PreVisitor{visitor}, record.record_variant);
 }
 
-void PostVisit(const StackRecord &record, AstVisitor *visitor) {
-  const Expr *expr = record.expr;
-  const SourcePosition position(expr->id(), record.source_info);
-  switch (expr->expr_kind_case()) {
-    case Expr::kConstExpr:
-      visitor->PostVisitConst(&expr->const_expr(), expr, &position);
-      break;
-    case Expr::kIdentExpr:
-      visitor->PostVisitIdent(&expr->ident_expr(), expr, &position);
-      break;
-    case Expr::kSelectExpr:
-      visitor->PostVisitSelect(&expr->select_expr(), expr, &position);
-      break;
-    case Expr::kCallExpr:
-      visitor->PostVisitCall(&expr->call_expr(), expr, &position);
-      break;
-    case Expr::kListExpr:
-      visitor->PostVisitCreateList(&expr->list_expr(), expr, &position);
-      break;
-    case Expr::kStructExpr:
-      visitor->PostVisitCreateStruct(&expr->struct_expr(), expr, &position);
-      break;
-    case Expr::kComprehensionExpr:
-      visitor->PostVisitComprehension(&expr->comprehension_expr(), expr,
-                                      &position);
-      break;
-    default:
-      GOOGLE_LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
+struct PostVisitor {
+  void operator()(const ExprRecord &record) {
+    const Expr *expr = record.expr;
+    const SourcePosition position(expr->id(), record.source_info);
+    switch (expr->expr_kind_case()) {
+      case Expr::kConstExpr:
+        visitor->PostVisitConst(&expr->const_expr(), expr, &position);
+        break;
+      case Expr::kIdentExpr:
+        visitor->PostVisitIdent(&expr->ident_expr(), expr, &position);
+        break;
+      case Expr::kSelectExpr:
+        visitor->PostVisitSelect(&expr->select_expr(), expr, &position);
+        break;
+      case Expr::kCallExpr:
+        visitor->PostVisitCall(&expr->call_expr(), expr, &position);
+        break;
+      case Expr::kListExpr:
+        visitor->PostVisitCreateList(&expr->list_expr(), expr, &position);
+        break;
+      case Expr::kStructExpr:
+        visitor->PostVisitCreateStruct(&expr->struct_expr(), expr, &position);
+        break;
+      case Expr::kComprehensionExpr:
+        visitor->PostVisitComprehension(&expr->comprehension_expr(), expr,
+                                        &position);
+        break;
+      default:
+        GOOGLE_LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
+    }
+
+    visitor->PostVisitExpr(expr, &position);
   }
 
-  if (record.call_arg != StackRecord::kNotCallArg &&
-      record.calling_expr != nullptr) {
+  void operator()(const ArgRecord &record) {
+    const Expr *expr = record.expr;
+    const SourcePosition position(expr->id(), record.source_info);
     if (record.call_arg == StackRecord::kTarget) {
       visitor->PostVisitTarget(record.calling_expr, &position);
     } else {
       visitor->PostVisitArg(record.call_arg, record.calling_expr, &position);
     }
   }
-  visitor->PostVisitExpr(expr, &position);
+
+  AstVisitor *visitor;
+};
+
+void PostVisit(const StackRecord &record, AstVisitor *visitor) {
+  absl::visit(PostVisitor{visitor}, record.record_variant);
 }
 
-void PushSelectDeps(const Select *select_expr, const StackRecord &record,
+void PushSelectDeps(const Select *select_expr, const SourceInfo *source_info,
                     std::stack<StackRecord> *stack) {
   if (select_expr->has_operand()) {
-    stack->push(StackRecord(&select_expr->operand(), record.source_info));
+    stack->push(StackRecord(&select_expr->operand(), source_info));
   }
 }
 
 void PushCallDeps(const Call *call_expr, const Expr *expr,
-                  const StackRecord &record, std::stack<StackRecord> *stack) {
+                  const SourceInfo *source_info,
+                  std::stack<StackRecord> *stack) {
   const int arg_size = call_expr->args_size();
   // Our contract is that we visit arguments in order.  To do that, we need
   // to push them onto the stack in reverse order.
   for (int i = arg_size - 1; i >= 0; --i) {
-    stack->push(StackRecord(&call_expr->args(i), record.source_info, expr, i));
+    stack->push(StackRecord(&call_expr->args(i), source_info, expr, i));
   }
   // Are we receiver-style?
   if (call_expr->has_target()) {
-    stack->push(StackRecord(&call_expr->target(), record.source_info, expr,
+    stack->push(StackRecord(&call_expr->target(), source_info, expr,
                             StackRecord::kTarget));
   }
 }
 
-void PushListDeps(const CreateList *list_expr, const StackRecord &record,
+void PushListDeps(const CreateList *list_expr, const SourceInfo *source_info,
                   std::stack<StackRecord> *stack) {
   const auto &elements = list_expr->elements();
   for (auto it = elements.rbegin(); it != elements.rend(); ++it) {
     const auto &element = *it;
-    stack->push(StackRecord(&element, record.source_info));
+    stack->push(StackRecord(&element, source_info));
   }
 }
 
-void PushStructDeps(const CreateStruct *struct_expr, const StackRecord &record,
+void PushStructDeps(const CreateStruct *struct_expr,
+                    const SourceInfo *source_info,
                     std::stack<StackRecord> *stack) {
   const auto &entries = struct_expr->entries();
   for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
@@ -165,19 +202,18 @@ void PushStructDeps(const CreateStruct *struct_expr, const StackRecord &record,
     // The contract is to visit key, then value.  So put them on the stack
     // in the opposite order.
     if (entry.has_value()) {
-      stack->push(StackRecord(&entry.value(), record.source_info));
+      stack->push(StackRecord(&entry.value(), source_info));
     }
 
     if (entry.has_map_key()) {
-      stack->push(StackRecord(&entry.map_key(), record.source_info));
+      stack->push(StackRecord(&entry.map_key(), source_info));
     }
   }
 }
 
 void PushComprehensionDeps(const Comprehension *c, const Expr *expr,
-                           const StackRecord &record,
+                           const SourceInfo *source_info,
                            std::stack<StackRecord> *stack) {
-  const SourceInfo *source_info = record.source_info;
   StackRecord iter_range(&c->iter_range(), source_info, expr, ITER_RANGE);
   StackRecord accu_init(&c->accu_init(), source_info, expr, ACCU_INIT);
   StackRecord loop_condition(&c->loop_condition(), source_info, expr,
@@ -192,28 +228,41 @@ void PushComprehensionDeps(const Comprehension *c, const Expr *expr,
   stack->push(iter_range);
 }
 
-void PushDependencies(const StackRecord &record,
-                      std::stack<StackRecord> *stack) {
-  const Expr *expr = record.expr;
-  switch (expr->expr_kind_case()) {
-    case Expr::kSelectExpr:
-      PushSelectDeps(&expr->select_expr(), record, stack);
-      break;
-    case Expr::kCallExpr:
-      PushCallDeps(&expr->call_expr(), expr, record, stack);
-      break;
-    case Expr::kListExpr:
-      PushListDeps(&expr->list_expr(), record, stack);
-      break;
-    case Expr::kStructExpr:
-      PushStructDeps(&expr->struct_expr(), record, stack);
-      break;
-    case Expr::kComprehensionExpr:
-      PushComprehensionDeps(&expr->comprehension_expr(), expr, record, stack);
-      break;
-    default:
-      break;
+struct PushDepsVisitor {
+  void operator()(const ExprRecord &record) {
+    const Expr *expr = record.expr;
+    switch (expr->expr_kind_case()) {
+      case Expr::kSelectExpr:
+        PushSelectDeps(&expr->select_expr(), record.source_info, &stack);
+        break;
+      case Expr::kCallExpr:
+        PushCallDeps(&expr->call_expr(), expr, record.source_info, &stack);
+        break;
+      case Expr::kListExpr:
+        PushListDeps(&expr->list_expr(), record.source_info, &stack);
+        break;
+      case Expr::kStructExpr:
+        PushStructDeps(&expr->struct_expr(), record.source_info, &stack);
+        break;
+      case Expr::kComprehensionExpr:
+        PushComprehensionDeps(&expr->comprehension_expr(), expr,
+                              record.source_info, &stack);
+        break;
+      default:
+        break;
+    }
   }
+
+  void operator()(const ArgRecord &record) {
+    stack.push(StackRecord(record.expr, record.source_info));
+  }
+
+  std::stack<StackRecord> &stack;
+};
+
+void PushDependencies(const StackRecord &record,
+                      std::stack<StackRecord> &stack) {
+  absl::visit(PushDepsVisitor{stack}, record.record_variant);
 }
 
 }  // namespace
@@ -227,7 +276,7 @@ void AstTraverse(const Expr *expr, const SourceInfo *source_info,
     StackRecord &record = stack.top();
     if (!record.visited) {
       PreVisit(record, visitor);
-      PushDependencies(record, &stack);
+      PushDependencies(record, stack);
       record.visited = true;
     } else {
       PostVisit(record, visitor);
