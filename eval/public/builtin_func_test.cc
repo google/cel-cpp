@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/util/time_util.h"
 #include "base/testing.h"
@@ -850,6 +852,30 @@ TEST_F(BuiltinsTest, TestIntConversions_uint) {
   TestTypeConverts(builtin::kInt, CelValue::CreateUint64(ref), 100L);
 }
 
+TEST_F(BuiltinsTest, TestIntConversions_doubleIntMin) {
+  // Converting int64_t min to a double roundtrips properly.
+  double range = std::numeric_limits<int64_t>::min();
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
+                   std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(BuiltinsTest, TestIntConversions_doubleIntMinMinus1024) {
+  // Converting values between [int64::min(), (int64_t::min() - 1024)] will result
+  // in an int64_t representable value, but the conversion will be lossy.
+  double range = std::numeric_limits<int64_t>::min();
+  range -= 1024L;
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
+                   std::numeric_limits<int64_t>::min());
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus512) {
+  // Converting int64_t max - 512 to a double will not roundtrip to the original
+  // value, but it will rountrip to a valid 64-bit integer.
+  double range = std::numeric_limits<int64_t>::max() - 512;
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
+                   std::numeric_limits<int64_t>::max() - 1023);
+}
+
 TEST_F(BuiltinsTest, TestIntConversionError_doubleNegRange) {
   double range = -1.0e99;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
@@ -857,6 +883,34 @@ TEST_F(BuiltinsTest, TestIntConversionError_doubleNegRange) {
 
 TEST_F(BuiltinsTest, TestIntConversionError_doublePosRange) {
   double range = 1.0e99;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMax) {
+  // Converting int64_t max to a double results in a double value of int64_t max + 1
+  // which should cause the overflow testing to trip.
+  double range = std::numeric_limits<int64_t>::max();
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus1) {
+  // Converting values between int64_t::max() and int64_t::max() - 511 will result
+  // in overflow errors during round-tripping.
+  double range = std::numeric_limits<int64_t>::max() - 1;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus511) {
+  // Converting values between int64_t::max() and int64_t::max() - 511 will result
+  // in overflow errors during round-tripping.
+  double range = std::numeric_limits<int64_t>::max() - 511;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMinMinus1025) {
+  // Converting double values lower than int64_t::min() - 1025 will result in an
+  // overflow error.
+  double range = std::numeric_limits<int64_t>::min();
+  range -= 1025L;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 

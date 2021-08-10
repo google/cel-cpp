@@ -1173,7 +1173,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
       [](Arena* arena, double v) {
         // NaN and -+infinite numbers cannot be represented as int values,
         // nor can double values which exceed the integer 64-bit range.
-        if (!std::isfinite(v) || v > static_cast<double>(kIntMax) ||
+        if (!std::isfinite(v) || v >= static_cast<double>(kIntMax) ||
             v < static_cast<double>(kIntMin)) {
           return CreateErrorValue(arena, "double out of int range",
                                   absl::StatusCode::kInvalidArgument);
