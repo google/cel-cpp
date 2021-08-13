@@ -81,17 +81,11 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
     // Create CelExpression from AST (Expr object).
-    auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-
-    ASSERT_OK(cel_expression_status);
-
-    auto cel_expression = std::move(cel_expression_status.value());
-
-    auto eval_status = cel_expression->Evaluate(activation, &arena_);
-
-    ASSERT_OK(eval_status);
-
-    *result = eval_status.value();
+    ASSERT_OK_AND_ASSIGN(auto cel_expression,
+                         builder->CreateExpression(&expr, &source_info));
+    ASSERT_OK_AND_ASSIGN(auto value,
+                         cel_expression->Evaluate(activation, &arena_));
+    *result = value;
   }
 
   // Helper method. Looks up in registry and tests comparison operation.

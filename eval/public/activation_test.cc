@@ -24,6 +24,7 @@ using testing::HasSubstr;
 using testing::IsEmpty;
 using testing::Property;
 using testing::Return;
+using cel_base::testing::StatusIs;
 
 class MockValueProducer : public CelValueProducer {
  public:
@@ -113,9 +114,8 @@ TEST(ActivationTest, CheckValueProducerInsertFindAndRemove) {
 
 TEST(ActivationTest, CheckInsertFunction) {
   Activation activation;
-  auto insert_status = activation.InsertFunction(
-      std::make_unique<ConstCelFunction>("ConstFunc"));
-  EXPECT_OK(insert_status);
+  ASSERT_OK(activation.InsertFunction(
+      std::make_unique<ConstCelFunction>("ConstFunc")));
 
   auto overloads = activation.FindFunctionOverloads("ConstFunc");
   EXPECT_THAT(overloads,
@@ -123,26 +123,20 @@ TEST(ActivationTest, CheckInsertFunction) {
                   &CelFunction::descriptor,
                   Property(&CelFunctionDescriptor::name, Eq("ConstFunc")))));
 
-  absl::Status status = activation.InsertFunction(
-      std::make_unique<ConstCelFunction>("ConstFunc"));
+  EXPECT_THAT(activation.InsertFunction(
+                  std::make_unique<ConstCelFunction>("ConstFunc")),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Function with same shape")));
 
-  EXPECT_THAT(std::string(status.message()),
-              HasSubstr("Function with same shape"));
-
-  overloads = activation.FindFunctionOverloads("ConstFunc0");
-
-  EXPECT_THAT(overloads, IsEmpty());
+  EXPECT_THAT(activation.FindFunctionOverloads("ConstFunc0"), IsEmpty());
 }
 
 TEST(ActivationTest, CheckRemoveFunction) {
   Activation activation;
-  auto insert_status =
-      activation.InsertFunction(std::make_unique<ConstCelFunction>(
-          CelFunctionDescriptor{"ConstFunc", false, {CelValue::Type::kInt64}}));
-  EXPECT_OK(insert_status);
-  insert_status = activation.InsertFunction(std::make_unique<ConstCelFunction>(
-      CelFunctionDescriptor{"ConstFunc", false, {CelValue::Type::kUint64}}));
-  EXPECT_OK(insert_status);
+  ASSERT_OK(activation.InsertFunction(std::make_unique<ConstCelFunction>(
+      CelFunctionDescriptor{"ConstFunc", false, {CelValue::Type::kInt64}})));
+  EXPECT_OK(activation.InsertFunction(std::make_unique<ConstCelFunction>(
+      CelFunctionDescriptor{"ConstFunc", false, {CelValue::Type::kUint64}})));
 
   auto overloads = activation.FindFunctionOverloads("ConstFunc");
   EXPECT_THAT(
@@ -156,8 +150,7 @@ TEST(ActivationTest, CheckRemoveFunction) {
   EXPECT_TRUE(activation.RemoveFunctionEntries(
       {"ConstFunc", false, {CelValue::Type::kAny}}));
 
-  overloads = activation.FindFunctionOverloads("ConstFunc");
-  EXPECT_THAT(overloads, IsEmpty());
+  EXPECT_THAT(activation.FindFunctionOverloads("ConstFunc"), IsEmpty());
 }
 
 TEST(ActivationTest, CheckValueProducerClear) {
@@ -183,7 +176,7 @@ TEST(ActivationTest, CheckValueProducerClear) {
   // Produce first value
   auto opt_value = activation.FindValue("value42", &arena);
   EXPECT_TRUE(opt_value.has_value());
-  EXPECT_THAT(opt_value.value().StringOrDie().value(), Eq(kValue1));
+  EXPECT_THAT(opt_value->StringOrDie().value(), Eq(kValue1));
 
   // Test clearing bound value
   EXPECT_TRUE(activation.ClearValueEntry("value42"));
@@ -192,7 +185,7 @@ TEST(ActivationTest, CheckValueProducerClear) {
   // Produce second value
   auto opt_value2 = activation.FindValue("value43", &arena);
   EXPECT_TRUE(opt_value2.has_value());
-  EXPECT_THAT(opt_value2.value().StringOrDie().value(), Eq(kValue2));
+  EXPECT_THAT(opt_value2->StringOrDie().value(), Eq(kValue2));
 
   // Clear all values
   EXPECT_EQ(1, activation.ClearCachedValues());
@@ -202,7 +195,7 @@ TEST(ActivationTest, CheckValueProducerClear) {
   // Produce first value again
   auto opt_value3 = activation.FindValue("value42", &arena);
   EXPECT_TRUE(opt_value3.has_value());
-  EXPECT_THAT(opt_value3.value().StringOrDie().value(), Eq(kValue1));
+  EXPECT_THAT(opt_value3->StringOrDie().value(), Eq(kValue1));
   EXPECT_EQ(1, activation.ClearCachedValues());
 }
 

@@ -123,9 +123,9 @@ TEST(ActivationBindHelperTest, TestBindDefaultFields) {
 
   result = activation.FindValue("message_value", &arena);
   ASSERT_TRUE(result.has_value());
-  EXPECT_NE(nullptr, result.value().MessageOrDie());
+  EXPECT_NE(nullptr, result->MessageOrDie());
   EXPECT_THAT(TestMessage::default_instance(),
-              EqualsProto(*result.value().MessageOrDie()));
+              EqualsProto(*result->MessageOrDie()));
 }
 
 TEST(ActivationBindHelperTest, RejectsNullArena) {

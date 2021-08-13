@@ -52,15 +52,14 @@ TEST(CelFunctionRegistryTest, InsertAndRetrieveLazyFunction) {
   CelFunctionDescriptor lazy_function_desc{"LazyFunction", false, {}};
   CelFunctionRegistry registry;
   Activation activation;
-  auto register_status = registry.RegisterLazyFunction(
-      lazy_function_desc, std::make_unique<NullLazyFunctionProvider>());
-  EXPECT_OK(register_status);
+  ASSERT_OK(registry.RegisterLazyFunction(
+      lazy_function_desc, std::make_unique<NullLazyFunctionProvider>()));
 
   const auto providers = registry.FindLazyOverloads("LazyFunction", false, {});
   EXPECT_THAT(providers, testing::SizeIs(1));
-  auto func = providers[0]->GetFunction(lazy_function_desc, activation);
-  ASSERT_OK(func.status());
-  EXPECT_THAT(func.value(), Eq(nullptr));
+  ASSERT_OK_AND_ASSIGN(
+      auto func, providers[0]->GetFunction(lazy_function_desc, activation));
+  EXPECT_THAT(func, Eq(nullptr));
 }
 
 // Confirm that lazy and static functions share the same descriptor space:
@@ -69,9 +68,8 @@ TEST(CelFunctionRegistryTest, InsertAndRetrieveLazyFunction) {
 TEST(CelFunctionRegistryTest, LazyAndStaticFunctionShareDescriptorSpace) {
   CelFunctionRegistry registry;
   CelFunctionDescriptor desc = ConstCelFunction::MakeDescriptor();
-  auto register_status = registry.RegisterLazyFunction(
-      desc, std::make_unique<NullLazyFunctionProvider>());
-  EXPECT_OK(register_status);
+  ASSERT_OK(registry.RegisterLazyFunction(
+      desc, std::make_unique<NullLazyFunctionProvider>()));
 
   absl::Status status = registry.Register(std::make_unique<ConstCelFunction>());
   EXPECT_FALSE(status.ok());
@@ -81,9 +79,8 @@ TEST(CelFunctionRegistryTest, ListFunctions) {
   CelFunctionDescriptor lazy_function_desc{"LazyFunction", false, {}};
   CelFunctionRegistry registry;
 
-  auto register_status = registry.RegisterLazyFunction(
-      lazy_function_desc, std::make_unique<NullLazyFunctionProvider>());
-  EXPECT_OK(register_status);
+  ASSERT_OK(registry.RegisterLazyFunction(
+      lazy_function_desc, std::make_unique<NullLazyFunctionProvider>()));
   EXPECT_OK(registry.Register(std::make_unique<ConstCelFunction>()));
 
   auto registered_functions = registry.ListFunctions();
@@ -98,17 +95,16 @@ TEST(CelFunctionRegistryTest, DefaultLazyProvider) {
   CelFunctionRegistry registry;
   Activation activation;
   EXPECT_OK(registry.RegisterLazyFunction(lazy_function_desc));
-  auto insert_status = activation.InsertFunction(
-      std::make_unique<ConstCelFunction>(lazy_function_desc));
-  EXPECT_OK(insert_status);
+  EXPECT_OK(activation.InsertFunction(
+      std::make_unique<ConstCelFunction>(lazy_function_desc)));
 
   const auto providers = registry.FindLazyOverloads("LazyFunction", false, {});
   EXPECT_THAT(providers, testing::SizeIs(1));
-  auto func = providers[0]->GetFunction(lazy_function_desc, activation);
-  ASSERT_OK(func.status());
-  EXPECT_THAT(func.value(), Property(&CelFunction::descriptor,
-                                     Property(&CelFunctionDescriptor::name,
-                                              Eq("LazyFunction"))));
+  ASSERT_OK_AND_ASSIGN(
+      auto func, providers[0]->GetFunction(lazy_function_desc, activation));
+  EXPECT_THAT(func, Property(&CelFunction::descriptor,
+                             Property(&CelFunctionDescriptor::name,
+                                      Eq("LazyFunction"))));
 }
 
 }  // namespace

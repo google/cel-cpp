@@ -15,7 +15,9 @@ namespace runtime {
 namespace {
 
 using testing::Eq;
+using testing::HasSubstr;
 using testing::UnorderedPointwise;
+using cel_base::testing::StatusIs;
 
 class FieldBackedMapTestImpl : public FieldBackedMapImpl {
  public:
@@ -88,7 +90,7 @@ TEST(FieldBackedMapImplTest, Int32KeyTest) {
       cel_map->LegacyHasMapValue(CelValue::CreateInt64(1)).value_or(false));
 
   // Look up nonexistent key
-  EXPECT_EQ((*cel_map)[CelValue::CreateInt64(3)].has_value(), false);
+  EXPECT_FALSE((*cel_map)[CelValue::CreateInt64(3)].has_value());
   EXPECT_FALSE(cel_map->Has(CelValue::CreateInt64(3)).value_or(true));
   EXPECT_FALSE(
       cel_map->LegacyHasMapValue(CelValue::CreateInt64(3)).value_or(true));
@@ -102,8 +104,8 @@ TEST(FieldBackedMapImplTest, Int32KeyOutOfRangeTest) {
   // Look up keys out of int32_t range
   auto result = cel_map->Has(
       CelValue::CreateInt64(std::numeric_limits<int32_t>::max() + 1L));
-  EXPECT_FALSE(result.ok());
-  EXPECT_THAT(result.status().code(), Eq(absl::StatusCode::kOutOfRange));
+  EXPECT_THAT(result.status(),
+              StatusIs(absl::StatusCode::kOutOfRange, HasSubstr("overflow")));
 
   result = cel_map->Has(
       CelValue::CreateInt64(std::numeric_limits<int32_t>::lowest() - 1L));

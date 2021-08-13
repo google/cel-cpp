@@ -40,8 +40,8 @@ TEST(CelTypeRegistryTest, TestRegisterTypeName) {
 
   auto type = registry.FindType("custom_type");
   ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("custom_type"));
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("custom_type"));
 }
 
 TEST(CelTypeRegistryTest, TestFindDescriptorFound) {
@@ -61,16 +61,16 @@ TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("int");
   ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("int"));
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("int"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeProtobufTypeFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("google.protobuf.Any");
   ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("google.protobuf.Any"));
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("google.protobuf.Any"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {
