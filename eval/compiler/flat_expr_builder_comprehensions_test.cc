@@ -157,19 +157,15 @@ const char kNestedComprehension[] = R"pb(
 TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
   FlatExprBuilder builder;
   Expr expr;
+  SourceInfo source_info;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kNestedComprehension, &expr));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
-  SourceInfo source_info;
-  auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_OK(build_status);
-
-  auto cel_expr = std::move(build_status.value());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&expr, &source_info));
 
   Activation activation;
   google::protobuf::Arena arena;
-  auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_OK(result_or);
-  CelValue result = result_or.value();
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsList());
   EXPECT_THAT(*result.ListOrDie(), testing::SizeIs(2));
 }

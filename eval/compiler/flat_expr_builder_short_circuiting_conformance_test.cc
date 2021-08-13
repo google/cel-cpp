@@ -86,13 +86,13 @@ call_expr {
 void BuildAndEval(CelExpressionBuilder* builder, const Expr& expr,
                   const Activation& activation, google::protobuf::Arena* arena,
                   CelValue* result) {
-  auto expression_status = builder->CreateExpression(&expr, nullptr);
-  ASSERT_OK(expression_status.status());
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder->CreateExpression(&expr, nullptr));
 
-  auto result_status = expression_status.value()->Evaluate(activation, arena);
-  ASSERT_OK(result_status.status());
+  auto value = expression->Evaluate(activation, arena);
+  ASSERT_OK(value);
 
-  *result = result_status.value();
+  *result = *value;
 }
 
 class ShortCircuitingTest : public testing::TestWithParam<bool> {
