@@ -22,13 +22,9 @@ absl::StatusOr<CelValue> RunShadowableExpression(const std::string& identifier,
                                                  const CelValue& value,
                                                  const Activation& activation,
                                                  Arena* arena) {
-  auto step_status = CreateShadowableValueStep(identifier, value, 1);
-  if (!step_status.ok()) {
-    return step_status.status();
-  }
-
+  ASSIGN_OR_RETURN(auto step, CreateShadowableValueStep(identifier, value, 1));
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   google::api::expr::v1alpha1::Expr dummy_expr;
   CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {});

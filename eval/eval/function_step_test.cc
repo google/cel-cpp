@@ -49,7 +49,7 @@ class ConstFunction : public CelFunction {
       : CelFunction(CreateDescriptor(name)), value_(value) {}
 
   static CelFunctionDescriptor CreateDescriptor(absl::string_view name) {
-    return CelFunctionDescriptor{std::string(name), false, {}};
+    return CelFunctionDescriptor{name, false, {}};
   }
 
   static Expr::Call MakeCall(absl::string_view name) {
@@ -245,28 +245,20 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
   Expr::Call call2 = ConstFunction::MakeCall("Const2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(5));
 }
@@ -283,22 +275,18 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
   Expr::Call call1 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  EXPECT_THAT(status, Not(IsOk()));
+  EXPECT_THAT(impl->Evaluate(activation, &arena), Not(IsOk()));
 }
 
 // Test situation when no overloads match input arguments during evaluation.
@@ -319,27 +307,20 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   // Add expects {int64_t, int64_t} but it's {int64_t, uint64_t}.
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
 }
 
@@ -368,28 +349,20 @@ TEST_P(FunctionStepTest,
   Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
 }
@@ -400,45 +373,33 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   CelFunctionRegistry registry;
   BuilderWarnings warnings;
 
-  auto register0_status =
-      registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3"));
-  ASSERT_OK(register0_status);
-  auto insert0_status = activation.InsertFunction(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3"));
-  ASSERT_OK(insert0_status);
-  auto register1_status =
-      registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const2"));
-  ASSERT_OK(register1_status);
-  auto insert1_status = activation.InsertFunction(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2"));
-  ASSERT_OK(insert1_status);
+  ASSERT_OK(
+      registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3")));
+  ASSERT_OK(activation.InsertFunction(
+      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+  ASSERT_OK(
+      registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const2")));
+  ASSERT_OK(activation.InsertFunction(
+      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(absl::make_unique<AddFunction>()));
 
   Expr::Call call1 = ConstFunction::MakeCall("Const3");
   Expr::Call call2 = ConstFunction::MakeCall("Const2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(5));
 }
@@ -458,44 +419,30 @@ TEST_P(FunctionStepTest,
   CelError error1;
 
   // Constants have ERROR type, while AddFunction expects INT.
-  auto register0_status = registry.RegisterLazyFunction(
-      ConstFunction::CreateDescriptor("ConstError1"));
-  ASSERT_OK(register0_status);
-  auto insert0_status =
-      activation.InsertFunction(absl::make_unique<ConstFunction>(
-          CelValue::CreateError(&error0), "ConstError1"));
-  ASSERT_OK(insert0_status);
-  auto register1_status = registry.RegisterLazyFunction(
-      ConstFunction::CreateDescriptor("ConstError2"));
-  ASSERT_OK(register1_status);
-  auto insert1_status =
-      activation.InsertFunction(absl::make_unique<ConstFunction>(
-          CelValue::CreateError(&error1), "ConstError2"));
-  ASSERT_OK(insert1_status);
+  ASSERT_OK(registry.RegisterLazyFunction(
+      ConstFunction::CreateDescriptor("ConstError1")));
+  ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
+      CelValue::CreateError(&error0), "ConstError1")));
+  ASSERT_OK(registry.RegisterLazyFunction(
+      ConstFunction::CreateDescriptor("ConstError2")));
+  ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
+      CelValue::CreateError(&error1), "ConstError2")));
 
   Expr::Call call1 = ConstFunction::MakeCall("ConstError1");
   Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
 }
@@ -551,28 +498,20 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet());
 }
 
@@ -589,14 +528,11 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   ident1.set_name("param");
   Expr::Call call1 = SinkFunction::MakeCall();
 
-  auto step0_status = CreateIdentStep(&ident1, GetExprId());
-  auto step1_status = MakeTestFunctionStep(&call1, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(&ident1, GetExprId()));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call1, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
@@ -613,11 +549,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   // is handled as fully unknown when used as function input argument.
   activation.set_unknown_attribute_patterns({pattern});
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet());
 }
 
@@ -638,28 +570,20 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
 
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl->Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
   ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());
@@ -696,17 +620,13 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   Expr::Call call2 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   Expr dummy_expr;
 
@@ -715,11 +635,7 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl.Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet());
   // Arguments captured.
   EXPECT_THAT(value.UnknownSetOrDie()
@@ -745,29 +661,21 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   Expr::Call call2 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
-  auto step3_status = MakeTestFunctionStep(&call1, registry);
-  auto step4_status = MakeTestFunctionStep(&call2, registry);
-  auto step5_status = MakeTestFunctionStep(&add_call, registry);
-  auto step6_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step5, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step6, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-  ASSERT_OK(step3_status);
-  ASSERT_OK(step4_status);
-  ASSERT_OK(step5_status);
-  ASSERT_OK(step6_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
-  path.push_back(std::move(step3_status.value()));
-  path.push_back(std::move(step4_status.value()));
-  path.push_back(std::move(step5_status.value()));
-  path.push_back(std::move(step6_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+  path.push_back(std::move(step3));
+  path.push_back(std::move(step4));
+  path.push_back(std::move(step5));
+  path.push_back(std::move(step6));
 
   Expr dummy_expr;
 
@@ -776,11 +684,7 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl.Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet());
   // Arguments captured.
   EXPECT_THAT(value.UnknownSetOrDie()
@@ -806,29 +710,21 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   Expr::Call call2 = ConstFunction::MakeCall("Const3");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
-  auto step3_status = MakeTestFunctionStep(&call2, registry);
-  auto step4_status = MakeTestFunctionStep(&call1, registry);
-  auto step5_status = MakeTestFunctionStep(&add_call, registry);
-  auto step6_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step5, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step6, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-  ASSERT_OK(step3_status);
-  ASSERT_OK(step4_status);
-  ASSERT_OK(step5_status);
-  ASSERT_OK(step6_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
-  path.push_back(std::move(step3_status.value()));
-  path.push_back(std::move(step4_status.value()));
-  path.push_back(std::move(step5_status.value()));
-  path.push_back(std::move(step6_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+  path.push_back(std::move(step3));
+  path.push_back(std::move(step4));
+  path.push_back(std::move(step5));
+  path.push_back(std::move(step6));
 
   Expr dummy_expr;
 
@@ -837,12 +733,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl.Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
-  ASSERT_TRUE(value.IsUnknownSet()) << *value.ErrorOrDie();
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsUnknownSet()) << *(value.ErrorOrDie());
   // Arguments captured.
   EXPECT_THAT(value.UnknownSetOrDie()
                   ->unknown_function_results()
@@ -870,17 +762,13 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
   Expr::Call add_call = AddFunction::MakeCall();
 
-  auto step0_status = MakeTestFunctionStep(&call1, registry);
-  auto step1_status = MakeTestFunctionStep(&call2, registry);
-  auto step2_status = MakeTestFunctionStep(&add_call, registry);
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
 
-  ASSERT_OK(step0_status);
-  ASSERT_OK(step1_status);
-  ASSERT_OK(step2_status);
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
-  path.push_back(std::move(step2_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
 
   Expr dummy_expr;
 
@@ -889,11 +777,7 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   Activation activation;
   google::protobuf::Arena arena;
 
-  auto status = impl.Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  auto value = status.value();
-
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
   ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());

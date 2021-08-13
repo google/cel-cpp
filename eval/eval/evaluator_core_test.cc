@@ -226,13 +226,10 @@ TEST(EvaluatorCoreTest, TraceTest) {
   result_expr->mutable_const_expr()->set_bool_value(true);
 
   FlatExprBuilder builder;
-  auto builtin_status = RegisterBuiltinFunctions(builder.GetRegistry());
-  ASSERT_OK(builtin_status);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   builder.set_shortcircuiting(false);
-  auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_OK(build_status);
-
-  auto cel_expr = std::move(build_status.value());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&expr, &source_info));
 
   Activation activation;
   google::protobuf::Arena arena;

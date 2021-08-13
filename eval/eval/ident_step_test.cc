@@ -24,11 +24,10 @@ TEST(IdentStepTest, TestIdentStep) {
   auto ident_expr = expr.mutable_ident_expr();
   ident_expr->set_name("name0");
 
-  auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_OK(step_status);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -53,11 +52,10 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   auto ident_expr = expr.mutable_ident_expr();
   ident_expr->set_name("name0");
 
-  auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_OK(step_status);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -79,11 +77,10 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   auto ident_expr = expr.mutable_ident_expr();
   ident_expr->set_name("name0");
 
-  auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_OK(step_status);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -109,7 +106,7 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  EXPECT_THAT(status0.value().StringOrDie().value(), Eq("test"));
+  EXPECT_THAT(status0->StringOrDie().value(), Eq("test"));
 }
 
 TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
@@ -117,11 +114,10 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   auto ident_expr = expr.mutable_ident_expr();
   ident_expr->set_name("name0");
 
-  auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_OK(step_status);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -147,10 +143,8 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   status0 = impl.Evaluate(activation, &arena);
   ASSERT_OK(status0);
 
-  EXPECT_EQ(status0.value().ErrorOrDie()->code(),
-            absl::StatusCode::kInvalidArgument);
-  EXPECT_EQ(status0.value().ErrorOrDie()->message(),
-            "MissingAttributeError: name0");
+  EXPECT_EQ(status0->ErrorOrDie()->code(), absl::StatusCode::kInvalidArgument);
+  EXPECT_EQ(status0->ErrorOrDie()->message(), "MissingAttributeError: name0");
 }
 
 TEST(IdentStepTest, TestIdentStepUnknownValueError) {
@@ -158,11 +152,10 @@ TEST(IdentStepTest, TestIdentStepUnknownValueError) {
   auto ident_expr = expr.mutable_ident_expr();
   ident_expr->set_name("name0");
 
-  auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_OK(step_status);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -201,11 +194,10 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   auto ident_expr = expr.mutable_ident_expr();
   ident_expr->set_name("name0");
 
-  auto step_status = CreateIdentStep(ident_expr, expr.id());
-  ASSERT_OK(step_status);
+  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
-  path.push_back(std::move(step_status.value()));
+  path.push_back(std::move(step));
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 

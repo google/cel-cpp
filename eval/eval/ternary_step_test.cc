@@ -39,33 +39,17 @@ class LogicStepTest : public testing::TestWithParam<bool> {
 
     ExecutionPath path;
 
-    auto step_status = CreateIdentStep(ident_expr0, expr0.id());
-    if (!step_status.ok()) {
-      return step_status.status();
-    }
+    ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
+    path.push_back(std::move(step));
 
-    path.push_back(std::move(step_status).value());
+    ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr1, expr1.id()));
+    path.push_back(std::move(step));
 
-    step_status = CreateIdentStep(ident_expr1, expr1.id());
-    if (!step_status.ok()) {
-      return step_status.status();
-    }
+    ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr2, expr2.id()));
+    path.push_back(std::move(step));
 
-    path.push_back(std::move(step_status).value());
-
-    step_status = CreateIdentStep(ident_expr2, expr2.id());
-    if (!step_status.ok()) {
-      return step_status.status();
-    }
-
-    path.push_back(std::move(step_status).value());
-
-    step_status = CreateTernaryStep(4);
-    if (!step_status.ok()) {
-      return step_status.status();
-    }
-
-    path.push_back(std::move(step_status).value());
+    ASSIGN_OR_RETURN(step, CreateTernaryStep(4));
+    path.push_back(std::move(step));
 
     auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
@@ -110,20 +94,16 @@ TEST_P(LogicStepTest, TestErrorHandling) {
   CelValue result;
   CelError error;
   CelValue error_value = CelValue::CreateError(&error);
-  absl::Status status =
-      EvaluateLogic(error_value, CelValue::CreateBool(true),
-                    CelValue::CreateBool(false), &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(error_value, CelValue::CreateBool(true),
+                          CelValue::CreateBool(false), &result, GetParam()));
   ASSERT_TRUE(result.IsError());
 
-  status = EvaluateLogic(CelValue::CreateBool(true), error_value,
-                         CelValue::CreateBool(false), &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(CelValue::CreateBool(true), error_value,
+                          CelValue::CreateBool(false), &result, GetParam()));
   ASSERT_TRUE(result.IsError());
 
-  status = EvaluateLogic(CelValue::CreateBool(false), error_value,
-                         CelValue::CreateBool(false), &result, GetParam());
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(CelValue::CreateBool(false), error_value,
+                          CelValue::CreateBool(false), &result, GetParam()));
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 }
@@ -134,31 +114,25 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
   CelError cel_error;
   CelValue unknown_value = CelValue::CreateUnknownSet(&unknown_set);
   CelValue error_value = CelValue::CreateError(&cel_error);
-  absl::Status status =
-      EvaluateLogic(unknown_value, CelValue::CreateBool(true),
-                    CelValue::CreateBool(false), &result, true);
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(unknown_value, CelValue::CreateBool(true),
+                          CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsUnknownSet());
 
-  status = EvaluateLogic(CelValue::CreateBool(true), unknown_value,
-                         CelValue::CreateBool(false), &result, true);
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(CelValue::CreateBool(true), unknown_value,
+                          CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsUnknownSet());
 
-  status = EvaluateLogic(CelValue::CreateBool(false), unknown_value,
-                         CelValue::CreateBool(false), &result, true);
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(CelValue::CreateBool(false), unknown_value,
+                          CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsBool());
   ASSERT_FALSE(result.BoolOrDie());
 
-  status = EvaluateLogic(error_value, unknown_value,
-                         CelValue::CreateBool(false), &result, true);
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(error_value, unknown_value,
+                          CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsError());
 
-  status = EvaluateLogic(unknown_value, error_value,
-                         CelValue::CreateBool(false), &result, true);
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(unknown_value, error_value,
+                          CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsUnknownSet());
 
   Expr expr0;
@@ -178,10 +152,9 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
   EXPECT_THAT(unknown_attr_set0.attributes().size(), Eq(1));
   EXPECT_THAT(unknown_attr_set1.attributes().size(), Eq(1));
 
-  status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
-                         CelValue::CreateUnknownSet(&unknown_set1),
-                         CelValue::CreateBool(false), &result, true);
-  ASSERT_OK(status);
+  ASSERT_OK(EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
+                          CelValue::CreateUnknownSet(&unknown_set1),
+                          CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsUnknownSet());
   const auto& attrs =
       result.UnknownSetOrDie()->unknown_attributes().attributes();

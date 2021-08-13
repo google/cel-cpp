@@ -62,10 +62,8 @@ CelValue EvaluateAttributeHelper(
   activation.InsertValue("key", key);
 
   activation.set_unknown_attribute_patterns(patterns);
-  auto eval_status = cel_expr.Evaluate(activation, arena);
-
-  EXPECT_OK(eval_status);
-  return eval_status.value();
+  auto result = cel_expr.Evaluate(activation, arena);
+  return *result;
 }
 
 class ContainerAccessStepTest : public ::testing::Test {

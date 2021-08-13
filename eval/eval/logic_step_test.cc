@@ -31,36 +31,24 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     ident_expr1->set_name("name1");
 
     ExecutionPath path;
+    ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
+    path.push_back(std::move(step));
 
-    auto step_status = CreateIdentStep(ident_expr0, expr0.id());
-    if (!step_status.ok()) return step_status.status();
+    ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr1, expr1.id()));
+    path.push_back(std::move(step));
 
-    path.push_back(std::move(step_status).value());
-
-    step_status = CreateIdentStep(ident_expr1, expr1.id());
-    if (!step_status.ok()) return step_status.status();
-
-    path.push_back(std::move(step_status).value());
-
-    step_status = (is_or) ? CreateOrStep(2) : CreateAndStep(2);
-    if (!step_status.ok()) return step_status.status();
-
-    path.push_back(std::move(step_status).value());
+    ASSIGN_OR_RETURN(step, (is_or) ? CreateOrStep(2) : CreateAndStep(2));
+    path.push_back(std::move(step));
 
     auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
-
     CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {},
                                enable_unknown);
 
     Activation activation;
-    std::string value("test");
-
     activation.InsertValue("name0", arg0);
     activation.InsertValue("name1", arg1);
-    auto status0 = impl.Evaluate(activation, &arena_);
-    if (!status0.ok()) return status0.status();
-
-    *result = status0.value();
+    ASSIGN_OR_RETURN(CelValue value, impl.Evaluate(activation, &arena_));
+    *result = value;
     return absl::OkStatus();
   }
 
