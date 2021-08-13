@@ -340,7 +340,7 @@ class MessageObject final : public common::Object {
   }
 
   common::Type object_type() const override {
-    return common::Type(common::ObjectType(holder_.value().GetDescriptor()));
+    return common::Type(common::ObjectType(holder_->GetDescriptor()));
   }
 
   void To(google::protobuf::Any* value) const override {

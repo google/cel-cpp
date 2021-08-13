@@ -99,7 +99,7 @@ struct DebugStringVisitor {
       const auto& optional_value = arg->operator[](key);
       elements.push_back(absl::StrCat("<", key.DebugString(), ">: <",
                                       optional_value.has_value()
-                                          ? optional_value.value().DebugString()
+                                          ? optional_value->DebugString()
                                           : "nullopt",
                                       ">"));
     }

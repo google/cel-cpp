@@ -35,7 +35,7 @@ class ConstantFoldingTransform {
         // since the output expression is temporary
         auto value = ConvertConstant(&expr.const_expr());
         if (value.has_value()) {
-          makeConstant(value.value(), out);
+          makeConstant(*value, out);
           return true;
         } else {
           out->mutable_const_expr()->MergeFrom(expr.const_expr());

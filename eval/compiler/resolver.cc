@@ -100,7 +100,7 @@ absl::optional<CelValue> Resolver::FindConstant(absl::string_view name,
     if (resolve_qualified_type_identifiers_ || !absl::StrContains(name, ".")) {
       auto type_value = type_registry_->FindType(name);
       if (type_value.has_value()) {
-        return type_value.value();
+        return *type_value;
       }
     }
   }

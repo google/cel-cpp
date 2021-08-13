@@ -205,7 +205,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
       key.GetValue(&key_value);
       if (key_value > std::numeric_limits<int32_t>::max() ||
           key_value < std::numeric_limits<int32_t>::lowest()) {
-        return absl::OutOfRangeError("integer overlow");
+        return absl::OutOfRangeError("integer overflow");
       }
       proto_key.SetInt32Value(key_value);
     } break;

@@ -146,12 +146,12 @@ class CelAttributeQualifierPattern {
         }
       }
     }
-    return value_.value().IsMatch(cel_value);
+    return value_->IsMatch(cel_value);
   }
 
   bool IsMatch(absl::string_view other_key) const {
     if (!value_.has_value()) return true;
-    return value_.value().IsMatch(other_key);
+    return value_->IsMatch(other_key);
   }
 };
 

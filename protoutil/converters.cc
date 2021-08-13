@@ -51,20 +51,20 @@ class ListValue final : public common::List {
   template <typename... Args>
   explicit ListValue(Args&&... args) : holder_(std::forward<Args>(args)...) {}
 
-  std::size_t size() const override { return holder_.value().values_size(); }
+  std::size_t size() const override { return holder_->values_size(); }
 
   common::Value Get(std::size_t index) const override {
-    if (index >= static_cast<std::size_t>(holder_.value().values_size())) {
+    if (index >= static_cast<std::size_t>(holder_->values_size())) {
       return common::Value::FromError(
-          internal::OutOfRangeError(index, holder_.value().values_size()));
+          internal::OutOfRangeError(index, holder_->values_size()));
     }
-    return ValueFor(&holder_.value().values(index), SelfRefProvider());
+    return ValueFor(&holder_->values(index), SelfRefProvider());
   }
 
   google::rpc::Status ForEach(
       const std::function<google::rpc::Status(const common::Value&)>& call)
       const override {
-    for (const auto& elem : holder_.value().values()) {
+    for (const auto& elem : holder_->values()) {
       RETURN_IF_STATUS_ERROR(call(ValueFor(&elem, SelfRefProvider())));
     }
     return OkStatus();
@@ -82,14 +82,12 @@ class Struct final : public common::Map {
   template <typename... Args>
   explicit Struct(Args&&... args) : holder_(std::forward<Args>(args)...) {}
 
-  inline std::size_t size() const override {
-    return holder_.value().fields_size();
-  }
+  inline std::size_t size() const override { return holder_->fields_size(); }
 
   google::rpc::Status ForEach(
       const std::function<google::rpc::Status(
           const common::Value&, const common::Value&)>& call) const override {
-    for (const auto& field : holder_.value().fields()) {
+    for (const auto& field : holder_->fields()) {
       RETURN_IF_STATUS_ERROR(
           call(common::Value::ForString(field.first, SelfRefProvider()),
                ValueFor(field.second, SelfRefProvider())));

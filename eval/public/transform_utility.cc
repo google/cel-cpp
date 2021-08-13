@@ -102,7 +102,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
                               "key not found in map");
         }
         RETURN_IF_ERROR(
-            CelValueToValue(optional_value.value(), entry->mutable_value()));
+            CelValueToValue(*optional_value, entry->mutable_value()));
       }
       break;
     }

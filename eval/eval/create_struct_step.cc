@@ -197,8 +197,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
 absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < entries_.size()) {
-    return absl::Status(absl::StatusCode::kInternal,
-                        "CreateStructStepForMessage: stack underflow");
+    return absl::InternalError("CreateStructStepForMessage: stack underflow");
   }
 
   CelValue result;
@@ -235,29 +234,26 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
     map_entries.push_back({args[2 * i], args[2 * i + 1]});
   }
 
-  auto status_or_cel_map =
+  auto cel_map =
       CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
           map_entries.data(), map_entries.size()));
-  if (!status_or_cel_map.ok()) {
-    *result =
-        CreateErrorValue(frame->arena(), status_or_cel_map.status().message());
+  if (!cel_map.ok()) {
+    *result = CreateErrorValue(frame->arena(), cel_map.status());
     return absl::OkStatus();
   }
 
-  auto cel_map = std::move(*status_or_cel_map);
-
-  *result = CelValue::CreateMap(cel_map.get());
+  auto cel_map_ptr = *std::move(cel_map);
+  *result = CelValue::CreateMap(cel_map_ptr.get());
 
   // Pass object ownership to Arena.
-  frame->arena()->Own(cel_map.release());
+  frame->arena()->Own(cel_map_ptr.release());
 
   return absl::OkStatus();
 }
 
 absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < 2 * entry_count_) {
-    return absl::Status(absl::StatusCode::kInternal,
-                        "CreateStructStepForMap: stack underflow");
+    return absl::InternalError("CreateStructStepForMap: stack underflow");
   }
 
   CelValue result;

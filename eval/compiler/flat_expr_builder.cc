@@ -183,7 +183,7 @@ class FlatExprVisitor : public AstVisitor {
 
     auto value = ConvertConstant(const_expr);
     if (ValidateOrError(value.has_value(), "Unsupported constant type")) {
-      AddStep(CreateConstValueStep(value.value(), expr->id()));
+      AddStep(CreateConstValueStep(*value, expr->id()));
     }
   }
 
@@ -224,7 +224,7 @@ class FlatExprVisitor : public AstVisitor {
       // 'enable_qualified_type_identifiers' is set to true.
       const_value = resolver_.FindConstant(qualified_path, select_expr->id());
       if (const_value.has_value()) {
-        AddStep(CreateShadowableValueStep(qualified_path, const_value.value(),
+        AddStep(CreateShadowableValueStep(qualified_path, *const_value,
                                           select_expr->id()));
         resolved_select_expr_ = select_expr;
         namespace_stack_.clear();
@@ -236,7 +236,7 @@ class FlatExprVisitor : public AstVisitor {
     // Attempt to resolve a simple identifier as an enum or type constant value.
     const_value = resolver_.FindConstant(path, expr->id());
     if (const_value.has_value()) {
-      AddStep(CreateShadowableValueStep(path, const_value.value(), expr->id()));
+      AddStep(CreateShadowableValueStep(path, *const_value, expr->id()));
       return;
     }
 
@@ -509,11 +509,11 @@ class FlatExprVisitor : public AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
-  void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step_status) {
-    if (step_status.ok() && progress_status_.ok()) {
-      flattened_path_->push_back(std::move(step_status.value()));
+  void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
+    if (step.ok() && progress_status_.ok()) {
+      flattened_path_->push_back(*std::move(step));
     } else {
-      SetProgressStatusError(step_status.status());
+      SetProgressStatusError(step.status());
     }
   }
 
@@ -599,13 +599,11 @@ void BinaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   if (arg_num == 0) {
     // If first branch evaluation result is enough to determine output,
     // jump over the second branch and provide result as final output.
-    auto jump_step_status =
-        CreateCondJumpStep(cond_value_, true, {}, expr->id());
-    if (jump_step_status.ok()) {
-      jump_step_ =
-          Jump(visitor_->GetCurrentIndex(), jump_step_status.value().get());
+    auto jump_step = CreateCondJumpStep(cond_value_, true, {}, expr->id());
+    if (jump_step.ok()) {
+      jump_step_ = Jump(visitor_->GetCurrentIndex(), jump_step->get());
     }
-    visitor_->AddStep(std::move(jump_step_status));
+    visitor_->AddStep(std::move(jump_step));
   }
 }
 
@@ -636,31 +634,29 @@ void TernaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   // condition argument for ternary operator
   if (arg_num == 0) {
     // Jump in case of error or non-bool
-    auto error_jump_status = CreateBoolCheckJumpStep({}, expr->id());
-    if (error_jump_status.ok()) {
-      error_jump_ =
-          Jump(visitor_->GetCurrentIndex(), error_jump_status.value().get());
+    auto error_jump = CreateBoolCheckJumpStep({}, expr->id());
+    if (error_jump.ok()) {
+      error_jump_ = Jump(visitor_->GetCurrentIndex(), error_jump->get());
     }
-    visitor_->AddStep(std::move(error_jump_status));
+    visitor_->AddStep(std::move(error_jump));
 
     // Jump to the second branch of execution
     // Value is to be removed from the stack.
-    auto jump_to_second_status =
-        CreateCondJumpStep(false, false, {}, expr->id());
-    if (jump_to_second_status.ok()) {
-      jump_to_second_ = Jump(visitor_->GetCurrentIndex(),
-                             jump_to_second_status.value().get());
+    auto jump_to_second = CreateCondJumpStep(false, false, {}, expr->id());
+    if (jump_to_second.ok()) {
+      jump_to_second_ =
+          Jump(visitor_->GetCurrentIndex(), jump_to_second->get());
     }
-    visitor_->AddStep(std::move(jump_to_second_status));
+    visitor_->AddStep(std::move(jump_to_second));
   } else if (arg_num == 1) {
     // Jump after the first and over the second branch of execution.
     // Value is to be removed from the stack.
-    auto jump_after_first_status = CreateJumpStep({}, expr->id());
-    if (jump_after_first_status.ok()) {
-      jump_after_first_ = Jump(visitor_->GetCurrentIndex(),
-                               jump_after_first_status.value().get());
+    auto jump_after_first = CreateJumpStep({}, expr->id());
+    if (jump_after_first.ok()) {
+      jump_after_first_ =
+          Jump(visitor_->GetCurrentIndex(), jump_after_first->get());
     }
-    visitor_->AddStep(std::move(jump_after_first_status));
+    visitor_->AddStep(std::move(jump_after_first));
 
     if (visitor_->ValidateOrError(
             jump_to_second_.exists(),
@@ -716,8 +712,8 @@ const Expr* CurrentValueDummy() {
 
 void ComprehensionVisitor::PreVisit(const Expr*) {
   const Expr* dummy = LoopStepDummy();
-  visitor_->AddStep(CreateConstValueStep(
-      ConvertConstant(&dummy->const_expr()).value(), dummy->id(), false));
+  visitor_->AddStep(CreateConstValueStep(*ConvertConstant(&dummy->const_expr()),
+                                         dummy->id(), false));
 }
 
 void ComprehensionVisitor::PostVisitArg(int arg_num, const Expr* expr) {
@@ -731,10 +727,10 @@ void ComprehensionVisitor::PostVisitArg(int arg_num, const Expr* expr) {
       visitor_->AddStep(CreateListKeysStep(expr->id()));
       const Expr* minus1 = MinusOne();
       visitor_->AddStep(CreateConstValueStep(
-          ConvertConstant(&minus1->const_expr()).value(), minus1->id(), false));
+          *ConvertConstant(&minus1->const_expr()), minus1->id(), false));
       const Expr* dummy = CurrentValueDummy();
       visitor_->AddStep(CreateConstValueStep(
-          ConvertConstant(&dummy->const_expr()).value(), dummy->id(), false));
+          *ConvertConstant(&dummy->const_expr()), dummy->id(), false));
       break;
     }
     case ACCU_INIT: {
@@ -809,9 +805,8 @@ FlatExprBuilder::CreateExpressionImpl(
     if (!rewritten.ok()) {
       return rewritten.status();
     }
-    if (rewritten.value().has_value()) {
-      rewrite_buffer =
-          std::make_unique<Expr>(std::move(rewritten).value().value());
+    if (rewritten->has_value()) {
+      rewrite_buffer = std::make_unique<Expr>((*std::move(rewritten)).value());
       effective_expr = rewrite_buffer.get();
     }
     // TODO(issues/99): we could setup a check step here that confirms all of

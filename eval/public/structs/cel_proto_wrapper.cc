@@ -543,7 +543,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       return {};
     }
     Value field_value;
-    auto result = MessageFromValue(v.value(), &field_value);
+    auto result = MessageFromValue(*v, &field_value);
     // If the value is not a valid JSON type, abort the conversion.
     if (!result.has_value()) {
       return {};
