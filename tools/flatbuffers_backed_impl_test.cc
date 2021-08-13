@@ -104,80 +104,80 @@ TEST_F(FlatBuffersTest, PrimitiveFields) {
   {
     auto f = value[CelValue::CreateStringView(kByteField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsInt64());
-    EXPECT_EQ(-1, f.value().Int64OrDie());
+    EXPECT_TRUE(f->IsInt64());
+    EXPECT_EQ(-1, f->Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUbyteField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsUint64());
-    EXPECT_EQ(1, uf.value().Uint64OrDie());
+    EXPECT_TRUE(uf->IsUint64());
+    EXPECT_EQ(1, uf->Uint64OrDie());
   }
   // short
   {
     auto f = value[CelValue::CreateStringView(kShortField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsInt64());
-    EXPECT_EQ(-2, f.value().Int64OrDie());
+    EXPECT_TRUE(f->IsInt64());
+    EXPECT_EQ(-2, f->Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUshortField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsUint64());
-    EXPECT_EQ(2, uf.value().Uint64OrDie());
+    EXPECT_TRUE(uf->IsUint64());
+    EXPECT_EQ(2, uf->Uint64OrDie());
   }
   // int
   {
     auto f = value[CelValue::CreateStringView(kIntField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsInt64());
-    EXPECT_EQ(-3, f.value().Int64OrDie());
+    EXPECT_TRUE(f->IsInt64());
+    EXPECT_EQ(-3, f->Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUintField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsUint64());
-    EXPECT_EQ(3, uf.value().Uint64OrDie());
+    EXPECT_TRUE(uf->IsUint64());
+    EXPECT_EQ(3, uf->Uint64OrDie());
   }
   // long
   {
     auto f = value[CelValue::CreateStringView(kLongField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsInt64());
-    EXPECT_EQ(-4, f.value().Int64OrDie());
+    EXPECT_TRUE(f->IsInt64());
+    EXPECT_EQ(-4, f->Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUlongField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsUint64());
-    EXPECT_EQ(4, uf.value().Uint64OrDie());
+    EXPECT_TRUE(uf->IsUint64());
+    EXPECT_EQ(4, uf->Uint64OrDie());
   }
   // float and double
   {
     auto f = value[CelValue::CreateStringView(kFloatField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsDouble());
-    EXPECT_EQ(5.0, f.value().DoubleOrDie());
+    EXPECT_TRUE(f->IsDouble());
+    EXPECT_EQ(5.0, f->DoubleOrDie());
   }
   {
     auto f = value[CelValue::CreateStringView(kDoubleField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsDouble());
-    EXPECT_EQ(6.0, f.value().DoubleOrDie());
+    EXPECT_TRUE(f->IsDouble());
+    EXPECT_EQ(6.0, f->DoubleOrDie());
   }
   // bool
   {
     auto f = value[CelValue::CreateStringView(kBoolField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsBool());
-    EXPECT_EQ(false, f.value().BoolOrDie());
+    EXPECT_TRUE(f->IsBool());
+    EXPECT_EQ(false, f->BoolOrDie());
   }
   // string
   {
     auto f = value[CelValue::CreateStringView(kStringField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsString());
-    EXPECT_EQ("test", f.value().StringOrDie().value());
+    EXPECT_TRUE(f->IsString());
+    EXPECT_EQ("test", f->StringOrDie().value());
   }
   // bad field type
   {
@@ -202,29 +202,29 @@ TEST_F(FlatBuffersTest, PrimitiveFieldDefaults) {
   {
     auto f = value[CelValue::CreateStringView(kByteField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsInt64());
-    EXPECT_EQ(0, f.value().Int64OrDie());
+    EXPECT_TRUE(f->IsInt64());
+    EXPECT_EQ(0, f->Int64OrDie());
   }
   // short
   {
     auto f = value[CelValue::CreateStringView(kShortField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsInt64());
-    EXPECT_EQ(150, f.value().Int64OrDie());
+    EXPECT_TRUE(f->IsInt64());
+    EXPECT_EQ(150, f->Int64OrDie());
   }
   // bool
   {
     auto f = value[CelValue::CreateStringView(kBoolField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsBool());
-    EXPECT_EQ(true, f.value().BoolOrDie());
+    EXPECT_TRUE(f->IsBool());
+    EXPECT_EQ(true, f->BoolOrDie());
   }
   // string
   {
     auto f = value[CelValue::CreateStringView(kStringField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsString());
-    EXPECT_EQ("", f.value().StringOrDie().value());
+    EXPECT_TRUE(f->IsString());
+    EXPECT_EQ("", f->StringOrDie().value());
   }
 }
 
@@ -241,8 +241,8 @@ TEST_F(FlatBuffersTest, ObjectField) {
   EXPECT_TRUE(*presence);
   auto f = value[field];
   EXPECT_TRUE(f.has_value());
-  EXPECT_TRUE(f.value().IsMap());
-  const CelMap& m = *f.value().MapOrDie();
+  EXPECT_TRUE(f->IsMap());
+  const CelMap& m = *f->MapOrDie();
   EXPECT_EQ(2, m.size());
   {
     auto obj_field = CelValue::CreateStringView(kStringField);
@@ -251,8 +251,8 @@ TEST_F(FlatBuffersTest, ObjectField) {
     EXPECT_TRUE(*member_presence);
     auto mf = m[obj_field];
     EXPECT_TRUE(mf.has_value());
-    EXPECT_TRUE(mf.value().IsString());
-    EXPECT_EQ("entry", mf.value().StringOrDie().value());
+    EXPECT_TRUE(mf->IsString());
+    EXPECT_EQ("entry", mf->StringOrDie().value());
   }
   {
     auto obj_field = CelValue::CreateStringView(kIntField);
@@ -261,8 +261,8 @@ TEST_F(FlatBuffersTest, ObjectField) {
     EXPECT_TRUE(*member_presence);
     auto mf = m[obj_field];
     EXPECT_TRUE(mf.has_value());
-    EXPECT_TRUE(mf.value().IsInt64());
-    EXPECT_EQ(16, mf.value().Int64OrDie());
+    EXPECT_TRUE(mf->IsInt64());
+    EXPECT_EQ(16, mf->Int64OrDie());
   }
   {
     std::string undefined = "f_undefined";
@@ -283,7 +283,7 @@ TEST_F(FlatBuffersTest, ObjectFieldDefault) {
   const CelMap& value = loadJson("{}");
   auto f = value[CelValue::CreateStringView(kObjField)];
   EXPECT_TRUE(f.has_value());
-  EXPECT_TRUE(f.value().IsNull());
+  EXPECT_TRUE(f->IsNull());
 }
 
 TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
@@ -305,29 +305,29 @@ TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
   {
     auto f = value[CelValue::CreateStringView(kBytesField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsBytes());
-    EXPECT_EQ("\x9F", f.value().BytesOrDie().value());
+    EXPECT_TRUE(f->IsBytes());
+    EXPECT_EQ("\x9F", f->BytesOrDie().value());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUbytesField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsBytes());
-    EXPECT_EQ("abc", uf.value().BytesOrDie().value());
+    EXPECT_TRUE(uf->IsBytes());
+    EXPECT_EQ("abc", uf->BytesOrDie().value());
   }
   // short
   {
     auto f = value[CelValue::CreateStringView(kShortsField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(-2, l[0].Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUshortsField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsList());
-    const CelList& l = *uf.value().ListOrDie();
+    EXPECT_TRUE(uf->IsList());
+    const CelList& l = *uf->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(2, l[0].Uint64OrDie());
   }
@@ -335,16 +335,16 @@ TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
   {
     auto f = value[CelValue::CreateStringView(kIntsField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(-3, l[0].Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUintsField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsList());
-    const CelList& l = *uf.value().ListOrDie();
+    EXPECT_TRUE(uf->IsList());
+    const CelList& l = *uf->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(3, l[0].Uint64OrDie());
   }
@@ -352,16 +352,16 @@ TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
   {
     auto f = value[CelValue::CreateStringView(kLongsField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(-4, l[0].Int64OrDie());
   }
   {
     auto uf = value[CelValue::CreateStringView(kUlongsField)];
     EXPECT_TRUE(uf.has_value());
-    EXPECT_TRUE(uf.value().IsList());
-    const CelList& l = *uf.value().ListOrDie();
+    EXPECT_TRUE(uf->IsList());
+    const CelList& l = *uf->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(4, l[0].Uint64OrDie());
   }
@@ -369,16 +369,16 @@ TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
   {
     auto f = value[CelValue::CreateStringView(kFloatsField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(5.0, l[0].DoubleOrDie());
   }
   {
     auto f = value[CelValue::CreateStringView(kDoublesField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(6.0, l[0].DoubleOrDie());
   }
@@ -386,8 +386,8 @@ TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
   {
     auto f = value[CelValue::CreateStringView(kBoolsField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ(false, l[0].BoolOrDie());
   }
@@ -395,8 +395,8 @@ TEST_F(FlatBuffersTest, PrimitiveVectorFields) {
   {
     auto f = value[CelValue::CreateStringView(kStringsField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(1, l.size());
     EXPECT_EQ("test", l[0].StringOrDie().value());
   }
@@ -413,8 +413,8 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
                                     })");
   auto f = value[CelValue::CreateStringView(kObjsField)];
   EXPECT_TRUE(f.has_value());
-  EXPECT_TRUE(f.value().IsList());
-  const CelList& l = *f.value().ListOrDie();
+  EXPECT_TRUE(f->IsList());
+  const CelList& l = *f->ListOrDie();
   EXPECT_EQ(2, l.size());
   {
     EXPECT_TRUE(l[0].IsMap());
@@ -427,8 +427,8 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
       EXPECT_TRUE(*presence);
       auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
-      EXPECT_TRUE(mf.value().IsString());
-      EXPECT_EQ("entry", mf.value().StringOrDie().value());
+      EXPECT_TRUE(mf->IsString());
+      EXPECT_EQ("entry", mf->StringOrDie().value());
     }
     {
       CelValue field = CelValue::CreateStringView(kIntField);
@@ -437,8 +437,8 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
       EXPECT_TRUE(*presence);
       auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
-      EXPECT_TRUE(mf.value().IsInt64());
-      EXPECT_EQ(16, mf.value().Int64OrDie());
+      EXPECT_TRUE(mf->IsInt64());
+      EXPECT_EQ(16, mf->Int64OrDie());
     }
   }
   {
@@ -454,8 +454,8 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
       EXPECT_TRUE(*presence);
       auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
-      EXPECT_TRUE(mf.value().IsString());
-      EXPECT_EQ("", mf.value().StringOrDie().value());
+      EXPECT_TRUE(mf->IsString());
+      EXPECT_EQ("", mf->StringOrDie().value());
     }
     {
       CelValue field = CelValue::CreateStringView(kIntField);
@@ -464,8 +464,8 @@ TEST_F(FlatBuffersTest, ObjectVectorField) {
       EXPECT_TRUE(*presence);
       auto mf = m[field];
       EXPECT_TRUE(mf.has_value());
-      EXPECT_TRUE(mf.value().IsInt64());
-      EXPECT_EQ(32, mf.value().Int64OrDie());
+      EXPECT_TRUE(mf->IsInt64());
+      EXPECT_EQ(32, mf->Int64OrDie());
     }
     {
       std::string undefined = "f_undefined";
@@ -485,16 +485,16 @@ TEST_F(FlatBuffersTest, VectorFieldDefaults) {
            kIntsField, kBoolsField, kStringsField, kObjsField}) {
     auto f = value[CelValue::CreateStringView(field)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsList());
-    const CelList& l = *f.value().ListOrDie();
+    EXPECT_TRUE(f->IsList());
+    const CelList& l = *f->ListOrDie();
     EXPECT_EQ(0, l.size());
   }
 
   {
     auto f = value[CelValue::CreateStringView(kIndexedField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsMap());
-    const CelMap& m = *f.value().MapOrDie();
+    EXPECT_TRUE(f->IsMap());
+    const CelMap& m = *f->MapOrDie();
     EXPECT_EQ(0, m.size());
     EXPECT_EQ(0, m.ListKeys()->size());
   }
@@ -502,8 +502,8 @@ TEST_F(FlatBuffersTest, VectorFieldDefaults) {
   {
     auto f = value[CelValue::CreateStringView(kBytesField)];
     EXPECT_TRUE(f.has_value());
-    EXPECT_TRUE(f.value().IsBytes());
-    EXPECT_EQ("", f.value().BytesOrDie().value());
+    EXPECT_TRUE(f->IsBytes());
+    EXPECT_EQ("", f->BytesOrDie().value());
   }
 }
 
@@ -530,8 +530,8 @@ TEST_F(FlatBuffersTest, IndexedObjectVectorField) {
                                     })");
   auto f = value[CelValue::CreateStringView(kIndexedField)];
   EXPECT_TRUE(f.has_value());
-  EXPECT_TRUE(f.value().IsMap());
-  const CelMap& m = *f.value().MapOrDie();
+  EXPECT_TRUE(f->IsMap());
+  const CelMap& m = *f->MapOrDie();
   EXPECT_EQ(4, m.size());
   const CelList& l = *m.ListKeys();
   EXPECT_EQ(4, l.size());
@@ -551,15 +551,15 @@ TEST_F(FlatBuffersTest, IndexedObjectVectorField) {
   for (const std::string& key : std::vector<std::string>{a, b, c, d}) {
     auto v = m[CelValue::CreateString(&key)];
     EXPECT_TRUE(v.has_value());
-    const CelMap& vm = *v.value().MapOrDie();
+    const CelMap& vm = *v->MapOrDie();
     EXPECT_EQ(2, vm.size());
     auto vf = vm[CelValue::CreateStringView(kStringField)];
     EXPECT_TRUE(vf.has_value());
-    EXPECT_TRUE(vf.value().IsString());
-    EXPECT_EQ(key, vf.value().StringOrDie().value());
+    EXPECT_TRUE(vf->IsString());
+    EXPECT_EQ(key, vf->StringOrDie().value());
     auto vi = vm[CelValue::CreateStringView(kIntField)];
     EXPECT_TRUE(vi.has_value());
-    EXPECT_TRUE(vi.value().IsInt64());
+    EXPECT_TRUE(vi->IsInt64());
   }
 
   {
@@ -587,8 +587,8 @@ TEST_F(FlatBuffersTest, IndexedObjectVectorFieldDefaults) {
   EXPECT_TRUE(*presence);
   auto f = value[field];
   EXPECT_TRUE(f.has_value());
-  EXPECT_TRUE(f.value().IsMap());
-  const CelMap& m = *f.value().MapOrDie();
+  EXPECT_TRUE(f->IsMap());
+  const CelMap& m = *f->MapOrDie();
 
   EXPECT_EQ(1, m.size());
   const CelList& l = *m.ListKeys();

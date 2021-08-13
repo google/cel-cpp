@@ -961,21 +961,19 @@ TEST_P(ExpressionTest, Parse) {
   if (!test_info.P.empty()) {
     KindAndIdAdorner kind_and_id_adorner;
     testutil::ExprPrinter w(kind_and_id_adorner);
-    std::string adorned_string = w.print(result.value().parsed_expr().expr());
+    std::string adorned_string = w.print(result->parsed_expr().expr());
     EXPECT_EQ(test_info.P, adorned_string);
   }
 
   if (!test_info.L.empty()) {
-    LocationAdorner location_adorner(
-        result.value().parsed_expr().source_info());
+    LocationAdorner location_adorner(result->parsed_expr().source_info());
     testutil::ExprPrinter w(location_adorner);
-    std::string adorned_string = w.print(result.value().parsed_expr().expr());
+    std::string adorned_string = w.print(result->parsed_expr().expr());
     EXPECT_EQ(test_info.L, adorned_string);
   }
 
   if (!test_info.R.empty()) {
-    EXPECT_EQ(ConvertEnrichedSourceInfoToString(
-                  result.value().enriched_source_info()),
+    EXPECT_EQ(ConvertEnrichedSourceInfoToString(result->enriched_source_info()),
               test_info.R);
   }
 }

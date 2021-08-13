@@ -239,9 +239,9 @@ TEST(RefPtr, RefCountable) {
   // Value can be mutated.
   HolderType holder(new TestRefCounted(1));
   testutil::ExpectSameType<TestRefCounted&, decltype(holder.value())>();
-  EXPECT_EQ(1, holder.value().id());
+  EXPECT_EQ(1, holder->id());
   holder.value() = TestRefCounted(2);
-  EXPECT_EQ(2, holder.value().id());
+  EXPECT_EQ(2, holder->id());
 
   // Value is shared.
   HolderType holder2 = holder;
@@ -255,7 +255,7 @@ TEST(RefPtr, RefCountable) {
   const HolderType const_holder(new TestRefCounted(2));
   testutil::ExpectSameType<const TestRefCounted&,
                            decltype(const_holder.value())>();
-  EXPECT_EQ(2, const_holder.value().id());
+  EXPECT_EQ(2, const_holder->id());
 }
 
 TEST(RefPtr, RefCountable_cost) {
@@ -269,7 +269,7 @@ TEST(RefPtr, RefCountable_cost) {
   // Value cannot be changed.
   HolderType holder(new TestRefCounted(1));
   testutil::ExpectSameType<const TestRefCounted&, decltype(holder.value())>();
-  EXPECT_EQ(1, holder.value().id());
+  EXPECT_EQ(1, holder->id());
 
   // Value is shared.
   HolderType holder2 = holder;
@@ -283,7 +283,7 @@ TEST(RefPtr, RefCountable_cost) {
   const HolderType const_holder(new TestRefCounted(2));
   testutil::ExpectSameType<const TestRefCounted&,
                            decltype(const_holder.value())>();
-  EXPECT_EQ(2, const_holder.value().id());
+  EXPECT_EQ(2, const_holder->id());
 }
 
 TEST(SizeLimitHolder, Inline16) {
@@ -334,7 +334,7 @@ TEST(SizeLimitHolder, OverSized) {
   HolderType h2 = h1;
 
   testutil::ExpectSameType<const TestRefCounted&, decltype(h1.value())>();
-  EXPECT_EQ(h1.value().id(), h2.value().id());
+  EXPECT_EQ(h1->id(), h2->id());
   EXPECT_EQ(&h1.value(), &h2.value());
 }
 

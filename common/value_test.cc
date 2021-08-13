@@ -289,7 +289,7 @@ TEST_P(ValueTest, OwnsValue) {
   EXPECT_EQ(GetParam().value.owns_value(), GetParam().owns_value);
   auto ref = CreateRef(GetParam().value);
   if (ref.has_value()) {
-    EXPECT_FALSE(ref.value().owns_value());
+    EXPECT_FALSE(ref->owns_value());
   }
 }
 
@@ -297,7 +297,7 @@ TEST_P(ValueTest, For) {
   EXPECT_EQ(GetParam().value.owns_value(), GetParam().owns_value);
   auto ref = CreateRef(GetParam().value);
   if (ref.has_value()) {
-    EXPECT_FALSE(ref.value().owns_value());
+    EXPECT_FALSE(ref->owns_value());
   }
 }
 
