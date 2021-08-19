@@ -425,8 +425,18 @@ class CelList {
 class CelMap {
  public:
   // Map lookup. If value found, returns CelValue in return type.
-  // Per Protobuffer specification, acceptable key types are
-  // bool, int64_t, uint64_t, string.
+  //
+  // Per the protobuf specification, acceptable key types are bool, int64_t,
+  // uint64_t, string. Any key type that is not supported should result in valued
+  // response containing an absl::StatusCode::kInvalidArgument wrapped as a
+  // CelError.
+  //
+  // Type specializations are permitted since CEL supports such distinctions
+  // at type-check time. For example, the expression `1 in map_str` where the
+  // variable `map_str` is of type map(string, string) will yield a type-check
+  // error. To be consistent, the runtime should also yield an invalid argument
+  // error if the type does not agree with the expected key types held by the
+  // container.
   // TODO(issues/122): Make this method const correct.
   virtual absl::optional<CelValue> operator[](CelValue key) const = 0;
 
@@ -434,7 +444,7 @@ class CelMap {
   //
   // Typically, key resolution will be a simple boolean result; however, there
   // are scenarios where the conversion of the input key to the underlying
-  // key-type held by the map may result in an IllegalArgument error.
+  // key-type will produce an absl::StatusCode::kInvalidArgument.
   //
   // Evaluators are responsible for handling non-OK results by propagating the
   // error, as appropriate, up the evaluation stack either as a `StatusOr` or
