@@ -16,7 +16,7 @@ namespace runtime {
 
 namespace {
 
-constexpr int NUM_CONTAINER_ACCESS_ARGUMENTS = 2;
+inline constexpr int kNumContainerAccessArguments = 2;
 
 // ContainerAccessStep performs message field access specified by Expr::Select
 // message.
@@ -39,20 +39,13 @@ class ContainerAccessStep : public ExpressionStepBase {
 inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
                                                  const CelValue& key,
                                                  google::protobuf::Arena* arena) const {
-  switch (key.type()) {
-    case CelValue::Type::kBool:
-    case CelValue::Type::kInt64:
-    case CelValue::Type::kUint64:
-    case CelValue::Type::kString: {
-      absl::optional<CelValue> maybe_value = (*cel_map)[key];
-      if (maybe_value.has_value()) {
-        return maybe_value.value();
-      }
-      break;
-    }
-    default: {
-      break;
-    }
+  auto status = CelValue::CheckMapKeyType(key);
+  if (!status.ok()) {
+    return CreateErrorValue(arena, status);
+  }
+  absl::optional<CelValue> maybe_value = (*cel_map)[key];
+  if (maybe_value.has_value()) {
+    return maybe_value.value();
   }
   return CreateNoSuchKeyError(arena, "Key not found in map");
 }
@@ -80,8 +73,7 @@ inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
 
 ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
     ExecutionFrame* frame) const {
-  auto input_args =
-      frame->value_stack().GetSpan(NUM_CONTAINER_ACCESS_ARGUMENTS);
+  auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   AttributeTrail trail;
 
   const CelValue& container = input_args[0];
@@ -98,7 +90,7 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
     // We guarantee that GetAttributeSpan can aquire this number of arguments
     // by calling HasEnough() at the beginning of Execute() method.
     auto input_attrs =
-        frame->value_stack().GetAttributeSpan(NUM_CONTAINER_ACCESS_ARGUMENTS);
+        frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments);
     auto container_trail = input_attrs[0];
     trail = container_trail.Step(CelAttributeQualifier::Create(key),
                                  frame->arena());
@@ -130,23 +122,23 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
     }
     default: {
       auto error = CreateErrorValue(
-          frame->arena(),
-          absl::StrCat("Unexpected container type for [] operation: ",
-                       CelValue::TypeName(key.type())));
+          frame->arena(), absl::InvalidArgumentError(absl::StrCat(
+                              "Invalid container type: '",
+                              CelValue::TypeName(container.type()), "'")));
       return {error, trail};
     }
   }
 }
 
 absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
-  if (!frame->value_stack().HasEnough(NUM_CONTAINER_ACCESS_ARGUMENTS)) {
+  if (!frame->value_stack().HasEnough(kNumContainerAccessArguments)) {
     return absl::Status(
         absl::StatusCode::kInternal,
         "Insufficient arguments supplied for ContainerAccess-type expression");
   }
 
   auto result = PerformLookup(frame);
-  frame->value_stack().Pop(NUM_CONTAINER_ACCESS_ARGUMENTS);
+  frame->value_stack().Pop(kNumContainerAccessArguments);
   frame->value_stack().Push(result.first, result.second);
 
   return absl::OkStatus();
@@ -155,7 +147,12 @@ absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
-    const google::api::expr::v1alpha1::Expr::Call*, int64_t expr_id) {
+    const google::api::expr::v1alpha1::Expr::Call* call, int64_t expr_id) {
+  int arg_count = call->args_size() + (call->has_target() ? 1 : 0);
+  if (arg_count != kNumContainerAccessArguments) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Invalid argument count for index operation: ", arg_count));
+  }
   return absl::make_unique<ContainerAccessStep>(expr_id);
 }
 

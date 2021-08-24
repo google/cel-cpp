@@ -11,6 +11,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -201,12 +202,7 @@ absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   }
 
   CelValue result;
-
-  absl::Status status = DoEvaluate(frame, &result);
-  if (!status.ok()) {
-    return status;
-  }
-
+  RETURN_IF_ERROR(DoEvaluate(frame, &result));
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(result);
 
@@ -231,7 +227,11 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
   std::vector<std::pair<CelValue, CelValue>> map_entries;
   map_entries.reserve(entry_count_);
   for (size_t i = 0; i < entry_count_; i += 1) {
-    map_entries.push_back({args[2 * i], args[2 * i + 1]});
+    int map_key_index = 2 * i;
+    int map_value_index = map_key_index + 1;
+    const CelValue& map_key = args[map_key_index];
+    RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
+    map_entries.push_back({map_key, args[map_value_index]});
   }
 
   auto cel_map =
@@ -257,11 +257,7 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   }
 
   CelValue result;
-
-  absl::Status status = DoEvaluate(frame, &result);
-  if (!status.ok()) {
-    return status;
-  }
+  RETURN_IF_ERROR(DoEvaluate(frame, &result));
 
   frame->value_stack().Pop(2 * entry_count_);
   frame->value_stack().Push(result);

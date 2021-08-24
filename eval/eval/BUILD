@@ -217,6 +217,7 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:status_macros",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/containers:field_access",
         "//eval/public/structs:cel_proto_wrapper",
@@ -367,6 +368,7 @@ cc_test(
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
+        "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
     ],
 )

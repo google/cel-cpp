@@ -22,10 +22,12 @@
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -39,6 +41,8 @@ class CelList;
 class CelMap;
 class UnknownSet;
 
+// TODO(issues/5): Cleanup &/* binding to association with the type (left)
+// rather than the variable (left).
 class CelValue {
  public:
   // This class is a container to hold strings/bytes.
@@ -219,6 +223,10 @@ class CelValue {
     CheckNullPointer(value, Type::kError);
     return CelValue(value);
   }
+
+  // Returns an absl::OkStatus() when the key is a valid protobuf map type,
+  // meaning it is a scalar value that is neither floating point nor bytes.
+  static absl::Status CheckMapKeyType(const CelValue &key);
 
   // Obtain the CelType of the value.
   CelValue ObtainCelType() const;
@@ -450,13 +458,18 @@ class CelMap {
   // error, as appropriate, up the evaluation stack either as a `StatusOr` or
   // as a `CelError` value, depending on the context.
   virtual absl::StatusOr<bool> Has(const CelValue &key) const {
-    // This implementation preserves the prior behavior for any derived classes
-    // which have not overridden the method. Note, it is possible that this
-    // implementation will return 'true' when the key lookup fails with an
-    // error. All core-CEL implementations override this method to provide
-    // semantics consistent with the CEL spec.
-    auto lookup_result = (*this)[key];
-    return lookup_result.has_value();
+    // This check safeguards against issues with invalid key types such as NaN.
+    RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
+    auto value = (*this)[key];
+    if (!value.has_value()) {
+      return false;
+    }
+    // This protects from issues that may occur when looking up a key value,
+    // such as a failure to convert an int64_t to an int32_t map key.
+    if (value->IsError()) {
+      return *value->ErrorOrDie();
+    }
+    return true;
   }
 
   // Map size

@@ -24,6 +24,7 @@ cc_library(
     ],
     deps = [
         ":cel_value_internal",
+        "//base:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

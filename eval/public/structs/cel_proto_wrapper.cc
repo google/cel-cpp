@@ -99,7 +99,7 @@ class DynamicMap : public CelMap {
     if (!key.GetValue(&str_key)) {
       // Not a string key.
       return absl::InvalidArgumentError(absl::StrCat(
-          "invalid map key type. wanted: string, got: ", key.DebugString()));
+          "Invalid map key type: '", CelValue::TypeName(key.type()), "'"));
     }
 
     return values_->fields().contains(std::string(str_key.value()));
@@ -109,10 +109,10 @@ class DynamicMap : public CelMap {
     CelValue::StringHolder str_key;
     if (!key.GetValue(&str_key)) {
       // Not a string key.
-      return CreateErrorValue(arena_,
-                              absl::InvalidArgumentError(absl::StrCat(
-                                  "invalid map key type. wanted: string, got: ",
-                                  key.DebugString())));
+      return CreateErrorValue(
+          arena_,
+          absl::InvalidArgumentError(absl::StrCat(
+              "Invalid map key type: '", CelValue::TypeName(key.type()), "'")));
     }
 
     auto it = values_->fields().find(std::string(str_key.value()));

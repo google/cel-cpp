@@ -161,6 +161,19 @@ std::string CelValue::TypeName(Type value_type) {
   }
 }
 
+absl::Status CelValue::CheckMapKeyType(const CelValue& key) {
+  switch (key.type()) {
+    case CelValue::Type::kString:
+    case CelValue::Type::kInt64:
+    case CelValue::Type::kUint64:
+    case CelValue::Type::kBool:
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid map key type: '", CelValue::TypeName(key.type()), "'"));
+  }
+}
+
 CelValue CelValue::ObtainCelType() const {
   switch (type()) {
     case Type::kBool:
