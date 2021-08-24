@@ -28,8 +28,8 @@ def base_deps():
 
     http_archive(
         name = "com_googlesource_code_re2",
-        strip_prefix = "re2-master",
-        urls = ["https://github.com/google/re2/archive/master.zip"],
+        strip_prefix = "re2-main",
+        urls = ["https://github.com/google/re2/archive/main.zip"],
     )
 
     PROTOBUF_VERSION = "3.14.0"
