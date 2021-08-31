@@ -223,6 +223,20 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "overflow",
+    srcs = ["overflow.cc"],
+    hdrs = ["overflow.h"],
+    deps = [
+        "//base:status_macros",
+        "@com_google_absl//absl/numeric:int128",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)
+
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
@@ -231,5 +245,17 @@ cc_test(
         ":value",
         "//base:testing",
         "@com_google_absl//absl/memory",
+    ],
+)
+
+cc_test(
+    name = "overflow_test",
+    srcs = ["overflow_test.cc"],
+    deps = [
+        ":overflow",
+        "//base:testing",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
     ],
 )
