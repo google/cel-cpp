@@ -181,6 +181,11 @@ StatusOr<uint64_t> CheckedDiv(uint64_t x, uint64_t y) {
   return x / y;
 }
 
+StatusOr<uint64_t> CheckedMod(uint64_t x, uint64_t y) {
+  RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
+  return x % y;
+}
+
 StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
   // absl::Duration can handle +- infinite durations, but the Go time.Duration
   // implementation caps the durations to those expressible within a single

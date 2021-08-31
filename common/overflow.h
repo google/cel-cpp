@@ -56,6 +56,11 @@ absl::StatusOr<uint64_t> CheckedMul(uint64_t x, uint64_t y);
 // Divide one uint64_t value into another.
 absl::StatusOr<uint64_t> CheckedDiv(uint64_t x, uint64_t y);
 
+// Compute the modulus of x into y.
+// If 'y' is zero, the function will return an
+// absl::StatusCode::kInvalidArgumentError, e.g. 1 / 0.
+absl::StatusOr<uint64_t> CheckedMod(uint64_t x, uint64_t y);
+
 // Add two durations together.
 // If overflow is detected, return an absl::StatusCode::kOutOfRangeError, e.g.
 //   duration(int64_t_max, "ns") + duration(int64_t_max, "ns")

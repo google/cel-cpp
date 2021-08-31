@@ -231,6 +231,12 @@ INSTANTIATE_TEST_SUITE_P(
         {"OneDivZero", [] { return CheckedDiv(1UL, 0); },
          absl::InvalidArgumentError("divide by zero")},
 
+        // Modulus tests.
+        {"TwoModTwo", [] { return CheckedMod(2UL, 2UL); }, 0},
+        {"TwoModFour", [] { return CheckedMod(2UL, 4UL); }, 2UL},
+        {"OneModZero", [] { return CheckedMod(1UL, 0); },
+         absl::InvalidArgumentError("modulus by zero")},
+
         // Conversion test cases for int -> uint, double -> uint.
         {"Int64Conversion", [] { return CheckedInt64ToUint64(1L); }, 1UL},
         {"Int64MaxConversion",
