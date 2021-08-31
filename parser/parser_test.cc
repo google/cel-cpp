@@ -6,8 +6,10 @@
 #include <utility>
 #include <vector>
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "base/testing.h"
 #include "gtest/gtest.h"
+#include "absl/algorithm/container.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/optional.h"
@@ -29,8 +31,8 @@ using cel_base::testing::IsOk;
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,
            const std::string& E = "", const std::string& L = "",
-           const std::string& R = "")
-      : I(I), P(P), E(E), L(L), R(R) {}
+           const std::string& R = "", const std::string& M = "")
+      : I(I), P(P), E(E), L(L), R(R), M(M) {}
 
   // I contains the input expression to be parsed.
   std::string I;
@@ -47,6 +49,9 @@ struct TestInfo {
 
   // R contains the expected enriched source info output of the expression tree.
   std::string R;
+
+  // M contains the expected macro call output of hte expression tree.
+  std::string M;
 };
 
 std::vector<TestInfo> test_cases = {
@@ -408,13 +413,11 @@ std::vector<TestInfo> test_cases = {
      "mismatched input '}' expecting ':'\n | t{>C}\n | ....^"},
 
     // Macro tests
-    {
-        "has(m.f)",
-        "m^#2:Expr.Ident#.f~test-only~^#4:Expr.Select#",
-        "",
-        "m^#2[1,4]#.f~test-only~^#4[1,3]#",
-        "[1,3,3]^#[2,4,4]^#[3,5,5]^#[4,3,3]",
-    },
+    {"has(m.f)", "m^#2:Expr.Ident#.f~test-only~^#4:Expr.Select#", "",
+     "m^#2[1,4]#.f~test-only~^#4[1,3]#", "[1,3,3]^#[2,4,4]^#[3,5,5]^#[4,3,3]",
+     "has(\n"
+     "  m^#2:Expr.Ident#.f^#3:Expr.Select#\n"
+     ")^#4:has"},
     {"m.exists_one(v, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -440,7 +443,12 @@ std::vector<TestInfo> test_cases = {
      "  _==_(\n"
      "    __result__^#12:Expr.Ident#,\n"
      "    1^#6:int64#\n"
-     "  )^#13:Expr.Call#)^#14:Expr.Comprehension#"},
+     "  )^#13:Expr.Call#)^#14:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.exists_one(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  f^#4:Expr.Ident#\n"
+     ")^#14:exists_one"},
     {"m.map(v, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -461,7 +469,12 @@ std::vector<TestInfo> test_cases = {
      "    ]^#8:Expr.CreateList#\n"
      "  )^#9:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#5:Expr.Ident#)^#10:Expr.Comprehension#"},
+     "  __result__^#5:Expr.Ident#)^#10:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.map(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  f^#4:Expr.Ident#\n"
+     ")^#10:map"},
     {"m.map(v, p, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -486,7 +499,13 @@ std::vector<TestInfo> test_cases = {
      "    __result__^#6:Expr.Ident#\n"
      "  )^#11:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#6:Expr.Ident#)^#12:Expr.Comprehension#"},
+     "  __result__^#6:Expr.Ident#)^#12:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.map(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  p^#4:Expr.Ident#,\n"
+     "  f^#5:Expr.Ident#\n"
+     ")^#12:map"},
     {"m.filter(v, p)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -511,7 +530,12 @@ std::vector<TestInfo> test_cases = {
      "    __result__^#5:Expr.Ident#\n"
      "  )^#10:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#5:Expr.Ident#)^#11:Expr.Comprehension#"},
+     "  __result__^#5:Expr.Ident#)^#11:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.filter(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  p^#4:Expr.Ident#\n"
+     ")^#11:filter"},
 
     // Tests from Java parser
     {"[] + [1,2,3,] + [4]",
@@ -832,11 +856,93 @@ std::vector<TestInfo> test_cases = {
         "{']', ','}\n"
         " |  \r\n"
         " | ..^",
-    }};
+    },
+
+    // Macro calls tests
+    {"x.filter(y, y.filter(z, z > 0))",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  y,\n"
+     "  // Target\n"
+     "  x^#1:Expr.Ident#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  []^#18:Expr.CreateList#,\n"
+     "  // LoopCondition\n"
+     "  true^#19:bool#,\n"
+     "  // LoopStep\n"
+     "  _?_:_(\n"
+     "    __comprehension__(\n"
+     "      // Variable\n"
+     "      z,\n"
+     "      // Target\n"
+     "      y^#4:Expr.Ident#,\n"
+     "      // Accumulator\n"
+     "      __result__,\n"
+     "      // Init\n"
+     "      []^#11:Expr.CreateList#,\n"
+     "      // LoopCondition\n"
+     "      true^#12:bool#,\n"
+     "      // LoopStep\n"
+     "      _?_:_(\n"
+     "        _>_(\n"
+     "          z^#7:Expr.Ident#,\n"
+     "          0^#9:int64#\n"
+     "        )^#8:Expr.Call#,\n"
+     "        _+_(\n"
+     "          __result__^#10:Expr.Ident#,\n"
+     "          [\n"
+     "            z^#6:Expr.Ident#\n"
+     "          ]^#13:Expr.CreateList#\n"
+     "        )^#14:Expr.Call#,\n"
+     "        __result__^#10:Expr.Ident#\n"
+     "      )^#15:Expr.Call#,\n"
+     "      // Result\n"
+     "      __result__^#10:Expr.Ident#)^#16:Expr.Comprehension#,\n"
+     "    _+_(\n"
+     "      __result__^#17:Expr.Ident#,\n"
+     "      [\n"
+     "        y^#3:Expr.Ident#\n"
+     "      ]^#20:Expr.CreateList#\n"
+     "    )^#21:Expr.Call#,\n"
+     "    __result__^#17:Expr.Ident#\n"
+     "  )^#22:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#17:Expr.Ident#)^#23:Expr.Comprehension#"
+     "",
+     "", "", "",
+     "x^#1:Expr.Ident#.filter(\n"
+     "  y^#3:Expr.Ident#,\n"
+     "  ^#16:filter#\n"
+     ")^#23:filter#,\n"
+     "y^#4:Expr.Ident#.filter(\n"
+     "  z^#6:Expr.Ident#,\n"
+     "  _>_(\n"
+     "    z^#7:Expr.Ident#,\n"
+     "    0^#9:int64#\n"
+     "  )^#8:Expr.Call#\n"
+     ")^#16:filter"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
+  // Use default source_info constructor to make source_info "optional". This
+  // will prevent macro_calls lookups from interfering with adorning expressions
+  // that don't need to use macro_calls, such as the parsed AST.
+  explicit KindAndIdAdorner(
+      const google::api::expr::v1alpha1::SourceInfo& source_info =
+          google::api::expr::v1alpha1::SourceInfo::default_instance())
+      : source_info_(source_info) {}
+
   std::string adorn(const Expr& e) const override {
+    // source_info_ might be empty on non-macro_calls tests
+    if (source_info_.macro_calls_size() != 0 &&
+        source_info_.macro_calls().contains(e.id())) {
+      return absl::StrFormat(
+          "^#%d:%s#", e.id(),
+          source_info_.macro_calls().at(e.id()).call_expr().function());
+    }
+
     if (e.has_const_expr()) {
       auto& const_expr = e.const_expr();
       auto reflection = const_expr.GetReflection();
@@ -871,6 +977,8 @@ class KindAndIdAdorner : public testutil::ExpressionAdorner {
     }
     return absl::StrJoin(name_chain, ".");
   }
+
+  const google::api::expr::v1alpha1::SourceInfo& source_info_;
 };
 
 class LocationAdorner : public testutil::ExpressionAdorner {
@@ -945,12 +1053,42 @@ std::string ConvertEnrichedSourceInfoToString(
   return absl::StrJoin(offsets, "^#");
 }
 
+std::string ConvertMacroCallsToString(
+    const google::api::expr::v1alpha1::SourceInfo& source_info) {
+  KindAndIdAdorner macro_calls_adorner(source_info);
+  testutil::ExprPrinter w(macro_calls_adorner);
+  // Use a list so we can sort the macro calls ensuring order for appending
+  std::vector<std::pair<int64_t, google::api::expr::v1alpha1::Expr>> macro_calls;
+  for (auto pair : source_info.macro_calls()) {
+    // Set ID to the map key for the adorner
+    pair.second.set_id(pair.first);
+    macro_calls.push_back(pair);
+  }
+  // Sort in reverse because the first macro will have the highest id
+  absl::c_sort(macro_calls,
+               [](const std::pair<int64_t, google::api::expr::v1alpha1::Expr>& p1,
+                  const std::pair<int64_t, google::api::expr::v1alpha1::Expr>& p2) {
+                 return p1.first > p2.first;
+               });
+  std::string result = "";
+  for (const auto& pair : macro_calls) {
+    result += w.print(pair.second) += ",\n";
+  }
+  // substring last ",\n"
+  return result.substr(0, result.size() - 3);
+}
+
 class ExpressionTest : public testing::TestWithParam<TestInfo> {};
 
 TEST_P(ExpressionTest, Parse) {
   const TestInfo& test_info = GetParam();
+  ParserOptions options;
+  if (!test_info.M.empty()) {
+    options.add_macro_calls = true;
+  }
 
-  auto result = EnrichedParse(test_info.I, Macro::AllMacros());
+  auto result =
+      EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);
   if (test_info.E.empty()) {
     EXPECT_THAT(result, IsOk());
   } else {
@@ -975,6 +1113,12 @@ TEST_P(ExpressionTest, Parse) {
   if (!test_info.R.empty()) {
     EXPECT_EQ(ConvertEnrichedSourceInfoToString(result->enriched_source_info()),
               test_info.R);
+  }
+
+  if (!test_info.M.empty()) {
+    EXPECT_EQ(
+        ConvertMacroCallsToString(result.value().parsed_expr().source_info()),
+        test_info.M);
   }
 }
 

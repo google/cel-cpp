@@ -46,12 +46,14 @@ class ScopedIncrement {
 ParserVisitor::ParserVisitor(const std::string& description,
                              const std::string& expression,
                              const int max_recursion_depth,
-                             const std::vector<Macro>& macros)
+                             const std::vector<Macro>& macros,
+                             const bool add_macro_calls)
     : description_(description),
       expression_(expression),
       sf_(std::make_shared<SourceFactory>(expression)),
       recursion_depth_(0),
-      max_recursion_depth_(max_recursion_depth) {
+      max_recursion_depth_(max_recursion_depth),
+      add_macro_calls_(add_macro_calls) {
   for (const auto& m : macros) {
     macros_.emplace(m.macroKey(), m);
   }
@@ -552,6 +554,13 @@ bool ParserVisitor::expandMacro(int64_t expr_id, const std::string& function,
   Expr expr = m->second.expand(sf_, expr_id, target, args);
   if (expr.expr_kind_case() != Expr::EXPR_KIND_NOT_SET) {
     *macro_expr = std::move(expr);
+    if (add_macro_calls_) {
+      // If the macro is nested, the full expression id is used as an argument
+      // id in the tree. Using this ID instead of expr_id allows argument id
+      // lookups in macro_calls when building the map and iterating
+      // the AST.
+      sf_->AddMacroCall(macro_expr->id(), target, args, function);
+    }
     return true;
   }
   return false;

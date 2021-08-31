@@ -266,6 +266,31 @@ Expr SourceFactory::newQuantifierExprForMacro(
                       step, result);
 }
 
+void SourceFactory::AddMacroCall(int64_t macro_id, const Expr& target,
+                                 const std::vector<Expr>& args,
+                                 std::string function) {
+  Expr macro_call;
+  auto mutable_macro_call = macro_call.mutable_call_expr();
+  mutable_macro_call->set_function(function);
+
+  // Populating empty targets can cause erros when iterating the macro_calls
+  // expressions, such as the expression_printer in testing.
+  if (target.expr_kind_case() != Expr::ExprKindCase::EXPR_KIND_NOT_SET) {
+    *mutable_macro_call->mutable_target() = target;
+  }
+
+  for (const auto& arg : args) {
+    Expr expr;
+    if (macro_calls_.find(arg.id()) != macro_calls_.end()) {
+      expr.set_id(arg.id());
+    } else {
+      expr = arg;
+    }
+    *mutable_macro_call->mutable_args()->Add() = expr;
+  }
+  macro_calls_.emplace(macro_id, macro_call);
+}
+
 Expr SourceFactory::newFilterExprForMacro(int64_t macro_id, const Expr& target,
                                           const std::vector<Expr>& args) {
   if (args.empty()) {
@@ -524,6 +549,11 @@ google::api::expr::v1alpha1::SourceInfo SourceFactory::sourceInfo() const {
   std::for_each(
       line_offsets_.begin(), line_offsets_.end(),
       [&source_info](int32_t offset) { source_info.add_line_offsets(offset); });
+  std::for_each(macro_calls_.begin(), macro_calls_.end(),
+                [&source_info](const std::pair<int64_t, Expr>& macro_call) {
+                  source_info.mutable_macro_calls()->insert(
+                      {macro_call.first, macro_call.second});
+                });
   return source_info;
 }
 

@@ -184,7 +184,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
   CelParser parser(&tokens);
   ExprRecursionListener listener(options.max_recursion_depth);
   ParserVisitor visitor(description, expression, options.max_recursion_depth,
-                        macros);
+                        macros, options.add_macro_calls);
 
   lexer.removeErrorListeners();
   parser.removeErrorListeners();
