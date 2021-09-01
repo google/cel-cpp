@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <limits>
 
-#include "absl/numeric/int128.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -58,6 +57,16 @@ Status CheckArgument(bool valid_expression, absl::string_view error_message,
   return valid_expression ? absl::OkStatus()
                           : absl::InvalidArgumentError(
                                 absl::StrCat(error_message, message_parts...));
+}
+
+// Determine whether the duration is finite.
+bool IsFinite(absl::Duration d) {
+  return d != absl::InfiniteDuration() && d != -absl::InfiniteDuration();
+}
+
+// Determine whether the time is finite.
+bool IsFinite(absl::Time t) {
+  return t != absl::InfiniteFuture() && t != absl::InfinitePast();
 }
 
 }  // namespace
@@ -187,6 +196,7 @@ StatusOr<uint64_t> CheckedMod(uint64_t x, uint64_t y) {
 }
 
 StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
+  RETURN_IF_ERROR(CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
   // absl::Duration can handle +- infinite durations, but the Go time.Duration
   // implementation caps the durations to those expressible within a single
   // int64_t rather than (seconds int64_t, nanos int32_t).
@@ -204,17 +214,20 @@ StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
 }
 
 StatusOr<absl::Duration> CheckedSub(absl::Duration x, absl::Duration y) {
+  RETURN_IF_ERROR(CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
   ASSIGN_OR_RETURN(int64_t nanos, CheckedSub(absl::ToInt64Nanoseconds(x),
                                              absl::ToInt64Nanoseconds(y)));
   return absl::Nanoseconds(nanos);
 }
 
 StatusOr<absl::Duration> CheckedNegation(absl::Duration v) {
+  RETURN_IF_ERROR(CheckRange(IsFinite(v), "integer overflow"));
   ASSIGN_OR_RETURN(int64_t nanos, CheckedNegation(absl::ToInt64Nanoseconds(v)));
   return absl::Nanoseconds(nanos);
 }
 
 StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
+  RETURN_IF_ERROR(CheckRange(IsFinite(t) && IsFinite(d), "timestamp overflow"));
   // First we break time into its components by truncating and subtracting.
   const int64_t s1 = absl::ToUnixSeconds(t);
   const int64_t ns1 = (t - absl::FromUnixSeconds(s1)) / absl::Nanoseconds(1);
@@ -245,6 +258,7 @@ StatusOr<absl::Time> CheckedSub(absl::Time t, absl::Duration d) {
 }
 
 StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
+  RETURN_IF_ERROR(CheckRange(IsFinite(t1) && IsFinite(t2), "integer overflow"));
   // First we break time into its components by truncating and subtracting.
   const int64_t s1 = absl::ToUnixSeconds(t1);
   const int64_t ns1 = (t1 - absl::FromUnixSeconds(s1)) / absl::Nanoseconds(1);

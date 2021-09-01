@@ -313,16 +313,56 @@ INSTANTIATE_TEST_SUITE_P(
                absl::Nanoseconds(-1));
          },
          absl::OutOfRangeError("integer overflow")},
+        {"InfinityAddOneSecond",
+         [] {
+           return CheckedAdd(absl::InfiniteDuration(), absl::Nanoseconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"NegInfinityAddOneSecond",
+         [] {
+           return CheckedAdd(-absl::InfiniteDuration(), absl::Nanoseconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"OneSecondAddInfinity",
+         [] {
+           return CheckedAdd(absl::Nanoseconds(1), absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"OneSecondAddNegInfinity",
+         [] {
+           return CheckedAdd(absl::Nanoseconds(1), -absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("integer overflow")},
 
         // Subtraction tests for duration - duration.
         {"OneSecondSubOneSecond",
          [] { return CheckedSub(absl::Seconds(1), absl::Seconds(1)); },
          absl::ZeroDuration()},
-        {"MinDurationSubMinusOneSecond",
+        {"MinDurationSubOneSecond",
          [] {
            return CheckedSub(
                absl::Nanoseconds(std::numeric_limits<int64_t>::lowest()),
                absl::Nanoseconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"InfinitySubOneNano",
+         [] {
+           return CheckedSub(absl::InfiniteDuration(), absl::Nanoseconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"NegInfinitySubOneNano",
+         [] {
+           return CheckedSub(-absl::InfiniteDuration(), absl::Nanoseconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"OneNanoSubInfinity",
+         [] {
+           return CheckedSub(absl::Nanoseconds(1), absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"OneNanoSubNegInfinity",
+         [] {
+           return CheckedSub(absl::Nanoseconds(1), -absl::InfiniteDuration());
          },
          absl::OutOfRangeError("integer overflow")},
 
@@ -353,6 +393,26 @@ INSTANTIATE_TEST_SUITE_P(
                absl::FromUnixSeconds(1));
          },
          absl::OutOfRangeError("integer overflow")},
+        {"InfinitePastSubOneSecond",
+         [] {
+           return CheckedSub(absl::InfinitePast(), absl::FromUnixSeconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"InfiniteFutureSubOneMinusSecond",
+         [] {
+           return CheckedSub(absl::InfiniteFuture(), absl::FromUnixSeconds(-1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"InfiniteFutureSubInfinitePast",
+         [] {
+           return CheckedSub(absl::InfiniteFuture(), absl::InfinitePast());
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"InfinitePastSubInfiniteFuture",
+         [] {
+           return CheckedSub(absl::InfinitePast(), absl::InfiniteFuture());
+         },
+         absl::OutOfRangeError("integer overflow")},
 
         // Negation cases.
         {"NegateOneSecond", [] { return CheckedNegation(absl::Seconds(1)); },
@@ -362,6 +422,12 @@ INSTANTIATE_TEST_SUITE_P(
            return CheckedNegation(
                absl::Nanoseconds(std::numeric_limits<int64_t>::lowest()));
          },
+         absl::OutOfRangeError("integer overflow")},
+        {"NegateInfiniteDuration",
+         [] { return CheckedNegation(absl::InfiniteDuration()); },
+         absl::OutOfRangeError("integer overflow")},
+        {"NegateNegInfiniteDuration",
+         [] { return CheckedNegation(-absl::InfiniteDuration()); },
          absl::OutOfRangeError("integer overflow")},
     }),
     [](const testing::TestParamInfo<CheckedDurationResultTest::ParamType>&
@@ -415,6 +481,30 @@ INSTANTIATE_TEST_SUITE_P(
                absl::Nanoseconds(999999999));
          },
          absl::FromUnixSeconds(2) + absl::Nanoseconds(999999998)},
+        {"SecondsAddInfinity",
+         [] {
+           return CheckedAdd(
+               absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
+               absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("timestamp overflow")},
+        {"SecondsAddNegativeInfinity",
+         [] {
+           return CheckedAdd(
+               absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
+               -absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("timestamp overflow")},
+        {"InfiniteFutureAddNegativeInfinity",
+         [] {
+           return CheckedAdd(absl::InfiniteFuture(), -absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("timestamp overflow")},
+        {"InfinitePastAddInfinity",
+         [] {
+           return CheckedAdd(absl::InfinitePast(), absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("timestamp overflow")},
 
         // Subtraction tests.
         {"DateSubOneHour",
@@ -426,6 +516,20 @@ INSTANTIATE_TEST_SUITE_P(
                              absl::Hours(1) + absl::Nanoseconds(999));
          },
          absl::OutOfRangeError("timestamp overflow")},
+        {"SecondsSubInfinity",
+         [] {
+           return CheckedSub(
+               absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
+               absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"SecondsSubNegInfinity",
+         [] {
+           return CheckedSub(
+               absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
+               -absl::InfiniteDuration());
+         },
+         absl::OutOfRangeError("integer overflow")},
     }),
     [](const testing::TestParamInfo<CheckedTimeResultTest::ParamType>& info) {
       return info.param.test_name;

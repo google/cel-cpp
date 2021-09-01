@@ -229,7 +229,6 @@ cc_library(
     hdrs = ["overflow.h"],
     deps = [
         "//base:status_macros",
-        "@com_google_absl//absl/numeric:int128",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
