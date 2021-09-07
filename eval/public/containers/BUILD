@@ -15,6 +15,7 @@ cc_library(
         "field_access.h",
     ],
     deps = [
+        "//common:overflow",
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
         "@com_google_absl//absl/status",

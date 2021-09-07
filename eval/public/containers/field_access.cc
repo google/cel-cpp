@@ -1,5 +1,6 @@
 #include "eval/public/containers/field_access.h"
 
+#include <cstdint>
 #include <type_traits>
 
 #include "google/protobuf/any.pb.h"
@@ -11,12 +12,10 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
+#include "common/overflow.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -374,6 +373,9 @@ class FieldSetter {
     if (!cel_value.GetValue(&value)) {
       return false;
     }
+    if (!common::CheckedInt64ToInt32(value).ok()) {
+      return false;
+    }
     static_cast<const Derived*>(this)->SetInt32(value);
     return true;
   }
@@ -381,6 +383,9 @@ class FieldSetter {
   bool AssignUInt32(const CelValue& cel_value) const {
     uint64_t value;
     if (!cel_value.GetValue(&value)) {
+      return false;
+    }
+    if (!common::CheckedUint64ToUint32(value).ok()) {
       return false;
     }
     static_cast<const Derived*>(this)->SetUInt32(value);
@@ -444,6 +449,9 @@ class FieldSetter {
   bool AssignEnum(const CelValue& cel_value) const {
     int64_t value;
     if (!cel_value.GetValue(&value)) {
+      return false;
+    }
+    if (!common::CheckedInt64ToInt32(value).ok()) {
       return false;
     }
     static_cast<const Derived*>(this)->SetEnum(value);
@@ -721,7 +729,4 @@ absl::Status AddValueToRepeatedField(const CelValue& value,
                    value.DebugString()));
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

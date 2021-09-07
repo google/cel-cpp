@@ -96,8 +96,7 @@ cc_binary(
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
             # TODO(issues/117): Integer overflow on enum assignments should error.
-            "--skip_test=enums/legacy_proto2/select_big,select_neg,assign_standalone_int_too_big,assign_standalone_int_too_neg",
-            "--skip_test=enums/legacy_proto3/assign_standalone_int_too_big,assign_standalone_int_too_neg",
+            "--skip_test=enums/legacy_proto2/select_big,select_neg",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.

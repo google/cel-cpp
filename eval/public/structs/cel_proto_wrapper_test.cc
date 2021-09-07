@@ -23,10 +23,7 @@
 #include "testutil/util.h"
 #include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -876,7 +873,4 @@ TEST_F(CelProtoWrapperTest, DebugString) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

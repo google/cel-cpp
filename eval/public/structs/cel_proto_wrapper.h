@@ -6,10 +6,8 @@
 #include "eval/public/cel_value.h"
 #include "internal/proto_util.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 class CelProtoWrapper {
  public:
   // CreateMessage creates CelValue from google::protobuf::Message.
@@ -42,9 +40,6 @@ class CelProtoWrapper {
                                                  google::protobuf::Arena *arena);
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_CEL_PROTO_WRAPPER_H_

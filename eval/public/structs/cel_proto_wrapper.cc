@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include <cstdint>
 #include <limits>
 #include <memory>
 
@@ -17,14 +18,13 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/optional.h"
+#include "common/overflow.h"
 #include "eval/public/cel_value.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/proto_util.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -33,6 +33,7 @@ using google::protobuf::Descriptor;
 using google::protobuf::DescriptorPool;
 using google::protobuf::Message;
 
+using google::api::expr::internal::EncodeTime;
 using google::protobuf::Any;
 using google::protobuf::BoolValue;
 using google::protobuf::BytesValue;
@@ -62,7 +63,9 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
 
 // IsJSONSafe indicates whether the int is safely representable as a floating
 // point value in JSON.
-static bool IsJSONSafe(int64_t i) { return i >= kMinIntJSON && i <= kMaxIntJSON; }
+static bool IsJSONSafe(int64_t i) {
+  return i >= kMinIntJSON && i <= kMaxIntJSON;
+}
 
 // IsJSONSafe indicates whether the uint is safely representable as a floating
 // point value in JSON.
@@ -316,7 +319,7 @@ class CastingValueFromMessageFactory : public ValueFromMessageFactory {
       }
       return ValueFromMessage(message, arena);
     }
-    return {};
+    return absl::nullopt;
   }
 };
 
@@ -351,7 +354,7 @@ class ValueFromMessageMaker {
     auto it = factories_.find(value->GetDescriptor());
     if (it == factories_.end()) {
       // Not found for value->GetDescriptor()->name()
-      return {};
+      return absl::nullopt;
     }
     return (it->second)->CreateValue(value, arena);
   }
@@ -375,11 +378,11 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         Duration* duration) {
   absl::Duration val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   auto status = google::api::expr::internal::EncodeDuration(val, duration);
   if (!status.ok()) {
-    return {};
+    return absl::nullopt;
   }
   return duration;
 }
@@ -388,7 +391,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         BoolValue* wrapper) {
   bool val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   wrapper->set_value(val);
   return wrapper;
@@ -398,7 +401,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         BytesValue* wrapper) {
   CelValue::BytesHolder view_val;
   if (!value.GetValue(&view_val)) {
-    return {};
+    return absl::nullopt;
   }
   wrapper->set_value(view_val.value().data());
   return wrapper;
@@ -408,7 +411,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         DoubleValue* wrapper) {
   double val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   wrapper->set_value(val);
   return wrapper;
@@ -418,7 +421,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         FloatValue* wrapper) {
   double val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   // Abort the conversion if the value is outside the float range.
   if (val > std::numeric_limits<float>::max()) {
@@ -437,12 +440,11 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         Int32Value* wrapper) {
   int64_t val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   // Abort the conversion if the value is outside the int32_t range.
-  if (val > std::numeric_limits<int32_t>::max() ||
-      val < std::numeric_limits<int32_t>::lowest()) {
-    return {};
+  if (!common::CheckedInt64ToInt32(val).ok()) {
+    return absl::nullopt;
   }
   wrapper->set_value(val);
   return wrapper;
@@ -452,7 +454,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         Int64Value* wrapper) {
   int64_t val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   wrapper->set_value(val);
   return wrapper;
@@ -462,7 +464,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         StringValue* wrapper) {
   CelValue::StringHolder view_val;
   if (!value.GetValue(&view_val)) {
-    return {};
+    return absl::nullopt;
   }
   wrapper->set_value(view_val.value().data());
   return wrapper;
@@ -472,11 +474,11 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         Timestamp* timestamp) {
   absl::Time val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
-  auto status = google::api::expr::internal::EncodeTime(val, timestamp);
+  auto status = EncodeTime(val, timestamp);
   if (!status.ok()) {
-    return {};
+    return absl::nullopt;
   }
   return timestamp;
 }
@@ -485,11 +487,11 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         UInt32Value* wrapper) {
   uint64_t val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   // Abort the conversion if the value is outside the uint32_t range.
-  if (val > std::numeric_limits<uint32_t>::max()) {
-    return {};
+  if (!common::CheckedUint64ToUint32(val).ok()) {
+    return absl::nullopt;
   }
   wrapper->set_value(val);
   return wrapper;
@@ -499,7 +501,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
                                                         UInt64Value* wrapper) {
   uint64_t val;
   if (!value.GetValue(&val)) {
-    return {};
+    return absl::nullopt;
   }
   wrapper->set_value(val);
   return wrapper;
@@ -508,7 +510,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
                                                         ListValue* json_list) {
   if (!value.IsList()) {
-    return {};
+    return absl::nullopt;
   }
   const CelList& list = *value.ListOrDie();
   for (int i = 0; i < list.size(); i++) {
@@ -516,7 +518,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     Value* elem = json_list->add_values();
     auto result = MessageFromValue(e, elem);
     if (!result.has_value()) {
-      return {};
+      return absl::nullopt;
     }
   }
   return json_list;
@@ -525,7 +527,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
                                                         Struct* json_struct) {
   if (!value.IsMap()) {
-    return {};
+    return absl::nullopt;
   }
   const CelMap& map = *value.MapOrDie();
   const auto& keys = *map.ListKeys();
@@ -534,19 +536,19 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     auto k = keys[i];
     // If the key is not a string type, abort the conversion.
     if (!k.IsString()) {
-      return {};
+      return absl::nullopt;
     }
     absl::string_view key = k.StringOrDie().value();
 
     auto v = map[k];
     if (!v.has_value()) {
-      return {};
+      return absl::nullopt;
     }
     Value field_value;
     auto result = MessageFromValue(*v, &field_value);
     // If the value is not a valid JSON type, abort the conversion.
     if (!result.has_value()) {
-      return {};
+      return absl::nullopt;
     }
     (*fields)[std::string(key)] = field_value;
   }
@@ -585,7 +587,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       if (value.GetValue(&val)) {
         auto encode = google::api::expr::internal::EncodeDurationToString(val);
         if (!encode.ok()) {
-          return {};
+          return absl::nullopt;
         }
         json->set_string_value(*encode);
         return json;
@@ -617,7 +619,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       if (value.GetValue(&val)) {
         auto encode = google::api::expr::internal::EncodeTimeToString(val);
         if (!encode.ok()) {
-          return {};
+          return absl::nullopt;
         }
         json->set_string_value(*encode);
         return json;
@@ -653,9 +655,9 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
         json->set_null_value(protobuf::NULL_VALUE);
         return json;
       }
-      return {};
+      return absl::nullopt;
   }
-  return {};
+  return absl::nullopt;
 }
 
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
@@ -758,7 +760,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     default:
       break;
   }
-  return {};
+  return absl::nullopt;
 }
 
 // Factory class, responsible for populating a Message type instance with the
@@ -793,7 +795,7 @@ class CastingMessageFromValueFactory : public MessageFromValueFactory {
     if (value.IsMessage()) {
       const auto* msg = value.MessageOrDie();
       if (MessageType::descriptor() == msg->GetDescriptor()) {
-        return {};
+        return absl::nullopt;
       }
     }
     // Otherwise, allocate an empty message type, and attempt to populate it
@@ -837,7 +839,7 @@ class MessageFromValueMaker {
     auto it = factories_.find(type_name);
     if (it == factories_.end()) {
       // Descriptor not found for type name.
-      return {};
+      return absl::nullopt;
     }
     return (it->second)->WrapMessage(value, arena);
   }
@@ -876,12 +878,9 @@ absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
 
   auto msg = maker->MaybeWrapMessage(type_name, value, arena);
   if (!msg.has_value()) {
-    return {};
+    return absl::nullopt;
   }
   return CelValue(msg.value());
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

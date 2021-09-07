@@ -1,5 +1,7 @@
 #include "eval/public/containers/field_access.h"
 
+#include <limits>
+
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 #include "base/testing.h"
@@ -9,10 +11,7 @@
 #include "internal/proto_util.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -21,6 +20,8 @@ using google::api::expr::internal::MakeGoogleApiTimeMax;
 using google::protobuf::Arena;
 using google::protobuf::FieldDescriptor;
 using test::v1::proto3::TestAllTypes;
+using testing::HasSubstr;
+using cel_base::testing::StatusIs;
 
 TEST(FieldAccessTest, SetDuration) {
   Arena arena;
@@ -89,9 +90,32 @@ TEST(FieldAccessTest, SetTimestampBadInputType) {
   EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
+TEST(FieldAccessTest, SetInt32Overflow) {
+  Arena arena;
+  TestAllTypes msg;
+  const FieldDescriptor* field =
+      TestAllTypes::descriptor()->FindFieldByName("single_int32");
+  EXPECT_THAT(
+      SetValueToSingleField(
+          CelValue::CreateInt64(std::numeric_limits<int32_t>::max() + 1L),
+          field, &msg, &arena),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("Could not assign")));
+}
+
+TEST(FieldAccessTest, SetUint32Overflow) {
+  Arena arena;
+  TestAllTypes msg;
+  const FieldDescriptor* field =
+      TestAllTypes::descriptor()->FindFieldByName("single_uint32");
+  EXPECT_THAT(
+      SetValueToSingleField(
+          CelValue::CreateUint64(std::numeric_limits<uint32_t>::max() + 1L),
+          field, &msg, &arena),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("Could not assign")));
+}
+
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
