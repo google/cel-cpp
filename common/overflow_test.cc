@@ -299,26 +299,26 @@ INSTANTIATE_TEST_SUITE_P(
         {"OneSecondAddOneSecond",
          [] { return CheckedAdd(absl::Seconds(1), absl::Seconds(1)); },
          absl::Seconds(2)},
-        {"MaxDurationAddOneSecond",
+        {"MaxDurationAddOneNano",
          [] {
            return CheckedAdd(
                absl::Nanoseconds(std::numeric_limits<int64_t>::max()),
                absl::Nanoseconds(1));
          },
          absl::OutOfRangeError("integer overflow")},
-        {"MinDurationAddMinusOneSecond",
+        {"MinDurationAddMinusOneNano",
          [] {
            return CheckedAdd(
                absl::Nanoseconds(std::numeric_limits<int64_t>::lowest()),
                absl::Nanoseconds(-1));
          },
          absl::OutOfRangeError("integer overflow")},
-        {"InfinityAddOneSecond",
+        {"InfinityAddOneNano",
          [] {
            return CheckedAdd(absl::InfiniteDuration(), absl::Nanoseconds(1));
          },
          absl::OutOfRangeError("integer overflow")},
-        {"NegInfinityAddOneSecond",
+        {"NegInfinityAddOneNano",
          [] {
            return CheckedAdd(-absl::InfiniteDuration(), absl::Nanoseconds(1));
          },
@@ -455,26 +455,26 @@ INSTANTIATE_TEST_SUITE_P(
                              absl::Hours(1) + absl::Nanoseconds(1));
          },
          absl::FromUnixSeconds(7106) + absl::Nanoseconds(1)},
-        {"IntMaxAddOneSecond",
+        {"MaxIntAddOneSecond",
          [] {
            return CheckedAdd(
                absl::FromUnixSeconds(std::numeric_limits<int64_t>::max()),
-               absl::Hours(1) + absl::Nanoseconds(1));
+               absl::Seconds(1));
          },
          absl::OutOfRangeError("integer overflow")},
         {"MaxTimestampAddOneSecond",
          [] {
            return CheckedAdd(absl::FromUnixSeconds(253402300799),
-                             absl::Hours(1) + absl::Nanoseconds(1));
+                             absl::Seconds(1));
          },
          absl::OutOfRangeError("timestamp overflow")},
-        {"SecondsWithNanosNegative",
+        {"TimeWithNanosNegative",
          [] {
            return CheckedAdd(absl::FromUnixSeconds(1) + absl::Nanoseconds(1),
                              absl::Nanoseconds(-999999999));
          },
          absl::FromUnixNanos(2)},
-        {"SecondsWithNanosPositive",
+        {"TimeWithNanosPositive",
          [] {
            return CheckedAdd(
                absl::FromUnixSeconds(1) + absl::Nanoseconds(999999999),
@@ -513,7 +513,21 @@ INSTANTIATE_TEST_SUITE_P(
         {"MinTimestampSubOneSecond",
          [] {
            return CheckedSub(absl::FromUnixSeconds(-62135596800),
-                             absl::Hours(1) + absl::Nanoseconds(999));
+                             absl::Seconds(1));
+         },
+         absl::OutOfRangeError("timestamp overflow")},
+        {"MinIntSubOneViaNanos",
+         [] {
+           return CheckedSub(
+               absl::FromUnixSeconds(std::numeric_limits<int64_t>::min()),
+               absl::Nanoseconds(1));
+         },
+         absl::OutOfRangeError("integer overflow")},
+        {"MinTimestampSubOneViaNanosScaleOverflow",
+         [] {
+           return CheckedSub(
+               absl::FromUnixSeconds(-62135596800) + absl::Nanoseconds(1),
+               absl::Nanoseconds(999999999));
          },
          absl::OutOfRangeError("timestamp overflow")},
         {"SecondsSubInfinity",

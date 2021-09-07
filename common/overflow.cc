@@ -243,6 +243,17 @@ StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
   // Nanoseconds cannot overflow as nanos are normalized to [0, 999999999].
   absl::Duration ns = absl::Nanoseconds(ns2 + ns1);
 
+  // Normalize nanoseconds to be positive and carry extra nanos to seconds.
+  if (ns < absl::ZeroDuration() || ns >= kOneSecondDuration) {
+    // Add seconds, or no-op if nanseconds negative (ns never < -999_999_999ns)
+    ASSIGN_OR_RETURN(s, CheckedAdd(s, ns / kOneSecondDuration));
+    ns -= (ns / kOneSecondDuration) * kOneSecondDuration;
+    // Subtract a second to make the nanos positive.
+    if (ns < absl::ZeroDuration()) {
+      ASSIGN_OR_RETURN(s, CheckedAdd(s, -1));
+      ns += kOneSecondDuration;
+    }
+  }
   // Check if the the number of seconds from Unix epoch is within our acceptable
   // range.
   RETURN_IF_ERROR(
