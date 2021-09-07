@@ -52,7 +52,7 @@ struct InterpreterOptions {
   // Set maximum number of iterations in the comprehension expressions if
   // comprehensions are enabled. The limit applies globally per an evaluation,
   // including the nested loops as well. Use value 0 to disable the upper bound.
-  int comprehension_max_iterations = 0;
+  int comprehension_max_iterations = 10000;
 
   // Enable RE2 match() overload.
   bool enable_regex = true;
