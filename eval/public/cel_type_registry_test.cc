@@ -6,10 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "eval/testutil/test_message.pb.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -81,7 +78,4 @@ TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

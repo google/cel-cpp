@@ -8,10 +8,7 @@
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelTypeRegistry manages the set of registered types available for use within
 // object literal construction, enum comparisons, and type testing.
@@ -66,9 +63,6 @@ class CelTypeRegistry {
   absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_

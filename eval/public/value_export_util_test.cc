@@ -12,10 +12,7 @@
 #include "testutil/util.h"
 #include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -137,7 +134,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBoolValue) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_bool_list(true);
   msg->add_bool_list(false);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -156,7 +153,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt32Value) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_int32_list(2);
   msg->add_int32_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -175,7 +172,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedInt64Value) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_int64_list(2);
   msg->add_int64_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -194,7 +191,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedUint64Value) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_uint64_list(2);
   msg->add_uint64_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -213,7 +210,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedDoubleValue) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_double_list(2);
   msg->add_double_list(3);
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -232,7 +229,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedStringValue) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_string_list("test1");
   msg->add_string_list("test2");
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -251,7 +248,7 @@ TEST(ValueExportUtilTest, ConvertRepeatedBytesValue) {
   Arena arena;
   Value value;
 
-  TestMessage *msg = Arena::CreateMessage<TestMessage>(&arena);
+  TestMessage* msg = Arena::CreateMessage<TestMessage>(&arena);
   msg->add_bytes_list("test1");
   msg->add_bytes_list("test2");
   CelValue cel_value = CelProtoWrapper::CreateMessage(msg, &arena);
@@ -305,7 +302,7 @@ TEST(ValueExportUtilTest, ConvertCelMapWithStringKey) {
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
-  const auto &fields = value.struct_value().fields();
+  const auto& fields = value.struct_value().fields();
 
   EXPECT_EQ(fields.at(key1).string_value(), value1);
   EXPECT_EQ(fields.at(key2).string_value(), value2);
@@ -333,7 +330,7 @@ TEST(ValueExportUtilTest, ConvertCelMapWithInt64Key) {
   EXPECT_OK(ExportAsProtoValue(cel_value, &value));
   EXPECT_EQ(value.kind_case(), Value::KindCase::kStructValue);
 
-  const auto &fields = value.struct_value().fields();
+  const auto& fields = value.struct_value().fields();
 
   EXPECT_EQ(fields.at(absl::StrCat(key1)).string_value(), value1);
   EXPECT_EQ(fields.at(absl::StrCat(key2)).string_value(), value2);
@@ -341,7 +338,4 @@ TEST(ValueExportUtilTest, ConvertCelMapWithInt64Key) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

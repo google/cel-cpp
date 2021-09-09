@@ -8,10 +8,7 @@
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -81,7 +78,4 @@ absl::optional<CelValue> CelTypeRegistry::FindType(
   return absl::nullopt;
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

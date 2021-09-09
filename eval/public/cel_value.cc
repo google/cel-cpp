@@ -9,10 +9,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -337,7 +334,4 @@ bool IsUnknownFunctionResult(const CelValue& value) {
   return payload.has_value() && payload.value() == "true";
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

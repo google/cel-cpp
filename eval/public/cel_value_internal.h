@@ -19,12 +19,7 @@
 
 #include "absl/types/variant.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
-
-namespace internal {
+namespace google::api::expr::runtime::internal {
 
 // Helper classes needed for IndexOf metafunction implementation.
 template <int N, bool>
@@ -60,7 +55,7 @@ class ValueHolder {
   using IndexOf = TypeIndexer<0, sizeof...(Args), T, Args...>;
 
   template <class T>
-  const T *get() const {
+  const T* get() const {
     return absl::get_if<T>(&value_);
   }
 
@@ -72,7 +67,7 @@ class ValueHolder {
   int index() const { return value_.index(); }
 
   template <class ReturnType, class Op>
-  ReturnType Visit(Op &&op) const {
+  ReturnType Visit(Op&& op) const {
     return absl::visit(std::forward<Op>(op), value_);
   }
 
@@ -80,11 +75,6 @@ class ValueHolder {
   absl::variant<Args...> value_;
 };
 
-}  // namespace internal
-
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime::internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_

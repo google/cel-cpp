@@ -17,10 +17,7 @@
 #include "base/testing.h"
 #include "gtest/gtest.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -345,7 +342,4 @@ TEST(AstCrawlerTest, CheckExprHandlers) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

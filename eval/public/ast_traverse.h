@@ -20,10 +20,7 @@
 #include "eval/public/ast_visitor.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Traverses the AST representation in an expr proto.
 //
@@ -54,13 +51,10 @@ namespace runtime {
 // ....PostVisitArg(fn, 1)
 // ..PostVisitCall(fn)
 // PostVisitExpr
-void AstTraverse(const google::api::expr::v1alpha1::Expr *expr,
-                 const google::api::expr::v1alpha1::SourceInfo *source_info,
-                 AstVisitor *visitor);
+void AstTraverse(const google::api::expr::v1alpha1::Expr* expr,
+                 const google::api::expr::v1alpha1::SourceInfo* source_info,
+                 AstVisitor* visitor);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_H_

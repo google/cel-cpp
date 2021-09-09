@@ -6,10 +6,7 @@
 #include "absl/strings/str_cat.h"
 #include "internal/proto_util.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
@@ -148,7 +145,4 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
   return absl::OkStatus();
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

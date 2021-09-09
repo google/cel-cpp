@@ -9,10 +9,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 using testing::Eq;
 
@@ -325,7 +322,4 @@ TEST(CelValueTest, DebugString) {
   // List and map DebugString() test coverage is in cel_proto_wrapper_test.cc.
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

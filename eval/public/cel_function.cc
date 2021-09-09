@@ -1,9 +1,6 @@
 #include "eval/public/cel_function.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 bool CelFunctionDescriptor::ShapeMatches(
     bool receiver_style, const std::vector<CelValue::Type>& types) const {
@@ -44,7 +41,4 @@ bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
   return true;
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

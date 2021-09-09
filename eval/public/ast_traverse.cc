@@ -20,10 +20,7 @@
 #include "absl/types/variant.h"
 #include "eval/public/source_position.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
@@ -38,21 +35,21 @@ namespace {
 
 struct ArgRecord {
   // Not null.
-  const Expr *expr;
+  const Expr* expr;
   // Not null.
-  const SourceInfo *source_info;
+  const SourceInfo* source_info;
 
   // For records that are direct arguments to call, we need to call
   // the CallArg visitor immediately after the argument is evaluated.
-  const Expr *calling_expr;
+  const Expr* calling_expr;
   int call_arg;
 };
 
 struct ExprRecord {
   // Not null.
-  const Expr *expr;
+  const Expr* expr;
   // Not null.
-  const SourceInfo *source_info;
+  const SourceInfo* source_info;
 };
 
 using StackRecordKind = absl::variant<ExprRecord, ArgRecord>;
@@ -62,11 +59,11 @@ struct StackRecord {
   static constexpr int kNotCallArg = -1;
   static constexpr int kTarget = -2;
 
-  StackRecord(const Expr *e, const SourceInfo *info)
+  StackRecord(const Expr* e, const SourceInfo* info)
       : record_variant(ExprRecord{.expr = e, .source_info = info}),
         visited(false) {}
 
-  StackRecord(const Expr *e, const SourceInfo *info, const Expr *call,
+  StackRecord(const Expr* e, const SourceInfo* info, const Expr* call,
               int argnum)
       : record_variant(ArgRecord{.expr = e,
                                  .source_info = info,
@@ -79,7 +76,7 @@ struct StackRecord {
 };
 
 struct PreVisitor {
-  void operator()(const ExprRecord &record) {
+  void operator()(const ExprRecord& record) {
     const Expr *expr = record.expr;
     const SourcePosition position(expr->id(), record.source_info);
     visitor->PreVisitExpr(expr, &position);
@@ -101,18 +98,18 @@ struct PreVisitor {
   }
 
   // Do nothing for Arg variant.
-  void operator()(const ArgRecord &) {}
+  void operator()(const ArgRecord&) {}
 
-  AstVisitor *visitor;
+  AstVisitor* visitor;
 };
 
-void PreVisit(const StackRecord &record, AstVisitor *visitor) {
+void PreVisit(const StackRecord& record, AstVisitor* visitor) {
   absl::visit(PreVisitor{visitor}, record.record_variant);
 }
 
 struct PostVisitor {
-  void operator()(const ExprRecord &record) {
-    const Expr *expr = record.expr;
+  void operator()(const ExprRecord& record) {
+    const Expr* expr = record.expr;
     const SourcePosition position(expr->id(), record.source_info);
     switch (expr->expr_kind_case()) {
       case Expr::kConstExpr:
@@ -144,8 +141,8 @@ struct PostVisitor {
     visitor->PostVisitExpr(expr, &position);
   }
 
-  void operator()(const ArgRecord &record) {
-    const Expr *expr = record.expr;
+  void operator()(const ArgRecord& record) {
+    const Expr* expr = record.expr;
     const SourcePosition position(expr->id(), record.source_info);
     if (record.call_arg == StackRecord::kTarget) {
       visitor->PostVisitTarget(record.calling_expr, &position);
@@ -157,20 +154,20 @@ struct PostVisitor {
   AstVisitor *visitor;
 };
 
-void PostVisit(const StackRecord &record, AstVisitor *visitor) {
+void PostVisit(const StackRecord& record, AstVisitor* visitor) {
   absl::visit(PostVisitor{visitor}, record.record_variant);
 }
 
-void PushSelectDeps(const Select *select_expr, const SourceInfo *source_info,
-                    std::stack<StackRecord> *stack) {
+void PushSelectDeps(const Select* select_expr, const SourceInfo* source_info,
+                    std::stack<StackRecord>* stack) {
   if (select_expr->has_operand()) {
     stack->push(StackRecord(&select_expr->operand(), source_info));
   }
 }
 
-void PushCallDeps(const Call *call_expr, const Expr *expr,
-                  const SourceInfo *source_info,
-                  std::stack<StackRecord> *stack) {
+void PushCallDeps(const Call* call_expr, const Expr* expr,
+                  const SourceInfo* source_info,
+                  std::stack<StackRecord>* stack) {
   const int arg_size = call_expr->args_size();
   // Our contract is that we visit arguments in order.  To do that, we need
   // to push them onto the stack in reverse order.
@@ -184,21 +181,21 @@ void PushCallDeps(const Call *call_expr, const Expr *expr,
   }
 }
 
-void PushListDeps(const CreateList *list_expr, const SourceInfo *source_info,
-                  std::stack<StackRecord> *stack) {
-  const auto &elements = list_expr->elements();
+void PushListDeps(const CreateList* list_expr, const SourceInfo* source_info,
+                  std::stack<StackRecord>* stack) {
+  const auto& elements = list_expr->elements();
   for (auto it = elements.rbegin(); it != elements.rend(); ++it) {
-    const auto &element = *it;
+    const auto& element = *it;
     stack->push(StackRecord(&element, source_info));
   }
 }
 
-void PushStructDeps(const CreateStruct *struct_expr,
-                    const SourceInfo *source_info,
-                    std::stack<StackRecord> *stack) {
-  const auto &entries = struct_expr->entries();
+void PushStructDeps(const CreateStruct* struct_expr,
+                    const SourceInfo* source_info,
+                    std::stack<StackRecord>* stack) {
+  const auto& entries = struct_expr->entries();
   for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
-    const auto &entry = *it;
+    const auto& entry = *it;
     // The contract is to visit key, then value.  So put them on the stack
     // in the opposite order.
     if (entry.has_value()) {
@@ -211,9 +208,9 @@ void PushStructDeps(const CreateStruct *struct_expr,
   }
 }
 
-void PushComprehensionDeps(const Comprehension *c, const Expr *expr,
-                           const SourceInfo *source_info,
-                           std::stack<StackRecord> *stack) {
+void PushComprehensionDeps(const Comprehension* c, const Expr* expr,
+                           const SourceInfo* source_info,
+                           std::stack<StackRecord>* stack) {
   StackRecord iter_range(&c->iter_range(), source_info, expr, ITER_RANGE);
   StackRecord accu_init(&c->accu_init(), source_info, expr, ACCU_INIT);
   StackRecord loop_condition(&c->loop_condition(), source_info, expr,
@@ -229,8 +226,8 @@ void PushComprehensionDeps(const Comprehension *c, const Expr *expr,
 }
 
 struct PushDepsVisitor {
-  void operator()(const ExprRecord &record) {
-    const Expr *expr = record.expr;
+  void operator()(const ExprRecord& record) {
+    const Expr* expr = record.expr;
     switch (expr->expr_kind_case()) {
       case Expr::kSelectExpr:
         PushSelectDeps(&expr->select_expr(), record.source_info, &stack);
@@ -253,27 +250,27 @@ struct PushDepsVisitor {
     }
   }
 
-  void operator()(const ArgRecord &record) {
+  void operator()(const ArgRecord& record) {
     stack.push(StackRecord(record.expr, record.source_info));
   }
 
-  std::stack<StackRecord> &stack;
+  std::stack<StackRecord>& stack;
 };
 
-void PushDependencies(const StackRecord &record,
-                      std::stack<StackRecord> &stack) {
+void PushDependencies(const StackRecord& record,
+                      std::stack<StackRecord>& stack) {
   absl::visit(PushDepsVisitor{stack}, record.record_variant);
 }
 
 }  // namespace
 
-void AstTraverse(const Expr *expr, const SourceInfo *source_info,
-                 AstVisitor *visitor) {
+void AstTraverse(const Expr* expr, const SourceInfo* source_info,
+                 AstVisitor* visitor) {
   std::stack<StackRecord> stack;
   stack.push(StackRecord(expr, source_info));
 
   while (!stack.empty()) {
-    StackRecord &record = stack.top();
+    StackRecord& record = stack.top();
     if (!record.visited) {
       PreVisit(record, visitor);
       PushDependencies(record, stack);
@@ -285,7 +282,4 @@ void AstTraverse(const Expr *expr, const SourceInfo *source_info,
   }
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

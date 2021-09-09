@@ -29,10 +29,7 @@
 #include "eval/public/cel_value_internal.h"
 #include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 using CelError = absl::Status;
 
@@ -41,8 +38,6 @@ class CelList;
 class CelMap;
 class UnknownSet;
 
-// TODO(issues/5): Cleanup &/* binding to association with the type (left)
-// rather than the variable (left).
 class CelValue {
  public:
   // This class is a container to hold strings/bytes.
@@ -53,14 +48,14 @@ class CelValue {
    public:
     StringHolderBase() : value_(absl::string_view()) {}
 
-    StringHolderBase(const StringHolderBase &) = default;
-    StringHolderBase &operator=(const StringHolderBase &) = default;
+    StringHolderBase(const StringHolderBase&) = default;
+    StringHolderBase& operator=(const StringHolderBase&) = default;
 
     // string parameter is passed through pointer to ensure string_view is not
     // initialized with string rvalue. Also, according to Google style guide,
     // passing pointers conveys the message that the reference to string is kept
     // in the constructed holder object.
-    explicit StringHolderBase(const std::string *str) : value_(*str) {}
+    explicit StringHolderBase(const std::string* str) : value_(*str) {}
 
     absl::string_view value() const { return value_; }
 
@@ -109,10 +104,11 @@ class CelValue {
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type
   // enum
-  using ValueHolder = internal::ValueHolder<
-      bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
-      const google::protobuf::Message *, absl::Duration, absl::Time, const CelList *,
-      const CelMap *, const UnknownSet *, CelTypeHolder, const CelError *>;
+  using ValueHolder =
+      internal::ValueHolder<bool, int64_t, uint64_t, double, StringHolder,
+                            BytesHolder, const google::protobuf::Message*, absl::Duration,
+                            absl::Time, const CelList*, const CelMap*,
+                            const UnknownSet*, CelTypeHolder, const CelError*>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -128,14 +124,14 @@ class CelValue {
     kDouble = IndexOf<double>::value,
     kString = IndexOf<StringHolder>::value,
     kBytes = IndexOf<BytesHolder>::value,
-    kMessage = IndexOf<const google::protobuf::Message *>::value,
+    kMessage = IndexOf<const google::protobuf::Message*>::value,
     kDuration = IndexOf<absl::Duration>::value,
     kTimestamp = IndexOf<absl::Time>::value,
-    kList = IndexOf<const CelList *>::value,
-    kMap = IndexOf<const CelMap *>::value,
-    kUnknownSet = IndexOf<const UnknownSet *>::value,
+    kList = IndexOf<const CelList*>::value,
+    kMap = IndexOf<const CelMap*>::value,
+    kUnknownSet = IndexOf<const UnknownSet*>::value,
     kCelType = IndexOf<CelTypeHolder>::value,
-    kError = IndexOf<const CelError *>::value,
+    kError = IndexOf<const CelError*>::value,
     kAny  // Special value. Used in function descriptors.
   };
 
@@ -154,7 +150,7 @@ class CelValue {
   // between bool/int/pointer types.
   // We rely on copy elision to avoid extra copying.
   static CelValue CreateNull() {
-    return CelValue(static_cast<const google::protobuf::Message *>(nullptr));
+    return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
   }
 
   static CelValue CreateBool(bool value) { return CelValue(value); }
@@ -174,7 +170,7 @@ class CelValue {
     return CelValue(StringHolder(value));
   }
 
-  static CelValue CreateString(const std::string *str) {
+  static CelValue CreateString(const std::string* str) {
     return CelValue(StringHolder(str));
   }
 
@@ -184,7 +180,7 @@ class CelValue {
     return CelValue(BytesHolder(value));
   }
 
-  static CelValue CreateBytes(const std::string *str) {
+  static CelValue CreateBytes(const std::string* str) {
     return CelValue(BytesHolder(str));
   }
 
@@ -192,17 +188,17 @@ class CelValue {
 
   static CelValue CreateTimestamp(absl::Time value) { return CelValue(value); }
 
-  static CelValue CreateList(const CelList *value) {
+  static CelValue CreateList(const CelList* value) {
     CheckNullPointer(value, Type::kList);
     return CelValue(value);
   }
 
-  static CelValue CreateMap(const CelMap *value) {
+  static CelValue CreateMap(const CelMap* value) {
     CheckNullPointer(value, Type::kMap);
     return CelValue(value);
   }
 
-  static CelValue CreateUnknownSet(const UnknownSet *value) {
+  static CelValue CreateUnknownSet(const UnknownSet* value) {
     CheckNullPointer(value, Type::kUnknownSet);
     return CelValue(value);
   }
@@ -219,14 +215,14 @@ class CelValue {
     return CelValue(CelTypeHolder(value));
   }
 
-  static CelValue CreateError(const CelError *value) {
+  static CelValue CreateError(const CelError* value) {
     CheckNullPointer(value, Type::kError);
     return CelValue(value);
   }
 
   // Returns an absl::OkStatus() when the key is a valid protobuf map type,
   // meaning it is a scalar value that is neither floating point nor bytes.
-  static absl::Status CheckMapKeyType(const CelValue &key);
+  static absl::Status CheckMapKeyType(const CelValue& key);
 
   // Obtain the CelType of the value.
   CelValue ObtainCelType() const;
@@ -252,8 +248,8 @@ class CelValue {
   // Fails if stored value type is not double.
   double DoubleOrDie() const { return GetValueOrDie<double>(Type::kDouble); }
 
-  // Returns stored const string * value.
-  // Fails if stored value type is not const string *.
+  // Returns stored const string* value.
+  // Fails if stored value type is not const string*.
   StringHolder StringOrDie() const {
     return GetValueOrDie<StringHolder>(Type::kString);
   }
@@ -262,10 +258,10 @@ class CelValue {
     return GetValueOrDie<BytesHolder>(Type::kBytes);
   }
 
-  // Returns stored const Message * value.
-  // Fails if stored value type is not const Message *.
-  const google::protobuf::Message *MessageOrDie() const {
-    return GetValueOrDie<const google::protobuf::Message *>(Type::kMessage);
+  // Returns stored const Message* value.
+  // Fails if stored value type is not const Message*.
+  const google::protobuf::Message* MessageOrDie() const {
+    return GetValueOrDie<const google::protobuf::Message*>(Type::kMessage);
   }
 
   // Returns stored duration value.
@@ -280,16 +276,16 @@ class CelValue {
     return GetValueOrDie<absl::Time>(Type::kTimestamp);
   }
 
-  // Returns stored const CelList * value.
-  // Fails if stored value type is not const CelList *.
-  const CelList *ListOrDie() const {
-    return GetValueOrDie<const CelList *>(Type::kList);
+  // Returns stored const CelList* value.
+  // Fails if stored value type is not const CelList*.
+  const CelList* ListOrDie() const {
+    return GetValueOrDie<const CelList*>(Type::kList);
   }
 
   // Returns stored const CelMap * value.
   // Fails if stored value type is not const CelMap *.
-  const CelMap *MapOrDie() const {
-    return GetValueOrDie<const CelMap *>(Type::kMap);
+  const CelMap* MapOrDie() const {
+    return GetValueOrDie<const CelMap*>(Type::kMap);
   }
 
   // Returns stored const CelTypeHolder value.
@@ -300,14 +296,14 @@ class CelValue {
 
   // Returns stored const UnknownAttributeSet * value.
   // Fails if stored value type is not const UnknownAttributeSet *.
-  const UnknownSet *UnknownSetOrDie() const {
-    return GetValueOrDie<const UnknownSet *>(Type::kUnknownSet);
+  const UnknownSet* UnknownSetOrDie() const {
+    return GetValueOrDie<const UnknownSet*>(Type::kUnknownSet);
   }
 
   // Returns stored const CelError * value.
   // Fails if stored value type is not const CelError *.
-  const CelError *ErrorOrDie() const {
-    return GetValueOrDie<const CelError *>(Type::kError);
+  const CelError* ErrorOrDie() const {
+    return GetValueOrDie<const CelError*>(Type::kError);
   }
 
   bool IsNull() const { return value_.template Visit<bool>(NullCheckOp()); }
@@ -324,33 +320,33 @@ class CelValue {
 
   bool IsBytes() const { return value_.is<BytesHolder>(); }
 
-  bool IsMessage() const { return value_.is<const google::protobuf::Message *>(); }
+  bool IsMessage() const { return value_.is<const google::protobuf::Message*>(); }
 
   bool IsDuration() const { return value_.is<absl::Duration>(); }
 
   bool IsTimestamp() const { return value_.is<absl::Time>(); }
 
-  bool IsList() const { return value_.is<const CelList *>(); }
+  bool IsList() const { return value_.is<const CelList*>(); }
 
-  bool IsMap() const { return value_.is<const CelMap *>(); }
+  bool IsMap() const { return value_.is<const CelMap*>(); }
 
-  bool IsUnknownSet() const { return value_.is<const UnknownSet *>(); }
+  bool IsUnknownSet() const { return value_.is<const UnknownSet*>(); }
 
   bool IsCelType() const { return value_.is<CelTypeHolder>(); }
 
-  bool IsError() const { return value_.is<const CelError *>(); }
+  bool IsError() const { return value_.is<const CelError*>(); }
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
   template <class ReturnType, class Op>
-  ReturnType Visit(Op &&op) const {
+  ReturnType Visit(Op&& op) const {
     return value_.template Visit<ReturnType>(op);
   }
 
   // Template-style getter.
   // Returns true, if assignment successful
   template <typename Arg>
-  bool GetValue(Arg *value) const {
+  bool GetValue(Arg* value) const {
     return this->template Visit<bool>(AssignerOp<Arg>(value));
   }
 
@@ -362,14 +358,14 @@ class CelValue {
 
   template <typename T>
   struct AssignerOp {
-    explicit AssignerOp(T *val) : value(val) {}
+    explicit AssignerOp(T* val) : value(val) {}
 
     template <typename U>
-    bool operator()(const U &) {
+    bool operator()(const U&) {
       return false;
     }
 
-    bool operator()(const T &arg) {
+    bool operator()(const T& arg) {
       *value = arg;
       return true;
     }
@@ -379,11 +375,11 @@ class CelValue {
 
   struct NullCheckOp {
     template <typename T>
-    bool operator()(const T &) const {
+    bool operator()(const T&) const {
       return false;
     }
 
-    bool operator()(const google::protobuf::Message *arg) const { return arg == nullptr; }
+    bool operator()(const google::protobuf::Message* arg) const { return arg == nullptr; }
   };
 
   // Constructs CelValue wrapping value supplied as argument.
@@ -392,7 +388,7 @@ class CelValue {
   explicit CelValue(T value) : value_(value) {}
 
   // Null pointer checker for pointer-based types.
-  static void CheckNullPointer(const void *ptr, Type type) {
+  static void CheckNullPointer(const void* ptr, Type type) {
     if (ptr == nullptr) {
       GOOGLE_LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
     }
@@ -457,7 +453,7 @@ class CelMap {
   // Evaluators are responsible for handling non-OK results by propagating the
   // error, as appropriate, up the evaluation stack either as a `StatusOr` or
   // as a `CelError` value, depending on the context.
-  virtual absl::StatusOr<bool> Has(const CelValue &key) const {
+  virtual absl::StatusOr<bool> Has(const CelValue& key) const {
     // This check safeguards against issues with invalid key types such as NaN.
     RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
     auto value = (*this)[key];
@@ -479,7 +475,7 @@ class CelMap {
 
   // Return list of keys. CelList is owned by Arena, so no
   // ownership is passed.
-  virtual const CelList *ListKeys() const = 0;
+  virtual const CelList* ListKeys() const = 0;
 
   virtual ~CelMap() {}
 };
@@ -490,64 +486,61 @@ class CelMap {
 // position location of the error source in CEL expression string the Expr was
 // parsed from. -1, if the position can not be determined.
 CelValue CreateErrorValue(
-    google::protobuf::Arena *arena, absl::string_view message,
+    google::protobuf::Arena* arena, absl::string_view message,
     absl::StatusCode error_code = absl::StatusCode::kUnknown,
     int position = -1);
 
 // Utility method for generating a CelValue from an absl::Status.
-inline CelValue CreateErrorValue(google::protobuf::Arena *arena,
-                                 const absl::Status &status) {
+inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
+                                 const absl::Status& status) {
   return CreateErrorValue(arena, status.message(), status.code());
 }
 
-CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena);
-CelValue CreateNoMatchingOverloadError(google::protobuf::Arena *arena,
+CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena);
+CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
                                        absl::string_view fn);
 bool CheckNoMatchingOverloadError(CelValue value);
 
-CelValue CreateNoSuchFieldError(google::protobuf::Arena *arena,
+CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena,
                                 absl::string_view field = "");
 
-CelValue CreateNoSuchKeyError(google::protobuf::Arena *arena, absl::string_view key);
+CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key);
 bool CheckNoSuchKeyError(CelValue value);
 
 // Returns the error indicating that evaluation encountered a value marked
 // as unknown, was included in Activation unknown_paths.
-CelValue CreateUnknownValueError(google::protobuf::Arena *arena,
+CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
                                  absl::string_view unknown_path);
 
 // Returns true if this is unknown value error indicating that evaluation
 // encountered a value marked as unknown in Activation unknown_paths.
-bool IsUnknownValueError(const CelValue &value);
+bool IsUnknownValueError(const CelValue& value);
 
 // Returns an error indicating that evaluation has accessed an attribute whose
 // value is undefined. For example, this may represent a field in a proto
 // message bound to the activation whose value can't be determined by the
 // hosting application.
-CelValue CreateMissingAttributeError(google::protobuf::Arena *arena,
+CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
                                      absl::string_view missing_attribute_path);
 
-bool IsMissingAttributeError(const CelValue &value);
+bool IsMissingAttributeError(const CelValue& value);
 
 // Returns error indicating the result of the function is unknown. This is used
 // as a signal to create an unknown set if unknown function handling is opted
 // into.
-CelValue CreateUnknownFunctionResultError(google::protobuf::Arena *arena,
+CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
                                           absl::string_view help_message);
 
 // Returns true if this is unknown value error indicating that evaluation
 // called an extension function whose value is unknown for the given args.
 // This is used as a signal to convert to an UnknownSet if the behavior is opted
 // into.
-bool IsUnknownFunctionResult(const CelValue &value);
+bool IsUnknownFunctionResult(const CelValue& value);
 
 // Returns set of unknown paths for unknown value error. The value must be
 // unknown error, see IsUnknownValueError() above, or it dies.
-std::set<std::string> GetUnknownPathsSetOrDie(const CelValue &value);
+std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_H_

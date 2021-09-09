@@ -14,10 +14,7 @@
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelEvaluationListener is the callback that is passed to (and called by)
 // CelEvaluation::Trace. It gets an expression node ID from the original
@@ -147,9 +144,6 @@ class CelExpressionBuilder {
   std::string container_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_EXPRESSION_H_

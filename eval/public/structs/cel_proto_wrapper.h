@@ -13,16 +13,16 @@ class CelProtoWrapper {
   // CreateMessage creates CelValue from google::protobuf::Message.
   // As some of CEL basic types are subclassing google::protobuf::Message,
   // this method contains type checking and downcasts.
-  static CelValue CreateMessage(const google::protobuf::Message *value,
-                                google::protobuf::Arena *arena);
+  static CelValue CreateMessage(const google::protobuf::Message* value,
+                                google::protobuf::Arena* arena);
 
   // CreateDuration creates CelValue from a non-null protobuf duration value.
-  static CelValue CreateDuration(const google::protobuf::Duration *value) {
+  static CelValue CreateDuration(const google::protobuf::Duration* value) {
     return CelValue(expr::internal::DecodeDuration(*value));
   }
 
   // CreateTimestamp creates CelValue from a non-null protobuf timestamp value.
-  static CelValue CreateTimestamp(const google::protobuf::Timestamp *value) {
+  static CelValue CreateTimestamp(const google::protobuf::Timestamp* value) {
     return CelValue(expr::internal::DecodeTime(*value));
   }
 
@@ -36,8 +36,8 @@ class CelProtoWrapper {
   // Just as CreateMessage should only be used when reading protobuf values,
   // MaybeWrapValue should only be used when assigning protobuf fields.
   static absl::optional<CelValue> MaybeWrapValue(absl::string_view type_name,
-                                                 const CelValue &value,
-                                                 google::protobuf::Arena *arena);
+                                                 const CelValue& value,
+                                                 google::protobuf::Arena* arena);
 };
 
 }  // namespace google::api::expr::runtime
