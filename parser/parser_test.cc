@@ -922,7 +922,40 @@ std::vector<TestInfo> test_cases = {
      "    z^#7:Expr.Ident#,\n"
      "    0^#9:int64#\n"
      "  )^#8:Expr.Call#\n"
-     ")^#16:filter"}};
+     ")^#16:filter"},
+    {"has(a.b).filter(c, c)",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  c,\n"
+     "  // Target\n"
+     "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  []^#9:Expr.CreateList#,\n"
+     "  // LoopCondition\n"
+     "  true^#10:bool#,\n"
+     "  // LoopStep\n"
+     "  _?_:_(\n"
+     "    c^#7:Expr.Ident#,\n"
+     "    _+_(\n"
+     "      __result__^#8:Expr.Ident#,\n"
+     "      [\n"
+     "        c^#6:Expr.Ident#\n"
+     "      ]^#11:Expr.CreateList#\n"
+     "    )^#12:Expr.Call#,\n"
+     "    __result__^#8:Expr.Ident#\n"
+     "  )^#13:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#8:Expr.Ident#)^#14:Expr.Comprehension#",
+     "", "", "",
+     "^#4:has#.filter(\n"
+     "  c^#6:Expr.Ident#,\n"
+     "  c^#7:Expr.Ident#\n"
+     ")^#14:filter#,\n"
+     "has(\n"
+     "  a^#2:Expr.Ident#.b^#3:Expr.Select#\n"
+     ")^#4:has"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:

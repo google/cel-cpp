@@ -276,7 +276,13 @@ void SourceFactory::AddMacroCall(int64_t macro_id, const Expr& target,
   // Populating empty targets can cause erros when iterating the macro_calls
   // expressions, such as the expression_printer in testing.
   if (target.expr_kind_case() != Expr::ExprKindCase::EXPR_KIND_NOT_SET) {
-    *mutable_macro_call->mutable_target() = target;
+    Expr expr;
+    if (macro_calls_.find(target.id()) != macro_calls_.end()) {
+      expr.set_id(target.id());
+    } else {
+      expr = target;
+    }
+    *mutable_macro_call->mutable_target() = expr;
   }
 
   for (const auto& arg : args) {
