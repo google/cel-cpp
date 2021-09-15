@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <limits>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -17,7 +16,11 @@
 #include "internal/proto_util.h"
 #include "base/status_macros.h"
 
-namespace google::api::expr::runtime {
+namespace google {
+namespace api {
+namespace expr {
+namespace runtime {
+
 namespace {
 
 using google::protobuf::Duration;
@@ -428,8 +431,7 @@ TEST_F(BuiltinsTest, TestNegIntOverflow) {
   CelValue result;
   ASSERT_NO_FATAL_FAILURE(PerformRun(
       builtin::kNeg, {},
-      {CelValue::CreateInt64(std::numeric_limits<int64_t>::lowest())},
-      &result));
+      {CelValue::CreateInt64(std::numeric_limits<int64_t>::min())}, &result));
   ASSERT_TRUE(result.IsError());
 }
 
@@ -845,20 +847,19 @@ TEST_F(BuiltinsTest, TestIntConversions_uint) {
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_doubleIntMin) {
-  // Converting int64_t min may or may not roundtrip properly without overflow
-  // depending on compiler flags, so the conservative approach is to treat this
-  // case as overflow.
-  double range = std::numeric_limits<int64_t>::lowest();
-  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+  // Converting int64_t min to a double roundtrips properly.
+  double range = std::numeric_limits<int64_t>::min();
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
+                   std::numeric_limits<int64_t>::min());
 }
 
 TEST_F(BuiltinsTest, TestIntConversions_doubleIntMinMinus1024) {
-  // Converting values between [int64_t::lowest(), (int64_t::lowest() - 1024)]
-  // will result in an int64_t representable value, in some cases, but not all
-  // as the conversion depends on
-  double range = std::numeric_limits<int64_t>::lowest();
+  // Converting values between [int64::min(), (int64_t::min() - 1024)] will result
+  // in an int64_t representable value, but the conversion will be lossy.
+  double range = std::numeric_limits<int64_t>::min();
   range -= 1024L;
-  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
+                   std::numeric_limits<int64_t>::min());
 }
 
 TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus512) {
@@ -880,29 +881,29 @@ TEST_F(BuiltinsTest, TestIntConversionError_doublePosRange) {
 }
 
 TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMax) {
-  // Converting int64_t max to a double results in a double value of int64_t max
-  // + 1 which should cause the overflow testing to trip.
+  // Converting int64_t max to a double results in a double value of int64_t max + 1
+  // which should cause the overflow testing to trip.
   double range = std::numeric_limits<int64_t>::max();
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus1) {
-  // Converting values between int64_t::max() and int64_t::max() - 511 will
-  // result in overflow errors during round-tripping.
+  // Converting values between int64_t::max() and int64_t::max() - 511 will result
+  // in overflow errors during round-tripping.
   double range = std::numeric_limits<int64_t>::max() - 1;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 
 TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus511) {
-  // Converting values between int64_t::max() and int64_t::max() - 511 will
-  // result in overflow errors during round-tripping.
+  // Converting values between int64_t::max() and int64_t::max() - 511 will result
+  // in overflow errors during round-tripping.
   double range = std::numeric_limits<int64_t>::max() - 511;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 
 TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMinMinus1025) {
-  // Converting double values lower than int64_t::lowest() - 1025 will result in
-  // an overflow error.
-  double range = std::numeric_limits<int64_t>::lowest();
+  // Converting double values lower than int64_t::min() - 1025 will result in an
+  // overflow error.
+  double range = std::numeric_limits<int64_t>::min();
   range -= 1025L;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
@@ -1675,7 +1676,7 @@ TEST_F(BuiltinsTest, TestInt64Arithmetics) {
 }
 
 TEST_F(BuiltinsTest, TestInt64ArithmeticOverflow) {
-  int64_t min = std::numeric_limits<int64_t>::lowest();
+  int64_t min = std::numeric_limits<int64_t>::min();
   int64_t max = std::numeric_limits<int64_t>::max();
   TestArithmeticalErrorInt64(builtin::kAdd, max, 1,
                              absl::StatusCode::kOutOfRange);
@@ -1688,7 +1689,7 @@ TEST_F(BuiltinsTest, TestInt64ArithmeticOverflow) {
   TestArithmeticalErrorInt64(builtin::kDivide, min, -1,
                              absl::StatusCode::kOutOfRange);
   TestArithmeticalErrorInt64(builtin::kDivide, min, 0,
-                             absl::StatusCode::kInvalidArgument);
+                             absl::StatusCode::kUnknown);
 }
 
 TEST_F(BuiltinsTest, TestUint64Arithmetics) {
@@ -1708,7 +1709,7 @@ TEST_F(BuiltinsTest, TestUint64ArithmeticOverflow) {
   TestArithmeticalErrorUint64(builtin::kMultiply, max, 2,
                               absl::StatusCode::kOutOfRange);
   TestArithmeticalErrorUint64(builtin::kDivide, 1, 0,
-                              absl::StatusCode::kInvalidArgument);
+                              absl::StatusCode::kUnknown);
 }
 
 TEST_F(BuiltinsTest, TestDoubleArithmetics) {
@@ -1956,4 +1957,8 @@ TEST_F(BuiltinsTest, TypeComparisons) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::runtime
+
+}  // namespace runtime
+}  // namespace expr
+}  // namespace api
+}  // namespace google
