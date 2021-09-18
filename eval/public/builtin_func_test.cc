@@ -1476,22 +1476,10 @@ TEST_F(BuiltinsTest, StringSize) {
 TEST_F(BuiltinsTest, StringUnicodeSize) {
   std::string test = "πέντε";
   CelValue result_value;
-  InterpreterOptions options;
-  options.enable_string_size_as_unicode_codepoints = true;
-  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kSize, {},
-                                     {CelValue::CreateString(&test)},
-                                     &result_value, options));
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kSize, {}, {CelValue::CreateString(&test)}, &result_value));
   ASSERT_EQ(result_value.IsInt64(), true);
   ASSERT_EQ(result_value.Int64OrDie(), 5);
-
-  // Disable the option to measure string size by codepoints, and the return
-  // value should be equal to the number of bytes in the string (10).
-  options.enable_string_size_as_unicode_codepoints = false;
-  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kSize, {},
-                                     {CelValue::CreateString(&test)},
-                                     &result_value, options));
-  ASSERT_EQ(result_value.IsInt64(), true);
-  ASSERT_EQ(result_value.Int64OrDie(), 10);
 }
 
 TEST_F(BuiltinsTest, BytesSize) {

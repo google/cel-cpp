@@ -149,7 +149,6 @@ int RunServer(bool optimize) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
-  options.enable_string_size_as_unicode_codepoints = true;
 
   if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;

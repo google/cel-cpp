@@ -1465,16 +1465,15 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // String size
-  auto size_func = [=](Arena* arena, CelValue::StringHolder value) -> CelValue {
+  auto size_func = [](Arena* arena, CelValue::StringHolder value) -> CelValue {
     absl::string_view str = value.value();
-    if (options.enable_string_size_as_unicode_codepoints) {
-      if (!UniLib::IsStructurallyValid(str)) {
-        return CreateErrorValue(arena, "invalid utf-8 string",
-                                absl::StatusCode::kInvalidArgument);
-      }
-      return CelValue::CreateInt64(UTF8CodepointCount(str));
+    // TODO(issues/129): Improve the efficiency of this size check, by
+    // collapsing the two calls / scans into one.
+    if (!UniLib::IsStructurallyValid(str)) {
+      return CreateErrorValue(arena, "invalid utf-8 string",
+                              absl::StatusCode::kInvalidArgument);
     }
-    return CelValue::CreateInt64(str.size());
+    return CelValue::CreateInt64(UTF8CodepointCount(str));
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.

@@ -27,10 +27,6 @@ struct InterpreterOptions {
 
   bool enable_missing_attribute_errors = false;
 
-  // Enable functions which return the string.size() as the number of unicode
-  // codepoints.
-  bool enable_string_size_as_unicode_codepoints = true;
-
   // Enable short-circuiting of the logical operator evaluation. If enabled,
   // AND, OR, and TERNARY do not evaluate the entire expression once the the
   // resulting value is known from the left-hand side.
