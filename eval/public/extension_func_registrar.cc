@@ -173,7 +173,7 @@ CelValue BetweenToDStr(Arena* arena, const google::protobuf::Message* time_of_da
 absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
   auto status = FunctionAdapter<CelValue, absl::Time, absl::Time, absl::Time>::
       CreateAndRegister(
-          "between", false,
+          "between", true,
           [](Arena* arena, absl::Time ts, absl::Time start, absl::Time stop)
               -> CelValue { return BetweenTs(arena, ts, start, stop); },
           registry);
@@ -182,7 +182,7 @@ absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder,
                            CelValue::StringHolder>::
       CreateAndRegister(
-          "between", false,
+          "between", true,
           [](Arena* arena, absl::Time ts, CelValue::StringHolder start,
              CelValue::StringHolder stop) -> CelValue {
             return BetweenStr(arena, ts, start.value(), stop.value());
@@ -192,14 +192,14 @@ absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
-          "date", false,
+          "date", true,
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetDate(arena, ts, tz.value()); },
           registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      "date", false,
+      "date", true,
       [](Arena* arena, absl::Time ts) -> CelValue {
         return GetDateUTC(arena, ts);
       },
@@ -208,14 +208,14 @@ absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
 
   status = FunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
       CreateAndRegister(
-          "timeOfDay", false,
+          "timeOfDay", true,
           [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
               -> CelValue { return GetTimeOfDay(arena, ts, tz.value()); },
           registry);
   if (!status.ok()) return status;
 
   status = FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      "timeOfDay", false,
+      "timeOfDay", true,
       [](Arena* arena, absl::Time ts) -> CelValue {
         return GetTimeOfDayUTC(arena, ts);
       },
@@ -225,7 +225,7 @@ absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
   status = FunctionAdapter<CelValue, const google::protobuf::Message*,
                            const google::protobuf::Message*, const google::protobuf::Message*>::
       CreateAndRegister(
-          "between", false,
+          "between", true,
           [](Arena* arena, const google::protobuf::Message* tod,
              const google::protobuf::Message* start,
              const google::protobuf::Message* stop) -> CelValue {
@@ -237,7 +237,7 @@ absl::Status RegisterExtensionFunctions(CelFunctionRegistry* registry) {
   status = FunctionAdapter<CelValue, const google::protobuf::Message*,
                            CelValue::StringHolder, CelValue::StringHolder>::
       CreateAndRegister(
-          "between", false,
+          "between", true,
           [](Arena* arena, const google::protobuf::Message* tod,
              CelValue::StringHolder start,
              CelValue::StringHolder stop) -> CelValue {

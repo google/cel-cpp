@@ -99,7 +99,7 @@ class ExtensionTest : public ::testing::Test {
                           absl::Time start_ts, absl::Time stop_ts,
                           CelValue* result) {
     auto functions = registry_.FindOverloads(
-        "between", false,
+        "between", true,
         {CelValue::Type::kTimestamp, CelValue::Type::kTimestamp,
          CelValue::Type::kTimestamp});
     ASSERT_EQ(functions.size(), 1);
@@ -119,7 +119,7 @@ class ExtensionTest : public ::testing::Test {
                              std::string* start, std::string* stop,
                              CelValue* result) {
     auto functions = registry_.FindOverloads(
-        "between", false,
+        "between", true,
         {CelValue::Type::kTimestamp, CelValue::Type::kString,
          CelValue::Type::kString});
     ASSERT_EQ(functions.size(), 1);
@@ -138,7 +138,7 @@ class ExtensionTest : public ::testing::Test {
   void PerformGetDateTest(Arena* arena, absl::Time time_stamp,
                           std::string* time_zone, CelValue* result) {
     auto functions = registry_.FindOverloads(
-        "date", false, {CelValue::Type::kTimestamp, CelValue::Type::kString});
+        "date", true, {CelValue::Type::kTimestamp, CelValue::Type::kString});
     ASSERT_EQ(functions.size(), 1);
 
     auto func = functions[0];
@@ -154,7 +154,7 @@ class ExtensionTest : public ::testing::Test {
   void PerformGetDateUTCTest(Arena* arena, absl::Time time_stamp,
                              CelValue* result) {
     auto functions =
-        registry_.FindOverloads("date", false, {CelValue::Type::kTimestamp});
+        registry_.FindOverloads("date", true, {CelValue::Type::kTimestamp});
     ASSERT_EQ(functions.size(), 1);
 
     auto func = functions[0];
@@ -169,7 +169,7 @@ class ExtensionTest : public ::testing::Test {
   void PerformGetTimeOfDayTest(Arena* arena, absl::Time time_stamp,
                                std::string* time_zone, CelValue* result) {
     auto functions = registry_.FindOverloads(
-        "timeOfDay", false,
+        "timeOfDay", true,
         {CelValue::Type::kTimestamp, CelValue::Type::kString});
     ASSERT_EQ(functions.size(), 1);
 
@@ -185,7 +185,7 @@ class ExtensionTest : public ::testing::Test {
 
   void PerformGetTimeOfDayUTCTest(Arena* arena, absl::Time time_stamp,
                                   CelValue* result) {
-    auto functions = registry_.FindOverloads("timeOfDay", false,
+    auto functions = registry_.FindOverloads("timeOfDay", true,
                                              {CelValue::Type::kTimestamp});
     ASSERT_EQ(functions.size(), 1);
 
@@ -202,7 +202,7 @@ class ExtensionTest : public ::testing::Test {
                              const google::protobuf::Message* start,
                              const google::protobuf::Message* stop, CelValue* result) {
     auto functions = registry_.FindOverloads(
-        "between", false,
+        "between", true,
         {CelValue::Type::kMessage, CelValue::Type::kMessage,
          CelValue::Type::kMessage});
     ASSERT_EQ(functions.size(), 1);
@@ -224,7 +224,7 @@ class ExtensionTest : public ::testing::Test {
                                 std::string* start, std::string* stop,
                                 CelValue* result) {
     auto functions = registry_.FindOverloads(
-        "between", false,
+        "between", true,
         {CelValue::Type::kMessage, CelValue::Type::kString,
          CelValue::Type::kString});
     ASSERT_EQ(functions.size(), 1);
