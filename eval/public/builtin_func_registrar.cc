@@ -1,11 +1,11 @@
 #include "eval/public/builtin_func_registrar.h"
 
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <vector>
 
-#include "absl/numeric/int128.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
@@ -13,27 +13,24 @@
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "common/overflow.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/proto_util.h"
 #include "re2/re2.h"
 #include "base/unilib.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
-
-using google::protobuf::Arena;
+namespace google::api::expr::runtime {
 
 namespace {
 
-const int64_t kIntMax = std::numeric_limits<int64_t>::max();
-const int64_t kIntMin = std::numeric_limits<int64_t>::lowest();
-const uint64_t kUintMax = std::numeric_limits<uint64_t>::max();
+using ::google::api::expr::internal::EncodeDurationToString;
+using ::google::api::expr::internal::EncodeTimeToString;
+using ::google::protobuf::Arena;
 
 // Returns the number of UTF8 codepoints within a string.
 // The input string must first be checked to see if it is valid UTF8.
@@ -332,24 +329,20 @@ CelValue Add(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Add<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  absl::int128 bv = v0;
-  bv += v1;
-  if (bv < kIntMin || bv > kIntMax) {
-    return CreateErrorValue(arena, "integer overflow",
-                            absl::StatusCode::kOutOfRange);
+  auto sum = common::CheckedAdd(v0, v1);
+  if (!sum.ok()) {
+    return CreateErrorValue(arena, sum.status());
   }
-  return CelValue::CreateInt64(absl::Int128Low64(bv));
+  return CelValue::CreateInt64(*sum);
 }
 
 template <>
 CelValue Add<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  absl::uint128 bv = v0;
-  bv += v1;
-  if (bv > kUintMax) {
-    return CreateErrorValue(arena, "unsigned integer overflow",
-                            absl::StatusCode::kOutOfRange);
+  auto sum = common::CheckedAdd(v0, v1);
+  if (!sum.ok()) {
+    return CreateErrorValue(arena, sum.status());
   }
-  return CelValue::CreateUint64(absl::Uint128Low64(bv));
+  return CelValue::CreateUint64(*sum);
 }
 
 template <>
@@ -362,22 +355,20 @@ CelValue Sub(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Sub<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  absl::int128 bv = v0;
-  bv -= v1;
-  if (bv < kIntMin || bv > kIntMax) {
-    return CreateErrorValue(arena, "integer overflow",
-                            absl::StatusCode::kOutOfRange);
+  auto diff = common::CheckedSub(v0, v1);
+  if (!diff.ok()) {
+    return CreateErrorValue(arena, diff.status());
   }
-  return CelValue::CreateInt64(absl::Int128Low64(bv));
+  return CelValue::CreateInt64(*diff);
 }
 
 template <>
 CelValue Sub<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  if (v1 > v0) {
-    return CreateErrorValue(arena, "unsigned integer overflow",
-                            absl::StatusCode::kOutOfRange);
+  auto diff = common::CheckedSub(v0, v1);
+  if (!diff.ok()) {
+    return CreateErrorValue(arena, diff.status());
   }
-  return CelValue::CreateUint64(v0 - v1);
+  return CelValue::CreateUint64(*diff);
 }
 
 template <>
@@ -390,24 +381,20 @@ CelValue Mul(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Mul<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  absl::int128 bv = v0;
-  bv *= v1;
-  if (bv < kIntMin || bv > kIntMax) {
-    return CreateErrorValue(arena, "integer overflow",
-                            absl::StatusCode::kOutOfRange);
+  auto prod = common::CheckedMul(v0, v1);
+  if (!prod.ok()) {
+    return CreateErrorValue(arena, prod.status());
   }
-  return CelValue::CreateInt64(absl::Int128Low64(bv));
+  return CelValue::CreateInt64(*prod);
 }
 
 template <>
 CelValue Mul<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  absl::uint128 bv = v0;
-  bv *= v1;
-  if (bv > kUintMax) {
-    return CreateErrorValue(arena, "unsigned integer overflow",
-                            absl::StatusCode::kOutOfRange);
+  auto prod = common::CheckedMul(v0, v1);
+  if (!prod.ok()) {
+    return CreateErrorValue(arena, prod.status());
   }
-  return CelValue::CreateUint64(absl::Uint128Low64(bv));
+  return CelValue::CreateUint64(*prod);
 }
 
 template <>
@@ -422,31 +409,22 @@ CelValue Div(Arena* arena, Type v0, Type v1);
 // division by 0
 template <>
 CelValue Div<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  // For integral types, zero check is essential, to avoid
-  // floating pointer exception.
-  if (v1 == 0) {
-    // TODO(issues/25) Which code?
-    return CreateErrorValue(arena, "Division by 0");
+  auto quot = common::CheckedDiv(v0, v1);
+  if (!quot.ok()) {
+    return CreateErrorValue(arena, quot.status());
   }
-  // Overflow case for two's complement: -INT_MIN/-1
-  if (v0 == kIntMin && v1 == -1) {
-    return CreateErrorValue(arena, "integer overflow",
-                            absl::StatusCode::kOutOfRange);
-  }
-  return CelValue::CreateInt64(v0 / v1);
+  return CelValue::CreateInt64(*quot);
 }
 
 // Division operations for integer types should check for
 // division by 0
 template <>
 CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  // For integral types, zero check is essential, to avoid
-  // floating pointer exception.
-  if (v1 == 0) {
-    // TODO(issues/25) Which code?
-    return CreateErrorValue(arena, "Division by 0");
+  auto quot = common::CheckedDiv(v0, v1);
+  if (!quot.ok()) {
+    return CreateErrorValue(arena, quot.status());
   }
-  return CelValue::CreateUint64(v0 / v1);
+  return CelValue::CreateUint64(*quot);
 }
 
 template <>
@@ -460,30 +438,26 @@ CelValue Div<double>(Arena*, double v0, double v1) {
 
 // Modulo operation
 template <class Type>
-CelValue Modulo(Arena* arena, Type value, Type value2);
+CelValue Modulo(Arena* arena, Type v0, Type v1);
 
 // Modulo operations for integer types should check for
 // division by 0
 template <>
-CelValue Modulo<int64_t>(Arena* arena, int64_t value, int64_t value2) {
-  if (value2 == 0) {
-    return CreateErrorValue(arena, "Modulo by 0");
+CelValue Modulo<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
+  auto mod = common::CheckedMod(v0, v1);
+  if (!mod.ok()) {
+    return CreateErrorValue(arena, mod.status());
   }
-  // Handle the two's complement case.
-  if (value == kIntMin && value2 == -1) {
-    return CreateErrorValue(arena, "integer overflow",
-                            absl::StatusCode::kOutOfRange);
-  }
-  return CelValue::CreateInt64(value % value2);
+  return CelValue::CreateInt64(*mod);
 }
 
 template <>
-CelValue Modulo<uint64_t>(Arena* arena, uint64_t value, uint64_t value2) {
-  if (value2 == 0) {
-    return CreateErrorValue(arena, "Modulo by 0");
+CelValue Modulo<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
+  auto mod = common::CheckedMod(v0, v1);
+  if (!mod.ok()) {
+    return CreateErrorValue(arena, mod.status());
   }
-
-  return CelValue::CreateUint64(value % value2);
+  return CelValue::CreateUint64(*mod);
 }
 
 // Helper method
@@ -830,11 +804,13 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
           FunctionAdapter<bool, bool, const CelList*>::CreateAndRegister(
               op, false, In<bool>, registry);
       if (!status.ok()) return status;
-      status = FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
-          op, false, In<int64_t>, registry);
+      status =
+          FunctionAdapter<bool, int64_t, const CelList*>::CreateAndRegister(
+              op, false, In<int64_t>, registry);
       if (!status.ok()) return status;
-      status = FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
-          op, false, In<uint64_t>, registry);
+      status =
+          FunctionAdapter<bool, uint64_t, const CelList*>::CreateAndRegister(
+              op, false, In<uint64_t>, registry);
       if (!status.ok()) return status;
       status = FunctionAdapter<bool, double, const CelList*>::CreateAndRegister(
           op, false, In<double>, registry);
@@ -893,8 +869,9 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
         op, false, boolKeyInSet, registry);
     if (!status.ok()) return status;
 
-    status = FunctionAdapter<CelValue, int64_t, const CelMap*>::CreateAndRegister(
-        op, false, intKeyInSet, registry);
+    status =
+        FunctionAdapter<CelValue, int64_t, const CelMap*>::CreateAndRegister(
+            op, false, intKeyInSet, registry);
     if (!status.ok()) return status;
 
     status =
@@ -1171,14 +1148,11 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, double v) {
-        // NaN and -+infinite numbers cannot be represented as int values,
-        // nor can double values which exceed the integer 64-bit range.
-        if (!std::isfinite(v) || v >= static_cast<double>(kIntMax) ||
-            v < static_cast<double>(kIntMin)) {
-          return CreateErrorValue(arena, "double out of int range",
-                                  absl::StatusCode::kInvalidArgument);
+        auto conv = common::CheckedDoubleToInt64(v);
+        if (!conv.ok()) {
+          return CreateErrorValue(arena, conv.status());
         }
-        return CelValue::CreateInt64(static_cast<int64_t>(v));
+        return CelValue::CreateInt64(*conv);
       },
       registry);
   if (!status.ok()) return status;
@@ -1193,12 +1167,11 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
       builtin::kInt, false,
       [](Arena* arena, CelValue::StringHolder s) {
         int64_t result;
-        if (absl::SimpleAtoi(s.value(), &result)) {
-          return CelValue::CreateInt64(result);
-        } else {
+        if (!absl::SimpleAtoi(s.value(), &result)) {
           return CreateErrorValue(arena, "cannot convert string to int",
                                   absl::StatusCode::kInvalidArgument);
         }
+        return CelValue::CreateInt64(result);
       },
       registry);
   if (!status.ok()) return status;
@@ -1213,11 +1186,11 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   return FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, uint64_t v) {
-        if (v > static_cast<uint64_t>(kIntMax)) {
-          return CreateErrorValue(arena, "uint out of int range",
-                                  absl::StatusCode::kInvalidArgument);
+        auto conv = common::CheckedUint64ToInt64(v);
+        if (!conv.ok()) {
+          return CreateErrorValue(arena, conv.status());
         }
-        return CelValue::CreateInt64(static_cast<int64_t>(v));
+        return CelValue::CreateInt64(*conv);
       },
       registry);
 }
@@ -1286,14 +1259,12 @@ absl::Status RegisterStringConversionFunctions(
   status = FunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
       builtin::kString, false,
       [](Arena* arena, absl::Duration value) -> CelValue {
-        auto encode =
-            google::api::expr::internal::EncodeDurationToString(value);
+        auto encode = EncodeDurationToString(value);
         if (!encode.ok()) {
-          const auto& status = encode.status();
-          return CreateErrorValue(arena, status.message(), status.code());
+          return CreateErrorValue(arena, encode.status());
         }
-        return CelValue::CreateString(CelValue::StringHolder(
-            Arena::Create<std::string>(arena, encode.value())));
+        return CelValue::CreateString(
+            CelValue::StringHolder(Arena::Create<std::string>(arena, *encode)));
       },
       registry);
   if (!status.ok()) return status;
@@ -1302,13 +1273,12 @@ absl::Status RegisterStringConversionFunctions(
   return FunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
       builtin::kString, false,
       [](Arena* arena, absl::Time value) -> CelValue {
-        auto encode = google::api::expr::internal::EncodeTimeToString(value);
+        auto encode = EncodeTimeToString(value);
         if (!encode.ok()) {
-          const auto& status = encode.status();
-          return CreateErrorValue(arena, status.message(), status.code());
+          return CreateErrorValue(arena, encode.status());
         }
-        return CelValue::CreateString(CelValue::StringHolder(
-            Arena::Create<std::string>(arena, encode.value())));
+        return CelValue::CreateString(
+            CelValue::StringHolder(Arena::Create<std::string>(arena, *encode)));
       },
       registry);
 }
@@ -1319,20 +1289,11 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, double v) {
-        // NaN and -+infinite numbers cannot be represented as uint values,
-        // nor doubles that exceed the uint64_t range. In some limited cases,
-        // like 1.84467e+19, the value appears to fit within the uint64_t range
-        // but type conversion results in rounding that overflows.
-        //
-        // Note, the double is checked to make sure it is not greater than 2^64
-        // before it is converted to a uint128 value, as the type conversion
-        // may check-fail for some double inputs that exceed this value.
-        if (!std::isfinite(v) || v < 0 || v > std::ldexp(1.0, 64) ||
-            absl::uint128(v) > kUintMax) {
-          return CreateErrorValue(arena, "double out of uint range",
-                                  absl::StatusCode::kInvalidArgument);
+        auto conv = common::CheckedDoubleToUint64(v);
+        if (!conv.ok()) {
+          return CreateErrorValue(arena, conv.status());
         }
-        return CelValue::CreateUint64(static_cast<uint64_t>(v));
+        return CelValue::CreateUint64(*conv);
       },
       registry);
   if (!status.ok()) return status;
@@ -1341,11 +1302,11 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, int64_t v) {
-        if (v < 0) {
-          return CreateErrorValue(arena, "int out of uint range",
-                                  absl::StatusCode::kInvalidArgument);
+        auto conv = common::CheckedInt64ToUint64(v);
+        if (!conv.ok()) {
+          return CreateErrorValue(arena, conv.status());
         }
-        return CelValue::CreateUint64(static_cast<uint64_t>(v));
+        return CelValue::CreateUint64(*conv);
       },
       registry);
   if (!status.ok()) return status;
@@ -1355,12 +1316,11 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
       builtin::kUint, false,
       [](Arena* arena, CelValue::StringHolder s) {
         uint64_t result;
-        if (absl::SimpleAtoi(s.value(), &result)) {
-          return CelValue::CreateUint64(result);
-        } else {
+        if (!absl::SimpleAtoi(s.value(), &result)) {
           return CreateErrorValue(arena, "doesn't convert to a string",
                                   absl::StatusCode::kInvalidArgument);
         }
+        return CelValue::CreateUint64(result);
       },
       registry);
   if (!status.ok()) return status;
@@ -1417,12 +1377,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
       builtin::kNeg, false,
       [](Arena* arena, int64_t value) -> CelValue {
-        // Handle overflow from two's complement.
-        if (value == kIntMin) {
-          return CreateErrorValue(arena, "integer overflow",
-                                  absl::StatusCode::kOutOfRange);
+        auto inv = common::CheckedNegation(value);
+        if (!inv.ok()) {
+          return CreateErrorValue(arena, inv.status());
         }
-        return CelValue::CreateInt64(-value);
+        return CelValue::CreateInt64(*inv);
       },
       registry);
   if (!status.ok()) return status;
@@ -1703,7 +1662,4 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       registry);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
