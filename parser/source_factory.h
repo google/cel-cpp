@@ -143,6 +143,7 @@ class SourceFactory {
   std::string errorMessage(const std::string& description,
                            const std::string& expression) const;
 
+  Expr BuildArgForMacroCall(const Expr& expr);
   void AddMacroCall(int64_t macro_id, const Expr& target,
                     const std::vector<Expr>& args, std::string function);
 
