@@ -30,7 +30,11 @@ namespace {
 
 using ::google::api::expr::internal::EncodeDurationToString;
 using ::google::api::expr::internal::EncodeTimeToString;
+using ::google::api::expr::internal::MakeGoogleApiTimeMax;
 using ::google::protobuf::Arena;
+
+// Time representing `9999-12-31T23:59:59.999999999Z`.
+const absl::Time kMaxTime = MakeGoogleApiTimeMax();
 
 // Returns the number of UTF8 codepoints within a string.
 // The input string must first be checked to see if it is valid UTF8.
@@ -614,16 +618,6 @@ CelValue GetTimeBreakdownPart(
   }
 
   return extractor_func(breakdown);
-}
-
-CelValue CreateTimestampFromString(Arena* arena,
-                                   CelValue::StringHolder time_str) {
-  absl::Time ts;
-  if (!absl::ParseTime(absl::RFC3339_full, time_str.value(), &ts, nullptr)) {
-    return CreateErrorValue(arena, "String to Timestamp conversion failed",
-                            absl::StatusCode::kInvalidArgument);
-  }
-  return CelValue::CreateTimestamp(ts);
 }
 
 CelValue GetFullYear(Arena* arena, absl::Time timestamp, absl::string_view tz) {
@@ -1356,8 +1350,27 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // timestamp() conversion from string.
+  bool enable_timestamp_duration_overflow_errors =
+      options.enable_timestamp_duration_overflow_errors;
   status = FunctionAdapter<CelValue, CelValue::StringHolder>::CreateAndRegister(
-      builtin::kTimestamp, false, CreateTimestampFromString, registry);
+      builtin::kTimestamp, false,
+      [=](Arena* arena, CelValue::StringHolder time_str) -> CelValue {
+        absl::Time ts;
+        if (!absl::ParseTime(absl::RFC3339_full, time_str.value(), &ts,
+                             nullptr)) {
+          return CreateErrorValue(arena,
+                                  "String to Timestamp conversion failed",
+                                  absl::StatusCode::kInvalidArgument);
+        }
+        if (enable_timestamp_duration_overflow_errors) {
+          if (ts < absl::UniversalEpoch() || ts > kMaxTime) {
+            return CreateErrorValue(arena, "timestamp overflow",
+                                    absl::StatusCode::kOutOfRange);
+          }
+        }
+        return CelValue::CreateTimestamp(ts);
+      },
+      registry);
   if (!status.ok()) return status;
 
   return RegisterUintConversionFunctions(registry, options);
@@ -1495,11 +1508,20 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = RegisterArithmeticFunctionsForType<double>(registry);
   if (!status.ok()) return status;
 
+  bool enable_timestamp_duration_overflow_errors =
+      options.enable_timestamp_duration_overflow_errors;
   // Special arithmetic operators for Timestamp and Duration
   status =
       FunctionAdapter<CelValue, absl::Time, absl::Duration>::CreateAndRegister(
           builtin::kAdd, false,
-          [](Arena*, absl::Time t1, absl::Duration d2) -> CelValue {
+          [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
+            if (enable_timestamp_duration_overflow_errors) {
+              auto sum = common::CheckedAdd(t1, d2);
+              if (!sum.ok()) {
+                return CreateErrorValue(arena, sum.status());
+              }
+              return CelValue::CreateTimestamp(*sum);
+            }
             return CelValue::CreateTimestamp(t1 + d2);
           },
           registry);
@@ -1508,7 +1530,14 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status =
       FunctionAdapter<CelValue, absl::Duration, absl::Time>::CreateAndRegister(
           builtin::kAdd, false,
-          [](Arena*, absl::Duration d2, absl::Time t1) -> CelValue {
+          [=](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
+            if (enable_timestamp_duration_overflow_errors) {
+              auto sum = common::CheckedAdd(t1, d2);
+              if (!sum.ok()) {
+                return CreateErrorValue(arena, sum.status());
+              }
+              return CelValue::CreateTimestamp(*sum);
+            }
             return CelValue::CreateTimestamp(t1 + d2);
           },
           registry);
@@ -1517,7 +1546,14 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, absl::Duration, absl::Duration>::
       CreateAndRegister(
           builtin::kAdd, false,
-          [](Arena*, absl::Duration d1, absl::Duration d2) -> CelValue {
+          [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
+            if (enable_timestamp_duration_overflow_errors) {
+              auto sum = common::CheckedAdd(d1, d2);
+              if (!sum.ok()) {
+                return CreateErrorValue(arena, sum.status());
+              }
+              return CelValue::CreateDuration(*sum);
+            }
             return CelValue::CreateDuration(d1 + d2);
           },
           registry);
@@ -1526,7 +1562,14 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status =
       FunctionAdapter<CelValue, absl::Time, absl::Duration>::CreateAndRegister(
           builtin::kSubtract, false,
-          [](Arena*, absl::Time t1, absl::Duration d2) -> CelValue {
+          [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
+            if (enable_timestamp_duration_overflow_errors) {
+              auto diff = common::CheckedSub(t1, d2);
+              if (!diff.ok()) {
+                return CreateErrorValue(arena, diff.status());
+              }
+              return CelValue::CreateTimestamp(*diff);
+            }
             return CelValue::CreateTimestamp(t1 - d2);
           },
           registry);
@@ -1534,7 +1577,14 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
 
   status = FunctionAdapter<CelValue, absl::Time, absl::Time>::CreateAndRegister(
       builtin::kSubtract, false,
-      [](Arena*, absl::Time t1, absl::Time t2) -> CelValue {
+      [=](Arena* arena, absl::Time t1, absl::Time t2) -> CelValue {
+        if (enable_timestamp_duration_overflow_errors) {
+          auto diff = common::CheckedSub(t1, t2);
+          if (!diff.ok()) {
+            return CreateErrorValue(arena, diff.status());
+          }
+          return CelValue::CreateDuration(*diff);
+        }
         return CelValue::CreateDuration(t1 - t2);
       },
       registry);
@@ -1543,7 +1593,14 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, absl::Duration, absl::Duration>::
       CreateAndRegister(
           builtin::kSubtract, false,
-          [](Arena*, absl::Duration d1, absl::Duration d2) -> CelValue {
+          [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
+            if (enable_timestamp_duration_overflow_errors) {
+              auto diff = common::CheckedSub(d1, d2);
+              if (!diff.ok()) {
+                return CreateErrorValue(arena, diff.status());
+              }
+              return CelValue::CreateDuration(*diff);
+            }
             return CelValue::CreateDuration(d1 - d2);
           },
           registry);

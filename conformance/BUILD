@@ -95,8 +95,6 @@ cc_binary(
             "--skip_test=proto3/empty_field/wkt",
             # TODO(issues/117): Integer overflow on enum assignments should error.
             "--skip_test=enums/legacy_proto2/select_big,select_neg",
-            # TODO(issues/118): Duration and timestamp range errors should result in evaluation errors.
-            "--skip_test=timestamps/timestamp_range",
             # TODO(issues/127): Ensure overflow occurs on conversions of double values which might not work properly on all platforms.
             "--skip_test=conversions/int/double_int_min_range",
 

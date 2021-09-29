@@ -27,6 +27,13 @@ struct InterpreterOptions {
 
   bool enable_missing_attribute_errors = false;
 
+  // Enable timestamp duration overflow checks.
+  //
+  // The CEL-Spec indicates that overflow should occur outside the range of
+  // string-representable timestamps, and at the limit of durations which can be
+  // expressed with a single int64_t value.
+  bool enable_timestamp_duration_overflow_errors = false;
+
   // Enable short-circuiting of the logical operator evaluation. If enabled,
   // AND, OR, and TERNARY do not evaluate the entire expression once the the
   // resulting value is known from the left-hand side.

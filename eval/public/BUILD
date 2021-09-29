@@ -501,6 +501,7 @@ cc_test(
         ":cel_builtins",
         ":cel_expr_builder_factory",
         ":cel_function_registry",
+        ":cel_options",
         ":cel_value",
         "//base:status_macros",
         "//base:testing",
@@ -508,8 +509,9 @@ cc_test(
         "//internal:proto_util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -686,6 +688,30 @@ cc_test(
         "//eval/public/structs:cel_proto_wrapper",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "builtin_func_registrar_test",
+    srcs = ["builtin_func_registrar_test.cc"],
+    deps = [
+        ":activation",
+        ":builtin_func_registrar",
+        ":cel_expr_builder_factory",
+        ":cel_expression",
+        ":cel_options",
+        ":cel_value",
+        "//base:testing",
+        "//eval/public/testing:matchers",
+        "//internal:proto_util",
+        "//parser",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )

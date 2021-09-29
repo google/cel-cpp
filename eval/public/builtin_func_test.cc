@@ -2,16 +2,18 @@
 #include <limits>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/util/time_util.h"
 #include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
@@ -27,7 +29,6 @@ using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::Arena;
-using google::protobuf::util::TimeUtil;
 
 using ::google::api::expr::internal::MakeGoogleApiDurationMax;
 using ::google::api::expr::internal::MakeGoogleApiDurationMin;
@@ -506,87 +507,6 @@ TEST_F(BuiltinsTest, TestNullMessageEqual) {
   TestComparison(builtin::kInequal, ref, value, true);
 }
 
-// Test Arithmetical operations for Timestamp and Duration
-TEST_F(BuiltinsTest, TestTimestampDurationArithmeticalOperation) {
-  CelValue result_value, cel_ts0, cel_ts1, cel_d0, cel_d1, cel_d2;
-  Timestamp ts0, ts1;
-  Duration d0, d1, d2;
-
-  ts0.set_seconds(100);
-  ts0.set_nanos(100);
-  ts1.set_seconds(10);
-  ts1.set_nanos(10);
-
-  d0.set_seconds(90);
-  d0.set_nanos(90);
-  d1.set_seconds(80);
-  d1.set_nanos(80);
-  d2.set_seconds(10);
-  d2.set_nanos(10);
-
-  cel_d0 = CelProtoWrapper::CreateDuration(&d0);
-  cel_d1 = CelProtoWrapper::CreateDuration(&d1);
-  cel_d2 = CelProtoWrapper::CreateDuration(&d2);
-  cel_ts0 = CelProtoWrapper::CreateTimestamp(&ts0);
-  cel_ts1 = CelProtoWrapper::CreateTimestamp(&ts1);
-
-  // ts0 - ts1 = d0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kSubtract, {}, {cel_ts0, cel_ts1}, &result_value));
-  ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
-            TimeUtil::DurationToNanoseconds(d0));
-
-  // ts0 - d0 = ts1
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kSubtract, {}, {cel_ts0, cel_d0}, &result_value));
-  ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
-            TimeUtil::TimestampToNanoseconds(ts1));
-
-  // ts1 + d0 = ts0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kAdd, {}, {cel_ts1, cel_d0}, &result_value));
-  ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
-            TimeUtil::TimestampToNanoseconds(ts0));
-
-  // d0 + ts1 = ts0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kAdd, {}, {cel_d0, cel_ts1}, &result_value));
-  ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
-            TimeUtil::TimestampToNanoseconds(ts0));
-
-  // d0 - d1 = d2
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kSubtract, {}, {cel_d0, cel_d1}, &result_value));
-  ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
-            TimeUtil::DurationToNanoseconds(d2));
-
-  // d1 + d2 = d0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kAdd, {}, {cel_d2, cel_d1}, &result_value));
-  ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
-            TimeUtil::DurationToNanoseconds(d0));
-
-  const auto min = CelValue::CreateDuration(MakeGoogleApiDurationMin());
-  ASSERT_TRUE(min.IsDuration());
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kSubtract, {},
-      {min, CelValue::CreateDuration(absl::Nanoseconds(1))}, &result_value));
-  ASSERT_TRUE(result_value.IsError());
-
-  const auto max = CelValue::CreateDuration(MakeGoogleApiDurationMax());
-  ASSERT_TRUE(max.IsDuration());
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kAdd, {}, {max, CelValue::CreateDuration(absl::Nanoseconds(1))},
-      &result_value));
-  ASSERT_TRUE(result_value.IsError());
-}
-
 // Test functions for Duration
 TEST_F(BuiltinsTest, TestDurationFunctions) {
   Duration ref;
@@ -658,20 +578,30 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateTimestamp(&ref),
                 11L);
 
+  ref.set_seconds(259200L);
+  ref.set_nanos(0L);
+  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
+                0L);
+}
+
+TEST_F(BuiltinsTest, TestTimestampConversionToString) {
+  Timestamp ref;
+  ref.set_seconds(1L);
+  ref.set_nanos(11000000L);
   std::string result = "1970-01-01T00:00:01.011Z";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateTimestamp(&ref),
                    CelValue::StringHolder(&result));
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
-  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
-                0L);
-
   result = "1970-01-04T00:00:00Z";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateTimestamp(&ref),
                    CelValue::StringHolder(&result));
+}
 
+TEST_F(BuiltinsTest, TestTimestampFunctionsWithTimeZone) {
   // Test timestamp functions w/ IANA timezone
+  Timestamp ref;
   ref.set_seconds(1L);
   ref.set_nanos(11000000L);
   std::vector<CelValue> params;

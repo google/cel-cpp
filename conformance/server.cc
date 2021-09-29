@@ -149,6 +149,7 @@ int RunServer(bool optimize) {
   google::protobuf::Arena arena;
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
+  options.enable_timestamp_duration_overflow_errors = true;
 
   if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
