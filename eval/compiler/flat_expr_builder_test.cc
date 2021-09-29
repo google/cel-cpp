@@ -71,6 +71,25 @@ class ConcatFunction : public CelFunction {
   }
 };
 
+class RecorderFunction : public CelFunction {
+ public:
+  explicit RecorderFunction(const std::string& name, int* count)
+      : CelFunction(CelFunctionDescriptor{name, false, {}}), count_(count) {}
+
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+                        google::protobuf::Arena* arena) const override {
+    if (!args.empty()) {
+      return absl::Status(absl::StatusCode::kInvalidArgument,
+                          "Bad arguments number");
+    }
+    (*count_)++;
+    *result = CelValue::CreateBool(true);
+    return absl::OkStatus();
+  }
+
+  int* count_;
+};
+
 TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   Expr expr;
   SourceInfo source_info;
@@ -161,6 +180,45 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
                        HasSubstr("Message entry missing value")));
 }
 
+TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {
+  Expr expr;
+  SourceInfo source_info;
+  FlatExprBuilder builder;
+
+  auto* call = expr.mutable_call_expr();
+  call->set_function(builtin::kAnd);
+  call->mutable_target()->mutable_const_expr()->set_string_value("random");
+  call->add_args()->mutable_const_expr()->set_bool_value(false);
+  call->add_args()->mutable_const_expr()->set_bool_value(true);
+
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid argument count")));
+}
+
+TEST(FlatExprBuilderTest, TernaryCallTooManyArguments) {
+  Expr expr;
+  SourceInfo source_info;
+  FlatExprBuilder builder;
+
+  auto* call = expr.mutable_call_expr();
+  call->set_function(builtin::kTernary);
+  call->mutable_target()->mutable_const_expr()->set_string_value("random");
+  call->add_args()->mutable_const_expr()->set_bool_value(false);
+  call->add_args()->mutable_const_expr()->set_int64_value(1);
+  call->add_args()->mutable_const_expr()->set_int64_value(2);
+
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid argument count")));
+
+  // Disable short-circuiting to ensure that a different visitor is used.
+  builder.set_shortcircuiting(false);
+  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid argument count")));
+}
+
 TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
   Expr expr;
   SourceInfo source_info;
@@ -198,25 +256,6 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
   EXPECT_THAT(std::string(warnings[0].message()),
               testing::HasSubstr("No overloads provided"));
 }
-
-class RecorderFunction : public CelFunction {
- public:
-  explicit RecorderFunction(const std::string& name, int* count)
-      : CelFunction(CelFunctionDescriptor{name, false, {}}), count_(count) {}
-
-  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
-                        google::protobuf::Arena* arena) const override {
-    if (!args.empty()) {
-      return absl::Status(absl::StatusCode::kInvalidArgument,
-                          "Bad arguments number");
-    }
-    (*count_)++;
-    *result = CelValue::CreateBool(true);
-    return absl::OkStatus();
-  }
-
-  int* count_;
-};
 
 TEST(FlatExprBuilderTest, Shortcircuiting) {
   Expr expr;

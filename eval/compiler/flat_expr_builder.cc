@@ -121,7 +121,7 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
   explicit ExhaustiveTernaryCondVisitor(FlatExprVisitor* visitor)
       : visitor_(visitor) {}
 
-  void PreVisit(const Expr* expr) override {}
+  void PreVisit(const Expr* expr) override;
   void PostVisitArg(int arg_num, const Expr* expr) override {}
   void PostVisit(const Expr* expr) override;
 
@@ -587,8 +587,8 @@ class FlatExprVisitor : public AstVisitor {
 
 void BinaryCondVisitor::PreVisit(const Expr* expr) {
   visitor_->ValidateOrError(
-      expr->call_expr().args().size() == 2,
-      "Unexpected number of arguments in a binary function call.");
+      !expr->call_expr().has_target() && expr->call_expr().args_size() == 2,
+      "Invalid argument count for a binary function call.");
 }
 
 void BinaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
@@ -617,7 +617,11 @@ void BinaryCondVisitor::PostVisit(const Expr* expr) {
   }
 }
 
-void TernaryCondVisitor::PreVisit(const Expr*) {}
+void TernaryCondVisitor::PreVisit(const Expr* expr) {
+  visitor_->ValidateOrError(
+      !expr->call_expr().has_target() && expr->call_expr().args_size() == 3,
+      "Invalid argument count for a ternary function call.");
+}
 
 void TernaryCondVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   // Ternary operator "_?_:_" requires a special handing.
@@ -681,6 +685,12 @@ void TernaryCondVisitor::PostVisit(const Expr*) {
           "Error configuring ternary operator: jump_after_first_ is null")) {
     jump_after_first_.set_target(visitor_->GetCurrentIndex());
   }
+}
+
+void ExhaustiveTernaryCondVisitor::PreVisit(const Expr* expr) {
+  visitor_->ValidateOrError(
+      !expr->call_expr().has_target() && expr->call_expr().args_size() == 3,
+      "Invalid argument count for a ternary function call.");
 }
 
 void ExhaustiveTernaryCondVisitor::PostVisit(const Expr* expr) {
