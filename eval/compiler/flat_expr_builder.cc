@@ -711,7 +711,7 @@ const Expr* MinusOne() {
 }
 
 const Expr* LoopStepDummy() {
-  static const Expr* expr = Int64ConstImpl(-10);
+  static const Expr* expr = Int64ConstImpl(-1);
   return expr;
 }
 
