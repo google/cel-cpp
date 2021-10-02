@@ -1,6 +1,6 @@
 #include "eval/eval/evaluator_stack.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 
 namespace google {

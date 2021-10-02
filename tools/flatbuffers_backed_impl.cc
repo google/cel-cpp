@@ -104,10 +104,10 @@ class ObjectStringIndexedMapImpl : public CelMap {
 
   absl::optional<CelValue> operator[](CelValue cel_key) const override {
     if (!cel_key.IsString()) {
-      return CreateErrorValue(arena_,
-                              absl::InvalidArgumentError(absl::StrCat(
-                                  "invalid map key type. wanted: string, got: ",
-                                  cel_key.DebugString())));
+      return CreateErrorValue(
+          arena_, absl::InvalidArgumentError(
+                      absl::StrCat("Invalid map key type: '",
+                                   CelValue::TypeName(cel_key.type()), "'")));
     }
     const absl::string_view key = cel_key.StringOrDie().value();
     const auto it = std::lower_bound(
@@ -183,8 +183,8 @@ absl::optional<CelValue> FlatBuffersMapImpl::operator[](
   if (!cel_key.IsString()) {
     return CreateErrorValue(
         arena_, absl::InvalidArgumentError(
-                    absl::StrCat("invalid map key type. wanted: string, got: ",
-                                 cel_key.DebugString())));
+                    absl::StrCat("Invalid map key type: '",
+                                 CelValue::TypeName(cel_key.type()), "'")));
   }
   auto field = keys_.fields->LookupByKey(cel_key.StringOrDie().value().data());
   if (field == nullptr) {

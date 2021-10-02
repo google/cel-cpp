@@ -27,9 +27,12 @@ struct InterpreterOptions {
 
   bool enable_missing_attribute_errors = false;
 
-  // Enable functions which return the string.size() as the number of unicode
-  // codepoints.
-  bool enable_string_size_as_unicode_codepoints = true;
+  // Enable timestamp duration overflow checks.
+  //
+  // The CEL-Spec indicates that overflow should occur outside the range of
+  // string-representable timestamps, and at the limit of durations which can be
+  // expressed with a single int64_t value.
+  bool enable_timestamp_duration_overflow_errors = false;
 
   // Enable short-circuiting of the logical operator evaluation. If enabled,
   // AND, OR, and TERNARY do not evaluate the entire expression once the the
@@ -52,7 +55,7 @@ struct InterpreterOptions {
   // Set maximum number of iterations in the comprehension expressions if
   // comprehensions are enabled. The limit applies globally per an evaluation,
   // including the nested loops as well. Use value 0 to disable the upper bound.
-  int comprehension_max_iterations = 0;
+  int comprehension_max_iterations = 10000;
 
   // Enable RE2 match() overload.
   bool enable_regex = true;

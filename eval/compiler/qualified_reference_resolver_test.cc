@@ -1,7 +1,7 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
@@ -91,19 +91,19 @@ TEST(ResolveReferences, Basic) {
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 1
-                call_expr {
-                  function: "_&&_"
-                  args {
-                    id: 2
-                    ident_expr { name: "foo.bar.var1" }
-                  }
-                  args {
-                    id: 5
-                    ident_expr { name: "bar.foo.var2" }
-                  }
-                })")));
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 1
+    call_expr {
+      function: "_&&_"
+      args {
+        id: 2
+        ident_expr { name: "foo.bar.var1" }
+      }
+      args {
+        id: 5
+        ident_expr { name: "bar.foo.var2" }
+      }
+    })pb")));
 }
 
 TEST(ResolveReferences, ReturnsNulloptIfNoChanges) {
@@ -115,8 +115,8 @@ TEST(ResolveReferences, ReturnsNulloptIfNoChanges) {
   Resolver registry("", &func_registry, &type_registry);
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
 }
 
 TEST(ResolveReferences, NamespacedIdent) {
@@ -130,32 +130,32 @@ TEST(ResolveReferences, NamespacedIdent) {
   reference_map[7].set_name("namespace_x.bar");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 1
-                call_expr {
-                  function: "_&&_"
-                  args {
-                    id: 2
-                    ident_expr { name: "foo.bar.var1" }
-                  }
-                  args {
-                    id: 5
-                    select_expr {
-                      field: "var2"
-                      operand {
-                        id: 6
-                        select_expr {
-                          field: "foo"
-                          operand {
-                            id: 7
-                            ident_expr { name: "namespace_x.bar" }
-                          }
-                        }
-                      }
-                    }
-                  }
-                })")));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 1
+    call_expr {
+      function: "_&&_"
+      args {
+        id: 2
+        ident_expr { name: "foo.bar.var1" }
+      }
+      args {
+        id: 5
+        select_expr {
+          field: "var2"
+          operand {
+            id: 6
+            select_expr {
+              field: "foo"
+              operand {
+                id: 7
+                ident_expr { name: "namespace_x.bar" }
+              }
+            }
+          }
+        }
+      }
+    })pb")));
 }
 
 TEST(ResolveReferences, WarningOnPresenceTest) {
@@ -183,8 +183,8 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
   reference_map[1].set_name("foo.bar.var1");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(
       warnings.warnings(),
       testing::ElementsAre(Eq(absl::Status(
@@ -233,19 +233,19 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 1
-                call_expr {
-                  function: "_==_"
-                  args {
-                    id: 2
-                    ident_expr { name: "foo.bar.var1" }
-                  }
-                  args {
-                    id: 5
-                    const_expr { int64_value: 9 }
-                  }
-                })")));
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 1
+    call_expr {
+      function: "_==_"
+      args {
+        id: 2
+        ident_expr { name: "foo.bar.var1" }
+      }
+      args {
+        id: 5
+        const_expr { int64_value: 9 }
+      }
+    })pb")));
 }
 
 TEST(ResolveReferences, ConstReferenceSkipped) {
@@ -262,31 +262,31 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 1
-                call_expr {
-                  function: "_&&_"
-                  args {
-                    id: 2
-                    select_expr {
-                      field: "var1"
-                      operand {
-                        id: 3
-                        select_expr {
-                          field: "bar"
-                          operand {
-                            id: 4
-                            ident_expr { name: "foo" }
-                          }
-                        }
-                      }
-                    }
-                  }
-                  args {
-                    id: 5
-                    ident_expr { name: "bar.foo.var2" }
-                  }
-                })")));
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 1
+    call_expr {
+      function: "_&&_"
+      args {
+        id: 2
+        select_expr {
+          field: "var1"
+          operand {
+            id: 3
+            select_expr {
+              field: "bar"
+              operand {
+                id: 4
+                ident_expr { name: "foo" }
+              }
+            }
+          }
+        }
+      }
+      args {
+        id: 5
+        ident_expr { name: "bar.foo.var2" }
+      }
+    })pb")));
 }
 
 constexpr char kExtensionAndExpr[] = R"(
@@ -323,8 +323,8 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
   reference_map[1].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
 }
 
 TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
@@ -337,8 +337,8 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
   reference_map[1].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(),
               ElementsAre(StatusCodeIs(absl::StatusCode::kInvalidArgument)));
 }
@@ -371,8 +371,8 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     expr.mutable_call_expr()->set_function(builtin_fn);
 
     auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-    ASSERT_OK(result.status());
-    EXPECT_THAT(result.value(), Eq(absl::nullopt));
+    ASSERT_OK(result);
+    EXPECT_THAT(*result, Eq(absl::nullopt));
     EXPECT_THAT(warnings.warnings(), IsEmpty());
   }
 }
@@ -388,8 +388,8 @@ TEST(ResolveReferences,
   reference_map[1].set_name("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(
       warnings.warnings(),
       UnorderedElementsAre(
@@ -409,8 +409,8 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   reference_map[2].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(),
               ElementsAre(StatusCodeIs(absl::StatusCode::kInvalidArgument)));
 }
@@ -445,8 +445,8 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   reference_map[1].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -461,8 +461,8 @@ TEST(ResolveReferences,
   reference_map[1].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(),
               ElementsAre(StatusCodeIs(absl::StatusCode::kInvalidArgument)));
 }
@@ -479,17 +479,17 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   reference_map[1].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 1
-                call_expr {
-                  function: "ext.boolean_and"
-                  args {
-                    id: 3
-                    const_expr { bool_value: false }
-                  }
-                }
-              )")));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 1
+    call_expr {
+      function: "ext.boolean_and"
+      args {
+        id: 3
+        const_expr { bool_value: false }
+      }
+    }
+  )pb")));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -506,17 +506,17 @@ TEST(ResolveReferences,
   Resolver registry("com.google", &func_registry, &type_registry);
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 1
-                call_expr {
-                  function: "com.google.ext.boolean_and"
-                  args {
-                    id: 3
-                    const_expr { bool_value: false }
-                  }
-                }
-              )")));
+  ASSERT_OK(result);
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 1
+    call_expr {
+      function: "com.google.ext.boolean_and"
+      args {
+        id: 3
+        const_expr { bool_value: false }
+      }
+    }
+  )pb")));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -560,9 +560,9 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   reference_map[1].add_overload_id("udf_boolean_and");
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
-  ASSERT_OK(result.status());
+  ASSERT_OK(result);
   // The target is unchanged because it is a test_only select.
-  EXPECT_THAT(result.value(), Eq(absl::nullopt));
+  EXPECT_THAT(*result, Eq(absl::nullopt));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -648,77 +648,77 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
 
   auto result = ResolveReferences(expr, reference_map, registry, &warnings);
   ASSERT_OK(result);
-  EXPECT_THAT(result.value(), Optional(EqualsProto(R"(
-                id: 17
-                comprehension_expr {
-                  iter_var: "i"
-                  iter_range {
-                    id: 1
-                    list_expr {
-                      elements {
-                        id: 2
-                        const_expr { int64_value: 1 }
-                      }
-                      elements {
-                        id: 3
-                        const_expr { int64_value: 2 }
-                      }
-                      elements {
-                        id: 4
-                        const_expr { int64_value: 3 }
-                      }
-                    }
-                  }
-                  accu_var: "__result__"
-                  accu_init {
-                    id: 10
-                    const_expr { bool_value: false }
-                  }
-                  loop_condition {
-                    id: 13
-                    call_expr {
-                      function: "@not_strictly_false"
-                      args {
-                        id: 12
-                        call_expr {
-                          function: "!_"
-                          args {
-                            id: 11
-                            ident_expr { name: "__result__" }
-                          }
-                        }
-                      }
-                    }
-                  }
-                  loop_step {
-                    id: 15
-                    call_expr {
-                      function: "_||_"
-                      args {
-                        id: 14
-                        ident_expr { name: "__result__" }
-                      }
-                      args {
-                        id: 8
-                        call_expr {
-                          function: "_==_"
-                          args {
-                            id: 7
-                            const_expr { int64_value: 2 }
-                          }
-                          args {
-                            id: 9
-                            ident_expr { name: "i" }
-                          }
-                        }
-                      }
-                    }
-                  }
-                  result {
-                    id: 16
-                    ident_expr { name: "__result__" }
-                  }
-                })")));
+  EXPECT_THAT(*result, Optional(EqualsProto(R"pb(
+    id: 17
+    comprehension_expr {
+      iter_var: "i"
+      iter_range {
+        id: 1
+        list_expr {
+          elements {
+            id: 2
+            const_expr { int64_value: 1 }
+          }
+          elements {
+            id: 3
+            const_expr { int64_value: 2 }
+          }
+          elements {
+            id: 4
+            const_expr { int64_value: 3 }
+          }
+        }
+      }
+      accu_var: "__result__"
+      accu_init {
+        id: 10
+        const_expr { bool_value: false }
+      }
+      loop_condition {
+        id: 13
+        call_expr {
+          function: "@not_strictly_false"
+          args {
+            id: 12
+            call_expr {
+              function: "!_"
+              args {
+                id: 11
+                ident_expr { name: "__result__" }
+              }
+            }
+          }
+        }
+      }
+      loop_step {
+        id: 15
+        call_expr {
+          function: "_||_"
+          args {
+            id: 14
+            ident_expr { name: "__result__" }
+          }
+          args {
+            id: 8
+            call_expr {
+              function: "_==_"
+              args {
+                id: 7
+                const_expr { int64_value: 2 }
+              }
+              args {
+                id: 9
+                ident_expr { name: "i" }
+              }
+            }
+          }
+        }
+      }
+      result {
+        id: 16
+        ident_expr { name: "__result__" }
+      }
+    })pb")));
 }
 
 }  // namespace

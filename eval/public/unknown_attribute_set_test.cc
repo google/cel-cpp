@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"

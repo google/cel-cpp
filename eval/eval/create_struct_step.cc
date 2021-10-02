@@ -6,10 +6,12 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -196,17 +198,11 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
 absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < entries_.size()) {
-    return absl::Status(absl::StatusCode::kInternal,
-                        "CreateStructStepForMessage: stack undeflow");
+    return absl::InternalError("CreateStructStepForMessage: stack underflow");
   }
 
   CelValue result;
-
-  absl::Status status = DoEvaluate(frame, &result);
-  if (!status.ok()) {
-    return status;
-  }
-
+  RETURN_IF_ERROR(DoEvaluate(frame, &result));
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(result);
 
@@ -231,40 +227,37 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
   std::vector<std::pair<CelValue, CelValue>> map_entries;
   map_entries.reserve(entry_count_);
   for (size_t i = 0; i < entry_count_; i += 1) {
-    map_entries.push_back({args[2 * i], args[2 * i + 1]});
+    int map_key_index = 2 * i;
+    int map_value_index = map_key_index + 1;
+    const CelValue& map_key = args[map_key_index];
+    RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
+    map_entries.push_back({map_key, args[map_value_index]});
   }
 
-  auto status_or_cel_map =
+  auto cel_map =
       CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
           map_entries.data(), map_entries.size()));
-  if (!status_or_cel_map.ok()) {
-    *result =
-        CreateErrorValue(frame->arena(), status_or_cel_map.status().message());
+  if (!cel_map.ok()) {
+    *result = CreateErrorValue(frame->arena(), cel_map.status());
     return absl::OkStatus();
   }
 
-  auto cel_map = std::move(*status_or_cel_map);
-
-  *result = CelValue::CreateMap(cel_map.get());
+  auto cel_map_ptr = *std::move(cel_map);
+  *result = CelValue::CreateMap(cel_map_ptr.get());
 
   // Pass object ownership to Arena.
-  frame->arena()->Own(cel_map.release());
+  frame->arena()->Own(cel_map_ptr.release());
 
   return absl::OkStatus();
 }
 
 absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   if (frame->value_stack().size() < 2 * entry_count_) {
-    return absl::Status(absl::StatusCode::kInternal,
-                        "CreateStructStepForMap: stack undeflow");
+    return absl::InternalError("CreateStructStepForMap: stack underflow");
   }
 
   CelValue result;
-
-  absl::Status status = DoEvaluate(frame, &result);
-  if (!status.ok()) {
-    return status;
-  }
+  RETURN_IF_ERROR(DoEvaluate(frame, &result));
 
   frame->value_stack().Pop(2 * entry_count_);
   frame->value_stack().Push(result);
@@ -281,16 +274,12 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
     for (const auto& entry : create_struct_expr->entries()) {
-      if (entry.field_key().empty()) {
-        return absl::InvalidArgumentError(
-            "Error configuring message creation: field name missing");
-      }
-
       const FieldDescriptor* field_desc =
           message_desc->FindFieldByName(entry.field_key());
       if (field_desc == nullptr) {
         return absl::InvalidArgumentError(
-            "Error configuring message creation: field name not found");
+            absl::StrCat("Invalid message creation: field '", entry.field_key(),
+                         "' not found in '", message_desc->full_name(), "'"));
       }
       entries.push_back({field_desc});
     }

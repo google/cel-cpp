@@ -10,10 +10,7 @@
 #include "absl/types/span.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Type that describes CelFunction.
 // This complex structure is needed for overloads support.
@@ -97,9 +94,6 @@ class CelFunction {
   CelFunctionDescriptor descriptor_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_

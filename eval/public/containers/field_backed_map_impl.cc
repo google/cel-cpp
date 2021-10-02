@@ -120,11 +120,9 @@ bool MatchesMapKeyType(const FieldDescriptor* key_desc, const CelValue& key) {
   }
 }
 
-absl::Status InvalidMapKeyType(absl::string_view key_type,
-                               const CelValue& key) {
-  return absl::InvalidArgumentError(absl::StrCat("invalid map key type.",
-                                                 " wanted: ", key_type,
-                                                 " got: ", key.DebugString()));
+absl::Status InvalidMapKeyType(absl::string_view key_type) {
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid map key type: '", key_type, "'"));
 }
 
 }  // namespace
@@ -190,7 +188,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
 #ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 
   if (!MatchesMapKeyType(key_desc_, key)) {
-    return InvalidMapKeyType(key_desc_->cpp_type_name(), key);
+    return InvalidMapKeyType(key_desc_->cpp_type_name());
   }
 
   google::protobuf::MapKey proto_key;
@@ -205,7 +203,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
       key.GetValue(&key_value);
       if (key_value > std::numeric_limits<int32_t>::max() ||
           key_value < std::numeric_limits<int32_t>::lowest()) {
-        return absl::OutOfRangeError("integer overlow");
+        return absl::OutOfRangeError("integer overflow");
       }
       proto_key.SetInt32Value(key_value);
     } break;
@@ -234,7 +232,7 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
       proto_key.SetUInt64Value(key_value);
     } break;
     default:
-      return InvalidMapKeyType(key_desc_->cpp_type_name(), key);
+      return InvalidMapKeyType(key_desc_->cpp_type_name());
   }
   // Look the value up
   return google::protobuf::expr::CelMapReflectionFriend::LookupMapValue(
@@ -262,7 +260,7 @@ absl::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
   // Ensure that the key matches the key type.
   if (!MatchesMapKeyType(key_desc_, key)) {
     return CreateErrorValue(arena_,
-                            InvalidMapKeyType(key_desc_->cpp_type_name(), key));
+                            InvalidMapKeyType(key_desc_->cpp_type_name()));
   }
 
   CelValue proto_key = CelValue::CreateNull();

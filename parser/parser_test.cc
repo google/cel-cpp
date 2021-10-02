@@ -6,8 +6,10 @@
 #include <utility>
 #include <vector>
 
-#include "gmock/gmock.h"
+#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
+#include "absl/algorithm/container.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/optional.h"
@@ -22,13 +24,15 @@ namespace parser {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
+using testing::HasSubstr;
 using testing::Not;
+using cel_base::testing::IsOk;
 
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,
            const std::string& E = "", const std::string& L = "",
-           const std::string& R = "")
-      : I(I), P(P), E(E), L(L), R(R) {}
+           const std::string& R = "", const std::string& M = "")
+      : I(I), P(P), E(E), L(L), R(R), M(M) {}
 
   // I contains the input expression to be parsed.
   std::string I;
@@ -45,6 +49,9 @@ struct TestInfo {
 
   // R contains the expected enriched source info output of the expression tree.
   std::string R;
+
+  // M contains the expected macro call output of hte expression tree.
+  std::string M;
 };
 
 std::vector<TestInfo> test_cases = {
@@ -406,13 +413,11 @@ std::vector<TestInfo> test_cases = {
      "mismatched input '}' expecting ':'\n | t{>C}\n | ....^"},
 
     // Macro tests
-    {
-        "has(m.f)",
-        "m^#2:Expr.Ident#.f~test-only~^#4:Expr.Select#",
-        "",
-        "m^#2[1,4]#.f~test-only~^#4[1,3]#",
-        "[1,3,3]^#[2,4,4]^#[3,5,5]^#[4,3,3]",
-    },
+    {"has(m.f)", "m^#2:Expr.Ident#.f~test-only~^#4:Expr.Select#", "",
+     "m^#2[1,4]#.f~test-only~^#4[1,3]#", "[1,3,3]^#[2,4,4]^#[3,5,5]^#[4,3,3]",
+     "has(\n"
+     "  m^#2:Expr.Ident#.f^#3:Expr.Select#\n"
+     ")^#4:has"},
     {"m.exists_one(v, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -438,7 +443,12 @@ std::vector<TestInfo> test_cases = {
      "  _==_(\n"
      "    __result__^#12:Expr.Ident#,\n"
      "    1^#6:int64#\n"
-     "  )^#13:Expr.Call#)^#14:Expr.Comprehension#"},
+     "  )^#13:Expr.Call#)^#14:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.exists_one(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  f^#4:Expr.Ident#\n"
+     ")^#14:exists_one"},
     {"m.map(v, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -459,7 +469,12 @@ std::vector<TestInfo> test_cases = {
      "    ]^#8:Expr.CreateList#\n"
      "  )^#9:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#5:Expr.Ident#)^#10:Expr.Comprehension#"},
+     "  __result__^#5:Expr.Ident#)^#10:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.map(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  f^#4:Expr.Ident#\n"
+     ")^#10:map"},
     {"m.map(v, p, f)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -484,7 +499,13 @@ std::vector<TestInfo> test_cases = {
      "    __result__^#6:Expr.Ident#\n"
      "  )^#11:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#6:Expr.Ident#)^#12:Expr.Comprehension#"},
+     "  __result__^#6:Expr.Ident#)^#12:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.map(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  p^#4:Expr.Ident#,\n"
+     "  f^#5:Expr.Ident#\n"
+     ")^#12:map"},
     {"m.filter(v, p)",
      "__comprehension__(\n"
      "  // Variable\n"
@@ -509,7 +530,12 @@ std::vector<TestInfo> test_cases = {
      "    __result__^#5:Expr.Ident#\n"
      "  )^#10:Expr.Call#,\n"
      "  // Result\n"
-     "  __result__^#5:Expr.Ident#)^#11:Expr.Comprehension#"},
+     "  __result__^#5:Expr.Ident#)^#11:Expr.Comprehension#",
+     "", "", "",
+     "m^#1:Expr.Ident#.filter(\n"
+     "  v^#3:Expr.Ident#,\n"
+     "  p^#4:Expr.Ident#\n"
+     ")^#11:filter"},
 
     // Tests from Java parser
     {"[] + [1,2,3,] + [4]",
@@ -830,11 +856,219 @@ std::vector<TestInfo> test_cases = {
         "{']', ','}\n"
         " |  \r\n"
         " | ..^",
-    }};
+    },
+
+    // Macro calls tests
+    {"x.filter(y, y.filter(z, z > 0))",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  y,\n"
+     "  // Target\n"
+     "  x^#1:Expr.Ident#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  []^#18:Expr.CreateList#,\n"
+     "  // LoopCondition\n"
+     "  true^#19:bool#,\n"
+     "  // LoopStep\n"
+     "  _?_:_(\n"
+     "    __comprehension__(\n"
+     "      // Variable\n"
+     "      z,\n"
+     "      // Target\n"
+     "      y^#4:Expr.Ident#,\n"
+     "      // Accumulator\n"
+     "      __result__,\n"
+     "      // Init\n"
+     "      []^#11:Expr.CreateList#,\n"
+     "      // LoopCondition\n"
+     "      true^#12:bool#,\n"
+     "      // LoopStep\n"
+     "      _?_:_(\n"
+     "        _>_(\n"
+     "          z^#7:Expr.Ident#,\n"
+     "          0^#9:int64#\n"
+     "        )^#8:Expr.Call#,\n"
+     "        _+_(\n"
+     "          __result__^#10:Expr.Ident#,\n"
+     "          [\n"
+     "            z^#6:Expr.Ident#\n"
+     "          ]^#13:Expr.CreateList#\n"
+     "        )^#14:Expr.Call#,\n"
+     "        __result__^#10:Expr.Ident#\n"
+     "      )^#15:Expr.Call#,\n"
+     "      // Result\n"
+     "      __result__^#10:Expr.Ident#)^#16:Expr.Comprehension#,\n"
+     "    _+_(\n"
+     "      __result__^#17:Expr.Ident#,\n"
+     "      [\n"
+     "        y^#3:Expr.Ident#\n"
+     "      ]^#20:Expr.CreateList#\n"
+     "    )^#21:Expr.Call#,\n"
+     "    __result__^#17:Expr.Ident#\n"
+     "  )^#22:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#17:Expr.Ident#)^#23:Expr.Comprehension#"
+     "",
+     "", "", "",
+     "x^#1:Expr.Ident#.filter(\n"
+     "  y^#3:Expr.Ident#,\n"
+     "  ^#16:filter#\n"
+     ")^#23:filter#,\n"
+     "y^#4:Expr.Ident#.filter(\n"
+     "  z^#6:Expr.Ident#,\n"
+     "  _>_(\n"
+     "    z^#7:Expr.Ident#,\n"
+     "    0^#9:int64#\n"
+     "  )^#8:Expr.Call#\n"
+     ")^#16:filter"},
+    {"has(a.b).filter(c, c)",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  c,\n"
+     "  // Target\n"
+     "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  []^#9:Expr.CreateList#,\n"
+     "  // LoopCondition\n"
+     "  true^#10:bool#,\n"
+     "  // LoopStep\n"
+     "  _?_:_(\n"
+     "    c^#7:Expr.Ident#,\n"
+     "    _+_(\n"
+     "      __result__^#8:Expr.Ident#,\n"
+     "      [\n"
+     "        c^#6:Expr.Ident#\n"
+     "      ]^#11:Expr.CreateList#\n"
+     "    )^#12:Expr.Call#,\n"
+     "    __result__^#8:Expr.Ident#\n"
+     "  )^#13:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#8:Expr.Ident#)^#14:Expr.Comprehension#",
+     "", "", "",
+     "^#4:has#.filter(\n"
+     "  c^#6:Expr.Ident#,\n"
+     "  c^#7:Expr.Ident#\n"
+     ")^#14:filter#,\n"
+     "has(\n"
+     "  a^#2:Expr.Ident#.b^#3:Expr.Select#\n"
+     ")^#4:has"},
+    {"x.filter(y, y.exists(z, has(z.a)) && y.exists(z, has(z.b)))",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  y,\n"
+     "  // Target\n"
+     "  x^#1:Expr.Ident#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  []^#36:Expr.CreateList#,\n"
+     "  // LoopCondition\n"
+     "  true^#37:bool#,\n"
+     "  // LoopStep\n"
+     "  _?_:_(\n"
+     "    _&&_(\n"
+     "      __comprehension__(\n"
+     "        // Variable\n"
+     "        z,\n"
+     "        // Target\n"
+     "        y^#4:Expr.Ident#,\n"
+     "        // Accumulator\n"
+     "        __result__,\n"
+     "        // Init\n"
+     "        false^#11:bool#,\n"
+     "        // LoopCondition\n"
+     "        @not_strictly_false(\n"
+     "          !_(\n"
+     "            __result__^#12:Expr.Ident#\n"
+     "          )^#13:Expr.Call#\n"
+     "        )^#14:Expr.Call#,\n"
+     "        // LoopStep\n"
+     "        _||_(\n"
+     "          __result__^#15:Expr.Ident#,\n"
+     "          z^#8:Expr.Ident#.a~test-only~^#10:Expr.Select#\n"
+     "        )^#16:Expr.Call#,\n"
+     "        // Result\n"
+     "        __result__^#17:Expr.Ident#)^#18:Expr.Comprehension#,\n"
+     "      __comprehension__(\n"
+     "        // Variable\n"
+     "        z,\n"
+     "        // Target\n"
+     "        y^#19:Expr.Ident#,\n"
+     "        // Accumulator\n"
+     "        __result__,\n"
+     "        // Init\n"
+     "        false^#26:bool#,\n"
+     "        // LoopCondition\n"
+     "        @not_strictly_false(\n"
+     "          !_(\n"
+     "            __result__^#27:Expr.Ident#\n"
+     "          )^#28:Expr.Call#\n"
+     "        )^#29:Expr.Call#,\n"
+     "        // LoopStep\n"
+     "        _||_(\n"
+     "          __result__^#30:Expr.Ident#,\n"
+     "          z^#23:Expr.Ident#.b~test-only~^#25:Expr.Select#\n"
+     "        )^#31:Expr.Call#,\n"
+     "        // Result\n"
+     "        __result__^#32:Expr.Ident#)^#33:Expr.Comprehension#\n"
+     "    )^#34:Expr.Call#,\n"
+     "    _+_(\n"
+     "      __result__^#35:Expr.Ident#,\n"
+     "      [\n"
+     "        y^#3:Expr.Ident#\n"
+     "      ]^#38:Expr.CreateList#\n"
+     "    )^#39:Expr.Call#,\n"
+     "    __result__^#35:Expr.Ident#\n"
+     "  )^#40:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#35:Expr.Ident#)^#41:Expr.Comprehension#",
+     "", "", "",
+     "x^#1:Expr.Ident#.filter(\n"
+     "  y^#3:Expr.Ident#,\n"
+     "  _&&_(\n"
+     "    ^#18:exists#,\n"
+     "    ^#33:exists#\n"
+     "  )^#34:Expr.Call#\n"
+     ")^#41:filter#,\n"
+     "y^#19:Expr.Ident#.exists(\n"
+     "  z^#21:Expr.Ident#,\n"
+     "  ^#25:has#\n"
+     ")^#33:exists#,\n"
+     "has(\n"
+     "  z^#23:Expr.Ident#.b^#24:Expr.Select#\n"
+     ")^#25:has#,\n"
+     "y^#4:Expr.Ident#."
+     "exists(\n"
+     "  z^#6:Expr.Ident#,\n"
+     "  ^#10:has#\n"
+     ")^#18:exists#,\n"
+     "has(\n"
+     "  z^#8:Expr.Ident#.a^#9:Expr.Select#\n"
+     ")^#10:has"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
+  // Use default source_info constructor to make source_info "optional". This
+  // will prevent macro_calls lookups from interfering with adorning expressions
+  // that don't need to use macro_calls, such as the parsed AST.
+  explicit KindAndIdAdorner(
+      const google::api::expr::v1alpha1::SourceInfo& source_info =
+          google::api::expr::v1alpha1::SourceInfo::default_instance())
+      : source_info_(source_info) {}
+
   std::string adorn(const Expr& e) const override {
+    // source_info_ might be empty on non-macro_calls tests
+    if (source_info_.macro_calls_size() != 0 &&
+        source_info_.macro_calls().contains(e.id())) {
+      return absl::StrFormat(
+          "^#%d:%s#", e.id(),
+          source_info_.macro_calls().at(e.id()).call_expr().function());
+    }
+
     if (e.has_const_expr()) {
       auto& const_expr = e.const_expr();
       auto reflection = const_expr.GetReflection();
@@ -869,6 +1103,8 @@ class KindAndIdAdorner : public testutil::ExpressionAdorner {
     }
     return absl::StrJoin(name_chain, ".");
   }
+
+  const google::api::expr::v1alpha1::SourceInfo& source_info_;
 };
 
 class LocationAdorner : public testutil::ExpressionAdorner {
@@ -943,38 +1179,72 @@ std::string ConvertEnrichedSourceInfoToString(
   return absl::StrJoin(offsets, "^#");
 }
 
+std::string ConvertMacroCallsToString(
+    const google::api::expr::v1alpha1::SourceInfo& source_info) {
+  KindAndIdAdorner macro_calls_adorner(source_info);
+  testutil::ExprPrinter w(macro_calls_adorner);
+  // Use a list so we can sort the macro calls ensuring order for appending
+  std::vector<std::pair<int64_t, google::api::expr::v1alpha1::Expr>> macro_calls;
+  for (auto pair : source_info.macro_calls()) {
+    // Set ID to the map key for the adorner
+    pair.second.set_id(pair.first);
+    macro_calls.push_back(pair);
+  }
+  // Sort in reverse because the first macro will have the highest id
+  absl::c_sort(macro_calls,
+               [](const std::pair<int64_t, google::api::expr::v1alpha1::Expr>& p1,
+                  const std::pair<int64_t, google::api::expr::v1alpha1::Expr>& p2) {
+                 return p1.first > p2.first;
+               });
+  std::string result = "";
+  for (const auto& pair : macro_calls) {
+    result += w.print(pair.second) += ",\n";
+  }
+  // substring last ",\n"
+  return result.substr(0, result.size() - 3);
+}
+
 class ExpressionTest : public testing::TestWithParam<TestInfo> {};
 
 TEST_P(ExpressionTest, Parse) {
   const TestInfo& test_info = GetParam();
+  ParserOptions options;
+  if (!test_info.M.empty()) {
+    options.add_macro_calls = true;
+  }
 
-  auto result = EnrichedParse(test_info.I, Macro::AllMacros());
+  auto result =
+      EnrichedParse(test_info.I, Macro::AllMacros(), "<input>", options);
   if (test_info.E.empty()) {
-    EXPECT_TRUE(result.ok());
+    EXPECT_THAT(result, IsOk());
   } else {
-    EXPECT_FALSE(result.ok());
+    EXPECT_THAT(result, Not(IsOk()));
     EXPECT_EQ(result.status().message(), test_info.E);
   }
 
   if (!test_info.P.empty()) {
     KindAndIdAdorner kind_and_id_adorner;
     testutil::ExprPrinter w(kind_and_id_adorner);
-    std::string adorned_string = w.print(result.value().parsed_expr().expr());
+    std::string adorned_string = w.print(result->parsed_expr().expr());
     EXPECT_EQ(test_info.P, adorned_string);
   }
 
   if (!test_info.L.empty()) {
-    LocationAdorner location_adorner(
-        result.value().parsed_expr().source_info());
+    LocationAdorner location_adorner(result->parsed_expr().source_info());
     testutil::ExprPrinter w(location_adorner);
-    std::string adorned_string = w.print(result.value().parsed_expr().expr());
+    std::string adorned_string = w.print(result->parsed_expr().expr());
     EXPECT_EQ(test_info.L, adorned_string);
   }
 
   if (!test_info.R.empty()) {
-    EXPECT_EQ(ConvertEnrichedSourceInfoToString(
-                  result.value().enriched_source_info()),
+    EXPECT_EQ(ConvertEnrichedSourceInfoToString(result->enriched_source_info()),
               test_info.R);
+  }
+
+  if (!test_info.M.empty()) {
+    EXPECT_EQ(
+        ConvertMacroCallsToString(result.value().parsed_expr().source_info()),
+        test_info.M);
   }
 }
 
@@ -1002,7 +1272,7 @@ TEST(ExpressionTest, ErrorRecoveryLimits) {
   ParserOptions options;
   options.error_recovery_limit = 1;
   auto result = Parse("......", "", options);
-  EXPECT_FALSE(result.ok());
+  EXPECT_THAT(result, Not(IsOk()));
   EXPECT_EQ(result.status().message(),
             "ERROR: :1:2: Syntax error: missing IDENTIFIER at '.'\n"
             " | ......\n"
@@ -1016,10 +1286,43 @@ TEST(ExpressionTest, ExpressionSizeLimit) {
   ParserOptions options;
   options.expression_size_codepoint_limit = 10;
   auto result = Parse("...............", "", options);
-  EXPECT_FALSE(result.ok());
+  EXPECT_THAT(result, Not(IsOk()));
   EXPECT_EQ(
       result.status().message(),
       "expression size exceeds codepoint limit. input size: 15, limit: 10");
+}
+
+TEST(ExpressionTest, RecursionDepthLongArgList) {
+  ParserOptions options;
+  // The particular number here is an implementation detail: the underlying
+  // visitor will recurse up to 8 times before branching to the create list or
+  // const steps. The call graph looks something like:
+  // visit->visitStart->visit->visitExpr->visit->visitOr->visit->visitAnd->visit
+  // ->visitRelation->visit->visitCalc->visit->visitUnary->visit->visitPrimary
+  // ->visitCreateList->visit[arg]->visitExpr...
+  // The expected max depth for create list with an arbitrary number of elements
+  // is 15.
+  options.max_recursion_depth = 16;
+
+  EXPECT_THAT(Parse("[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", "", options), IsOk());
+}
+
+TEST(ExpressionTest, RecursionDepthExceeded) {
+  ParserOptions options;
+  // The particular number here is an implementation detail: the underlying
+  // visitor will recurse up to 8 times before branching to the create list or
+  // const steps. The call graph looks something like:
+  // visit->visitStart->visit->visitExpr->visit->visitOr->visit->visitAnd->visit
+  // ->visitRelation->visit->visitCalc->visit->visitUnary->visit->visitPrimary
+  // ->visitCreateList->visit[arg]->visitExpr...
+  // The expected max depth for the triply nested create list is
+  // (8 + 7 + 7 + 7) = 29.
+  options.max_recursion_depth = 16;
+  auto result = Parse("[[[1, 2, 3]]]", "", options);
+
+  EXPECT_THAT(result, Not(IsOk()));
+  EXPECT_THAT(result.status().message(),
+              HasSubstr("Exceeded max recursion depth of 16 when parsing."));
 }
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,

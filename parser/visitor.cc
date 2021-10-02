@@ -1,6 +1,7 @@
 #include "parser/visitor.h"
 
 #include <memory>
+#include <string>
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/memory/memory.h"
@@ -17,6 +18,7 @@ namespace google {
 namespace api {
 namespace expr {
 namespace parser {
+namespace {
 
 using common::CelOperator;
 using common::ReverseLookupOperator;
@@ -24,15 +26,34 @@ using common::ReverseLookupOperator;
 using ::cel_grammar::CelParser;
 using google::api::expr::v1alpha1::Expr;
 
+// Scoped helper for incrementing the parse recursion count.
+// Increments on creation, decrements on destruction (stack unwind).
+class ScopedIncrement {
+ public:
+  explicit ScopedIncrement(int& recursion_depth)
+      : recursion_depth_(recursion_depth) {
+    ++recursion_depth_;
+  }
+
+  ~ScopedIncrement() { --recursion_depth_; }
+
+ private:
+  int& recursion_depth_;
+};
+
+}  // namespace
+
 ParserVisitor::ParserVisitor(const std::string& description,
                              const std::string& expression,
                              const int max_recursion_depth,
-                             const std::vector<Macro>& macros)
+                             const std::vector<Macro>& macros,
+                             const bool add_macro_calls)
     : description_(description),
       expression_(expression),
       sf_(std::make_shared<SourceFactory>(expression)),
       recursion_depth_(0),
-      max_recursion_depth_(max_recursion_depth) {
+      max_recursion_depth_(max_recursion_depth),
+      add_macro_calls_(add_macro_calls) {
   for (const auto& m : macros) {
     macros_.emplace(m.macroKey(), m);
   }
@@ -47,7 +68,7 @@ T* tree_as(antlr4::tree::ParseTree* tree) {
 }
 
 antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
-  recursion_depth_ += 1;
+  ScopedIncrement inc(recursion_depth_);
   if (recursion_depth_ > max_recursion_depth_) {
     return sf_->reportError(
         SourceFactory::noLocation(),
@@ -533,6 +554,13 @@ bool ParserVisitor::expandMacro(int64_t expr_id, const std::string& function,
   Expr expr = m->second.expand(sf_, expr_id, target, args);
   if (expr.expr_kind_case() != Expr::EXPR_KIND_NOT_SET) {
     *macro_expr = std::move(expr);
+    if (add_macro_calls_) {
+      // If the macro is nested, the full expression id is used as an argument
+      // id in the tree. Using this ID instead of expr_id allows argument id
+      // lookups in macro_calls when building the map and iterating
+      // the AST.
+      sf_->AddMacroCall(macro_expr->id(), target, args, function);
+    }
     return true;
   }
   return false;

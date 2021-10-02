@@ -266,6 +266,55 @@ Expr SourceFactory::newQuantifierExprForMacro(
                       step, result);
 }
 
+Expr SourceFactory::BuildArgForMacroCall(const Expr& expr) {
+  Expr result_expr;
+  result_expr.set_id(expr.id());
+  if (macro_calls_.find(expr.id()) != macro_calls_.end()) {
+    return result_expr;
+  }
+  // Call expression could have args or sub-args that are also macros found in
+  // macro_calls.
+  if (expr.has_call_expr()) {
+    auto mutable_expr = result_expr.mutable_call_expr();
+    mutable_expr->set_function(expr.call_expr().function());
+    for (const auto& arg : expr.call_expr().args()) {
+      // Iterate the AST from `expr` recursively looking for macros. Because we
+      // are at most starting from the top level macro, this recursion is
+      // bounded by the size of the AST. This means that the depth check on the
+      // AST during parsing will catch recursion overflows before we get to
+      // here.
+      *mutable_expr->mutable_args()->Add() = BuildArgForMacroCall(arg);
+    }
+    return result_expr;
+  }
+  return expr;
+}
+
+void SourceFactory::AddMacroCall(int64_t macro_id, const Expr& target,
+                                 const std::vector<Expr>& args,
+                                 std::string function) {
+  Expr macro_call;
+  auto mutable_macro_call = macro_call.mutable_call_expr();
+  mutable_macro_call->set_function(function);
+
+  // Populating empty targets can cause erros when iterating the macro_calls
+  // expressions, such as the expression_printer in testing.
+  if (target.expr_kind_case() != Expr::ExprKindCase::EXPR_KIND_NOT_SET) {
+    Expr expr;
+    if (macro_calls_.find(target.id()) != macro_calls_.end()) {
+      expr.set_id(target.id());
+    } else {
+      expr = target;
+    }
+    *mutable_macro_call->mutable_target() = expr;
+  }
+
+  for (const auto& arg : args) {
+    *mutable_macro_call->mutable_args()->Add() = BuildArgForMacroCall(arg);
+  }
+  macro_calls_.emplace(macro_id, macro_call);
+}
+
 Expr SourceFactory::newFilterExprForMacro(int64_t macro_id, const Expr& target,
                                           const std::vector<Expr>& args) {
   if (args.empty()) {
@@ -524,6 +573,11 @@ google::api::expr::v1alpha1::SourceInfo SourceFactory::sourceInfo() const {
   std::for_each(
       line_offsets_.begin(), line_offsets_.end(),
       [&source_info](int32_t offset) { source_info.add_line_offsets(offset); });
+  std::for_each(macro_calls_.begin(), macro_calls_.end(),
+                [&source_info](const std::pair<int64_t, Expr>& macro_call) {
+                  source_info.mutable_macro_calls()->insert(
+                      {macro_call.first, macro_call.second});
+                });
   return source_info;
 }
 

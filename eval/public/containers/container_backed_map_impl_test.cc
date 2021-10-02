@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/public/cel_value.h"
 

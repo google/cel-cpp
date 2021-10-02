@@ -91,7 +91,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
                               "key not found in map");
         }
         RETURN_IF_ERROR(
-            CelValueToValue(optional_value.value(), entry->mutable_value()));
+            CelValueToValue(*optional_value, entry->mutable_value()));
       }
       break;
     }
@@ -143,6 +143,7 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
       std::vector<std::pair<CelValue, CelValue>> key_values;
       for (const auto& entry : value.map_value().entries()) {
         ASSIGN_OR_RETURN(auto map_key, ValueToCelValue(entry.key(), arena));
+        RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
         ASSIGN_OR_RETURN(auto map_value, ValueToCelValue(entry.value(), arena));
         key_values.push_back(std::pair<CelValue, CelValue>(map_key, map_value));
       }

@@ -3,7 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/util/message_differencer.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"

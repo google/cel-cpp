@@ -1,7 +1,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
@@ -25,8 +25,11 @@ namespace runtime {
 
 namespace {
 
+using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
+using testing::HasSubstr;
+using cel_base::testing::StatusIs;
 
 // [1, 2].filter(x, [3, 4].all(y, x < y))
 const char kNestedComprehension[] = R"pb(
@@ -155,21 +158,51 @@ const char kNestedComprehension[] = R"pb(
 TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
   FlatExprBuilder builder;
   Expr expr;
+  SourceInfo source_info;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kNestedComprehension, &expr));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
-  SourceInfo source_info;
-  auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_OK(build_status);
-
-  auto cel_expr = std::move(build_status.value());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&expr, &source_info));
 
   Activation activation;
   google::protobuf::Arena arena;
-  auto result_or = cel_expr->Evaluate(activation, &arena);
-  ASSERT_OK(result_or);
-  CelValue result = result_or.value();
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsList());
   EXPECT_THAT(*result.ListOrDie(), testing::SizeIs(2));
+}
+
+TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
+  CheckedExpr expr;
+  // The rewrite step which occurs when an identifier gets a more qualified name
+  // from the reference map has the potential to make invalid comprehensions
+  // appear valid, by populating missing fields with default values.
+  // var.<macro>(x, <missing>)
+  google::protobuf::TextFormat::ParseFromString(R"pb(
+                                        reference_map {
+                                          key: 1
+                                          value { name: "qualified.var" }
+                                        }
+                                        expr {
+                                          comprehension_expr {
+                                            iter_var: "x"
+                                            iter_range {
+                                              id: 1
+                                              ident_expr { name: "var" }
+                                            }
+                                            accu_var: "y"
+                                            accu_init {
+                                              id: 1
+                                              const_expr { bool_value: true }
+                                            }
+                                          }
+                                        })pb",
+                                      &expr);
+
+  FlatExprBuilder builder;
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Invalid comprehension")));
 }
 
 }  // namespace

@@ -11,6 +11,7 @@ cc_library(
         "cel_proto_wrapper.h",
     ],
     deps = [
+        "//common:overflow",
         "//eval/public:cel_value",
         "//eval/testutil:test_message_cc_proto",
         "//internal:proto_util",
@@ -18,6 +19,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -31,6 +33,7 @@ cc_test(
     deps = [
         ":cel_proto_wrapper",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
@@ -40,7 +43,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )

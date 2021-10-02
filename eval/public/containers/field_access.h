@@ -3,10 +3,7 @@
 
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Creates CelValue from singular message field.
 // Returns status of the operation.
@@ -61,8 +58,6 @@ absl::Status AddValueToRepeatedField(const CelValue& value,
                                      google::protobuf::Message* msg,
                                      google::protobuf::Arena* arena);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
+
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_FIELD_ACCESS_H_

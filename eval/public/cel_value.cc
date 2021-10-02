@@ -1,15 +1,15 @@
 #include "eval/public/cel_value.h"
 
+#include <string>
+
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -52,6 +52,68 @@ const absl::Status* DurationOverflowError() {
   return kDurationOverflow;
 }
 
+struct DebugStringVisitor {
+  std::string operator()(bool arg) { return absl::StrFormat("%d", arg); }
+  std::string operator()(int64_t arg) { return absl::StrFormat("%lld", arg); }
+  std::string operator()(uint64_t arg) { return absl::StrFormat("%llu", arg); }
+  std::string operator()(double arg) { return absl::StrFormat("%f", arg); }
+
+  std::string operator()(CelValue::StringHolder arg) {
+    return absl::StrFormat("%s", arg.value());
+  }
+
+  std::string operator()(CelValue::BytesHolder arg) {
+    return absl::StrFormat("%s", arg.value());
+  }
+
+  std::string operator()(const google::protobuf::Message* arg) {
+    return arg == nullptr ? "NULL" : arg->ShortDebugString();
+  }
+
+  std::string operator()(absl::Duration arg) {
+    return absl::FormatDuration(arg);
+  }
+
+  std::string operator()(absl::Time arg) {
+    return absl::FormatTime(arg, absl::UTCTimeZone());
+  }
+
+  std::string operator()(const CelList* arg) {
+    std::vector<std::string> elements;
+    elements.reserve(arg->size());
+    for (int i = 0; i < arg->size(); i++) {
+      elements.push_back(arg->operator[](i).DebugString());
+    }
+    return absl::StrCat("[", absl::StrJoin(elements, ", "), "]");
+  }
+
+  std::string operator()(const CelMap* arg) {
+    const CelList* keys = arg->ListKeys();
+    std::vector<std::string> elements;
+    elements.reserve(keys->size());
+    for (int i = 0; i < keys->size(); i++) {
+      const auto& key = (*keys)[i];
+      const auto& optional_value = arg->operator[](key);
+      elements.push_back(absl::StrCat("<", key.DebugString(), ">: <",
+                                      optional_value.has_value()
+                                          ? optional_value->DebugString()
+                                          : "nullopt",
+                                      ">"));
+    }
+    return absl::StrCat("{", absl::StrJoin(elements, ", "), "}");
+  }
+
+  std::string operator()(const UnknownSet* arg) {
+    return "?";  // Not implemented.
+  }
+
+  std::string operator()(CelValue::CelTypeHolder arg) {
+    return absl::StrCat(arg.value());
+  }
+
+  std::string operator()(const CelError* arg) { return arg->ToString(); }
+};
+
 }  // namespace
 
 CelValue CelValue::CreateDuration(absl::Duration value) {
@@ -93,6 +155,19 @@ std::string CelValue::TypeName(Type value_type) {
       return "CelError";
     case Type::kAny:
       return "Any type";
+  }
+}
+
+absl::Status CelValue::CheckMapKeyType(const CelValue& key) {
+  switch (key.type()) {
+    case CelValue::Type::kString:
+    case CelValue::Type::kInt64:
+    case CelValue::Type::kUint64:
+    case CelValue::Type::kBool:
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid map key type: '", CelValue::TypeName(key.type()), "'"));
   }
 }
 
@@ -143,45 +218,8 @@ CelValue CelValue::ObtainCelType() const {
 
 // Returns debug string describing a value
 const std::string CelValue::DebugString() const {
-  switch (type()) {
-    case Type::kBool:
-      return absl::StrFormat("bool: %d", BoolOrDie());
-    case Type::kInt64:
-      return absl::StrFormat("int64: %lld", Int64OrDie());
-    case Type::kUint64:
-      return absl::StrFormat("uint64: %llu", Uint64OrDie());
-    case Type::kDouble:
-      return absl::StrFormat("double: %f", DoubleOrDie());
-    case Type::kString:
-      return absl::StrFormat("string: %s", StringOrDie().value());
-    case Type::kBytes:
-      return absl::StrFormat("bytes: %s", BytesOrDie().value());
-    case Type::kMessage:
-      return absl::StrFormat(
-          "Message: %s",
-          IsNull() ? "NULL" : MessageOrDie()->ShortDebugString());
-    case Type::kDuration:
-      return absl::StrFormat("Duration: %s",
-                             absl::FormatDuration(DurationOrDie()));
-    case Type::kTimestamp:
-      return absl::StrFormat(
-          "Time: %s", absl::FormatTime(TimestampOrDie(), absl::UTCTimeZone()));
-    case Type::kList:
-      return absl::StrFormat("List, size: %lld", ListOrDie()->size());
-    case Type::kMap:
-      return absl::StrFormat("Map, size: %lld", MapOrDie()->size());
-    case Type::kUnknownSet:
-      return "UnknownSet";
-    case Type::kCelType:
-      return absl::StrFormat("CelType, %s", CelTypeOrDie().value());
-      break;
-    case Type::kError:
-      return absl::StrFormat("Error: %s", ErrorOrDie()->ToString());
-    case Type::kAny:
-      return "Any";
-    default:
-      return "unknown_type";
-  }
+  return absl::StrCat(CelValue::TypeName(type()), ": ",
+                      Visit<std::string>(DebugStringVisitor()));
 }
 
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
@@ -296,7 +334,4 @@ bool IsUnknownFunctionResult(const CelValue& value) {
   return payload.has_value() && payload.value() == "true";
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

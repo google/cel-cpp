@@ -10,7 +10,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -23,10 +23,7 @@
 #include "testutil/util.h"
 #include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -257,8 +254,8 @@ TEST_F(CelProtoWrapperTest, UnwrapValueStruct) {
   EXPECT_TRUE(*field1_presence);
   auto lookup1 = (*cel_map)[field1];
   ASSERT_TRUE(lookup1.has_value());
-  ASSERT_TRUE(lookup1.value().IsBool());
-  EXPECT_EQ(lookup1.value().BoolOrDie(), true);
+  ASSERT_TRUE(lookup1->IsBool());
+  EXPECT_EQ(lookup1->BoolOrDie(), true);
 
   CelValue field2 = CelValue::CreateString(&kFields[1]);
   auto field2_presence = cel_map->Has(field2);
@@ -266,8 +263,8 @@ TEST_F(CelProtoWrapperTest, UnwrapValueStruct) {
   EXPECT_TRUE(*field2_presence);
   auto lookup2 = (*cel_map)[field2];
   ASSERT_TRUE(lookup2.has_value());
-  ASSERT_TRUE(lookup2.value().IsDouble());
-  EXPECT_DOUBLE_EQ(lookup2.value().DoubleOrDie(), 1.0);
+  ASSERT_TRUE(lookup2->IsDouble());
+  EXPECT_DOUBLE_EQ(lookup2->DoubleOrDie(), 1.0);
 
   CelValue field3 = CelValue::CreateString(&kFields[2]);
   auto field3_presence = cel_map->Has(field3);
@@ -275,8 +272,8 @@ TEST_F(CelProtoWrapperTest, UnwrapValueStruct) {
   EXPECT_TRUE(*field3_presence);
   auto lookup3 = (*cel_map)[field3];
   ASSERT_TRUE(lookup3.has_value());
-  ASSERT_TRUE(lookup3.value().IsString());
-  EXPECT_EQ(lookup3.value().StringOrDie().value(), "test");
+  ASSERT_TRUE(lookup3->IsString());
+  EXPECT_EQ(lookup3->StringOrDie().value(), "test");
 
   std::string missing = "missing_field";
   CelValue missing_field = CelValue::CreateString(&missing);
@@ -854,7 +851,8 @@ TEST_F(CelProtoWrapperTest, DebugString) {
   list_value.add_values()->set_number_value(1.0);
   list_value.add_values()->set_string_value("test");
   CelValue value = CelProtoWrapper::CreateMessage(&list_value, arena());
-  EXPECT_EQ(value.DebugString(), "List, size: 3");
+  EXPECT_EQ(value.DebugString(),
+            "CelList: [bool: 1, double: 1.000000, string: test]");
 
   Struct value_struct;
   auto& value1 = (*value_struct.mutable_fields())["a"];
@@ -865,12 +863,14 @@ TEST_F(CelProtoWrapperTest, DebugString) {
   value3.set_string_value("test");
 
   value = CelProtoWrapper::CreateMessage(&value_struct, arena());
-  EXPECT_EQ(value.DebugString(), "Map, size: 3");
+  EXPECT_THAT(
+      value.DebugString(),
+      testing::AllOf(testing::StartsWith("CelMap: {"),
+                     testing::HasSubstr("<string: a>: <bool: 1>"),
+                     testing::HasSubstr("<string: b>: <double: 1.0"),
+                     testing::HasSubstr("<string: c>: <string: test>")));
 }
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

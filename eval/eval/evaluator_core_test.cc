@@ -1,7 +1,7 @@
 #include "eval/eval/evaluator_core.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
@@ -226,13 +226,10 @@ TEST(EvaluatorCoreTest, TraceTest) {
   result_expr->mutable_const_expr()->set_bool_value(true);
 
   FlatExprBuilder builder;
-  auto builtin_status = RegisterBuiltinFunctions(builder.GetRegistry());
-  ASSERT_OK(builtin_status);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   builder.set_shortcircuiting(false);
-  auto build_status = builder.CreateExpression(&expr, &source_info);
-  ASSERT_OK(build_status);
-
-  auto cel_expr = std::move(build_status.value());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&expr, &source_info));
 
   Activation activation;
   google::protobuf::Arena arena;

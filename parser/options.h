@@ -6,9 +6,11 @@ namespace api {
 namespace expr {
 namespace parser {
 
-constexpr int kDefaultErrorRecoveryLimit = 30;
-constexpr int kDefaultMaxRecursionDepth = 250;
-constexpr int kExpressionSizeCodepointLimit = 100'000;
+inline constexpr int kDefaultErrorRecoveryLimit = 30;
+inline constexpr int kDefaultMaxRecursionDepth = 250;
+inline constexpr int kExpressionSizeCodepointLimit = 100'000;
+inline constexpr int kDefaultErrorRecoveryTokenLookaheadLimit = 512;
+inline constexpr bool kDefaultAddMacroCalls = false;
 
 // Options for configuring the limits and features of the parser.
 struct ParserOptions {
@@ -25,6 +27,14 @@ struct ParserOptions {
   // Limit on the number of codepoints in the input string which the parser will
   // attempt to parse.
   int expression_size_codepoint_limit = kExpressionSizeCodepointLimit;
+
+  // Limit on the number of lookahead tokens to consume when attempting to
+  // recover from an error.
+  int error_recovery_token_lookahead_limit =
+      kDefaultErrorRecoveryTokenLookaheadLimit;
+
+  // Add macro calls to macro_calls list in source_info.
+  bool add_macro_calls = kDefaultAddMacroCalls;
 };
 
 }  // namespace parser

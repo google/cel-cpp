@@ -5,18 +5,12 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 absl::Status RegisterBuiltinFunctions(
     CelFunctionRegistry* registry,
     const InterpreterOptions& options = InterpreterOptions());
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_BUILTIN_FUNC_REGISTRAR_H_

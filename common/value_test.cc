@@ -8,7 +8,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/rpc/status.pb.h"
 #include "google/type/money.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/meta/type_traits.h"
 #include "absl/strings/str_cat.h"
@@ -289,7 +289,7 @@ TEST_P(ValueTest, OwnsValue) {
   EXPECT_EQ(GetParam().value.owns_value(), GetParam().owns_value);
   auto ref = CreateRef(GetParam().value);
   if (ref.has_value()) {
-    EXPECT_FALSE(ref.value().owns_value());
+    EXPECT_FALSE(ref->owns_value());
   }
 }
 
@@ -297,7 +297,7 @@ TEST_P(ValueTest, For) {
   EXPECT_EQ(GetParam().value.owns_value(), GetParam().owns_value);
   auto ref = CreateRef(GetParam().value);
   if (ref.has_value()) {
-    EXPECT_FALSE(ref.value().owns_value());
+    EXPECT_FALSE(ref->owns_value());
   }
 }
 

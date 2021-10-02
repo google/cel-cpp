@@ -1,24 +1,25 @@
+#include <cstdint>
+#include <limits>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/util/time_util.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
 #include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
-
+namespace google::api::expr::runtime {
 namespace {
 
 using google::protobuf::Duration;
@@ -28,7 +29,6 @@ using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::Arena;
-using google::protobuf::util::TimeUtil;
 
 using ::google::api::expr::internal::MakeGoogleApiDurationMax;
 using ::google::api::expr::internal::MakeGoogleApiDurationMin;
@@ -79,17 +79,11 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
     // Create CelExpression from AST (Expr object).
-    auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-
-    ASSERT_OK(cel_expression_status);
-
-    auto cel_expression = std::move(cel_expression_status.value());
-
-    auto eval_status = cel_expression->Evaluate(activation, &arena_);
-
-    ASSERT_OK(eval_status);
-
-    *result = eval_status.value();
+    ASSERT_OK_AND_ASSIGN(auto cel_expression,
+                         builder->CreateExpression(&expr, &source_info));
+    ASSERT_OK_AND_ASSIGN(auto value,
+                         cel_expression->Evaluate(activation, &arena_));
+    *result = value;
   }
 
   // Helper method. Looks up in registry and tests comparison operation.
@@ -435,7 +429,8 @@ TEST_F(BuiltinsTest, TestNegIntOverflow) {
   CelValue result;
   ASSERT_NO_FATAL_FAILURE(PerformRun(
       builtin::kNeg, {},
-      {CelValue::CreateInt64(std::numeric_limits<int64_t>::min())}, &result));
+      {CelValue::CreateInt64(std::numeric_limits<int64_t>::lowest())},
+      &result));
   ASSERT_TRUE(result.IsError());
 }
 
@@ -512,87 +507,6 @@ TEST_F(BuiltinsTest, TestNullMessageEqual) {
   TestComparison(builtin::kInequal, ref, value, true);
 }
 
-// Test Arithmetical operations for Timestamp and Duration
-TEST_F(BuiltinsTest, TestTimestampDurationArithmeticalOperation) {
-  CelValue result_value, cel_ts0, cel_ts1, cel_d0, cel_d1, cel_d2;
-  Timestamp ts0, ts1;
-  Duration d0, d1, d2;
-
-  ts0.set_seconds(100);
-  ts0.set_nanos(100);
-  ts1.set_seconds(10);
-  ts1.set_nanos(10);
-
-  d0.set_seconds(90);
-  d0.set_nanos(90);
-  d1.set_seconds(80);
-  d1.set_nanos(80);
-  d2.set_seconds(10);
-  d2.set_nanos(10);
-
-  cel_d0 = CelProtoWrapper::CreateDuration(&d0);
-  cel_d1 = CelProtoWrapper::CreateDuration(&d1);
-  cel_d2 = CelProtoWrapper::CreateDuration(&d2);
-  cel_ts0 = CelProtoWrapper::CreateTimestamp(&ts0);
-  cel_ts1 = CelProtoWrapper::CreateTimestamp(&ts1);
-
-  // ts0 - ts1 = d0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kSubtract, {}, {cel_ts0, cel_ts1}, &result_value));
-  ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
-            TimeUtil::DurationToNanoseconds(d0));
-
-  // ts0 - d0 = ts1
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kSubtract, {}, {cel_ts0, cel_d0}, &result_value));
-  ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
-            TimeUtil::TimestampToNanoseconds(ts1));
-
-  // ts1 + d0 = ts0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kAdd, {}, {cel_ts1, cel_d0}, &result_value));
-  ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
-            TimeUtil::TimestampToNanoseconds(ts0));
-
-  // d0 + ts1 = ts0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kAdd, {}, {cel_d0, cel_ts1}, &result_value));
-  ASSERT_EQ(result_value.IsTimestamp(), true);
-  ASSERT_EQ(absl::ToUnixNanos(result_value.TimestampOrDie()),
-            TimeUtil::TimestampToNanoseconds(ts0));
-
-  // d0 - d1 = d2
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kSubtract, {}, {cel_d0, cel_d1}, &result_value));
-  ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
-            TimeUtil::DurationToNanoseconds(d2));
-
-  // d1 + d2 = d0
-  ASSERT_NO_FATAL_FAILURE(
-      PerformRun(builtin::kAdd, {}, {cel_d2, cel_d1}, &result_value));
-  ASSERT_EQ(result_value.IsDuration(), true);
-  ASSERT_EQ(absl::ToInt64Nanoseconds(result_value.DurationOrDie()),
-            TimeUtil::DurationToNanoseconds(d0));
-
-  const auto min = CelValue::CreateDuration(MakeGoogleApiDurationMin());
-  ASSERT_TRUE(min.IsDuration());
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kSubtract, {},
-      {min, CelValue::CreateDuration(absl::Nanoseconds(1))}, &result_value));
-  ASSERT_TRUE(result_value.IsError());
-
-  const auto max = CelValue::CreateDuration(MakeGoogleApiDurationMax());
-  ASSERT_TRUE(max.IsDuration());
-  ASSERT_NO_FATAL_FAILURE(PerformRun(
-      builtin::kAdd, {}, {max, CelValue::CreateDuration(absl::Nanoseconds(1))},
-      &result_value));
-  ASSERT_TRUE(result_value.IsError());
-}
-
 // Test functions for Duration
 TEST_F(BuiltinsTest, TestDurationFunctions) {
   Duration ref;
@@ -664,20 +578,30 @@ TEST_F(BuiltinsTest, TestTimestampFunctions) {
   TestFunctions(builtin::kMilliseconds, CelProtoWrapper::CreateTimestamp(&ref),
                 11L);
 
+  ref.set_seconds(259200L);
+  ref.set_nanos(0L);
+  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
+                0L);
+}
+
+TEST_F(BuiltinsTest, TestTimestampConversionToString) {
+  Timestamp ref;
+  ref.set_seconds(1L);
+  ref.set_nanos(11000000L);
   std::string result = "1970-01-01T00:00:01.011Z";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateTimestamp(&ref),
                    CelValue::StringHolder(&result));
 
   ref.set_seconds(259200L);
   ref.set_nanos(0L);
-  TestFunctions(builtin::kDayOfWeek, CelProtoWrapper::CreateTimestamp(&ref),
-                0L);
-
   result = "1970-01-04T00:00:00Z";
   TestTypeConverts(builtin::kString, CelProtoWrapper::CreateTimestamp(&ref),
                    CelValue::StringHolder(&result));
+}
 
+TEST_F(BuiltinsTest, TestTimestampFunctionsWithTimeZone) {
   // Test timestamp functions w/ IANA timezone
+  Timestamp ref;
   ref.set_seconds(1L);
   ref.set_nanos(11000000L);
   std::vector<CelValue> params;
@@ -850,6 +774,31 @@ TEST_F(BuiltinsTest, TestIntConversions_uint) {
   TestTypeConverts(builtin::kInt, CelValue::CreateUint64(ref), 100L);
 }
 
+TEST_F(BuiltinsTest, TestIntConversions_doubleIntMin) {
+  // Converting int64_t min may or may not roundtrip properly without overflow
+  // depending on compiler flags, so the conservative approach is to treat this
+  // case as overflow.
+  double range = std::numeric_limits<int64_t>::lowest();
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversions_doubleIntMinMinus1024) {
+  // Converting values between [int64_t::lowest(), (int64_t::lowest() - 1024)]
+  // will result in an int64_t representable value, in some cases, but not all
+  // as the conversion depends on
+  double range = std::numeric_limits<int64_t>::lowest();
+  range -= 1024L;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus512) {
+  // Converting int64_t max - 512 to a double will not roundtrip to the original
+  // value, but it will rountrip to a valid 64-bit integer.
+  double range = std::numeric_limits<int64_t>::max() - 512;
+  TestTypeConverts(builtin::kInt, CelValue::CreateDouble(range),
+                   std::numeric_limits<int64_t>::max() - 1023);
+}
+
 TEST_F(BuiltinsTest, TestIntConversionError_doubleNegRange) {
   double range = -1.0e99;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
@@ -857,6 +806,34 @@ TEST_F(BuiltinsTest, TestIntConversionError_doubleNegRange) {
 
 TEST_F(BuiltinsTest, TestIntConversionError_doublePosRange) {
   double range = 1.0e99;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMax) {
+  // Converting int64_t max to a double results in a double value of int64_t max
+  // + 1 which should cause the overflow testing to trip.
+  double range = std::numeric_limits<int64_t>::max();
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus1) {
+  // Converting values between int64_t::max() and int64_t::max() - 511 will
+  // result in overflow errors during round-tripping.
+  double range = std::numeric_limits<int64_t>::max() - 1;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMaxMinus511) {
+  // Converting values between int64_t::max() and int64_t::max() - 511 will
+  // result in overflow errors during round-tripping.
+  double range = std::numeric_limits<int64_t>::max() - 511;
+  TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
+}
+
+TEST_F(BuiltinsTest, TestIntConversionError_doubleIntMinMinus1025) {
+  // Converting double values lower than int64_t::lowest() - 1025 will result in
+  // an overflow error.
+  double range = std::numeric_limits<int64_t>::lowest();
+  range -= 1025L;
   TestTypeConversionError(builtin::kInt, CelValue::CreateDouble(range));
 }
 
@@ -1428,22 +1405,10 @@ TEST_F(BuiltinsTest, StringSize) {
 TEST_F(BuiltinsTest, StringUnicodeSize) {
   std::string test = "πέντε";
   CelValue result_value;
-  InterpreterOptions options;
-  options.enable_string_size_as_unicode_codepoints = true;
-  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kSize, {},
-                                     {CelValue::CreateString(&test)},
-                                     &result_value, options));
+  ASSERT_NO_FATAL_FAILURE(PerformRun(
+      builtin::kSize, {}, {CelValue::CreateString(&test)}, &result_value));
   ASSERT_EQ(result_value.IsInt64(), true);
   ASSERT_EQ(result_value.Int64OrDie(), 5);
-
-  // Disable the option to measure string size by codepoints, and the return
-  // value should be equal to the number of bytes in the string (10).
-  options.enable_string_size_as_unicode_codepoints = false;
-  ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kSize, {},
-                                     {CelValue::CreateString(&test)},
-                                     &result_value, options));
-  ASSERT_EQ(result_value.IsInt64(), true);
-  ASSERT_EQ(result_value.Int64OrDie(), 10);
 }
 
 TEST_F(BuiltinsTest, BytesSize) {
@@ -1628,7 +1593,7 @@ TEST_F(BuiltinsTest, TestInt64Arithmetics) {
 }
 
 TEST_F(BuiltinsTest, TestInt64ArithmeticOverflow) {
-  int64_t min = std::numeric_limits<int64_t>::min();
+  int64_t min = std::numeric_limits<int64_t>::lowest();
   int64_t max = std::numeric_limits<int64_t>::max();
   TestArithmeticalErrorInt64(builtin::kAdd, max, 1,
                              absl::StatusCode::kOutOfRange);
@@ -1641,7 +1606,7 @@ TEST_F(BuiltinsTest, TestInt64ArithmeticOverflow) {
   TestArithmeticalErrorInt64(builtin::kDivide, min, -1,
                              absl::StatusCode::kOutOfRange);
   TestArithmeticalErrorInt64(builtin::kDivide, min, 0,
-                             absl::StatusCode::kUnknown);
+                             absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(BuiltinsTest, TestUint64Arithmetics) {
@@ -1661,7 +1626,7 @@ TEST_F(BuiltinsTest, TestUint64ArithmeticOverflow) {
   TestArithmeticalErrorUint64(builtin::kMultiply, max, 2,
                               absl::StatusCode::kOutOfRange);
   TestArithmeticalErrorUint64(builtin::kDivide, 1, 0,
-                              absl::StatusCode::kUnknown);
+                              absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(BuiltinsTest, TestDoubleArithmetics) {
@@ -1909,8 +1874,4 @@ TEST_F(BuiltinsTest, TypeComparisons) {
 }
 
 }  // namespace
-
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_function.h"
@@ -74,14 +74,14 @@ TEST(ResolverTest, TestFindConstantEnum) {
 
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
   EXPECT_TRUE(enum_value.has_value());
-  EXPECT_TRUE(enum_value.value().IsInt64());
-  EXPECT_THAT(enum_value.value().Int64OrDie(), Eq(1L));
+  EXPECT_TRUE(enum_value->IsInt64());
+  EXPECT_THAT(enum_value->Int64OrDie(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
   EXPECT_TRUE(enum_value.has_value());
-  EXPECT_TRUE(enum_value.value().IsInt64());
-  EXPECT_THAT(enum_value.value().Int64OrDie(), Eq(2L));
+  EXPECT_TRUE(enum_value->IsInt64());
+  EXPECT_THAT(enum_value->Int64OrDie(), Eq(2L));
 }
 
 TEST(ResolverTest, TestFindConstantUnqualifiedType) {
@@ -91,8 +91,8 @@ TEST(ResolverTest, TestFindConstantUnqualifiedType) {
 
   auto type_value = resolver.FindConstant("int", -1);
   EXPECT_TRUE(type_value.has_value());
-  EXPECT_TRUE(type_value.value().IsCelType());
-  EXPECT_THAT(type_value.value().CelTypeOrDie().value(), Eq("int"));
+  EXPECT_TRUE(type_value->IsCelType());
+  EXPECT_THAT(type_value->CelTypeOrDie().value(), Eq("int"));
 }
 
 TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
@@ -103,8 +103,8 @@ TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
   EXPECT_TRUE(type_value.has_value());
-  EXPECT_TRUE(type_value.value().IsCelType());
-  EXPECT_THAT(type_value.value().CelTypeOrDie().value(),
+  EXPECT_TRUE(type_value->IsCelType());
+  EXPECT_THAT(type_value->CelTypeOrDie().value(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
 

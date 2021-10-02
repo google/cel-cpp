@@ -65,10 +65,8 @@ cc_binary(
             # Tests which require spec changes.
             # TODO(issues/93): Deprecate Duration.getMilliseconds.
             "--skip_test=timestamps/duration_converters/get_milliseconds",
-            # TODO(issues/81): Conversion functions for int(), uint() which can be
-            # uncommented when the spec changes to truncation rather than rounding.
-            "--skip_test=conversions/int/double_nearest,double_nearest_neg,double_half_away_neg,double_half_away_pos",
-            "--skip_test=conversions/uint/double_nearest,double_nearest_int,double_half_away",
+            # TODO(issues/128): Remove +-0 handling from spec as it is not handled consistently between Go, Java, and C++
+            "--skip_test=dynamic/float/field_assign_proto2_round_to_zero,field_assign_proto3_round_to_zero",
             # TODO(issues/110): Tune parse limits to mirror those for proto deserialization and C++ safety limits.
             "--skip_test=parse/nest/list_index,message_literal,funcall,list_literal,map_literal;repeat/conditional,add_sub,mul_div,select,index,map_literal,message_literal",
 
@@ -96,17 +94,14 @@ cc_binary(
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
             # TODO(issues/117): Integer overflow on enum assignments should error.
-            "--skip_test=enums/legacy_proto2/select_big,select_neg,assign_standalone_int_too_big,assign_standalone_int_too_neg",
-            "--skip_test=enums/legacy_proto3/assign_standalone_int_too_big,assign_standalone_int_too_neg",
-            # TODO(issues/118): Duration and timestamp range errors should result in evaluation errors.
-            "--skip_test=timestamps/timestamp_range",
+            "--skip_test=enums/legacy_proto2/select_big,select_neg",
+            # TODO(issues/127): Ensure overflow occurs on conversions of double values which might not work properly on all platforms.
+            "--skip_test=conversions/int/double_int_min_range",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
-            # Bad tests, temporarily disable.
-            "--skip_test=dynamic/float/field_assign_proto2_range,field_assign_proto3_range",
         ] + ["$(location " + test + ")" for test in ALL_TESTS],
         data = [
             ":server",

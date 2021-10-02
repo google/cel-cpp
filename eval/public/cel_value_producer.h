@@ -3,10 +3,7 @@
 
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelValueProducer produces CelValue during CEL Expression evaluation.
 // It is intended to be used with Activation, to provide on-demand CelValue
@@ -23,9 +20,6 @@ class CelValueProducer {
   virtual CelValue Produce(google::protobuf::Arena* arena) = 0;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_PRODUCER_H_

@@ -147,7 +147,7 @@ cc_test(
     srcs = ["escaping_test.cc"],
     deps = [
         ":escaping",
-        "@com_google_googletest//:gtest_main",
+        "//base:testing",
     ],
 )
 
@@ -192,6 +192,7 @@ cc_test(
     deps = [
         ":custom_object",
         ":value",
+        "//base:testing",
         "//internal:status_util",
         "//internal:types",
         "//internal:value_internal",
@@ -200,7 +201,6 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googleapis//google/type:money_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -223,13 +223,38 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "overflow",
+    srcs = ["overflow.cc"],
+    hdrs = ["overflow.h"],
+    deps = [
+        "//base:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)
+
 cc_test(
     name = "converters_test",
     srcs = ["converters_test.cc"],
     deps = [
         ":converters",
         ":value",
+        "//base:testing",
         "@com_google_absl//absl/memory",
-        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "overflow_test",
+    srcs = ["overflow_test.cc"],
+    deps = [
+        ":overflow",
+        "//base:testing",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
     ],
 )

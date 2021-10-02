@@ -15,7 +15,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/public/source_position.h"
 
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 namespace google {
 namespace api {

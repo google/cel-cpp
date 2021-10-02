@@ -104,16 +104,12 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   // Get the current index off the stack.
   CelValue current_index_value = state[POS_CURRENT_INDEX];
   if (!current_index_value.IsInt64()) {
-    auto message = absl::StrCat(
-        "ComprehensionNextStep: want int64_t, got ",
-        CelValue::TypeName(current_index_value.type())
-    );
-    return absl::Status(absl::StatusCode::kInternal, message);
+    return absl::InternalError(
+        absl::StrCat("ComprehensionNextStep: want int64_t, got ",
+                     CelValue::TypeName(current_index_value.type())));
   }
-  auto increment_status = frame->IncrementIterations();
-  if (!increment_status.ok()) {
-    return increment_status;
-  }
+  RETURN_IF_ERROR(frame->IncrementIterations());
+
   int64_t current_index = current_index_value.Int64OrDie();
   if (current_index == -1) {
     RETURN_IF_ERROR(frame->PushIterFrame());
@@ -130,6 +126,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   }
   frame->value_stack().Push(iter_range, iter_range_attr);
   current_index += 1;
+
   CelValue current_value = (*cel_list)[current_index];
   frame->value_stack().Push(CelValue::CreateInt64(current_index));
   auto iter_trail = iter_range_attr.Step(

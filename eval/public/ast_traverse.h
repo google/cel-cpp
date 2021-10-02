@@ -20,21 +20,41 @@
 #include "eval/public/ast_visitor.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
-// This method performs traversal of AST.
-// expr is root node of the tree.
-// handler is callback object.
-void AstTraverse(const google::api::expr::v1alpha1::Expr *expr,
-                 const google::api::expr::v1alpha1::SourceInfo *source_info,
-                 AstVisitor *visitor);
+// Traverses the AST representation in an expr proto.
+//
+// expr: root node of the tree.
+// source_info: optional additional parse information about the expression
+// visitor: the callback object that receives the visitation notifications
+//
+// Traversal order follows the pattern:
+// PreVisitExpr
+// ..PreVisit{ExprKind}
+// ....PreVisit{ArgumentIndex}
+// .......PreVisitExpr (subtree)
+// .......PostVisitExpr (subtree)
+// ....PostVisit{ArgumentIndex}
+// ..PostVisit{ExprKind}
+// PostVisitExpr
+//
+// Example callback order for fn(1, var):
+// PreVisitExpr
+// ..PreVisitCall(fn)
+// ......PreVisitExpr
+// ........PostVisitConst(1)
+// ......PostVisitExpr
+// ....PostVisitArg(fn, 0)
+// ......PreVisitExpr
+// ........PostVisitIdent(var)
+// ......PostVisitExpr
+// ....PostVisitArg(fn, 1)
+// ..PostVisitCall(fn)
+// PostVisitExpr
+void AstTraverse(const google::api::expr::v1alpha1::Expr* expr,
+                 const google::api::expr::v1alpha1::SourceInfo* source_info,
+                 AstVisitor* visitor);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_H_

@@ -1,15 +1,12 @@
 #include "eval/public/cel_type_registry.h"
 
 #include "google/protobuf/any.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "eval/testutil/test_message.pb.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -40,8 +37,8 @@ TEST(CelTypeRegistryTest, TestRegisterTypeName) {
 
   auto type = registry.FindType("custom_type");
   ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("custom_type"));
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("custom_type"));
 }
 
 TEST(CelTypeRegistryTest, TestFindDescriptorFound) {
@@ -61,16 +58,16 @@ TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("int");
   ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("int"));
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("int"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeProtobufTypeFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("google.protobuf.Any");
   ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type.value().IsCelType());
-  EXPECT_THAT(type.value().CelTypeOrDie().value(), Eq("google.protobuf.Any"));
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("google.protobuf.Any"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {
@@ -81,7 +78,4 @@ TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

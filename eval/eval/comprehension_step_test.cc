@@ -5,7 +5,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -64,10 +64,10 @@ TEST_F(ListKeysStepTest, ListPassedThrough) {
   IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(&ident, 0);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
 
   auto expression = MakeExpression(std::move(path));
 
@@ -91,10 +91,10 @@ TEST_F(ListKeysStepTest, MapToKeyList) {
   IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(&ident, 0);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
 
   auto expression = MakeExpression(std::move(path));
 
@@ -127,10 +127,10 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(&ident, 0);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
 
   auto expression =
       MakeExpression(std::move(path), /*unknown_attributes=*/true);
@@ -166,10 +166,10 @@ TEST_F(ListKeysStepTest, ErrorPassedThrough) {
   IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(&ident, 0);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
 
   auto expression = MakeExpression(std::move(path));
 
@@ -191,10 +191,10 @@ TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
   IdentExpr ident = CreateIdent("var");
   auto result = CreateIdentStep(&ident, 0);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
   ASSERT_OK(result);
-  path.push_back(std::move(result.value()));
+  path.push_back(*std::move(result));
 
   auto expression =
       MakeExpression(std::move(path), /*unknown_attributes=*/true);

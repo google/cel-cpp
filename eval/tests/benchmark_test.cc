@@ -2,7 +2,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/base/attributes.h"
 #include "absl/container/node_hash_set.h"
@@ -51,18 +51,14 @@ static void BM_Eval(benchmark::State& state) {
   cur_expr->mutable_const_expr()->set_int64_value(1);
 
   SourceInfo source_info;
-  auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
-  ASSERT_OK(cel_expr_status.status());
-
-  std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&root_expr, &source_info));
 
   for (auto _ : state) {
     google::protobuf::Arena arena;
     Activation activation;
-    auto eval_result = cel_expr->Evaluate(activation, &arena);
-    ASSERT_OK(eval_result.status());
-
-    CelValue result = eval_result.value();
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
     ASSERT_TRUE(result.IsInt64());
     ASSERT_TRUE(result.Int64OrDie() == len + 1);
   }
@@ -93,18 +89,14 @@ static void BM_EvalString(benchmark::State& state) {
   cur_expr->mutable_const_expr()->set_string_value("a");
 
   SourceInfo source_info;
-  auto cel_expr_status = builder->CreateExpression(&root_expr, &source_info);
-  ASSERT_OK(cel_expr_status.status());
-
-  std::unique_ptr<CelExpression> cel_expr = std::move(cel_expr_status.value());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&root_expr, &source_info));
 
   for (auto _ : state) {
     google::protobuf::Arena arena;
     Activation activation;
-    auto eval_result = cel_expr->Evaluate(activation, &arena);
-    ASSERT_OK(eval_result.status());
-
-    CelValue result = eval_result.value();
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
     ASSERT_TRUE(result.IsString());
     ASSERT_TRUE(result.StringOrDie().value().size() == len + 1);
   }
@@ -654,19 +646,18 @@ void BM_PolicySymbolic(benchmark::State& state) {
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
-  auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  ASSERT_OK(cel_expression_status.status());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, &source_info));
 
-  auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
   activation.InsertValue("ip", CelValue::CreateStringView(kIP));
   activation.InsertValue("path", CelValue::CreateStringView(kPath));
   activation.InsertValue("token", CelValue::CreateStringView(kToken));
 
   for (auto _ : state) {
-    auto eval_result = cel_expression->Evaluate(activation, &arena);
-    ASSERT_OK(eval_result.status());
-    ASSERT_TRUE(eval_result.value().BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -702,18 +693,17 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
-  auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  ASSERT_OK(cel_expression_status.status());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, &source_info));
 
-  auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
   RequestMap request;
   activation.InsertValue("request", CelValue::CreateMap(&request));
 
   for (auto _ : state) {
-    auto eval_result = cel_expression->Evaluate(activation, &arena);
-    ASSERT_OK(eval_result.status());
-    ASSERT_TRUE(eval_result.value().BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -729,10 +719,9 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
-  auto cel_expression_status = builder->CreateExpression(&expr, &source_info);
-  ASSERT_OK(cel_expression_status.status());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, &source_info));
 
-  auto cel_expression = std::move(cel_expression_status.value());
   Activation activation;
   RequestContext request;
   request.set_ip(kIP);
@@ -742,9 +731,9 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
                          CelProtoWrapper::CreateMessage(&request, &arena));
 
   for (auto _ : state) {
-    auto eval_result = cel_expression->Evaluate(activation, &arena);
-    ASSERT_OK(eval_result.status());
-    ASSERT_TRUE(eval_result.value().BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -816,13 +805,13 @@ void BM_Comprehension(benchmark::State& state) {
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
-  auto expr_plan = builder->CreateExpression(&expr, nullptr);
-  ASSERT_OK(expr_plan.status());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
   for (auto _ : state) {
-    auto result = expr_plan.value()->Evaluate(activation, &arena);
-    ASSERT_OK(result.status());
-    ASSERT_TRUE(result->IsInt64());
-    ASSERT_EQ(result->Int64OrDie(), len);
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsInt64());
+    ASSERT_EQ(result.Int64OrDie(), len);
   }
 }
 
@@ -868,21 +857,21 @@ void BM_HasMap(benchmark::State& state) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHas, &expr));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
-  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
 
   std::vector<std::pair<CelValue, CelValue>> map_pairs{
       {CelValue::CreateStringView("path"), CelValue::CreateStringView("path")}};
   auto cel_map =
       CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
           map_pairs.data(), map_pairs.size()));
-
   activation.InsertValue("request", CelValue::CreateMap((*cel_map).get()));
-  ASSERT_OK(expr_plan.status());
+
   for (auto _ : state) {
-    auto result = expr_plan.value()->Evaluate(activation, &arena);
-    ASSERT_OK(result.status());
-    ASSERT_TRUE(result->IsBool());
-    ASSERT_TRUE(result->BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -895,19 +884,20 @@ void BM_HasProto(benchmark::State& state) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHas, &expr));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
-  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
 
   RequestContext request;
   request.set_path(kPath);
   request.set_token(kToken);
   activation.InsertValue("request",
                          CelProtoWrapper::CreateMessage(&request, &arena));
-  ASSERT_OK(expr_plan.status());
+
   for (auto _ : state) {
-    auto result = expr_plan.value()->Evaluate(activation, &arena);
-    ASSERT_OK(result.status());
-    ASSERT_TRUE(result->IsBool());
-    ASSERT_TRUE(result->BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -963,18 +953,19 @@ void BM_HasProtoMap(benchmark::State& state) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHasProtoMap, &expr));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
-  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
 
   RequestContext request;
   request.mutable_headers()->insert({"create_time", "2021-01-01"});
   activation.InsertValue("request",
                          CelProtoWrapper::CreateMessage(&request, &arena));
-  ASSERT_OK(expr_plan.status());
+
   for (auto _ : state) {
-    auto result = expr_plan.value()->Evaluate(activation, &arena);
-    ASSERT_OK(result.status());
-    ASSERT_TRUE(result->IsBool());
-    ASSERT_TRUE(result->BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -1013,18 +1004,19 @@ void BM_ReadProtoMap(benchmark::State& state) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kReadProtoMap, &expr));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
-  auto expr_plan = builder->CreateExpression(&expr, nullptr);
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
 
   RequestContext request;
   request.mutable_headers()->insert({"create_time", "2021-01-01"});
   activation.InsertValue("request",
                          CelProtoWrapper::CreateMessage(&request, &arena));
-  ASSERT_OK(expr_plan.status());
+
   for (auto _ : state) {
-    auto result = expr_plan.value()->Evaluate(activation, &arena);
-    ASSERT_OK(result.status());
-    ASSERT_TRUE(result->IsBool());
-    ASSERT_TRUE(result->BoolOrDie());
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
   }
 }
 
@@ -1140,13 +1132,14 @@ void BM_NestedComprehension(benchmark::State& state) {
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
-  auto expr_plan = builder->CreateExpression(&expr, nullptr);
-  ASSERT_OK(expr_plan.status());
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
+
   for (auto _ : state) {
-    auto result = expr_plan.value()->Evaluate(activation, &arena);
-    ASSERT_OK(result.status());
-    ASSERT_TRUE(result->IsInt64());
-    ASSERT_EQ(result->Int64OrDie(), len * len);
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsInt64());
+    ASSERT_EQ(result.Int64OrDie(), len * len);
   }
 }
 

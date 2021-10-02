@@ -18,6 +18,7 @@ cc_test(
     deps = [
         ":request_context_cc_proto",
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -32,7 +33,6 @@ cc_test(
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -45,6 +45,7 @@ cc_test(
     ],
     deps = [
         "//base:status_macros",
+        "//base:testing",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
@@ -54,7 +55,6 @@ cc_test(
         "//eval/testutil:test_message_cc_proto",
         "//testutil:util",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -67,6 +67,7 @@ cc_test(
     ],
     deps = [
         "//base:status_macros",
+        "//base:testing",
         "//eval/eval:evaluator_core",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
@@ -83,7 +84,6 @@ cc_test(
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -105,9 +105,9 @@ cc_library(
     testonly = 1,
     hdrs = ["mock_cel_expression.h"],
     deps = [
+        "//base:testing",
         "//eval/public:activation",
         "//eval/public:cel_expression",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_googletest//:gtest",
     ],
 )

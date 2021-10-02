@@ -48,7 +48,7 @@ absl::optional<std::string> ToNamespace(const Expr& expr) {
       if (!maybe_parent_namespace.has_value()) {
         return absl::nullopt;
       }
-      return absl::StrCat(maybe_parent_namespace.value(), ".",
+      return absl::StrCat(*maybe_parent_namespace, ".",
                           expr.select_expr().field());
     default:
       return absl::nullopt;
@@ -131,10 +131,9 @@ class ReferenceResolver {
         auto* list_expr = out->mutable_list_expr();
         int list_size = list_expr->elements_size();
         for (int i = 0; i < list_size; i++) {
-          absl::StatusOr<bool> rewrite_result =
-              Rewrite(list_expr->mutable_elements(i));
-          RETURN_IF_ERROR(rewrite_result.status());
-          updated = updated || rewrite_result.value();
+          ASSIGN_OR_RETURN(bool rewrite_result,
+                           Rewrite(list_expr->mutable_elements(i)));
+          updated = updated || rewrite_result;
         }
         return updated;
       }
@@ -143,27 +142,36 @@ class ReferenceResolver {
       }
       case Expr::kComprehensionExpr: {
         auto* out_expr = out->mutable_comprehension_expr();
-        absl::StatusOr<bool> rewrite_result;
+        bool rewrite_result;
 
-        rewrite_result = Rewrite(out_expr->mutable_accu_init());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_accu_init()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_accu_init()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_iter_range());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_iter_range()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_iter_range()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_loop_condition());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_loop_condition()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_loop_condition()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_loop_step());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_loop_step()) {
+          ASSIGN_OR_RETURN(rewrite_result,
+                           Rewrite(out_expr->mutable_loop_step()));
+          updated = updated || rewrite_result;
+        }
 
-        rewrite_result = Rewrite(out_expr->mutable_result());
-        RETURN_IF_ERROR(rewrite_result.status());
-        updated = updated || rewrite_result.value();
+        if (out_expr->has_result()) {
+          ASSIGN_OR_RETURN(rewrite_result, Rewrite(out_expr->mutable_result()));
+          updated = updated || rewrite_result;
+        }
 
         return updated;
       }
@@ -204,7 +212,7 @@ class ReferenceResolver {
         auto maybe_namespace = ToNamespace(call_expr->target());
         if (maybe_namespace.has_value()) {
           std::string resolved_name =
-              absl::StrCat(maybe_namespace.value(), ".", call_expr->function());
+              absl::StrCat(*maybe_namespace, ".", call_expr->function());
           auto maybe_resolved_function =
               BestOverloadMatch(resolver_, resolved_name, arg_num);
           if (maybe_resolved_function.has_value()) {

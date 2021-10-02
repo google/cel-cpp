@@ -5,7 +5,7 @@
 
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 
 namespace google {
 namespace api {

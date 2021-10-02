@@ -1,8 +1,6 @@
 load("//bazel:antlr.bzl", "antlr_cc_library")
 
-package(
-    default_visibility = ["//visibility:public"],
-)
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -122,10 +120,12 @@ cc_test(
         ":options",
         ":parser",
         ":source_factory",
+        "//base:testing",
         "//testutil:expr_printer",
+        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:optional",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )

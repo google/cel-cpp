@@ -1,7 +1,7 @@
 #include "eval/eval/create_struct_step.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
+#include "base/testing.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -25,9 +25,11 @@ using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
 
 using testing::Eq;
+using testing::HasSubstr;
 using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
+using cel_base::testing::StatusIs;
 
 using testutil::EqualsProto;
 
@@ -47,7 +49,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
 
   auto ident = expr0.mutable_ident_expr();
   ident->set_name("message");
-  auto step0_status = CreateIdentStep(ident, expr0.id());
+  ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
 
   auto create_struct = expr1.mutable_struct_expr();
   create_struct->set_message_name("google.api.expr.runtime.TestMessage");
@@ -55,22 +57,16 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   auto entry = create_struct->add_entries();
   entry->set_field_key(field.data());
 
-  if (!step0_status.ok()) {
-    return step0_status.status();
-  }
   auto desc = type_registry.FindDescriptor(create_struct->message_name());
   if (desc == nullptr) {
     return absl::Status(absl::StatusCode::kFailedPrecondition,
                         "missing proto message type");
   }
-  auto step1_status = CreateCreateStructStep(create_struct, desc, expr1.id());
+  ASSIGN_OR_RETURN(auto step1,
+                   CreateCreateStructStep(create_struct, desc, expr1.id()));
 
-  if (!step1_status.ok()) {
-    return step1_status.status();
-  }
-
-  path.push_back(std::move(step0_status.value()));
-  path.push_back(std::move(step1_status.value()));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
 
   CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
                                  enable_unknowns);
@@ -83,10 +79,8 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
 void RunExpressionAndGetMessage(absl::string_view field, const CelValue& value,
                                 google::protobuf::Arena* arena, TestMessage* test_msg,
                                 bool enable_unknowns) {
-  auto result_status = RunExpression(field, value, arena, enable_unknowns);
-  ASSERT_OK(result_status);
-  auto result = result_status.value();
-
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       RunExpression(field, value, arena, enable_unknowns));
   ASSERT_TRUE(result.IsMessage());
 
   const Message* msg = result.MessageOrDie();
@@ -104,10 +98,8 @@ void RunExpressionAndGetMessage(absl::string_view field,
 
   CelValue value = CelValue::CreateList(&cel_list);
 
-  auto result_status = RunExpression(field, value, arena, enable_unknowns);
-  ASSERT_OK(result_status);
-  auto result = result_status.value();
-
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       RunExpression(field, value, arena, enable_unknowns));
   ASSERT_TRUE(result.IsMessage());
 
   const Message* msg = result.MessageOrDie();
@@ -140,22 +132,18 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     auto key_ident = expr.mutable_ident_expr();
     key_ident->set_name(key_name);
     exprs.push_back(expr);
-    auto step_key_status = CreateIdentStep(key_ident, exprs.back().id());
-    if (!step_key_status.ok()) {
-      return step_key_status.status();
-    }
+    ASSIGN_OR_RETURN(auto step_key,
+                     CreateIdentStep(key_ident, exprs.back().id()));
 
     expr.Clear();
     auto value_ident = expr.mutable_ident_expr();
     value_ident->set_name(value_name);
     exprs.push_back(expr);
-    auto step_value_status = CreateIdentStep(value_ident, exprs.back().id());
-    if (!step_value_status.ok()) {
-      return step_value_status.status();
-    }
+    ASSIGN_OR_RETURN(auto step_value,
+                     CreateIdentStep(value_ident, exprs.back().id()));
 
-    path.push_back(std::move(step_key_status.value()));
-    path.push_back(std::move(step_value_status.value()));
+    path.push_back(std::move(step_key));
+    path.push_back(std::move(step_value));
 
     activation.InsertValue(key_name, item.first);
     activation.InsertValue(value_name, item.second);
@@ -164,13 +152,9 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     index++;
   }
 
-  auto step1_status = CreateCreateStructStep(create_struct, expr1.id());
-
-  if (!step1_status.ok()) {
-    return step1_status.status();
-  }
-
-  path.push_back(std::move(step1_status.value()));
+  ASSIGN_OR_RETURN(auto step1,
+                   CreateCreateStructStep(create_struct, expr1.id()));
+  path.push_back(std::move(step1));
 
   CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
                                  enable_unknowns);
@@ -190,26 +174,40 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   auto desc = type_registry.FindDescriptor(create_struct->message_name());
   ASSERT_TRUE(desc != nullptr);
 
-  auto step_status = CreateCreateStructStep(create_struct, desc, expr1.id());
-  ASSERT_OK(step_status);
-
-  path.push_back(std::move(step_status.value()));
+  ASSERT_OK_AND_ASSIGN(auto step,
+                       CreateCreateStructStep(create_struct, desc, expr1.id()));
+  path.push_back(std::move(step));
 
   CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {}, GetParam());
   Activation activation;
 
   google::protobuf::Arena arena;
 
-  auto status = cel_expr.Evaluate(activation, &arena);
-  ASSERT_OK(status);
-
-  CelValue result = status.value();
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsMessage());
-
   const Message* msg = result.MessageOrDie();
   ASSERT_THAT(msg, Not(IsNull()));
 
   ASSERT_EQ(msg->GetDescriptor(), TestMessage::descriptor());
+}
+
+TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
+  ExecutionPath path;
+  CelTypeRegistry type_registry;
+  Expr expr1;
+
+  auto create_struct = expr1.mutable_struct_expr();
+  create_struct->set_message_name("google.api.expr.runtime.TestMessage");
+  auto entry = create_struct->add_entries();
+  entry->set_field_key("bad_field");
+  auto value = entry->mutable_value();
+  value->mutable_const_expr()->set_bool_value(true);
+  auto desc = type_registry.FindDescriptor(create_struct->message_name());
+  ASSERT_TRUE(desc != nullptr);
+
+  EXPECT_THAT(CreateCreateStructStep(create_struct, desc, expr1.id()).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       testing::HasSubstr("'bad_field'")));
 }
 
 // Test message creation if unknown argument is passed
@@ -592,9 +590,8 @@ TEST_P(CreateCreateStructStepTest, TestSetStringMapField) {
       {CelValue::CreateString(&kKeys[1]), CelValue::CreateInt64(1)});
 
   auto cel_map =
-      CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
-                                   entries.data(), entries.size()))
-          .value();
+      *CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
+          entries.data(), entries.size()));
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "string_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
@@ -620,9 +617,8 @@ TEST_P(CreateCreateStructStepTest, TestSetInt64MapField) {
       {CelValue::CreateInt64(kKeys[1]), CelValue::CreateInt64(2)});
 
   auto cel_map =
-      CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
-                                   entries.data(), entries.size()))
-          .value();
+      *CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
+          entries.data(), entries.size()));
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "int64_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
@@ -648,9 +644,8 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
       {CelValue::CreateUint64(kKeys[1]), CelValue::CreateInt64(2)});
 
   auto cel_map =
-      CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
-                                   entries.data(), entries.size()))
-          .value();
+      *CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
+          entries.data(), entries.size()));
 
   ASSERT_NO_FATAL_FAILURE(RunExpressionAndGetMessage(
       "uint64_int32_map", CelValue::CreateMap(cel_map.get()), &arena, &test_msg,
@@ -664,14 +659,11 @@ TEST_P(CreateCreateStructStepTest, TestSetUInt64MapField) {
 // Test that Empty Map is created successfully.
 TEST_P(CreateCreateStructStepTest, TestCreateEmptyMap) {
   Arena arena;
-  auto status = RunCreateMapExpression({}, &arena, GetParam());
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunCreateMapExpression({}, &arena, GetParam()));
+  ASSERT_TRUE(result.IsMap());
 
-  ASSERT_OK(status);
-
-  CelValue result_value = status.value();
-  ASSERT_TRUE(result_value.IsMap());
-
-  const CelMap* cel_map = result_value.MapOrDie();
+  const CelMap* cel_map = result.MapOrDie();
   ASSERT_EQ(cel_map->size(), 0);
 }
 
@@ -688,12 +680,9 @@ TEST(CreateCreateStructStepTest, TestMapCreateWithUnknown) {
   entries.push_back({CelValue::CreateString(&kKeys[1]),
                      CelValue::CreateUnknownSet(&unknown_set)});
 
-  auto status = RunCreateMapExpression(entries, &arena, true);
-
-  ASSERT_OK(status);
-
-  CelValue result_value = status.value();
-  ASSERT_TRUE(result_value.IsUnknownSet());
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunCreateMapExpression(entries, &arena, true));
+  ASSERT_TRUE(result.IsUnknownSet());
 }
 
 // Test that String Map is created successfully.
@@ -709,25 +698,22 @@ TEST_P(CreateCreateStructStepTest, TestCreateStringMap) {
   entries.push_back(
       {CelValue::CreateString(&kKeys[1]), CelValue::CreateInt64(1)});
 
-  auto status = RunCreateMapExpression(entries, &arena, GetParam());
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunCreateMapExpression(entries, &arena, GetParam()));
+  ASSERT_TRUE(result.IsMap());
 
-  ASSERT_OK(status);
-
-  CelValue result_value = status.value();
-  ASSERT_TRUE(result_value.IsMap());
-
-  const CelMap* cel_map = result_value.MapOrDie();
+  const CelMap* cel_map = result.MapOrDie();
   ASSERT_EQ(cel_map->size(), 2);
 
   auto lookup0 = (*cel_map)[CelValue::CreateString(&kKeys[0])];
   ASSERT_TRUE(lookup0.has_value());
-  ASSERT_TRUE(lookup0.value().IsInt64());
-  EXPECT_EQ(lookup0.value().Int64OrDie(), 2);
+  ASSERT_TRUE(lookup0->IsInt64());
+  EXPECT_EQ(lookup0->Int64OrDie(), 2);
 
   auto lookup1 = (*cel_map)[CelValue::CreateString(&kKeys[1])];
   ASSERT_TRUE(lookup1.has_value());
-  ASSERT_TRUE(lookup1.value().IsInt64());
-  EXPECT_EQ(lookup1.value().Int64OrDie(), 1);
+  ASSERT_TRUE(lookup1->IsInt64());
+  EXPECT_EQ(lookup1->Int64OrDie(), 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(CombinedCreateStructTest, CreateCreateStructStepTest,
