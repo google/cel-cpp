@@ -28,19 +28,21 @@ def base_deps():
 
     http_archive(
         name = "com_googlesource_code_re2",
-        strip_prefix = "re2-master",
-        urls = ["https://github.com/google/re2/archive/master.zip"],
+        strip_prefix = "re2-main",
+        urls = ["https://github.com/google/re2/archive/main.zip"],
     )
 
-    PROTOBUF_VERSION = "3.14.0"
+    PROTOBUF_VERSION = "3.18.0"
+    PROTOBUF_SHA = "14e8042b5da37652c92ef6a2759e7d2979d295f60afd7767825e3de68c856c54"
     http_archive(
         name = "com_google_protobuf",
+        sha256 = PROTOBUF_SHA,
         strip_prefix = "protobuf-" + PROTOBUF_VERSION,
         urls = ["https://github.com/protocolbuffers/protobuf/archive/v" + PROTOBUF_VERSION + ".tar.gz"],
     )
 
-    GOOGLEAPIS_GIT_SHA = "be480e391cc88a75cf2a81960ef79c80d5012068"  # Jul 24, 2019
-    GOOGLEAPIS_SHA = "c1969e5b72eab6d9b6cfcff748e45ba57294aeea1d96fd04cd081995de0605c2"
+    GOOGLEAPIS_GIT_SHA = "77066268d1fd5d72278afc2aef1ebc1d2112cca6"  # Oct 01, 2021
+    GOOGLEAPIS_SHA = "dca75efd11a6295618dba919ad52fe551ba8bb85778d331a38c2bca282234296"
     http_archive(
         name = "com_google_googleapis",
         sha256 = GOOGLEAPIS_SHA,
@@ -103,7 +105,7 @@ def cel_spec_deps():
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "95fe21a64063d63482a4b1b3159c07b5b7b64d77"  # 11/23/2020
+    CEL_SPEC_GIT_SHA = "c9ae91b24fdaf869d7c59a9f64863249a6a2905e"  # 9/22/2021
     http_archive(
         name = "com_google_cel_spec",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,

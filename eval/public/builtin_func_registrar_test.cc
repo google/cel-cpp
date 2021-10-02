@@ -25,6 +25,9 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using google::api::expr::v1alpha1::Expr;
+using google::api::expr::v1alpha1::SourceInfo;
+
 using ::google::api::expr::internal::MakeGoogleApiDurationMax;
 using ::google::api::expr::internal::MakeGoogleApiDurationMin;
 using testing::HasSubstr;

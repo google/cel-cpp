@@ -312,7 +312,7 @@ TEST_F(ContainerAccessStepTest, TestInvalidContainerType) {
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(*result.ErrorOrDie(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid container type: 'int64_t'")));
+                       HasSubstr("Invalid container type: 'int64")));
 }
 
 INSTANTIATE_TEST_SUITE_P(CombinedContainerTest,

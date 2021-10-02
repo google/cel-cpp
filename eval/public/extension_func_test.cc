@@ -431,8 +431,9 @@ TEST_F(ExtensionTest, TestGetDate) {
   CelValue result;
   absl::CivilSecond date(2015, 2, 3, 4, 5, 6);
   absl::CivilSecond normal_date(2015, 2, 3);
-  absl::TimeZone time_zone = absl::LocalTimeZone();
+  absl::TimeZone time_zone;
   std::string time_zonestr = "America/Los_Angeles";
+  absl::LoadTimeZone(time_zonestr, &time_zone);
 
   absl::Time expected_val = absl::FromCivil(normal_date, time_zone);
   absl::Time input_val = absl::FromCivil(date, time_zone);
