@@ -118,7 +118,7 @@ class FunctionAdapter : public CelFunction {
     return registry->Register(std::move(status).value());
   }
 
-#if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)
+#if defined(__clang__) || !defined(__GNUC__)
   template <int arg_index>
   inline absl::Status RunWrap(absl::Span<const CelValue> arguments,
                               std::tuple<::google::protobuf::Arena*, Arguments...> input,
@@ -174,7 +174,7 @@ class FunctionAdapter : public CelFunction {
                           "Argument number mismatch");
     }
 
-#if defined(__clang_major_version__) && __clang_major_version__ >= 8 && !defined(__APPLE__)
+#if defined(__clang__) || !defined(__GNUC__)
     std::tuple<::google::protobuf::Arena*, Arguments...> input;
     std::get<0>(input) = arena;
     return RunWrap<0>(arguments, input, result, arena);
