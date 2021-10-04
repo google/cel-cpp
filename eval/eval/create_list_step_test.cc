@@ -1,6 +1,6 @@
 #include "eval/eval/create_list_step.h"
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -9,7 +9,7 @@
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/unknown_attribute_set.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {
@@ -19,7 +19,7 @@ namespace {
 
 using testing::Eq;
 using testing::Not;
-using cel_base::testing::IsOk;
+using cel::internal::IsOk;
 
 using google::api::expr::v1alpha1::Expr;
 

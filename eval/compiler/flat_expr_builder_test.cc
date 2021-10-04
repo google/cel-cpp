@@ -6,7 +6,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
@@ -24,7 +24,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {
@@ -41,8 +41,8 @@ using google::protobuf::FieldMask;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Not;
-using cel_base::testing::IsOk;
-using cel_base::testing::StatusIs;
+using cel::internal::IsOk;
+using cel::internal::StatusIs;
 
 class ConcatFunction : public CelFunction {
  public:

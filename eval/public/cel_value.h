@@ -27,7 +27,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google::api::expr::runtime {
 

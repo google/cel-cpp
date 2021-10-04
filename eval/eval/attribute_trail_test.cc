@@ -1,7 +1,7 @@
 #include "eval/eval/attribute_trail.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"

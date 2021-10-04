@@ -1,7 +1,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
@@ -16,7 +16,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {
@@ -29,7 +29,7 @@ using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 using testing::HasSubstr;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 // [1, 2].filter(x, [3, 4].all(y, x < y))
 const char kNestedComprehension[] = R"pb(

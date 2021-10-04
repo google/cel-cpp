@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/algorithm/container.h"
 #include "absl/strings/str_format.h"
@@ -26,7 +26,7 @@ namespace {
 using ::google::api::expr::v1alpha1::Expr;
 using testing::HasSubstr;
 using testing::Not;
-using cel_base::testing::IsOk;
+using cel::internal::IsOk;
 
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,

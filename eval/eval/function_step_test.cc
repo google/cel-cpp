@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
@@ -19,7 +19,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {
@@ -32,7 +32,7 @@ using testing::ElementsAre;
 using testing::Eq;
 using testing::Not;
 using testing::UnorderedElementsAre;
-using cel_base::testing::IsOk;
+using cel::internal::IsOk;
 
 using google::api::expr::v1alpha1::Expr;
 

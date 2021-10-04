@@ -1,6 +1,6 @@
 #include "eval/eval/expression_build_warning.h"
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 
@@ -10,7 +10,7 @@ namespace expr {
 namespace runtime {
 namespace {
 
-using cel_base::testing::IsOk;
+using cel::internal::IsOk;
 
 TEST(BuilderWarnings, NoFailCollects) {
   BuilderWarnings warnings(false);

@@ -1,7 +1,7 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
@@ -11,7 +11,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {

@@ -6,7 +6,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -31,7 +31,7 @@ using google::api::expr::v1alpha1::SourceInfo;
 using ::google::api::expr::internal::MakeGoogleApiDurationMax;
 using ::google::api::expr::internal::MakeGoogleApiDurationMin;
 using testing::HasSubstr;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 struct TestCase {
   std::string test_name;

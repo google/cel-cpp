@@ -1,7 +1,7 @@
 #include "eval/eval/create_struct_step.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -13,7 +13,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {
@@ -29,7 +29,7 @@ using testing::HasSubstr;
 using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 using testutil::EqualsProto;
 

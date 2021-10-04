@@ -4,7 +4,7 @@
 
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
@@ -21,7 +21,7 @@ using google::protobuf::Arena;
 using google::protobuf::FieldDescriptor;
 using test::v1::proto3::TestAllTypes;
 using testing::HasSubstr;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 TEST(FieldAccessTest, SetDuration) {
   Arena arena;

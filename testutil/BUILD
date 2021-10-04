@@ -26,7 +26,7 @@ cc_library(
         "util.h",
     ],
     deps = [
-        "//base:testing",
+        "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],
 )

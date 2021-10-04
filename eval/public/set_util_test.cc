@@ -6,7 +6,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/clock.h"

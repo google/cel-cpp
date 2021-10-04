@@ -10,7 +10,7 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -21,7 +21,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/proto_util.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google::api::expr::runtime {
 

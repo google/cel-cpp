@@ -120,7 +120,7 @@ cc_test(
         ":options",
         ":parser",
         ":source_factory",
-        "//base:testing",
+        "//internal:testing",
         "//testutil:expr_printer",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/strings",

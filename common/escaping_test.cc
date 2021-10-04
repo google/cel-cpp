@@ -1,6 +1,6 @@
 #include "common/escaping.h"
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace google {

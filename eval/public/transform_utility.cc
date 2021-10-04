@@ -12,7 +12,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 
 namespace google {

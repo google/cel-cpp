@@ -42,7 +42,7 @@ cc_test(
     srcs = ["escaping_test.cc"],
     deps = [
         ":escaping",
-        "//base:testing",
+        "//internal:testing",
     ],
 )
 
@@ -51,7 +51,7 @@ cc_library(
     srcs = ["overflow.cc"],
     hdrs = ["overflow.h"],
     deps = [
-        "//base:status_macros",
+        "//util/task:status",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -64,7 +64,7 @@ cc_test(
     srcs = ["overflow_test.cc"],
     deps = [
         ":overflow",
-        "//base:testing",
+        "//internal:testing",
         "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",

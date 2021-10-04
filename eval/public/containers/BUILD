@@ -98,8 +98,8 @@ cc_test(
     ],
     deps = [
         ":container_backed_map_impl",
-        "//base:testing",
         "//eval/public:cel_value",
+        "//internal:testing",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -112,9 +112,9 @@ cc_test(
     ],
     deps = [
         ":field_backed_list_impl",
-        "//base:testing",
         "//eval/eval:evaluator_core",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:testing",
         "//testutil:util",
     ],
 )
@@ -127,8 +127,8 @@ cc_test(
     ],
     deps = [
         ":field_backed_map_impl",
-        "//base:testing",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
@@ -139,8 +139,8 @@ cc_test(
     srcs = ["field_access_test.cc"],
     deps = [
         ":field_access",
-        "//base:testing",
         "//internal:proto_util",
+        "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",

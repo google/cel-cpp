@@ -2,12 +2,12 @@
 
 #include <memory>
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/statusor.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
-#include "base/status_macros.h"
+#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {

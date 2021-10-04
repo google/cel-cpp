@@ -1,6 +1,6 @@
 #include "eval/public/cel_value.h"
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"

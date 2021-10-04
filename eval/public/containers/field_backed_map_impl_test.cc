@@ -2,7 +2,7 @@
 
 #include <limits>
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -17,7 +17,7 @@ namespace {
 using testing::Eq;
 using testing::HasSubstr;
 using testing::UnorderedPointwise;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 class FieldBackedMapTestImpl : public FieldBackedMapImpl {
  public:
