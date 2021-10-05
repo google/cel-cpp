@@ -34,7 +34,7 @@
 #endif
 
 #ifndef EXPECT_OK
-#define ASSERT_OK(expr) EXPECT_THAT(expr, ::cel::internal::IsOk())
+#define EXPECT_OK(expr) EXPECT_THAT(expr, ::cel::internal::IsOk())
 #endif
 
 #ifndef ASSERT_OK_AND_ASSIGN

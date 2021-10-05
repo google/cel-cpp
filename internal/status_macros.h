@@ -136,7 +136,7 @@ class StatusAdaptor final {
 
   StatusAdaptor(StatusAdaptor&&) = delete;
 
-  explicit StatusAdaptor(const absl::Status& status) : builder_(status) {}
+  StatusAdaptor(const absl::Status& status) : builder_(status) {}  // NOLINT
 
   StatusAdaptor& operator=(const StatusAdaptor&) = delete;
 
