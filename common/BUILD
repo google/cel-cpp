@@ -51,7 +51,7 @@ cc_library(
     srcs = ["overflow.cc"],
     hdrs = ["overflow.h"],
     deps = [
-        "//util/task:status",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",

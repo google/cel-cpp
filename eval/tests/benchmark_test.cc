@@ -16,7 +16,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/tests/request_context.pb.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google {
 namespace api {

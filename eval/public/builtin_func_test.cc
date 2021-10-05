@@ -17,7 +17,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 namespace {

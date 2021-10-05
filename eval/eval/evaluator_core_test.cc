@@ -9,7 +9,7 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 

@@ -20,8 +20,8 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/proto_util.h"
+#include "internal/status_macros.h"
 #include "testutil/util.h"
-#include "util/task/status_macros.h"
 
 namespace google::api::expr::runtime {
 

@@ -2,7 +2,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google {
 namespace api {

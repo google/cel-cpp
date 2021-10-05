@@ -76,7 +76,7 @@ bool AddType(std::vector<CelValue::Type>* arg_types) {
 //    return i < j;
 //  };
 //
-//  ASSIGN_OR_RETURN(auto cel_func,
+//  CEL_ASSIGN_OR_RETURN(auto cel_func,
 //      FunctionAdapter<bool, int64_t, int64_t>::Create("<", false, func));
 template <typename ReturnType, typename... Arguments>
 class FunctionAdapter : public CelFunction {

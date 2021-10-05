@@ -9,7 +9,7 @@
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/unknown_attribute_set.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -32,15 +32,15 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   for (auto value : values) {
     auto expr0 = create_list->add_elements();
     expr0->mutable_const_expr()->set_int64_value(value);
-    ASSIGN_OR_RETURN(
+    CEL_ASSIGN_OR_RETURN(
         auto const_step,
         CreateConstValueStep(ConvertConstant(&expr0->const_expr()).value(),
                              expr0->id()));
     path.push_back(std::move(const_step));
   }
 
-  ASSIGN_OR_RETURN(auto step,
-                   CreateCreateListStep(create_list, dummy_expr.id()));
+  CEL_ASSIGN_OR_RETURN(auto step,
+                       CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
@@ -66,14 +66,14 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
     expr0->set_id(ind);
     expr0->mutable_ident_expr()->set_name(var_name);
 
-    ASSIGN_OR_RETURN(auto ident_step,
-                     CreateIdentStep(&expr0->ident_expr(), expr0->id()));
+    CEL_ASSIGN_OR_RETURN(auto ident_step,
+                         CreateIdentStep(&expr0->ident_expr(), expr0->id()));
     path.push_back(std::move(ident_step));
     activation.InsertValue(var_name, value);
   }
 
-  ASSIGN_OR_RETURN(auto step0,
-                   CreateCreateListStep(create_list, dummy_expr.id()));
+  CEL_ASSIGN_OR_RETURN(auto step0,
+                       CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
   CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},

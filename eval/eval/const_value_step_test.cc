@@ -6,7 +6,7 @@
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -22,7 +22,7 @@ using google::protobuf::Arena;
 absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
                                                const Constant* const_expr,
                                                Arena* arena) {
-  ASSIGN_OR_RETURN(
+  CEL_ASSIGN_OR_RETURN(
       auto step,
       CreateConstValueStep(ConvertConstant(const_expr).value(), expr->id()));
 

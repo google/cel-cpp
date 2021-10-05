@@ -24,7 +24,7 @@ cc_library(
     ],
     deps = [
         ":cel_value_internal",
-        "//util/task:status",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -385,9 +385,9 @@ cc_test(
         ":cel_function",
         "//eval/eval:attribute_trail",
         "//eval/eval:ident_step",
+        "//internal:status_macros",
         "//internal:testing",
         "//parser",
-        "//util/task:status",
     ],
 )
 
@@ -412,9 +412,9 @@ cc_test(
         ":activation",
         ":activation_bind_helper",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:status_macros",
         "//internal:testing",
         "//testutil:util",
-        "//util/task:status",
         "@com_google_absl//absl/status",
     ],
 )
@@ -427,8 +427,8 @@ cc_test(
     deps = [
         ":activation",
         ":cel_function_provider",
+        "//internal:status_macros",
         "//internal:testing",
-        "//util/task:status",
     ],
 )
 
@@ -442,8 +442,8 @@ cc_test(
         ":cel_function",
         ":cel_function_provider",
         ":cel_function_registry",
+        "//internal:status_macros",
         "//internal:testing",
-        "//util/task:status",
         "@com_google_absl//absl/status:statusor",
     ],
 )
@@ -458,8 +458,8 @@ cc_test(
         ":cel_function",
         ":cel_function_adapter",
         ":cel_value",
+        "//internal:status_macros",
         "//internal:testing",
-        "//util/task:status",
     ],
 )
 
@@ -507,8 +507,8 @@ cc_test(
         ":cel_value",
         "//eval/public/structs:cel_proto_wrapper",
         "//internal:proto_util",
+        "//internal:status_macros",
         "//internal:testing",
-        "//util/task:status",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
@@ -531,8 +531,8 @@ cc_test(
         ":cel_value",
         ":extension_func_registrar",
         "//eval/public/structs:cel_proto_wrapper",
+        "//internal:status_macros",
         "//internal:testing",
-        "//util/task:status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:span",
@@ -580,9 +580,9 @@ cc_test(
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:status_macros",
         "//internal:testing",
         "//testutil:util",
-        "//util/task:status",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -658,7 +658,7 @@ cc_library(
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "//internal:proto_util",
-        "//util/task:status",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

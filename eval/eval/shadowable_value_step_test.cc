@@ -7,7 +7,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_value.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -20,7 +20,8 @@ absl::StatusOr<CelValue> RunShadowableExpression(const std::string& identifier,
                                                  const CelValue& value,
                                                  const Activation& activation,
                                                  Arena* arena) {
-  ASSIGN_OR_RETURN(auto step, CreateShadowableValueStep(identifier, value, 1));
+  CEL_ASSIGN_OR_RETURN(auto step,
+                       CreateShadowableValueStep(identifier, value, 1));
   ExecutionPath path;
   path.push_back(std::move(step));
 

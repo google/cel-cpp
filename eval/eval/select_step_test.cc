@@ -12,8 +12,8 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/status_macros.h"
 #include "testutil/util.h"
-#include "util/task/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -42,9 +42,9 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
 
   auto ident = expr0->mutable_ident_expr();
   ident->set_name("target");
-  ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0->id()));
-  ASSIGN_OR_RETURN(auto step1,
-                   CreateSelectStep(select, dummy_expr.id(), unknown_path));
+  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0->id()));
+  CEL_ASSIGN_OR_RETURN(auto step1,
+                       CreateSelectStep(select, dummy_expr.id(), unknown_path));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));

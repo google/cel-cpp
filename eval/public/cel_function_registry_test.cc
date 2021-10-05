@@ -8,7 +8,7 @@
 #include "eval/public/activation.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 

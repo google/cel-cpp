@@ -25,7 +25,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -1392,8 +1392,8 @@ absl::Status RunTernaryExpression(CelValue selector, CelValue value1,
   arg2->mutable_ident_expr()->set_name("value2");
 
   FlatExprBuilder builder;
-  ASSIGN_OR_RETURN(auto cel_expr,
-                   builder.CreateExpression(&expr, &source_info));
+  CEL_ASSIGN_OR_RETURN(auto cel_expr,
+                       builder.CreateExpression(&expr, &source_info));
 
   std::string variable = "test";
 
@@ -1402,7 +1402,7 @@ absl::Status RunTernaryExpression(CelValue selector, CelValue value1,
   activation.InsertValue("value1", value1);
   activation.InsertValue("value2", value2);
 
-  ASSIGN_OR_RETURN(auto eval, cel_expr->Evaluate(activation, arena));
+  CEL_ASSIGN_OR_RETURN(auto eval, cel_expr->Evaluate(activation, arena));
   *result = eval;
   return absl::OkStatus();
 }

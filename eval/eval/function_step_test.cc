@@ -20,7 +20,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 

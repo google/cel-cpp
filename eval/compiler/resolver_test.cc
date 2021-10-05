@@ -9,7 +9,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/testutil/test_message.pb.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 

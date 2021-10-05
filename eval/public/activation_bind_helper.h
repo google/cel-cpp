@@ -34,7 +34,7 @@ enum class ProtoUnsetFieldOptions {
 //   person.set_name("John Doe");
 //   person.age(42);
 //
-//   RETURN_IF_ERROR(BindProtoToActivation(&person, &arena, &activation));
+//   CEL_RETURN_IF_ERROR(BindProtoToActivation(&person, &arena, &activation));
 //
 // After this snippet, activation will have two parameters bound:
 //  "name", with string value of "John Doe"

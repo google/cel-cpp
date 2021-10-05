@@ -19,7 +19,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/extension_func_registrar.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google {
 namespace api {

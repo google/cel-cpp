@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_CEL_CPP_BASE_TESTING_H_
-#define THIRD_PARTY_CEL_CPP_BASE_TESTING_H_
+#ifndef THIRD_PARTY_CEL_CPP_INTERNAL_TESTING_H_
+#define THIRD_PARTY_CEL_CPP_INTERNAL_TESTING_H_
 
 #include <ostream>
 #include <string>
@@ -25,9 +25,25 @@
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "internal/status_builder.h"
+#include "internal/status_macros.h"
 
-namespace cel_base {
-namespace testing {
+#ifndef ASSERT_OK
+#define ASSERT_OK(expr) ASSERT_THAT(expr, ::cel::internal::IsOk())
+#endif
+
+#ifndef EXPECT_OK
+#define ASSERT_OK(expr) EXPECT_THAT(expr, ::cel::internal::IsOk())
+#endif
+
+#ifndef ASSERT_OK_AND_ASSIGN
+#define ASSERT_OK_AND_ASSIGN(lhs, rhs) \
+  CEL_ASSIGN_OR_RETURN(                \
+      lhs, rhs, ::cel::internal::AddFatalFailure(__FILE__, __LINE__, #rhs, _))
+#endif
+
+namespace cel::internal {
 
 inline const absl::Status& GetStatus(const absl::Status& status) {
   return status;
@@ -147,10 +163,12 @@ StatusIsMatcher StatusIs(StatusCodeMatcher&& code_matcher) {
   return StatusIs(std::forward<StatusCodeMatcher>(code_matcher), ::testing::_);
 }
 
+void AddFatalFailure(const char* file, int line, absl::string_view expression,
+                     const StatusBuilder& builder);
+
 // Returns a gMock matcher that matches a Status or StatusOr<> which is OK.
 inline IsOkMatcher IsOk() { return IsOkMatcher(); }
 
-}  // namespace testing
-}  // namespace cel_base
+}  // namespace cel::internal
 
-#endif  // THIRD_PARTY_CEL_CPP_BASE_TESTING_H_
+#endif  // THIRD_PARTY_CEL_CPP_INTERNAL_TESTING_H_

@@ -29,7 +29,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
-#include "util/task/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -459,7 +459,7 @@ class CelMap {
   // as a `CelError` value, depending on the context.
   virtual absl::StatusOr<bool> Has(const CelValue& key) const {
     // This check safeguards against issues with invalid key types such as NaN.
-    RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
+    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
     auto value = (*this)[key];
     if (!value.has_value()) {
       return false;

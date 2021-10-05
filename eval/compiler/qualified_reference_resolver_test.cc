@@ -12,8 +12,8 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "internal/status_macros.h"
 #include "testutil/util.h"
-#include "util/task/status_macros.h"
 
 namespace google::api::expr::runtime {
 

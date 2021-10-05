@@ -10,8 +10,8 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/status_macros.h"
 #include "testutil/util.h"
-#include "util/task/status_macros.h"
 
 namespace google {
 namespace api {
