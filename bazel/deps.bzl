@@ -6,30 +6,47 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def base_deps():
     """Base evaluator and test dependencies."""
+
+    # LTS, March 2021, Patch 2
+    ABSL_SHA1 = "278e0a071885a22dcd2fd1b5576cc44757299343"
+    ABSL_SHA256 = "ff5ea6f91f9bcd0f368346ef707d0a80a372b71de5b6ae69ac11d0ca41688b8f"
     http_archive(
         name = "com_google_absl",
+        urls = ["https://github.com/abseil/abseil-cpp/archive/" + ABSL_SHA1 + ".zip"],
+        strip_prefix = "abseil-cpp-" + ABSL_SHA1,
+        sha256 = ABSL_SHA256,
         patches = ["//bazel:abseil.patch"],
         patch_args = ["-p1"],
-        strip_prefix = "abseil-cpp-master",
-        urls = ["https://github.com/abseil/abseil-cpp/archive/master.zip"],
     )
 
+    # v1.11.0
+    GOOGLETEST_SHA1 = "e2239ee6043f73722e7aa812a459f54a28552929"
+    GOOGLETEST_SHA256 = "8daa1a71395892f7c1ec5f7cb5b099a02e606be720d62f1a6a98f8f8898ec826"
     http_archive(
         name = "com_google_googletest",
-        urls = ["https://github.com/google/googletest/archive/master.zip"],
-        strip_prefix = "googletest-master",
+        urls = ["https://github.com/google/googletest/archive/" + GOOGLETEST_SHA1 + ".zip"],
+        strip_prefix = "googletest-" + GOOGLETEST_SHA1,
+        sha256 = GOOGLETEST_SHA256,
     )
 
+    # v1.6.0
+    BENCHMARK_SHA1 = "f91b6b42b1b9854772a90ae9501464a161707d1e"
+    BENCHMARK_SHA256 = "00bd0837db9266c758a087cdf0831a0d3e337c6bb9e3fad75d2be4f9bf480d95"
     http_archive(
         name = "com_github_google_benchmark",
-        urls = ["https://github.com/google/benchmark/archive/master.zip"],
-        strip_prefix = "benchmark-master",
+        urls = ["https://github.com/google/benchmark/archive/" + BENCHMARK_SHA1 + ".zip"],
+        strip_prefix = "benchmark-" + BENCHMARK_SHA1,
+        sha256 = BENCHMARK_SHA256,
     )
 
+    # 2021-09-01
+    RE2_SHA1 = "8e08f47b11b413302749c0d8b17a1c94777495d5"
+    RE2_SHA256 = "d635a3353bb8ffc33b0779c97c1c9d6f2dbdda286106a73bbcf498f66edacd74"
     http_archive(
         name = "com_googlesource_code_re2",
-        strip_prefix = "re2-main",
-        urls = ["https://github.com/google/re2/archive/main.zip"],
+        urls = ["https://github.com/google/re2/archive/" + RE2_SHA1 + ".zip"],
+        strip_prefix = "re2-" + RE2_SHA1,
+        sha256 = RE2_SHA256,
     )
 
     PROTOBUF_VERSION = "3.18.0"
