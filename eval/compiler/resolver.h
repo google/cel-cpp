@@ -1,16 +1,17 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 
+#include <cstdint>
+#include <vector>
+
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Resolver assists with finding functions and types within a container.
 //
@@ -84,9 +85,6 @@ inline std::vector<CelValue::Type> ArgumentsMatcher(int argument_count) {
   return argument_matcher;
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_

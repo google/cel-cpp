@@ -19,6 +19,8 @@
 //    const MyMessage * msg = google::protobuf::Arena::CreateMessage<MyMessage>(arena);
 //    CelValue value = CelProtoWrapper::CreateMessage(msg, &arena);
 
+#include <cstdint>
+
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -242,7 +244,9 @@ class CelValue {
 
   // Returns stored uint64_t value.
   // Fails if stored value type is not uint64_t.
-  uint64_t Uint64OrDie() const { return GetValueOrDie<uint64_t>(Type::kUint64); }
+  uint64_t Uint64OrDie() const {
+    return GetValueOrDie<uint64_t>(Type::kUint64);
+  }
 
   // Returns stored double value.
   // Fails if stored value type is not double.

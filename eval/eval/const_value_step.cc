@@ -1,17 +1,16 @@
 #include "eval/eval/const_value_step.h"
 
+#include <cstdint>
+
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
-using google::api::expr::v1alpha1::Constant;
+using ::google::api::expr::v1alpha1::Constant;
 
 namespace {
 
@@ -84,7 +83,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
       CelValue::CreateInt64(value_descriptor->number()), expr_id, false);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

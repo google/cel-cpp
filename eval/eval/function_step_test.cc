@@ -11,6 +11,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
@@ -21,10 +22,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -785,7 +783,4 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

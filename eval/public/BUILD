@@ -86,6 +86,7 @@ cc_library(
         "activation.h",
     ],
     deps = [
+        ":base_activation",
         ":cel_attribute",
         ":cel_function",
         ":cel_value",
@@ -158,7 +159,7 @@ cc_library(
         "cel_function_provider.h",
     ],
     deps = [
-        ":activation",
+        ":base_activation",
         ":cel_function",
         "@com_google_absl//absl/status:statusor",
     ],
@@ -224,7 +225,7 @@ cc_library(
         "cel_expression.h",
     ],
     deps = [
-        ":activation",
+        ":base_activation",
         ":cel_function",
         ":cel_function_registry",
         ":cel_type_registry",
@@ -424,7 +425,7 @@ cc_test(
         "cel_function_provider_test.cc",
     ],
     deps = [
-        ":cel_function",
+        ":activation",
         ":cel_function_provider",
         "//internal:testing",
         "//util/task:status",
@@ -437,6 +438,7 @@ cc_test(
         "cel_function_registry_test.cc",
     ],
     deps = [
+        ":activation",
         ":cel_function",
         ":cel_function_provider",
         ":cel_function_registry",
@@ -670,6 +672,19 @@ cc_library(
     srcs = ["set_util.cc"],
     hdrs = ["set_util.h"],
     deps = ["//eval/public:cel_value"],
+)
+
+cc_library(
+    name = "base_activation",
+    hdrs = ["base_activation.h"],
+    deps = [
+        ":cel_attribute",
+        ":cel_function",
+        ":cel_value",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_test(

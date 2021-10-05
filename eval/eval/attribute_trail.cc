@@ -3,10 +3,8 @@
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 // Creates AttributeTrail with attribute path incremented by "qualifier".
 AttributeTrail AttributeTrail::Step(CelAttributeQualifier qualifier,
                                     google::protobuf::Arena* arena) const {
@@ -18,7 +16,5 @@ AttributeTrail AttributeTrail::Step(CelAttributeQualifier qualifier,
   return AttributeTrail(google::protobuf::Arena::Create<CelAttribute>(
       arena, attribute_->variable(), std::move(qualifiers)));
 }
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

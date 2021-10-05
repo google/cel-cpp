@@ -1,5 +1,6 @@
 #include "eval/public/cel_value.h"
 
+#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"

@@ -7,6 +7,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
@@ -18,10 +19,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -207,7 +205,4 @@ TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

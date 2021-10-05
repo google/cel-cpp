@@ -1,6 +1,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_QUALIFIED_REFERENCE_RESOLVER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_QUALIFIED_REFERENCE_RESOLVER_H_
 
+#include <cstdint>
+
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/map.h"
@@ -10,10 +12,7 @@
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // A transformation over input expression that produces a new expression with
 // subexpressions replaced by appropriate expressions referring to the
@@ -25,8 +24,6 @@ absl::StatusOr<absl::optional<google::api::expr::v1alpha1::Expr>> ResolveReferen
     const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>& reference_map,
     const Resolver& resolver, BuilderWarnings* warnings);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
+
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_COMPILER_QUALIFIED_REFERENCE_RESOLVER_H_

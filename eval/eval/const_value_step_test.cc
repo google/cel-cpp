@@ -5,12 +5,10 @@
 #include "gtest/gtest.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/public/activation.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -162,7 +160,4 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

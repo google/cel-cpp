@@ -1,5 +1,6 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
+#include <cstdint>
 #include <functional>
 
 #include "absl/status/status.h"
@@ -14,16 +15,13 @@
 #include "eval/public/cel_function_registry.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Constant;
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::Reference;
+using ::google::api::expr::v1alpha1::Constant;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Reference;
 
 // Determines if function is implemented with custom evaluation step instead of
 // registered.
@@ -340,7 +338,4 @@ absl::StatusOr<absl::optional<Expr>> ResolveReferences(
   }
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

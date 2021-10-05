@@ -105,7 +105,7 @@ cc_library(
     testonly = 1,
     hdrs = ["mock_cel_expression.h"],
     deps = [
-        "//eval/public:activation",
+        "//eval/public:base_activation",
         "//eval/public:cel_expression",
         "//internal:testing",
         "@com_google_absl//absl/status:statusor",

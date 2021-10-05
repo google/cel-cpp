@@ -9,6 +9,7 @@
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
@@ -17,10 +18,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -321,7 +319,4 @@ INSTANTIATE_TEST_SUITE_P(CombinedContainerTest,
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

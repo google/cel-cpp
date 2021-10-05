@@ -5,7 +5,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "util/task/status_macros.h"
 
@@ -43,20 +42,14 @@ const int64_t kMinUnixTime =
 const int64_t kMaxUnixTime =
     (MaxTime() - absl::UnixEpoch()) / kOneSecondDuration;
 
-template <typename... MP>
-Status CheckRange(bool valid_expression, absl::string_view error_message,
-                  MP... message_parts) {
+Status CheckRange(bool valid_expression, absl::string_view error_message) {
   return valid_expression ? absl::OkStatus()
-                          : absl::OutOfRangeError(
-                                absl::StrCat(error_message, message_parts...));
+                          : absl::OutOfRangeError(error_message);
 }
 
-template <typename... MP>
-Status CheckArgument(bool valid_expression, absl::string_view error_message,
-                     MP... message_parts) {
+Status CheckArgument(bool valid_expression, absl::string_view error_message) {
   return valid_expression ? absl::OkStatus()
-                          : absl::InvalidArgumentError(
-                                absl::StrCat(error_message, message_parts...));
+                          : absl::InvalidArgumentError(error_message);
 }
 
 // Determine whether the duration is finite.

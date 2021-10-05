@@ -4,10 +4,7 @@
 #include "gtest/gtest.h"
 #include "absl/status/status.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 namespace {
 
 using cel::internal::IsOk;
@@ -31,7 +28,4 @@ TEST(BuilderWarnings, FailReturnsStatus) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

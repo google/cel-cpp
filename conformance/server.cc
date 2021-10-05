@@ -12,6 +12,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/strings/str_split.h"
+#include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/containers/container_backed_list_impl.h"
@@ -29,10 +30,7 @@ using ::google::protobuf::util::MessageToJsonString;
 
 ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 class ConformanceServiceImpl {
  public:
@@ -218,10 +216,7 @@ int RunServer(bool optimize) {
   return 0;
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 int main(int argc, char** argv) {
   absl::ParseCommandLine(argc, argv);

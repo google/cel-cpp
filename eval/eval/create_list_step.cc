@@ -1,13 +1,13 @@
 #include "eval/eval/create_list_step.h"
 
+#include <cstdint>
+
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "eval/eval/expression_step_base.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -77,7 +77,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
                                            create_list_expr->elements_size());
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

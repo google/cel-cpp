@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_EXPRESSION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_EXPRESSION_H_
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -8,7 +9,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "eval/public/activation.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"

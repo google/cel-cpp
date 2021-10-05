@@ -3,14 +3,12 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -165,7 +163,4 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

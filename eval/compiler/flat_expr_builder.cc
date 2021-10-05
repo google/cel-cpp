@@ -1,5 +1,6 @@
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <cstdint>
 #include <memory>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
@@ -34,24 +35,21 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/source_position.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::CheckedExpr;
-using google::api::expr::v1alpha1::Constant;
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::Reference;
-using google::api::expr::v1alpha1::SourceInfo;
-using Ident = google::api::expr::v1alpha1::Expr::Ident;
-using Select = google::api::expr::v1alpha1::Expr::Select;
-using Call = google::api::expr::v1alpha1::Expr::Call;
-using CreateList = google::api::expr::v1alpha1::Expr::CreateList;
-using CreateStruct = google::api::expr::v1alpha1::Expr::CreateStruct;
-using Comprehension = google::api::expr::v1alpha1::Expr::Comprehension;
+using ::google::api::expr::v1alpha1::CheckedExpr;
+using ::google::api::expr::v1alpha1::Constant;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Reference;
+using ::google::api::expr::v1alpha1::SourceInfo;
+using Ident = ::google::api::expr::v1alpha1::Expr::Ident;
+using Select = ::google::api::expr::v1alpha1::Expr::Select;
+using Call = ::google::api::expr::v1alpha1::Expr::Call;
+using CreateList = ::google::api::expr::v1alpha1::Expr::CreateList;
+using CreateStruct = ::google::api::expr::v1alpha1::Expr::CreateStruct;
+using Comprehension = ::google::api::expr::v1alpha1::Expr::Comprehension;
 
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
@@ -885,7 +883,4 @@ FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr) const {
                               /*warnings=*/nullptr);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

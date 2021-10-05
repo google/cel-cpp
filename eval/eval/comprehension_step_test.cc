@@ -11,16 +11,14 @@
 #include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 namespace {
 
 using ::google::protobuf::ListValue;
@@ -213,7 +211,4 @@ TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

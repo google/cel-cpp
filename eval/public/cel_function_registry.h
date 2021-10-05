@@ -8,10 +8,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelFunctionRegistry class allows to register builtin or custom
 // CelFunction handlers with it and look them up when creating
@@ -82,9 +79,6 @@ class CelFunctionRegistry {
   absl::node_hash_map<std::string, RegistryEntry> functions_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_REGISTRY_H_

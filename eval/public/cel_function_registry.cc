@@ -1,9 +1,6 @@
 #include "eval/public/cel_function_registry.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 absl::Status CelFunctionRegistry::Register(
     std::unique_ptr<CelFunction> function) {
@@ -106,7 +103,4 @@ bool CelFunctionRegistry::DescriptorRegistered(
                .empty());
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

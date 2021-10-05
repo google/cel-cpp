@@ -6,6 +6,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
@@ -14,19 +15,16 @@
 #include "testutil/util.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
+using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
 using testutil::EqualsProto;
-
-using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpression(const CelValue target,
@@ -666,8 +664,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
 }
 
 INSTANTIATE_TEST_SUITE_P(SelectStepTest, SelectStepTest, testing::Bool());
+
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

@@ -2,12 +2,11 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "eval/public/activation.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
 using testing::Eq;
@@ -71,7 +70,5 @@ TEST(CreateActivationFunctionProviderTest, AmbiguousLookup) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

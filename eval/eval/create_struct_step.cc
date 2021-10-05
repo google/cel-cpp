@@ -1,5 +1,6 @@
 #include "eval/eval/create_struct_step.h"
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -8,15 +9,13 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "eval/eval/expression_step_base.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -293,7 +292,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
   }
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

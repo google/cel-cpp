@@ -1,5 +1,7 @@
 #include "eval/eval/comprehension_step.h"
 
+#include <cstdint>
+
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
@@ -7,10 +9,7 @@
 #include "eval/public/cel_attribute.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var
@@ -248,7 +247,4 @@ absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -6,10 +6,7 @@
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 using google::api::expr::v1alpha1::Expr;
 
@@ -37,7 +34,4 @@ TEST(AttributeTrailTest, AttributeTrailStep) {
             CelAttribute(root, {CelAttributeQualifier::Create(step_value)}));
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

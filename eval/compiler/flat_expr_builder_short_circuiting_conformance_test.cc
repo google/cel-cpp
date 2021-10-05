@@ -18,13 +18,11 @@
 #include "eval/public/unknown_set.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::SizeIs;
 
@@ -474,7 +472,5 @@ INSTANTIATE_TEST_SUITE_P(Test, ShortCircuitingTest,
                          testing::Values(false, true), &TestName);
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

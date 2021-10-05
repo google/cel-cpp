@@ -7,6 +7,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
@@ -15,10 +16,8 @@
 #include "testutil/util.h"
 #include "util/task/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
 using ::google::protobuf::Arena;
@@ -721,7 +720,4 @@ INSTANTIATE_TEST_SUITE_P(CombinedCreateStructTest, CreateCreateStructStepTest,
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -6,10 +6,7 @@
 #include "absl/status/statusor.h"
 #include "eval/public/cel_expression.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelExpressionBuilder implementation.
 // Builds instances of CelExpressionFlatImpl.
@@ -108,9 +105,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_qualified_type_identifiers_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_

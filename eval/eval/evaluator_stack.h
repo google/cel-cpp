@@ -3,13 +3,11 @@
 
 #include <vector>
 
+#include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelValue stack.
 // Implementation is based on vector to allow passing parameters from
@@ -127,8 +125,6 @@ class EvaluatorStack {
   size_t current_size_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
+
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_

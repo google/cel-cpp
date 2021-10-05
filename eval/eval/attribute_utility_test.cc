@@ -8,12 +8,9 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
-using google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::NotNull;
 using testing::SizeIs;
@@ -180,7 +177,4 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
   EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
