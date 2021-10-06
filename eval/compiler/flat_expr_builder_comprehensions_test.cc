@@ -1,12 +1,11 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
@@ -16,12 +15,10 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -29,7 +26,7 @@ using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 using testing::HasSubstr;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 // [1, 2].filter(x, [3, 4].all(y, x < y))
 const char kNestedComprehension[] = R"pb(
@@ -207,7 +204,4 @@ TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -1,16 +1,12 @@
 #include "eval/eval/expression_build_warning.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 namespace {
 
-using cel_base::testing::IsOk;
+using cel::internal::IsOk;
 
 TEST(BuilderWarnings, NoFailCollects) {
   BuilderWarnings warnings(false);
@@ -31,7 +27,4 @@ TEST(BuilderWarnings, FailReturnsStatus) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

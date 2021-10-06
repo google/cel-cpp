@@ -6,12 +6,11 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
@@ -24,12 +23,10 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -41,8 +38,8 @@ using google::protobuf::FieldMask;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Not;
-using cel_base::testing::IsOk;
-using cel_base::testing::StatusIs;
+using cel::internal::IsOk;
+using cel::internal::StatusIs;
 
 class ConcatFunction : public CelFunction {
  public:
@@ -1394,8 +1391,8 @@ absl::Status RunTernaryExpression(CelValue selector, CelValue value1,
   arg2->mutable_ident_expr()->set_name("value2");
 
   FlatExprBuilder builder;
-  ASSIGN_OR_RETURN(auto cel_expr,
-                   builder.CreateExpression(&expr, &source_info));
+  CEL_ASSIGN_OR_RETURN(auto cel_expr,
+                       builder.CreateExpression(&expr, &source_info));
 
   std::string variable = "test";
 
@@ -1404,7 +1401,7 @@ absl::Status RunTernaryExpression(CelValue selector, CelValue value1,
   activation.InsertValue("value1", value1);
   activation.InsertValue("value2", value2);
 
-  ASSIGN_OR_RETURN(auto eval, cel_expr->Evaluate(activation, arena));
+  CEL_ASSIGN_OR_RETURN(auto eval, cel_expr->Evaluate(activation, arena));
   *result = eval;
   return absl::OkStatus();
 }
@@ -1541,7 +1538,4 @@ TEST(FlatExprBuilderTest, EmptyCallList) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

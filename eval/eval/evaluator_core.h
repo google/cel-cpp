@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
@@ -21,16 +22,13 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
-#include "eval/public/activation.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
 class ExecutionFrame;
@@ -218,8 +216,8 @@ class CelExpressionFlatImpl : public CelExpression {
   // flattened AST tree. Max iterations dictates the maximum number of
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
-  CelExpressionFlatImpl(const google::api::expr::v1alpha1::Expr* root_expr,
-                        ExecutionPath path, int max_iterations,
+  CelExpressionFlatImpl(const Expr* root_expr, ExecutionPath path,
+                        int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
                         bool enable_unknown_function_results = false,
@@ -271,9 +269,6 @@ class CelExpressionFlatImpl : public CelExpression {
   bool enable_missing_attribute_errors_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_CORE_H_

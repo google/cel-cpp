@@ -1,8 +1,12 @@
 #include "eval/eval/select_step.h"
 
+#include <cstdint>
+
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_value.h"
@@ -10,16 +14,13 @@
 #include "eval/public/containers/field_backed_list_impl.h"
 #include "eval/public/containers/field_backed_map_impl.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
-using google::protobuf::Descriptor;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::Reflection;
+using ::google::protobuf::Descriptor;
+using ::google::protobuf::FieldDescriptor;
+using ::google::protobuf::Reflection;
 
 // SelectStep performs message field access specified by Expr::Select
 // message.
@@ -240,7 +241,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
       select_expr->field(), select_expr->test_only(), expr_id, select_path);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

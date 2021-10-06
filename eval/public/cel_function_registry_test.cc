@@ -2,17 +2,15 @@
 
 #include <memory>
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/statusor.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
 using testing::Eq;
@@ -108,7 +106,5 @@ TEST(CelFunctionRegistryTest, DefaultLazyProvider) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

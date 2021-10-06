@@ -1,32 +1,29 @@
 #include "eval/eval/select_step.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
+using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::HasSubstr;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 using testutil::EqualsProto;
-
-using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpression(const CelValue target,
@@ -44,9 +41,9 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
 
   auto ident = expr0->mutable_ident_expr();
   ident->set_name("target");
-  ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0->id()));
-  ASSIGN_OR_RETURN(auto step1,
-                   CreateSelectStep(select, dummy_expr.id(), unknown_path));
+  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0->id()));
+  CEL_ASSIGN_OR_RETURN(auto step1,
+                       CreateSelectStep(select, dummy_expr.id(), unknown_path));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -666,8 +663,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
 }
 
 INSTANTIATE_TEST_SUITE_P(SelectStepTest, SelectStepTest, testing::Bool());
+
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

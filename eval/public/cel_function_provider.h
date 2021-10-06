@@ -1,14 +1,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_PROVIDER_H_
 
+#include <memory>
+
 #include "absl/status/statusor.h"
-#include "eval/public/activation.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_function.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelFunctionProvider is an interface for providers of lazy CelFunctions (i.e.
 // implementation isn't available until evaluation time based on the
@@ -30,9 +29,6 @@ class CelFunctionProvider {
 // use-case.
 std::unique_ptr<CelFunctionProvider> CreateActivationFunctionProvider();
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_PROVIDER_H_

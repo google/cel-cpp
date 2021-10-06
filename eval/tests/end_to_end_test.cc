@@ -1,8 +1,6 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -10,8 +8,9 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
 
 namespace google {
 namespace api {

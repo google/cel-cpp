@@ -1,12 +1,9 @@
 #include "eval/eval/evaluator_stack.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
 using testing::NotNull;
@@ -72,7 +69,5 @@ TEST(EvaluatorStackTest, Clear) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime

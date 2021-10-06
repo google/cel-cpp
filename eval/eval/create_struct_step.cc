@@ -1,5 +1,6 @@
 #include "eval/eval/create_struct_step.h"
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -8,15 +9,13 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "eval/eval/expression_step_base.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -202,7 +201,7 @@ absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   }
 
   CelValue result;
-  RETURN_IF_ERROR(DoEvaluate(frame, &result));
+  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result));
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(result);
 
@@ -230,7 +229,7 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
     int map_key_index = 2 * i;
     int map_value_index = map_key_index + 1;
     const CelValue& map_key = args[map_key_index];
-    RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
+    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
     map_entries.push_back({map_key, args[map_value_index]});
   }
 
@@ -257,7 +256,7 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
   }
 
   CelValue result;
-  RETURN_IF_ERROR(DoEvaluate(frame, &result));
+  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result));
 
   frame->value_stack().Pop(2 * entry_count_);
   frame->value_stack().Push(result);
@@ -293,7 +292,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
   }
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

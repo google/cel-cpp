@@ -1,8 +1,7 @@
 #include "eval/public/cel_function_adapter.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

@@ -1,12 +1,12 @@
 #include "eval/eval/jump_step.h"
 
+#include <cstdint>
+
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "eval/eval/expression_step_base.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -121,7 +121,4 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
 // TODO(issues/41) Make sure Unknowns are properly supported by ternary
 // operation.
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -1,5 +1,6 @@
 #include "eval/eval/ident_step.h"
 
+#include <cstdint>
 #include <string>
 
 #include "google/protobuf/arena.h"
@@ -10,10 +11,7 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/unknown_attribute_set.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 class IdentStep : public ExpressionStepBase {
@@ -106,7 +104,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
   return absl::make_unique<IdentStep>(ident_expr->name(), expr_id);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -1,13 +1,12 @@
 #include "eval/public/activation.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "parser/parser.h"
-#include "base/status_macros.h"
 
 namespace google {
 namespace api {
@@ -24,7 +23,7 @@ using testing::HasSubstr;
 using testing::IsEmpty;
 using testing::Property;
 using testing::Return;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 class MockValueProducer : public CelValueProducer {
  public:

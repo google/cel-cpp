@@ -5,12 +5,11 @@
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
-#include "base/status_macros.h"
+#include "internal/casts.h"
+#include "internal/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
 absl::Status CheckIterAccess(CelExpressionFlatEvaluationState* state,
@@ -72,7 +71,7 @@ absl::Status ExecutionFrame::PopIterFrame() {
 absl::Status ExecutionFrame::SetIterVar(const std::string& name,
                                         const CelValue& val,
                                         AttributeTrail trail) {
-  RETURN_IF_ERROR(CheckIterAccess(state_, name));
+  CEL_RETURN_IF_ERROR(CheckIterAccess(state_, name));
   state_->IterStackTop()[name] = {val, trail};
 
   return absl::OkStatus();
@@ -84,7 +83,7 @@ absl::Status ExecutionFrame::SetIterVar(const std::string& name,
 }
 
 absl::Status ExecutionFrame::ClearIterVar(const std::string& name) {
-  RETURN_IF_ERROR(CheckIterAccess(state_, name));
+  CEL_RETURN_IF_ERROR(CheckIterAccess(state_, name));
   state_->IterStackTop().erase(name);
   return absl::OkStatus();
 }
@@ -144,7 +143,8 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,
     CelEvaluationListener callback) const {
-  auto state = down_cast<CelExpressionFlatEvaluationState*>(_state);
+  auto state =
+      ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
   state->Reset();
 
   // Using both unknown attribute patterns and unknown paths via FieldMask is
@@ -197,7 +197,4 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
   return value;
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

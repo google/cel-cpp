@@ -7,12 +7,11 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/algorithm/container.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/optional.h"
+#include "internal/testing.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
 #include "testutil/expr_printer.h"
@@ -26,7 +25,7 @@ namespace {
 using ::google::api::expr::v1alpha1::Expr;
 using testing::HasSubstr;
 using testing::Not;
-using cel_base::testing::IsOk;
+using cel::internal::IsOk;
 
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,

@@ -5,22 +5,19 @@
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -28,7 +25,7 @@ using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Struct;
 using testing::HasSubstr;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 using TestParamType = std::tuple<bool, bool>;
 
@@ -321,7 +318,4 @@ INSTANTIATE_TEST_SUITE_P(CombinedContainerTest,
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

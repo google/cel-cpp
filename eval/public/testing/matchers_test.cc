@@ -1,11 +1,10 @@
 #include "eval/public/testing/matchers.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
 
 namespace google {

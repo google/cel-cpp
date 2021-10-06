@@ -1,16 +1,15 @@
 #include "eval/eval/comprehension_step.h"
 
+#include <cstdint>
+
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_attribute.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var
@@ -108,20 +107,20 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
         absl::StrCat("ComprehensionNextStep: want int64_t, got ",
                      CelValue::TypeName(current_index_value.type())));
   }
-  RETURN_IF_ERROR(frame->IncrementIterations());
+  CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
   int64_t current_index = current_index_value.Int64OrDie();
   if (current_index == -1) {
-    RETURN_IF_ERROR(frame->PushIterFrame());
+    CEL_RETURN_IF_ERROR(frame->PushIterFrame());
   }
 
   // Update stack for breaking out of loop or next round.
   CelValue loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  RETURN_IF_ERROR(frame->SetIterVar(accu_var_, loop_step));
+  CEL_RETURN_IF_ERROR(frame->SetIterVar(accu_var_, loop_step));
   if (current_index >= cel_list->size() - 1) {
-    RETURN_IF_ERROR(frame->ClearIterVar(iter_var_));
+    CEL_RETURN_IF_ERROR(frame->ClearIterVar(iter_var_));
     return frame->JumpTo(jump_offset_);
   }
   frame->value_stack().Push(iter_range, iter_range_attr);
@@ -133,7 +132,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
       CelAttributeQualifier::Create(CelValue::CreateInt64(current_index)),
       frame->arena());
   frame->value_stack().Push(current_value, iter_trail);
-  RETURN_IF_ERROR(frame->SetIterVar(iter_var_, current_value, iter_trail));
+  CEL_RETURN_IF_ERROR(frame->SetIterVar(iter_var_, current_value, iter_trail));
   return absl::OkStatus();
 }
 
@@ -173,7 +172,7 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.
-    RETURN_IF_ERROR(frame->PopIterFrame());
+    CEL_RETURN_IF_ERROR(frame->PopIterFrame());
     return frame->JumpTo(error_jump_offset_);
   }
   bool loop_condition = loop_condition_value.BoolOrDie();
@@ -200,7 +199,7 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   CelValue result = frame->value_stack().Peek();
   frame->value_stack().Pop(1);  // result
   frame->value_stack().PopAndPush(result);
-  RETURN_IF_ERROR(frame->PopIterFrame());
+  CEL_RETURN_IF_ERROR(frame->PopIterFrame());
   return absl::OkStatus();
 }
 
@@ -248,7 +247,4 @@ absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   return absl::OkStatus();
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

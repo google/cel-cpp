@@ -4,8 +4,6 @@
 #include "google/type/timeofday.pb.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/util/time_util.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/civil_time.h"
@@ -19,7 +17,8 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/extension_func_registrar.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

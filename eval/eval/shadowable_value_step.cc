@@ -1,13 +1,12 @@
 #include "eval/eval/shadowable_value_step.h"
 
+#include <cstdint>
+
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -39,7 +38,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateShadowableValueStep(
   return std::move(step);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

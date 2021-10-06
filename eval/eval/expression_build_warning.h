@@ -5,10 +5,7 @@
 
 #include "absl/status/status.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Container for recording warnings.
 class BuilderWarnings {
@@ -28,9 +25,6 @@ class BuilderWarnings {
   bool fail_immediately_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_EXPRESSION_BUILD_WARNING_H_

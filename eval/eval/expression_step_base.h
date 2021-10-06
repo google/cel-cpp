@@ -1,14 +1,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EXPRESSION_STEP_BASE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EXPRESSION_STEP_BASE_H_
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "eval/eval/evaluator_core.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 class ExpressionStepBase : public ExpressionStep {
  public:
@@ -30,9 +27,6 @@ class ExpressionStepBase : public ExpressionStep {
   bool comes_from_ast_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_EXPRESSION_STEP_BASE_H_

@@ -10,8 +10,6 @@
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/message.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
@@ -20,8 +18,9 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/proto_util.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
 
 namespace google::api::expr::runtime {
 

@@ -1,20 +1,17 @@
 #include "eval/eval/ident_step.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "eval/eval/evaluator_core.h"
-#include "base/status_macros.h"
+#include "eval/public/activation.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::protobuf::FieldMask;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::protobuf::FieldMask;
 using testing::Eq;
 
 using google::protobuf::Arena;
@@ -234,7 +231,4 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

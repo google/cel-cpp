@@ -1,10 +1,9 @@
 #include "tools/flatbuffers_backed_impl.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "flatbuffers/idl.h"
 #include "flatbuffers/reflection.h"
-#include "base/status_macros.h"
 
 namespace google {
 namespace api {

@@ -1,8 +1,8 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
+#include <cstdint>
+
 #include "google/protobuf/text_format.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -10,17 +10,16 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
+
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::Reference;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Reference;
 using testing::ElementsAre;
 using testing::Eq;
 using testing::IsEmpty;
@@ -723,7 +722,4 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

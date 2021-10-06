@@ -4,7 +4,7 @@
 #include <ostream>
 
 #include "google/protobuf/message.h"
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"

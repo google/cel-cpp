@@ -14,8 +14,7 @@
 
 #include "eval/public/ast_traverse.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

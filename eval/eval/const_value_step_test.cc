@@ -1,16 +1,13 @@
 #include "eval/eval/const_value_step.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
-#include "base/status_macros.h"
+#include "eval/public/activation.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -24,7 +21,7 @@ using google::protobuf::Arena;
 absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
                                                const Constant* const_expr,
                                                Arena* arena) {
-  ASSIGN_OR_RETURN(
+  CEL_ASSIGN_OR_RETURN(
       auto step,
       CreateConstValueStep(ConvertConstant(const_expr).value(), expr->id()));
 
@@ -162,7 +159,4 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
 
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

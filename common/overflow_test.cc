@@ -4,11 +4,10 @@
 #include <limits>
 #include <vector>
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::common {
 namespace {

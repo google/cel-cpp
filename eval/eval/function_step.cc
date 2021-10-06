@@ -18,7 +18,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/activation.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
@@ -26,12 +26,8 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
-#include "base/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -299,7 +295,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
                                               expr_id);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

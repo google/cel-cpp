@@ -1,16 +1,13 @@
 #include "eval/eval/ternary_step.h"
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "eval/eval/ident_step.h"
+#include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -39,16 +36,16 @@ class LogicStepTest : public testing::TestWithParam<bool> {
 
     ExecutionPath path;
 
-    ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
+    CEL_ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
     path.push_back(std::move(step));
 
-    ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr1, expr1.id()));
+    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr1, expr1.id()));
     path.push_back(std::move(step));
 
-    ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr2, expr2.id()));
+    CEL_ASSIGN_OR_RETURN(step, CreateIdentStep(ident_expr2, expr2.id()));
     path.push_back(std::move(step));
 
-    ASSIGN_OR_RETURN(step, CreateTernaryStep(4));
+    CEL_ASSIGN_OR_RETURN(step, CreateTernaryStep(4));
     path.push_back(std::move(step));
 
     auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
@@ -165,7 +162,4 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());
 }  // namespace
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

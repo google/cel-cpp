@@ -1,17 +1,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_JUMP_STEP_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_JUMP_STEP_H_
 
+#include <cstdint>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/activation.h"
-#include "eval/public/cel_value.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 class JumpStepBase : public ExpressionStepBase {
  public:
@@ -50,9 +48,6 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
 absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_JUMP_STEP_H_

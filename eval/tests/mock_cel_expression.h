@@ -3,15 +3,12 @@
 
 #include <memory>
 
-#include "base/testing.h"
+#include "gmock/gmock.h"
 #include "absl/status/statusor.h"
-#include "eval/public/activation.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_expression.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 class MockCelExpression : public CelExpression {
  public:
@@ -37,9 +34,6 @@ class MockCelExpression : public CelExpression {
               (const, override));
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_TESTS_MOCK_CEL_EXPRESION_H_

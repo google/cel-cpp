@@ -5,9 +5,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::common {
 namespace {
@@ -28,6 +27,7 @@ constexpr int64_t kInt32Min = std::numeric_limits<int32_t>::lowest();
 constexpr int64_t kInt64Max = std::numeric_limits<int64_t>::max();
 constexpr int64_t kInt64Min = std::numeric_limits<int64_t>::lowest();
 constexpr uint64_t kUint32Max = std::numeric_limits<uint32_t>::max();
+constexpr uint64_t kUint64Max = std::numeric_limits<uint64_t>::max();
 constexpr uint64_t kUintToIntMax = static_cast<uint64_t>(kInt64Max);
 constexpr double kDoubleToIntMax = static_cast<double>(kInt64Max);
 constexpr double kDoubleToIntMin = static_cast<double>(kInt64Min);
@@ -43,20 +43,14 @@ const int64_t kMinUnixTime =
 const int64_t kMaxUnixTime =
     (MaxTime() - absl::UnixEpoch()) / kOneSecondDuration;
 
-template <typename... MP>
-Status CheckRange(bool valid_expression, absl::string_view error_message,
-                  MP... message_parts) {
+Status CheckRange(bool valid_expression, absl::string_view error_message) {
   return valid_expression ? absl::OkStatus()
-                          : absl::OutOfRangeError(
-                                absl::StrCat(error_message, message_parts...));
+                          : absl::OutOfRangeError(error_message);
 }
 
-template <typename... MP>
-Status CheckArgument(bool valid_expression, absl::string_view error_message,
-                     MP... message_parts) {
+Status CheckArgument(bool valid_expression, absl::string_view error_message) {
   return valid_expression ? absl::OkStatus()
-                          : absl::InvalidArgumentError(
-                                absl::StrCat(error_message, message_parts...));
+                          : absl::InvalidArgumentError(error_message);
 }
 
 // Determine whether the duration is finite.
@@ -79,8 +73,8 @@ StatusOr<int64_t> CheckedAdd(int64_t x, int64_t y) {
   }
   return absl::OutOfRangeError("integer overflow");
 #else
-  RETURN_IF_ERROR(CheckRange(y > 0 ? x <= kInt64Max - y : x >= kInt64Min - y,
-                             "integer overflow"));
+  CEL_RETURN_IF_ERROR(CheckRange(
+      y > 0 ? x <= kInt64Max - y : x >= kInt64Min - y, "integer overflow"));
   return x + y;
 #endif
 }
@@ -93,8 +87,8 @@ StatusOr<int64_t> CheckedSub(int64_t x, int64_t y) {
   }
   return absl::OutOfRangeError("integer overflow");
 #else
-  RETURN_IF_ERROR(CheckRange(y < 0 ? x <= kInt64Max + y : x >= kInt64Min + y,
-                             "integer overflow"));
+  CEL_RETURN_IF_ERROR(CheckRange(
+      y < 0 ? x <= kInt64Max + y : x >= kInt64Min + y, "integer overflow"));
   return x - y;
 #endif
 }
@@ -107,7 +101,7 @@ StatusOr<int64_t> CheckedNegation(int64_t v) {
   }
   return absl::OutOfRangeError("integer overflow");
 #else
-  RETURN_IF_ERROR(CheckRange(v != kInt64Min, "integer overflow"));
+  CEL_RETURN_IF_ERROR(CheckRange(v != kInt64Min, "integer overflow"));
   return -v;
 #endif
 }
@@ -120,7 +114,7 @@ StatusOr<int64_t> CheckedMul(int64_t x, int64_t y) {
   }
   return absl::OutOfRangeError("integer overflow");
 #else
-  RETURN_IF_ERROR(
+  CEL_RETURN_IF_ERROR(
       CheckRange(!((x == -1 && y == kInt64Min) || (y == -1 && x == kInt64Min) ||
                    (x > 0 && y > 0 && x > kInt64Max / y) ||
                    (x < 0 && y < 0 && x < kInt64Max / y) ||
@@ -134,14 +128,16 @@ StatusOr<int64_t> CheckedMul(int64_t x, int64_t y) {
 }
 
 StatusOr<int64_t> CheckedDiv(int64_t x, int64_t y) {
-  RETURN_IF_ERROR(CheckRange(x != kInt64Min || y != -1, "integer overflow"));
-  RETURN_IF_ERROR(CheckArgument(y != 0, "divide by zero"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(x != kInt64Min || y != -1, "integer overflow"));
+  CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "divide by zero"));
   return x / y;
 }
 
 StatusOr<int64_t> CheckedMod(int64_t x, int64_t y) {
-  RETURN_IF_ERROR(CheckRange(x != kInt64Min || y != -1, "integer overflow"));
-  RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(x != kInt64Min || y != -1, "integer overflow"));
+  CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
   return x % y;
 }
 
@@ -153,7 +149,8 @@ StatusOr<uint64_t> CheckedAdd(uint64_t x, uint64_t y) {
   }
   return absl::OutOfRangeError("unsigned integer overflow");
 #else
-  RETURN_IF_ERROR(CheckRange(x <= kUint64Max - y, "unsigned integer overflow"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(x <= kUint64Max - y, "unsigned integer overflow"));
   return x + y;
 #endif
 }
@@ -166,7 +163,7 @@ StatusOr<uint64_t> CheckedSub(uint64_t x, uint64_t y) {
   }
   return absl::OutOfRangeError("unsigned integer overflow");
 #else
-  RETURN_IF_ERROR(CheckRange(y <= x, "unsigned integer overflow"));
+  CEL_RETURN_IF_ERROR(CheckRange(y <= x, "unsigned integer overflow"));
   return x - y;
 #endif
 }
@@ -179,24 +176,25 @@ StatusOr<uint64_t> CheckedMul(uint64_t x, uint64_t y) {
   }
   return absl::OutOfRangeError("unsigned integer overflow");
 #else
-  RETURN_IF_ERROR(
+  CEL_RETURN_IF_ERROR(
       CheckRange(y == 0 || x <= kUint64Max / y, "unsigned integer overflow"));
   return x * y;
 #endif
 }
 
 StatusOr<uint64_t> CheckedDiv(uint64_t x, uint64_t y) {
-  RETURN_IF_ERROR(CheckArgument(y != 0, "divide by zero"));
+  CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "divide by zero"));
   return x / y;
 }
 
 StatusOr<uint64_t> CheckedMod(uint64_t x, uint64_t y) {
-  RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
+  CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
   return x % y;
 }
 
 StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
-  RETURN_IF_ERROR(CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
   // absl::Duration can handle +- infinite durations, but the Go time.Duration
   // implementation caps the durations to those expressible within a single
   // int64_t rather than (seconds int64_t, nanos int32_t).
@@ -208,26 +206,29 @@ StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
   // Since Go is the more conservative of the implementations and 290 year
   // durations seem quite reasonable, this code mirrors the conservative
   // overflow behavior which would be observed in Go.
-  ASSIGN_OR_RETURN(int64_t nanos, CheckedAdd(absl::ToInt64Nanoseconds(x),
-                                             absl::ToInt64Nanoseconds(y)));
+  CEL_ASSIGN_OR_RETURN(int64_t nanos, CheckedAdd(absl::ToInt64Nanoseconds(x),
+                                                 absl::ToInt64Nanoseconds(y)));
   return absl::Nanoseconds(nanos);
 }
 
 StatusOr<absl::Duration> CheckedSub(absl::Duration x, absl::Duration y) {
-  RETURN_IF_ERROR(CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
-  ASSIGN_OR_RETURN(int64_t nanos, CheckedSub(absl::ToInt64Nanoseconds(x),
-                                             absl::ToInt64Nanoseconds(y)));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
+  CEL_ASSIGN_OR_RETURN(int64_t nanos, CheckedSub(absl::ToInt64Nanoseconds(x),
+                                                 absl::ToInt64Nanoseconds(y)));
   return absl::Nanoseconds(nanos);
 }
 
 StatusOr<absl::Duration> CheckedNegation(absl::Duration v) {
-  RETURN_IF_ERROR(CheckRange(IsFinite(v), "integer overflow"));
-  ASSIGN_OR_RETURN(int64_t nanos, CheckedNegation(absl::ToInt64Nanoseconds(v)));
+  CEL_RETURN_IF_ERROR(CheckRange(IsFinite(v), "integer overflow"));
+  CEL_ASSIGN_OR_RETURN(int64_t nanos,
+                       CheckedNegation(absl::ToInt64Nanoseconds(v)));
   return absl::Nanoseconds(nanos);
 }
 
 StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
-  RETURN_IF_ERROR(CheckRange(IsFinite(t) && IsFinite(d), "timestamp overflow"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(IsFinite(t) && IsFinite(d), "timestamp overflow"));
   // First we break time into its components by truncating and subtracting.
   const int64_t s1 = absl::ToUnixSeconds(t);
   const int64_t ns1 = (t - absl::FromUnixSeconds(s1)) / absl::Nanoseconds(1);
@@ -239,24 +240,24 @@ StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
   const int64_t ns2 = absl::ToInt64Nanoseconds(d % kOneSecondDuration);
 
   // Add seconds first, detecting any overflow.
-  ASSIGN_OR_RETURN(int64_t s, CheckedAdd(s1, s2));
+  CEL_ASSIGN_OR_RETURN(int64_t s, CheckedAdd(s1, s2));
   // Nanoseconds cannot overflow as nanos are normalized to [0, 999999999].
   absl::Duration ns = absl::Nanoseconds(ns2 + ns1);
 
   // Normalize nanoseconds to be positive and carry extra nanos to seconds.
   if (ns < absl::ZeroDuration() || ns >= kOneSecondDuration) {
     // Add seconds, or no-op if nanseconds negative (ns never < -999_999_999ns)
-    ASSIGN_OR_RETURN(s, CheckedAdd(s, ns / kOneSecondDuration));
+    CEL_ASSIGN_OR_RETURN(s, CheckedAdd(s, ns / kOneSecondDuration));
     ns -= (ns / kOneSecondDuration) * kOneSecondDuration;
     // Subtract a second to make the nanos positive.
     if (ns < absl::ZeroDuration()) {
-      ASSIGN_OR_RETURN(s, CheckedAdd(s, -1));
+      CEL_ASSIGN_OR_RETURN(s, CheckedAdd(s, -1));
       ns += kOneSecondDuration;
     }
   }
   // Check if the the number of seconds from Unix epoch is within our acceptable
   // range.
-  RETURN_IF_ERROR(
+  CEL_RETURN_IF_ERROR(
       CheckRange(s >= kMinUnixTime && s <= kMaxUnixTime, "timestamp overflow"));
 
   // Return resulting time.
@@ -264,12 +265,13 @@ StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
 }
 
 StatusOr<absl::Time> CheckedSub(absl::Time t, absl::Duration d) {
-  ASSIGN_OR_RETURN(auto neg_duration, CheckedNegation(d));
+  CEL_ASSIGN_OR_RETURN(auto neg_duration, CheckedNegation(d));
   return CheckedAdd(t, neg_duration);
 }
 
 StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
-  RETURN_IF_ERROR(CheckRange(IsFinite(t1) && IsFinite(t2), "integer overflow"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(IsFinite(t1) && IsFinite(t2), "integer overflow"));
   // First we break time into its components by truncating and subtracting.
   const int64_t s1 = absl::ToUnixSeconds(t1);
   const int64_t ns1 = (t1 - absl::FromUnixSeconds(s1)) / absl::Nanoseconds(1);
@@ -277,49 +279,52 @@ StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
   const int64_t ns2 = (t2 - absl::FromUnixSeconds(s2)) / absl::Nanoseconds(1);
 
   // Subtract seconds first, detecting any overflow.
-  ASSIGN_OR_RETURN(int64_t s, CheckedSub(s1, s2));
+  CEL_ASSIGN_OR_RETURN(int64_t s, CheckedSub(s1, s2));
   // Nanoseconds cannot overflow as nanos are normalized to [0, 999999999].
   absl::Duration ns = absl::Nanoseconds(ns1 - ns2);
 
   // Scale the seconds result to nanos.
-  ASSIGN_OR_RETURN(const int64_t t, CheckedMul(s, kOneSecondNanos));
+  CEL_ASSIGN_OR_RETURN(const int64_t t, CheckedMul(s, kOneSecondNanos));
   // Add the seconds (scaled to nanos) to the nanosecond value.
-  ASSIGN_OR_RETURN(const int64_t v,
-                   CheckedAdd(t, absl::ToInt64Nanoseconds(ns)));
+  CEL_ASSIGN_OR_RETURN(const int64_t v,
+                       CheckedAdd(t, absl::ToInt64Nanoseconds(ns)));
   return absl::Nanoseconds(v);
 }
 
 StatusOr<int64_t> CheckedDoubleToInt64(double v) {
-  RETURN_IF_ERROR(
+  CEL_RETURN_IF_ERROR(
       CheckRange(std::isfinite(v) && v < kDoubleToIntMax && v > kDoubleToIntMin,
                  "double out of int64_t range"));
   return static_cast<int64_t>(v);
 }
 
 StatusOr<uint64_t> CheckedDoubleToUint64(double v) {
-  RETURN_IF_ERROR(CheckRange(std::isfinite(v) && v >= 0 && v < kDoubleTwoTo64,
-                             "double out of uint64_t range"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(std::isfinite(v) && v >= 0 && v < kDoubleTwoTo64,
+                 "double out of uint64_t range"));
   return static_cast<uint64_t>(v);
 }
 
 StatusOr<uint64_t> CheckedInt64ToUint64(int64_t v) {
-  RETURN_IF_ERROR(CheckRange(v >= 0, "int64 out of uint64_t range"));
+  CEL_RETURN_IF_ERROR(CheckRange(v >= 0, "int64 out of uint64_t range"));
   return static_cast<uint64_t>(v);
 }
 
 StatusOr<int32_t> CheckedInt64ToInt32(int64_t v) {
-  RETURN_IF_ERROR(
+  CEL_RETURN_IF_ERROR(
       CheckRange(v >= kInt32Min && v <= kInt32Max, "int64 out of int32_t range"));
   return static_cast<int32_t>(v);
 }
 
 StatusOr<int64_t> CheckedUint64ToInt64(uint64_t v) {
-  RETURN_IF_ERROR(CheckRange(v <= kUintToIntMax, "uint64 out of int64_t range"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(v <= kUintToIntMax, "uint64 out of int64_t range"));
   return static_cast<int64_t>(v);
 }
 
 StatusOr<uint32_t> CheckedUint64ToUint32(uint64_t v) {
-  RETURN_IF_ERROR(CheckRange(v <= kUint32Max, "uint64 out of uint32_t range"));
+  CEL_RETURN_IF_ERROR(
+      CheckRange(v <= kUint32Max, "uint64 out of uint32_t range"));
   return static_cast<uint32_t>(v);
 }
 

@@ -1,17 +1,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_STEP_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_STEP_H_
 
+#include <cstdint>
+
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/activation.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 class ComprehensionNextStep : public ExpressionStepBase {
  public:
@@ -63,9 +61,6 @@ class ComprehensionFinish : public ExpressionStepBase {
 // otherwise it's a no-op.
 std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id);
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_STEP_H_

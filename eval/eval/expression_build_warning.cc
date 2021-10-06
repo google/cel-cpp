@@ -1,9 +1,6 @@
 #include "eval/eval/expression_build_warning.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 absl::Status BuilderWarnings::AddWarning(const absl::Status& warning) {
   if (fail_immediately_) {
@@ -13,7 +10,4 @@ absl::Status BuilderWarnings::AddWarning(const absl::Status& warning) {
   return absl::OkStatus();
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

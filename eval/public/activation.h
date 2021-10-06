@@ -10,63 +10,13 @@
 #include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_producer.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
-
-// Base class for an activation.
-class BaseActivation {
- public:
-  BaseActivation() = default;
-
-  // Non-copyable/non-assignable
-  BaseActivation(const BaseActivation&) = delete;
-  BaseActivation& operator=(const BaseActivation&) = delete;
-
-  // Return a list of function overloads for the given name.
-  virtual std::vector<const CelFunction*> FindFunctionOverloads(
-      absl::string_view) const = 0;
-
-  // Provide the value that is bound to the name, if found.
-  // arena parameter is provided to support the case when we want to pass the
-  // ownership of returned object ( Message/List/Map ) to Evaluator.
-  virtual absl::optional<CelValue> FindValue(absl::string_view,
-                                             google::protobuf::Arena*) const = 0;
-
-  ABSL_DEPRECATED(
-      "No longer supported in the activation. See "
-      "google::api::expr::runtime::AttributeUtility.")
-  virtual bool IsPathUnknown(absl::string_view) const { return false; }
-
-  ABSL_DEPRECATED("Use missing_attribute_patterns() instead.")
-  virtual const google::protobuf::FieldMask& unknown_paths() const {
-    return google::protobuf::FieldMask::default_instance();
-  }
-
-  // Return the collection of attribute patterns that determine missing
-  // attributes.
-  virtual const std::vector<CelAttributePattern>& missing_attribute_patterns()
-      const {
-    static const std::vector<CelAttributePattern> empty;
-    return empty;
-  }
-
-  // Return the collection of attribute patterns that determine "unknown"
-  // values.
-  virtual const std::vector<CelAttributePattern>& unknown_attribute_patterns()
-      const {
-    static const std::vector<CelAttributePattern> empty;
-    return empty;
-  }
-
-  virtual ~BaseActivation() {}
-};
+namespace google::api::expr::runtime {
 
 // Instance of Activation class is used by evaluator.
 // It provides binding between references used in expressions
@@ -203,9 +153,6 @@ class Activation : public BaseActivation {
   std::vector<CelAttributePattern> unknown_attribute_patterns_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_ACTIVATION_H_

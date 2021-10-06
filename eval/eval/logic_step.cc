@@ -1,16 +1,15 @@
 #include "eval/eval/logic_step.h"
 
+#include <cstdint>
+
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace {
 
@@ -121,7 +120,4 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
   return absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

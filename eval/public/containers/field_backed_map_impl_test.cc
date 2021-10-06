@@ -2,11 +2,10 @@
 
 #include <limits>
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {
@@ -17,7 +16,7 @@ namespace {
 using testing::Eq;
 using testing::HasSubstr;
 using testing::UnorderedPointwise;
-using cel_base::testing::StatusIs;
+using cel::internal::StatusIs;
 
 class FieldBackedMapTestImpl : public FieldBackedMapImpl {
  public:

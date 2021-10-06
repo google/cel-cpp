@@ -1,9 +1,6 @@
 #include "eval/eval/evaluator_stack.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 void EvaluatorStack::Clear() {
   for (auto& v : stack_) {
@@ -16,7 +13,4 @@ void EvaluatorStack::Clear() {
   current_size_ = 0;
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

@@ -7,17 +7,12 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // Helper class for handling unknowns and missing attribute logic. Provides
 // helpers for merging unknown sets from arguments on the stack and for
@@ -69,9 +64,7 @@ class AttributeUtility {
   const std::vector<CelAttributePattern>* missing_attribute_patterns_;
   google::protobuf::Arena* arena_;
 };
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_

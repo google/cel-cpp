@@ -5,7 +5,7 @@
 #include "google/protobuf/util/time_util.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google {
 namespace api {
@@ -49,7 +49,7 @@ absl::Time DecodeTime(const google::protobuf::Timestamp& proto) {
 
 absl::Status EncodeDuration(absl::Duration duration,
                             google::protobuf::Duration* proto) {
-  RETURN_IF_ERROR(ValidateDuration(duration));
+  CEL_RETURN_IF_ERROR(ValidateDuration(duration));
   // s and n may both be negative, per the Duration proto spec.
   const int64_t s = absl::IDivDuration(duration, absl::Seconds(1), &duration);
   const int64_t n = absl::IDivDuration(duration, absl::Nanoseconds(1), &duration);
@@ -68,7 +68,7 @@ absl::StatusOr<std::string> EncodeDurationToString(absl::Duration duration) {
 }
 
 absl::Status EncodeTime(absl::Time time, google::protobuf::Timestamp* proto) {
-  RETURN_IF_ERROR(Validate(time));
+  CEL_RETURN_IF_ERROR(Validate(time));
   const int64_t s = absl::ToUnixSeconds(time);
   proto->set_seconds(s);
   proto->set_nanos((time - absl::FromUnixSeconds(s)) / absl::Nanoseconds(1));

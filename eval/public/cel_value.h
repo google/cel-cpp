@@ -19,6 +19,8 @@
 //    const MyMessage * msg = google::protobuf::Arena::CreateMessage<MyMessage>(arena);
 //    CelValue value = CelProtoWrapper::CreateMessage(msg, &arena);
 
+#include <cstdint>
+
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -27,7 +29,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -242,7 +244,9 @@ class CelValue {
 
   // Returns stored uint64_t value.
   // Fails if stored value type is not uint64_t.
-  uint64_t Uint64OrDie() const { return GetValueOrDie<uint64_t>(Type::kUint64); }
+  uint64_t Uint64OrDie() const {
+    return GetValueOrDie<uint64_t>(Type::kUint64);
+  }
 
   // Returns stored double value.
   // Fails if stored value type is not double.
@@ -455,7 +459,7 @@ class CelMap {
   // as a `CelError` value, depending on the context.
   virtual absl::StatusOr<bool> Has(const CelValue& key) const {
     // This check safeguards against issues with invalid key types such as NaN.
-    RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
+    CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
     auto value = (*this)[key];
     if (!value.has_value()) {
       return false;

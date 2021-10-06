@@ -12,7 +12,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
-#include "base/status_macros.h"
+#include "internal/status_macros.h"
 
 
 namespace google {
@@ -73,7 +73,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       auto& list = *value.ListOrDie();
       auto* list_value = result->mutable_list_value();
       for (int i = 0; i < list.size(); ++i) {
-        RETURN_IF_ERROR(CelValueToValue(list[i], list_value->add_values()));
+        CEL_RETURN_IF_ERROR(CelValueToValue(list[i], list_value->add_values()));
       }
       break;
     }
@@ -84,13 +84,13 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       for (int i = 0; i < keys.size(); ++i) {
         CelValue key = keys[i];
         auto* entry = map_value->add_entries();
-        RETURN_IF_ERROR(CelValueToValue(key, entry->mutable_key()));
+        CEL_RETURN_IF_ERROR(CelValueToValue(key, entry->mutable_key()));
         auto optional_value = cel_map[key];
         if (!optional_value) {
           return absl::Status(absl::StatusCode::kInternal,
                               "key not found in map");
         }
-        RETURN_IF_ERROR(
+        CEL_RETURN_IF_ERROR(
             CelValueToValue(*optional_value, entry->mutable_value()));
       }
       break;
@@ -133,7 +133,7 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
     case Value::kListValue: {
       std::vector<CelValue> list;
       for (const auto& subvalue : value.list_value().values()) {
-        ASSIGN_OR_RETURN(auto list_value, ValueToCelValue(subvalue, arena));
+        CEL_ASSIGN_OR_RETURN(auto list_value, ValueToCelValue(subvalue, arena));
         list.push_back(list_value);
       }
       return CelValue::CreateList(
@@ -142,12 +142,13 @@ absl::StatusOr<CelValue> ValueToCelValue(const Value& value,
     case Value::kMapValue: {
       std::vector<std::pair<CelValue, CelValue>> key_values;
       for (const auto& entry : value.map_value().entries()) {
-        ASSIGN_OR_RETURN(auto map_key, ValueToCelValue(entry.key(), arena));
-        RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
-        ASSIGN_OR_RETURN(auto map_value, ValueToCelValue(entry.value(), arena));
+        CEL_ASSIGN_OR_RETURN(auto map_key, ValueToCelValue(entry.key(), arena));
+        CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
+        CEL_ASSIGN_OR_RETURN(auto map_value,
+                             ValueToCelValue(entry.value(), arena));
         key_values.push_back(std::pair<CelValue, CelValue>(map_key, map_value));
       }
-      ASSIGN_OR_RETURN(
+      CEL_ASSIGN_OR_RETURN(
           auto cel_map,
           CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
               key_values.data(), key_values.size())));

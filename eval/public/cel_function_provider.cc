@@ -1,11 +1,11 @@
 #include "eval/public/cel_function_provider.h"
 
-#include "absl/status/statusor.h"
+#include <memory>
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+#include "absl/status/statusor.h"
+#include "eval/public/base_activation.h"
+
+namespace google::api::expr::runtime {
 
 namespace {
 // Impl for simple provider that looks up functions in an activation function
@@ -41,7 +41,4 @@ std::unique_ptr<CelFunctionProvider> CreateActivationFunctionProvider() {
   return std::make_unique<ActivationFunctionProviderImpl>();
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

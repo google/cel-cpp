@@ -1,19 +1,15 @@
 #include "eval/eval/attribute_utility.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
+#include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
-using google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::NotNull;
 using testing::SizeIs;
@@ -180,7 +176,4 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
   EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

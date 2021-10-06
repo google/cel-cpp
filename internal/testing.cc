@@ -1,7 +1,6 @@
-#include "base/testing.h"
+#include "internal/testing.h"
 
-namespace cel_base {
-namespace testing {
+namespace cel::internal {
 
 void StatusIsMatcherCommonImpl::DescribeTo(std::ostream* os) const {
   *os << ", has a status code that ";
@@ -39,5 +38,14 @@ bool StatusIsMatcherCommonImpl::MatchAndExplain(
   return true;
 }
 
-}  // namespace testing
-}  // namespace cel_base
+void AddFatalFailure(const char* file, int line, absl::string_view expression,
+                     const StatusBuilder& builder) {
+  GTEST_MESSAGE_AT_(file, line,
+                    absl::StrCat(expression, " returned error: ",
+                                 absl::Status(builder).ToString(
+                                     absl::StatusToStringMode::kWithEverything))
+                        .c_str(),
+                    ::testing::TestPartResult::kFatalFailure);
+}
+
+}  // namespace cel::internal

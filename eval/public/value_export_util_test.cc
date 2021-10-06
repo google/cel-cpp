@@ -2,15 +2,14 @@
 
 #include <utility>
 
-#include "base/testing.h"
-#include "gtest/gtest.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
-#include "base/status_macros.h"
 
 namespace google::api::expr::runtime {
 
