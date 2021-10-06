@@ -1,10 +1,9 @@
 #include "eval/public/cel_type_registry.h"
 
 #include "google/protobuf/any.pb.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

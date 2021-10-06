@@ -4,8 +4,6 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
@@ -21,6 +19,7 @@
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

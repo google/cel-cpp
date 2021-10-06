@@ -2,10 +2,9 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

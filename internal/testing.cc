@@ -39,7 +39,7 @@ bool StatusIsMatcherCommonImpl::MatchAndExplain(
 }
 
 void AddFatalFailure(const char* file, int line, absl::string_view expression,
-                     const ::util::StatusBuilder& builder) {
+                     const StatusBuilder& builder) {
   GTEST_MESSAGE_AT_(file, line,
                     absl::StrCat(expression, " returned error: ",
                                  absl::Status(builder).ToString(

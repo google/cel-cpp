@@ -3,8 +3,6 @@
 #include <cstdint>
 
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -13,6 +11,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
 
 namespace google::api::expr::runtime {

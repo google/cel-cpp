@@ -8,8 +8,6 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/container/btree_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -27,6 +25,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

@@ -1,7 +1,5 @@
 #include "eval/eval/create_list_step.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/const_value_step.h"
@@ -10,6 +8,7 @@
 #include "eval/public/cel_attribute.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

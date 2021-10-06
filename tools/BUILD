@@ -53,7 +53,6 @@ cc_test(
     ],
     deps = [
         ":flatbuffers_backed_impl",
-        ":flatbuffers_test_cc",
         "//internal:status_macros",
         "//internal:testing",
         "@com_github_google_flatbuffers//:flatbuffers",

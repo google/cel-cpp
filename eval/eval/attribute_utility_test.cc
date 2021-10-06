@@ -1,12 +1,11 @@
 #include "eval/eval/attribute_utility.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

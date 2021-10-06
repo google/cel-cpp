@@ -1,11 +1,10 @@
 #include "eval/eval/ident_step.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

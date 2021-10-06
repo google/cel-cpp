@@ -1,12 +1,11 @@
 #include "eval/public/activation.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 #include "parser/parser.h"
 
 namespace google {

@@ -2,8 +2,6 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/base/attributes.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/match.h"
@@ -17,6 +15,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/tests/request_context.pb.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

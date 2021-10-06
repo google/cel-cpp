@@ -5,6 +5,7 @@
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -142,7 +143,8 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,
     CelEvaluationListener callback) const {
-  auto state = down_cast<CelExpressionFlatEvaluationState*>(_state);
+  auto state =
+      ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
   state->Reset();
 
   // Using both unknown attribute patterns and unknown paths via FieldMask is

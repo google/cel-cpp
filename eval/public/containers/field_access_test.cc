@@ -4,11 +4,10 @@
 
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "internal/proto_util.h"
+#include "internal/testing.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 
 namespace google::api::expr::runtime {

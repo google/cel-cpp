@@ -100,7 +100,6 @@ cc_test(
         ":container_backed_map_impl",
         "//eval/public:cel_value",
         "//internal:testing",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -112,7 +111,6 @@ cc_test(
     ],
     deps = [
         ":field_backed_list_impl",
-        "//eval/eval:evaluator_core",
         "//eval/testutil:test_message_cc_proto",
         "//internal:testing",
         "//testutil:util",

@@ -1,8 +1,7 @@
 #include "eval/eval/expression_build_warning.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 namespace {

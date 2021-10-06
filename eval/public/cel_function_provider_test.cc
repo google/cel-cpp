@@ -1,9 +1,8 @@
 #include "eval/public/cel_function_provider.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/public/activation.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

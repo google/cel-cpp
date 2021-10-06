@@ -1,7 +1,6 @@
 #include "eval/eval/evaluator_stack.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

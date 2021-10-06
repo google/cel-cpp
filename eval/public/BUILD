@@ -455,9 +455,7 @@ cc_test(
         "cel_function_adapter_test.cc",
     ],
     deps = [
-        ":cel_function",
         ":cel_function_adapter",
-        ":cel_value",
         "//internal:status_macros",
         "//internal:testing",
     ],

@@ -2,14 +2,13 @@
 
 #include <memory>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

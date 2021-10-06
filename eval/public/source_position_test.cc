@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/public/source_position.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "internal/testing.h"
+
 namespace google {
 namespace api {
 namespace expr {

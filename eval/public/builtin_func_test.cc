@@ -2,8 +2,6 @@
 #include <limits>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
@@ -18,6 +16,7 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/proto_util.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 namespace {

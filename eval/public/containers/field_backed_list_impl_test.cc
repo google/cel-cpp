@@ -1,8 +1,7 @@
 #include "eval/public/containers/field_backed_list_impl.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/testing.h"
 #include "testutil/util.h"
 
 namespace google {

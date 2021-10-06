@@ -4,9 +4,8 @@
 #include <utility>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/public/cel_value.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

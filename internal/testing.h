@@ -22,7 +22,7 @@
 #include <type_traits>
 
 #include "gmock/gmock.h"  // IWYU pragma: export
-#include "gtest/gtest.h"
+#include "gtest/gtest.h"  // IWYU pragma: export
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"

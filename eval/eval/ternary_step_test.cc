@@ -1,12 +1,11 @@
 #include "eval/eval/ternary_step.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

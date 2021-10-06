@@ -1,11 +1,10 @@
 #include "eval/public/cel_attribute.h"
 
 #include "google/protobuf/arena.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/testing.h"
 
 namespace google {
 namespace api {

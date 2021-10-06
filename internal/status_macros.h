@@ -57,8 +57,7 @@
       rexpr,                                                              \
       return absl::Status(std::move(CEL_INTERNAL_STATUS_MACROS_CONCAT(    \
                                         _status_or_value, __LINE__))      \
-                              .status(),                                  \
-                          ABSL_LOC))
+                              .status()))
 
 #define CEL_INTERNAL_STATUS_MACROS_ASSIGN_OR_RETURN_3_(lhs, rexpr,           \
                                                        error_expression)     \
@@ -82,7 +81,7 @@
     error_expression;                                                      \
   }                                                                        \
   CEL_INTERNAL_STATUS_MACROS_UNPARENTHESIZE_IF_PARENTHESIZED(lhs) =        \
-      std::move(statusor).ValueOrDie()
+      std::move(statusor).value()
 
 #define CEL_INTERNAL_STATUS_MACROS_IS_EMPTY_INNER(...) \
   CEL_INTERNAL_STATUS_MACROS_IS_EMPTY_INNER_HELPER((__VA_ARGS__, 0, 1))
@@ -101,8 +100,8 @@
 
 #define CEL_INTERNAL_STATUS_MACROS_IF_1(_Then, _Else) _Then
 #define CEL_INTERNAL_STATUS_MACROS_IF_0(_Then, _Else) _Else
-#define CEL_INTERNAL_STATUS_MACROS_IF(_Cond, _Then, _Else)                \
-  CEL_INTERNAL_STATUS_MACROS_CONCAT(CEL_INTERNAL_STATUS_MACROS_IF, _Cond) \
+#define CEL_INTERNAL_STATUS_MACROS_IF(_Cond, _Then, _Else)                 \
+  CEL_INTERNAL_STATUS_MACROS_CONCAT(CEL_INTERNAL_STATUS_MACROS_IF_, _Cond) \
   (_Then, _Else)
 
 #define CEL_INTERNAL_STATUS_MACROS_EAT(...)

@@ -23,6 +23,7 @@ cc_library(
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
+        "//internal:casts",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

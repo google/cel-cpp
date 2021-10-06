@@ -5,8 +5,6 @@
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -17,6 +15,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "internal/status_macros.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 

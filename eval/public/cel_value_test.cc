@@ -1,13 +1,12 @@
 #include "eval/public/cel_value.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
+#include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
