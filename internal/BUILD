@@ -32,19 +32,6 @@ cc_library(
 )
 
 cc_library(
-    name = "status_util",
-    srcs = ["status_util.cc"],
-    hdrs = [
-        "status_util.h",
-    ],
-    deps = [
-        "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/rpc:code_cc_proto",
-        "@com_google_googleapis//google/rpc:status_cc_proto",
-    ],
-)
-
-cc_library(
     name = "proto_util",
     srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
