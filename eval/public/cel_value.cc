@@ -156,6 +156,8 @@ std::string CelValue::TypeName(Type value_type) {
       return "CelError";
     case Type::kAny:
       return "Any type";
+    default:
+      return "unknown";
   }
 }
 
@@ -209,7 +211,7 @@ CelValue CelValue::ObtainCelType() const {
       return *this;
     case Type::kError:
       return *this;
-    case Type::kAny: {
+    default: {
       static const CelError* invalid_type_error =
           new CelError(absl::InvalidArgumentError("Unsupported CelValue type"));
       return CreateError(invalid_type_error);
