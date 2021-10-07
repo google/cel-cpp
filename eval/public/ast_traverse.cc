@@ -59,20 +59,25 @@ struct StackRecord {
   static constexpr int kNotCallArg = -1;
   static constexpr int kTarget = -2;
 
-  StackRecord(const Expr* e, const SourceInfo* info)
-      : record_variant(ExprRecord{.expr = e, .source_info = info}),
-        visited(false) {}
+  StackRecord(const Expr* e, const SourceInfo* info) {
+    ExprRecord record;
+    record.expr = e;
+    record.source_info = info;
+    record_variant = record;
+  }
 
   StackRecord(const Expr* e, const SourceInfo* info, const Expr* call,
-              int argnum)
-      : record_variant(ArgRecord{.expr = e,
-                                 .source_info = info,
-                                 .calling_expr = call,
-                                 .call_arg = argnum}),
-        visited(false) {}
+              int argnum) {
+    ArgRecord record;
+    record.expr = e;
+    record.source_info = info;
+    record.calling_expr = call;
+    record.call_arg = argnum;
+    record_variant = record;
+  }
 
   StackRecordKind record_variant;
-  bool visited;
+  bool visited = false;
 };
 
 struct PreVisitor {

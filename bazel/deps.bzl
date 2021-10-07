@@ -7,9 +7,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 def base_deps():
     """Base evaluator and test dependencies."""
 
-    # LTS, March 2021, Patch 2
-    ABSL_SHA1 = "278e0a071885a22dcd2fd1b5576cc44757299343"
-    ABSL_SHA256 = "ff5ea6f91f9bcd0f368346ef707d0a80a372b71de5b6ae69ac11d0ca41688b8f"
+    # 2021-10-05
+    ABSL_SHA1 = "b9b925341f9e90f5e7aa0cf23f036c29c7e454eb"
+    ABSL_SHA256 = "bb2a0b57c92b6666e8acb00f4cbbfce6ddb87e83625fb851b0e78db581340617"
     http_archive(
         name = "com_google_absl",
         urls = ["https://github.com/abseil/abseil-cpp/archive/" + ABSL_SHA1 + ".zip"],
