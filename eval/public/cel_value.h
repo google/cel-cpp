@@ -22,6 +22,7 @@
 #include <cstdint>
 
 #include "google/protobuf/message.h"
+#include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -30,6 +31,7 @@
 #include "absl/types/optional.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/status_macros.h"
+#include "internal/utf8.h"
 
 namespace google::api::expr::runtime {
 
@@ -139,7 +141,7 @@ class CelValue {
 
   // Default constructor.
   // Creates CelValue with null data type.
-  CelValue() : CelValue(static_cast<const google::protobuf::Message *>(nullptr)) {}
+  CelValue() : CelValue(static_cast<const google::protobuf::Message*>(nullptr)) {}
 
   // Returns Type that describes the type of value stored.
   Type type() const { return Type(value_.index()); }
@@ -163,7 +165,10 @@ class CelValue {
 
   static CelValue CreateDouble(double value) { return CelValue(value); }
 
-  static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
+  static CelValue CreateString(StringHolder holder) {
+    ABSL_ASSERT(::cel::internal::Utf8IsValid(holder.value()));
+    return CelValue(holder);
+  }
 
   // Returns a string value from a string_view. Warning: the caller is
   // responsible for the lifecycle of the backing string. Prefer CreateString
@@ -374,7 +379,7 @@ class CelValue {
       return true;
     }
 
-    T *value;
+    T* value;
   };
 
   struct NullCheckOp {

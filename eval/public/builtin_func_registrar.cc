@@ -21,8 +21,8 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/proto_util.h"
+#include "internal/utf8.h"
 #include "re2/re2.h"
-#include "base/unilib.h"
 
 namespace google::api::expr::runtime {
 
@@ -35,17 +35,6 @@ using ::google::protobuf::Arena;
 
 // Time representing `9999-12-31T23:59:59.999999999Z`.
 const absl::Time kMaxTime = MakeGoogleApiTimeMax();
-
-// Returns the number of UTF8 codepoints within a string.
-// The input string must first be checked to see if it is valid UTF8.
-static int UTF8CodepointCount(absl::string_view str) {
-  int n = 0;
-  // Increment the codepoint count on non-trail-byte characters.
-  for (const auto p : str) {
-    n += (*reinterpret_cast<const signed char*>(&p) >= -0x40);
-  }
-  return n;
-}
 
 // Comparison template functions
 template <class Type>
@@ -1200,7 +1189,7 @@ absl::Status RegisterStringConversionFunctions(
       FunctionAdapter<CelValue, CelValue::BytesHolder>::CreateAndRegister(
           builtin::kString, false,
           [](Arena* arena, CelValue::BytesHolder value) -> CelValue {
-            if (UniLib::IsStructurallyValid(value.value())) {
+            if (::cel::internal::Utf8IsValid(value.value())) {
               return CelValue::CreateStringView(value.value());
             }
             return CreateErrorValue(arena, "invalid UTF-8 bytes value",
@@ -1439,13 +1428,12 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   // String size
   auto size_func = [](Arena* arena, CelValue::StringHolder value) -> CelValue {
     absl::string_view str = value.value();
-    // TODO(issues/129): Improve the efficiency of this size check, by
-    // collapsing the two calls / scans into one.
-    if (!UniLib::IsStructurallyValid(str)) {
+    auto [count, valid] = ::cel::internal::Utf8Validate(str);
+    if (!valid) {
       return CreateErrorValue(arena, "invalid utf-8 string",
                               absl::StatusCode::kInvalidArgument);
     }
-    return CelValue::CreateInt64(UTF8CodepointCount(str));
+    return CelValue::CreateInt64(static_cast<int64_t>(count));
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.

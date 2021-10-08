@@ -8,6 +8,18 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])  # Apache 2.0
 
 cc_library(
+    name = "benchmark",
+    testonly = True,
+    hdrs = ["benchmark.h"],
+    deps = [
+        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+    ],
+)
+
+cc_library(
     name = "casts",
     hdrs = ["casts.h"],
 )
@@ -62,5 +74,28 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "utf8",
+    srcs = ["utf8.cc"],
+    hdrs = ["utf8.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+    ],
+)
+
+cc_test(
+    name = "utf8_test",
+    srcs = ["utf8_test.cc"],
+    deps = [
+        ":benchmark",
+        ":testing",
+        ":utf8",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
     ],
 )
