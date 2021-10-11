@@ -9,6 +9,7 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
@@ -16,6 +17,7 @@
 #include "eval/tests/request_context.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "parser/parser.h"
 
 namespace google {
 namespace api {
@@ -103,477 +105,6 @@ static void BM_EvalString(benchmark::State& state) {
 
 BENCHMARK(BM_EvalString)->Range(1, 32768);
 
-std::string CELAstFlattenedMap() {
-  return R"(
-call_expr: <
-  function: "_&&_"
-  args: <
-    call_expr: <
-      function: "!_"
-      args: <
-        call_expr: <
-          function: "@in"
-          args: <
-            ident_expr: <
-              name: "ip"
-            >
-          >
-          args: <
-            list_expr: <
-              elements: <
-                const_expr: <
-                  string_value: "10.0.1.4"
-                >
-              >
-              elements: <
-                const_expr: <
-                  string_value: "10.0.1.5"
-                >
-              >
-              elements: <
-                const_expr: <
-                  string_value: "10.0.1.6"
-                >
-              >
-            >
-          >
-        >
-      >
-    >
-  >
-  args: <
-    call_expr: <
-      function: "_||_"
-      args: <
-        call_expr: <
-          function: "_||_"
-          args: <
-            call_expr: <
-              function: "_&&_"
-              args: <
-                call_expr: <
-                  target: <
-                    ident_expr: <
-                      name: "path"
-                    >
-                  >
-                  function: "startsWith"
-                  args: <
-                    const_expr: <
-                      string_value: "v1"
-                    >
-                  >
-                >
-              >
-              args: <
-                call_expr: <
-                  function: "@in"
-                  args: <
-                    ident_expr: <
-                      name: "token"
-                    >
-                  >
-                  args: <
-                    list_expr: <
-                      elements: <
-                        const_expr: <
-                          string_value: "v1"
-                        >
-                      >
-                      elements: <
-                        const_expr: <
-                          string_value: "v2"
-                        >
-                      >
-                      elements: <
-                        const_expr: <
-                          string_value: "admin"
-                        >
-                      >
-                    >
-                  >
-                >
-              >
-            >
-          >
-          args: <
-            call_expr: <
-              function: "_&&_"
-              args: <
-                call_expr: <
-                  target: <
-                    ident_expr: <
-                      name: "path"
-                    >
-                  >
-                  function: "startsWith"
-                  args: <
-                    const_expr: <
-                      string_value: "v2"
-                    >
-                  >
-                >
-              >
-              args: <
-                call_expr: <
-                  function: "@in"
-                  args: <
-                    ident_expr: <
-                      name: "token"
-                    >
-                  >
-                  args: <
-                    list_expr: <
-                      elements: <
-                        const_expr: <
-                          string_value: "v2"
-                        >
-                      >
-                      elements: <
-                        const_expr: <
-                          string_value: "admin"
-                        >
-                      >
-                    >
-                  >
-                >
-              >
-            >
-          >
-        >
-      >
-      args: <
-        call_expr: <
-          function: "_&&_"
-          args: <
-            call_expr: <
-              function: "_&&_"
-              args: <
-                call_expr: <
-                  target: <
-                    ident_expr: <
-                      name: "path"
-                    >
-                  >
-                  function: "startsWith"
-                  args: <
-                    const_expr: <
-                      string_value: "/admin"
-                    >
-                  >
-                >
-              >
-              args: <
-                call_expr: <
-                  function: "_==_"
-                  args: <
-                    ident_expr: <
-                      name: "token"
-                    >
-                  >
-                  args: <
-                    const_expr: <
-                      string_value: "admin"
-                    >
-                  >
-                >
-              >
-            >
-          >
-          args: <
-            call_expr: <
-              function: "@in"
-              args: <
-                ident_expr: <
-                  name: "ip"
-                >
-              >
-              args: <
-                list_expr: <
-                  elements: <
-                    const_expr: <
-                      string_value: "10.0.1.1"
-                    >
-                  >
-                  elements: <
-                    const_expr: <
-                      string_value: "10.0.1.2"
-                    >
-                  >
-                  elements: <
-                    const_expr: <
-                      string_value: "10.0.1.3"
-                    >
-                  >
-                >
-              >
-            >
-          >
-        >
-      >
-    >
-  >
->
-)";
-}
-
-// This proto is obtained from CELAstFlattenedMap by replacing "ip", "token",
-// and "path" idents with selector expressions for "request.ip",
-// "request.token", and "request.path".
-std::string CELAst() {
-  return R"(
-call_expr: <
-  function: "_&&_"
-  args: <
-    call_expr: <
-      function: "!_"
-      args: <
-        call_expr: <
-          function: "@in"
-          args: <
-            select_expr: <
-              operand: <
-                ident_expr: <
-                  name: "request"
-                >
-              >
-              field: "ip"
-            >
-          >
-          args: <
-            list_expr: <
-              elements: <
-                const_expr: <
-                  string_value: "10.0.1.4"
-                >
-              >
-              elements: <
-                const_expr: <
-                  string_value: "10.0.1.5"
-                >
-              >
-              elements: <
-                const_expr: <
-                  string_value: "10.0.1.6"
-                >
-              >
-            >
-          >
-        >
-      >
-    >
-  >
-  args: <
-    call_expr: <
-      function: "_||_"
-      args: <
-        call_expr: <
-          function: "_||_"
-          args: <
-            call_expr: <
-              function: "_&&_"
-              args: <
-                call_expr: <
-                  target: <
-                    select_expr: <
-                      operand: <
-                        ident_expr: <
-                          name: "request"
-                        >
-                      >
-                      field: "path"
-                    >
-                  >
-                  function: "startsWith"
-                  args: <
-                    const_expr: <
-                      string_value: "v1"
-                    >
-                  >
-                >
-              >
-              args: <
-                call_expr: <
-                  function: "@in"
-                  args: <
-                    select_expr: <
-                      operand: <
-                        ident_expr: <
-                          name: "request"
-                        >
-                      >
-                      field: "token"
-                    >
-                  >
-                  args: <
-                    list_expr: <
-                      elements: <
-                        const_expr: <
-                          string_value: "v1"
-                        >
-                      >
-                      elements: <
-                        const_expr: <
-                          string_value: "v2"
-                        >
-                      >
-                      elements: <
-                        const_expr: <
-                          string_value: "admin"
-                        >
-                      >
-                    >
-                  >
-                >
-              >
-            >
-          >
-          args: <
-            call_expr: <
-              function: "_&&_"
-              args: <
-                call_expr: <
-                  target: <
-                    select_expr: <
-                      operand: <
-                        ident_expr: <
-                          name: "request"
-                        >
-                      >
-                      field: "path"
-                    >
-                  >
-                  function: "startsWith"
-                  args: <
-                    const_expr: <
-                      string_value: "v2"
-                    >
-                  >
-                >
-              >
-              args: <
-                call_expr: <
-                  function: "@in"
-                  args: <
-                    select_expr: <
-                      operand: <
-                        ident_expr: <
-                          name: "request"
-                        >
-                      >
-                      field: "token"
-                    >
-                  >
-                  args: <
-                    list_expr: <
-                      elements: <
-                        const_expr: <
-                          string_value: "v2"
-                        >
-                      >
-                      elements: <
-                        const_expr: <
-                          string_value: "admin"
-                        >
-                      >
-                    >
-                  >
-                >
-              >
-            >
-          >
-        >
-      >
-      args: <
-        call_expr: <
-          function: "_&&_"
-          args: <
-            call_expr: <
-              function: "_&&_"
-              args: <
-                call_expr: <
-                  target: <
-                    select_expr: <
-                      operand: <
-                        ident_expr: <
-                          name: "request"
-                        >
-                      >
-                      field: "path"
-                    >
-                  >
-                  function: "startsWith"
-                  args: <
-                    const_expr: <
-                      string_value: "/admin"
-                    >
-                  >
-                >
-              >
-              args: <
-                call_expr: <
-                  function: "_==_"
-                  args: <
-                    select_expr: <
-                      operand: <
-                        ident_expr: <
-                          name: "request"
-                        >
-                      >
-                      field: "token"
-                    >
-                  >
-                  args: <
-                    const_expr: <
-                      string_value: "admin"
-                    >
-                  >
-                >
-              >
-            >
-          >
-          args: <
-            call_expr: <
-              function: "@in"
-              args: <
-                select_expr: <
-                  operand: <
-                    ident_expr: <
-                      name: "request"
-                    >
-                  >
-                  field: "ip"
-                >
-              >
-              args: <
-                list_expr: <
-                  elements: <
-                    const_expr: <
-                      string_value: "10.0.1.1"
-                    >
-                  >
-                  elements: <
-                    const_expr: <
-                      string_value: "10.0.1.2"
-                    >
-                  >
-                  elements: <
-                    const_expr: <
-                      string_value: "10.0.1.3"
-                    >
-                  >
-                >
-              >
-            >
-          >
-        >
-      >
-    >
-  >
->
-)";
-}
-
 const char kIP[] = "10.0.1.2";
 const char kPath[] = "/admin/edit";
 const char kToken[] = "admin";
@@ -621,21 +152,16 @@ void BM_PolicyNative(benchmark::State& state) {
 
 BENCHMARK(BM_PolicyNative);
 
-/*
-  Evaluates an expression:
-
-  !(ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
-   (
-    (path.startsWith("v1") && token in ["v1", "v2", "admin"]) ||
-    (path.startsWith("v2") && token in ["v2", "admin"]) ||
-    (path.startsWith("/admin") && token == "admin" && ip in ["10.0.1.1",
-  "10.0.1.2", "10.0.1.3"])
-   )
-*/
 void BM_PolicySymbolic(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
-  google::protobuf::TextFormat::ParseFromString(CELAstFlattenedMap(), &expr);
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+   !(ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
+   ((path.startsWith("v1") && token in ["v1", "v2", "admin"]) ||
+    (path.startsWith("v2") && token in ["v2", "admin"]) ||
+    (path.startsWith("/admin") && token == "admin" && ip in [
+       "10.0.1.1",  "10.0.1.2", "10.0.1.3"
+    ])
+   ))cel"));
 
   InterpreterOptions options;
   options.constant_folding = true;
@@ -645,8 +171,8 @@ void BM_PolicySymbolic(benchmark::State& state) {
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
-  ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, &source_info));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
+                                          &parsed_expr.expr(), &source_info));
 
   Activation activation;
   activation.InsertValue("ip", CelValue::CreateStringView(kIP));
@@ -685,15 +211,20 @@ class RequestMap : public CelMap {
 // Uses a lazily constructed map container for "ip", "path", and "token".
 void BM_PolicySymbolicMap(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
-  google::protobuf::TextFormat::ParseFromString(CELAst(), &expr);
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+   !(request.ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
+   ((request.path.startsWith("v1") && request.token in ["v1", "v2", "admin"]) ||
+    (request.path.startsWith("v2") && request.token in ["v2", "admin"]) ||
+    (request.path.startsWith("/admin") && requst.token == "admin" &&
+     request.ip in ["10.0.1.1",  "10.0.1.2", "10.0.1.3"])
+   ))cel"));
 
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
-  ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, &source_info));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
+                                          &parsed_expr.expr(), &source_info));
 
   Activation activation;
   RequestMap request;
@@ -711,15 +242,20 @@ BENCHMARK(BM_PolicySymbolicMap);
 // Uses a protobuf container for "ip", "path", and "token".
 void BM_PolicySymbolicProto(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
-  google::protobuf::TextFormat::ParseFromString(CELAst(), &expr);
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+   !(request.ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
+   ((request.path.startsWith("v1") && request.token in ["v1", "v2", "admin"]) ||
+    (request.path.startsWith("v2") && request.token in ["v2", "admin"]) ||
+    (request.path.startsWith("/admin") && requst.token == "admin" &&
+     request.ip in ["10.0.1.1",  "10.0.1.2", "10.0.1.3"])
+   ))cel"));
 
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   SourceInfo source_info;
-  ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, &source_info));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
+                                          &parsed_expr.expr(), &source_info));
 
   Activation activation;
   RequestContext request;
@@ -738,6 +274,7 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
 
 BENCHMARK(BM_PolicySymbolicProto);
 
+// This expression has no equivalent CEL
 constexpr char kListSum[] = R"(
 id: 1
 comprehension_expr: <
@@ -802,7 +339,9 @@ void BM_Comprehension(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  auto builder = CreateCelExpressionBuilder();
+  InterpreterOptions options;
+  options.comprehension_max_iterations = 10000000;
+  auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, nullptr));
@@ -816,48 +355,16 @@ void BM_Comprehension(benchmark::State& state) {
 
 BENCHMARK(BM_Comprehension)->Range(1, 1 << 20);
 
-// has(request.path) && !has(request.ip)
-constexpr char kHas[] = R"(
-call_expr: <
-  function: "_&&_"
-  args: <
-    select_expr: <
-      operand: <
-        ident_expr: <
-          name: "request"
-        >
-      >
-      field: "path"
-      test_only: true
-    >
-  >
-  args: <
-    call_expr: <
-      function: "!_"
-      args: <
-        select_expr: <
-          operand: <
-            ident_expr: <
-              name: "request"
-            >
-          >
-          field: "ip"
-          test_only: true
-        >
-      >
-    >
-  >
->)";
 
 void BM_HasMap(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
   Activation activation;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHas, &expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("has(request.path) && !has(request.ip)"));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, nullptr));
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
   std::vector<std::pair<CelValue, CelValue>> map_pairs{
       {CelValue::CreateStringView("path"), CelValue::CreateStringView("path")}};
@@ -878,13 +385,13 @@ BENCHMARK(BM_HasMap);
 
 void BM_HasProto(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
   Activation activation;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHas, &expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("has(request.path) && !has(request.ip)"));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, nullptr));
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
   RequestContext request;
   request.set_path(kPath);
@@ -902,58 +409,17 @@ void BM_HasProto(benchmark::State& state) {
 
 BENCHMARK(BM_HasProto);
 
-// has(request.headers.create_time) && !has(request.headers.update_time)
-constexpr char kHasProtoMap[] = R"(
-call_expr: <
-  function: "_&&_"
-  args: <
-    select_expr: <
-      operand: <
-        select_expr: <
-          operand: <
-            ident_expr: <
-              name: "request"
-            >
-          >
-          field: "headers"
-        >
-      >
-      field: "create_time"
-      test_only: true
-    >
-  >
-  args: <
-    call_expr: <
-      function: "!_"
-      args: <
-        select_expr: <
-          operand: <
-            select_expr: <
-              operand: <
-                ident_expr: <
-                  name: "request"
-                >
-              >
-              field: "headers"
-            >
-          >
-          field: "update_time"
-          test_only: true
-        >
-      >
-    >
-  >
->)";
 
 void BM_HasProtoMap(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
   Activation activation;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kHasProtoMap, &expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("has(request.headers.create_time) && "
+                                     "!has(request.headers.update_time)"));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, nullptr));
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
   RequestContext request;
   request.mutable_headers()->insert({"create_time", "2021-01-01"});
@@ -970,41 +436,17 @@ void BM_HasProtoMap(benchmark::State& state) {
 
 BENCHMARK(BM_HasProtoMap);
 
-// request.headers.create_time == "2021-01-01"
-constexpr char kReadProtoMap[] = R"(
-call_expr: <
-  function: "_==_"
-  args: <
-    select_expr: <
-      operand: <
-        select_expr: <
-          operand: <
-            ident_expr: <
-              name: "request"
-            >
-          >
-          field: "headers"
-        >
-      >
-      field: "create_time"
-    >
-  >
-  args: <
-    const_expr: <
-      string_value: "2021-01-01"
-    >
-  >
->)";
 
 void BM_ReadProtoMap(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
   Activation activation;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kReadProtoMap, &expr));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+     request.headers.create_time == "2021-01-01"
+   )cel"));
   auto builder = CreateCelExpressionBuilder();
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder->CreateExpression(&expr, nullptr));
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
   RequestContext request;
   request.mutable_headers()->insert({"create_time", "2021-01-01"});
@@ -1021,6 +463,7 @@ void BM_ReadProtoMap(benchmark::State& state) {
 
 BENCHMARK(BM_ReadProtoMap);
 
+// This expression has no equivalent CEL expression.
 // Sum a square with a nested comprehension
 constexpr char kNestedListSum[] = R"(
 id: 1
@@ -1129,7 +572,9 @@ void BM_NestedComprehension(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  auto builder = CreateCelExpressionBuilder();
+  InterpreterOptions options;
+  options.comprehension_max_iterations = 10000000;
+  auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, nullptr));
@@ -1144,9 +589,40 @@ void BM_NestedComprehension(benchmark::State& state) {
 
 BENCHMARK(BM_NestedComprehension)->Range(1, 1 << 10);
 
+void BM_ListComprehension(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("list.map(x, x * 2)"));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  InterpreterOptions options;
+  options.comprehension_max_iterations = 10000000;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_expr, builder->CreateExpression(&(parsed_expr.expr()), nullptr));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsList());
+    ASSERT_EQ(result.ListOrDie()->size(), len);
+  }
+}
+
+BENCHMARK(BM_ListComprehension)->Range(1, 1 << 16);
+
 void BM_ComprehensionCpp(benchmark::State& state) {
   google::protobuf::Arena arena;
-  Expr expr;
   Activation activation;
 
   int len = state.range(0);
