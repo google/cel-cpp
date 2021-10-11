@@ -26,6 +26,7 @@ cc_test(
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/structs:cel_proto_wrapper",
+        "//internal:benchmark",
         "//internal:status_macros",
         "//internal:testing",
         "//parser",

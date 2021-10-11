@@ -1,4 +1,4 @@
-#include "benchmark/benchmark.h"
+#include "internal/benchmark.h"
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
