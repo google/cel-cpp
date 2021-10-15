@@ -404,6 +404,7 @@ cc_test(
     ],
     deps = [
         ":ast_traverse",
+        ":ast_visitor",
         "//internal:testing",
     ],
 )

@@ -14,14 +14,15 @@
 
 #include "eval/public/ast_traverse.h"
 
+#include "eval/public/ast_visitor.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::Constant;
+using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 using testing::_;
 using Ident = google::api::expr::v1alpha1::Expr::Ident;
@@ -80,6 +81,18 @@ class MockAstVisitor : public AstVisitor {
               (override));
   MOCK_METHOD(void, PostVisitComprehension,
               (const Comprehension* comprehension_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+
+  // Comprehension node handler group
+  MOCK_METHOD(void, PreVisitComprehensionSubexpression,
+              (const Expr* expr, const Comprehension* comprehension_expr,
+               ComprehensionArg comprehension_arg,
+               const SourcePosition* position),
+              (override));
+  MOCK_METHOD(void, PostVisitComprehensionSubexpression,
+              (const Expr* expr, const Comprehension* comprehension_expr,
+               ComprehensionArg comprehension_arg,
                const SourcePosition* position),
               (override));
 
@@ -262,15 +275,99 @@ TEST(AstCrawlerTest, CheckCrawlComprehension) {
   // Lowest level entry will be called first
   EXPECT_CALL(handler, PreVisitComprehension(c, &expr, _)).Times(1);
 
+  EXPECT_CALL(handler,
+              PreVisitComprehensionSubexpression(iter_range, c, ITER_RANGE, _))
+      .Times(1);
+  EXPECT_CALL(handler, PostVisitConst(iter_range_expr, iter_range, _)).Times(1);
+  EXPECT_CALL(handler,
+              PostVisitComprehensionSubexpression(iter_range, c, ITER_RANGE, _))
+      .Times(1);
+
+  // ACCU_INIT
+  EXPECT_CALL(handler,
+              PreVisitComprehensionSubexpression(accu_init, c, ACCU_INIT, _))
+      .Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(accu_init_expr, accu_init, _)).Times(1);
+  EXPECT_CALL(handler,
+              PostVisitComprehensionSubexpression(accu_init, c, ACCU_INIT, _))
+      .Times(1);
+
+  // LOOP CONDITION
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(loop_condition, c,
+                                                          LOOP_CONDITION, _))
+      .Times(1);
+  EXPECT_CALL(handler, PostVisitConst(loop_condition_expr, loop_condition, _))
+      .Times(1);
+  EXPECT_CALL(handler, PostVisitComprehensionSubexpression(loop_condition, c,
+                                                           LOOP_CONDITION, _))
+      .Times(1);
+
+  // LOOP STEP
+  EXPECT_CALL(handler,
+              PreVisitComprehensionSubexpression(loop_step, c, LOOP_STEP, _))
+      .Times(1);
+  EXPECT_CALL(handler, PostVisitIdent(loop_step_expr, loop_step, _)).Times(1);
+  EXPECT_CALL(handler,
+              PostVisitComprehensionSubexpression(loop_step, c, LOOP_STEP, _))
+      .Times(1);
+
+  // RESULT
+  EXPECT_CALL(handler, PreVisitComprehensionSubexpression(result, c, RESULT, _))
+      .Times(1);
+
+  EXPECT_CALL(handler, PostVisitConst(result_expr, result, _)).Times(1);
+
+  EXPECT_CALL(handler,
+              PostVisitComprehensionSubexpression(result, c, RESULT, _))
+      .Times(1);
+
+  EXPECT_CALL(handler, PostVisitComprehension(c, &expr, _)).Times(1);
+
+  TraversalOptions opts;
+  opts.use_comprehension_callbacks = true;
+  AstTraverse(&expr, &source_info, &handler, opts);
+}
+
+// Test handling of Comprehension node
+TEST(AstCrawlerTest, CheckCrawlComprehensionLegacyCallbacks) {
+  SourceInfo source_info;
+  MockAstVisitor handler;
+
+  Expr expr;
+  auto c = expr.mutable_comprehension_expr();
+  auto iter_range = c->mutable_iter_range();
+  auto iter_range_expr = iter_range->mutable_const_expr();
+  auto accu_init = c->mutable_accu_init();
+  auto accu_init_expr = accu_init->mutable_ident_expr();
+  auto loop_condition = c->mutable_loop_condition();
+  auto loop_condition_expr = loop_condition->mutable_const_expr();
+  auto loop_step = c->mutable_loop_step();
+  auto loop_step_expr = loop_step->mutable_ident_expr();
+  auto result = c->mutable_result();
+  auto result_expr = result->mutable_const_expr();
+
+  testing::InSequence seq;
+
+  // Lowest level entry will be called first
+  EXPECT_CALL(handler, PreVisitComprehension(c, &expr, _)).Times(1);
+
   EXPECT_CALL(handler, PostVisitConst(iter_range_expr, iter_range, _)).Times(1);
   EXPECT_CALL(handler, PostVisitArg(ITER_RANGE, &expr, _)).Times(1);
+
+  // ACCU_INIT
   EXPECT_CALL(handler, PostVisitIdent(accu_init_expr, accu_init, _)).Times(1);
   EXPECT_CALL(handler, PostVisitArg(ACCU_INIT, &expr, _)).Times(1);
+
+  // LOOP CONDITION
   EXPECT_CALL(handler, PostVisitConst(loop_condition_expr, loop_condition, _))
       .Times(1);
   EXPECT_CALL(handler, PostVisitArg(LOOP_CONDITION, &expr, _)).Times(1);
+
+  // LOOP STEP
   EXPECT_CALL(handler, PostVisitIdent(loop_step_expr, loop_step, _)).Times(1);
   EXPECT_CALL(handler, PostVisitArg(LOOP_STEP, &expr, _)).Times(1);
+
+  // RESULT
   EXPECT_CALL(handler, PostVisitConst(result_expr, result, _)).Times(1);
   EXPECT_CALL(handler, PostVisitArg(RESULT, &expr, _)).Times(1);
 

@@ -17,10 +17,16 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_H_
 
-#include "eval/public/ast_visitor.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "eval/public/ast_visitor.h"
 
 namespace google::api::expr::runtime {
+
+struct TraversalOptions {
+  bool use_comprehension_callbacks;
+
+  TraversalOptions() : use_comprehension_callbacks(false) {}
+};
 
 // Traverses the AST representation in an expr proto.
 //
@@ -53,7 +59,8 @@ namespace google::api::expr::runtime {
 // PostVisitExpr
 void AstTraverse(const google::api::expr::v1alpha1::Expr* expr,
                  const google::api::expr::v1alpha1::SourceInfo* source_info,
-                 AstVisitor* visitor);
+                 AstVisitor* visitor,
+                 TraversalOptions options = TraversalOptions());
 
 }  // namespace google::api::expr::runtime
 
