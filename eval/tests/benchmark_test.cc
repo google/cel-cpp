@@ -215,7 +215,7 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
    !(request.ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
    ((request.path.startsWith("v1") && request.token in ["v1", "v2", "admin"]) ||
     (request.path.startsWith("v2") && request.token in ["v2", "admin"]) ||
-    (request.path.startsWith("/admin") && requst.token == "admin" &&
+    (request.path.startsWith("/admin") && request.token == "admin" &&
      request.ip in ["10.0.1.1",  "10.0.1.2", "10.0.1.3"])
    ))cel"));
 
@@ -246,7 +246,7 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
    !(request.ip in ["10.0.1.4", "10.0.1.5", "10.0.1.6"]) &&
    ((request.path.startsWith("v1") && request.token in ["v1", "v2", "admin"]) ||
     (request.path.startsWith("v2") && request.token in ["v2", "admin"]) ||
-    (request.path.startsWith("/admin") && requst.token == "admin" &&
+    (request.path.startsWith("/admin") && request.token == "admin" &&
      request.ip in ["10.0.1.1",  "10.0.1.2", "10.0.1.3"])
    ))cel"));
 
@@ -264,7 +264,6 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
   request.set_token(kToken);
   activation.InsertValue("request",
                          CelProtoWrapper::CreateMessage(&request, &arena));
-
   for (auto _ : state) {
     ASSERT_OK_AND_ASSIGN(CelValue result,
                          cel_expr->Evaluate(activation, &arena));

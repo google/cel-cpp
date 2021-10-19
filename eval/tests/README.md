@@ -2,11 +2,11 @@
 ## Benchmarks
 To run the benchmark tests:
 
-`blaze run -c opt --dynamic_mode=off //eval/tests:benchmark_test --benchmarks=all`
+`blaze run -c opt --dynamic_mode=off //eval/tests:benchmark_test --benchmark_filter=all`
 
 or
 
-`blaze run -c opt --dynamic_mode=off //eval/tests:unknowns_benchmark_test --benchmarks=all`
+`blaze run -c opt --dynamic_mode=off //eval/tests:unknowns_benchmark_test --benchmark_filter=all`
 
 see go/benchmark
 
