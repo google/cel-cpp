@@ -22,7 +22,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_comprehension_(true),
         comprehension_max_iterations_(0),
         fail_on_warnings_(true),
-        enable_qualified_type_identifiers_(false) {}
+        enable_qualified_type_identifiers_(false),
+        enable_comprehension_list_append_(false) {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -69,6 +70,21 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_qualified_type_identifiers_ = enabled;
   }
 
+  // set_enable_comprehension_list_append controls whether the FlatExprBuilder
+  // will attempt to optimize list concatenation within map() and filter()
+  // macro comprehensions as an append of results on the `accu_var` rather than
+  // as a reassignment of the `accu_var` to the concatenation of
+  // `accu_var` + [elem].
+  //
+  // Before enabling, ensure that `#list_append` is not a function declared
+  // within your runtime, and that your CEL expressions retain their integer
+  // identifiers.
+  //
+  // This option is not safe for use with hand-rolled ASTs.
+  void set_enable_comprehension_list_append(bool enabled) {
+    enable_comprehension_list_append_ = enabled;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -103,6 +119,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
   int comprehension_max_iterations_;
   bool fail_on_warnings_;
   bool enable_qualified_type_identifiers_;
+  bool enable_comprehension_list_append_;
 };
 
 }  // namespace google::api::expr::runtime

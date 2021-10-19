@@ -14,6 +14,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "common/overflow.h"
+#include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
@@ -522,6 +523,24 @@ bool In(Arena*, T value, const CelList* list) {
   }
 
   return false;
+}
+
+// AppendList will append the elements in value2 to value1.
+//
+// This call will only be invoked within comprehensions where `value1` is an
+// intermediate result which cannot be directly assigned or co-mingled with a
+// user-provided list.
+const CelList* AppendList(Arena* arena, const CelList* value1,
+                          const CelList* value2) {
+  // The `value1` object cannot be directly addressed and is an intermediate
+  // variable. Once the comprehension completes this value will in effect be
+  // treated as immutable.
+  MutableListImpl* mutable_list =
+      const_cast<MutableListImpl*>(static_cast<const MutableListImpl*>(value1));
+  for (int i = 0; i < value2->size(); i++) {
+    mutable_list->Append((*value2)[i]);
+  }
+  return mutable_list;
 }
 
 // Concatenation for StringHolder type.
@@ -1650,6 +1669,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
                                                    regex_matches, registry);
     if (!status.ok()) return status;
   }
+
+  status = FunctionAdapter<const CelList*, const CelList*, const CelList*>::
+      CreateAndRegister(builtin::kRuntimeListAppend, false, AppendList,
+                        registry);
+  if (!status.ok()) return status;
 
   status = RegisterStringFunctions(registry, options);
   if (!status.ok()) return status;

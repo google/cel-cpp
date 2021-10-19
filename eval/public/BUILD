@@ -193,6 +193,7 @@ cc_library(
         ":cel_options",
         ":cel_value",
         "//common:overflow",
+        "//eval/eval:mutable_list_impl",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:proto_util",
         "//internal:utf8",

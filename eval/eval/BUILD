@@ -192,6 +192,7 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        ":mutable_list_impl",
         "//eval/public/containers:container_backed_list_impl",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -631,6 +632,12 @@ cc_library(
         "//eval/public:cel_value",
         "@com_google_absl//absl/status:statusor",
     ],
+)
+
+cc_library(
+    name = "mutable_list_impl",
+    hdrs = ["mutable_list_impl.h"],
+    deps = ["//eval/public:cel_value"],
 )
 
 cc_test(

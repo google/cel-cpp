@@ -79,6 +79,13 @@ constexpr char kString[] = "string";
 constexpr char kType[] = "type";
 constexpr char kUint[] = "uint";
 
+// Runtime-only functions.
+// The convention for runtime-only functions where only the runtime needs to
+// differentiate behavior is to prefix the function with `#`.
+// Note, this is a different convention from CEL internal functions where the
+// whole stack needs to be aware of the function id.
+constexpr char kRuntimeListAppend[] = "#list_append";
+
 }  // namespace builtin
 
 }  // namespace runtime

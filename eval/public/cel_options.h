@@ -54,6 +54,10 @@ struct InterpreterOptions {
   // including the nested loops as well. Use value 0 to disable the upper bound.
   int comprehension_max_iterations = 10000;
 
+  // Enable list append within comprehensions. Note, this option is not safe
+  // with hand-rolled ASTs.
+  int enable_comprehension_list_append = false;
+
   // Enable RE2 match() overload.
   bool enable_regex = true;
 

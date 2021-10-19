@@ -154,8 +154,8 @@ class FlatExprVisitor : public AstVisitor {
   FlatExprVisitor(
       const Resolver& resolver, ExecutionPath* path, bool short_circuiting,
       const absl::flat_hash_map<std::string, CelValue>& constant_idents,
-      bool enable_comprehension, BuilderWarnings* warnings,
-      std::set<std::string>* iter_variable_names)
+      bool enable_comprehension, bool enable_comprehension_list_append,
+      BuilderWarnings* warnings, std::set<std::string>* iter_variable_names)
       : resolver_(resolver),
         flattened_path_(path),
         progress_status_(absl::OkStatus()),
@@ -163,6 +163,7 @@ class FlatExprVisitor : public AstVisitor {
         short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
         enable_comprehension_(enable_comprehension),
+        enable_comprehension_list_append_(enable_comprehension_list_append),
         builder_warnings_(warnings),
         iter_variable_names_(iter_variable_names) {
     GOOGLE_CHECK(iter_variable_names_);
@@ -337,7 +338,7 @@ class FlatExprVisitor : public AstVisitor {
 
     if (cond_visitor) {
       cond_visitor->PreVisit(expr);
-      cond_visitor_stack_.emplace(expr, std::move(cond_visitor));
+      cond_visitor_stack_.push({expr, std::move(cond_visitor)});
     }
   }
 
@@ -366,6 +367,31 @@ class FlatExprVisitor : public AstVisitor {
     bool receiver_style = call_expr->has_target();
     size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
     auto arguments_matcher = ArgumentsMatcher(num_args);
+
+    // Check to see if this is a special case of add that should really be
+    // treated as a list append
+    if (enable_comprehension_list_append_ &&
+        call_expr->function() == builtin::kAdd &&
+        !comprehension_stack_.empty()) {
+      const Comprehension* comprehension = comprehension_stack_.top();
+      if (comprehension->accu_init().has_list_expr()) {
+        const Expr& loop_step = comprehension->loop_step();
+        // Macro loop_step for a map() will contain a list concat operation:
+        //   result + [elem]
+        if (loop_step.id() == expr->id()) {
+          function = builtin::kRuntimeListAppend;
+        }
+        // Macro loop_step for a filter() will contain a ternary:
+        //   filter ? result + [elem] : result
+        // The direct access of the concatenation (args[1]) is safe as the
+        // ternary call will have been validated in the `PreVisitCall` step.
+        if (loop_step.has_call_expr() &&
+            loop_step.call_expr().function() == builtin::kTernary &&
+            loop_step.call_expr().args(1).id() == expr->id()) {
+          function = builtin::kRuntimeListAppend;
+        }
+      }
+    }
 
     // First, search for lazily defined function overloads.
     // Lazy functions shadow eager functions with the same signature.
@@ -417,8 +443,9 @@ class FlatExprVisitor : public AstVisitor {
                     "Invalid comprehension: 'loop_step' must be set");
     ValidateOrError(comprehension->has_result(),
                     "Invalid comprehension: 'result' must be set");
-    cond_visitor_stack_.emplace(
-        expr, absl::make_unique<ComprehensionVisitor>(this, short_circuiting_));
+    comprehension_stack_.push(comprehension);
+    cond_visitor_stack_.push({expr, absl::make_unique<ComprehensionVisitor>(
+                                        this, short_circuiting_)});
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PreVisit(expr);
   }
@@ -430,6 +457,8 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
+    comprehension_stack_.pop();
+
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PostVisit(expr);
     cond_visitor_stack_.pop();
@@ -466,7 +495,11 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-
+    if (enable_comprehension_list_append_ && !comprehension_stack_.empty() &&
+        comprehension_stack_.top()->accu_init().id() == expr->id()) {
+      AddStep(CreateCreateMutableListStep(list_expr, expr->id()));
+      return;
+    }
     AddStep(CreateCreateListStep(list_expr, expr->id()));
   }
 
@@ -577,6 +610,8 @@ class FlatExprVisitor : public AstVisitor {
   const absl::flat_hash_map<std::string, CelValue>& constant_idents_;
 
   bool enable_comprehension_;
+  bool enable_comprehension_list_append_;
+  std::stack<const Comprehension*> comprehension_stack_;
 
   BuilderWarnings* builder_warnings_;
 
@@ -804,7 +839,7 @@ FlatExprBuilder::CreateExpressionImpl(
   // transformed expression preserving expression IDs
   std::unique_ptr<Expr> rewrite_buffer = nullptr;
   // TODO(issues/98): A type checker may perform these rewrites, but there
-  // currently  isn't a signal to expose that in an expression. If that becomes
+  // currently isn't a signal to expose that in an expression. If that becomes
   // available, we can skip the reference resolve step here if it's already
   // done.
   if (reference_map != nullptr && !reference_map->empty()) {
@@ -830,7 +865,8 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(resolver, &execution_path, shortcircuiting_, idents,
-                          enable_comprehension_, &warnings_builder,
+                          enable_comprehension_,
+                          enable_comprehension_list_append_, &warnings_builder,
                           &iter_variable_names);
 
   AstTraverse(effective_expr, source_info, &visitor);

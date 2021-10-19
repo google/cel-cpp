@@ -15,6 +15,8 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   builder->set_constant_folding(options.constant_folding,
                                 options.constant_arena);
   builder->set_enable_comprehension(options.enable_comprehension);
+  builder->set_enable_comprehension_list_append(
+      options.enable_comprehension_list_append);
   builder->set_comprehension_max_iterations(
       options.comprehension_max_iterations);
   builder->set_fail_on_warnings(options.fail_on_warnings);
