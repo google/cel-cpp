@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/text_format.h"
@@ -73,32 +89,290 @@ TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
   // from the reference map has the potential to make invalid comprehensions
   // appear valid, by populating missing fields with default values.
   // var.<macro>(x, <missing>)
-  google::protobuf::TextFormat::ParseFromString(R"pb(
-                                        reference_map {
-                                          key: 1
-                                          value { name: "qualified.var" }
-                                        }
-                                        expr {
-                                          comprehension_expr {
-                                            iter_var: "x"
-                                            iter_range {
-                                              id: 1
-                                              ident_expr { name: "var" }
-                                            }
-                                            accu_var: "y"
-                                            accu_init {
-                                              id: 1
-                                              const_expr { bool_value: true }
-                                            }
-                                          }
-                                        })pb",
-                                      &expr);
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        reference_map {
+          key: 1
+          value { name: "qualified.var" }
+        }
+        expr {
+          comprehension_expr {
+            iter_var: "x"
+            iter_range {
+              id: 1
+              ident_expr { name: "var" }
+            }
+            accu_var: "y"
+            accu_init {
+              id: 1
+              const_expr { bool_value: true }
+            }
+          }
+        })pb",
+      &expr);
 
   FlatExprBuilder builder;
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Invalid comprehension")));
+}
+
+TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithConcatVulernability) {
+  CheckedExpr expr;
+  // The comprehension loop step performs an unsafe concatenation of the
+  // accumulation variable with itself or one of its children.
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "x"
+            iter_range { ident_expr { name: "var" } }
+            accu_var: "y"
+            accu_init { list_expr {} }
+            result { ident_expr { name: "y" } }
+            loop_condition { const_expr { bool_value: true } }
+            loop_step {
+              call_expr {
+                function: "_?_:_"
+                args { const_expr { bool_value: true } }
+                args { ident_expr { name: "y" } }
+                args {
+                  call_expr {
+                    function: "_+_"
+                    args {
+                      call_expr {
+                        function: "dyn"
+                        args { ident_expr { name: "y" } }
+                      }
+                    }
+                    args {
+                      call_expr {
+                        function: "_[_]"
+                        args { ident_expr { name: "y" } }
+                        args { const_expr { int64_value: 0 } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        })pb",
+      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
+}
+
+TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithListVulernability) {
+  CheckedExpr expr;
+  // The comprehension
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "x"
+            iter_range { ident_expr { name: "var" } }
+            accu_var: "y"
+            accu_init { list_expr {} }
+            result { ident_expr { name: "y" } }
+            loop_condition { const_expr { bool_value: true } }
+            loop_step {
+              list_expr {
+                elements { ident_expr { name: "y" } }
+                elements {
+                  list_expr {
+                    elements {
+                      select_expr {
+                        operand { ident_expr { name: "y" } }
+                        field: "z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      )pb",
+      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
+}
+
+TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithStructVulernability) {
+  CheckedExpr expr;
+  // The comprehension loop step builds a deeply nested struct which expands
+  // exponentially.
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "x"
+            iter_range { ident_expr { name: "var" } }
+            accu_var: "y"
+            accu_init { list_expr {} }
+            result { ident_expr { name: "y" } }
+            loop_condition { const_expr { bool_value: true } }
+            loop_step {
+              struct_expr {
+                entries {
+                  map_key { const_expr { string_value: "key" } }
+                  value { ident_expr { name: "y" } }
+                }
+                entries {
+                  map_key { const_expr { string_value: "present" } }
+                  value {
+                    select_expr {
+                      test_only: true
+                      operand { ident_expr { name: "y" } }
+                      field: "z"
+                    }
+                  }
+                }
+                entries {
+                  map_key { const_expr { string_value: "key_subset" } }
+                  value {
+                    select_expr {
+                      operand { ident_expr { name: "y" } }
+                      field: "z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      )pb",
+      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
+}
+
+TEST(FlatExprBuilderComprehensionsTest,
+     ComprehensionWithNestedComprehensionResultVulernability) {
+  CheckedExpr expr;
+  // The nested comprehension performs an unsafe concatenation on the parent
+  // accumulator variable within its 'result' expression.
+  //
+  // The inner-most comprehension shadows its parent, but still refers to its
+  // oldest ancestor. It, however, does not do anything unsafe.
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr { comprehension_expr {
+          iter_var: "x"
+          iter_range { ident_expr { name: "var" } }
+          accu_var: "y"
+          accu_init { list_expr {} }
+          result { ident_expr { name: "y" } }
+          loop_condition { const_expr { bool_value: true } }
+          loop_step {
+            comprehension_expr {
+              iter_var: "x"
+              iter_range { ident_expr { name: "y" } }
+              accu_var: "z"
+              accu_init { list_expr {} }
+              result {
+                call_expr {
+                  function: "_+_"
+                  args { ident_expr { name: "y" } }
+                  args { ident_expr { name: "y" } }
+                }
+              }
+              loop_condition { const_expr { bool_value: true } }
+              loop_step {
+                comprehension_expr {
+                  iter_var: "x"
+                  iter_range { ident_expr { name: "y" } }
+                  accu_var: "z"
+                  accu_init { list_expr {} }
+                  result {
+                    call_expr {
+                      function: "dyn"
+                      args { ident_expr { name: "y" } }
+                    }
+                  }
+                  loop_condition { const_expr { bool_value: true } }
+                  loop_step {
+                    call_expr {
+                      function: "dyn"
+                      args { ident_expr { name: "y" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      )pb",
+      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
+}
+
+TEST(FlatExprBuilderComprehensionsTest,
+     ComprehensionWithNestedComprehensionLoopStepVulernability) {
+  CheckedExpr expr;
+  // The nested comprehension performs an unsafe concatenation on the parent
+  // accumulator variable within its 'loop_step'.
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "x"
+            iter_range { ident_expr { name: "var" } }
+            accu_var: "y"
+            accu_init { list_expr {} }
+            result { ident_expr { name: "y" } }
+            loop_condition { const_expr { bool_value: true } }
+            loop_step {
+              comprehension_expr {
+                iter_var: "x"
+                iter_range { ident_expr { name: "y" } }
+                accu_var: "z"
+                accu_init { list_expr {} }
+                result { ident_expr { name: "z" } }
+                loop_condition { const_expr { bool_value: true } }
+                loop_step {
+                  call_expr {
+                    function: "_+_"
+                    args { ident_expr { name: "y" } }
+                    args { ident_expr { name: "y" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      )pb",
+      &expr);
+
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
 }
 
 }  // namespace
