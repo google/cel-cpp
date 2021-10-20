@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "internal/proto_util.h"
 
 #include "google/protobuf/duration.pb.h"
@@ -6,6 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "internal/status_macros.h"
+#include "internal/time.h"
 
 namespace google {
 namespace api {
@@ -15,28 +30,28 @@ namespace internal {
 namespace {
 
 absl::Status Validate(absl::Time time) {
-  if (time < MakeGoogleApiTimeMin()) {
+  if (time < cel::internal::MinTimestamp()) {
     return absl::InvalidArgumentError("time below min");
   }
 
-  if (time > MakeGoogleApiTimeMax()) {
+  if (time > cel::internal::MaxTimestamp()) {
     return absl::InvalidArgumentError("time above max");
   }
   return absl::OkStatus();
 }
 
-}  // namespace
-
 absl::Status ValidateDuration(absl::Duration duration) {
-  if (duration < MakeGoogleApiDurationMin()) {
+  if (duration < cel::internal::MinDuration()) {
     return absl::InvalidArgumentError("duration below min");
   }
 
-  if (duration > MakeGoogleApiDurationMax()) {
+  if (duration > cel::internal::MaxDuration()) {
     return absl::InvalidArgumentError("duration above max");
   }
   return absl::OkStatus();
 }
+
+}  // namespace
 
 absl::Duration DecodeDuration(const google::protobuf::Duration& proto) {
   return absl::Seconds(proto.seconds()) + absl::Nanoseconds(proto.nanos());

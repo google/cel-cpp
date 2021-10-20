@@ -21,17 +21,10 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "internal/status_macros.h"
+#include "internal/time.h"
 
 namespace cel::internal {
 namespace {
-
-// Parse from the string representation of the max timestamp to the max time.
-absl::Time MaxTime() {
-  absl::Time ts;
-  absl::ParseTime(absl::RFC3339_full, "9999-12-31T23:59:59.999999999Z", &ts,
-                  nullptr);
-  return ts;
-}
 
 constexpr int64_t kInt32Max = std::numeric_limits<int32_t>::max();
 constexpr int64_t kInt32Min = std::numeric_limits<int32_t>::lowest();
@@ -48,11 +41,11 @@ const absl::Duration kOneSecondDuration = absl::Seconds(1);
 const int64_t kOneSecondNanos = absl::ToInt64Nanoseconds(kOneSecondDuration);
 // Number of seconds between `0001-01-01T00:00:00Z` and Unix epoch.
 const int64_t kMinUnixTime =
-    (absl::UniversalEpoch() - absl::UnixEpoch()) / kOneSecondDuration;
+    absl::ToInt64Seconds(MinTimestamp() - absl::UnixEpoch());
 
 // Number of seconds between `9999-12-31T23:59:59.999999999Z` and Unix epoch.
 const int64_t kMaxUnixTime =
-    (MaxTime() - absl::UnixEpoch()) / kOneSecondDuration;
+    absl::ToInt64Seconds(MaxTimestamp() - absl::UnixEpoch());
 
 absl::Status CheckRange(bool valid_expression,
                         absl::string_view error_message) {

@@ -36,6 +36,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/overflow.h"
 #include "internal/proto_util.h"
+#include "internal/time.h"
 #include "internal/utf8.h"
 #include "re2/re2.h"
 
@@ -43,13 +44,13 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::internal::MaxTimestamp;
 using ::google::api::expr::internal::EncodeDurationToString;
 using ::google::api::expr::internal::EncodeTimeToString;
-using ::google::api::expr::internal::MakeGoogleApiTimeMax;
 using ::google::protobuf::Arena;
 
 // Time representing `9999-12-31T23:59:59.999999999Z`.
-const absl::Time kMaxTime = MakeGoogleApiTimeMax();
+const absl::Time kMaxTime = MaxTimestamp();
 
 // Comparison template functions
 template <class Type>

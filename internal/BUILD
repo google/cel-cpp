@@ -48,6 +48,7 @@ cc_library(
     hdrs = ["overflow.h"],
     deps = [
         ":status_macros",
+        ":time",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
@@ -82,6 +83,7 @@ cc_library(
     hdrs = ["proto_util.h"],
     deps = [
         ":status_macros",
+        ":time",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -107,6 +109,32 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "time",
+    srcs = ["time.cc"],
+    hdrs = ["time.h"],
+    deps = [
+        ":status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "time_test",
+    srcs = ["time_test.cc"],
+    deps = [
+        ":testing",
+        ":time",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

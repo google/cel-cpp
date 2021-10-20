@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/public/builtin_func_registrar.h"
 
 #include <memory>
@@ -17,8 +31,8 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/testing/matchers.h"
-#include "internal/proto_util.h"
 #include "internal/testing.h"
+#include "internal/time.h"
 #include "parser/parser.h"
 
 namespace google::api::expr::runtime {
@@ -27,8 +41,8 @@ namespace {
 using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::SourceInfo;
 
-using ::google::api::expr::internal::MakeGoogleApiDurationMax;
-using ::google::api::expr::internal::MakeGoogleApiDurationMin;
+using ::cel::internal::MaxDuration;
+using ::cel::internal::MinDuration;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
@@ -121,12 +135,12 @@ INSTANTIATE_TEST_SUITE_P(
 
         {"MinDurationSubDurationLegacy",
          "min - duration('1ns')",
-         {{"min", CelValue::CreateDuration(MakeGoogleApiDurationMin())}},
+         {{"min", CelValue::CreateDuration(MinDuration())}},
          absl::InvalidArgumentError("out of range")},
 
         {"MaxDurationAddDurationLegacy",
          "max + duration('1ns')",
-         {{"max", CelValue::CreateDuration(MakeGoogleApiDurationMax())}},
+         {{"max", CelValue::CreateDuration(MaxDuration())}},
          absl::InvalidArgumentError("out of range")},
 
         {"TimestampConversionFromStringLegacy",
@@ -202,13 +216,13 @@ INSTANTIATE_TEST_SUITE_P(
 
         {"MinDurationSubDuration",
          "min - duration('1ns')",
-         {{"min", CelValue::CreateDuration(MakeGoogleApiDurationMin())}},
+         {{"min", CelValue::CreateDuration(MinDuration())}},
          absl::OutOfRangeError("overflow"),
          OverflowChecksEnabled()},
 
         {"MaxDurationAddDuration",
          "max + duration('1ns')",
-         {{"max", CelValue::CreateDuration(MakeGoogleApiDurationMax())}},
+         {{"max", CelValue::CreateDuration(MaxDuration())}},
          absl::OutOfRangeError("overflow"),
          OverflowChecksEnabled()},
 

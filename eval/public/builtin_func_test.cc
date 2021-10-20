@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <cstdint>
 #include <limits>
 
@@ -14,9 +28,9 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "internal/proto_util.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "internal/time.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -29,9 +43,9 @@ using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::Arena;
 
-using ::google::api::expr::internal::MakeGoogleApiDurationMax;
-using ::google::api::expr::internal::MakeGoogleApiDurationMin;
-using ::google::api::expr::internal::MakeGoogleApiTimeMin;
+using ::cel::internal::MaxDuration;
+using ::cel::internal::MinDuration;
+using ::cel::internal::MinTimestamp;
 using testing::Eq;
 
 class BuiltinsTest : public ::testing::Test {
@@ -542,11 +556,11 @@ TEST_F(BuiltinsTest, TestDurationFunctions) {
                    CelValue::StringHolder(&result));
   TestTypeConverts(builtin::kDuration, CelValue::CreateString(&result), ref);
 
-  absl::Duration d = MakeGoogleApiDurationMin() + absl::Seconds(-1);
+  absl::Duration d = MinDuration() + absl::Seconds(-1);
   result = absl::FormatDuration(d);
   TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
 
-  d = MakeGoogleApiDurationMax() + absl::Seconds(1);
+  d = MaxDuration() + absl::Seconds(1);
   result = absl::FormatDuration(d);
   TestTypeConversionError(builtin::kDuration, CelValue::CreateString(&result));
 
@@ -702,7 +716,7 @@ TEST_F(BuiltinsTest, TestTimestampFunctionsWithTimeZone) {
 
   TestTypeConversionError(
       builtin::kString,
-      CelValue::CreateTimestamp(MakeGoogleApiTimeMin() + absl::Seconds(-1)));
+      CelValue::CreateTimestamp(MinTimestamp() + absl::Seconds(-1)));
 }
 
 TEST_F(BuiltinsTest, TestBytesConversions_bytes) {

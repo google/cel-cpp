@@ -149,8 +149,8 @@ cc_test(
     srcs = ["field_access_test.cc"],
     deps = [
         ":field_access",
-        "//internal:proto_util",
         "//internal:testing",
+        "//internal:time",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
