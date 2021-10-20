@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/public/builtin_func_registrar.h"
 
 #include <cmath>
@@ -13,7 +27,6 @@
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/overflow.h"
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
@@ -21,6 +34,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "internal/overflow.h"
 #include "internal/proto_util.h"
 #include "internal/utf8.h"
 #include "re2/re2.h"
@@ -323,7 +337,7 @@ CelValue Add(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Add<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto sum = common::CheckedAdd(v0, v1);
+  auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
     return CreateErrorValue(arena, sum.status());
   }
@@ -332,7 +346,7 @@ CelValue Add<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Add<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto sum = common::CheckedAdd(v0, v1);
+  auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
     return CreateErrorValue(arena, sum.status());
   }
@@ -349,7 +363,7 @@ CelValue Sub(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Sub<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto diff = common::CheckedSub(v0, v1);
+  auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
     return CreateErrorValue(arena, diff.status());
   }
@@ -358,7 +372,7 @@ CelValue Sub<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Sub<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto diff = common::CheckedSub(v0, v1);
+  auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
     return CreateErrorValue(arena, diff.status());
   }
@@ -375,7 +389,7 @@ CelValue Mul(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Mul<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto prod = common::CheckedMul(v0, v1);
+  auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
     return CreateErrorValue(arena, prod.status());
   }
@@ -384,7 +398,7 @@ CelValue Mul<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Mul<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto prod = common::CheckedMul(v0, v1);
+  auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
     return CreateErrorValue(arena, prod.status());
   }
@@ -403,7 +417,7 @@ CelValue Div(Arena* arena, Type v0, Type v1);
 // division by 0
 template <>
 CelValue Div<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto quot = common::CheckedDiv(v0, v1);
+  auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
     return CreateErrorValue(arena, quot.status());
   }
@@ -414,7 +428,7 @@ CelValue Div<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 // division by 0
 template <>
 CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto quot = common::CheckedDiv(v0, v1);
+  auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
     return CreateErrorValue(arena, quot.status());
   }
@@ -438,7 +452,7 @@ CelValue Modulo(Arena* arena, Type v0, Type v1);
 // division by 0
 template <>
 CelValue Modulo<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto mod = common::CheckedMod(v0, v1);
+  auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
     return CreateErrorValue(arena, mod.status());
   }
@@ -447,7 +461,7 @@ CelValue Modulo<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Modulo<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto mod = common::CheckedMod(v0, v1);
+  auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
     return CreateErrorValue(arena, mod.status());
   }
@@ -1150,7 +1164,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, double v) {
-        auto conv = common::CheckedDoubleToInt64(v);
+        auto conv = cel::internal::CheckedDoubleToInt64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1188,7 +1202,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   return FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, uint64_t v) {
-        auto conv = common::CheckedUint64ToInt64(v);
+        auto conv = cel::internal::CheckedUint64ToInt64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1291,7 +1305,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, double v) {
-        auto conv = common::CheckedDoubleToUint64(v);
+        auto conv = cel::internal::CheckedDoubleToUint64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1304,7 +1318,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, int64_t v) {
-        auto conv = common::CheckedInt64ToUint64(v);
+        auto conv = cel::internal::CheckedInt64ToUint64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1398,7 +1412,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
       builtin::kNeg, false,
       [](Arena* arena, int64_t value) -> CelValue {
-        auto inv = common::CheckedNegation(value);
+        auto inv = cel::internal::CheckedNegation(value);
         if (!inv.ok()) {
           return CreateErrorValue(arena, inv.status());
         }
@@ -1523,7 +1537,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kAdd, false,
           [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto sum = common::CheckedAdd(t1, d2);
+              auto sum = cel::internal::CheckedAdd(t1, d2);
               if (!sum.ok()) {
                 return CreateErrorValue(arena, sum.status());
               }
@@ -1539,7 +1553,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kAdd, false,
           [=](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto sum = common::CheckedAdd(t1, d2);
+              auto sum = cel::internal::CheckedAdd(t1, d2);
               if (!sum.ok()) {
                 return CreateErrorValue(arena, sum.status());
               }
@@ -1555,7 +1569,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kAdd, false,
           [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto sum = common::CheckedAdd(d1, d2);
+              auto sum = cel::internal::CheckedAdd(d1, d2);
               if (!sum.ok()) {
                 return CreateErrorValue(arena, sum.status());
               }
@@ -1571,7 +1585,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kSubtract, false,
           [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto diff = common::CheckedSub(t1, d2);
+              auto diff = cel::internal::CheckedSub(t1, d2);
               if (!diff.ok()) {
                 return CreateErrorValue(arena, diff.status());
               }
@@ -1586,7 +1600,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       builtin::kSubtract, false,
       [=](Arena* arena, absl::Time t1, absl::Time t2) -> CelValue {
         if (enable_timestamp_duration_overflow_errors) {
-          auto diff = common::CheckedSub(t1, t2);
+          auto diff = cel::internal::CheckedSub(t1, t2);
           if (!diff.ok()) {
             return CreateErrorValue(arena, diff.status());
           }
@@ -1602,7 +1616,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kSubtract, false,
           [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto diff = common::CheckedSub(d1, d2);
+              auto diff = cel::internal::CheckedSub(d1, d2);
               if (!diff.ok()) {
                 return CreateErrorValue(arena, diff.status());
               }

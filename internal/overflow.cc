@@ -1,4 +1,18 @@
-#include "common/overflow.h"
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "internal/overflow.h"
 
 #include <cstdint>
 #include <limits>
@@ -8,11 +22,8 @@
 #include "absl/time/time.h"
 #include "internal/status_macros.h"
 
-namespace google::api::expr::common {
+namespace cel::internal {
 namespace {
-
-using ::absl::Status;
-using ::absl::StatusOr;
 
 // Parse from the string representation of the max timestamp to the max time.
 absl::Time MaxTime() {
@@ -43,12 +54,14 @@ const int64_t kMinUnixTime =
 const int64_t kMaxUnixTime =
     (MaxTime() - absl::UnixEpoch()) / kOneSecondDuration;
 
-Status CheckRange(bool valid_expression, absl::string_view error_message) {
+absl::Status CheckRange(bool valid_expression,
+                        absl::string_view error_message) {
   return valid_expression ? absl::OkStatus()
                           : absl::OutOfRangeError(error_message);
 }
 
-Status CheckArgument(bool valid_expression, absl::string_view error_message) {
+absl::Status CheckArgument(bool valid_expression,
+                           absl::string_view error_message) {
   return valid_expression ? absl::OkStatus()
                           : absl::InvalidArgumentError(error_message);
 }
@@ -65,7 +78,7 @@ bool IsFinite(absl::Time t) {
 
 }  // namespace
 
-StatusOr<int64_t> CheckedAdd(int64_t x, int64_t y) {
+absl::StatusOr<int64_t> CheckedAdd(int64_t x, int64_t y) {
 #if ABSL_HAVE_BUILTIN(__builtin_add_overflow)
   int64_t sum;
   if (!__builtin_add_overflow(x, y, &sum)) {
@@ -79,7 +92,7 @@ StatusOr<int64_t> CheckedAdd(int64_t x, int64_t y) {
 #endif
 }
 
-StatusOr<int64_t> CheckedSub(int64_t x, int64_t y) {
+absl::StatusOr<int64_t> CheckedSub(int64_t x, int64_t y) {
 #if ABSL_HAVE_BUILTIN(__builtin_sub_overflow)
   int64_t diff;
   if (!__builtin_sub_overflow(x, y, &diff)) {
@@ -93,7 +106,7 @@ StatusOr<int64_t> CheckedSub(int64_t x, int64_t y) {
 #endif
 }
 
-StatusOr<int64_t> CheckedNegation(int64_t v) {
+absl::StatusOr<int64_t> CheckedNegation(int64_t v) {
 #if ABSL_HAVE_BUILTIN(__builtin_mul_overflow)
   int64_t prod;
   if (!__builtin_mul_overflow(v, -1, &prod)) {
@@ -106,7 +119,7 @@ StatusOr<int64_t> CheckedNegation(int64_t v) {
 #endif
 }
 
-StatusOr<int64_t> CheckedMul(int64_t x, int64_t y) {
+absl::StatusOr<int64_t> CheckedMul(int64_t x, int64_t y) {
 #if ABSL_HAVE_BUILTIN(__builtin_mul_overflow)
   int64_t prod;
   if (!__builtin_mul_overflow(x, y, &prod)) {
@@ -127,21 +140,21 @@ StatusOr<int64_t> CheckedMul(int64_t x, int64_t y) {
 #endif
 }
 
-StatusOr<int64_t> CheckedDiv(int64_t x, int64_t y) {
+absl::StatusOr<int64_t> CheckedDiv(int64_t x, int64_t y) {
   CEL_RETURN_IF_ERROR(
       CheckRange(x != kInt64Min || y != -1, "integer overflow"));
   CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "divide by zero"));
   return x / y;
 }
 
-StatusOr<int64_t> CheckedMod(int64_t x, int64_t y) {
+absl::StatusOr<int64_t> CheckedMod(int64_t x, int64_t y) {
   CEL_RETURN_IF_ERROR(
       CheckRange(x != kInt64Min || y != -1, "integer overflow"));
   CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
   return x % y;
 }
 
-StatusOr<uint64_t> CheckedAdd(uint64_t x, uint64_t y) {
+absl::StatusOr<uint64_t> CheckedAdd(uint64_t x, uint64_t y) {
 #if ABSL_HAVE_BUILTIN(__builtin_add_overflow)
   uint64_t sum;
   if (!__builtin_add_overflow(x, y, &sum)) {
@@ -155,7 +168,7 @@ StatusOr<uint64_t> CheckedAdd(uint64_t x, uint64_t y) {
 #endif
 }
 
-StatusOr<uint64_t> CheckedSub(uint64_t x, uint64_t y) {
+absl::StatusOr<uint64_t> CheckedSub(uint64_t x, uint64_t y) {
 #if ABSL_HAVE_BUILTIN(__builtin_sub_overflow)
   uint64_t diff;
   if (!__builtin_sub_overflow(x, y, &diff)) {
@@ -168,7 +181,7 @@ StatusOr<uint64_t> CheckedSub(uint64_t x, uint64_t y) {
 #endif
 }
 
-StatusOr<uint64_t> CheckedMul(uint64_t x, uint64_t y) {
+absl::StatusOr<uint64_t> CheckedMul(uint64_t x, uint64_t y) {
 #if ABSL_HAVE_BUILTIN(__builtin_mul_overflow)
   uint64_t prod;
   if (!__builtin_mul_overflow(x, y, &prod)) {
@@ -182,17 +195,17 @@ StatusOr<uint64_t> CheckedMul(uint64_t x, uint64_t y) {
 #endif
 }
 
-StatusOr<uint64_t> CheckedDiv(uint64_t x, uint64_t y) {
+absl::StatusOr<uint64_t> CheckedDiv(uint64_t x, uint64_t y) {
   CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "divide by zero"));
   return x / y;
 }
 
-StatusOr<uint64_t> CheckedMod(uint64_t x, uint64_t y) {
+absl::StatusOr<uint64_t> CheckedMod(uint64_t x, uint64_t y) {
   CEL_RETURN_IF_ERROR(CheckArgument(y != 0, "modulus by zero"));
   return x % y;
 }
 
-StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
+absl::StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
   CEL_RETURN_IF_ERROR(
       CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
   // absl::Duration can handle +- infinite durations, but the Go time.Duration
@@ -211,7 +224,7 @@ StatusOr<absl::Duration> CheckedAdd(absl::Duration x, absl::Duration y) {
   return absl::Nanoseconds(nanos);
 }
 
-StatusOr<absl::Duration> CheckedSub(absl::Duration x, absl::Duration y) {
+absl::StatusOr<absl::Duration> CheckedSub(absl::Duration x, absl::Duration y) {
   CEL_RETURN_IF_ERROR(
       CheckRange(IsFinite(x) && IsFinite(y), "integer overflow"));
   CEL_ASSIGN_OR_RETURN(int64_t nanos, CheckedSub(absl::ToInt64Nanoseconds(x),
@@ -219,14 +232,14 @@ StatusOr<absl::Duration> CheckedSub(absl::Duration x, absl::Duration y) {
   return absl::Nanoseconds(nanos);
 }
 
-StatusOr<absl::Duration> CheckedNegation(absl::Duration v) {
+absl::StatusOr<absl::Duration> CheckedNegation(absl::Duration v) {
   CEL_RETURN_IF_ERROR(CheckRange(IsFinite(v), "integer overflow"));
   CEL_ASSIGN_OR_RETURN(int64_t nanos,
                        CheckedNegation(absl::ToInt64Nanoseconds(v)));
   return absl::Nanoseconds(nanos);
 }
 
-StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
+absl::StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
   CEL_RETURN_IF_ERROR(
       CheckRange(IsFinite(t) && IsFinite(d), "timestamp overflow"));
   // First we break time into its components by truncating and subtracting.
@@ -264,12 +277,12 @@ StatusOr<absl::Time> CheckedAdd(absl::Time t, absl::Duration d) {
   return absl::FromUnixSeconds(s) + ns;
 }
 
-StatusOr<absl::Time> CheckedSub(absl::Time t, absl::Duration d) {
+absl::StatusOr<absl::Time> CheckedSub(absl::Time t, absl::Duration d) {
   CEL_ASSIGN_OR_RETURN(auto neg_duration, CheckedNegation(d));
   return CheckedAdd(t, neg_duration);
 }
 
-StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
+absl::StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
   CEL_RETURN_IF_ERROR(
       CheckRange(IsFinite(t1) && IsFinite(t2), "integer overflow"));
   // First we break time into its components by truncating and subtracting.
@@ -291,41 +304,41 @@ StatusOr<absl::Duration> CheckedSub(absl::Time t1, absl::Time t2) {
   return absl::Nanoseconds(v);
 }
 
-StatusOr<int64_t> CheckedDoubleToInt64(double v) {
+absl::StatusOr<int64_t> CheckedDoubleToInt64(double v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(std::isfinite(v) && v < kDoubleToIntMax && v > kDoubleToIntMin,
                  "double out of int64_t range"));
   return static_cast<int64_t>(v);
 }
 
-StatusOr<uint64_t> CheckedDoubleToUint64(double v) {
+absl::StatusOr<uint64_t> CheckedDoubleToUint64(double v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(std::isfinite(v) && v >= 0 && v < kDoubleTwoTo64,
                  "double out of uint64_t range"));
   return static_cast<uint64_t>(v);
 }
 
-StatusOr<uint64_t> CheckedInt64ToUint64(int64_t v) {
+absl::StatusOr<uint64_t> CheckedInt64ToUint64(int64_t v) {
   CEL_RETURN_IF_ERROR(CheckRange(v >= 0, "int64 out of uint64_t range"));
   return static_cast<uint64_t>(v);
 }
 
-StatusOr<int32_t> CheckedInt64ToInt32(int64_t v) {
+absl::StatusOr<int32_t> CheckedInt64ToInt32(int64_t v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(v >= kInt32Min && v <= kInt32Max, "int64 out of int32_t range"));
   return static_cast<int32_t>(v);
 }
 
-StatusOr<int64_t> CheckedUint64ToInt64(uint64_t v) {
+absl::StatusOr<int64_t> CheckedUint64ToInt64(uint64_t v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(v <= kUintToIntMax, "uint64 out of int64_t range"));
   return static_cast<int64_t>(v);
 }
 
-StatusOr<uint32_t> CheckedUint64ToUint32(uint64_t v) {
+absl::StatusOr<uint32_t> CheckedUint64ToUint32(uint64_t v) {
   CEL_RETURN_IF_ERROR(
       CheckRange(v <= kUint32Max, "uint64 out of uint32_t range"));
   return static_cast<uint32_t>(v);
 }
 
-}  // namespace google::api::expr::common
+}  // namespace cel::internal
