@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_SOURCE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_SOURCE_FACTORY_H_
 
@@ -7,7 +21,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/types/optional.h"
-#include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
+#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
 #include "antlr4-runtime.h"
 
 namespace google {
@@ -90,7 +104,7 @@ class SourceFactory {
                        const Expr& target, const std::vector<Expr>& args);
   Expr newIdent(const antlr4::Token* token, const std::string& ident_name);
   Expr newIdentForMacro(int64_t macro_id, const std::string& ident_name);
-  Expr newSelect(::cel_grammar::CelParser::SelectOrCallContext* ctx,
+  Expr newSelect(::cel::parser_internal::CelParser::SelectOrCallContext* ctx,
                  Expr& operand, const std::string& field);
   Expr newPresenceTestForMacro(int64_t macro_id, const Expr& operand,
                                const std::string& field);

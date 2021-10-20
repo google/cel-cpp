@@ -31,9 +31,9 @@
 #include "absl/types/optional.h"
 #include "common/escaping.h"
 #include "common/operators.h"
-#include "parser/cel_grammar.inc/cel_grammar/CelBaseVisitor.h"
-#include "parser/cel_grammar.inc/cel_grammar/CelLexer.h"
-#include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
+#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelBaseVisitor.h"
+#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelLexer.h"
+#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
 #include "parser/macro.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
@@ -57,8 +57,9 @@ using ::antlr4::misc::IntervalSet;
 using ::antlr4::tree::ErrorNode;
 using ::antlr4::tree::ParseTreeListener;
 using ::antlr4::tree::TerminalNode;
-using ::cel_grammar::CelLexer;
-using ::cel_grammar::CelParser;
+using ::cel::parser_internal::CelBaseVisitor;
+using ::cel::parser_internal::CelLexer;
+using ::cel::parser_internal::CelParser;
 using common::CelOperator;
 using common::ReverseLookupOperator;
 using ::google::api::expr::v1alpha1::Expr;
@@ -152,7 +153,7 @@ Expr ExpressionBalancer::balancedTree(int lo, int hi) {
                             {std::move(left), std::move(right)});
 }
 
-class ParserVisitor final : public ::cel_grammar::CelBaseVisitor,
+class ParserVisitor final : public CelBaseVisitor,
                             public antlr4::BaseErrorListener {
  public:
   ParserVisitor(const std::string& description, const std::string& expression,
@@ -163,61 +164,45 @@ class ParserVisitor final : public ::cel_grammar::CelBaseVisitor,
 
   antlrcpp::Any visit(antlr4::tree::ParseTree* tree) override;
 
-  antlrcpp::Any visitStart(
-      ::cel_grammar::CelParser::StartContext* ctx) override;
-  antlrcpp::Any visitExpr(::cel_grammar::CelParser::ExprContext* ctx) override;
+  antlrcpp::Any visitStart(CelParser::StartContext* ctx) override;
+  antlrcpp::Any visitExpr(CelParser::ExprContext* ctx) override;
   antlrcpp::Any visitConditionalOr(
-      ::cel_grammar::CelParser::ConditionalOrContext* ctx) override;
+      CelParser::ConditionalOrContext* ctx) override;
   antlrcpp::Any visitConditionalAnd(
-      ::cel_grammar::CelParser::ConditionalAndContext* ctx) override;
-  antlrcpp::Any visitRelation(
-      ::cel_grammar::CelParser::RelationContext* ctx) override;
-  antlrcpp::Any visitCalc(::cel_grammar::CelParser::CalcContext* ctx) override;
-  antlrcpp::Any visitUnary(::cel_grammar::CelParser::UnaryContext* ctx);
-  antlrcpp::Any visitLogicalNot(
-      ::cel_grammar::CelParser::LogicalNotContext* ctx) override;
-  antlrcpp::Any visitNegate(
-      ::cel_grammar::CelParser::NegateContext* ctx) override;
-  antlrcpp::Any visitSelectOrCall(
-      ::cel_grammar::CelParser::SelectOrCallContext* ctx) override;
-  antlrcpp::Any visitIndex(
-      ::cel_grammar::CelParser::IndexContext* ctx) override;
+      CelParser::ConditionalAndContext* ctx) override;
+  antlrcpp::Any visitRelation(CelParser::RelationContext* ctx) override;
+  antlrcpp::Any visitCalc(CelParser::CalcContext* ctx) override;
+  antlrcpp::Any visitUnary(CelParser::UnaryContext* ctx);
+  antlrcpp::Any visitLogicalNot(CelParser::LogicalNotContext* ctx) override;
+  antlrcpp::Any visitNegate(CelParser::NegateContext* ctx) override;
+  antlrcpp::Any visitSelectOrCall(CelParser::SelectOrCallContext* ctx) override;
+  antlrcpp::Any visitIndex(CelParser::IndexContext* ctx) override;
   antlrcpp::Any visitCreateMessage(
-      ::cel_grammar::CelParser::CreateMessageContext* ctx) override;
+      CelParser::CreateMessageContext* ctx) override;
   antlrcpp::Any visitFieldInitializerList(
-      ::cel_grammar::CelParser::FieldInitializerListContext* ctx) override;
+      CelParser::FieldInitializerListContext* ctx) override;
   antlrcpp::Any visitIdentOrGlobalCall(
-      ::cel_grammar::CelParser::IdentOrGlobalCallContext* ctx) override;
-  antlrcpp::Any visitNested(
-      ::cel_grammar::CelParser::NestedContext* ctx) override;
-  antlrcpp::Any visitCreateList(
-      ::cel_grammar::CelParser::CreateListContext* ctx) override;
+      CelParser::IdentOrGlobalCallContext* ctx) override;
+  antlrcpp::Any visitNested(CelParser::NestedContext* ctx) override;
+  antlrcpp::Any visitCreateList(CelParser::CreateListContext* ctx) override;
   std::vector<google::api::expr::v1alpha1::Expr> visitList(
-      ::cel_grammar::CelParser::ExprListContext* ctx);
-  antlrcpp::Any visitCreateStruct(
-      ::cel_grammar::CelParser::CreateStructContext* ctx) override;
+      CelParser::ExprListContext* ctx);
+  antlrcpp::Any visitCreateStruct(CelParser::CreateStructContext* ctx) override;
   antlrcpp::Any visitConstantLiteral(
-      ::cel_grammar::CelParser::ConstantLiteralContext* ctx) override;
-  antlrcpp::Any visitPrimaryExpr(
-      ::cel_grammar::CelParser::PrimaryExprContext* ctx) override;
-  antlrcpp::Any visitMemberExpr(
-      ::cel_grammar::CelParser::MemberExprContext* ctx) override;
+      CelParser::ConstantLiteralContext* ctx) override;
+  antlrcpp::Any visitPrimaryExpr(CelParser::PrimaryExprContext* ctx) override;
+  antlrcpp::Any visitMemberExpr(CelParser::MemberExprContext* ctx) override;
 
   antlrcpp::Any visitMapInitializerList(
-      ::cel_grammar::CelParser::MapInitializerListContext* ctx) override;
-  antlrcpp::Any visitInt(::cel_grammar::CelParser::IntContext* ctx) override;
-  antlrcpp::Any visitUint(::cel_grammar::CelParser::UintContext* ctx) override;
-  antlrcpp::Any visitDouble(
-      ::cel_grammar::CelParser::DoubleContext* ctx) override;
-  antlrcpp::Any visitString(
-      ::cel_grammar::CelParser::StringContext* ctx) override;
-  antlrcpp::Any visitBytes(
-      ::cel_grammar::CelParser::BytesContext* ctx) override;
-  antlrcpp::Any visitBoolTrue(
-      ::cel_grammar::CelParser::BoolTrueContext* ctx) override;
-  antlrcpp::Any visitBoolFalse(
-      ::cel_grammar::CelParser::BoolFalseContext* ctx) override;
-  antlrcpp::Any visitNull(::cel_grammar::CelParser::NullContext* ctx) override;
+      CelParser::MapInitializerListContext* ctx) override;
+  antlrcpp::Any visitInt(CelParser::IntContext* ctx) override;
+  antlrcpp::Any visitUint(CelParser::UintContext* ctx) override;
+  antlrcpp::Any visitDouble(CelParser::DoubleContext* ctx) override;
+  antlrcpp::Any visitString(CelParser::StringContext* ctx) override;
+  antlrcpp::Any visitBytes(CelParser::BytesContext* ctx) override;
+  antlrcpp::Any visitBoolTrue(CelParser::BoolTrueContext* ctx) override;
+  antlrcpp::Any visitBoolFalse(CelParser::BoolFalseContext* ctx) override;
+  antlrcpp::Any visitNull(CelParser::NullContext* ctx) override;
   google::api::expr::v1alpha1::SourceInfo sourceInfo() const;
   EnrichedSourceInfo enrichedSourceInfo() const;
   void syntaxError(antlr4::Recognizer* recognizer,

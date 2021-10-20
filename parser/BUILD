@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:antlr.bzl", "antlr_cc_library")
-
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
-
-antlr_cc_library(
-    name = "cel",
-    src = "Cel.g4",
-)
 
 cc_library(
     name = "parser",
@@ -35,12 +28,12 @@ cc_library(
         "-fexceptions",
     ],
     deps = [
-        ":cel_cc_parser",
         ":macro",
         ":options",
         ":source_factory",
         "//common:escaping",
         "//common:operators",
+        "//parser/internal:cel_cc_parser",
         "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
@@ -89,8 +82,8 @@ cc_library(
         "-fexceptions",
     ],
     deps = [
-        ":cel_cc_parser",
         "//common:operators",
+        "//parser/internal:cel_cc_parser",
         "@antlr4_runtimes//:cpp",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/memory",
@@ -105,6 +98,10 @@ cc_library(
 cc_library(
     name = "options",
     hdrs = ["options.h"],
+    deps = [
+        "//parser/internal:options",
+        "@com_google_absl//absl/base:core_headers",
+    ],
 )
 
 cc_test(

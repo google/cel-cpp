@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "parser/source_factory.h"
 
 #include <algorithm>
@@ -126,7 +140,7 @@ Expr SourceFactory::newIdentForMacro(int64_t macro_id,
 }
 
 Expr SourceFactory::newSelect(
-    ::cel_grammar::CelParser::SelectOrCallContext* ctx, Expr& operand,
+    ::cel::parser_internal::CelParser::SelectOrCallContext* ctx, Expr& operand,
     const std::string& field) {
   Expr expr = newExpr(ctx->op);
   auto select_expr = expr.mutable_select_expr();
