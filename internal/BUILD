@@ -78,6 +78,27 @@ cc_library(
 )
 
 cc_library(
+    name = "lexis",
+    srcs = ["lexis.cc"],
+    hdrs = ["lexis.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "lexis_test",
+    srcs = ["lexis_test.cc"],
+    deps = [
+        ":lexis",
+        ":testing",
+    ],
+)
+
+cc_library(
     name = "proto_util",
     srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
