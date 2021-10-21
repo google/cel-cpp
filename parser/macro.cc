@@ -88,7 +88,7 @@ std::vector<Macro> Macro::AllMacros() {
                const Expr& target, const std::vector<Expr>& args) {
               if (!args.empty() && args[0].has_select_expr()) {
                 const auto& sel_expr = args[0].select_expr();
-                return sf->newPresenceTestForMacro(macro_id, sel_expr.operand(),
+                return sf->NewPresenceTestForMacro(macro_id, sel_expr.operand(),
                                                    sel_expr.field());
               } else {
                 // error
@@ -103,7 +103,7 @@ std::vector<Macro> Macro::AllMacros() {
           CelOperator::ALL, 2,
           [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
              const Expr& target, const std::vector<Expr>& args) {
-            return sf->newQuantifierExprForMacro(SourceFactory::QUANTIFIER_ALL,
+            return sf->NewQuantifierExprForMacro(SourceFactory::QUANTIFIER_ALL,
                                                  macro_id, target, args);
           },
           /* receiver style*/ true),
@@ -114,7 +114,7 @@ std::vector<Macro> Macro::AllMacros() {
           CelOperator::EXISTS, 2,
           [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
              const Expr& target, const std::vector<Expr>& args) {
-            return sf->newQuantifierExprForMacro(
+            return sf->NewQuantifierExprForMacro(
                 SourceFactory::QUANTIFIER_EXISTS, macro_id, target, args);
           },
           /* receiver style*/ true),
@@ -125,7 +125,7 @@ std::vector<Macro> Macro::AllMacros() {
           CelOperator::EXISTS_ONE, 2,
           [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
              const Expr& target, const std::vector<Expr>& args) {
-            return sf->newQuantifierExprForMacro(
+            return sf->NewQuantifierExprForMacro(
                 SourceFactory::QUANTIFIER_EXISTS_ONE, macro_id, target, args);
           },
           /* receiver style*/ true),
@@ -137,7 +137,7 @@ std::vector<Macro> Macro::AllMacros() {
           CelOperator::MAP, 2,
           [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
              const Expr& target, const std::vector<Expr>& args) {
-            return sf->newMapForMacro(macro_id, target, args);
+            return sf->NewMapForMacro(macro_id, target, args);
           },
           /* receiver style*/ true),
 
@@ -149,7 +149,7 @@ std::vector<Macro> Macro::AllMacros() {
           CelOperator::MAP, 3,
           [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
              const Expr& target, const std::vector<Expr>& args) {
-            return sf->newMapForMacro(macro_id, target, args);
+            return sf->NewMapForMacro(macro_id, target, args);
           },
           /* receiver style*/ true),
 
@@ -160,7 +160,7 @@ std::vector<Macro> Macro::AllMacros() {
           CelOperator::FILTER, 2,
           [](const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
              const Expr& target, const std::vector<Expr>& args) {
-            return sf->newFilterExprForMacro(macro_id, target, args);
+            return sf->NewFilterExprForMacro(macro_id, target, args);
           },
           /* receiver style*/ true),
   };

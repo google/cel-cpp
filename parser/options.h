@@ -48,10 +48,7 @@ struct ParserOptions final {
 
 }  // namespace cel
 
-namespace google {
-namespace api {
-namespace expr {
-namespace parser {
+namespace google::api::expr::parser {
 
 using ParserOptions = cel::ParserOptions;
 
@@ -72,9 +69,6 @@ ABSL_DEPRECATED("Use ParserOptions().add_macro_calls instead.")
 inline constexpr bool kDefaultAddMacroCalls =
     cel::parser_internal::kDefaultAddMacroCalls;
 
-}  // namespace parser
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::parser
 
 #endif  // THIRD_PARTY_CEL_CPP_PARSER_OPTIONS_H_
