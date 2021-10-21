@@ -280,16 +280,22 @@ Expr SourceFactory::NewQuantifierExprForMacro(
 }
 
 Expr SourceFactory::BuildArgForMacroCall(const Expr& expr) {
-  Expr result_expr;
-  result_expr.set_id(expr.id());
   if (macro_calls_.find(expr.id()) != macro_calls_.end()) {
+    Expr result_expr;
+    result_expr.set_id(expr.id());
     return result_expr;
   }
   // Call expression could have args or sub-args that are also macros found in
   // macro_calls.
   if (expr.has_call_expr()) {
+    Expr result_expr;
+    result_expr.set_id(expr.id());
     auto mutable_expr = result_expr.mutable_call_expr();
     mutable_expr->set_function(expr.call_expr().function());
+    if (expr.call_expr().has_target()) {
+      *mutable_expr->mutable_target() =
+          BuildArgForMacroCall(expr.call_expr().target());
+    }
     for (const auto& arg : expr.call_expr().args()) {
       // Iterate the AST from `expr` recursively looking for macros. Because we
       // are at most starting from the top level macro, this recursion is
@@ -297,6 +303,17 @@ Expr SourceFactory::BuildArgForMacroCall(const Expr& expr) {
       // AST during parsing will catch recursion overflows before we get to
       // here.
       *mutable_expr->mutable_args()->Add() = BuildArgForMacroCall(arg);
+    }
+    return result_expr;
+  }
+  if (expr.has_list_expr()) {
+    Expr result_expr;
+    result_expr.set_id(expr.id());
+    const auto& list_expr = expr.list_expr();
+    auto mutable_list_expr = result_expr.mutable_list_expr();
+    for (const auto& elem : list_expr.elements()) {
+      *mutable_list_expr->mutable_elements()->Add() =
+          BuildArgForMacroCall(elem);
     }
     return result_expr;
   }
@@ -317,7 +334,7 @@ void SourceFactory::AddMacroCall(int64_t macro_id, const Expr& target,
     if (macro_calls_.find(target.id()) != macro_calls_.end()) {
       expr.set_id(target.id());
     } else {
-      expr = target;
+      expr = BuildArgForMacroCall(target);
     }
     *mutable_macro_call->mutable_target() = expr;
   }

@@ -1059,7 +1059,78 @@ std::vector<TestInfo> test_cases = {
      ")^#18:exists#,\n"
      "has(\n"
      "  z^#8:Expr.Ident#.a^#9:Expr.Select#\n"
-     ")^#10:has"}};
+     ")^#10:has"},
+    {"has(a.b).asList().exists(c, c)",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  c,\n"
+     "  // Target\n"
+     "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#.asList()^#5:Expr.Call#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  false^#9:bool#,\n"
+     "  // LoopCondition\n"
+     "  @not_strictly_false(\n"
+     "    !_(\n"
+     "      __result__^#10:Expr.Ident#\n"
+     "    )^#11:Expr.Call#\n"
+     "  )^#12:Expr.Call#,\n"
+     "  // LoopStep\n"
+     "  _||_(\n"
+     "    __result__^#13:Expr.Ident#,\n"
+     "    c^#8:Expr.Ident#\n"
+     "  )^#14:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#15:Expr.Ident#)^#16:Expr.Comprehension#",
+     "", "", "",
+     "^#4:has#.asList()^#5:Expr.Call#.exists(\n"
+     "  c^#7:Expr.Ident#,\n"
+     "  c^#8:Expr.Ident#\n"
+     ")^#16:exists#,\n"
+     "has(\n"
+     "  a^#2:Expr.Ident#.b^#3:Expr.Select#\n"
+     ")^#4:has"},
+    {"[has(a.b), has(c.d)].exists(e, e)",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  e,\n"
+     "  // Target\n"
+     "  [\n"
+     "    a^#3:Expr.Ident#.b~test-only~^#5:Expr.Select#,\n"
+     "    c^#7:Expr.Ident#.d~test-only~^#9:Expr.Select#\n"
+     "  ]^#1:Expr.CreateList#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  false^#13:bool#,\n"
+     "  // LoopCondition\n"
+     "  @not_strictly_false(\n"
+     "    !_(\n"
+     "      __result__^#14:Expr.Ident#\n"
+     "    )^#15:Expr.Call#\n"
+     "  )^#16:Expr.Call#,\n"
+     "  // LoopStep\n"
+     "  _||_(\n"
+     "    __result__^#17:Expr.Ident#,\n"
+     "    e^#12:Expr.Ident#\n"
+     "  )^#18:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#19:Expr.Ident#)^#20:Expr.Comprehension#",
+     "", "", "",
+     "[\n"
+     "  ^#5:has#,\n"
+     "  ^#9:has#\n"
+     "]^#1:Expr.CreateList#.exists(\n"
+     "  e^#11:Expr.Ident#,\n"
+     "  e^#12:Expr.Ident#\n"
+     ")^#20:exists#,\n"
+     "has(\n"
+     "  c^#7:Expr.Ident#.d^#8:Expr.Select#\n"
+     ")^#9:has#,\n"
+     "has(\n"
+     "  a^#3:Expr.Ident#.b^#4:Expr.Select#\n"
+     ")^#5:has"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
@@ -1230,7 +1301,7 @@ TEST_P(ExpressionTest, Parse) {
     EXPECT_THAT(result, IsOk());
   } else {
     EXPECT_THAT(result, Not(IsOk()));
-    EXPECT_EQ(result.status().message(), test_info.E);
+    EXPECT_EQ(test_info.E, result.status().message());
   }
 
   if (!test_info.P.empty()) {
@@ -1248,14 +1319,13 @@ TEST_P(ExpressionTest, Parse) {
   }
 
   if (!test_info.R.empty()) {
-    EXPECT_EQ(ConvertEnrichedSourceInfoToString(result->enriched_source_info()),
-              test_info.R);
+    EXPECT_EQ(test_info.R, ConvertEnrichedSourceInfoToString(
+                               result->enriched_source_info()));
   }
 
   if (!test_info.M.empty()) {
-    EXPECT_EQ(
-        ConvertMacroCallsToString(result.value().parsed_expr().source_info()),
-        test_info.M);
+    EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
+                               result.value().parsed_expr().source_info()));
   }
 }
 
