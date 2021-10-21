@@ -926,57 +926,62 @@ absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
     const std::string& expression, const std::vector<Macro>& macros,
     const std::string& description, const ParserOptions& options) {
-  ANTLRInputStream input(expression);
-  if (input.size() > options.expression_size_codepoint_limit) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "expression size exceeds codepoint limit.", " input size: ",
-        input.size(), ", limit: ", options.expression_size_codepoint_limit));
-  }
-  CelLexer lexer(&input);
-  CommonTokenStream tokens(&lexer);
-  CelParser parser(&tokens);
-  ExprRecursionListener listener(options.max_recursion_depth);
-  ParserVisitor visitor(description, expression, options.max_recursion_depth,
-                        macros, options.add_macro_calls);
-
-  lexer.removeErrorListeners();
-  parser.removeErrorListeners();
-  lexer.addErrorListener(&visitor);
-  parser.addErrorListener(&visitor);
-  parser.addParseListener(&listener);
-
-  // Limit the number of error recovery attempts to prevent bad expressions
-  // from consuming lots of cpu / memory.
-  std::shared_ptr<RecoveryLimitErrorStrategy> error_strategy(
-      new RecoveryLimitErrorStrategy(
-          options.error_recovery_limit,
-          options.error_recovery_token_lookahead_limit));
-  parser.setErrorHandler(error_strategy);
-
-  CelParser::StartContext* root;
   try {
-    root = parser.start();
-  } catch (const ParseCancellationException& e) {
+    ANTLRInputStream input(expression);
+    if (input.size() > options.expression_size_codepoint_limit) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "expression size exceeds codepoint limit.", " input size: ",
+          input.size(), ", limit: ", options.expression_size_codepoint_limit));
+    }
+    CelLexer lexer(&input);
+    CommonTokenStream tokens(&lexer);
+    CelParser parser(&tokens);
+    ExprRecursionListener listener(options.max_recursion_depth);
+    ParserVisitor visitor(description, expression, options.max_recursion_depth,
+                          macros, options.add_macro_calls);
+
+    lexer.removeErrorListeners();
+    parser.removeErrorListeners();
+    lexer.addErrorListener(&visitor);
+    parser.addErrorListener(&visitor);
+    parser.addParseListener(&listener);
+
+    // Limit the number of error recovery attempts to prevent bad expressions
+    // from consuming lots of cpu / memory.
+    parser.setErrorHandler(std::make_shared<RecoveryLimitErrorStrategy>(
+        options.error_recovery_limit,
+        options.error_recovery_token_lookahead_limit));
+
+    Expr expr;
+    try {
+      expr = visitor.visit(parser.start()).as<Expr>();
+    } catch (const ParseCancellationException& e) {
+      if (visitor.HasErrored()) {
+        return absl::InvalidArgumentError(visitor.ErrorMessage());
+      }
+      return absl::CancelledError(e.what());
+    }
+
     if (visitor.HasErrored()) {
       return absl::InvalidArgumentError(visitor.ErrorMessage());
     }
-    return absl::CancelledError(e.what());
+
+    // root is deleted as part of the parser context
+    ParsedExpr parsed_expr;
+    *(parsed_expr.mutable_expr()) = std::move(expr);
+    auto enriched_source_info = visitor.enriched_source_info();
+    *(parsed_expr.mutable_source_info()) = visitor.source_info();
+    return VerboseParsedExpr(std::move(parsed_expr),
+                             std::move(enriched_source_info));
   } catch (const std::exception& e) {
     return absl::AbortedError(e.what());
+  } catch (const char* what) {
+    // ANTLRv4 has historically thrown C string literals.
+    return absl::AbortedError(what);
+  } catch (...) {
+    // We guarantee to never throw and always return a status.
+    return absl::UnknownError("An unknown exception occurred");
   }
-
-  Expr expr = visitor.visit(root).as<Expr>();
-  if (visitor.HasErrored()) {
-    return absl::InvalidArgumentError(visitor.ErrorMessage());
-  }
-
-  // root is deleted as part of the parser context
-  ParsedExpr parsed_expr;
-  *(parsed_expr.mutable_expr()) = std::move(expr);
-  auto enriched_source_info = visitor.enriched_source_info();
-  *(parsed_expr.mutable_source_info()) = visitor.source_info();
-  return VerboseParsedExpr(std::move(parsed_expr),
-                           std::move(enriched_source_info));
 }
 
 }  // namespace google::api::expr::parser
