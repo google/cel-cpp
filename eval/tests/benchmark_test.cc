@@ -605,6 +605,7 @@ void BM_ListComprehension(benchmark::State& state) {
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
   InterpreterOptions options;
   options.comprehension_max_iterations = 10000000;
+  options.enable_comprehension_list_append = true;
   auto builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
   ASSERT_OK_AND_ASSIGN(
