@@ -160,10 +160,16 @@ cc_test(
 )
 
 cc_library(
+    name = "unicode",
+    hdrs = ["unicode.h"],
+)
+
+cc_library(
     name = "utf8",
     srcs = ["utf8.cc"],
     hdrs = ["utf8.h"],
     deps = [
+        ":unicode",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",

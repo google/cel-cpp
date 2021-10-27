@@ -736,6 +736,33 @@ std::vector<TestInfo> test_cases = {
      "    \"😦\"^#6:string#\n"
      "  ]^#3:Expr.CreateList#\n"
      ")^#2:Expr.Call#"},
+    {"'\u00ff' in ['\u00ff', '\u00ff', '\u00ff']",
+     "@in(\n"
+     "  \"\u00ff\"^#1:string#,\n"
+     "  [\n"
+     "    \"\u00ff\"^#4:string#,\n"
+     "    \"\u00ff\"^#5:string#,\n"
+     "    \"\u00ff\"^#6:string#\n"
+     "  ]^#3:Expr.CreateList#\n"
+     ")^#2:Expr.Call#"},
+    {"'\u00ff' in ['\uffff', '\U00100000', '\U0010ffff']",
+     "@in(\n"
+     "  \"\u00ff\"^#1:string#,\n"
+     "  [\n"
+     "    \"\uffff\"^#4:string#,\n"
+     "    \"\U00100000\"^#5:string#,\n"
+     "    \"\U0010ffff\"^#6:string#\n"
+     "  ]^#3:Expr.CreateList#\n"
+     ")^#2:Expr.Call#"},
+    {"'\u00ff' in ['\U00100000', '\uffff', '\U0010ffff']",
+     "@in(\n"
+     "  \"\u00ff\"^#1:string#,\n"
+     "  [\n"
+     "    \"\U00100000\"^#4:string#,\n"
+     "    \"\uffff\"^#5:string#,\n"
+     "    \"\U0010ffff\"^#6:string#\n"
+     "  ]^#3:Expr.CreateList#\n"
+     ")^#2:Expr.Call#"},
     {"'😁' in ['😁', '😑', '😦']\n"
      "   && in.😁",
      "",

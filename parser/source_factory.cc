@@ -41,7 +41,7 @@ int32_t PositiveOrMax(int32_t value) {
 
 }  // namespace
 
-SourceFactory::SourceFactory(const std::string& expression)
+SourceFactory::SourceFactory(absl::string_view expression)
     : next_id_(1), num_errors_(0) {
   CalcLineOffsets(expression);
 }
@@ -95,7 +95,7 @@ Expr SourceFactory::NewExpr(const antlr4::Token* token) {
   return NewExpr(Id(token));
 }
 
-Expr SourceFactory::NewGlobalCall(int64_t id, const std::string& function,
+Expr SourceFactory::NewGlobalCall(int64_t id, absl::string_view function,
                                   const std::vector<Expr>& args) {
   Expr expr = NewExpr(id);
   auto call_expr = expr.mutable_call_expr();
@@ -106,12 +106,12 @@ Expr SourceFactory::NewGlobalCall(int64_t id, const std::string& function,
 }
 
 Expr SourceFactory::NewGlobalCallForMacro(int64_t macro_id,
-                                          const std::string& function,
+                                          absl::string_view function,
                                           const std::vector<Expr>& args) {
   return NewGlobalCall(NextMacroId(macro_id), function, args);
 }
 
-Expr SourceFactory::NewReceiverCall(int64_t id, const std::string& function,
+Expr SourceFactory::NewReceiverCall(int64_t id, absl::string_view function,
                                     const Expr& target,
                                     const std::vector<Expr>& args) {
   Expr expr = NewExpr(id);
@@ -124,14 +124,14 @@ Expr SourceFactory::NewReceiverCall(int64_t id, const std::string& function,
 }
 
 Expr SourceFactory::NewIdent(const antlr4::Token* token,
-                             const std::string& ident_name) {
+                             absl::string_view ident_name) {
   Expr expr = NewExpr(token);
   expr.mutable_ident_expr()->set_name(ident_name);
   return expr;
 }
 
 Expr SourceFactory::NewIdentForMacro(int64_t macro_id,
-                                     const std::string& ident_name) {
+                                     absl::string_view ident_name) {
   Expr expr = NewExpr(NextMacroId(macro_id));
   expr.mutable_ident_expr()->set_name(ident_name);
   return expr;
@@ -139,7 +139,7 @@ Expr SourceFactory::NewIdentForMacro(int64_t macro_id,
 
 Expr SourceFactory::NewSelect(
     ::cel::parser_internal::CelParser::SelectOrCallContext* ctx, Expr& operand,
-    const std::string& field) {
+    absl::string_view field) {
   Expr expr = NewExpr(ctx->op);
   auto select_expr = expr.mutable_select_expr();
   *select_expr->mutable_operand() = operand;
@@ -149,7 +149,7 @@ Expr SourceFactory::NewSelect(
 
 Expr SourceFactory::NewPresenceTestForMacro(int64_t macro_id,
                                             const Expr& operand,
-                                            const std::string& field) {
+                                            absl::string_view field) {
   Expr expr = NewExpr(NextMacroId(macro_id));
   auto select_expr = expr.mutable_select_expr();
   *select_expr->mutable_operand() = operand;
@@ -159,7 +159,7 @@ Expr SourceFactory::NewPresenceTestForMacro(int64_t macro_id,
 }
 
 Expr SourceFactory::NewObject(
-    int64_t obj_id, const std::string& type_name,
+    int64_t obj_id, absl::string_view type_name,
     const std::vector<Expr::CreateStruct::Entry>& entries) {
   auto expr = NewExpr(obj_id);
   auto struct_expr = expr.mutable_struct_expr();
@@ -171,8 +171,9 @@ Expr SourceFactory::NewObject(
   return expr;
 }
 
-Expr::CreateStruct::Entry SourceFactory::NewObjectField(
-    int64_t field_id, const std::string& field, const Expr& value) {
+Expr::CreateStruct::Entry SourceFactory::NewObjectField(int64_t field_id,
+                                                        absl::string_view field,
+                                                        const Expr& value) {
   Expr::CreateStruct::Entry entry;
   entry.set_id(field_id);
   entry.set_field_key(field);
@@ -180,9 +181,9 @@ Expr::CreateStruct::Entry SourceFactory::NewObjectField(
   return entry;
 }
 
-Expr SourceFactory::NewComprehension(int64_t id, const std::string& iter_var,
+Expr SourceFactory::NewComprehension(int64_t id, absl::string_view iter_var,
                                      const Expr& iter_range,
-                                     const std::string& accu_var,
+                                     absl::string_view accu_var,
                                      const Expr& accu_init,
                                      const Expr& condition, const Expr& step,
                                      const Expr& result) {
@@ -198,9 +199,9 @@ Expr SourceFactory::NewComprehension(int64_t id, const std::string& iter_var,
   return expr;
 }
 
-Expr SourceFactory::FoldForMacro(int64_t macro_id, const std::string& iter_var,
+Expr SourceFactory::FoldForMacro(int64_t macro_id, absl::string_view iter_var,
                                  const Expr& iter_range,
-                                 const std::string& accu_var,
+                                 absl::string_view accu_var,
                                  const Expr& accu_init, const Expr& condition,
                                  const Expr& step, const Expr& result) {
   return NewComprehension(NextMacroId(macro_id), iter_var, iter_range, accu_var,
@@ -464,14 +465,14 @@ Expr SourceFactory::NewLiteralDouble(antlr4::ParserRuleContext* ctx,
 }
 
 Expr SourceFactory::NewLiteralString(antlr4::ParserRuleContext* ctx,
-                                     const std::string& s) {
+                                     absl::string_view s) {
   Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_string_value(s);
   return expr;
 }
 
 Expr SourceFactory::NewLiteralBytes(antlr4::ParserRuleContext* ctx,
-                                    const std::string& b) {
+                                    absl::string_view b) {
   Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_bytes_value(b);
   return expr;
@@ -496,36 +497,36 @@ Expr SourceFactory::NewLiteralNull(antlr4::ParserRuleContext* ctx) {
 }
 
 Expr SourceFactory::ReportError(antlr4::ParserRuleContext* ctx,
-                                const std::string& msg) {
+                                absl::string_view msg) {
   num_errors_ += 1;
   Expr expr = NewExpr(ctx);
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(msg, positions_.at(expr.id()));
+    errors_truncated_.emplace_back(std::string(msg), positions_.at(expr.id()));
   }
   return expr;
 }
 
 Expr SourceFactory::ReportError(int32_t line, int32_t col,
-                                const std::string& msg) {
+                                absl::string_view msg) {
   num_errors_ += 1;
   SourceLocation loc(line, col, /*offset_end=*/-1, line_offsets_);
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(msg, loc);
+    errors_truncated_.emplace_back(std::string(msg), loc);
   }
   return NewExpr(Id(loc));
 }
 
 Expr SourceFactory::ReportError(const SourceFactory::SourceLocation& loc,
-                                const std::string& msg) {
+                                absl::string_view msg) {
   num_errors_ += 1;
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(msg, loc);
+    errors_truncated_.emplace_back(std::string(msg), loc);
   }
   return NewExpr(Id(loc));
 }
 
-std::string SourceFactory::ErrorMessage(const std::string& description,
-                                        const std::string& expression) const {
+std::string SourceFactory::ErrorMessage(absl::string_view description,
+                                        absl::string_view expression) const {
   // Errors are collected as they are encountered, not by their location within
   // the source. To have a more stable error message as implementation
   // details change, we sort the collected errors by their source location
@@ -586,7 +587,7 @@ std::string SourceFactory::ErrorMessage(const std::string& description,
   return absl::StrJoin(messages, "\n");
 }
 
-bool SourceFactory::IsReserved(const std::string& ident_name) {
+bool SourceFactory::IsReserved(absl::string_view ident_name) {
   static const auto* reserved_words = new absl::flat_hash_set<std::string>(
       {"as",        "break", "const",  "continue", "else", "false", "for",
        "function",  "if",    "import", "in",       "let",  "loop",  "package",
@@ -623,7 +624,7 @@ EnrichedSourceInfo SourceFactory::enriched_source_info() const {
   return EnrichedSourceInfo(std::move(offset));
 }
 
-void SourceFactory::CalcLineOffsets(const std::string& expression) {
+void SourceFactory::CalcLineOffsets(absl::string_view expression) {
   std::vector<absl::string_view> lines = absl::StrSplit(expression, '\n');
   int offset = 0;
   line_offsets_.resize(lines.size());
@@ -645,16 +646,17 @@ absl::optional<int32_t> SourceFactory::FindLineOffset(int32_t line) const {
 }
 
 std::string SourceFactory::GetSourceLine(int32_t line,
-                                         const std::string& expression) const {
+                                         absl::string_view expression) const {
   auto char_start = FindLineOffset(line);
   if (!char_start) {
     return "";
   }
   auto char_end = FindLineOffset(line + 1);
   if (char_end) {
-    return expression.substr(*char_start, *char_end - *char_end - 1);
+    return std::string(
+        expression.substr(*char_start, *char_end - *char_end - 1));
   } else {
-    return expression.substr(*char_start);
+    return std::string(expression.substr(*char_start));
   }
 }
 

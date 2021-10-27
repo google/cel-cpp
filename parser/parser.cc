@@ -14,6 +14,7 @@
 
 #include "parser/parser.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -21,6 +22,8 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -29,9 +32,14 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "common/escaping.h"
 #include "common/operators.h"
+#include "internal/status_macros.h"
+#include "internal/unicode.h"
+#include "internal/utf8.h"
 #include "parser/internal/cel_grammar.inc/cel_parser_internal/CelBaseVisitor.h"
 #include "parser/internal/cel_grammar.inc/cel_parser_internal/CelLexer.h"
 #include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
@@ -44,9 +52,10 @@ namespace google::api::expr::parser {
 
 namespace {
 
-using ::antlr4::ANTLRInputStream;
+using ::antlr4::CharStream;
 using ::antlr4::CommonTokenStream;
 using ::antlr4::DefaultErrorStrategy;
+using ::antlr4::IntStream;
 using ::antlr4::ParseCancellationException;
 using ::antlr4::Parser;
 using ::antlr4::ParserRuleContext;
@@ -62,6 +71,314 @@ using common::CelOperator;
 using common::ReverseLookupOperator;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
+
+class CodePointBuffer final {
+ public:
+  explicit CodePointBuffer(absl::string_view data)
+      : storage_(absl::in_place_index<0>, data) {}
+
+  explicit CodePointBuffer(std::string data)
+      : storage_(absl::in_place_index<1>, std::move(data)) {}
+
+  explicit CodePointBuffer(std::u16string data)
+      : storage_(absl::in_place_index<2>, std::move(data)) {}
+
+  explicit CodePointBuffer(std::u32string data)
+      : storage_(absl::in_place_index<3>, std::move(data)) {}
+
+  size_t size() const { return absl::visit(SizeVisitor{}, storage_); }
+
+  char32_t at(size_t index) const {
+    ABSL_ASSERT(index < size());
+    return absl::visit(AtVisitor{index}, storage_);
+  }
+
+  std::string ToString(size_t begin, size_t end) const {
+    ABSL_ASSERT(begin <= end);
+    ABSL_ASSERT(begin < size());
+    ABSL_ASSERT(end <= size());
+    return absl::visit(ToStringVisitor{begin, end}, storage_);
+  }
+
+ private:
+  struct SizeVisitor final {
+    size_t operator()(absl::string_view ascii) const { return ascii.size(); }
+
+    size_t operator()(const std::string& latin1) const { return latin1.size(); }
+
+    size_t operator()(const std::u16string& basic) const {
+      return basic.size();
+    }
+
+    size_t operator()(const std::u32string& supplemental) const {
+      return supplemental.size();
+    }
+  };
+
+  struct AtVisitor final {
+    const size_t index;
+
+    size_t operator()(absl::string_view ascii) const {
+      return static_cast<uint8_t>(ascii[index]);
+    }
+
+    size_t operator()(const std::string& latin1) const {
+      return static_cast<uint8_t>(latin1[index]);
+    }
+
+    size_t operator()(const std::u16string& basic) const {
+      return basic[index];
+    }
+
+    size_t operator()(const std::u32string& supplemental) const {
+      return supplemental[index];
+    }
+  };
+
+  struct ToStringVisitor final {
+    const size_t begin;
+    const size_t end;
+
+    std::string operator()(absl::string_view ascii) const {
+      return std::string(ascii.substr(begin, end - begin));
+    }
+
+    std::string operator()(const std::string& latin1) const {
+      std::string result;
+      result.reserve((end - begin) *
+                     2);  // Worst case is 2 code units per code point.
+      for (size_t index = begin; index < end; index++) {
+        cel::internal::Utf8Encode(
+            &result,
+            static_cast<char32_t>(static_cast<uint8_t>(latin1[index])));
+      }
+      result.shrink_to_fit();
+      return result;
+    }
+
+    std::string operator()(const std::u16string& basic) const {
+      std::string result;
+      result.reserve((end - begin) *
+                     3);  // Worst case is 3 code units per code point.
+      for (size_t index = begin; index < end; index++) {
+        cel::internal::Utf8Encode(&result, static_cast<char32_t>(basic[index]));
+      }
+      result.shrink_to_fit();
+      return result;
+    }
+
+    std::string operator()(const std::u32string& supplemental) const {
+      std::string result;
+      result.reserve((end - begin) *
+                     4);  // Worst case is 4 code units per code point.
+      for (size_t index = begin; index < end; index++) {
+        cel::internal::Utf8Encode(&result, supplemental[index]);
+      }
+      result.shrink_to_fit();
+      return result;
+    }
+  };
+
+  absl::variant<absl::string_view, std::string, std::u16string, std::u32string>
+      storage_;
+};
+
+// Given a UTF-8 encoded string and produces a CodePointBuffer which provides
+// constant time indexing to each code point. If all code points fall in the
+// ASCII range then the view is used as is. If all code points fall in the
+// Latin-1 range then the text is represented as std::string. If all code points
+// fall in the BMP then the text is represented as std::u16string. Otherwise the
+// text is represented as std::u32string. This is much more efficient than the
+// default ANTLRv4 implementation which unconditionally converts to
+// std::u32string.
+absl::StatusOr<CodePointBuffer> MakeCodePointBuffer(absl::string_view text) {
+  size_t index = 0;
+  char32_t code_point;
+  size_t code_units;
+  std::string data8;
+  std::u16string data16;
+  std::u32string data32;
+  while (index < text.size()) {
+    std::tie(code_point, code_units) =
+        cel::internal::Utf8Decode(text.substr(index));
+    if (code_point <= 0x7f) {
+      index += code_units;
+      continue;
+    }
+    if (code_point <= 0xff) {
+      data8.reserve(text.size());
+      data8.append(text.data(), index);
+      data8.push_back(static_cast<char>(static_cast<uint8_t>(code_point)));
+      index += code_units;
+      goto latin1;
+    }
+    if (code_point == cel::internal::kUnicodeReplacementCharacter &&
+        code_units == 1) {
+      // Thats an invalid UTF-8 encoding.
+      return absl::InvalidArgumentError("Cannot parse malformed UTF-8 input");
+    }
+    if (code_point <= 0xffff) {
+      data16.reserve(text.size());
+      for (size_t offset = 0; offset < index; offset++) {
+        data16.push_back(static_cast<uint8_t>(text[offset]));
+      }
+      data16.push_back(static_cast<char16_t>(code_point));
+      index += code_units;
+      goto basic;
+    }
+    data32.reserve(text.size());
+    for (size_t offset = 0; offset < index; offset++) {
+      data32.push_back(static_cast<char32_t>(text[offset]));
+    }
+    data32.push_back(code_point);
+    index += code_units;
+    goto supplemental;
+  }
+  return CodePointBuffer(text);
+latin1:
+  while (index < text.size()) {
+    std::tie(code_point, code_units) =
+        cel::internal::Utf8Decode(text.substr(index));
+    if (code_point <= 0xff) {
+      data8.push_back(static_cast<char>(static_cast<uint8_t>(code_point)));
+      index += code_units;
+      continue;
+    }
+    if (code_point == cel::internal::kUnicodeReplacementCharacter &&
+        code_units == 1) {
+      // Thats an invalid UTF-8 encoding.
+      return absl::InvalidArgumentError("Cannot parse malformed UTF-8 input");
+    }
+    if (code_point <= 0xffff) {
+      data16.reserve(text.size());
+      for (const auto& value : data8) {
+        data16.push_back(static_cast<uint8_t>(value));
+      }
+      std::string().swap(data8);
+      data16.push_back(static_cast<char16_t>(code_point));
+      index += code_units;
+      goto basic;
+    }
+    data32.reserve(text.size());
+    for (const auto& value : data8) {
+      data32.push_back(static_cast<uint8_t>(value));
+    }
+    std::string().swap(data8);
+    data32.push_back(code_point);
+    index += code_units;
+    goto supplemental;
+  }
+  return CodePointBuffer(std::move(data8));
+basic:
+  while (index < text.size()) {
+    std::tie(code_point, code_units) =
+        cel::internal::Utf8Decode(text.substr(index));
+    if (code_point == cel::internal::kUnicodeReplacementCharacter &&
+        code_units == 1) {
+      // Thats an invalid UTF-8 encoding.
+      return absl::InvalidArgumentError("Cannot parse malformed UTF-8 input");
+    }
+    if (code_point <= 0xffff) {
+      data16.push_back(static_cast<char16_t>(code_point));
+      index += code_units;
+      continue;
+    }
+    data32.reserve(text.size());
+    for (const auto& value : data16) {
+      data32.push_back(static_cast<char32_t>(value));
+    }
+    std::u16string().swap(data16);
+    data32.push_back(code_point);
+    index += code_units;
+    goto supplemental;
+  }
+  return CodePointBuffer(std::move(data16));
+supplemental:
+  while (index < text.size()) {
+    std::tie(code_point, code_units) =
+        cel::internal::Utf8Decode(text.substr(index));
+    if (code_point == cel::internal::kUnicodeReplacementCharacter &&
+        code_units == 1) {
+      // Thats an invalid UTF-8 encoding.
+      return absl::InvalidArgumentError("Cannot parse malformed UTF-8 input");
+    }
+    data32.push_back(code_point);
+    index += code_units;
+  }
+  return CodePointBuffer(std::move(data32));
+}
+
+class CodePointStream final : public CharStream {
+ public:
+  CodePointStream(CodePointBuffer* buffer, absl::string_view source_name)
+      : buffer_(buffer),
+        source_name_(source_name),
+        size_(buffer_->size()),
+        index_(0) {}
+
+  void consume() override {
+    if (ABSL_PREDICT_FALSE(index_ >= size_)) {
+      ABSL_ASSERT(LA(1) == IntStream::EOF);
+      throw antlr4::IllegalStateException("cannot consume EOF");
+    }
+    index_++;
+  }
+
+  size_t LA(ssize_t i) override {
+    if (ABSL_PREDICT_FALSE(i == 0)) {
+      return 0;
+    }
+    auto p = static_cast<ssize_t>(index_);
+    if (i < 0) {
+      i++;
+      if (p + i - 1 < 0) {
+        return IntStream::EOF;
+      }
+    }
+    if (p + i - 1 >= static_cast<ssize_t>(size_)) {
+      return IntStream::EOF;
+    }
+    return buffer_->at(static_cast<size_t>(p + i - 1));
+  }
+
+  ssize_t mark() override { return -1; }
+
+  void release(ssize_t marker) override {}
+
+  size_t index() override { return index_; }
+
+  void seek(size_t index) override { index_ = std::min(index, size_); }
+
+  size_t size() override { return size_; }
+
+  std::string getSourceName() const override {
+    return source_name_.empty() ? IntStream::UNKNOWN_SOURCE_NAME
+                                : std::string(source_name_);
+  }
+
+  std::string getText(const antlr4::misc::Interval& interval) override {
+    if (ABSL_PREDICT_FALSE(interval.a < 0 || interval.b < 0)) {
+      return std::string();
+    }
+    size_t start = static_cast<size_t>(interval.a);
+    if (ABSL_PREDICT_FALSE(start >= size_)) {
+      return std::string();
+    }
+    size_t stop = static_cast<size_t>(interval.b);
+    if (ABSL_PREDICT_FALSE(stop >= size_)) {
+      stop = size_ - 1;
+    }
+    return buffer_->ToString(start, stop + 1);
+  }
+
+  std::string toString() const override { return buffer_->ToString(0, size_); }
+
+ private:
+  CodePointBuffer* const buffer_;
+  const absl::string_view source_name_;
+  const size_t size_;
+  size_t index_;
+};
 
 // Scoped helper for incrementing the parse recursion count.
 // Increments on creation, decrements on destruction (stack unwind).
@@ -154,7 +471,7 @@ Expr ExpressionBalancer::BalancedTree(int lo, int hi) {
 class ParserVisitor final : public CelBaseVisitor,
                             public antlr4::BaseErrorListener {
  public:
-  ParserVisitor(const std::string& description, const std::string& expression,
+  ParserVisitor(absl::string_view description, absl::string_view expression,
                 const int max_recursion_depth,
                 const std::vector<Macro>& macros = {},
                 const bool add_macro_calls = false);
@@ -224,8 +541,8 @@ class ParserVisitor final : public CelBaseVisitor,
                                    const Expr* e);
 
  private:
-  std::string description_;
-  std::string expression_;
+  absl::string_view description_;
+  absl::string_view expression_;
   std::shared_ptr<SourceFactory> sf_;
   std::map<std::string, Macro> macros_;
   int recursion_depth_;
@@ -233,8 +550,8 @@ class ParserVisitor final : public CelBaseVisitor,
   const bool add_macro_calls_;
 };
 
-ParserVisitor::ParserVisitor(const std::string& description,
-                             const std::string& expression,
+ParserVisitor::ParserVisitor(absl::string_view description,
+                             absl::string_view expression,
                              const int max_recursion_depth,
                              const std::vector<Macro>& macros,
                              const bool add_macro_calls)
@@ -906,28 +1223,27 @@ class RecoveryLimitErrorStrategy : public DefaultErrorStrategy {
 
 }  // namespace
 
-absl::StatusOr<ParsedExpr> Parse(const std::string& expression,
-                                 const std::string& description,
+absl::StatusOr<ParsedExpr> Parse(absl::string_view expression,
+                                 absl::string_view description,
                                  const ParserOptions& options) {
   return ParseWithMacros(expression, Macro::AllMacros(), description, options);
 }
 
-absl::StatusOr<ParsedExpr> ParseWithMacros(const std::string& expression,
+absl::StatusOr<ParsedExpr> ParseWithMacros(absl::string_view expression,
                                            const std::vector<Macro>& macros,
-                                           const std::string& description,
+                                           absl::string_view description,
                                            const ParserOptions& options) {
-  auto result = EnrichedParse(expression, macros, description, options);
-  if (result.ok()) {
-    return result->parsed_expr();
-  }
-  return result.status();
+  CEL_ASSIGN_OR_RETURN(auto verbose_parsed_expr,
+                       EnrichedParse(expression, macros, description, options));
+  return verbose_parsed_expr.parsed_expr();
 }
 
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
-    const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description, const ParserOptions& options) {
+    absl::string_view expression, const std::vector<Macro>& macros,
+    absl::string_view description, const ParserOptions& options) {
   try {
-    ANTLRInputStream input(expression);
+    CEL_ASSIGN_OR_RETURN(auto buffer, MakeCodePointBuffer(expression));
+    CodePointStream input(&buffer, description);
     if (input.size() > options.expression_size_codepoint_limit) {
       return absl::InvalidArgumentError(absl::StrCat(
           "expression size exceeds codepoint limit.", " input size: ",

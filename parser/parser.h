@@ -44,17 +44,17 @@ class VerboseParsedExpr {
 };
 
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
-    const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description = "<input>",
+    absl::string_view expression, const std::vector<Macro>& macros,
+    absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
-    const std::string& expression, const std::string& description = "<input>",
+    absl::string_view expression, absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
-    const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description = "<input>",
+    absl::string_view expression, const std::vector<Macro>& macros,
+    absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
 }  // namespace google::api::expr::parser

@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_INTERNAL_UTF8_H_
 
 #include <cstddef>
+#include <string>
 #include <utility>
 
 #include "absl/strings/cord.h"
@@ -43,6 +44,18 @@ size_t Utf8CodePointCount(const absl::Cord& str);
 // code points up until the malformed sequence was encountered.
 std::pair<size_t, bool> Utf8Validate(absl::string_view str);
 std::pair<size_t, bool> Utf8Validate(const absl::Cord& str);
+
+// Decodes the next code point, returning the decoded code point and the number
+// of code units (a.k.a. bytes) consumed. In the event that an invalid code unit
+// sequence is returned the replacement character, U+FFFD, is returned with a
+// code unit count of 1. As U+FFFD requires 3 code units when encoded, this can
+// be used to differentiate valid input from malformed input.
+std::pair<char32_t, size_t> Utf8Decode(absl::string_view str);
+
+// Encodes the given code point and appends it to the buffer. If the code point
+// is an unpaired surrogate or outside of the valid Unicode range it is replaced
+// with the replacement character, U+FFFD.
+std::string& Utf8Encode(std::string* buffer, char32_t code_point);
 
 }  // namespace cel::internal
 
