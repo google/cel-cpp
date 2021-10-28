@@ -401,16 +401,15 @@ class FlatExprVisitor : public AstVisitor {
         const Expr& loop_step = comprehension->loop_step();
         // Macro loop_step for a map() will contain a list concat operation:
         //   result + [elem]
-        if (loop_step.id() == expr->id()) {
+        if (&loop_step == expr) {
           function = builtin::kRuntimeListAppend;
         }
         // Macro loop_step for a filter() will contain a ternary:
         //   filter ? result + [elem] : result
-        // The direct access of the concatenation (args[1]) is safe as the
-        // ternary call will have been validated in the `PreVisitCall` step.
         if (loop_step.has_call_expr() &&
             loop_step.call_expr().function() == builtin::kTernary &&
-            loop_step.call_expr().args(1).id() == expr->id()) {
+            loop_step.call_expr().args_size() == 3 &&
+            &(loop_step.call_expr().args(1)) == expr) {
           function = builtin::kRuntimeListAppend;
         }
       }
