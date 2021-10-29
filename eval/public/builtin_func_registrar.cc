@@ -34,6 +34,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "internal/casts.h"
 #include "internal/overflow.h"
 #include "internal/proto_util.h"
 #include "internal/time.h"
@@ -550,8 +551,8 @@ const CelList* AppendList(Arena* arena, const CelList* value1,
   // The `value1` object cannot be directly addressed and is an intermediate
   // variable. Once the comprehension completes this value will in effect be
   // treated as immutable.
-  MutableListImpl* mutable_list =
-      const_cast<MutableListImpl*>(static_cast<const MutableListImpl*>(value1));
+  MutableListImpl* mutable_list = const_cast<MutableListImpl*>(
+      cel::internal::down_cast<const MutableListImpl*>(value1));
   for (int i = 0; i < value2->size(); i++) {
     mutable_list->Append((*value2)[i]);
   }

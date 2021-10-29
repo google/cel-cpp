@@ -208,6 +208,7 @@ cc_library(
         ":cel_value",
         "//eval/eval:mutable_list_impl",
         "//eval/public/containers:container_backed_list_impl",
+        "//internal:casts",
         "//internal:overflow",
         "//internal:proto_util",
         "//internal:time",

@@ -394,13 +394,16 @@ class FlatExprVisitor : public AstVisitor {
     // Check to see if this is a special case of add that should really be
     // treated as a list append
     if (enable_comprehension_list_append_ &&
-        call_expr->function() == builtin::kAdd &&
+        call_expr->function() == builtin::kAdd && call_expr->args_size() == 2 &&
         !comprehension_stack_.empty()) {
       const Comprehension* comprehension = comprehension_stack_.top();
-      if (comprehension->accu_init().has_list_expr()) {
+      absl::string_view accu_var = comprehension->accu_var();
+      if (comprehension->accu_init().has_list_expr() &&
+          call_expr->args(0).has_ident_expr() &&
+          call_expr->args(0).ident_expr().name() == accu_var) {
         const Expr& loop_step = comprehension->loop_step();
         // Macro loop_step for a map() will contain a list concat operation:
-        //   result + [elem]
+        //   accu_var + [elem]
         if (&loop_step == expr) {
           function = builtin::kRuntimeListAppend;
         }
@@ -520,7 +523,7 @@ class FlatExprVisitor : public AstVisitor {
       return;
     }
     if (enable_comprehension_list_append_ && !comprehension_stack_.empty() &&
-        comprehension_stack_.top()->accu_init().id() == expr->id()) {
+        &(comprehension_stack_.top()->accu_init()) == expr) {
       AddStep(CreateCreateMutableListStep(list_expr, expr->id()));
       return;
     }
