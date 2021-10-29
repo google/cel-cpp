@@ -67,6 +67,49 @@ static void BM_Eval(benchmark::State& state) {
 
 BENCHMARK(BM_Eval)->Range(1, 32768);
 
+absl::Status EmptyCallback(int64_t expr_id, const CelValue& value,
+                           google::protobuf::Arena* arena) {
+  return absl::OkStatus();
+}
+
+// Benchmark test
+// Traces cel expression with an empty callback:
+// '1 + 1 + 1 .... +1'
+static void BM_Eval_Trace(benchmark::State& state) {
+  auto builder = CreateCelExpressionBuilder();
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  ASSERT_OK(reg_status);
+
+  int len = state.range(0);
+
+  Expr root_expr;
+  Expr* cur_expr = &root_expr;
+
+  for (int i = 0; i < len; i++) {
+    Expr::Call* call = cur_expr->mutable_call_expr();
+    call->set_function("_+_");
+    call->add_args()->mutable_const_expr()->set_int64_value(1);
+    cur_expr = call->add_args();
+  }
+
+  cur_expr->mutable_const_expr()->set_int64_value(1);
+
+  SourceInfo source_info;
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&root_expr, &source_info));
+
+  for (auto _ : state) {
+    google::protobuf::Arena arena;
+    Activation activation;
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Trace(activation, &arena, EmptyCallback));
+    ASSERT_TRUE(result.IsInt64());
+    ASSERT_TRUE(result.Int64OrDie() == len + 1);
+  }
+}
+
+BENCHMARK(BM_Eval_Trace)->Range(1, 32768);
+
 // Benchmark test
 // Evaluates cel expression:
 // '"a" + "a" + "a" .... + "a"'
@@ -104,6 +147,44 @@ static void BM_EvalString(benchmark::State& state) {
 }
 
 BENCHMARK(BM_EvalString)->Range(1, 32768);
+
+// Benchmark test
+// Traces cel expression with an empty callback:
+// '"a" + "a" + "a" .... + "a"'
+static void BM_EvalString_Trace(benchmark::State& state) {
+  auto builder = CreateCelExpressionBuilder();
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  ASSERT_OK(reg_status);
+
+  int len = state.range(0);
+
+  Expr root_expr;
+  Expr* cur_expr = &root_expr;
+
+  for (int i = 0; i < len; i++) {
+    Expr::Call* call = cur_expr->mutable_call_expr();
+    call->set_function("_+_");
+    call->add_args()->mutable_const_expr()->set_string_value("a");
+    cur_expr = call->add_args();
+  }
+
+  cur_expr->mutable_const_expr()->set_string_value("a");
+
+  SourceInfo source_info;
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&root_expr, &source_info));
+
+  for (auto _ : state) {
+    google::protobuf::Arena arena;
+    Activation activation;
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Trace(activation, &arena, EmptyCallback));
+    ASSERT_TRUE(result.IsString());
+    ASSERT_TRUE(result.StringOrDie().value().size() == len + 1);
+  }
+}
+
+BENCHMARK(BM_EvalString_Trace)->Range(1, 32768);
 
 const char kIP[] = "10.0.1.2";
 const char kPath[] = "/admin/edit";
@@ -354,6 +435,36 @@ void BM_Comprehension(benchmark::State& state) {
 
 BENCHMARK(BM_Comprehension)->Range(1, 1 << 20);
 
+void BM_Comprehension_Trace(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kListSum, &expr));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  InterpreterOptions options;
+  options.comprehension_max_iterations = 10000000;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Trace(activation, &arena, EmptyCallback));
+    ASSERT_TRUE(result.IsInt64());
+    ASSERT_EQ(result.Int64OrDie(), len);
+  }
+}
+
+BENCHMARK(BM_Comprehension_Trace)->Range(1, 1 << 20);
 
 void BM_HasMap(benchmark::State& state) {
   google::protobuf::Arena arena;
@@ -408,7 +519,6 @@ void BM_HasProto(benchmark::State& state) {
 
 BENCHMARK(BM_HasProto);
 
-
 void BM_HasProtoMap(benchmark::State& state) {
   google::protobuf::Arena arena;
   Activation activation;
@@ -434,7 +544,6 @@ void BM_HasProtoMap(benchmark::State& state) {
 }
 
 BENCHMARK(BM_HasProtoMap);
-
 
 void BM_ReadProtoMap(benchmark::State& state) {
   google::protobuf::Arena arena;
@@ -588,6 +697,39 @@ void BM_NestedComprehension(benchmark::State& state) {
 
 BENCHMARK(BM_NestedComprehension)->Range(1, 1 << 10);
 
+void BM_NestedComprehension_Trace(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Expr expr;
+  Activation activation;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(kNestedListSum, &expr));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  InterpreterOptions options;
+  options.comprehension_max_iterations = 10000000;
+  options.enable_comprehension_list_append = true;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&expr, nullptr));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Trace(activation, &arena, EmptyCallback));
+    ASSERT_TRUE(result.IsInt64());
+    ASSERT_EQ(result.Int64OrDie(), len * len);
+  }
+}
+
+BENCHMARK(BM_NestedComprehension_Trace)->Range(1, 1 << 10);
+
 void BM_ListComprehension(benchmark::State& state) {
   google::protobuf::Arena arena;
   Activation activation;
@@ -620,6 +762,39 @@ void BM_ListComprehension(benchmark::State& state) {
 }
 
 BENCHMARK(BM_ListComprehension)->Range(1, 1 << 16);
+
+void BM_ListComprehension_Trace(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("list.map(x, x * 2)"));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  InterpreterOptions options;
+  options.comprehension_max_iterations = 10000000;
+  options.enable_comprehension_list_append = true;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_expr, builder->CreateExpression(&(parsed_expr.expr()), nullptr));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Trace(activation, &arena, EmptyCallback));
+    ASSERT_TRUE(result.IsList());
+    ASSERT_EQ(result.ListOrDie()->size(), len);
+  }
+}
+
+BENCHMARK(BM_ListComprehension_Trace)->Range(1, 1 << 16);
 
 void BM_ComprehensionCpp(benchmark::State& state) {
   google::protobuf::Arena arena;
