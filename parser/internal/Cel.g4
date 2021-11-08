@@ -73,8 +73,8 @@ literal
     | sign=MINUS? tok=NUM_FLOAT # Double
     | tok=STRING    # String
     | tok=BYTES     # Bytes
-    | tok=TRUE      # BoolTrue
-    | tok=FALSE     # BoolFalse
+    | tok=CEL_TRUE  # BoolTrue
+    | tok=CEL_FALSE # BoolFalse
     | tok=NUL       # Null
     ;
 
@@ -106,8 +106,8 @@ PLUS : '+';
 STAR : '*';
 SLASH : '/';
 PERCENT : '%';
-TRUE : 'true';
-FALSE : 'false';
+CEL_TRUE : 'true';
+CEL_FALSE : 'false';
 NUL : 'null';
 
 fragment BACKSLASH : '\\';
