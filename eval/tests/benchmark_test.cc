@@ -3,6 +3,8 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/base/attributes.h"
+#include "absl/container/btree_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/match.h"
 #include "eval/public/activation.h"
@@ -191,9 +193,9 @@ const char kPath[] = "/admin/edit";
 const char kToken[] = "admin";
 
 ABSL_ATTRIBUTE_NOINLINE
-bool NativeCheck(std::map<std::string, std::string>& attributes,
-                 const std::unordered_set<std::string>& denylists,
-                 const absl::node_hash_set<std::string>& allowlists) {
+bool NativeCheck(absl::btree_map<std::string, std::string>& attributes,
+                 const absl::flat_hash_set<std::string>& denylists,
+                 const absl::flat_hash_set<std::string>& allowlists) {
   auto& ip = attributes["ip"];
   auto& path = attributes["path"];
   auto& token = attributes["token"];
@@ -220,10 +222,10 @@ bool NativeCheck(std::map<std::string, std::string>& attributes,
 
 void BM_PolicyNative(benchmark::State& state) {
   const auto denylists =
-      std::unordered_set<std::string>{"10.0.1.4", "10.0.1.5", "10.0.1.6"};
+      absl::flat_hash_set<std::string>{"10.0.1.4", "10.0.1.5", "10.0.1.6"};
   const auto allowlists =
-      absl::node_hash_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
-  auto attributes = std::map<std::string, std::string>{
+      absl::flat_hash_set<std::string>{"10.0.1.1", "10.0.1.2", "10.0.1.3"};
+  auto attributes = absl::btree_map<std::string, std::string>{
       {"ip", kIP}, {"token", kToken}, {"path", kPath}};
   for (auto _ : state) {
     auto result = NativeCheck(attributes, denylists, allowlists);

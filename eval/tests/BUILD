@@ -33,6 +33,8 @@ cc_test(
         "@com_github_google_benchmark//:benchmark",
         "@com_github_google_benchmark//:benchmark_main",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
