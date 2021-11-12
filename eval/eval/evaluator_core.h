@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
@@ -69,21 +70,25 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
       size_t value_stack_size, const std::set<std::string>& iter_variable_names,
       google::protobuf::Arena* arena);
 
-  struct IterVarEntry {
-    CelValue value;
+  struct ComprehensionVarEntry {
+    absl::string_view name;
+    // present if we're in part of the loop context where this can be accessed.
+    absl::optional<CelValue> value;
     AttributeTrail attr_trail;
   };
 
-  // Need pointer stability to avoid copying the attr trail lookups.
-  using IterVarFrame = absl::node_hash_map<std::string, IterVarEntry>;
+  struct IterFrame {
+    ComprehensionVarEntry iter_var;
+    ComprehensionVarEntry accu_var;
+  };
 
   void Reset();
 
   EvaluatorStack& value_stack() { return value_stack_; }
 
-  std::vector<IterVarFrame>& iter_stack() { return iter_stack_; }
+  std::vector<IterFrame>& iter_stack() { return iter_stack_; }
 
-  IterVarFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
+  IterFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
   std::set<std::string>& iter_variable_names() { return iter_variable_names_; }
 
@@ -92,7 +97,7 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
  private:
   EvaluatorStack value_stack_;
   std::set<std::string> iter_variable_names_;
-  std::vector<IterVarFrame> iter_stack_;
+  std::vector<IterFrame> iter_stack_;
   google::protobuf::Arena* arena_;
 };
 
@@ -154,28 +159,36 @@ class ExecutionFrame {
   // Returns reference to Activation
   const BaseActivation& activation() const { return activation_; }
 
-  // Creates a new frame for iteration variables.
-  absl::Status PushIterFrame();
+  // Creates a new frame for the iteration variables identified by iter_var_name
+  // and accu_var_name.
+  absl::Status PushIterFrame(absl::string_view iter_var_name,
+                             absl::string_view accu_var_name);
 
   // Discards the top frame for iteration variables.
   absl::Status PopIterFrame();
 
-  // Sets the value of an iteration variable
-  absl::Status SetIterVar(const std::string& name, const CelValue& val);
+  // Sets the value of the accumuation variable
+  absl::Status SetAccuVar(const CelValue& val);
 
-  // Sets the value of an iteration variable
-  absl::Status SetIterVar(const std::string& name, const CelValue& val,
-                          AttributeTrail trail);
+  // Sets the value of the accumulation variable
+  absl::Status SetAccuVar(const CelValue& val, AttributeTrail trail);
 
-  // Clears the value of an iteration variable
-  absl::Status ClearIterVar(const std::string& name);
+  // Sets the value of the iteration variable
+  absl::Status SetIterVar(const CelValue& val);
 
-  // Gets the current value of an iteration variable.
-  // Returns false if the variable is not currently in use (SetIterVar has been
-  // called since init or last clear).
+  // Sets the value of the iteration variable
+  absl::Status SetIterVar(const CelValue& val, AttributeTrail trail);
+
+  // Clears the value of the iteration variable
+  absl::Status ClearIterVar();
+
+  // Gets the current value of either an iteration variable or accumulation
+  // variable.
+  // Returns false if the variable is not yet set or has been cleared.
   bool GetIterVar(const std::string& name, CelValue* val) const;
 
-  // Gets the current value of an iteration variable.
+  // Gets the current attribute trail of either an iteration variable or
+  // accumulation variable.
   // Returns false if the variable is not currently in use (SetIterVar has not
   // been called since init or last clear).
   bool GetIterAttr(const std::string& name, const AttributeTrail** val) const;
