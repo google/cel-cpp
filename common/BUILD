@@ -30,27 +30,3 @@ cc_library(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
-
-cc_library(
-    name = "escaping",
-    srcs = [
-        "escaping.cc",
-    ],
-    hdrs = [
-        "escaping.h",
-    ],
-    deps = [
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/types:optional",
-    ],
-)
-
-cc_test(
-    name = "escaping_test",
-    srcs = ["escaping_test.cc"],
-    deps = [
-        ":escaping",
-        "//internal:testing",
-    ],
-)

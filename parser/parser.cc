@@ -35,9 +35,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
-#include "common/escaping.h"
 #include "common/operators.h"
 #include "internal/status_macros.h"
+#include "internal/strings.h"
 #include "internal/unicode.h"
 #include "internal/utf8.h"
 #include "parser/internal/cel_grammar.inc/cel_parser_internal/CelBaseVisitor.h"
@@ -535,8 +535,6 @@ class ParserVisitor final : public CelBaseVisitor,
   bool ExpandMacro(int64_t expr_id, const std::string& function,
                    const Expr& target, const std::vector<Expr>& args,
                    Expr* macro_expr);
-  std::string Unquote(antlr4::ParserRuleContext* ctx, const std::string& s,
-                      bool is_bytes);
   std::string ExtractQualifiedName(antlr4::ParserRuleContext* ctx,
                                    const Expr* e);
 
@@ -975,14 +973,19 @@ antlrcpp::Any ParserVisitor::visitDouble(CelParser::DoubleContext* ctx) {
 }
 
 antlrcpp::Any ParserVisitor::visitString(CelParser::StringContext* ctx) {
-  std::string value = Unquote(ctx, ctx->tok->getText(), /* is bytes */ false);
-  return sf_->NewLiteralString(ctx, value);
+  auto status_or_value = cel::internal::ParseStringLiteral(ctx->tok->getText());
+  if (!status_or_value.ok()) {
+    return sf_->ReportError(ctx, status_or_value.status().message());
+  }
+  return sf_->NewLiteralString(ctx, status_or_value.value());
 }
 
 antlrcpp::Any ParserVisitor::visitBytes(CelParser::BytesContext* ctx) {
-  std::string value = Unquote(ctx, ctx->tok->getText().substr(1),
-                              /* is bytes */ true);
-  return sf_->NewLiteralBytes(ctx, value);
+  auto status_or_value = cel::internal::ParseBytesLiteral(ctx->tok->getText());
+  if (!status_or_value.ok()) {
+    return sf_->ReportError(ctx, status_or_value.status().message());
+  }
+  return sf_->NewLiteralBytes(ctx, status_or_value.value());
 }
 
 antlrcpp::Any ParserVisitor::visitBoolTrue(CelParser::BoolTrueContext* ctx) {
@@ -1071,16 +1074,6 @@ bool ParserVisitor::ExpandMacro(int64_t expr_id, const std::string& function,
     return true;
   }
   return false;
-}
-
-std::string ParserVisitor::Unquote(antlr4::ParserRuleContext* ctx,
-                                   const std::string& s, bool is_bytes) {
-  auto text = unescape(s, is_bytes);
-  if (!text) {
-    sf_->ReportError(ctx, "failed to unquote");
-    return s;
-  }
-  return *text;
 }
 
 std::string ParserVisitor::ExtractQualifiedName(antlr4::ParserRuleContext* ctx,

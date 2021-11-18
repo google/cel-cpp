@@ -78,6 +78,33 @@ cc_library(
 )
 
 cc_library(
+    name = "strings",
+    srcs = ["strings.cc"],
+    hdrs = ["strings.h"],
+    deps = [
+        ":lexis",
+        ":unicode",
+        ":utf8",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "strings_test",
+    srcs = ["strings_test.cc"],
+    deps = [
+        ":strings",
+        ":testing",
+        ":utf8",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "lexis",
     srcs = ["lexis.cc"],
     hdrs = ["lexis.h"],

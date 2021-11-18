@@ -1,5 +1,16 @@
-# Description
-#   Implementation of the conformance test server
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 package(default_visibility = ["//visibility:public"])
 
@@ -72,9 +83,6 @@ cc_binary(
             "--skip_test=parse/nest/list_index,message_literal,funcall,list_literal,map_literal;repeat/conditional,add_sub,mul_div,select,index,map_literal,message_literal",
 
             # Broken test cases which should be supported.
-            # TODO(issues/111): Byte literal decoding of invalid UTF-8 results in incorrect bytes output.
-            "--skip_test=basic/self_eval_nonzeroish/self_eval_bytes_invalid_utf8",
-            "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/112): Unbound functions result in empty eval response.
             "--skip_test=basic/functions/unbound",
             "--skip_test=basic/functions/unbound_is_runtime_error",

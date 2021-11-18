@@ -699,7 +699,7 @@ std::vector<TestInfo> test_cases = {
     {"\"hi\\u263A \\u263Athere\"", "\"hi☺ ☺there\"^#1:string#"},
     {"\"\\U000003A8\\?\"", "\"Ψ?\"^#1:string#"},
     {"\"\\a\\b\\f\\n\\r\\t\\v'\\\"\\\\\\? Legal escapes\"",
-     "\"\\a\\b\\f\\n\\r\\t\\v'\\\"\\? Legal escapes\"^#1:string#"},
+     "\"\\x07\\x08\\x0c\\n\\r\\t\\x0b'\\\"\\\\? Legal escapes\"^#1:string#"},
     {"\"\\xFh\"", "",
      "ERROR: <input>:1:1: Syntax error: token recognition error at: '\"\\xFh'\n"
      " | \"\\xFh\"\n"
@@ -1157,7 +1157,11 @@ std::vector<TestInfo> test_cases = {
      ")^#9:has#,\n"
      "has(\n"
      "  a^#3:Expr.Ident#.b^#4:Expr.Select#\n"
-     ")^#5:has"}};
+     ")^#5:has"},
+    {"b'\\UFFFFFFFF'", "",
+     "ERROR: <input>:1:1: Invalid bytes literal: Illegal escape sequence: "
+     "Unicode escape sequence \\U cannot be used in bytes literals\n | "
+     "b'\\UFFFFFFFF'\n | ^"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
