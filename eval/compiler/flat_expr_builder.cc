@@ -460,6 +460,9 @@ class FlatExprVisitor : public AstVisitor {
                     "Invalid comprehension: 'accu_var' must not be empty");
     ValidateOrError(!iter_var.empty(),
                     "Invalid comprehension: 'iter_var' must not be empty");
+    ValidateOrError(
+        accu_var != iter_var,
+        "Invalid comprehension: 'accu_var' must not be the same as 'iter_var'");
     ValidateOrError(comprehension->has_accu_init(),
                     "Invalid comprehension: 'accu_init' must be set");
     ValidateOrError(comprehension->has_loop_condition(),
