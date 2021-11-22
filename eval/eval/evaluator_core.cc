@@ -150,15 +150,6 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
       ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
   state->Reset();
 
-  // Using both unknown attribute patterns and unknown paths via FieldMask is
-  // not allowed.
-  if (activation.unknown_paths().paths_size() != 0 &&
-      !activation.unknown_attribute_patterns().empty()) {
-    return absl::InvalidArgumentError(
-        "Attempting to evaluate expression with both unknown_paths and "
-        "unknown_attribute_patterns set in the Activation");
-  }
-
   ExecutionFrame frame(path_, activation, max_iterations_, state,
                        enable_unknowns_, enable_unknown_function_results_,
                        enable_missing_attribute_errors_);

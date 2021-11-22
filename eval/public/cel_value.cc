@@ -305,17 +305,6 @@ bool IsMissingAttributeError(const CelValue& value) {
   return false;
 }
 
-std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value) {
-  // TODO(issues/41): replace with the implementation of go/cel-known-unknowns
-  const CelError* error = value.ErrorOrDie();
-  if (error && error->code() == absl::StatusCode::kUnavailable) {
-    auto path = error->GetPayload(kPayloadUrlUnknownPath);
-    if (path.has_value()) return {std::string(path.value())};
-  }
-  GOOGLE_LOG(FATAL) << "The value is not an unknown path error.";  // Crash ok
-  return {};
-}
-
 CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
                                           absl::string_view help_message) {
   CelError* error = Arena::Create<CelError>(

@@ -106,14 +106,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   CelValue result;
   AttributeTrail result_trail;
 
-  // Non-empty select path - check if value mapped to unknown or error.
-  bool unknown_value = false;
-  // TODO(issues/41) deprecate this path after proper support of unknown is
-  // implemented
-  if (!select_path_.empty()) {
-    unknown_value = frame->activation().IsPathUnknown(select_path_);
-  }
-
   // Select steps can be applied to either maps or messages
   switch (arg.type()) {
     case CelValue::Type::kMessage: {
@@ -149,13 +141,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
         return absl::OkStatus();
       }
 
-      if (unknown_value) {
-        CelValue error_value =
-            CreateUnknownValueError(frame->arena(), select_path_);
-        frame->value_stack().PopAndPush(error_value, result_trail);
-        return absl::OkStatus();
-      }
-
       absl::Status status = CreateValueFromField(msg, frame->arena(), &result);
       if (status.ok()) {
         frame->value_stack().PopAndPush(result, result_trail);
@@ -168,13 +153,6 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
       if (cel_map == nullptr) {
         CelValue error_value = CreateErrorValue(frame->arena(), "Map is NULL");
-        frame->value_stack().PopAndPush(error_value);
-        return absl::OkStatus();
-      }
-
-      if (unknown_value) {
-        CelValue error_value = CreateErrorValue(
-            frame->arena(), absl::StrCat("Unknown value ", select_path_));
         frame->value_stack().PopAndPush(error_value);
         return absl::OkStatus();
       }

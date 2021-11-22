@@ -144,48 +144,6 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   EXPECT_EQ(status0->ErrorOrDie()->message(), "MissingAttributeError: name0");
 }
 
-TEST(IdentStepTest, TestIdentStepUnknownValueError) {
-  Expr expr;
-  auto ident_expr = expr.mutable_ident_expr();
-  ident_expr->set_name("name0");
-
-  ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
-
-  ExecutionPath path;
-  path.push_back(std::move(step));
-
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
-
-  Activation activation;
-  Arena arena;
-  std::string value("test");
-
-  activation.InsertValue("name0", CelValue::CreateString(&value));
-  auto status0 = impl.Evaluate(activation, &arena);
-  ASSERT_OK(status0);
-
-  CelValue result = status0.value();
-
-  ASSERT_TRUE(result.IsString());
-  EXPECT_THAT(result.StringOrDie().value(), Eq("test"));
-
-  FieldMask unknown_mask;
-  unknown_mask.add_paths("name0");
-
-  activation.set_unknown_paths(unknown_mask);
-  status0 = impl.Evaluate(activation, &arena);
-  ASSERT_OK(status0);
-
-  result = status0.value();
-
-  ASSERT_TRUE(result.IsError());
-  ASSERT_TRUE(IsUnknownValueError(result));
-  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
-              Eq(std::set<std::string>({"name0"})));
-}
-
 TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   Expr expr;
   auto ident_expr = expr.mutable_ident_expr();

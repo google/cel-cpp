@@ -22,6 +22,7 @@
 #include <cstdint>
 
 #include "google/protobuf/message.h"
+#include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
@@ -528,13 +529,11 @@ CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena,
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key);
 bool CheckNoSuchKeyError(CelValue value);
 
-// Returns the error indicating that evaluation encountered a value marked
-// as unknown, was included in Activation unknown_paths.
+ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
 CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
                                  absl::string_view unknown_path);
 
-// Returns true if this is unknown value error indicating that evaluation
-// encountered a value marked as unknown in Activation unknown_paths.
+ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
 bool IsUnknownValueError(const CelValue& value);
 
 // Returns an error indicating that evaluation has accessed an attribute whose
@@ -557,10 +556,6 @@ CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
 // This is used as a signal to convert to an UnknownSet if the behavior is opted
 // into.
 bool IsUnknownFunctionResult(const CelValue& value);
-
-// Returns set of unknown paths for unknown value error. The value must be
-// unknown error, see IsUnknownValueError() above, or it dies.
-std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value);
 
 }  // namespace google::api::expr::runtime
 
