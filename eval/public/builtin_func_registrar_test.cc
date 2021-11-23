@@ -147,6 +147,11 @@ INSTANTIATE_TEST_SUITE_P(
          "timestamp('10000-01-02T00:00:00Z') > "
          "timestamp('9999-01-01T00:00:00Z')"},
 
+        {"TimestampFromUnixEpochSeconds",
+         "timestamp(123) > timestamp('1970-01-01T00:02:02.999999999Z') && "
+         "timestamp(123) == timestamp('1970-01-01T00:02:03Z') && "
+         "timestamp(123) < timestamp('1970-01-01T00:02:03.000000001Z')"},
+
         // Timestamp duration tests with fixes enabled for overflow checking.
         {"TimeSubTime",
          "t0 - t1 == duration('90s90ns')",

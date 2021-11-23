@@ -1373,6 +1373,14 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   status = RegisterStringConversionFunctions(registry, options);
   if (!status.ok()) return status;
 
+  // timestamp conversion from int.
+  status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
+      builtin::kTimestamp, false,
+      [](Arena*, int64_t epoch_seconds) -> CelValue {
+        return CelValue::CreateTimestamp(absl::FromUnixSeconds(epoch_seconds));
+      },
+      registry);
+
   // timestamp() conversion from string.
   bool enable_timestamp_duration_overflow_errors =
       options.enable_timestamp_duration_overflow_errors;
