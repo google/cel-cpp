@@ -99,6 +99,7 @@ cc_binary(
             # TODO(issues/116): Debug why dynamic/list/var fails to JSON parse correctly.
             "--skip_test=dynamic/list/var",
             # TODO(issues/109): Ensure that unset wrapper fields return 'null' rather than the default value of the wrapper.
+            "--skip_test=comparisons/eq_wrapper",
             "--skip_test=dynamic/int32/field_read_proto2_unset,field_read_proto3_unset;uint32/field_read_proto2_unset;uint64/field_read_proto2_unset;float/field_read_proto2_unset,field_read_proto3_unset;double/field_read_proto2_unset,field_read_proto3_unset",
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
@@ -108,6 +109,8 @@ cc_binary(
             "--skip_test=conversions/int/double_int_min_range",
 
             # Future features for CEL 1.0
+            # TODO(issues/137): Heterogeneous null comparison support.
+            "--skip_test=comparisons/eq_literal/not_eq_dyn_bool_null,not_eq_dyn_bytes_null,not_eq_dyn_double_null,not_eq_dyn_duration_null,not_eq_dyn_int_null,not_eq_dyn_list_null,not_eq_dyn_map_null,not_eq_dyn_string_null,not_eq_dyn_timestamp_null",
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
