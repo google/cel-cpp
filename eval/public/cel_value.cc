@@ -58,6 +58,7 @@ struct DebugStringVisitor {
   std::string operator()(int64_t arg) { return absl::StrFormat("%lld", arg); }
   std::string operator()(uint64_t arg) { return absl::StrFormat("%llu", arg); }
   std::string operator()(double arg) { return absl::StrFormat("%f", arg); }
+  std::string operator()(CelValue::NullType) { return "null"; }
 
   std::string operator()(CelValue::StringHolder arg) {
     return absl::StrFormat("%s", arg.value());
@@ -124,8 +125,12 @@ CelValue CelValue::CreateDuration(absl::Duration value) {
   return CelValue(value);
 }
 
+// TODO(issues/136): These don't match the CEL runtime typenames. They should
+// be updated where possible for consistency.
 std::string CelValue::TypeName(Type value_type) {
   switch (value_type) {
+    case Type::kNullType:
+      return "null_type";
     case Type::kBool:
       return "bool";
     case Type::kInt64:
@@ -176,6 +181,8 @@ absl::Status CelValue::CheckMapKeyType(const CelValue& key) {
 
 CelValue CelValue::ObtainCelType() const {
   switch (type()) {
+    case Type::kNullType:
+      return CreateCelType(CelTypeHolder(kNullTypeName));
     case Type::kBool:
       return CreateCelType(CelTypeHolder(kBoolTypeName));
     case Type::kInt64:

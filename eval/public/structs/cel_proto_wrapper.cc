@@ -664,6 +664,9 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
         return json;
       }
     } break;
+    case CelValue::Type::kNullType:
+      json->set_null_value(protobuf::NULL_VALUE);
+      return json;
     default:
       if (value.IsNull()) {
         json->set_null_value(protobuf::NULL_VALUE);
@@ -752,6 +755,14 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     } break;
     case CelValue::Type::kMap: {
       Struct v;
+      auto msg = MessageFromValue(value, &v);
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
+        return any;
+      }
+    } break;
+    case CelValue::Type::kNullType: {
+      Value v;
       auto msg = MessageFromValue(value, &v);
       if (msg.has_value()) {
         any->PackFrom(**msg);

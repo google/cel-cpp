@@ -31,6 +31,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
@@ -107,14 +108,17 @@ class CelValue {
   // Helper structure for CelType datatype.
   using CelTypeHolder = StringHolderBase<2>;
 
+  // Type for CEL Null values. Implemented as a monostate to behave well in
+  // absl::variant.
+  using NullType = absl::monostate;
+
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type
   // enum
-  using ValueHolder =
-      internal::ValueHolder<bool, int64_t, uint64_t, double, StringHolder,
-                            BytesHolder, const google::protobuf::Message*, absl::Duration,
-                            absl::Time, const CelList*, const CelMap*,
-                            const UnknownSet*, CelTypeHolder, const CelError*>;
+  using ValueHolder = internal::ValueHolder<
+      NullType, bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
+      const google::protobuf::Message*, absl::Duration, absl::Time, const CelList*,
+      const CelMap*, const UnknownSet*, CelTypeHolder, const CelError*>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -123,7 +127,10 @@ class CelValue {
   using IndexOf = ValueHolder::IndexOf<T>;
 
   // Enum for types supported.
+  // This is not recommended for use in exhaustive switches in client code.
+  // Types may be updated over time.
   enum class Type {
+    kNullType = IndexOf<NullType>::value,
     kBool = IndexOf<bool>::value,
     kInt64 = IndexOf<int64_t>::value,
     kUint64 = IndexOf<uint64_t>::value,
@@ -158,6 +165,9 @@ class CelValue {
   static CelValue CreateNull() {
     return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
   }
+
+  // Transitional factory for migrating to null types.
+  static CelValue CreateNullTypedValue() { return CelValue(NullType()); }
 
   static CelValue CreateBool(bool value) { return CelValue(value); }
 
@@ -390,6 +400,7 @@ class CelValue {
       return false;
     }
 
+    bool operator()(NullType) const { return true; }
     bool operator()(const google::protobuf::Message* arg) const { return arg == nullptr; }
   };
 
@@ -430,6 +441,7 @@ class CelValue {
 
   friend class CelProtoWrapper;
 };
+
 static_assert(absl::is_trivially_destructible<CelValue>::value,
               "Non-trivially-destructible CelValue impacts "
               "performance");
