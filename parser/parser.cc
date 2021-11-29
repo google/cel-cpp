@@ -927,13 +927,16 @@ antlrcpp::Any ParserVisitor::visitInt(CelParser::IntContext* ctx) {
   if (ctx->sign) {
     value = ctx->sign->getText();
   }
-  int base = 10;
-  if (absl::StartsWith(ctx->tok->getText(), "0x")) {
-    base = 16;
-  }
   value += ctx->tok->getText();
   int64_t int_value;
-  if (absl::numbers_internal::safe_strto64_base(value, &int_value, base)) {
+  if (absl::StartsWith(ctx->tok->getText(), "0x")) {
+    if (absl::SimpleHexAtoi(value, &int_value)) {
+      return sf_->NewLiteralInt(ctx, int_value);
+    } else {
+      return sf_->ReportError(ctx, "invalid hex int literal");
+    }
+  }
+  if (absl::SimpleAtoi(value, &int_value)) {
     return sf_->NewLiteralInt(ctx, int_value);
   } else {
     return sf_->ReportError(ctx, "invalid int literal");
@@ -946,12 +949,15 @@ antlrcpp::Any ParserVisitor::visitUint(CelParser::UintContext* ctx) {
   if (!value.empty()) {
     value.resize(value.size() - 1);
   }
-  int base = 10;
-  if (absl::StartsWith(ctx->tok->getText(), "0x")) {
-    base = 16;
-  }
   uint64_t uint_value;
-  if (absl::numbers_internal::safe_strtou64_base(value, &uint_value, base)) {
+  if (absl::StartsWith(ctx->tok->getText(), "0x")) {
+    if (absl::SimpleHexAtoi(value, &uint_value)) {
+      return sf_->NewLiteralUint(ctx, uint_value);
+    } else {
+      return sf_->ReportError(ctx, "invalid hex uint literal");
+    }
+  }
+  if (absl::SimpleAtoi(value, &uint_value)) {
     return sf_->NewLiteralUint(ctx, uint_value);
   } else {
     return sf_->ReportError(ctx, "invalid uint literal");
