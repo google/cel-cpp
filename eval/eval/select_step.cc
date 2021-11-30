@@ -102,7 +102,7 @@ absl::optional<CelValue> CheckForMarkedAttributes(const ExecutionFrame& frame,
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
     GOOGLE_LOG(ERROR) << "Invalid attribute pattern matched select path: "
-               << attribute_string.status();
+               << attribute_string.status().ToString();
     return CelValue::CreateError(
         google::protobuf::Arena::Create<CelError>(arena, attribute_string.status()));
   }
@@ -110,7 +110,7 @@ absl::optional<CelValue> CheckForMarkedAttributes(const ExecutionFrame& frame,
   return absl::nullopt;
 }
 
-CelValue TestOnlySelect(const google::protobuf::Message& msg, absl::string_view field,
+CelValue TestOnlySelect(const google::protobuf::Message& msg, const std::string& field,
                         google::protobuf::Arena* arena) {
   const Reflection* reflection = msg.GetReflection();
   const Descriptor* desc = msg.GetDescriptor();
@@ -139,7 +139,7 @@ CelValue TestOnlySelect(const google::protobuf::Message& msg, absl::string_view 
   return CelValue::CreateBool(reflection->HasField(msg, field_desc));
 }
 
-CelValue TestOnlySelect(const CelMap& map, absl::string_view field_name,
+CelValue TestOnlySelect(const CelMap& map, const std::string& field_name,
                         google::protobuf::Arena* arena) {
   // Field presence only supports string keys containing valid identifier
   // characters.

@@ -70,7 +70,7 @@ using StackRecordKind =
 
 struct StackRecord {
  public:
-  static constexpr int kNotCallArg = -1;
+  ABSL_ATTRIBUTE_UNUSED static constexpr int kNotCallArg = -1;
   static constexpr int kTarget = -2;
 
   StackRecord(const Expr* e, const SourceInfo* info) {

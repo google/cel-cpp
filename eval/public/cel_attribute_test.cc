@@ -13,6 +13,8 @@ namespace expr {
 namespace runtime {
 namespace {
 
+using google::api::expr::v1alpha1::Expr;
+
 using ::google::protobuf::Duration;
 using ::google::protobuf::Timestamp;
 using testing::Eq;

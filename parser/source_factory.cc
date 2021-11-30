@@ -95,7 +95,7 @@ Expr SourceFactory::NewExpr(const antlr4::Token* token) {
   return NewExpr(Id(token));
 }
 
-Expr SourceFactory::NewGlobalCall(int64_t id, absl::string_view function,
+Expr SourceFactory::NewGlobalCall(int64_t id, const std::string& function,
                                   const std::vector<Expr>& args) {
   Expr expr = NewExpr(id);
   auto call_expr = expr.mutable_call_expr();
@@ -106,12 +106,12 @@ Expr SourceFactory::NewGlobalCall(int64_t id, absl::string_view function,
 }
 
 Expr SourceFactory::NewGlobalCallForMacro(int64_t macro_id,
-                                          absl::string_view function,
+                                          const std::string& function,
                                           const std::vector<Expr>& args) {
   return NewGlobalCall(NextMacroId(macro_id), function, args);
 }
 
-Expr SourceFactory::NewReceiverCall(int64_t id, absl::string_view function,
+Expr SourceFactory::NewReceiverCall(int64_t id, const std::string& function,
                                     const Expr& target,
                                     const std::vector<Expr>& args) {
   Expr expr = NewExpr(id);
@@ -124,22 +124,22 @@ Expr SourceFactory::NewReceiverCall(int64_t id, absl::string_view function,
 }
 
 Expr SourceFactory::NewIdent(const antlr4::Token* token,
-                             absl::string_view ident_name) {
+                             const std::string& ident_name) {
   Expr expr = NewExpr(token);
   expr.mutable_ident_expr()->set_name(ident_name);
   return expr;
 }
 
 Expr SourceFactory::NewIdentForMacro(int64_t macro_id,
-                                     absl::string_view ident_name) {
+                                     const std::string& ident_name) {
   Expr expr = NewExpr(NextMacroId(macro_id));
   expr.mutable_ident_expr()->set_name(ident_name);
   return expr;
 }
 
 Expr SourceFactory::NewSelect(
-    ::cel::parser_internal::CelParser::SelectOrCallContext* ctx, Expr& operand,
-    absl::string_view field) {
+    ::cel_parser_internal::CelParser::SelectOrCallContext* ctx, Expr& operand,
+    const std::string& field) {
   Expr expr = NewExpr(ctx->op);
   auto select_expr = expr.mutable_select_expr();
   *select_expr->mutable_operand() = operand;
@@ -149,7 +149,7 @@ Expr SourceFactory::NewSelect(
 
 Expr SourceFactory::NewPresenceTestForMacro(int64_t macro_id,
                                             const Expr& operand,
-                                            absl::string_view field) {
+                                            const std::string& field) {
   Expr expr = NewExpr(NextMacroId(macro_id));
   auto select_expr = expr.mutable_select_expr();
   *select_expr->mutable_operand() = operand;
@@ -159,7 +159,7 @@ Expr SourceFactory::NewPresenceTestForMacro(int64_t macro_id,
 }
 
 Expr SourceFactory::NewObject(
-    int64_t obj_id, absl::string_view type_name,
+    int64_t obj_id, const std::string& type_name,
     const std::vector<Expr::CreateStruct::Entry>& entries) {
   auto expr = NewExpr(obj_id);
   auto struct_expr = expr.mutable_struct_expr();
@@ -171,9 +171,8 @@ Expr SourceFactory::NewObject(
   return expr;
 }
 
-Expr::CreateStruct::Entry SourceFactory::NewObjectField(int64_t field_id,
-                                                        absl::string_view field,
-                                                        const Expr& value) {
+Expr::CreateStruct::Entry SourceFactory::NewObjectField(
+    int64_t field_id, const std::string& field, const Expr& value) {
   Expr::CreateStruct::Entry entry;
   entry.set_id(field_id);
   entry.set_field_key(field);
@@ -181,9 +180,9 @@ Expr::CreateStruct::Entry SourceFactory::NewObjectField(int64_t field_id,
   return entry;
 }
 
-Expr SourceFactory::NewComprehension(int64_t id, absl::string_view iter_var,
+Expr SourceFactory::NewComprehension(int64_t id, const std::string& iter_var,
                                      const Expr& iter_range,
-                                     absl::string_view accu_var,
+                                     const std::string& accu_var,
                                      const Expr& accu_init,
                                      const Expr& condition, const Expr& step,
                                      const Expr& result) {
@@ -199,9 +198,9 @@ Expr SourceFactory::NewComprehension(int64_t id, absl::string_view iter_var,
   return expr;
 }
 
-Expr SourceFactory::FoldForMacro(int64_t macro_id, absl::string_view iter_var,
+Expr SourceFactory::FoldForMacro(int64_t macro_id, const std::string& iter_var,
                                  const Expr& iter_range,
-                                 absl::string_view accu_var,
+                                 const std::string& accu_var,
                                  const Expr& accu_init, const Expr& condition,
                                  const Expr& step, const Expr& result) {
   return NewComprehension(NextMacroId(macro_id), iter_var, iter_range, accu_var,
@@ -465,14 +464,14 @@ Expr SourceFactory::NewLiteralDouble(antlr4::ParserRuleContext* ctx,
 }
 
 Expr SourceFactory::NewLiteralString(antlr4::ParserRuleContext* ctx,
-                                     absl::string_view s) {
+                                     const std::string& s) {
   Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_string_value(s);
   return expr;
 }
 
 Expr SourceFactory::NewLiteralBytes(antlr4::ParserRuleContext* ctx,
-                                    absl::string_view b) {
+                                    const std::string& b) {
   Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_bytes_value(b);
   return expr;

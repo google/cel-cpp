@@ -25,25 +25,25 @@ struct ParserOptions final {
   // Limit of the number of error recovery attempts made by the ANTLR parser
   // when processing an input. This limit, when reached, will halt further
   // parsing of the expression.
-  int error_recovery_limit = parser_internal::kDefaultErrorRecoveryLimit;
+  int error_recovery_limit = ::cel_parser_internal::kDefaultErrorRecoveryLimit;
 
   // Limit on the amount of recusive parse instructions permitted when building
   // the abstract syntax tree for the expression. This prevents pathological
   // inputs from causing stack overflows.
-  int max_recursion_depth = parser_internal::kDefaultMaxRecursionDepth;
+  int max_recursion_depth = ::cel_parser_internal::kDefaultMaxRecursionDepth;
 
   // Limit on the number of codepoints in the input string which the parser will
   // attempt to parse.
   int expression_size_codepoint_limit =
-      parser_internal::kExpressionSizeCodepointLimit;
+      ::cel_parser_internal::kExpressionSizeCodepointLimit;
 
   // Limit on the number of lookahead tokens to consume when attempting to
   // recover from an error.
   int error_recovery_token_lookahead_limit =
-      parser_internal::kDefaultErrorRecoveryTokenLookaheadLimit;
+      ::cel_parser_internal::kDefaultErrorRecoveryTokenLookaheadLimit;
 
   // Add macro calls to macro_calls list in source_info.
-  bool add_macro_calls = parser_internal::kDefaultAddMacroCalls;
+  bool add_macro_calls = ::cel_parser_internal::kDefaultAddMacroCalls;
 };
 
 }  // namespace cel
@@ -54,20 +54,20 @@ using ParserOptions = cel::ParserOptions;
 
 ABSL_DEPRECATED("Use ParserOptions().error_recovery_limit instead.")
 inline constexpr int kDefaultErrorRecoveryLimit =
-    cel::parser_internal::kDefaultErrorRecoveryLimit;
+    ::cel_parser_internal::kDefaultErrorRecoveryLimit;
 ABSL_DEPRECATED("Use ParserOptions().max_recursion_depth instead.")
 inline constexpr int kDefaultMaxRecursionDepth =
-    cel::parser_internal::kDefaultMaxRecursionDepth;
+    ::cel_parser_internal::kDefaultMaxRecursionDepth;
 ABSL_DEPRECATED("Use ParserOptions().expression_size_codepoint_limit instead.")
 inline constexpr int kExpressionSizeCodepointLimit =
-    cel::parser_internal::kExpressionSizeCodepointLimit;
+    ::cel_parser_internal::kExpressionSizeCodepointLimit;
 ABSL_DEPRECATED(
     "Use ParserOptions().error_recovery_token_lookahead_limit instead.")
 inline constexpr int kDefaultErrorRecoveryTokenLookaheadLimit =
-    cel::parser_internal::kDefaultErrorRecoveryTokenLookaheadLimit;
+    ::cel_parser_internal::kDefaultErrorRecoveryTokenLookaheadLimit;
 ABSL_DEPRECATED("Use ParserOptions().add_macro_calls instead.")
 inline constexpr bool kDefaultAddMacroCalls =
-    cel::parser_internal::kDefaultAddMacroCalls;
+    ::cel_parser_internal::kDefaultAddMacroCalls;
 
 }  // namespace google::api::expr::parser
 

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
 #include "antlr4-runtime.h"
@@ -95,30 +96,30 @@ class SourceFactory {
   Expr NewExpr(int64_t id);
   Expr NewExpr(antlr4::ParserRuleContext* ctx);
   Expr NewExpr(const antlr4::Token* token);
-  Expr NewGlobalCall(int64_t id, absl::string_view function,
+  Expr NewGlobalCall(int64_t id, const std::string& function,
                      const std::vector<Expr>& args);
-  Expr NewGlobalCallForMacro(int64_t macro_id, absl::string_view function,
+  Expr NewGlobalCallForMacro(int64_t macro_id, const std::string& function,
                              const std::vector<Expr>& args);
-  Expr NewReceiverCall(int64_t id, absl::string_view function,
+  Expr NewReceiverCall(int64_t id, const std::string& function,
                        const Expr& target, const std::vector<Expr>& args);
-  Expr NewIdent(const antlr4::Token* token, absl::string_view ident_name);
-  Expr NewIdentForMacro(int64_t macro_id, absl::string_view ident_name);
-  Expr NewSelect(::cel::parser_internal::CelParser::SelectOrCallContext* ctx,
-                 Expr& operand, absl::string_view field);
+  Expr NewIdent(const antlr4::Token* token, const std::string& ident_name);
+  Expr NewIdentForMacro(int64_t macro_id, const std::string& ident_name);
+  Expr NewSelect(::cel_parser_internal::CelParser::SelectOrCallContext* ctx,
+                 Expr& operand, const std::string& field);
   Expr NewPresenceTestForMacro(int64_t macro_id, const Expr& operand,
-                               absl::string_view field);
-  Expr NewObject(int64_t obj_id, absl::string_view type_name,
+                               const std::string& field);
+  Expr NewObject(int64_t obj_id, const std::string& type_name,
                  const std::vector<Expr::CreateStruct::Entry>& entries);
   Expr::CreateStruct::Entry NewObjectField(int64_t field_id,
-                                           absl::string_view field,
+                                           const std::string& field,
                                            const Expr& value);
-  Expr NewComprehension(int64_t id, absl::string_view iter_var,
-                        const Expr& iter_range, absl::string_view accu_var,
+  Expr NewComprehension(int64_t id, const std::string& iter_var,
+                        const Expr& iter_range, const std::string& accu_var,
                         const Expr& accu_init, const Expr& condition,
                         const Expr& step, const Expr& result);
 
-  Expr FoldForMacro(int64_t macro_id, absl::string_view iter_var,
-                    const Expr& iter_range, absl::string_view accu_var,
+  Expr FoldForMacro(int64_t macro_id, const std::string& iter_var,
+                    const Expr& iter_range, const std::string& accu_var,
                     const Expr& accu_init, const Expr& condition,
                     const Expr& step, const Expr& result);
   Expr NewQuantifierExprForMacro(QuantifierKind kind, int64_t macro_id,
@@ -139,8 +140,8 @@ class SourceFactory {
   Expr NewLiteralIntForMacro(int64_t macro_id, int64_t value);
   Expr NewLiteralUint(antlr4::ParserRuleContext* ctx, uint64_t value);
   Expr NewLiteralDouble(antlr4::ParserRuleContext* ctx, double value);
-  Expr NewLiteralString(antlr4::ParserRuleContext* ctx, absl::string_view s);
-  Expr NewLiteralBytes(antlr4::ParserRuleContext* ctx, absl::string_view b);
+  Expr NewLiteralString(antlr4::ParserRuleContext* ctx, const std::string& s);
+  Expr NewLiteralBytes(antlr4::ParserRuleContext* ctx, const std::string& b);
   Expr NewLiteralBool(antlr4::ParserRuleContext* ctx, bool b);
   Expr NewLiteralBoolForMacro(int64_t macro_id, bool b);
   Expr NewLiteralNull(antlr4::ParserRuleContext* ctx);

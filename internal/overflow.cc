@@ -31,7 +31,8 @@ constexpr int64_t kInt32Min = std::numeric_limits<int32_t>::lowest();
 constexpr int64_t kInt64Max = std::numeric_limits<int64_t>::max();
 constexpr int64_t kInt64Min = std::numeric_limits<int64_t>::lowest();
 constexpr uint64_t kUint32Max = std::numeric_limits<uint32_t>::max();
-constexpr uint64_t kUint64Max = std::numeric_limits<uint64_t>::max();
+ABSL_ATTRIBUTE_UNUSED constexpr uint64_t kUint64Max =
+    std::numeric_limits<uint64_t>::max();
 constexpr uint64_t kUintToIntMax = static_cast<uint64_t>(kInt64Max);
 constexpr double kDoubleToIntMax = static_cast<double>(kInt64Max);
 constexpr double kDoubleToIntMin = static_cast<double>(kInt64Min);

@@ -101,6 +101,7 @@ cc_test(
         ":utf8",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

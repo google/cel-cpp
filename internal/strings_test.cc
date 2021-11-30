@@ -15,7 +15,9 @@
 #include "internal/strings.h"
 
 #include "absl/status/status.h"
+#include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_format.h"
 #include "internal/testing.h"
 #include "internal/utf8.h"
 

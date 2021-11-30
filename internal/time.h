@@ -24,7 +24,8 @@
 
 namespace cel::internal {
 
-constexpr absl::Duration MaxDuration() {
+    inline absl::Duration
+    MaxDuration() {
   // This currently supports a larger range then the current CEL spec. The
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
@@ -33,7 +34,8 @@ constexpr absl::Duration MaxDuration() {
   return absl::Seconds(315576000000) + absl::Nanoseconds(999999999);
 }
 
-constexpr absl::Duration MinDuration() {
+    inline absl::Duration
+    MinDuration() {
   // This currently supports a larger range then the current CEL spec. The
   // intent is to widen the CEL spec to support the larger range and match
   // google.protobuf.Duration from protocol buffer messages, which this
@@ -42,12 +44,14 @@ constexpr absl::Duration MinDuration() {
   return absl::Seconds(-315576000000) + absl::Nanoseconds(-999999999);
 }
 
-constexpr absl::Time MaxTimestamp() {
+    inline absl::Time
+    MaxTimestamp() {
   return absl::UnixEpoch() + absl::Seconds(253402300799) +
          absl::Nanoseconds(999999999);
 }
 
-constexpr absl::Time MinTimestamp() {
+    inline absl::Time
+    MinTimestamp() {
   return absl::UnixEpoch() + absl::Seconds(-62135596800);
 }
 

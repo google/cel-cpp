@@ -26,5 +26,5 @@ cc_library(
 antlr_cc_library(
     name = "cel",
     src = "Cel.g4",
-    package = "cel::parser_internal",
+    package = "cel_parser_internal",
 )
