@@ -111,16 +111,16 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 
   int64_t current_index = current_index_value.Int64OrDie();
   if (current_index == -1) {
-    CEL_RETURN_IF_ERROR(frame->PushIterFrame());
+    CEL_RETURN_IF_ERROR(frame->PushIterFrame(iter_var_, accu_var_));
   }
 
   // Update stack for breaking out of loop or next round.
   CelValue loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  CEL_RETURN_IF_ERROR(frame->SetIterVar(accu_var_, loop_step));
+  CEL_RETURN_IF_ERROR(frame->SetAccuVar(loop_step));
   if (current_index >= cel_list->size() - 1) {
-    CEL_RETURN_IF_ERROR(frame->ClearIterVar(iter_var_));
+    CEL_RETURN_IF_ERROR(frame->ClearIterVar());
     return frame->JumpTo(jump_offset_);
   }
   frame->value_stack().Push(iter_range, iter_range_attr);
@@ -132,7 +132,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
       CelAttributeQualifier::Create(CelValue::CreateInt64(current_index)),
       frame->arena());
   frame->value_stack().Push(current_value, iter_trail);
-  CEL_RETURN_IF_ERROR(frame->SetIterVar(iter_var_, current_value, iter_trail));
+  CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, iter_trail));
   return absl::OkStatus();
 }
 

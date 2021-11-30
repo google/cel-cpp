@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_
 
@@ -22,7 +38,9 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_comprehension_(true),
         comprehension_max_iterations_(0),
         fail_on_warnings_(true),
-        enable_qualified_type_identifiers_(false) {}
+        enable_qualified_type_identifiers_(false),
+        enable_comprehension_list_append_(false),
+        enable_comprehension_vulnerability_check_(false) {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -69,6 +87,33 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_qualified_type_identifiers_ = enabled;
   }
 
+  // set_enable_comprehension_list_append controls whether the FlatExprBuilder
+  // will attempt to optimize list concatenation within map() and filter()
+  // macro comprehensions as an append of results on the `accu_var` rather than
+  // as a reassignment of the `accu_var` to the concatenation of
+  // `accu_var` + [elem].
+  //
+  // Before enabling, ensure that `#list_append` is not a function declared
+  // within your runtime, and that your CEL expressions retain their integer
+  // identifiers.
+  //
+  // This option is not safe for use with hand-rolled ASTs.
+  void set_enable_comprehension_list_append(bool enabled) {
+    enable_comprehension_list_append_ = enabled;
+  }
+
+  // set_enable_comprehension_vulnerability_check inspects comprehension
+  // sub-expressions for the presence of potential memory exhaustion.
+  //
+  // Note: This flag is not necessary if you are only using Core CEL macros.
+  //
+  // Consider enabling this feature when using custom comprehensions, and
+  // absolutely enable the feature when using hand-written ASTs for
+  // comprehension expressions.
+  void set_enable_comprehension_vulnerability_check(bool enabled) {
+    enable_comprehension_vulnerability_check_ = enabled;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -103,6 +148,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
   int comprehension_max_iterations_;
   bool fail_on_warnings_;
   bool enable_qualified_type_identifiers_;
+  bool enable_comprehension_list_append_;
+  bool enable_comprehension_vulnerability_check_;
 };
 
 }  // namespace google::api::expr::runtime

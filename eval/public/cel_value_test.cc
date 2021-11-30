@@ -34,6 +34,9 @@ class DummyList : public CelList {
 TEST(CelValueTest, TestType) {
   ::google::protobuf::Arena arena;
 
+  CelValue value_null = CelValue::CreateNullTypedValue();
+  EXPECT_THAT(value_null.type(), Eq(CelValue::Type::kNullType));
+
   CelValue value_bool = CelValue::CreateBool(false);
   EXPECT_THAT(value_bool.type(), Eq(CelValue::Type::kBool));
 
@@ -230,6 +233,10 @@ TEST(CelValueTest, TestMap) {
 TEST(CelValueTest, TestCelType) {
   ::google::protobuf::Arena arena;
 
+  CelValue value_null = CelValue::CreateNullTypedValue();
+  EXPECT_THAT(value_null.ObtainCelType().CelTypeOrDie().value(),
+              Eq("null_type"));
+
   CelValue value_bool = CelValue::CreateBool(false);
   EXPECT_THAT(value_bool.ObtainCelType().CelTypeOrDie().value(), Eq("bool"));
 
@@ -294,6 +301,7 @@ TEST(CelValueTest, UnknownFunctionResultErrors) {
 }
 
 TEST(CelValueTest, DebugString) {
+  EXPECT_EQ(CelValue::CreateNullTypedValue().DebugString(), "null_type: null");
   EXPECT_EQ(CelValue::CreateBool(true).DebugString(), "bool: 1");
   EXPECT_EQ(CelValue::CreateInt64(-12345).DebugString(), "int64: -12345");
   EXPECT_EQ(CelValue::CreateUint64(12345).DebugString(), "uint64: 12345");

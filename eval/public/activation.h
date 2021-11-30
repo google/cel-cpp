@@ -36,13 +36,6 @@ class Activation : public BaseActivation {
   absl::optional<CelValue> FindValue(absl::string_view name,
                                      google::protobuf::Arena* arena) const override;
 
-  ABSL_DEPRECATED(
-      "No longer supported in the activation. See "
-      "google::api::expr::runtime::AttributeUtility.")
-  bool IsPathUnknown(absl::string_view path) const override {
-    return google::protobuf::util::FieldMaskUtil::IsPathInFieldMask(path.data(), unknown_paths_);
-  }
-
   // Insert a function into the activation (ie a lazily bound function). Returns
   // a status if the name and shape of the function matches another one that has
   // already been bound.
@@ -70,11 +63,6 @@ class Activation : public BaseActivation {
   // cleared.
   int ClearCachedValues();
 
-  ABSL_DEPRECATED("Use set_missing_attribute_patterns() instead.")
-  void set_unknown_paths(google::protobuf::FieldMask mask) {
-    unknown_paths_ = std::move(mask);
-  }
-
   // Set missing attribute patterns for evaluation.
   //
   // If a field access is found to match any of the provided patterns, the
@@ -82,11 +70,6 @@ class Activation : public BaseActivation {
   void set_missing_attribute_patterns(
       std::vector<CelAttributePattern> missing_attribute_patterns) {
     missing_attribute_patterns_ = std::move(missing_attribute_patterns);
-  }
-
-  ABSL_DEPRECATED("Use missing_attribute_patterns() instead.")
-  const google::protobuf::FieldMask& unknown_paths() const override {
-    return unknown_paths_;
   }
 
   // Return FieldMask defining the list of unknown paths.
@@ -147,8 +130,6 @@ class Activation : public BaseActivation {
   absl::flat_hash_map<std::string, std::vector<std::unique_ptr<CelFunction>>>
       function_map_;
 
-  // TODO(issues/41) deprecate when unknowns support is done.
-  google::protobuf::FieldMask unknown_paths_;
   std::vector<CelAttributePattern> missing_attribute_patterns_;
   std::vector<CelAttributePattern> unknown_attribute_patterns_;
 };

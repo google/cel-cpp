@@ -18,6 +18,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/types/variant.h"
+#include "eval/public/ast_visitor.h"
 #include "eval/public/source_position.h"
 
 namespace google::api::expr::runtime {
@@ -45,6 +46,18 @@ struct ArgRecord {
   int call_arg;
 };
 
+struct ComprehensionRecord {
+  // Not null.
+  const Expr* expr;
+  // Not null.
+  const SourceInfo* source_info;
+
+  const Comprehension* comprehension;
+  const Expr* comprehension_expr;
+  ComprehensionArg comprehension_arg;
+  bool use_comprehension_callbacks;
+};
+
 struct ExprRecord {
   // Not null.
   const Expr* expr;
@@ -52,17 +65,42 @@ struct ExprRecord {
   const SourceInfo* source_info;
 };
 
-using StackRecordKind = absl::variant<ExprRecord, ArgRecord>;
+using StackRecordKind =
+    absl::variant<ExprRecord, ArgRecord, ComprehensionRecord>;
 
 struct StackRecord {
  public:
-  static constexpr int kNotCallArg = -1;
+  ABSL_ATTRIBUTE_UNUSED static constexpr int kNotCallArg = -1;
   static constexpr int kTarget = -2;
 
   StackRecord(const Expr* e, const SourceInfo* info) {
     ExprRecord record;
     record.expr = e;
     record.source_info = info;
+    record_variant = record;
+  }
+
+  StackRecord(const Expr* e, const SourceInfo* info,
+              const Comprehension* comprehension,
+              const Expr* comprehension_expr,
+              ComprehensionArg comprehension_arg,
+              bool use_comprehension_callbacks) {
+    if (use_comprehension_callbacks) {
+      ComprehensionRecord record;
+      record.expr = e;
+      record.source_info = info;
+      record.comprehension = comprehension;
+      record.comprehension_expr = comprehension_expr;
+      record.comprehension_arg = comprehension_arg;
+      record.use_comprehension_callbacks = use_comprehension_callbacks;
+      record_variant = record;
+      return;
+    }
+    ArgRecord record;
+    record.expr = e;
+    record.source_info = info;
+    record.calling_expr = comprehension_expr;
+    record.call_arg = comprehension_arg;
     record_variant = record;
   }
 
@@ -75,14 +113,13 @@ struct StackRecord {
     record.call_arg = argnum;
     record_variant = record;
   }
-
   StackRecordKind record_variant;
   bool visited = false;
 };
 
 struct PreVisitor {
   void operator()(const ExprRecord& record) {
-    const Expr *expr = record.expr;
+    const Expr* expr = record.expr;
     const SourcePosition position(expr->id(), record.source_info);
     visitor->PreVisitExpr(expr, &position);
     switch (expr->expr_kind_case()) {
@@ -104,6 +141,13 @@ struct PreVisitor {
 
   // Do nothing for Arg variant.
   void operator()(const ArgRecord&) {}
+
+  void operator()(const ComprehensionRecord& record) {
+    const Expr* expr = record.expr;
+    const SourcePosition position(expr->id(), record.source_info);
+    visitor->PreVisitComprehensionSubexpression(
+        expr, record.comprehension, record.comprehension_arg, &position);
+  }
 
   AstVisitor* visitor;
 };
@@ -156,7 +200,14 @@ struct PostVisitor {
     }
   }
 
-  AstVisitor *visitor;
+  void operator()(const ComprehensionRecord& record) {
+    const Expr* expr = record.expr;
+    const SourcePosition position(expr->id(), record.source_info);
+    visitor->PostVisitComprehensionSubexpression(
+        expr, record.comprehension, record.comprehension_arg, &position);
+  }
+
+  AstVisitor* visitor;
 };
 
 void PostVisit(const StackRecord& record, AstVisitor* visitor) {
@@ -215,13 +266,18 @@ void PushStructDeps(const CreateStruct* struct_expr,
 
 void PushComprehensionDeps(const Comprehension* c, const Expr* expr,
                            const SourceInfo* source_info,
-                           std::stack<StackRecord>* stack) {
-  StackRecord iter_range(&c->iter_range(), source_info, expr, ITER_RANGE);
-  StackRecord accu_init(&c->accu_init(), source_info, expr, ACCU_INIT);
-  StackRecord loop_condition(&c->loop_condition(), source_info, expr,
-                             LOOP_CONDITION);
-  StackRecord loop_step(&c->loop_step(), source_info, expr, LOOP_STEP);
-  StackRecord result(&c->result(), source_info, expr, RESULT);
+                           std::stack<StackRecord>* stack,
+                           bool use_comprehension_callbacks) {
+  StackRecord iter_range(&c->iter_range(), source_info, c, expr, ITER_RANGE,
+                         use_comprehension_callbacks);
+  StackRecord accu_init(&c->accu_init(), source_info, c, expr, ACCU_INIT,
+                        use_comprehension_callbacks);
+  StackRecord loop_condition(&c->loop_condition(), source_info, c, expr,
+                             LOOP_CONDITION, use_comprehension_callbacks);
+  StackRecord loop_step(&c->loop_step(), source_info, c, expr, LOOP_STEP,
+                        use_comprehension_callbacks);
+  StackRecord result(&c->result(), source_info, c, expr, RESULT,
+                     use_comprehension_callbacks);
   // Push them in reverse order.
   stack->push(result);
   stack->push(loop_step);
@@ -248,7 +304,8 @@ struct PushDepsVisitor {
         break;
       case Expr::kComprehensionExpr:
         PushComprehensionDeps(&expr->comprehension_expr(), expr,
-                              record.source_info, &stack);
+                              record.source_info, &stack,
+                              options.use_comprehension_callbacks);
         break;
       default:
         break;
@@ -259,18 +316,23 @@ struct PushDepsVisitor {
     stack.push(StackRecord(record.expr, record.source_info));
   }
 
+  void operator()(const ComprehensionRecord& record) {
+    stack.push(StackRecord(record.expr, record.source_info));
+  }
+
   std::stack<StackRecord>& stack;
+  const TraversalOptions& options;
 };
 
-void PushDependencies(const StackRecord& record,
-                      std::stack<StackRecord>& stack) {
-  absl::visit(PushDepsVisitor{stack}, record.record_variant);
+void PushDependencies(const StackRecord& record, std::stack<StackRecord>& stack,
+                      const TraversalOptions& options) {
+  absl::visit(PushDepsVisitor{stack, options}, record.record_variant);
 }
 
 }  // namespace
 
 void AstTraverse(const Expr* expr, const SourceInfo* source_info,
-                 AstVisitor* visitor) {
+                 AstVisitor* visitor, TraversalOptions options) {
   std::stack<StackRecord> stack;
   stack.push(StackRecord(expr, source_info));
 
@@ -278,7 +340,7 @@ void AstTraverse(const Expr* expr, const SourceInfo* source_info,
     StackRecord& record = stack.top();
     if (!record.visited) {
       PreVisit(record, visitor);
-      PushDependencies(record, stack);
+      PushDependencies(record, stack, options);
       record.visited = true;
     } else {
       PostVisit(record, visitor);

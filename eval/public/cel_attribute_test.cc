@@ -1,6 +1,7 @@
 #include "eval/public/cel_attribute.h"
 
 #include "google/protobuf/arena.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
@@ -10,15 +11,15 @@ namespace google {
 namespace api {
 namespace expr {
 namespace runtime {
+namespace {
+
+using google::api::expr::v1alpha1::Expr;
 
 using ::google::protobuf::Duration;
 using ::google::protobuf::Timestamp;
-
 using testing::Eq;
 using testing::IsEmpty;
 using testing::SizeIs;
-
-namespace {
 
 class DummyMap : public CelMap {
  public:
@@ -313,8 +314,69 @@ TEST(CreateCelAttributePattern, Wildcards) {
   EXPECT_TRUE(pattern.qualifier_path()[2].IsWildcard());
 }
 
-}  // namespace
+TEST(CelAttribute, AsStringBasic) {
+  Expr expr;
+  expr.mutable_ident_expr()->set_name("var");
+  CelAttribute attr(
+      expr,
+      {
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual1")),
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual2")),
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual3")),
+      });
 
+  ASSERT_OK_AND_ASSIGN(std::string string_format, attr.AsString());
+
+  EXPECT_EQ(string_format, "var.qual1.qual2.qual3");
+}
+
+TEST(CelAttribute, AsStringInvalidRoot) {
+  Expr expr;
+  expr.mutable_const_expr()->set_int64_value(1);
+
+  CelAttribute attr(
+      expr,
+      {
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual1")),
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual2")),
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual3")),
+      });
+
+  EXPECT_EQ(attr.AsString().status().code(),
+            absl::StatusCode::kInvalidArgument);
+}
+
+TEST(CelAttribute, InvalidQualifiers) {
+  Expr expr;
+  expr.mutable_ident_expr()->set_name("var");
+
+  CelAttribute attr(expr, {
+                              CelAttributeQualifier::Create(
+                                  CelValue::CreateDuration(absl::Minutes(2))),
+                          });
+
+  EXPECT_EQ(attr.AsString().status().code(),
+            absl::StatusCode::kInvalidArgument);
+}
+
+TEST(CelAttribute, AsStringQualiferTypes) {
+  Expr expr;
+  expr.mutable_ident_expr()->set_name("var");
+  CelAttribute attr(
+      expr,
+      {
+          CelAttributeQualifier::Create(CelValue::CreateStringView("qual1")),
+          CelAttributeQualifier::Create(CelValue::CreateUint64(1)),
+          CelAttributeQualifier::Create(CelValue::CreateInt64(-1)),
+          CelAttributeQualifier::Create(CelValue::CreateBool(false)),
+      });
+
+  ASSERT_OK_AND_ASSIGN(std::string string_format, attr.AsString());
+
+  EXPECT_EQ(string_format, "var.qual1[1][-1][false]");
+}
+
+}  // namespace
 }  // namespace runtime
 }  // namespace expr
 }  // namespace api

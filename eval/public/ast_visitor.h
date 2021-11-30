@@ -108,6 +108,18 @@ class AstVisitor {
       const google::api::expr::v1alpha1::Expr::Comprehension*,
       const google::api::expr::v1alpha1::Expr*, const SourcePosition*) = 0;
 
+  // Invoked before comprehension child node is processed.
+  virtual void PreVisitComprehensionSubexpression(
+      const google::api::expr::v1alpha1::Expr* subexpr,
+      const google::api::expr::v1alpha1::Expr::Comprehension* compr,
+      ComprehensionArg comprehension_arg, const SourcePosition*) {}
+
+  // Invoked after comprehension child node is processed.
+  virtual void PostVisitComprehensionSubexpression(
+      const google::api::expr::v1alpha1::Expr* subexpr,
+      const google::api::expr::v1alpha1::Expr::Comprehension* compr,
+      ComprehensionArg comprehension_arg, const SourcePosition*) {}
+
   // Invoked after all child nodes are processed.
   virtual void PostVisitComprehension(
       const google::api::expr::v1alpha1::Expr::Comprehension*,

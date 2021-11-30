@@ -1,5 +1,22 @@
+/*
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 
@@ -130,11 +147,13 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
 // Visitor Comprehension expression.
 class ComprehensionVisitor : public CondVisitor {
  public:
-  explicit ComprehensionVisitor(FlatExprVisitor* visitor, bool short_circuiting)
+  explicit ComprehensionVisitor(FlatExprVisitor* visitor, bool short_circuiting,
+                                bool enable_vulnerability_check)
       : visitor_(visitor),
         next_step_(nullptr),
         cond_step_(nullptr),
-        short_circuiting_(short_circuiting) {}
+        short_circuiting_(short_circuiting),
+        enable_vulnerability_check_(enable_vulnerability_check) {}
 
   void PreVisit(const Expr* expr) override;
   void PostVisitArg(int arg_num, const Expr* expr) override;
@@ -147,6 +166,7 @@ class ComprehensionVisitor : public CondVisitor {
   int next_step_pos_;
   int cond_step_pos_;
   bool short_circuiting_;
+  bool enable_vulnerability_check_;
 };
 
 class FlatExprVisitor : public AstVisitor {
@@ -154,7 +174,8 @@ class FlatExprVisitor : public AstVisitor {
   FlatExprVisitor(
       const Resolver& resolver, ExecutionPath* path, bool short_circuiting,
       const absl::flat_hash_map<std::string, CelValue>& constant_idents,
-      bool enable_comprehension, BuilderWarnings* warnings,
+      bool enable_comprehension, bool enable_comprehension_list_append,
+      bool enable_comprehension_vulnerability_check, BuilderWarnings* warnings,
       std::set<std::string>* iter_variable_names)
       : resolver_(resolver),
         flattened_path_(path),
@@ -163,6 +184,9 @@ class FlatExprVisitor : public AstVisitor {
         short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
         enable_comprehension_(enable_comprehension),
+        enable_comprehension_list_append_(enable_comprehension_list_append),
+        enable_comprehension_vulnerability_check_(
+            enable_comprehension_vulnerability_check),
         builder_warnings_(warnings),
         iter_variable_names_(iter_variable_names) {
     GOOGLE_CHECK(iter_variable_names_);
@@ -337,7 +361,7 @@ class FlatExprVisitor : public AstVisitor {
 
     if (cond_visitor) {
       cond_visitor->PreVisit(expr);
-      cond_visitor_stack_.emplace(expr, std::move(cond_visitor));
+      cond_visitor_stack_.push({expr, std::move(cond_visitor)});
     }
   }
 
@@ -366,6 +390,33 @@ class FlatExprVisitor : public AstVisitor {
     bool receiver_style = call_expr->has_target();
     size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
     auto arguments_matcher = ArgumentsMatcher(num_args);
+
+    // Check to see if this is a special case of add that should really be
+    // treated as a list append
+    if (enable_comprehension_list_append_ &&
+        call_expr->function() == builtin::kAdd && call_expr->args_size() == 2 &&
+        !comprehension_stack_.empty()) {
+      const Comprehension* comprehension = comprehension_stack_.top();
+      absl::string_view accu_var = comprehension->accu_var();
+      if (comprehension->accu_init().has_list_expr() &&
+          call_expr->args(0).has_ident_expr() &&
+          call_expr->args(0).ident_expr().name() == accu_var) {
+        const Expr& loop_step = comprehension->loop_step();
+        // Macro loop_step for a map() will contain a list concat operation:
+        //   accu_var + [elem]
+        if (&loop_step == expr) {
+          function = builtin::kRuntimeListAppend;
+        }
+        // Macro loop_step for a filter() will contain a ternary:
+        //   filter ? result + [elem] : result
+        if (loop_step.has_call_expr() &&
+            loop_step.call_expr().function() == builtin::kTernary &&
+            loop_step.call_expr().args_size() == 3 &&
+            &(loop_step.call_expr().args(1)) == expr) {
+          function = builtin::kRuntimeListAppend;
+        }
+      }
+    }
 
     // First, search for lazily defined function overloads.
     // Lazy functions shadow eager functions with the same signature.
@@ -409,6 +460,9 @@ class FlatExprVisitor : public AstVisitor {
                     "Invalid comprehension: 'accu_var' must not be empty");
     ValidateOrError(!iter_var.empty(),
                     "Invalid comprehension: 'iter_var' must not be empty");
+    ValidateOrError(
+        accu_var != iter_var,
+        "Invalid comprehension: 'accu_var' must not be the same as 'iter_var'");
     ValidateOrError(comprehension->has_accu_init(),
                     "Invalid comprehension: 'accu_init' must be set");
     ValidateOrError(comprehension->has_loop_condition(),
@@ -417,8 +471,11 @@ class FlatExprVisitor : public AstVisitor {
                     "Invalid comprehension: 'loop_step' must be set");
     ValidateOrError(comprehension->has_result(),
                     "Invalid comprehension: 'result' must be set");
-    cond_visitor_stack_.emplace(
-        expr, absl::make_unique<ComprehensionVisitor>(this, short_circuiting_));
+    comprehension_stack_.push(comprehension);
+    cond_visitor_stack_.push(
+        {expr, absl::make_unique<ComprehensionVisitor>(
+                   this, short_circuiting_,
+                   enable_comprehension_vulnerability_check_)});
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PreVisit(expr);
   }
@@ -430,6 +487,8 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
+    comprehension_stack_.pop();
+
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PostVisit(expr);
     cond_visitor_stack_.pop();
@@ -466,7 +525,11 @@ class FlatExprVisitor : public AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-
+    if (enable_comprehension_list_append_ && !comprehension_stack_.empty() &&
+        &(comprehension_stack_.top()->accu_init()) == expr) {
+      AddStep(CreateCreateMutableListStep(list_expr, expr->id()));
+      return;
+    }
     AddStep(CreateCreateListStep(list_expr, expr->id()));
   }
 
@@ -577,6 +640,10 @@ class FlatExprVisitor : public AstVisitor {
   const absl::flat_hash_map<std::string, CelValue>& constant_idents_;
 
   bool enable_comprehension_;
+  bool enable_comprehension_list_append_;
+  std::stack<const Comprehension*> comprehension_stack_;
+
+  bool enable_comprehension_vulnerability_check_;
 
   BuilderWarnings* builder_warnings_;
 
@@ -718,6 +785,136 @@ const Expr* CurrentValueDummy() {
   return expr;
 }
 
+// ComprehensionAccumulationReferences recursively walks an expression to count
+// the locations where the given accumulation var_name is referenced.
+//
+// The purpose of this function is to detect cases where the accumulation
+// variable might be used in hand-rolled ASTs that cause exponential memory
+// consumption. The var_name is generally not accessible by CEL expression
+// writers, only by macro authors. However, a hand-rolled AST makes it possible
+// to misuse the accumulation variable.
+//
+// The algorithm for reference counting is as follows:
+//
+//  * Calls - If the call is a concatenation operator, sum the number of places
+//            where the variable appears within the call, as this could result
+//            in memory explosion if the accumulation variable type is a list
+//            or string. Otherwise, return 0.
+//
+//            accu: ["hello"]
+//            expr: accu + accu // memory grows exponentionally
+//
+//  * CreateList - If the accumulation var_name appears within multiple elements
+//            of a CreateList call, this means that the accumulation is
+//            generating an ever-expanding tree of values that will likely
+//            exhaust memory.
+//
+//            accu: ["hello"]
+//            expr: [accu, accu] // memory grows exponentially
+//
+//  * CreateStruct - If the accumulation var_name as an entry within the
+//            creation of a map or message value, then it's possible that the
+//            comprehension is accumulating an ever-expanding tree of values.
+//
+//            accu: {"key": "val"}
+//            expr: {1: accu, 2: accu}
+//
+//  * Comprehension - If the accumulation var_name is not shadowed by a nested
+//            iter_var or accu_var, then it may be accmulating memory within a
+//            nested context. The accumulation may occur on either the
+//            comprehension loop_step or result step.
+//
+// Since this behavior generally only occurs within hand-rolled ASTs, it is
+// very reasonable to opt-in to this check only when using human authored ASTs.
+int ComprehensionAccumulationReferences(const Expr& expr,
+                                        absl::string_view var_name) {
+  int references = 0;
+  switch (expr.expr_kind_case()) {
+    case Expr::kCallExpr: {
+      const auto& call = expr.call_expr();
+      absl::string_view function = call.function();
+      // Return the maximum reference count of each side of the ternary branch.
+      if (function == builtin::kTernary && call.args_size() == 3) {
+        return std::max(
+            ComprehensionAccumulationReferences(call.args(1), var_name),
+            ComprehensionAccumulationReferences(call.args(2), var_name));
+      }
+      // Return the number of times the accumulator var_name appears in the add
+      // expression. There's no arg size check on the add as it may become a
+      // variadic add at a future date.
+      if (function == builtin::kAdd) {
+        for (int i = 0; i < call.args_size(); i++) {
+          references +=
+              ComprehensionAccumulationReferences(call.args(i), var_name);
+        }
+        return references;
+      }
+      // Return whether the accumulator var_name is used as the operand in an
+      // index expression or in the identity `dyn` function.
+      if ((function == builtin::kIndex && call.args_size() == 2) ||
+          (function == builtin::kDyn && call.args_size() == 1)) {
+        return ComprehensionAccumulationReferences(call.args(0), var_name);
+      }
+      return 0;
+    }
+    case Expr::kComprehensionExpr: {
+      const auto& comprehension = expr.comprehension_expr();
+      absl::string_view accu_var = comprehension.accu_var();
+      absl::string_view iter_var = comprehension.iter_var();
+      // Tne accumulation or iteration variable shadows the var_name and so will
+      // not manipulate the target var_name in a nested comprhension scope.
+      if (accu_var == var_name || iter_var == var_name) {
+        return 0;
+      }
+      // Count the number of times the accumulator var_name within the loop_step
+      // or the nested comprehension result.
+      const Expr& loop_step = comprehension.loop_step();
+      const Expr& result = comprehension.result();
+      return std::max(ComprehensionAccumulationReferences(loop_step, var_name),
+                      ComprehensionAccumulationReferences(result, var_name));
+    }
+    case Expr::kListExpr: {
+      // Count the number of times the accumulator var_name appears within a
+      // create list expression's elements.
+      const auto& list = expr.list_expr();
+      for (int i = 0; i < list.elements_size(); i++) {
+        references +=
+            ComprehensionAccumulationReferences(list.elements(i), var_name);
+      }
+      return references;
+    }
+    case Expr::kStructExpr: {
+      // Count the number of times the accumulation variable occurs within
+      // entry values.
+      const auto& map = expr.struct_expr();
+      for (int i = 0; i < map.entries_size(); i++) {
+        const auto& entry = map.entries(i);
+        if (entry.has_value()) {
+          references +=
+              ComprehensionAccumulationReferences(entry.value(), var_name);
+        }
+      }
+      return references;
+    }
+    case Expr::kSelectExpr: {
+      // Test only expressions have a boolean return and thus cannot easily
+      // allocate large amounts of memory.
+      if (expr.select_expr().test_only()) {
+        return 0;
+      }
+      // Return whether the accumulator var_name appears within a non-test
+      // select operand.
+      return ComprehensionAccumulationReferences(expr.select_expr().operand(),
+                                                 var_name);
+    }
+    case Expr::kIdentExpr:
+      // Return whether the identifier name equals the accumulator var_name.
+      return expr.ident_expr().name() == var_name ? 1 : 0;
+    default:
+      return 0;
+  }
+}
+
 void ComprehensionVisitor::PreVisit(const Expr*) {
   const Expr* dummy = LoopStepDummy();
   visitor_->AddStep(CreateConstValueStep(*ConvertConstant(&dummy->const_expr()),
@@ -779,7 +976,16 @@ void ComprehensionVisitor::PostVisitArg(int arg_num, const Expr* expr) {
   }
 }
 
-void ComprehensionVisitor::PostVisit(const Expr*) {}
+void ComprehensionVisitor::PostVisit(const Expr* expr) {
+  if (enable_vulnerability_check_) {
+    const Comprehension* comprehension = &expr->comprehension_expr();
+    absl::string_view accu_var = comprehension->accu_var();
+    const Expr& loop_step = comprehension->loop_step();
+    visitor_->ValidateOrError(
+        ComprehensionAccumulationReferences(loop_step, accu_var) < 2,
+        "Comprehension contains memory exhaustion vulnerability");
+  }
+}
 
 }  // namespace
 
@@ -804,7 +1010,7 @@ FlatExprBuilder::CreateExpressionImpl(
   // transformed expression preserving expression IDs
   std::unique_ptr<Expr> rewrite_buffer = nullptr;
   // TODO(issues/98): A type checker may perform these rewrites, but there
-  // currently  isn't a signal to expose that in an expression. If that becomes
+  // currently isn't a signal to expose that in an expression. If that becomes
   // available, we can skip the reference resolve step here if it's already
   // done.
   if (reference_map != nullptr && !reference_map->empty()) {
@@ -830,8 +1036,10 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(resolver, &execution_path, shortcircuiting_, idents,
-                          enable_comprehension_, &warnings_builder,
-                          &iter_variable_names);
+                          enable_comprehension_,
+                          enable_comprehension_list_append_,
+                          enable_comprehension_vulnerability_check_,
+                          &warnings_builder, &iter_variable_names);
 
   AstTraverse(effective_expr, source_info, &visitor);
 

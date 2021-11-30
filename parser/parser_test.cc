@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "parser/parser.h"
 
 #include <algorithm>
@@ -16,10 +30,8 @@
 #include "parser/source_factory.h"
 #include "testutil/expr_printer.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace parser {
+namespace google::api::expr::parser {
+
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
@@ -687,7 +699,7 @@ std::vector<TestInfo> test_cases = {
     {"\"hi\\u263A \\u263Athere\"", "\"hi☺ ☺there\"^#1:string#"},
     {"\"\\U000003A8\\?\"", "\"Ψ?\"^#1:string#"},
     {"\"\\a\\b\\f\\n\\r\\t\\v'\\\"\\\\\\? Legal escapes\"",
-     "\"\\a\\b\\f\\n\\r\\t\\v'\\\"\\? Legal escapes\"^#1:string#"},
+     "\"\\x07\\x08\\x0c\\n\\r\\t\\x0b'\\\"\\\\? Legal escapes\"^#1:string#"},
     {"\"\\xFh\"", "",
      "ERROR: <input>:1:1: Syntax error: token recognition error at: '\"\\xFh'\n"
      " | \"\\xFh\"\n"
@@ -722,6 +734,33 @@ std::vector<TestInfo> test_cases = {
      "    \"😁\"^#4:string#,\n"
      "    \"😑\"^#5:string#,\n"
      "    \"😦\"^#6:string#\n"
+     "  ]^#3:Expr.CreateList#\n"
+     ")^#2:Expr.Call#"},
+    {"'\u00ff' in ['\u00ff', '\u00ff', '\u00ff']",
+     "@in(\n"
+     "  \"\u00ff\"^#1:string#,\n"
+     "  [\n"
+     "    \"\u00ff\"^#4:string#,\n"
+     "    \"\u00ff\"^#5:string#,\n"
+     "    \"\u00ff\"^#6:string#\n"
+     "  ]^#3:Expr.CreateList#\n"
+     ")^#2:Expr.Call#"},
+    {"'\u00ff' in ['\uffff', '\U00100000', '\U0010ffff']",
+     "@in(\n"
+     "  \"\u00ff\"^#1:string#,\n"
+     "  [\n"
+     "    \"\uffff\"^#4:string#,\n"
+     "    \"\U00100000\"^#5:string#,\n"
+     "    \"\U0010ffff\"^#6:string#\n"
+     "  ]^#3:Expr.CreateList#\n"
+     ")^#2:Expr.Call#"},
+    {"'\u00ff' in ['\U00100000', '\uffff', '\U0010ffff']",
+     "@in(\n"
+     "  \"\u00ff\"^#1:string#,\n"
+     "  [\n"
+     "    \"\U00100000\"^#4:string#,\n"
+     "    \"\uffff\"^#5:string#,\n"
+     "    \"\U0010ffff\"^#6:string#\n"
      "  ]^#3:Expr.CreateList#\n"
      ")^#2:Expr.Call#"},
     {"'😁' in ['😁', '😑', '😦']\n"
@@ -1047,7 +1086,82 @@ std::vector<TestInfo> test_cases = {
      ")^#18:exists#,\n"
      "has(\n"
      "  z^#8:Expr.Ident#.a^#9:Expr.Select#\n"
-     ")^#10:has"}};
+     ")^#10:has"},
+    {"has(a.b).asList().exists(c, c)",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  c,\n"
+     "  // Target\n"
+     "  a^#2:Expr.Ident#.b~test-only~^#4:Expr.Select#.asList()^#5:Expr.Call#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  false^#9:bool#,\n"
+     "  // LoopCondition\n"
+     "  @not_strictly_false(\n"
+     "    !_(\n"
+     "      __result__^#10:Expr.Ident#\n"
+     "    )^#11:Expr.Call#\n"
+     "  )^#12:Expr.Call#,\n"
+     "  // LoopStep\n"
+     "  _||_(\n"
+     "    __result__^#13:Expr.Ident#,\n"
+     "    c^#8:Expr.Ident#\n"
+     "  )^#14:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#15:Expr.Ident#)^#16:Expr.Comprehension#",
+     "", "", "",
+     "^#4:has#.asList()^#5:Expr.Call#.exists(\n"
+     "  c^#7:Expr.Ident#,\n"
+     "  c^#8:Expr.Ident#\n"
+     ")^#16:exists#,\n"
+     "has(\n"
+     "  a^#2:Expr.Ident#.b^#3:Expr.Select#\n"
+     ")^#4:has"},
+    {"[has(a.b), has(c.d)].exists(e, e)",
+     "__comprehension__(\n"
+     "  // Variable\n"
+     "  e,\n"
+     "  // Target\n"
+     "  [\n"
+     "    a^#3:Expr.Ident#.b~test-only~^#5:Expr.Select#,\n"
+     "    c^#7:Expr.Ident#.d~test-only~^#9:Expr.Select#\n"
+     "  ]^#1:Expr.CreateList#,\n"
+     "  // Accumulator\n"
+     "  __result__,\n"
+     "  // Init\n"
+     "  false^#13:bool#,\n"
+     "  // LoopCondition\n"
+     "  @not_strictly_false(\n"
+     "    !_(\n"
+     "      __result__^#14:Expr.Ident#\n"
+     "    )^#15:Expr.Call#\n"
+     "  )^#16:Expr.Call#,\n"
+     "  // LoopStep\n"
+     "  _||_(\n"
+     "    __result__^#17:Expr.Ident#,\n"
+     "    e^#12:Expr.Ident#\n"
+     "  )^#18:Expr.Call#,\n"
+     "  // Result\n"
+     "  __result__^#19:Expr.Ident#)^#20:Expr.Comprehension#",
+     "", "", "",
+     "[\n"
+     "  ^#5:has#,\n"
+     "  ^#9:has#\n"
+     "]^#1:Expr.CreateList#.exists(\n"
+     "  e^#11:Expr.Ident#,\n"
+     "  e^#12:Expr.Ident#\n"
+     ")^#20:exists#,\n"
+     "has(\n"
+     "  c^#7:Expr.Ident#.d^#8:Expr.Select#\n"
+     ")^#9:has#,\n"
+     "has(\n"
+     "  a^#3:Expr.Ident#.b^#4:Expr.Select#\n"
+     ")^#5:has"},
+    {"b'\\UFFFFFFFF'", "",
+     "ERROR: <input>:1:1: Invalid bytes literal: Illegal escape sequence: "
+     "Unicode escape sequence \\U cannot be used in bytes literals\n | "
+     "b'\\UFFFFFFFF'\n | ^"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
@@ -1218,7 +1332,7 @@ TEST_P(ExpressionTest, Parse) {
     EXPECT_THAT(result, IsOk());
   } else {
     EXPECT_THAT(result, Not(IsOk()));
-    EXPECT_EQ(result.status().message(), test_info.E);
+    EXPECT_EQ(test_info.E, result.status().message());
   }
 
   if (!test_info.P.empty()) {
@@ -1236,14 +1350,13 @@ TEST_P(ExpressionTest, Parse) {
   }
 
   if (!test_info.R.empty()) {
-    EXPECT_EQ(ConvertEnrichedSourceInfoToString(result->enriched_source_info()),
-              test_info.R);
+    EXPECT_EQ(test_info.R, ConvertEnrichedSourceInfoToString(
+                               result->enriched_source_info()));
   }
 
   if (!test_info.M.empty()) {
-    EXPECT_EQ(
-        ConvertMacroCallsToString(result.value().parsed_expr().source_info()),
-        test_info.M);
+    EXPECT_EQ(test_info.M, ConvertMacroCallsToString(
+                               result.value().parsed_expr().source_info()));
   }
 }
 
@@ -1328,7 +1441,4 @@ INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
                          testing::ValuesIn(test_cases));
 
 }  // namespace
-}  // namespace parser
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::parser

@@ -2,6 +2,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
@@ -12,23 +13,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-absl::Status CheckIterAccess(CelExpressionFlatEvaluationState* state,
-                             const std::string& name) {
-  if (state->iter_stack().empty()) {
-    return absl::Status(
-        absl::StatusCode::kInternal,
-        absl::StrCat(
-            "Attempted to update iteration variable outside of comprehension.'",
-            name, "'"));
-  }
-  auto iter = state->iter_variable_names().find(name);
-  if (iter == state->iter_variable_names().end()) {
-    return absl::Status(
-        absl::StatusCode::kInternal,
-        absl::StrCat("Attempted to set unknown variable '", name, "'"));
-  }
-
-  return absl::OkStatus();
+absl::Status InvalidIterationStateError() {
+  return absl::InternalError(
+      "Attempted to access iteration variable outside of comprehension.");
 }
 
 }  // namespace
@@ -55,8 +42,12 @@ const ExpressionStep* ExecutionFrame::Next() {
   return nullptr;
 }
 
-absl::Status ExecutionFrame::PushIterFrame() {
-  state_->iter_stack().push_back({});
+absl::Status ExecutionFrame::PushIterFrame(absl::string_view iter_var_name,
+                                           absl::string_view accu_var_name) {
+  CelExpressionFlatEvaluationState::IterFrame frame;
+  frame.iter_var = {iter_var_name, absl::nullopt, AttributeTrail()};
+  frame.accu_var = {accu_var_name, absl::nullopt, AttributeTrail()};
+  state_->iter_stack().push_back(frame);
   return absl::OkStatus();
 }
 
@@ -68,39 +59,54 @@ absl::Status ExecutionFrame::PopIterFrame() {
   return absl::OkStatus();
 }
 
-absl::Status ExecutionFrame::SetIterVar(const std::string& name,
-                                        const CelValue& val,
-                                        AttributeTrail trail) {
-  CEL_RETURN_IF_ERROR(CheckIterAccess(state_, name));
-  state_->IterStackTop()[name] = {val, trail};
+absl::Status ExecutionFrame::SetAccuVar(const CelValue& val) {
+  return SetAccuVar(val, AttributeTrail());
+}
 
+absl::Status ExecutionFrame::SetAccuVar(const CelValue& val,
+                                        AttributeTrail trail) {
+  if (state_->iter_stack().empty()) {
+    return InvalidIterationStateError();
+  }
+  auto& iter = state_->IterStackTop();
+  iter.accu_var.value = val;
+  iter.accu_var.attr_trail = trail;
   return absl::OkStatus();
 }
 
-absl::Status ExecutionFrame::SetIterVar(const std::string& name,
-                                        const CelValue& val) {
-  return SetIterVar(name, val, AttributeTrail());
+absl::Status ExecutionFrame::SetIterVar(const CelValue& val,
+                                        AttributeTrail trail) {
+  if (state_->iter_stack().empty()) {
+    return InvalidIterationStateError();
+  }
+  auto& iter = state_->IterStackTop();
+  iter.iter_var.value = val;
+  iter.iter_var.attr_trail = trail;
+  return absl::OkStatus();
 }
 
-absl::Status ExecutionFrame::ClearIterVar(const std::string& name) {
-  CEL_RETURN_IF_ERROR(CheckIterAccess(state_, name));
-  state_->IterStackTop().erase(name);
+absl::Status ExecutionFrame::SetIterVar(const CelValue& val) {
+  return SetIterVar(val, AttributeTrail());
+}
+
+absl::Status ExecutionFrame::ClearIterVar() {
+  if (state_->iter_stack().empty()) {
+    return InvalidIterationStateError();
+  }
+  state_->IterStackTop().iter_var.value.reset();
   return absl::OkStatus();
 }
 
 bool ExecutionFrame::GetIterVar(const std::string& name, CelValue* val) const {
-  absl::Status status = CheckIterAccess(state_, name);
-  if (!status.ok()) {
-    return false;
-  }
-
   for (auto iter = state_->iter_stack().rbegin();
        iter != state_->iter_stack().rend(); ++iter) {
     auto& frame = *iter;
-    auto frame_iter = frame.find(name);
-    if (frame_iter != frame.end()) {
-      const auto& entry = frame_iter->second;
-      *val = entry.value;
+    if (frame.iter_var.value.has_value() && name == frame.iter_var.name) {
+      *val = *frame.iter_var.value;
+      return true;
+    }
+    if (frame.accu_var.value.has_value() && name == frame.accu_var.name) {
+      *val = *frame.accu_var.value;
       return true;
     }
   }
@@ -110,18 +116,15 @@ bool ExecutionFrame::GetIterVar(const std::string& name, CelValue* val) const {
 
 bool ExecutionFrame::GetIterAttr(const std::string& name,
                                  const AttributeTrail** val) const {
-  absl::Status status = CheckIterAccess(state_, name);
-  if (!status.ok()) {
-    return false;
-  }
-
   for (auto iter = state_->iter_stack().rbegin();
        iter != state_->iter_stack().rend(); ++iter) {
     auto& frame = *iter;
-    auto frame_iter = frame.find(name);
-    if (frame_iter != frame.end()) {
-      const auto& entry = frame_iter->second;
-      *val = &entry.attr_trail;
+    if (frame.iter_var.value.has_value() && name == frame.iter_var.name) {
+      *val = &frame.iter_var.attr_trail;
+      return true;
+    }
+    if (frame.accu_var.value.has_value() && name == frame.accu_var.name) {
+      *val = &frame.accu_var.attr_trail;
       return true;
     }
   }
@@ -146,15 +149,6 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
   auto state =
       ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
   state->Reset();
-
-  // Using both unknown attribute patterns and unknown paths via FieldMask is
-  // not allowed.
-  if (activation.unknown_paths().paths_size() != 0 &&
-      !activation.unknown_attribute_patterns().empty()) {
-    return absl::InvalidArgumentError(
-        "Attempting to evaluate expression with both unknown_paths and "
-        "unknown_attribute_patterns set in the Activation");
-  }
 
   ExecutionFrame frame(path_, activation, max_iterations_, state,
                        enable_unknowns_, enable_unknown_function_results_,

@@ -1,9 +1,23 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "testutil/expr_printer.h"
 
 #include <string>
 
 #include "absl/strings/str_format.h"
-#include "common/escaping.h"
+#include "internal/strings.h"
 
 namespace google {
 namespace api {
@@ -240,7 +254,7 @@ class Writer {
       case google::api::expr::v1alpha1::Constant::kBoolValue:
         return absl::StrFormat("%s", c.bool_value() ? "true" : "false");
       case google::api::expr::v1alpha1::Constant::kBytesValue:
-        return absl::StrFormat("b\"%s\"", c.bytes_value());
+        return cel::internal::FormatDoubleQuotedBytesLiteral(c.bytes_value());
       case google::api::expr::v1alpha1::Constant::kDoubleValue: {
         std::string s = absl::StrFormat("%f", c.double_value());
         // remove trailing zeros, i.e., convert 1.600000 to just 1.6 without
@@ -254,7 +268,7 @@ class Writer {
       case google::api::expr::v1alpha1::Constant::kInt64Value:
         return absl::StrFormat("%d", c.int64_value());
       case google::api::expr::v1alpha1::Constant::kStringValue:
-        return parser::escapeAndQuote(c.string_value());
+        return cel::internal::FormatDoubleQuotedStringLiteral(c.string_value());
       case google::api::expr::v1alpha1::Constant::kUint64Value:
         return absl::StrFormat("%uu", c.uint64_value());
       case google::api::expr::v1alpha1::Constant::kNullValue:

@@ -1,6 +1,21 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "parser/source_factory.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 
 #include "google/protobuf/struct.pb.h"
@@ -12,10 +27,7 @@
 #include "absl/strings/str_split.h"
 #include "common/operators.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace parser {
+namespace google::api::expr::parser {
 namespace {
 
 const int kMaxErrorsToReport = 100;
@@ -29,63 +41,63 @@ int32_t PositiveOrMax(int32_t value) {
 
 }  // namespace
 
-SourceFactory::SourceFactory(const std::string& expression)
+SourceFactory::SourceFactory(absl::string_view expression)
     : next_id_(1), num_errors_(0) {
-  calcLineOffsets(expression);
+  CalcLineOffsets(expression);
 }
 
-int64_t SourceFactory::id(const antlr4::Token* token) {
+int64_t SourceFactory::Id(const antlr4::Token* token) {
   int64_t new_id = next_id_;
   positions_.emplace(
-      new_id,
-      SourceLocation{static_cast<int32_t>(token->getLine()),
-                     static_cast<int32_t>(token->getCharPositionInLine()),
-                     static_cast<int32_t>(token->getStopIndex()), line_offsets_});
+      new_id, SourceLocation{
+                  static_cast<int32_t>(token->getLine()),
+                  static_cast<int32_t>(token->getCharPositionInLine()),
+                  static_cast<int32_t>(token->getStopIndex()), line_offsets_});
   next_id_ += 1;
   return new_id;
 }
 
-const SourceFactory::SourceLocation& SourceFactory::getSourceLocation(
+const SourceFactory::SourceLocation& SourceFactory::GetSourceLocation(
     int64_t id) const {
   return positions_.at(id);
 }
 
-const SourceFactory::SourceLocation SourceFactory::noLocation() {
+const SourceFactory::SourceLocation SourceFactory::NoLocation() {
   return SourceLocation(-1, -1, -1, {});
 }
 
-int64_t SourceFactory::id(antlr4::ParserRuleContext* ctx) {
-  return id(ctx->getStart());
+int64_t SourceFactory::Id(antlr4::ParserRuleContext* ctx) {
+  return Id(ctx->getStart());
 }
 
-int64_t SourceFactory::id(const SourceLocation& location) {
+int64_t SourceFactory::Id(const SourceLocation& location) {
   int64_t new_id = next_id_;
   positions_.emplace(new_id, location);
   next_id_ += 1;
   return new_id;
 }
 
-int64_t SourceFactory::nextMacroId(int64_t macro_id) {
-  return id(getSourceLocation(macro_id));
+int64_t SourceFactory::NextMacroId(int64_t macro_id) {
+  return Id(GetSourceLocation(macro_id));
 }
 
-Expr SourceFactory::newExpr(int64_t id) {
+Expr SourceFactory::NewExpr(int64_t id) {
   Expr expr;
   expr.set_id(id);
   return expr;
 }
 
-Expr SourceFactory::newExpr(antlr4::ParserRuleContext* ctx) {
-  return newExpr(id(ctx));
+Expr SourceFactory::NewExpr(antlr4::ParserRuleContext* ctx) {
+  return NewExpr(Id(ctx));
 }
 
-Expr SourceFactory::newExpr(const antlr4::Token* token) {
-  return newExpr(id(token));
+Expr SourceFactory::NewExpr(const antlr4::Token* token) {
+  return NewExpr(Id(token));
 }
 
-Expr SourceFactory::newGlobalCall(int64_t id, const std::string& function,
+Expr SourceFactory::NewGlobalCall(int64_t id, const std::string& function,
                                   const std::vector<Expr>& args) {
-  Expr expr = newExpr(id);
+  Expr expr = NewExpr(id);
   auto call_expr = expr.mutable_call_expr();
   call_expr->set_function(function);
   std::for_each(args.begin(), args.end(),
@@ -93,16 +105,16 @@ Expr SourceFactory::newGlobalCall(int64_t id, const std::string& function,
   return expr;
 }
 
-Expr SourceFactory::newGlobalCallForMacro(int64_t macro_id,
+Expr SourceFactory::NewGlobalCallForMacro(int64_t macro_id,
                                           const std::string& function,
                                           const std::vector<Expr>& args) {
-  return newGlobalCall(nextMacroId(macro_id), function, args);
+  return NewGlobalCall(NextMacroId(macro_id), function, args);
 }
 
-Expr SourceFactory::newReceiverCall(int64_t id, const std::string& function,
+Expr SourceFactory::NewReceiverCall(int64_t id, const std::string& function,
                                     const Expr& target,
                                     const std::vector<Expr>& args) {
-  Expr expr = newExpr(id);
+  Expr expr = NewExpr(id);
   auto call_expr = expr.mutable_call_expr();
   call_expr->set_function(function);
   *call_expr->mutable_target() = target;
@@ -111,33 +123,34 @@ Expr SourceFactory::newReceiverCall(int64_t id, const std::string& function,
   return expr;
 }
 
-Expr SourceFactory::newIdent(const antlr4::Token* token,
+Expr SourceFactory::NewIdent(const antlr4::Token* token,
                              const std::string& ident_name) {
-  Expr expr = newExpr(token);
+  Expr expr = NewExpr(token);
   expr.mutable_ident_expr()->set_name(ident_name);
   return expr;
 }
 
-Expr SourceFactory::newIdentForMacro(int64_t macro_id,
+Expr SourceFactory::NewIdentForMacro(int64_t macro_id,
                                      const std::string& ident_name) {
-  Expr expr = newExpr(nextMacroId(macro_id));
+  Expr expr = NewExpr(NextMacroId(macro_id));
   expr.mutable_ident_expr()->set_name(ident_name);
   return expr;
 }
 
-Expr SourceFactory::newSelect(
-    ::cel_grammar::CelParser::SelectOrCallContext* ctx, Expr& operand,
+Expr SourceFactory::NewSelect(
+    ::cel_parser_internal::CelParser::SelectOrCallContext* ctx, Expr& operand,
     const std::string& field) {
-  Expr expr = newExpr(ctx->op);
+  Expr expr = NewExpr(ctx->op);
   auto select_expr = expr.mutable_select_expr();
   *select_expr->mutable_operand() = operand;
   select_expr->set_field(field);
   return expr;
 }
 
-Expr SourceFactory::newPresenceTestForMacro(int64_t macro_id, const Expr& operand,
+Expr SourceFactory::NewPresenceTestForMacro(int64_t macro_id,
+                                            const Expr& operand,
                                             const std::string& field) {
-  Expr expr = newExpr(nextMacroId(macro_id));
+  Expr expr = NewExpr(NextMacroId(macro_id));
   auto select_expr = expr.mutable_select_expr();
   *select_expr->mutable_operand() = operand;
   select_expr->set_field(field);
@@ -145,10 +158,10 @@ Expr SourceFactory::newPresenceTestForMacro(int64_t macro_id, const Expr& operan
   return expr;
 }
 
-Expr SourceFactory::newObject(
+Expr SourceFactory::NewObject(
     int64_t obj_id, const std::string& type_name,
     const std::vector<Expr::CreateStruct::Entry>& entries) {
-  auto expr = newExpr(obj_id);
+  auto expr = NewExpr(obj_id);
   auto struct_expr = expr.mutable_struct_expr();
   struct_expr->set_message_name(type_name);
   std::for_each(entries.begin(), entries.end(),
@@ -158,7 +171,7 @@ Expr SourceFactory::newObject(
   return expr;
 }
 
-Expr::CreateStruct::Entry SourceFactory::newObjectField(
+Expr::CreateStruct::Entry SourceFactory::NewObjectField(
     int64_t field_id, const std::string& field, const Expr& value) {
   Expr::CreateStruct::Entry entry;
   entry.set_id(field_id);
@@ -167,13 +180,13 @@ Expr::CreateStruct::Entry SourceFactory::newObjectField(
   return entry;
 }
 
-Expr SourceFactory::newComprehension(int64_t id, const std::string& iter_var,
+Expr SourceFactory::NewComprehension(int64_t id, const std::string& iter_var,
                                      const Expr& iter_range,
                                      const std::string& accu_var,
                                      const Expr& accu_init,
                                      const Expr& condition, const Expr& step,
                                      const Expr& result) {
-  Expr expr = newExpr(id);
+  Expr expr = NewExpr(id);
   auto comp_expr = expr.mutable_comprehension_expr();
   comp_expr->set_iter_var(iter_var);
   *comp_expr->mutable_iter_range() = iter_range;
@@ -185,32 +198,32 @@ Expr SourceFactory::newComprehension(int64_t id, const std::string& iter_var,
   return expr;
 }
 
-Expr SourceFactory::foldForMacro(int64_t macro_id, const std::string& iter_var,
+Expr SourceFactory::FoldForMacro(int64_t macro_id, const std::string& iter_var,
                                  const Expr& iter_range,
                                  const std::string& accu_var,
                                  const Expr& accu_init, const Expr& condition,
                                  const Expr& step, const Expr& result) {
-  return newComprehension(nextMacroId(macro_id), iter_var, iter_range, accu_var,
+  return NewComprehension(NextMacroId(macro_id), iter_var, iter_range, accu_var,
                           accu_init, condition, step, result);
 }
 
-Expr SourceFactory::newList(int64_t list_id, const std::vector<Expr>& elems) {
-  auto expr = newExpr(list_id);
+Expr SourceFactory::NewList(int64_t list_id, const std::vector<Expr>& elems) {
+  auto expr = NewExpr(list_id);
   auto list_expr = expr.mutable_list_expr();
   std::for_each(elems.begin(), elems.end(),
                 [list_expr](const Expr& e) { *list_expr->add_elements() = e; });
   return expr;
 }
 
-Expr SourceFactory::newQuantifierExprForMacro(
+Expr SourceFactory::NewQuantifierExprForMacro(
     SourceFactory::QuantifierKind kind, int64_t macro_id, const Expr& target,
     const std::vector<Expr>& args) {
   if (args.empty()) {
     return Expr();
   }
   if (!args[0].has_ident_expr()) {
-    auto loc = getSourceLocation(args[0].id());
-    return reportError(loc, "argument must be a simple name");
+    auto loc = GetSourceLocation(args[0].id());
+    return ReportError(loc, "argument must be a simple name");
   }
   std::string v = args[0].ident_expr().name();
 
@@ -218,7 +231,7 @@ Expr SourceFactory::newQuantifierExprForMacro(
   const std::string AccumulatorName = "__result__";
 
   auto accu_ident = [this, &macro_id, &AccumulatorName]() {
-    return newIdentForMacro(macro_id, AccumulatorName);
+    return NewIdentForMacro(macro_id, AccumulatorName);
   };
 
   Expr init;
@@ -227,56 +240,62 @@ Expr SourceFactory::newQuantifierExprForMacro(
   Expr result;
   switch (kind) {
     case QUANTIFIER_ALL:
-      init = newLiteralBoolForMacro(macro_id, true);
-      condition = newGlobalCallForMacro(
+      init = NewLiteralBoolForMacro(macro_id, true);
+      condition = NewGlobalCallForMacro(
           macro_id, CelOperator::NOT_STRICTLY_FALSE, {accu_ident()});
-      step = newGlobalCallForMacro(macro_id, CelOperator::LOGICAL_AND,
+      step = NewGlobalCallForMacro(macro_id, CelOperator::LOGICAL_AND,
                                    {accu_ident(), args[1]});
       result = accu_ident();
       break;
 
     case QUANTIFIER_EXISTS:
-      init = newLiteralBoolForMacro(macro_id, false);
-      condition = newGlobalCallForMacro(
+      init = NewLiteralBoolForMacro(macro_id, false);
+      condition = NewGlobalCallForMacro(
           macro_id, CelOperator::NOT_STRICTLY_FALSE,
-          {newGlobalCallForMacro(macro_id, CelOperator::LOGICAL_NOT,
+          {NewGlobalCallForMacro(macro_id, CelOperator::LOGICAL_NOT,
                                  {accu_ident()})});
-      step = newGlobalCallForMacro(macro_id, CelOperator::LOGICAL_OR,
+      step = NewGlobalCallForMacro(macro_id, CelOperator::LOGICAL_OR,
                                    {accu_ident(), args[1]});
       result = accu_ident();
       break;
 
     case QUANTIFIER_EXISTS_ONE: {
-      Expr zero_expr = newLiteralIntForMacro(macro_id, 0);
-      Expr one_expr = newLiteralIntForMacro(macro_id, 1);
+      Expr zero_expr = NewLiteralIntForMacro(macro_id, 0);
+      Expr one_expr = NewLiteralIntForMacro(macro_id, 1);
       init = zero_expr;
-      condition = newLiteralBoolForMacro(macro_id, true);
-      step = newGlobalCallForMacro(
+      condition = NewLiteralBoolForMacro(macro_id, true);
+      step = NewGlobalCallForMacro(
           macro_id, CelOperator::CONDITIONAL,
           {args[1],
-           newGlobalCallForMacro(macro_id, CelOperator::ADD,
+           NewGlobalCallForMacro(macro_id, CelOperator::ADD,
                                  {accu_ident(), one_expr}),
            accu_ident()});
-      result = newGlobalCallForMacro(macro_id, CelOperator::EQUALS,
+      result = NewGlobalCallForMacro(macro_id, CelOperator::EQUALS,
                                      {accu_ident(), one_expr});
       break;
     }
   }
-  return foldForMacro(macro_id, v, target, AccumulatorName, init, condition,
+  return FoldForMacro(macro_id, v, target, AccumulatorName, init, condition,
                       step, result);
 }
 
 Expr SourceFactory::BuildArgForMacroCall(const Expr& expr) {
-  Expr result_expr;
-  result_expr.set_id(expr.id());
   if (macro_calls_.find(expr.id()) != macro_calls_.end()) {
+    Expr result_expr;
+    result_expr.set_id(expr.id());
     return result_expr;
   }
   // Call expression could have args or sub-args that are also macros found in
   // macro_calls.
   if (expr.has_call_expr()) {
+    Expr result_expr;
+    result_expr.set_id(expr.id());
     auto mutable_expr = result_expr.mutable_call_expr();
     mutable_expr->set_function(expr.call_expr().function());
+    if (expr.call_expr().has_target()) {
+      *mutable_expr->mutable_target() =
+          BuildArgForMacroCall(expr.call_expr().target());
+    }
     for (const auto& arg : expr.call_expr().args()) {
       // Iterate the AST from `expr` recursively looking for macros. Because we
       // are at most starting from the top level macro, this recursion is
@@ -284,6 +303,17 @@ Expr SourceFactory::BuildArgForMacroCall(const Expr& expr) {
       // AST during parsing will catch recursion overflows before we get to
       // here.
       *mutable_expr->mutable_args()->Add() = BuildArgForMacroCall(arg);
+    }
+    return result_expr;
+  }
+  if (expr.has_list_expr()) {
+    Expr result_expr;
+    result_expr.set_id(expr.id());
+    const auto& list_expr = expr.list_expr();
+    auto mutable_list_expr = result_expr.mutable_list_expr();
+    for (const auto& elem : list_expr.elements()) {
+      *mutable_list_expr->mutable_elements()->Add() =
+          BuildArgForMacroCall(elem);
     }
     return result_expr;
   }
@@ -304,7 +334,7 @@ void SourceFactory::AddMacroCall(int64_t macro_id, const Expr& target,
     if (macro_calls_.find(target.id()) != macro_calls_.end()) {
       expr.set_id(target.id());
     } else {
-      expr = target;
+      expr = BuildArgForMacroCall(target);
     }
     *mutable_macro_call->mutable_target() = expr;
   }
@@ -315,14 +345,14 @@ void SourceFactory::AddMacroCall(int64_t macro_id, const Expr& target,
   macro_calls_.emplace(macro_id, macro_call);
 }
 
-Expr SourceFactory::newFilterExprForMacro(int64_t macro_id, const Expr& target,
+Expr SourceFactory::NewFilterExprForMacro(int64_t macro_id, const Expr& target,
                                           const std::vector<Expr>& args) {
   if (args.empty()) {
     return Expr();
   }
   if (!args[0].has_ident_expr()) {
-    auto loc = getSourceLocation(args[0].id());
-    return reportError(loc, "argument is not an identifier");
+    auto loc = GetSourceLocation(args[0].id());
+    return ReportError(loc, "argument is not an identifier");
   }
   std::string v = args[0].ident_expr().name();
 
@@ -330,26 +360,26 @@ Expr SourceFactory::newFilterExprForMacro(int64_t macro_id, const Expr& target,
   const std::string AccumulatorName = "__result__";
 
   Expr filter = args[1];
-  Expr accu_expr = newIdentForMacro(macro_id, AccumulatorName);
-  Expr init = newListForMacro(macro_id, {});
-  Expr condition = newLiteralBoolForMacro(macro_id, true);
+  Expr accu_expr = NewIdentForMacro(macro_id, AccumulatorName);
+  Expr init = NewListForMacro(macro_id, {});
+  Expr condition = NewLiteralBoolForMacro(macro_id, true);
   Expr step =
-      newGlobalCallForMacro(macro_id, CelOperator::ADD,
-                            {accu_expr, newListForMacro(macro_id, {args[0]})});
-  step = newGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
+      NewGlobalCallForMacro(macro_id, CelOperator::ADD,
+                            {accu_expr, NewListForMacro(macro_id, {args[0]})});
+  step = NewGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
                                {filter, step, accu_expr});
-  return foldForMacro(macro_id, v, target, AccumulatorName, init, condition,
+  return FoldForMacro(macro_id, v, target, AccumulatorName, init, condition,
                       step, accu_expr);
 }
 
-Expr SourceFactory::newListForMacro(int64_t macro_id,
+Expr SourceFactory::NewListForMacro(int64_t macro_id,
                                     const std::vector<Expr>& elems) {
-  return newList(nextMacroId(macro_id), elems);
+  return NewList(NextMacroId(macro_id), elems);
 }
 
-Expr SourceFactory::newMap(
+Expr SourceFactory::NewMap(
     int64_t map_id, const std::vector<Expr::CreateStruct::Entry>& entries) {
-  auto expr = newExpr(map_id);
+  auto expr = NewExpr(map_id);
   auto struct_expr = expr.mutable_struct_expr();
   std::for_each(entries.begin(), entries.end(),
                 [struct_expr](const Expr::CreateStruct::Entry& e) {
@@ -358,14 +388,14 @@ Expr SourceFactory::newMap(
   return expr;
 }
 
-Expr SourceFactory::newMapForMacro(int64_t macro_id, const Expr& target,
+Expr SourceFactory::NewMapForMacro(int64_t macro_id, const Expr& target,
                                    const std::vector<Expr>& args) {
   if (args.empty()) {
     return Expr();
   }
   if (!args[0].has_ident_expr()) {
-    auto loc = getSourceLocation(args[0].id());
-    return reportError(loc, "argument is not an identifier");
+    auto loc = GetSourceLocation(args[0].id());
+    return ReportError(loc, "argument is not an identifier");
   }
   std::string v = args[0].ident_expr().name();
 
@@ -383,20 +413,20 @@ Expr SourceFactory::newMapForMacro(int64_t macro_id, const Expr& target,
   // traditional variable name assigned to the fold accumulator variable.
   const std::string AccumulatorName = "__result__";
 
-  Expr accu_expr = newIdentForMacro(macro_id, AccumulatorName);
-  Expr init = newListForMacro(macro_id, {});
-  Expr condition = newLiteralBoolForMacro(macro_id, true);
-  Expr step = newGlobalCallForMacro(
-      macro_id, CelOperator::ADD, {accu_expr, newListForMacro(macro_id, {fn})});
+  Expr accu_expr = NewIdentForMacro(macro_id, AccumulatorName);
+  Expr init = NewListForMacro(macro_id, {});
+  Expr condition = NewLiteralBoolForMacro(macro_id, true);
+  Expr step = NewGlobalCallForMacro(
+      macro_id, CelOperator::ADD, {accu_expr, NewListForMacro(macro_id, {fn})});
   if (has_filter) {
-    step = newGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
+    step = NewGlobalCallForMacro(macro_id, CelOperator::CONDITIONAL,
                                  {filter, step, accu_expr});
   }
-  return foldForMacro(macro_id, v, target, AccumulatorName, init, condition,
+  return FoldForMacro(macro_id, v, target, AccumulatorName, init, condition,
                       step, accu_expr);
 }
 
-Expr::CreateStruct::Entry SourceFactory::newMapEntry(int64_t entry_id,
+Expr::CreateStruct::Entry SourceFactory::NewMapEntry(int64_t entry_id,
                                                      const Expr& key,
                                                      const Expr& value) {
   Expr::CreateStruct::Entry entry;
@@ -406,94 +436,96 @@ Expr::CreateStruct::Entry SourceFactory::newMapEntry(int64_t entry_id,
   return entry;
 }
 
-Expr SourceFactory::newLiteralInt(antlr4::ParserRuleContext* ctx, int64_t value) {
-  Expr expr = newExpr(ctx);
+Expr SourceFactory::NewLiteralInt(antlr4::ParserRuleContext* ctx,
+                                  int64_t value) {
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_int64_value(value);
   return expr;
 }
 
-Expr SourceFactory::newLiteralIntForMacro(int64_t macro_id, int64_t value) {
-  Expr expr = newExpr(nextMacroId(macro_id));
+Expr SourceFactory::NewLiteralIntForMacro(int64_t macro_id, int64_t value) {
+  Expr expr = NewExpr(NextMacroId(macro_id));
   expr.mutable_const_expr()->set_int64_value(value);
   return expr;
 }
 
-Expr SourceFactory::newLiteralUint(antlr4::ParserRuleContext* ctx,
+Expr SourceFactory::NewLiteralUint(antlr4::ParserRuleContext* ctx,
                                    uint64_t value) {
-  Expr expr = newExpr(ctx);
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_uint64_value(value);
   return expr;
 }
 
-Expr SourceFactory::newLiteralDouble(antlr4::ParserRuleContext* ctx,
+Expr SourceFactory::NewLiteralDouble(antlr4::ParserRuleContext* ctx,
                                      double value) {
-  Expr expr = newExpr(ctx);
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_double_value(value);
   return expr;
 }
 
-Expr SourceFactory::newLiteralString(antlr4::ParserRuleContext* ctx,
+Expr SourceFactory::NewLiteralString(antlr4::ParserRuleContext* ctx,
                                      const std::string& s) {
-  Expr expr = newExpr(ctx);
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_string_value(s);
   return expr;
 }
 
-Expr SourceFactory::newLiteralBytes(antlr4::ParserRuleContext* ctx,
+Expr SourceFactory::NewLiteralBytes(antlr4::ParserRuleContext* ctx,
                                     const std::string& b) {
-  Expr expr = newExpr(ctx);
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_bytes_value(b);
   return expr;
 }
 
-Expr SourceFactory::newLiteralBool(antlr4::ParserRuleContext* ctx, bool b) {
-  Expr expr = newExpr(ctx);
+Expr SourceFactory::NewLiteralBool(antlr4::ParserRuleContext* ctx, bool b) {
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_bool_value(b);
   return expr;
 }
 
-Expr SourceFactory::newLiteralBoolForMacro(int64_t macro_id, bool b) {
-  Expr expr = newExpr(nextMacroId(macro_id));
+Expr SourceFactory::NewLiteralBoolForMacro(int64_t macro_id, bool b) {
+  Expr expr = NewExpr(NextMacroId(macro_id));
   expr.mutable_const_expr()->set_bool_value(b);
   return expr;
 }
 
-Expr SourceFactory::newLiteralNull(antlr4::ParserRuleContext* ctx) {
-  Expr expr = newExpr(ctx);
+Expr SourceFactory::NewLiteralNull(antlr4::ParserRuleContext* ctx) {
+  Expr expr = NewExpr(ctx);
   expr.mutable_const_expr()->set_null_value(::google::protobuf::NULL_VALUE);
   return expr;
 }
 
-Expr SourceFactory::reportError(antlr4::ParserRuleContext* ctx,
-                                const std::string& msg) {
+Expr SourceFactory::ReportError(antlr4::ParserRuleContext* ctx,
+                                absl::string_view msg) {
   num_errors_ += 1;
-  Expr expr = newExpr(ctx);
+  Expr expr = NewExpr(ctx);
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(msg, positions_.at(expr.id()));
+    errors_truncated_.emplace_back(std::string(msg), positions_.at(expr.id()));
   }
   return expr;
 }
 
-Expr SourceFactory::reportError(int32_t line, int32_t col, const std::string& msg) {
+Expr SourceFactory::ReportError(int32_t line, int32_t col,
+                                absl::string_view msg) {
   num_errors_ += 1;
   SourceLocation loc(line, col, /*offset_end=*/-1, line_offsets_);
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(msg, loc);
+    errors_truncated_.emplace_back(std::string(msg), loc);
   }
-  return newExpr(id(loc));
+  return NewExpr(Id(loc));
 }
 
-Expr SourceFactory::reportError(const SourceFactory::SourceLocation& loc,
-                                const std::string& msg) {
+Expr SourceFactory::ReportError(const SourceFactory::SourceLocation& loc,
+                                absl::string_view msg) {
   num_errors_ += 1;
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(msg, loc);
+    errors_truncated_.emplace_back(std::string(msg), loc);
   }
-  return newExpr(id(loc));
+  return NewExpr(Id(loc));
 }
 
-std::string SourceFactory::errorMessage(const std::string& description,
-                                        const std::string& expression) const {
+std::string SourceFactory::ErrorMessage(absl::string_view description,
+                                        absl::string_view expression) const {
   // Errors are collected as they are encountered, not by their location within
   // the source. To have a more stable error message as implementation
   // details change, we sort the collected errors by their source location
@@ -533,7 +565,7 @@ std::string SourceFactory::errorMessage(const std::string& description,
             "ERROR: %s:%zu:%zu: %s", description, error->location.line,
             // add one to the 0-based column
             error->location.col + 1, error->message);
-        std::string snippet = getSourceLine(error->location.line, expression);
+        std::string snippet = GetSourceLine(error->location.line, expression);
         std::string::size_type pos = 0;
         while ((pos = snippet.find('\t', pos)) != std::string::npos) {
           snippet.replace(pos, 1, " ");
@@ -554,7 +586,7 @@ std::string SourceFactory::errorMessage(const std::string& description,
   return absl::StrJoin(messages, "\n");
 }
 
-bool SourceFactory::isReserved(const std::string& ident_name) {
+bool SourceFactory::IsReserved(absl::string_view ident_name) {
   static const auto* reserved_words = new absl::flat_hash_set<std::string>(
       {"as",        "break", "const",  "continue", "else", "false", "for",
        "function",  "if",    "import", "in",       "let",  "loop",  "package",
@@ -562,7 +594,7 @@ bool SourceFactory::isReserved(const std::string& ident_name) {
   return reserved_words->find(ident_name) != reserved_words->end();
 }
 
-google::api::expr::v1alpha1::SourceInfo SourceFactory::sourceInfo() const {
+google::api::expr::v1alpha1::SourceInfo SourceFactory::source_info() const {
   google::api::expr::v1alpha1::SourceInfo source_info;
   source_info.set_location("<input>");
   auto positions = source_info.mutable_positions();
@@ -581,7 +613,7 @@ google::api::expr::v1alpha1::SourceInfo SourceFactory::sourceInfo() const {
   return source_info;
 }
 
-EnrichedSourceInfo SourceFactory::enrichedSourceInfo() const {
+EnrichedSourceInfo SourceFactory::enriched_source_info() const {
   std::map<int64_t, std::pair<int32_t, int32_t>> offset;
   std::for_each(
       positions_.begin(), positions_.end(),
@@ -591,7 +623,7 @@ EnrichedSourceInfo SourceFactory::enrichedSourceInfo() const {
   return EnrichedSourceInfo(std::move(offset));
 }
 
-void SourceFactory::calcLineOffsets(const std::string& expression) {
+void SourceFactory::CalcLineOffsets(absl::string_view expression) {
   std::vector<absl::string_view> lines = absl::StrSplit(expression, '\n');
   int offset = 0;
   line_offsets_.resize(lines.size());
@@ -601,7 +633,7 @@ void SourceFactory::calcLineOffsets(const std::string& expression) {
   }
 }
 
-absl::optional<int32_t> SourceFactory::findLineOffset(int32_t line) const {
+absl::optional<int32_t> SourceFactory::FindLineOffset(int32_t line) const {
   // note that err.line is 1-based,
   // while we need the 0-based index
   if (line == 1) {
@@ -612,21 +644,19 @@ absl::optional<int32_t> SourceFactory::findLineOffset(int32_t line) const {
   return {};
 }
 
-std::string SourceFactory::getSourceLine(int32_t line,
-                                         const std::string& expression) const {
-  auto char_start = findLineOffset(line);
+std::string SourceFactory::GetSourceLine(int32_t line,
+                                         absl::string_view expression) const {
+  auto char_start = FindLineOffset(line);
   if (!char_start) {
     return "";
   }
-  auto char_end = findLineOffset(line + 1);
+  auto char_end = FindLineOffset(line + 1);
   if (char_end) {
-    return expression.substr(*char_start, *char_end - *char_end - 1);
+    return std::string(
+        expression.substr(*char_start, *char_end - *char_end - 1));
   } else {
-    return expression.substr(*char_start);
+    return std::string(expression.substr(*char_start));
   }
 }
 
-}  // namespace parser
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::parser

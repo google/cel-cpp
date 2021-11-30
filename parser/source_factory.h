@@ -1,25 +1,39 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_SOURCE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_SOURCE_FACTORY_H_
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "parser/cel_grammar.inc/cel_grammar/CelParser.h"
+#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
 #include "antlr4-runtime.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace parser {
+namespace google::api::expr::parser {
 
 using google::api::expr::v1alpha1::Expr;
 
 class EnrichedSourceInfo {
  public:
-  EnrichedSourceInfo(std::map<int64_t, std::pair<int32_t, int32_t>> offsets)
+  explicit EnrichedSourceInfo(
+      std::map<int64_t, std::pair<int32_t, int32_t>> offsets)
       : offsets_(std::move(offsets)) {}
 
   const std::map<int64_t, std::pair<int32_t, int32_t>>& offsets() const {
@@ -67,90 +81,90 @@ class SourceFactory {
     QUANTIFIER_EXISTS_ONE
   };
 
-  SourceFactory(const std::string& expression);
+  explicit SourceFactory(absl::string_view expression);
 
-  int64_t id(const antlr4::Token* token);
-  int64_t id(antlr4::ParserRuleContext* ctx);
-  int64_t id(const SourceLocation& location);
+  int64_t Id(const antlr4::Token* token);
+  int64_t Id(antlr4::ParserRuleContext* ctx);
+  int64_t Id(const SourceLocation& location);
 
-  int64_t nextMacroId(int64_t macro_id);
+  int64_t NextMacroId(int64_t macro_id);
 
-  const SourceLocation& getSourceLocation(int64_t id) const;
+  const SourceLocation& GetSourceLocation(int64_t id) const;
 
-  static const SourceLocation noLocation();
+  static const SourceLocation NoLocation();
 
-  Expr newExpr(int64_t id);
-  Expr newExpr(antlr4::ParserRuleContext* ctx);
-  Expr newExpr(const antlr4::Token* token);
-  Expr newGlobalCall(int64_t id, const std::string& function,
+  Expr NewExpr(int64_t id);
+  Expr NewExpr(antlr4::ParserRuleContext* ctx);
+  Expr NewExpr(const antlr4::Token* token);
+  Expr NewGlobalCall(int64_t id, const std::string& function,
                      const std::vector<Expr>& args);
-  Expr newGlobalCallForMacro(int64_t macro_id, const std::string& function,
+  Expr NewGlobalCallForMacro(int64_t macro_id, const std::string& function,
                              const std::vector<Expr>& args);
-  Expr newReceiverCall(int64_t id, const std::string& function,
+  Expr NewReceiverCall(int64_t id, const std::string& function,
                        const Expr& target, const std::vector<Expr>& args);
-  Expr newIdent(const antlr4::Token* token, const std::string& ident_name);
-  Expr newIdentForMacro(int64_t macro_id, const std::string& ident_name);
-  Expr newSelect(::cel_grammar::CelParser::SelectOrCallContext* ctx,
+  Expr NewIdent(const antlr4::Token* token, const std::string& ident_name);
+  Expr NewIdentForMacro(int64_t macro_id, const std::string& ident_name);
+  Expr NewSelect(::cel_parser_internal::CelParser::SelectOrCallContext* ctx,
                  Expr& operand, const std::string& field);
-  Expr newPresenceTestForMacro(int64_t macro_id, const Expr& operand,
+  Expr NewPresenceTestForMacro(int64_t macro_id, const Expr& operand,
                                const std::string& field);
-  Expr newObject(int64_t obj_id, const std::string& type_name,
+  Expr NewObject(int64_t obj_id, const std::string& type_name,
                  const std::vector<Expr::CreateStruct::Entry>& entries);
-  Expr::CreateStruct::Entry newObjectField(int64_t field_id,
+  Expr::CreateStruct::Entry NewObjectField(int64_t field_id,
                                            const std::string& field,
                                            const Expr& value);
-  Expr newComprehension(int64_t id, const std::string& iter_var,
+  Expr NewComprehension(int64_t id, const std::string& iter_var,
                         const Expr& iter_range, const std::string& accu_var,
                         const Expr& accu_init, const Expr& condition,
                         const Expr& step, const Expr& result);
 
-  Expr foldForMacro(int64_t macro_id, const std::string& iter_var,
+  Expr FoldForMacro(int64_t macro_id, const std::string& iter_var,
                     const Expr& iter_range, const std::string& accu_var,
                     const Expr& accu_init, const Expr& condition,
                     const Expr& step, const Expr& result);
-  Expr newQuantifierExprForMacro(QuantifierKind kind, int64_t macro_id,
+  Expr NewQuantifierExprForMacro(QuantifierKind kind, int64_t macro_id,
                                  const Expr& target,
                                  const std::vector<Expr>& args);
-  Expr newFilterExprForMacro(int64_t macro_id, const Expr& target,
+  Expr NewFilterExprForMacro(int64_t macro_id, const Expr& target,
                              const std::vector<Expr>& args);
 
-  Expr newList(int64_t list_id, const std::vector<Expr>& elems);
-  Expr newListForMacro(int64_t macro_id, const std::vector<Expr>& elems);
-  Expr newMap(int64_t map_id,
+  Expr NewList(int64_t list_id, const std::vector<Expr>& elems);
+  Expr NewListForMacro(int64_t macro_id, const std::vector<Expr>& elems);
+  Expr NewMap(int64_t map_id,
               const std::vector<Expr::CreateStruct::Entry>& entries);
-  Expr newMapForMacro(int64_t macro_id, const Expr& target,
+  Expr NewMapForMacro(int64_t macro_id, const Expr& target,
                       const std::vector<Expr>& args);
-  Expr::CreateStruct::Entry newMapEntry(int64_t entry_id, const Expr& key,
+  Expr::CreateStruct::Entry NewMapEntry(int64_t entry_id, const Expr& key,
                                         const Expr& value);
-  Expr newLiteralInt(antlr4::ParserRuleContext* ctx, int64_t value);
-  Expr newLiteralIntForMacro(int64_t macro_id, int64_t value);
-  Expr newLiteralUint(antlr4::ParserRuleContext* ctx, uint64_t value);
-  Expr newLiteralDouble(antlr4::ParserRuleContext* ctx, double value);
-  Expr newLiteralString(antlr4::ParserRuleContext* ctx, const std::string& s);
-  Expr newLiteralBytes(antlr4::ParserRuleContext* ctx, const std::string& b);
-  Expr newLiteralBool(antlr4::ParserRuleContext* ctx, bool b);
-  Expr newLiteralBoolForMacro(int64_t macro_id, bool b);
-  Expr newLiteralNull(antlr4::ParserRuleContext* ctx);
+  Expr NewLiteralInt(antlr4::ParserRuleContext* ctx, int64_t value);
+  Expr NewLiteralIntForMacro(int64_t macro_id, int64_t value);
+  Expr NewLiteralUint(antlr4::ParserRuleContext* ctx, uint64_t value);
+  Expr NewLiteralDouble(antlr4::ParserRuleContext* ctx, double value);
+  Expr NewLiteralString(antlr4::ParserRuleContext* ctx, const std::string& s);
+  Expr NewLiteralBytes(antlr4::ParserRuleContext* ctx, const std::string& b);
+  Expr NewLiteralBool(antlr4::ParserRuleContext* ctx, bool b);
+  Expr NewLiteralBoolForMacro(int64_t macro_id, bool b);
+  Expr NewLiteralNull(antlr4::ParserRuleContext* ctx);
 
-  Expr reportError(antlr4::ParserRuleContext* ctx, const std::string& msg);
-  Expr reportError(int32_t line, int32_t col, const std::string& msg);
-  Expr reportError(const SourceLocation& loc, const std::string& msg);
+  Expr ReportError(antlr4::ParserRuleContext* ctx, absl::string_view msg);
+  Expr ReportError(int32_t line, int32_t col, absl::string_view msg);
+  Expr ReportError(const SourceLocation& loc, absl::string_view msg);
 
-  bool isReserved(const std::string& ident_name);
-  google::api::expr::v1alpha1::SourceInfo sourceInfo() const;
-  EnrichedSourceInfo enrichedSourceInfo() const;
+  bool IsReserved(absl::string_view ident_name);
+  google::api::expr::v1alpha1::SourceInfo source_info() const;
+  EnrichedSourceInfo enriched_source_info() const;
   const std::vector<Error>& errors() const { return errors_truncated_; }
-  std::string errorMessage(const std::string& description,
-                           const std::string& expression) const;
+  std::string ErrorMessage(absl::string_view description,
+                           absl::string_view expression) const;
 
   Expr BuildArgForMacroCall(const Expr& expr);
   void AddMacroCall(int64_t macro_id, const Expr& target,
                     const std::vector<Expr>& args, std::string function);
 
  private:
-  void calcLineOffsets(const std::string& expression);
-  absl::optional<int32_t> findLineOffset(int32_t line) const;
-  std::string getSourceLine(int32_t line, const std::string& expression) const;
+  void CalcLineOffsets(absl::string_view expression);
+  absl::optional<int32_t> FindLineOffset(int32_t line) const;
+  std::string GetSourceLine(int32_t line, absl::string_view expression) const;
 
  private:
   int64_t next_id_;
@@ -162,9 +176,6 @@ class SourceFactory {
   std::map<int64_t, Expr> macro_calls_;
 };
 
-}  // namespace parser
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::parser
 
 #endif  // THIRD_PARTY_CEL_CPP_PARSER_SOURCE_FACTORY_H_

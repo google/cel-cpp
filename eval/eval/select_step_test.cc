@@ -516,50 +516,6 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
                        HasSubstr("MissingAttributeError: message.bool_value")));
 }
 
-TEST_P(SelectStepTest, UnknownValueProducesError) {
-  TestMessage message;
-  message.set_bool_value(true);
-  google::protobuf::Arena arena;
-  ExecutionPath path;
-
-  Expr dummy_expr;
-
-  auto select = dummy_expr.mutable_select_expr();
-  select->set_field("bool_value");
-  select->set_test_only(false);
-  Expr* expr0 = select->mutable_operand();
-
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0->id()));
-  ASSERT_OK_AND_ASSIGN(auto step1, CreateSelectStep(select, dummy_expr.id(),
-                                                    "message.bool_value"));
-
-  path.push_back(std::move(step0));
-  path.push_back(std::move(step1));
-
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
-                                 GetParam());
-  Activation activation;
-  activation.InsertValue("message",
-                         CelProtoWrapper::CreateMessage(&message, &arena));
-
-  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsBool());
-  EXPECT_EQ(result.BoolOrDie(), true);
-
-  google::protobuf::FieldMask mask;
-  mask.add_paths("message.bool_value");
-
-  activation.set_unknown_paths(mask);
-
-  ASSERT_OK_AND_ASSIGN(result, cel_expr.Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsError());
-  ASSERT_TRUE(IsUnknownValueError(result));
-  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
-              Eq(std::set<std::string>({"message.bool_value"})));
-}
-
 TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   TestMessage message;
   message.set_bool_value(true);

@@ -5,6 +5,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/eval/mutable_list_impl.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 
 namespace google::api::expr::runtime {
@@ -13,13 +14,16 @@ namespace {
 
 class CreateListStep : public ExpressionStepBase {
  public:
-  CreateListStep(int64_t expr_id, int list_size)
-      : ExpressionStepBase(expr_id), list_size_(list_size) {}
+  CreateListStep(int64_t expr_id, int list_size, bool immutable)
+      : ExpressionStepBase(expr_id),
+        list_size_(list_size),
+        immutable_(immutable) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
   int list_size_;
+  bool immutable_;
 };
 
 absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
@@ -59,8 +63,14 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  CelList* cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
-      frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+  CelList* cel_list;
+  if (immutable_) {
+    cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
+        frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+  } else {
+    cel_list = google::protobuf::Arena::Create<MutableListImpl>(
+        frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+  }
   result = CelValue::CreateList(cel_list);
   frame->value_stack().Pop(list_size_);
   frame->value_stack().Push(result);
@@ -69,12 +79,18 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-// Factory method for CreateList - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
     int64_t expr_id) {
-  return absl::make_unique<CreateListStep>(expr_id,
-                                           create_list_expr->elements_size());
+  return absl::make_unique<CreateListStep>(
+      expr_id, create_list_expr->elements_size(), /*immutable=*/true);
+}
+
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
+    const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
+    int64_t expr_id) {
+  return absl::make_unique<CreateListStep>(
+      expr_id, create_list_expr->elements_size(), /*immutable=*/false);
 }
 
 }  // namespace google::api::expr::runtime

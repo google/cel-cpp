@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/public/builtin_func_registrar.h"
 
 #include <cmath>
@@ -13,39 +27,31 @@
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "common/overflow.h"
+#include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "internal/casts.h"
+#include "internal/overflow.h"
 #include "internal/proto_util.h"
+#include "internal/time.h"
+#include "internal/utf8.h"
 #include "re2/re2.h"
-#include "base/unilib.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::internal::MaxTimestamp;
 using ::google::api::expr::internal::EncodeDurationToString;
 using ::google::api::expr::internal::EncodeTimeToString;
-using ::google::api::expr::internal::MakeGoogleApiTimeMax;
 using ::google::protobuf::Arena;
 
 // Time representing `9999-12-31T23:59:59.999999999Z`.
-const absl::Time kMaxTime = MakeGoogleApiTimeMax();
-
-// Returns the number of UTF8 codepoints within a string.
-// The input string must first be checked to see if it is valid UTF8.
-static int UTF8CodepointCount(absl::string_view str) {
-  int n = 0;
-  // Increment the codepoint count on non-trail-byte characters.
-  for (const auto p : str) {
-    n += (*reinterpret_cast<const signed char*>(&p) >= -0x40);
-  }
-  return n;
-}
+const absl::Time kMaxTime = MaxTimestamp();
 
 // Comparison template functions
 template <class Type>
@@ -333,7 +339,7 @@ CelValue Add(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Add<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto sum = common::CheckedAdd(v0, v1);
+  auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
     return CreateErrorValue(arena, sum.status());
   }
@@ -342,7 +348,7 @@ CelValue Add<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Add<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto sum = common::CheckedAdd(v0, v1);
+  auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
     return CreateErrorValue(arena, sum.status());
   }
@@ -359,7 +365,7 @@ CelValue Sub(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Sub<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto diff = common::CheckedSub(v0, v1);
+  auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
     return CreateErrorValue(arena, diff.status());
   }
@@ -368,7 +374,7 @@ CelValue Sub<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Sub<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto diff = common::CheckedSub(v0, v1);
+  auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
     return CreateErrorValue(arena, diff.status());
   }
@@ -385,7 +391,7 @@ CelValue Mul(Arena*, Type v0, Type v1);
 
 template <>
 CelValue Mul<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto prod = common::CheckedMul(v0, v1);
+  auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
     return CreateErrorValue(arena, prod.status());
   }
@@ -394,7 +400,7 @@ CelValue Mul<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Mul<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto prod = common::CheckedMul(v0, v1);
+  auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
     return CreateErrorValue(arena, prod.status());
   }
@@ -413,7 +419,7 @@ CelValue Div(Arena* arena, Type v0, Type v1);
 // division by 0
 template <>
 CelValue Div<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto quot = common::CheckedDiv(v0, v1);
+  auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
     return CreateErrorValue(arena, quot.status());
   }
@@ -424,7 +430,7 @@ CelValue Div<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 // division by 0
 template <>
 CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto quot = common::CheckedDiv(v0, v1);
+  auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
     return CreateErrorValue(arena, quot.status());
   }
@@ -448,7 +454,7 @@ CelValue Modulo(Arena* arena, Type v0, Type v1);
 // division by 0
 template <>
 CelValue Modulo<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
-  auto mod = common::CheckedMod(v0, v1);
+  auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
     return CreateErrorValue(arena, mod.status());
   }
@@ -457,7 +463,7 @@ CelValue Modulo<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
 
 template <>
 CelValue Modulo<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
-  auto mod = common::CheckedMod(v0, v1);
+  auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
     return CreateErrorValue(arena, mod.status());
   }
@@ -533,6 +539,24 @@ bool In(Arena*, T value, const CelList* list) {
   }
 
   return false;
+}
+
+// AppendList will append the elements in value2 to value1.
+//
+// This call will only be invoked within comprehensions where `value1` is an
+// intermediate result which cannot be directly assigned or co-mingled with a
+// user-provided list.
+const CelList* AppendList(Arena* arena, const CelList* value1,
+                          const CelList* value2) {
+  // The `value1` object cannot be directly addressed and is an intermediate
+  // variable. Once the comprehension completes this value will in effect be
+  // treated as immutable.
+  MutableListImpl* mutable_list = const_cast<MutableListImpl*>(
+      cel::internal::down_cast<const MutableListImpl*>(value1));
+  for (int i = 0; i < value2->size(); i++) {
+    mutable_list->Append((*value2)[i]);
+  }
+  return mutable_list;
 }
 
 // Concatenation for StringHolder type.
@@ -1142,7 +1166,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, double v) {
-        auto conv = common::CheckedDoubleToInt64(v);
+        auto conv = cel::internal::CheckedDoubleToInt64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1180,7 +1204,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   return FunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
       builtin::kInt, false,
       [](Arena* arena, uint64_t v) {
-        auto conv = common::CheckedUint64ToInt64(v);
+        auto conv = cel::internal::CheckedUint64ToInt64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1200,7 +1224,7 @@ absl::Status RegisterStringConversionFunctions(
       FunctionAdapter<CelValue, CelValue::BytesHolder>::CreateAndRegister(
           builtin::kString, false,
           [](Arena* arena, CelValue::BytesHolder value) -> CelValue {
-            if (UniLib::IsStructurallyValid(value.value())) {
+            if (::cel::internal::Utf8IsValid(value.value())) {
               return CelValue::CreateStringView(value.value());
             }
             return CreateErrorValue(arena, "invalid UTF-8 bytes value",
@@ -1283,7 +1307,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   auto status = FunctionAdapter<CelValue, double>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, double v) {
-        auto conv = common::CheckedDoubleToUint64(v);
+        auto conv = cel::internal::CheckedDoubleToUint64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1296,7 +1320,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
       builtin::kUint, false,
       [](Arena* arena, int64_t v) {
-        auto conv = common::CheckedInt64ToUint64(v);
+        auto conv = cel::internal::CheckedInt64ToUint64(v);
         if (!conv.ok()) {
           return CreateErrorValue(arena, conv.status());
         }
@@ -1349,6 +1373,14 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   status = RegisterStringConversionFunctions(registry, options);
   if (!status.ok()) return status;
 
+  // timestamp conversion from int.
+  status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
+      builtin::kTimestamp, false,
+      [](Arena*, int64_t epoch_seconds) -> CelValue {
+        return CelValue::CreateTimestamp(absl::FromUnixSeconds(epoch_seconds));
+      },
+      registry);
+
   // timestamp() conversion from string.
   bool enable_timestamp_duration_overflow_errors =
       options.enable_timestamp_duration_overflow_errors;
@@ -1390,7 +1422,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = FunctionAdapter<CelValue, int64_t>::CreateAndRegister(
       builtin::kNeg, false,
       [](Arena* arena, int64_t value) -> CelValue {
-        auto inv = common::CheckedNegation(value);
+        auto inv = cel::internal::CheckedNegation(value);
         if (!inv.ok()) {
           return CreateErrorValue(arena, inv.status());
         }
@@ -1439,13 +1471,12 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   // String size
   auto size_func = [](Arena* arena, CelValue::StringHolder value) -> CelValue {
     absl::string_view str = value.value();
-    // TODO(issues/129): Improve the efficiency of this size check, by
-    // collapsing the two calls / scans into one.
-    if (!UniLib::IsStructurallyValid(str)) {
+    auto [count, valid] = ::cel::internal::Utf8Validate(str);
+    if (!valid) {
       return CreateErrorValue(arena, "invalid utf-8 string",
                               absl::StatusCode::kInvalidArgument);
     }
-    return CelValue::CreateInt64(UTF8CodepointCount(str));
+    return CelValue::CreateInt64(static_cast<int64_t>(count));
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.
@@ -1516,7 +1547,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kAdd, false,
           [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto sum = common::CheckedAdd(t1, d2);
+              auto sum = cel::internal::CheckedAdd(t1, d2);
               if (!sum.ok()) {
                 return CreateErrorValue(arena, sum.status());
               }
@@ -1532,7 +1563,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kAdd, false,
           [=](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto sum = common::CheckedAdd(t1, d2);
+              auto sum = cel::internal::CheckedAdd(t1, d2);
               if (!sum.ok()) {
                 return CreateErrorValue(arena, sum.status());
               }
@@ -1548,7 +1579,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kAdd, false,
           [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto sum = common::CheckedAdd(d1, d2);
+              auto sum = cel::internal::CheckedAdd(d1, d2);
               if (!sum.ok()) {
                 return CreateErrorValue(arena, sum.status());
               }
@@ -1564,7 +1595,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kSubtract, false,
           [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto diff = common::CheckedSub(t1, d2);
+              auto diff = cel::internal::CheckedSub(t1, d2);
               if (!diff.ok()) {
                 return CreateErrorValue(arena, diff.status());
               }
@@ -1579,7 +1610,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       builtin::kSubtract, false,
       [=](Arena* arena, absl::Time t1, absl::Time t2) -> CelValue {
         if (enable_timestamp_duration_overflow_errors) {
-          auto diff = common::CheckedSub(t1, t2);
+          auto diff = cel::internal::CheckedSub(t1, t2);
           if (!diff.ok()) {
             return CreateErrorValue(arena, diff.status());
           }
@@ -1595,7 +1626,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           builtin::kSubtract, false,
           [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
-              auto diff = common::CheckedSub(d1, d2);
+              auto diff = cel::internal::CheckedSub(d1, d2);
               if (!diff.ok()) {
                 return CreateErrorValue(arena, diff.status());
               }
@@ -1662,6 +1693,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
                                                    regex_matches, registry);
     if (!status.ok()) return status;
   }
+
+  status = FunctionAdapter<const CelList*, const CelList*, const CelList*>::
+      CreateAndRegister(builtin::kRuntimeListAppend, false, AppendList,
+                        registry);
+  if (!status.ok()) return status;
 
   status = RegisterStringFunctions(registry, options);
   if (!status.ok()) return status;

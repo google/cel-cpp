@@ -55,19 +55,6 @@ void IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
     return;
   }
 
-  {
-    // We handle masked unknown paths for the sake of uniformity, although it is
-    // better not to bind unknown values to activation in first place.
-    // TODO(issues/41) Deprecate this style of unknowns handling after
-    // Unknowns are properly supported.
-    bool unknown_value = frame->activation().IsPathUnknown(name_);
-
-    if (unknown_value) {
-      *result = CreateUnknownValueError(frame->arena(), name_);
-      return;
-    }
-  }
-
   if (frame->enable_unknowns()) {
     if (frame->attribute_utility().CheckForUnknown(*trail, false)) {
       auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(

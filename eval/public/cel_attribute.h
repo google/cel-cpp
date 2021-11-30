@@ -1,16 +1,23 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_ATTRIBUTE_PATTERN_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_ATTRIBUTE_PATTERN_H_
 
+#include <sys/types.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <initializer_list>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/substitute.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_internal.h"
+#include "internal/status_macros.h"
 
 namespace google {
 namespace api {
@@ -169,29 +176,9 @@ class CelAttribute {
     return qualifier_path_;
   }
 
-  bool operator==(const CelAttribute& other) const {
-    // TODO(issues/41) we only support Ident-rooted attributes at the moment.
-    if (!variable().has_ident_expr() || !other.variable().has_ident_expr()) {
-      return false;
-    }
+  bool operator==(const CelAttribute& other) const;
 
-    if (variable().ident_expr().name() !=
-        other.variable().ident_expr().name()) {
-      return false;
-    }
-
-    if (qualifier_path().size() != other.qualifier_path().size()) {
-      return false;
-    }
-
-    for (size_t i = 0; i < qualifier_path().size(); i++) {
-      if (!(qualifier_path()[i] == other.qualifier_path()[i])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
+  const absl::StatusOr<std::string> AsString() const;
 
  private:
   google::api::expr::v1alpha1::Expr variable_;

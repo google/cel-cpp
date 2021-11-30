@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 
@@ -54,6 +70,10 @@ struct InterpreterOptions {
   // including the nested loops as well. Use value 0 to disable the upper bound.
   int comprehension_max_iterations = 10000;
 
+  // Enable list append within comprehensions. Note, this option is not safe
+  // with hand-rolled ASTs.
+  int enable_comprehension_list_append = false;
+
   // Enable RE2 match() overload.
   bool enable_regex = true;
 
@@ -84,6 +104,16 @@ struct InterpreterOptions {
   // type or with protobuf message types linked into the binary to be resolved
   // as static type values rather than as per-eval variables.
   bool enable_qualified_type_identifiers = false;
+
+  // Enable a check for memory vulnerabilities within comprehension
+  // sub-expressions.
+  //
+  // Note: This flag is not necessary if you are only using Core CEL macros.
+  //
+  // Consider enabling this feature when using custom comprehensions, and
+  // absolutely enable the feature when using hand-written ASTs for
+  // comprehension expressions.
+  bool enable_comprehension_vulnerability_check = false;
 };
 
 }  // namespace google::api::expr::runtime

@@ -1,5 +1,16 @@
-# Description
-#   Implementation of the conformance test server
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 package(default_visibility = ["//visibility:public"])
 
@@ -72,9 +83,6 @@ cc_binary(
             "--skip_test=parse/nest/list_index,message_literal,funcall,list_literal,map_literal;repeat/conditional,add_sub,mul_div,select,index,map_literal,message_literal",
 
             # Broken test cases which should be supported.
-            # TODO(issues/111): Byte literal decoding of invalid UTF-8 results in incorrect bytes output.
-            "--skip_test=basic/self_eval_nonzeroish/self_eval_bytes_invalid_utf8",
-            "--skip_test=string/bytes_concat/left_unit",
             # TODO(issues/112): Unbound functions result in empty eval response.
             "--skip_test=basic/functions/unbound",
             "--skip_test=basic/functions/unbound_is_runtime_error",
@@ -91,6 +99,7 @@ cc_binary(
             # TODO(issues/116): Debug why dynamic/list/var fails to JSON parse correctly.
             "--skip_test=dynamic/list/var",
             # TODO(issues/109): Ensure that unset wrapper fields return 'null' rather than the default value of the wrapper.
+            "--skip_test=comparisons/eq_wrapper",
             "--skip_test=dynamic/int32/field_read_proto2_unset,field_read_proto3_unset;uint32/field_read_proto2_unset;uint64/field_read_proto2_unset;float/field_read_proto2_unset,field_read_proto3_unset;double/field_read_proto2_unset,field_read_proto3_unset",
             "--skip_test=proto2/empty_field/wkt",
             "--skip_test=proto3/empty_field/wkt",
@@ -100,6 +109,8 @@ cc_binary(
             "--skip_test=conversions/int/double_int_min_range",
 
             # Future features for CEL 1.0
+            # TODO(issues/137): Heterogeneous null comparison support.
+            "--skip_test=comparisons/eq_literal/not_eq_dyn_bool_null,not_eq_dyn_bytes_null,not_eq_dyn_double_null,not_eq_dyn_duration_null,not_eq_dyn_int_null,not_eq_dyn_list_null,not_eq_dyn_map_null,not_eq_dyn_string_null,not_eq_dyn_timestamp_null",
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",

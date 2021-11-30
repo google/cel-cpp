@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "eval/compiler/flat_expr_builder.h"
 
 #include <memory>
@@ -37,7 +53,6 @@ using google::api::expr::v1alpha1::SourceInfo;
 using google::protobuf::FieldMask;
 using testing::Eq;
 using testing::HasSubstr;
-using testing::Not;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
 
@@ -1073,56 +1088,6 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
   EXPECT_THAT(cel_expr->Evaluate(activation, &arena).status(),
               StatusIs(absl::StatusCode::kInternal,
                        HasSubstr("Iteration budget exceeded")));
-}
-
-TEST(FlatExprBuilderTest, UnknownSupportTest) {
-  TestMessage message;
-
-  Expr expr;
-  SourceInfo source_info;
-  auto select_expr = expr.mutable_select_expr();
-  select_expr->set_field("int32_value");
-
-  auto operand1 = select_expr->mutable_operand();
-  auto select_expr1 = operand1->mutable_select_expr();
-
-  select_expr1->set_field("message_value");
-  auto operand2 = select_expr1->mutable_operand();
-
-  operand2->mutable_ident_expr()->set_name("message");
-
-  FlatExprBuilder builder;
-  ASSERT_OK_AND_ASSIGN(auto cel_expr,
-                       builder.CreateExpression(&expr, &source_info));
-
-  message.mutable_message_value()->set_int32_value(1);
-
-  google::protobuf::Arena arena;
-  Activation activation;
-  activation.InsertValue("message",
-                         CelProtoWrapper::CreateMessage(&message, &arena));
-
-  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsInt64());
-  EXPECT_THAT(result.Int64OrDie(), Eq(1));
-
-  FieldMask mask;
-  mask.add_paths("message.message_value.int32_value");
-  activation.set_unknown_paths(mask);
-  ASSERT_OK_AND_ASSIGN(result, cel_expr->Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsError());
-  ASSERT_TRUE(IsUnknownValueError(result));
-  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
-              Eq(std::set<std::string>({"message.message_value.int32_value"})));
-
-  mask.clear_paths();
-  mask.add_paths("message.message_value");
-  activation.set_unknown_paths(mask);
-  ASSERT_OK_AND_ASSIGN(result, cel_expr->Evaluate(activation, &arena));
-  ASSERT_TRUE(result.IsError());
-  ASSERT_TRUE(IsUnknownValueError(result));
-  EXPECT_THAT(GetUnknownPathsSetOrDie(result),
-              Eq(std::set<std::string>({"message.message_value"})));
 }
 
 TEST(FlatExprBuilderTest, SimpleEnumTest) {

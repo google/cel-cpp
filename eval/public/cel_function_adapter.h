@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_
 
+#include <cstdint>
 #include <functional>
 #include <utility>
 
@@ -11,10 +12,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 namespace internal {
 
@@ -303,9 +301,6 @@ class FunctionAdapter : public CelFunction {
   FuncType handler_;
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_ADAPTER_H_

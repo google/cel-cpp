@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 #define THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_
 
@@ -8,10 +22,7 @@
 #include "parser/options.h"
 #include "parser/source_factory.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace parser {
+namespace google::api::expr::parser {
 
 class VerboseParsedExpr {
  public:
@@ -33,22 +44,19 @@ class VerboseParsedExpr {
 };
 
 absl::StatusOr<VerboseParsedExpr> EnrichedParse(
-    const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description = "<input>",
+    absl::string_view expression, const std::vector<Macro>& macros,
+    absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> Parse(
-    const std::string& expression, const std::string& description = "<input>",
+    absl::string_view expression, absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
 absl::StatusOr<google::api::expr::v1alpha1::ParsedExpr> ParseWithMacros(
-    const std::string& expression, const std::vector<Macro>& macros,
-    const std::string& description = "<input>",
+    absl::string_view expression, const std::vector<Macro>& macros,
+    absl::string_view description = "<input>",
     const ParserOptions& options = ParserOptions());
 
-}  // namespace parser
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::parser
 
 #endif  // THIRD_PARTY_CEL_CPP_PARSER_PARSER_H_

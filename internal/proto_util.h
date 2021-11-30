@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef THIRD_PARTY_CEL_CPP_INTERNAL_PROTO_UTIL_H_
 #define THIRD_PARTY_CEL_CPP_INTERNAL_PROTO_UTIL_H_
 
@@ -21,9 +35,6 @@ struct DefaultProtoEqual {
   }
 };
 
-/** Validate that the duration is in the valid protobuf duration range. */
-absl::Status ValidateDuration(absl::Duration duration);
-
 /** Helper function to encode a duration in a google::protobuf::Duration. */
 absl::Status EncodeDuration(absl::Duration duration,
                             google::protobuf::Duration* proto);
@@ -42,43 +53,6 @@ absl::Duration DecodeDuration(const google::protobuf::Duration& proto);
 
 /** Helper function to decode a time from a google::protobuf::Timestamp. */
 absl::Time DecodeTime(const google::protobuf::Timestamp& proto);
-
-/** Returns the min absl::Duration that can be represented as
-/ * google::protobuf::Duration. */
-inline absl::Duration MakeGoogleApiDurationMin() {
-  return absl::Seconds(-315576000000) + absl::Nanoseconds(-999999999);
-}
-
-/** Returns the max absl::Duration that can be represented as
-/ * google::protobuf::Duration. */
-inline absl::Duration MakeGoogleApiDurationMax() {
-  return absl::Seconds(315576000000) + absl::Nanoseconds(999999999);
-}
-
-/** Returns the min absl::Time that can be represented as
-/ * google::protobuf::Timestamp. */
-inline absl::Time MakeGoogleApiTimeMin() {
-  return absl::UnixEpoch() + absl::Seconds(-62135596800);
-}
-
-/** Returns the max absl::Time that can be represented as
-/ * google::protobuf::Timestamp. */
-inline absl::Time MakeGoogleApiTimeMax() {
-  return absl::UnixEpoch() + absl::Seconds(253402300799) +
-         absl::Nanoseconds(999999999);
-}
-
-inline std::unique_ptr<google::protobuf::Message> Clone(const google::protobuf::Message& value) {
-  auto result = absl::WrapUnique(value.New());
-  result->CopyFrom(value);
-  return result;
-}
-
-inline std::unique_ptr<google::protobuf::Message> Clone(google::protobuf::Message&& value) {
-  auto result = absl::WrapUnique(value.New());
-  result->GetReflection()->Swap(&value, result.get());
-  return result;
-}
 
 }  // namespace internal
 }  // namespace expr

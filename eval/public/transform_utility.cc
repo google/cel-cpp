@@ -62,6 +62,9 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       result->mutable_object_value()->PackFrom(timestamp);
       break;
     }
+    case CelValue::Type::kNullType:
+      result->set_null_value(google::protobuf::NullValue::NULL_VALUE);
+      break;
     case CelValue::Type::kMessage:
       if (value.IsNull()) {
         result->set_null_value(google::protobuf::NullValue::NULL_VALUE);

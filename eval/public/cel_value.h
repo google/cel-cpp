@@ -22,14 +22,19 @@
 #include <cstdint>
 
 #include "google/protobuf/message.h"
+#include "absl/base/attributes.h"
+#include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/status_macros.h"
+#include "internal/utf8.h"
 
 namespace google::api::expr::runtime {
 
@@ -103,14 +108,17 @@ class CelValue {
   // Helper structure for CelType datatype.
   using CelTypeHolder = StringHolderBase<2>;
 
+  // Type for CEL Null values. Implemented as a monostate to behave well in
+  // absl::variant.
+  using NullType = absl::monostate;
+
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type
   // enum
-  using ValueHolder =
-      internal::ValueHolder<bool, int64_t, uint64_t, double, StringHolder,
-                            BytesHolder, const google::protobuf::Message*, absl::Duration,
-                            absl::Time, const CelList*, const CelMap*,
-                            const UnknownSet*, CelTypeHolder, const CelError*>;
+  using ValueHolder = internal::ValueHolder<
+      NullType, bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
+      const google::protobuf::Message*, absl::Duration, absl::Time, const CelList*,
+      const CelMap*, const UnknownSet*, CelTypeHolder, const CelError*>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -119,7 +127,10 @@ class CelValue {
   using IndexOf = ValueHolder::IndexOf<T>;
 
   // Enum for types supported.
+  // This is not recommended for use in exhaustive switches in client code.
+  // Types may be updated over time.
   enum class Type {
+    kNullType = IndexOf<NullType>::value,
     kBool = IndexOf<bool>::value,
     kInt64 = IndexOf<int64_t>::value,
     kUint64 = IndexOf<uint64_t>::value,
@@ -139,7 +150,7 @@ class CelValue {
 
   // Default constructor.
   // Creates CelValue with null data type.
-  CelValue() : CelValue(static_cast<const google::protobuf::Message *>(nullptr)) {}
+  CelValue() : CelValue(static_cast<const google::protobuf::Message*>(nullptr)) {}
 
   // Returns Type that describes the type of value stored.
   Type type() const { return Type(value_.index()); }
@@ -155,6 +166,9 @@ class CelValue {
     return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
   }
 
+  // Transitional factory for migrating to null types.
+  static CelValue CreateNullTypedValue() { return CelValue(NullType()); }
+
   static CelValue CreateBool(bool value) { return CelValue(value); }
 
   static CelValue CreateInt64(int64_t value) { return CelValue(value); }
@@ -163,7 +177,10 @@ class CelValue {
 
   static CelValue CreateDouble(double value) { return CelValue(value); }
 
-  static CelValue CreateString(StringHolder holder) { return CelValue(holder); }
+  static CelValue CreateString(StringHolder holder) {
+    ABSL_ASSERT(::cel::internal::Utf8IsValid(holder.value()));
+    return CelValue(holder);
+  }
 
   // Returns a string value from a string_view. Warning: the caller is
   // responsible for the lifecycle of the backing string. Prefer CreateString
@@ -374,7 +391,7 @@ class CelValue {
       return true;
     }
 
-    T *value;
+    T* value;
   };
 
   struct NullCheckOp {
@@ -383,6 +400,7 @@ class CelValue {
       return false;
     }
 
+    bool operator()(NullType) const { return true; }
     bool operator()(const google::protobuf::Message* arg) const { return arg == nullptr; }
   };
 
@@ -391,27 +409,39 @@ class CelValue {
   template <class T>
   explicit CelValue(T value) : value_(value) {}
 
+  // Crashes with a null pointer error.
+  static void CrashNullPointer(Type type) ABSL_ATTRIBUTE_COLD {
+    GOOGLE_LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
+  }
+
   // Null pointer checker for pointer-based types.
   static void CheckNullPointer(const void* ptr, Type type) {
-    if (ptr == nullptr) {
-      GOOGLE_LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
+    if (ABSL_PREDICT_FALSE(ptr == nullptr)) {
+      CrashNullPointer(type);
     }
+  }
+
+  // Crashes with a type mismatch error.
+  static void CrashTypeMismatch(Type requested_type,
+                                Type actual_type) ABSL_ATTRIBUTE_COLD {
+    GOOGLE_LOG(FATAL) << "Type mismatch"                             // Crash ok
+               << ": expected " << TypeName(requested_type)   // Crash ok
+               << ", encountered " << TypeName(actual_type);  // Crash ok
   }
 
   // Gets value of type specified
   template <class T>
   T GetValueOrDie(Type requested_type) const {
     auto value_ptr = value_.get<T>();
-    if (value_ptr == nullptr) {
-      GOOGLE_LOG(FATAL) << "Type mismatch"                            // Crash ok
-                 << ": expected " << TypeName(requested_type)  // Crash ok
-                 << ", encountered " << TypeName(type());      // Crash ok
+    if (ABSL_PREDICT_FALSE(value_ptr == nullptr)) {
+      CrashTypeMismatch(requested_type, type());
     }
     return *value_ptr;
   }
 
   friend class CelProtoWrapper;
 };
+
 static_assert(absl::is_trivially_destructible<CelValue>::value,
               "Non-trivially-destructible CelValue impacts "
               "performance");
@@ -511,13 +541,11 @@ CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena,
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key);
 bool CheckNoSuchKeyError(CelValue value);
 
-// Returns the error indicating that evaluation encountered a value marked
-// as unknown, was included in Activation unknown_paths.
+ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
 CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
                                  absl::string_view unknown_path);
 
-// Returns true if this is unknown value error indicating that evaluation
-// encountered a value marked as unknown in Activation unknown_paths.
+ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
 bool IsUnknownValueError(const CelValue& value);
 
 // Returns an error indicating that evaluation has accessed an attribute whose
@@ -540,10 +568,6 @@ CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
 // This is used as a signal to convert to an UnknownSet if the behavior is opted
 // into.
 bool IsUnknownFunctionResult(const CelValue& value);
-
-// Returns set of unknown paths for unknown value error. The value must be
-// unknown error, see IsUnknownValueError() above, or it dies.
-std::set<std::string> GetUnknownPathsSetOrDie(const CelValue& value);
 
 }  // namespace google::api::expr::runtime
 

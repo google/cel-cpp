@@ -1,3 +1,17 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "eval/public/structs/cel_proto_wrapper.h"
 
 #include <math.h>
@@ -19,9 +33,9 @@
 #include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
-#include "common/overflow.h"
 #include "eval/public/cel_value.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/overflow.h"
 #include "internal/proto_util.h"
 
 namespace google::api::expr::runtime {
@@ -443,7 +457,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     return absl::nullopt;
   }
   // Abort the conversion if the value is outside the int32_t range.
-  if (!common::CheckedInt64ToInt32(val).ok()) {
+  if (!cel::internal::CheckedInt64ToInt32(val).ok()) {
     return absl::nullopt;
   }
   wrapper->set_value(val);
@@ -490,7 +504,7 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     return absl::nullopt;
   }
   // Abort the conversion if the value is outside the uint32_t range.
-  if (!common::CheckedUint64ToUint32(val).ok()) {
+  if (!cel::internal::CheckedUint64ToUint32(val).ok()) {
     return absl::nullopt;
   }
   wrapper->set_value(val);
@@ -650,6 +664,9 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
         return json;
       }
     } break;
+    case CelValue::Type::kNullType:
+      json->set_null_value(protobuf::NULL_VALUE);
+      return json;
     default:
       if (value.IsNull()) {
         json->set_null_value(protobuf::NULL_VALUE);
@@ -738,6 +755,14 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
     } break;
     case CelValue::Type::kMap: {
       Struct v;
+      auto msg = MessageFromValue(value, &v);
+      if (msg.has_value()) {
+        any->PackFrom(**msg);
+        return any;
+      }
+    } break;
+    case CelValue::Type::kNullType: {
+      Value v;
       auto msg = MessageFromValue(value, &v);
       if (msg.has_value()) {
         any->PackFrom(**msg);

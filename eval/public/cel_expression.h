@@ -84,6 +84,9 @@ class CelExpressionBuilder {
 
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree
+  //
+  // IMPORTANT: The `expr` and `source_info` must outlive the resulting
+  // CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const = 0;
@@ -91,6 +94,9 @@ class CelExpressionBuilder {
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree.
   // non-fatal build warnings are written to warnings if encountered.
+  //
+  // IMPORTANT: The `expr` and `source_info` must outlive the resulting
+  // CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info,
@@ -98,7 +104,8 @@ class CelExpressionBuilder {
 
   // Creates CelExpression object from a checked expression.
   // This includes an AST, source info, type hints and ident hints.
-  // checked_expr ptr must outlive any expressions that are built from it.
+  //
+  // IMPORTANT: The `checked_expr` must outlive the resulting CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::CheckedExpr* checked_expr) const {
     // Default implementation just passes through the expr and source info.
@@ -108,8 +115,9 @@ class CelExpressionBuilder {
 
   // Creates CelExpression object from a checked expression.
   // This includes an AST, source info, type hints and ident hints.
-  // checked_expr ptr must outlive any expressions that are built from it.
   // non-fatal build warnings are written to warnings if encountered.
+  //
+  // IMPORTANT: The `checked_expr` must outlive the resulting CelExpression.
   virtual absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
       std::vector<absl::Status>* warnings) const {
