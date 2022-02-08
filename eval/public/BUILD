@@ -164,6 +164,7 @@ cc_library(
         ":cel_function",
         ":cel_function_registry",
         "//eval/public/structs:cel_proto_wrapper",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -207,17 +208,88 @@ cc_library(
         ":cel_function_registry",
         ":cel_options",
         ":cel_value",
+        ":comparison_functions",
         "//eval/eval:mutable_list_impl",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:casts",
         "//internal:overflow",
         "//internal:proto_util",
+        "//internal:status_macros",
         "//internal:time",
         "//internal:utf8",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_library(
+    name = "comparison_functions",
+    srcs = [
+        "comparison_functions.cc",
+    ],
+    hdrs = [
+        "comparison_functions.h",
+    ],
+    deps = [
+        ":cel_builtins",
+        ":cel_function_adapter",
+        ":cel_function_registry",
+        ":cel_options",
+        ":cel_value",
+        "//eval/eval:mutable_list_impl",
+        "//eval/public/containers:container_backed_list_impl",
+        "//internal:casts",
+        "//internal:overflow",
+        "//internal:proto_util",
+        "//internal:status_macros",
+        "//internal:time",
+        "//internal:utf8",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_test(
+    name = "comparison_functions_test",
+    size = "small",
+    srcs = [
+        "comparison_functions_test.cc",
+    ],
+    deps = [
+        ":activation",
+        ":cel_builtins",
+        ":cel_expr_builder_factory",
+        ":cel_expression",
+        ":cel_function_registry",
+        ":cel_options",
+        ":cel_value",
+        ":comparison_functions",
+        ":set_util",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/containers:field_backed_list_impl",
+        "//eval/public/structs:cel_proto_wrapper",
+        "//eval/public/testing:matchers",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -424,6 +496,40 @@ cc_test(
         ":ast_traverse",
         ":ast_visitor",
         "//internal:testing",
+    ],
+)
+
+cc_library(
+    name = "ast_rewrite",
+    srcs = [
+        "ast_rewrite.cc",
+    ],
+    hdrs = [
+        "ast_rewrite.h",
+    ],
+    deps = [
+        ":ast_visitor",
+        ":source_position",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "ast_rewrite_test",
+    srcs = [
+        "ast_rewrite_test.cc",
+    ],
+    deps = [
+        ":ast_rewrite",
+        ":ast_visitor",
+        ":source_position",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//parser",
+        "//testutil:util",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 

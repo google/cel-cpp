@@ -14,6 +14,8 @@
 
 #include "internal/strings.h"
 
+#include <string>
+
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/strings/ascii.h"

@@ -16,7 +16,7 @@
 Generate C++ parser and lexer from a grammar file.
 """
 
-load("@rules_antlr//antlr:antlr4.bzl", "antlr", "headers", "sources")
+load("@rules_antlr//antlr:antlr4.bzl", "antlr")
 
 def antlr_cc_library(name, src, package = None, listener = False, visitor = True):
     """Creates a C++ lexer and parser from a source grammar.
@@ -37,25 +37,12 @@ def antlr_cc_library(name, src, package = None, listener = False, visitor = True
         visitor = visitor,
         package = package,
     )
-
-    headers(
-        name = "headers",
-        rule = ":" + generated,
-    )
-
-    sources(
-        name = "sources",
-        rule = ":" + generated,
-    )
-
     native.cc_library(
         name = name + "_cc_parser",
-        hdrs = [":headers"],
-        srcs = [":sources"],
-        includes = ["$(INCLUDES)"],
-        deps = ["@antlr4_runtimes//:cpp"],
-        toolchains = [":" + generated],
-        # ANTLR runtime does not build with dynamic linking
-        linkstatic = True,
-        alwayslink = 1,
+        srcs = [generated],
+        deps = [
+            generated,
+            "@antlr4_runtimes//:cpp",
+        ],
+        linkstatic = 1,
     )

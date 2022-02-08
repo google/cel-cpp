@@ -1,5 +1,8 @@
 #include "eval/public/cel_type_registry.h"
 
+#include <string>
+#include <utility>
+
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/container/flat_hash_set.h"
@@ -55,7 +58,7 @@ void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_desc
 const google::protobuf::Descriptor* CelTypeRegistry::FindDescriptor(
     absl::string_view fully_qualified_type_name) const {
   return google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
-      fully_qualified_type_name.data());
+      std::string(fully_qualified_type_name));
 }
 
 absl::optional<CelValue> CelTypeRegistry::FindType(

@@ -1,6 +1,8 @@
 #include "eval/eval/shadowable_value_step.h"
 
 #include <cstdint>
+#include <string>
+#include <utility>
 
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"

@@ -1,5 +1,7 @@
 #include "eval/public/cel_attribute.h"
 
+#include <string>
+
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"

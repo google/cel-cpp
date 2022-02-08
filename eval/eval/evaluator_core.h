@@ -112,13 +112,15 @@ class ExecutionFrame {
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
                  int max_iterations, CelExpressionFlatEvaluationState* state,
                  bool enable_unknowns, bool enable_unknown_function_results,
-                 bool enable_missing_attribute_errors)
+                 bool enable_missing_attribute_errors,
+                 bool enable_null_coercion)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
+        enable_null_coercion_(enable_null_coercion),
         attribute_utility_(&activation.unknown_attribute_patterns(),
                            &activation.missing_attribute_patterns(),
                            state->arena()),
@@ -150,6 +152,8 @@ class ExecutionFrame {
   bool enable_missing_attribute_errors() const {
     return enable_missing_attribute_errors_;
   }
+
+  bool enable_null_coercion() const { return enable_null_coercion_; }
 
   google::protobuf::Arena* arena() { return state_->arena(); }
   const AttributeUtility& attribute_utility() const {
@@ -214,6 +218,7 @@ class ExecutionFrame {
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
+  bool enable_null_coercion_;
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
@@ -229,12 +234,13 @@ class CelExpressionFlatImpl : public CelExpression {
   // flattened AST tree. Max iterations dictates the maximum number of
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
-  CelExpressionFlatImpl(const Expr* root_expr, ExecutionPath path,
-                        int max_iterations,
+  CelExpressionFlatImpl(ABSL_ATTRIBUTE_UNUSED const Expr* root_expr,
+                        ExecutionPath path, int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
                         bool enable_unknown_function_results = false,
                         bool enable_missing_attribute_errors = false,
+                        bool enable_null_coercion = true,
                         std::unique_ptr<Expr> rewritten_expr = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
         path_(std::move(path)),
@@ -242,7 +248,8 @@ class CelExpressionFlatImpl : public CelExpression {
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
-        enable_missing_attribute_errors_(enable_missing_attribute_errors) {}
+        enable_missing_attribute_errors_(enable_missing_attribute_errors),
+        enable_null_coercion_(enable_null_coercion) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -280,6 +287,7 @@ class CelExpressionFlatImpl : public CelExpression {
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
+  bool enable_null_coercion_;
 };
 
 }  // namespace google::api::expr::runtime

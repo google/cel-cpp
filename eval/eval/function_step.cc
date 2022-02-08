@@ -92,6 +92,12 @@ class AbstractFunctionStep : public ExpressionStepBase {
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
+  // Handles overload resolution and updating result appropriately.
+  // Shouldn't update frame state.
+  //
+  // A non-ok result is an unrecoverable error, either from an illegal
+  // evaluation state or forwarded from an extension function. Errors where
+  // evaluation can reasonably condition are returned in the result.
   absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
   virtual absl::StatusOr<const CelFunction*> ResolveFunction(
@@ -176,9 +182,30 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   CelValue result;
+
+  // DoEvaluate may return a status for non-recoverable errors  (e.g.
+  // unexpected typing, illegal expression state). Application errors that can
+  // reasonably be handled as a cel error will appear in the result value.
   auto status = DoEvaluate(frame, &result);
   if (!status.ok()) {
     return status;
+  }
+
+  // Handle legacy behavior where nullptr messages match the same overloads as
+  // null_type.
+  if (CheckNoMatchingOverloadError(result) && frame->enable_null_coercion() &&
+      frame->value_stack().CoerceNullValues(num_arguments_)) {
+    status = DoEvaluate(frame, &result);
+    if (!status.ok()) {
+      return status;
+    }
+
+    // If one of the arguments is returned, possible for a nullptr message to
+    // escape the backwards compatible call. Cast back to NullType.
+    if (const google::protobuf::Message * value;
+        result.GetValue(&value) && value == nullptr) {
+      result = CelValue::CreateNull();
+    }
   }
 
   frame->value_stack().Pop(num_arguments_);

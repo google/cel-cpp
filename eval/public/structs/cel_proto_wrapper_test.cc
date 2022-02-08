@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <limits>
+#include <string>
+#include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
@@ -490,18 +492,6 @@ TEST_F(CelProtoWrapperTest, UnwrapBytesWrapper) {
 
 TEST_F(CelProtoWrapperTest, WrapNull) {
   auto cel_value = CelValue::CreateNull();
-
-  Value json;
-  json.set_null_value(protobuf::NULL_VALUE);
-  ExpectWrappedMessage(cel_value, json);
-
-  Any any;
-  any.PackFrom(json);
-  ExpectWrappedMessage(cel_value, any);
-}
-
-TEST_F(CelProtoWrapperTest, WrapCelNull) {
-  auto cel_value = CelValue::CreateNullTypedValue();
 
   Value json;
   json.set_null_value(protobuf::NULL_VALUE);

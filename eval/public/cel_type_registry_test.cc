@@ -1,5 +1,7 @@
 #include "eval/public/cel_type_registry.h"
 
+#include <string>
+
 #include "google/protobuf/any.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "eval/testutil/test_message.pb.h"

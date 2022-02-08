@@ -1,5 +1,8 @@
 #include "eval/eval/ternary_step.h"
 
+#include <string>
+#include <utility>
+
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"

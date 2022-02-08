@@ -14,6 +14,7 @@
 
 #include "internal/utf8.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 

@@ -1,5 +1,7 @@
 #include "eval/eval/attribute_trail.h"
 
+#include <string>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"

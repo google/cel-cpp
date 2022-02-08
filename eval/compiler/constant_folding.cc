@@ -1,5 +1,8 @@
 #include "eval/compiler/constant_folding.h"
 
+#include <string>
+#include <utility>
+
 #include "absl/strings/str_cat.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/public/cel_builtins.h"

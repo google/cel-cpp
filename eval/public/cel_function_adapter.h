@@ -11,6 +11,7 @@
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -70,7 +71,7 @@ bool AddType(std::vector<CelValue::Type>* arg_types) {
 //
 // Usage example:
 //
-//  auto func = [](google::protobuf::google::protobuf::Arena* arena, int64_t i, int64_t j) -> bool {
+//  auto func = [](::google::protobuf::Arena* arena, int64_t i, int64_t j) -> bool {
 //    return i < j;
 //  };
 //
@@ -108,12 +109,10 @@ class FunctionAdapter : public CelFunction {
       absl::string_view name, bool receiver_type,
       std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler,
       CelFunctionRegistry* registry) {
-    auto status = Create(name, receiver_type, std::move(handler));
-    if (!status.ok()) {
-      return status.status();
-    }
+    CEL_ASSIGN_OR_RETURN(auto cel_function,
+                         Create(name, receiver_type, std::move(handler)));
 
-    return registry->Register(std::move(status).value());
+    return registry->Register(std::move(cel_function));
   }
 
 #if defined(__clang__) || !defined(__GNUC__)
@@ -137,10 +136,11 @@ class FunctionAdapter : public CelFunction {
     return CreateReturnValue(absl::apply(handler_, input), arena, result);
   }
 #else
-  inline absl::Status RunWrap(std::function<ReturnType()> func,
-                              const absl::Span<const CelValue> argset,
-                              ::google::protobuf::Arena* arena, CelValue* result,
-                              int arg_index) const {
+  inline absl::Status RunWrap(
+      std::function<ReturnType()> func,
+      ABSL_ATTRIBUTE_UNUSED const absl::Span<const CelValue> argset,
+      ::google::protobuf::Arena* arena, CelValue* result,
+      ABSL_ATTRIBUTE_UNUSED int arg_index) const {
     return CreateReturnValue(func(), arena, result);
   }
 
@@ -289,13 +289,11 @@ class FunctionAdapter : public CelFunction {
   }
 
   template <typename T>
-  static absl::Status CreateReturnValue(const absl::StatusOr<T>& value,
+  static absl::Status CreateReturnValue(absl::StatusOr<T> value,
                                         ::google::protobuf::Arena* arena,
                                         CelValue* result) {
-    if (!value.ok()) {
-      return value.status();
-    }
-    return CreateReturnValue(value.value(), arena, result);
+    CEL_ASSIGN_OR_RETURN(auto held_value, value);
+    return CreateReturnValue(held_value, arena, result);
   }
 
   FuncType handler_;

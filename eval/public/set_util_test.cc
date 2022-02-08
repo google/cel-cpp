@@ -1,6 +1,7 @@
 #include "eval/public/set_util.h"
 
 #include <cstddef>
+#include <string>
 
 #include "google/protobuf/empty.pb.h"
 #include "google/protobuf/struct.pb.h"

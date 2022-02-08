@@ -1,5 +1,7 @@
 #include "eval/public/value_export_util.h"
 
+#include <string>
+
 #include "google/protobuf/util/json_util.h"
 #include "google/protobuf/util/time_util.h"
 #include "absl/strings/escaping.h"

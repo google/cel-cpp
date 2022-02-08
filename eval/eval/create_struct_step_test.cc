@@ -1,5 +1,8 @@
 #include "eval/eval/create_struct_step.h"
 
+#include <string>
+#include <utility>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

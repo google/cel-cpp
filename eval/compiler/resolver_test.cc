@@ -1,6 +1,7 @@
 #include "eval/compiler/resolver.h"
 
 #include <memory>
+#include <string>
 
 #include "absl/status/status.h"
 #include "eval/public/cel_function.h"
