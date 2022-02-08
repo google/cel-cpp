@@ -15,6 +15,7 @@
 #include "eval/public/builtin_func_registrar.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 

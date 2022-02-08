@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <list>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/optional.h"
+#include "internal/benchmark.h"
 #include "internal/testing.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
@@ -42,8 +44,9 @@ using cel::internal::IsOk;
 struct TestInfo {
   TestInfo(const std::string& I, const std::string& P,
            const std::string& E = "", const std::string& L = "",
-           const std::string& R = "", const std::string& M = "")
-      : I(I), P(P), E(E), L(L), R(R), M(M) {}
+           const std::string& R = "", const std::string& M = "",
+           bool benchmark = true)
+      : I(I), P(P), E(E), L(L), R(R), M(M), benchmark(benchmark) {}
 
   // I contains the input expression to be parsed.
   std::string I;
@@ -63,6 +66,10 @@ struct TestInfo {
 
   // M contains the expected macro call output of hte expression tree.
   std::string M;
+
+  // Whether to run the test when benchmarking. Enable by default. Disabled for
+  // some expressions which bump up against the stack limit.
+  bool benchmark;
 };
 
 std::vector<TestInfo> test_cases = {
@@ -878,14 +885,19 @@ std::vector<TestInfo> test_cases = {
      "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
      "]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
      "]]]]]]",
-     "", "Expression recursion limit exceeded. limit: 250"},
+     "", "Expression recursion limit exceeded. limit: 250", "", "", "", false},
     {
         // Note, the ANTLR parse stack may recurse much more deeply and permit
         // more detailed expressions than the visitor can recurse over in
         // practice.
         "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[['just fine'],[1],[2],[3],[4],[5]]]]]]]"
         "]]]]]]]]]]]]]]]]]]]]]]]]",
-        ""  // parse output not validated as it is too large.
+        "",  // parse output not validated as it is too large.
+        "",
+        "",
+        "",
+        "",
+        false,
     },
     {
         "[\n\t\r[\n\t\r[\n\t\r]\n\t\r]\n\t\r",
@@ -1439,6 +1451,19 @@ TEST(ExpressionTest, RecursionDepthExceeded) {
 
 INSTANTIATE_TEST_SUITE_P(CelParserTest, ExpressionTest,
                          testing::ValuesIn(test_cases));
+
+void BM_Parse(benchmark::State& state) {
+  std::vector<Macro> macros = Macro::AllMacros();
+  for (auto s : state) {
+    for (const auto& test_case : test_cases) {
+      if (test_case.benchmark) {
+        benchmark::DoNotOptimize(ParseWithMacros(test_case.I, macros));
+      }
+    }
+  }
+}
+
+BENCHMARK(BM_Parse)->ThreadRange(1, std::thread::hardware_concurrency());
 
 }  // namespace
 }  // namespace google::api::expr::parser

@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/strings/match.h"

@@ -143,6 +143,14 @@ cc_library(
 )
 
 cc_library(
+    name = "reference_counted",
+    hdrs = ["reference_counted.h"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
+cc_library(
     name = "testing",
     testonly = True,
     srcs = [

@@ -1,5 +1,7 @@
 #include "eval/public/transform_utility.h"
 
+#include <string>
+
 #include "google/api/expr/v1alpha1/value.pb.h"
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"

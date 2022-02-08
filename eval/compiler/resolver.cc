@@ -1,6 +1,7 @@
 #include "eval/compiler/resolver.h"
 
 #include <cstdint>
+#include <string>
 
 #include "google/protobuf/descriptor.h"
 #include "absl/strings/match.h"

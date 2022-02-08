@@ -14,6 +14,7 @@
 
 #include "testutil/expr_printer.h"
 
+#include <algorithm>
 #include <string>
 
 #include "absl/strings/str_format.h"

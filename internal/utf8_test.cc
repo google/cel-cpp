@@ -14,6 +14,8 @@
 
 #include "internal/utf8.h"
 
+#include <string>
+
 #include "absl/strings/cord.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"

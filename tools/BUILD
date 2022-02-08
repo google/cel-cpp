@@ -1,11 +1,42 @@
-load(
-    "@com_github_google_flatbuffers//:build_defs.bzl",
-    "flatbuffer_library_public",
-)
-
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
+
+cc_library(
+    name = "cel_ast_renumber",
+    srcs = ["cel_ast_renumber.cc"],
+    hdrs = ["cel_ast_renumber.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "reference_inliner",
+    srcs = [
+        "reference_inliner.cc",
+    ],
+    hdrs = [
+        "reference_inliner.h",
+    ],
+    deps = [
+        ":cel_ast_renumber",
+        "//eval/public:ast_rewrite",
+        "//eval/public:ast_traverse",
+        "//eval/public:ast_visitor_base",
+        "//eval/public:source_position",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
 
 cc_library(
     name = "flatbuffers_backed_impl",
@@ -25,23 +56,6 @@ cc_library(
     ],
 )
 
-flatbuffer_library_public(
-    name = "flatbuffers_test",
-    srcs = ["testdata/flatbuffers.fbs"],
-    outs = ["testdata/flatbuffers_generated.h"],
-    language_flag = "-c",
-    reflection_name = "flatbuffers_reflection",
-)
-
-cc_library(
-    name = "flatbuffers_test_cc",
-    srcs = [":flatbuffers_test"],
-    hdrs = [":flatbuffers_test"],
-    features = ["-parse_headers"],
-    linkstatic = True,
-    deps = ["@com_github_google_flatbuffers//:runtime_cc"],
-)
-
 cc_test(
     name = "flatbuffers_backed_impl_test",
     size = "small",
@@ -49,7 +63,7 @@ cc_test(
         "flatbuffers_backed_impl_test.cc",
     ],
     data = [
-        ":flatbuffers_reflection_out",
+        "//tools/testdata:flatbuffers_reflection_out",
     ],
     deps = [
         ":flatbuffers_backed_impl",

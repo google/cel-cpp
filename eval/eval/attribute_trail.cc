@@ -1,5 +1,7 @@
 #include "eval/eval/attribute_trail.h"
 
+#include <utility>
+
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
 

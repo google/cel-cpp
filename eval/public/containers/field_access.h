@@ -5,14 +5,29 @@
 
 namespace google::api::expr::runtime {
 
+// Options for handling unset wrapper types.
+enum class ProtoWrapperTypeOptions {
+  // Default: legacy behavior following proto semantics (unset behaves as though
+  // it is set to default value).
+  kUnsetProtoDefault,
+  // CEL spec behavior, unset wrapper is treated as a null value when accessed.
+  kUnsetNull,
+};
+
 // Creates CelValue from singular message field.
 // Returns status of the operation.
 // msg Message containing the field.
 // desc Descriptor of the field to access.
+// options Option to enable treating unset wrapper type fields as null.
 // arena Arena object to allocate result on, if needed.
 // result pointer to CelValue to store the result in.
 absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
                                         const google::protobuf::FieldDescriptor* desc,
+                                        google::protobuf::Arena* arena, CelValue* result);
+
+absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
+                                        const google::protobuf::FieldDescriptor* desc,
+                                        ProtoWrapperTypeOptions options,
                                         google::protobuf::Arena* arena, CelValue* result);
 
 // Creates CelValue from repeated message field.

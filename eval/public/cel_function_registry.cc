@@ -1,5 +1,8 @@
 #include "eval/public/cel_function_registry.h"
 
+#include <string>
+#include <utility>
+
 namespace google::api::expr::runtime {
 
 absl::Status CelFunctionRegistry::Register(

@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <vector>
 
 #include "absl/functional/function_ref.h"

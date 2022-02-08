@@ -29,7 +29,6 @@ bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
   if (types_size != arguments.size()) {
     return false;
   }
-
   for (size_t i = 0; i < types_size; i++) {
     const auto& value = arguments[i];
     CelValue::Type arg_type = descriptor().types()[i];
