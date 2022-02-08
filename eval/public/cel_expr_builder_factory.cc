@@ -16,6 +16,8 @@
 
 #include "eval/public/cel_expr_builder_factory.h"
 
+#include <utility>
+
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/cel_options.h"
 
@@ -37,6 +39,9 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
       options.enable_qualified_type_identifiers);
   builder->set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);
+  builder->set_enable_null_coercion(options.enable_null_to_message_coercion);
+  builder->set_enable_wrapper_type_null_unboxing(
+      options.enable_empty_wrapper_null_unboxing);
 
   switch (options.unknown_processing) {
     case UnknownProcessingOptions::kAttributeAndFunction:
@@ -53,7 +58,7 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   builder->set_enable_missing_attribute_errors(
       options.enable_missing_attribute_errors);
 
-  return std::move(builder);
+  return builder;
 }
 
 }  // namespace google::api::expr::runtime

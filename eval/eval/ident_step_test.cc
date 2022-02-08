@@ -1,5 +1,8 @@
 #include "eval/eval/ident_step.h"
 
+#include <string>
+#include <utility>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"

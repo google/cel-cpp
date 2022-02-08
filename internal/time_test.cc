@@ -14,6 +14,8 @@
 
 #include "internal/time.h"
 
+#include <string>
+
 #include "google/protobuf/util/time_util.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"

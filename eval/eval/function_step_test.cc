@@ -1,6 +1,8 @@
 #include "eval/eval/function_step.h"
 
 #include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -206,8 +208,8 @@ class FunctionStepTest
  public:
   // underlying expression impl moves path
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
-    bool unknowns;
-    bool unknown_function_results;
+    bool unknowns = false;
+    bool unknown_function_results = false;
     switch (GetParam()) {
       case UnknownProcessingOptions::kAttributeAndFunction:
         unknowns = true;
@@ -778,6 +780,173 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
   ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());
+}
+
+class MessageFunction : public CelFunction {
+ public:
+  MessageFunction()
+      : CelFunction(
+            CelFunctionDescriptor("Fn", false, {CelValue::Type::kMessage})) {}
+
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+                        google::protobuf::Arena* arena) const override {
+    if (args.size() != 1 || !args.at(0).IsMessage()) {
+      return absl::Status(absl::StatusCode::kInvalidArgument,
+                          "Bad arguments number");
+    }
+
+    *result = CelValue::CreateStringView("message");
+    return absl::OkStatus();
+  }
+};
+
+class MessageIdentityFunction : public CelFunction {
+ public:
+  MessageIdentityFunction()
+      : CelFunction(
+            CelFunctionDescriptor("Fn", false, {CelValue::Type::kMessage})) {}
+
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+                        google::protobuf::Arena* arena) const override {
+    if (args.size() != 1 || !args.at(0).IsMessage()) {
+      return absl::Status(absl::StatusCode::kInvalidArgument,
+                          "Bad arguments number");
+    }
+
+    *result = args.at(0);
+    return absl::OkStatus();
+  }
+};
+
+class NullFunction : public CelFunction {
+ public:
+  NullFunction()
+      : CelFunction(
+            CelFunctionDescriptor("Fn", false, {CelValue::Type::kNullType})) {}
+
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+                        google::protobuf::Arena* arena) const override {
+    if (args.size() != 1 || args.at(0).type() != CelValue::Type::kNullType) {
+      return absl::Status(absl::StatusCode::kInvalidArgument,
+                          "Bad arguments number");
+    }
+
+    *result = CelValue::CreateStringView("null");
+    return absl::OkStatus();
+  }
+};
+
+// Setup for a simple evaluation plan that runs 'Fn(id)'.
+class FunctionStepNullCoercionTest : public testing::Test {
+ public:
+  FunctionStepNullCoercionTest() {
+    identifier_expr_.set_id(GetExprId());
+    identifier_expr_.mutable_ident_expr()->set_name("id");
+    call_expr_.set_id(GetExprId());
+    call_expr_.mutable_call_expr()->set_function("Fn");
+    call_expr_.mutable_call_expr()->add_args()->set_id(GetExprId());
+    activation_.InsertValue("id", CelValue::CreateNull());
+  }
+
+ protected:
+  Expr dummy_expr_;
+  Expr identifier_expr_;
+  Expr call_expr_;
+  Activation activation_;
+  google::protobuf::Arena arena_;
+  CelFunctionRegistry registry_;
+};
+
+TEST_F(FunctionStepNullCoercionTest, EnabledSupportsMessageOverloads) {
+  ExecutionPath path;
+  ASSERT_OK(registry_.Register(std::make_unique<MessageFunction>()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto ident_step,
+      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+  path.push_back(std::move(ident_step));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+
+  path.push_back(std::move(call_step));
+
+  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
+                             true,
+                             /*enable_null_coercion=*/true);
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
+  ASSERT_TRUE(value.IsString());
+  ASSERT_THAT(value.StringOrDie().value(), testing::Eq("message"));
+}
+
+TEST_F(FunctionStepNullCoercionTest, EnabledPrefersNullOverloads) {
+  ExecutionPath path;
+  ASSERT_OK(registry_.Register(std::make_unique<MessageFunction>()));
+  ASSERT_OK(registry_.Register(std::make_unique<NullFunction>()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto ident_step,
+      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+  path.push_back(std::move(ident_step));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+
+  path.push_back(std::move(call_step));
+
+  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
+                             true,
+                             /*enable_null_coercion=*/true);
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
+  ASSERT_TRUE(value.IsString());
+  ASSERT_THAT(value.StringOrDie().value(), testing::Eq("null"));
+}
+
+TEST_F(FunctionStepNullCoercionTest, EnabledNullMessageDoesNotEscape) {
+  ExecutionPath path;
+  ASSERT_OK(registry_.Register(std::make_unique<MessageIdentityFunction>()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto ident_step,
+      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+  path.push_back(std::move(ident_step));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+
+  path.push_back(std::move(call_step));
+
+  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
+                             true,
+                             /*enable_null_coercion=*/true);
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
+  ASSERT_TRUE(value.IsNull());
+  ASSERT_FALSE(value.IsMessage());
+}
+
+TEST_F(FunctionStepNullCoercionTest, Disabled) {
+  ExecutionPath path;
+  ASSERT_OK(registry_.Register(std::make_unique<MessageFunction>()));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto ident_step,
+      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+  path.push_back(std::move(ident_step));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+
+  path.push_back(std::move(call_step));
+
+  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
+                             true,
+                             /*enable_null_coercion=*/false);
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
+  ASSERT_TRUE(value.IsError());
 }
 
 }  // namespace

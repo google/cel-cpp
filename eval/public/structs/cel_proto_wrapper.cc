@@ -19,6 +19,8 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
@@ -218,7 +220,7 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
 
   std::string full_name = std::string(type_url.substr(pos + 1));
   const Descriptor* nested_descriptor =
-      DescriptorPool::generated_pool()->FindMessageTypeByName(full_name.data());
+      DescriptorPool::generated_pool()->FindMessageTypeByName(full_name);
 
   if (nested_descriptor == nullptr) {
     // Descriptor not found for the type
@@ -668,10 +670,6 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       json->set_null_value(protobuf::NULL_VALUE);
       return json;
     default:
-      if (value.IsNull()) {
-        json->set_null_value(protobuf::NULL_VALUE);
-        return json;
-      }
       return absl::nullopt;
   }
   return absl::nullopt;
@@ -770,17 +768,8 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       }
     } break;
     case CelValue::Type::kMessage: {
-      if (value.IsNull()) {
-        Value v;
-        auto msg = MessageFromValue(value, &v);
-        if (msg.has_value()) {
-          any->PackFrom(**msg);
-          return any;
-        }
-      } else {
         any->PackFrom(*(value.MessageOrDie()));
         return any;
-      }
     } break;
     default:
       break;
@@ -809,12 +798,6 @@ class CastingMessageFromValueFactory : public MessageFromValueFactory {
 
   absl::optional<const google::protobuf::Message*> WrapMessage(
       const CelValue& value, Arena* arena) const override {
-    // Convert nulls separately from other messages as a null value is still
-    // technically a message value, but not one that can be converted in the
-    // standard way.
-    if (value.IsNull()) {
-      return MessageFromValue(value, Arena::CreateMessage<MessageType>(arena));
-    }
     // If the value is a message type, see if it is already of the proper type
     // name, and return it directly.
     if (value.IsMessage()) {
@@ -890,11 +873,12 @@ CelValue CelProtoWrapper::CreateMessage(const google::protobuf::Message* value,
 
   // Messages are Nullable types
   if (value == nullptr) {
-    return CelValue(value);
+    return CelValue::CreateNull();
   }
 
   auto special_value = maker->CreateValue(value, arena);
-  return special_value.has_value() ? special_value.value() : CelValue(value);
+  return special_value.has_value() ? special_value.value()
+                                   : CelValue::CreateMessage(value);
 }
 
 absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
@@ -905,7 +889,7 @@ absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
   if (!msg.has_value()) {
     return absl::nullopt;
   }
-  return CelValue(msg.value());
+  return CelValue::CreateMessage(msg.value());
 }
 
 }  // namespace google::api::expr::runtime

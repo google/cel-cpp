@@ -1,6 +1,7 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include <cstdint>
+#include <string>
 
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"

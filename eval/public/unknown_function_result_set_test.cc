@@ -3,6 +3,7 @@
 #include <sys/ucontext.h>
 
 #include <memory>
+#include <string>
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/empty.pb.h"

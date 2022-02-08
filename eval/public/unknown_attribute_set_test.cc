@@ -1,6 +1,7 @@
 #include "eval/public/unknown_attribute_set.h"
 
 #include <memory>
+#include <string>
 
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"

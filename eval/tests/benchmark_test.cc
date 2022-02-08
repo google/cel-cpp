@@ -1,5 +1,8 @@
 #include "internal/benchmark.h"
 
+#include <string>
+#include <utility>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/base/attributes.h"

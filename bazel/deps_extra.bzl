@@ -4,7 +4,7 @@ Transitive dependencies.
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
-load("@rules_antlr//antlr:deps.bzl", "antlr_dependencies")
+load("@rules_antlr//antlr:repositories.bzl", "rules_antlr_dependencies")
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
@@ -50,5 +50,5 @@ def cel_cpp_deps_extra():
         cc = True,
         go = True,  # cel-spec requirement
     )
-    antlr_dependencies(472)
+    rules_antlr_dependencies("4.8")
     cel_spec_deps_extra()

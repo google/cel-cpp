@@ -1,6 +1,7 @@
 #include "eval/eval/comprehension_step.h"
 
 #include <cstdint>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"

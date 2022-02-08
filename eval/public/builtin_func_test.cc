@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
@@ -52,12 +53,16 @@ class BuiltinsTest : public ::testing::Test {
  protected:
   BuiltinsTest() {}
 
-  void SetUp() override { ASSERT_OK(RegisterBuiltinFunctions(&registry_)); }
+  // Helper method. Looks up in registry and tests comparison operation.
+  void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
+                  const std::vector<CelValue>& values, CelValue* result) {
+    PerformRun(operation, target, values, result, options_);
+  }
 
   // Helper method. Looks up in registry and tests comparison operation.
   void PerformRun(absl::string_view operation, absl::optional<CelValue> target,
                   const std::vector<CelValue>& values, CelValue* result,
-                  const InterpreterOptions& options = InterpreterOptions()) {
+                  const InterpreterOptions& options) {
     Activation activation;
 
     Expr expr;
@@ -107,9 +112,12 @@ class BuiltinsTest : public ::testing::Test {
     ASSERT_NO_FATAL_FAILURE(
         PerformRun(operation, {}, {ref, other}, &result_value));
 
-    ASSERT_EQ(result_value.IsBool(), true);
+    ASSERT_EQ(result_value.IsBool(), true)
+        << absl::StrCat(CelValue::TypeName(ref.type()), " ", operation, " ",
+                        CelValue::TypeName(other.type()));
     ASSERT_EQ(result_value.BoolOrDie(), result)
-        << operation << " for " << CelValue::TypeName(ref.type());
+        << operation << " for " << ref.DebugString() << " with "
+        << other.DebugString();
   }
 
   // Helper method. Looks up in registry and tests for no matching equality
@@ -342,7 +350,8 @@ class BuiltinsTest : public ::testing::Test {
                                        {value, CelValue::CreateList(cel_list)},
                                        &result_value));
 
-    ASSERT_EQ(result_value.IsBool(), true);
+    ASSERT_EQ(result_value.IsBool(), true)
+        << result_value.DebugString() << " argument: " << value.DebugString();
     ASSERT_EQ(result_value.BoolOrDie(), result)
         << " for " << CelValue::TypeName(value.type());
   }
@@ -406,11 +415,15 @@ class BuiltinsTest : public ::testing::Test {
         << " for " << CelValue::TypeName(value.type());
   }
 
-  // Function registry object
-  CelFunctionRegistry registry_;
+  InterpreterOptions options_;
 
   // Arena
   Arena arena_;
+};
+
+class HeterogeneousEqualityTest : public BuiltinsTest {
+ public:
+  HeterogeneousEqualityTest() { options_.enable_heterogeneous_equality = true; }
 };
 
 // Test Not() operation for Bool
@@ -509,9 +522,8 @@ TEST_F(BuiltinsTest, TestDurationComparisons) {
 // Test Equality/Non-Equality operation for messages
 TEST_F(BuiltinsTest, TestNullMessageEqual) {
   CelValue ref = CelValue::CreateNull();
-  Expr call;
-  call.mutable_call_expr()->set_function("test");
-  CelValue value = CelProtoWrapper::CreateMessage(&call, &arena_);
+  Expr dummy;
+  CelValue value = CelProtoWrapper::CreateMessage(&dummy, &arena_);
   TestComparison(builtin::kEqual, ref, ref, true);
   TestComparison(builtin::kInequal, ref, ref, false);
   TestComparison(builtin::kEqual, value, ref, false);
@@ -1468,8 +1480,6 @@ TEST_F(BuiltinsTest, MapSize) {
 }
 
 TEST_F(BuiltinsTest, TestBoolListIn) {
-  std::vector<CelValue> values;
-
   FakeList cel_list({CelValue::CreateBool(false), CelValue::CreateBool(false)});
 
   TestInList(&cel_list, CelValue::CreateBool(false), true);
@@ -1477,8 +1487,6 @@ TEST_F(BuiltinsTest, TestBoolListIn) {
 }
 
 TEST_F(BuiltinsTest, TestInt64ListIn) {
-  std::vector<CelValue> values;
-
   FakeList cel_list({CelValue::CreateInt64(1), CelValue::CreateInt64(2)});
 
   TestInList(&cel_list, CelValue::CreateInt64(2), true);
@@ -1486,8 +1494,6 @@ TEST_F(BuiltinsTest, TestInt64ListIn) {
 }
 
 TEST_F(BuiltinsTest, TestUint64ListIn) {
-  std::vector<CelValue> values;
-
   FakeList cel_list({CelValue::CreateUint64(1), CelValue::CreateUint64(2)});
 
   TestInList(&cel_list, CelValue::CreateUint64(2), true);
@@ -1495,8 +1501,6 @@ TEST_F(BuiltinsTest, TestUint64ListIn) {
 }
 
 TEST_F(BuiltinsTest, TestDoubleListIn) {
-  std::vector<CelValue> values;
-
   FakeList cel_list({CelValue::CreateDouble(1), CelValue::CreateDouble(2)});
 
   TestInList(&cel_list, CelValue::CreateDouble(2), true);
@@ -1504,8 +1508,6 @@ TEST_F(BuiltinsTest, TestDoubleListIn) {
 }
 
 TEST_F(BuiltinsTest, TestStringListIn) {
-  std::vector<CelValue> values;
-
   std::string v0 = "test0";
   std::string v1 = "test1";
   std::string v2 = "test2";
@@ -1527,6 +1529,41 @@ TEST_F(BuiltinsTest, TestBytesListIn) {
 
   TestInList(&cel_list, CelValue::CreateBytes(&v1), true);
   TestInList(&cel_list, CelValue::CreateBytes(&v2), false);
+}
+
+TEST_F(HeterogeneousEqualityTest, MixedTypes) {
+  FakeList cel_list({CelValue::CreateDuration(absl::Seconds(1)),
+                     CelValue::CreateNull(), CelValue::CreateInt64(1)});
+
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateDuration(absl::Seconds(1)), true));
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateInt64(1), true));
+
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateUint64(1), true));
+
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateInt64(2), false));
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateStringView("abc"), false));
+}
+
+TEST_F(HeterogeneousEqualityTest, NullIn) {
+  FakeList cel_list({CelValue::CreateInt64(0), CelValue::CreateNull(),
+                     CelValue::CreateInt64(1)});
+
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateInt64(1), true));
+  ASSERT_NO_FATAL_FAILURE(TestInList(&cel_list, CelValue::CreateNull(), true));
+  ASSERT_NO_FATAL_FAILURE(
+      TestInList(&cel_list, CelValue::CreateInt64(2), false));
+}
+
+TEST_F(HeterogeneousEqualityTest, NullNotIn) {
+  FakeList cel_list({CelValue::CreateInt64(0), CelValue::CreateInt64(1)});
+
+  ASSERT_NO_FATAL_FAILURE(TestInList(&cel_list, CelValue::CreateNull(), false));
 }
 
 TEST_F(BuiltinsTest, TestMapInError) {

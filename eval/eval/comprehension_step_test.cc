@@ -1,6 +1,8 @@
 #include "eval/eval/comprehension_step.h"
 
 #include <cstddef>
+#include <string>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"

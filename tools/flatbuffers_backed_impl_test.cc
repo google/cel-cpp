@@ -1,5 +1,7 @@
 #include "tools/flatbuffers_backed_impl.h"
 
+#include <string>
+
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "flatbuffers/idl.h"
@@ -15,7 +17,8 @@ namespace {
 using google::protobuf::Arena;
 
 constexpr char kReflectionBufferPath[] =
-    "tools/flatbuffers.bfbs";
+    "tools/testdata/"
+    "flatbuffers.bfbs";
 
 constexpr absl::string_view kByteField = "f_byte";
 constexpr absl::string_view kUbyteField = "f_ubyte";

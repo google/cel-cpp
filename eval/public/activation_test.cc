@@ -1,5 +1,8 @@
 #include "eval/public/activation.h"
 
+#include <string>
+#include <utility>
+
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"

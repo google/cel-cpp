@@ -150,7 +150,7 @@ class CelValue {
 
   // Default constructor.
   // Creates CelValue with null data type.
-  CelValue() : CelValue(static_cast<const google::protobuf::Message*>(nullptr)) {}
+  CelValue() : CelValue(NullType()) {}
 
   // Returns Type that describes the type of value stored.
   Type type() const { return Type(value_.index()); }
@@ -162,9 +162,7 @@ class CelValue {
   // The reason for this is the high risk of implicit type conversions
   // between bool/int/pointer types.
   // We rely on copy elision to avoid extra copying.
-  static CelValue CreateNull() {
-    return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
-  }
+  static CelValue CreateNull() { return CelValue(NullType()); }
 
   // Transitional factory for migrating to null types.
   static CelValue CreateNullTypedValue() { return CelValue(NullType()); }
@@ -409,6 +407,19 @@ class CelValue {
   template <class T>
   explicit CelValue(T value) : value_(value) {}
 
+  // Overloads for creating Message types. This should only be used by
+  // internal libraries.
+  static CelValue CreateMessage(const google::protobuf::Message* value) {
+    CheckNullPointer(value, Type::kMessage);
+    return CelValue(value);
+  }
+
+  // This is provided for backwards compatibility with resolving null to message
+  // overloads.
+  static CelValue CreateNullMessage() {
+    return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
+  }
+
   // Crashes with a null pointer error.
   static void CrashNullPointer(Type type) ABSL_ATTRIBUTE_COLD {
     GOOGLE_LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
@@ -440,6 +451,7 @@ class CelValue {
   }
 
   friend class CelProtoWrapper;
+  friend class EvaluatorStack;
 };
 
 static_assert(absl::is_trivially_destructible<CelValue>::value,

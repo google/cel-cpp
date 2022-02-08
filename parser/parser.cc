@@ -15,9 +15,11 @@
 #include "parser/parser.h"
 
 #include <algorithm>
+#include <any>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -35,6 +37,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "antlr4-runtime.h"
 #include "common/operators.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
@@ -46,7 +49,6 @@
 #include "parser/macro.h"
 #include "parser/options.h"
 #include "parser/source_factory.h"
-#include "antlr4-runtime.h"
 
 namespace google::api::expr::parser {
 
@@ -661,13 +663,13 @@ antlrcpp::Any ParserVisitor::visitStart(CelParser::StartContext* ctx) {
 }
 
 antlrcpp::Any ParserVisitor::visitExpr(CelParser::ExprContext* ctx) {
-  auto result = visit(ctx->e);
+  auto result = std::any_cast<Expr>(visit(ctx->e));
   if (!ctx->op) {
     return result;
   }
   int64_t op_id = sf_->Id(ctx->op);
-  Expr if_true = visit(ctx->e1);
-  Expr if_false = visit(ctx->e2);
+  Expr if_true = std::any_cast<Expr>(visit(ctx->e1));
+  Expr if_false = std::any_cast<Expr>(visit(ctx->e2));
 
   return GlobalCallOrMacro(op_id, CelOperator::CONDITIONAL,
                            {result, if_true, if_false});
@@ -675,7 +677,7 @@ antlrcpp::Any ParserVisitor::visitExpr(CelParser::ExprContext* ctx) {
 
 antlrcpp::Any ParserVisitor::visitConditionalOr(
     CelParser::ConditionalOrContext* ctx) {
-  auto result = visit(ctx->e);
+  auto result = std::any_cast<Expr>(visit(ctx->e));
   if (ctx->ops.empty()) {
     return result;
   }
@@ -685,7 +687,7 @@ antlrcpp::Any ParserVisitor::visitConditionalOr(
     if (i >= ctx->e1.size()) {
       return sf_->ReportError(ctx, "unexpected character, wanted '||'");
     }
-    auto next = visit(ctx->e1[i]).as<Expr>();
+    auto next = std::any_cast<Expr>(visit(ctx->e1[i]));
     int64_t op_id = sf_->Id(op);
     b.AddTerm(op_id, next);
   }
@@ -694,7 +696,7 @@ antlrcpp::Any ParserVisitor::visitConditionalOr(
 
 antlrcpp::Any ParserVisitor::visitConditionalAnd(
     CelParser::ConditionalAndContext* ctx) {
-  auto result = visit(ctx->e);
+  auto result = std::any_cast<Expr>(visit(ctx->e));
   if (ctx->ops.empty()) {
     return result;
   }
@@ -704,7 +706,7 @@ antlrcpp::Any ParserVisitor::visitConditionalAnd(
     if (i >= ctx->e1.size()) {
       return sf_->ReportError(ctx, "unexpected character, wanted '&&'");
     }
-    auto next = visit(ctx->e1[i]).as<Expr>();
+    auto next = std::any_cast<Expr>(visit(ctx->e1[i]));
     int64_t op_id = sf_->Id(op);
     b.AddTerm(op_id, next);
   }
@@ -721,9 +723,9 @@ antlrcpp::Any ParserVisitor::visitRelation(CelParser::RelationContext* ctx) {
   }
   auto op = ReverseLookupOperator(op_text);
   if (op) {
-    auto lhs = visit(ctx->relation(0)).as<Expr>();
+    auto lhs = std::any_cast<Expr>(visit(ctx->relation(0)));
     int64_t op_id = sf_->Id(ctx->op);
-    auto rhs = visit(ctx->relation(1)).as<Expr>();
+    auto rhs = std::any_cast<Expr>(visit(ctx->relation(1)));
     return GlobalCallOrMacro(op_id, *op, {lhs, rhs});
   }
   return sf_->ReportError(ctx, "operator not found");
@@ -739,9 +741,9 @@ antlrcpp::Any ParserVisitor::visitCalc(CelParser::CalcContext* ctx) {
   }
   auto op = ReverseLookupOperator(op_text);
   if (op) {
-    auto lhs = visit(ctx->calc(0)).as<Expr>();
+    auto lhs = std::any_cast<Expr>(visit(ctx->calc(0)));
     int64_t op_id = sf_->Id(ctx->op);
-    auto rhs = visit(ctx->calc(1)).as<Expr>();
+    auto rhs = std::any_cast<Expr>(visit(ctx->calc(1)));
     return GlobalCallOrMacro(op_id, *op, {lhs, rhs});
   }
   return sf_->ReportError(ctx, "operator not found");
@@ -757,7 +759,7 @@ antlrcpp::Any ParserVisitor::visitLogicalNot(
     return visit(ctx->member());
   }
   int64_t op_id = sf_->Id(ctx->ops[0]);
-  auto target = visit(ctx->member());
+  auto target = std::any_cast<Expr>(visit(ctx->member()));
   return GlobalCallOrMacro(op_id, CelOperator::LOGICAL_NOT, {target});
 }
 
@@ -766,13 +768,13 @@ antlrcpp::Any ParserVisitor::visitNegate(CelParser::NegateContext* ctx) {
     return visit(ctx->member());
   }
   int64_t op_id = sf_->Id(ctx->ops[0]);
-  auto target = visit(ctx->member());
+  auto target = std::any_cast<Expr>(visit(ctx->member()));
   return GlobalCallOrMacro(op_id, CelOperator::NEGATE, {target});
 }
 
 antlrcpp::Any ParserVisitor::visitSelectOrCall(
     CelParser::SelectOrCallContext* ctx) {
-  auto operand = visit(ctx->member()).as<Expr>();
+  auto operand = std::any_cast<Expr>(visit(ctx->member()));
   // Handle the error case where no valid identifier is specified.
   if (!ctx->id) {
     return sf_->NewExpr(ctx);
@@ -786,20 +788,20 @@ antlrcpp::Any ParserVisitor::visitSelectOrCall(
 }
 
 antlrcpp::Any ParserVisitor::visitIndex(CelParser::IndexContext* ctx) {
-  auto target = visit(ctx->member()).as<Expr>();
+  auto target = std::any_cast<Expr>(visit(ctx->member()));
   int64_t op_id = sf_->Id(ctx->op);
-  auto index = visit(ctx->index).as<Expr>();
+  auto index = std::any_cast<Expr>(visit(ctx->index));
   return GlobalCallOrMacro(op_id, CelOperator::INDEX, {target, index});
 }
 
 antlrcpp::Any ParserVisitor::visitCreateMessage(
     CelParser::CreateMessageContext* ctx) {
-  auto target = visit(ctx->member()).as<Expr>();
+  auto target = std::any_cast<Expr>(visit(ctx->member()));
   int64_t obj_id = sf_->Id(ctx->op);
   std::string message_name = ExtractQualifiedName(ctx, &target);
   if (!message_name.empty()) {
-    auto entries = visitFieldInitializerList(ctx->entries)
-                       .as<std::vector<Expr::CreateStruct::Entry>>();
+    auto entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
+        visitFieldInitializerList(ctx->entries));
     return sf_->NewObject(obj_id, message_name, entries);
   } else {
     return sf_->NewExpr(obj_id);
@@ -821,7 +823,7 @@ antlrcpp::Any ParserVisitor::visitFieldInitializerList(
     }
     const auto& f = ctx->fields[i];
     int64_t init_id = sf_->Id(ctx->cols[i]);
-    auto value = visit(ctx->values[i]).as<Expr>();
+    auto value = std::any_cast<Expr>(visit(ctx->values[i]));
     auto field = sf_->NewObjectField(init_id, f->getText(), value);
     res[i] = field;
   }
@@ -866,7 +868,7 @@ std::vector<Expr> ParserVisitor::visitList(CelParser::ExprListContext* ctx) {
   if (!ctx) return rv;
   std::transform(ctx->e.begin(), ctx->e.end(), std::back_inserter(rv),
                  [this](CelParser::ExprContext* expr_ctx) {
-                   return visitExpr(expr_ctx).as<Expr>();
+                   return std::any_cast<Expr>(visitExpr(expr_ctx));
                  });
   return rv;
 }
@@ -876,8 +878,8 @@ antlrcpp::Any ParserVisitor::visitCreateStruct(
   int64_t struct_id = sf_->Id(ctx->op);
   std::vector<Expr::CreateStruct::Entry> entries;
   if (ctx->entries) {
-    entries = visitMapInitializerList(ctx->entries)
-                  .as<std::vector<Expr::CreateStruct::Entry>>();
+    entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
+        visitMapInitializerList(ctx->entries));
   }
   return sf_->NewMap(struct_id, entries);
 }
@@ -915,8 +917,8 @@ antlrcpp::Any ParserVisitor::visitMapInitializerList(
   res.resize(ctx->cols.size());
   for (size_t i = 0; i < ctx->cols.size(); ++i) {
     int64_t col_id = sf_->Id(ctx->cols[i]);
-    auto key = visit(ctx->keys[i]);
-    auto value = visit(ctx->values[i]);
+    auto key = std::any_cast<Expr>(visit(ctx->keys[i]));
+    auto value = std::any_cast<Expr>(visit(ctx->values[i]));
     res[i] = sf_->NewMapEntry(col_id, key, value);
   }
   return res;
@@ -1269,7 +1271,7 @@ absl::StatusOr<VerboseParsedExpr> EnrichedParse(
 
     Expr expr;
     try {
-      expr = visitor.visit(parser.start()).as<Expr>();
+      expr = std::any_cast<Expr>(visitor.visit(parser.start()));
     } catch (const ParseCancellationException& e) {
       if (visitor.HasErrored()) {
         return absl::InvalidArgumentError(visitor.ErrorMessage());

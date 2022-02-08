@@ -18,8 +18,14 @@
 
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/testing/matchers.h"
+#include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 #include "internal/time.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
@@ -30,9 +36,9 @@ namespace {
 
 using ::cel::internal::MaxDuration;
 using ::cel::internal::MaxTimestamp;
-using google::protobuf::Arena;
-using google::protobuf::FieldDescriptor;
-using test::v1::proto3::TestAllTypes;
+using ::google::api::expr::test::v1::proto3::TestAllTypes;
+using ::google::protobuf::Arena;
+using ::google::protobuf::FieldDescriptor;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
@@ -126,6 +132,150 @@ TEST(FieldAccessTest, SetUint32Overflow) {
           field, &msg, &arena),
       StatusIs(absl::StatusCode::kInvalidArgument,
                HasSubstr("Could not assign")));
+}
+
+TEST(FieldAccessTest, SetMessage) {
+  Arena arena;
+  TestAllTypes msg;
+  const FieldDescriptor* field =
+      TestAllTypes::descriptor()->FindFieldByName("standalone_message");
+  TestAllTypes::NestedMessage* nested_msg =
+      google::protobuf::Arena::CreateMessage<TestAllTypes::NestedMessage>(&arena);
+  nested_msg->set_bb(1);
+  auto status = SetValueToSingleField(
+      CelProtoWrapper::CreateMessage(nested_msg, &arena), field, &msg, &arena);
+  EXPECT_TRUE(status.ok());
+}
+
+TEST(FieldAccessTest, SetMessageWithNul) {
+  Arena arena;
+  TestAllTypes msg;
+  const FieldDescriptor* field =
+      TestAllTypes::descriptor()->FindFieldByName("standalone_message");
+  auto status =
+      SetValueToSingleField(CelValue::CreateNull(), field, &msg, &arena);
+  EXPECT_TRUE(status.ok());
+}
+
+constexpr std::array<const char*, 9> kWrapperFieldNames = {
+    "single_bool_wrapper",   "single_int64_wrapper",  "single_int32_wrapper",
+    "single_uint64_wrapper", "single_uint32_wrapper", "single_double_wrapper",
+    "single_float_wrapper",  "single_string_wrapper", "single_bytes_wrapper"};
+
+// Unset wrapper type fields are treated as null if accessed after option
+// enabled.
+TEST(CreateValueFromFieldTest, UnsetWrapperTypesNullIfEnabled) {
+  CelValue result;
+  TestAllTypes test_message;
+  google::protobuf::Arena arena;
+
+  for (const auto& field : kWrapperFieldNames) {
+    ASSERT_OK(CreateValueFromSingleField(
+        &test_message, TestAllTypes::GetDescriptor()->FindFieldByName(field),
+        ProtoWrapperTypeOptions::kUnsetNull, &arena, &result))
+        << field;
+    ASSERT_TRUE(result.IsNull()) << field << ": " << result.DebugString();
+  }
+}
+
+// Unset wrapper type fields are treated as proto default under old
+// behavior.
+TEST(CreateValueFromFieldTest, UnsetWrapperTypesDefaultValueIfDisabled) {
+  CelValue result;
+  TestAllTypes test_message;
+  google::protobuf::Arena arena;
+
+  for (const auto& field : kWrapperFieldNames) {
+    ASSERT_OK(CreateValueFromSingleField(
+        &test_message, TestAllTypes::GetDescriptor()->FindFieldByName(field),
+        ProtoWrapperTypeOptions::kUnsetProtoDefault, &arena, &result))
+        << field;
+    ASSERT_FALSE(result.IsNull()) << field << ": " << result.DebugString();
+  }
+}
+
+// If a wrapper type is set to default value, the corresponding CelValue is the
+// proto default value.
+TEST(CreateValueFromFieldTest, SetWrapperTypesDefaultValue) {
+  CelValue result;
+  TestAllTypes test_message;
+  google::protobuf::Arena arena;
+
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        single_bool_wrapper {}
+        single_int64_wrapper {}
+        single_int32_wrapper {}
+        single_uint64_wrapper {}
+        single_uint32_wrapper {}
+        single_double_wrapper {}
+        single_float_wrapper {}
+        single_string_wrapper {}
+        single_bytes_wrapper {}
+      )pb",
+      &test_message));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_bool_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull, &arena, &result));
+  EXPECT_THAT(result, test::IsCelBool(false));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_int64_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull, &arena, &result));
+  EXPECT_THAT(result, test::IsCelInt64(0));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_int32_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull, &arena, &result));
+  EXPECT_THAT(result, test::IsCelInt64(0));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_uint64_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull, &arena, &result));
+  EXPECT_THAT(result, test::IsCelUint64(0));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_uint32_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull, &arena, &result));
+  EXPECT_THAT(result, test::IsCelUint64(0));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_double_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull,
+
+      &arena, &result));
+  EXPECT_THAT(result, test::IsCelDouble(0.0f));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_float_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull,
+
+      &arena, &result));
+  EXPECT_THAT(result, test::IsCelDouble(0.0f));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_string_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull,
+
+      &arena, &result));
+  EXPECT_THAT(result, test::IsCelString(""));
+
+  ASSERT_OK(CreateValueFromSingleField(
+      &test_message,
+      TestAllTypes::GetDescriptor()->FindFieldByName("single_bytes_wrapper"),
+      ProtoWrapperTypeOptions::kUnsetNull,
+
+      &arena, &result));
+  EXPECT_THAT(result, test::IsCelBytes(""));
 }
 
 }  // namespace

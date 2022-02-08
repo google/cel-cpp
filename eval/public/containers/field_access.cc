@@ -15,13 +15,16 @@
 #include "eval/public/containers/field_access.h"
 
 #include <cstdint>
+#include <string>
 #include <type_traits>
+#include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/map_field.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -173,11 +176,30 @@ class FieldAccessor {
   const FieldDescriptor* field_desc_;
 };
 
+const absl::flat_hash_set<std::string>& WellKnownWrapperTypes() {
+  static auto* wrapper_types = new absl::flat_hash_set<std::string>{
+      "google.protobuf.BoolValue",   "google.protobuf.DoubleValue",
+      "google.protobuf.FloatValue",  "google.protobuf.Int64Value",
+      "google.protobuf.Int32Value",  "google.protobuf.UInt64Value",
+      "google.protobuf.UInt32Value", "google.protobuf.StringValue",
+      "google.protobuf.BytesValue",
+  };
+  return *wrapper_types;
+}
+
+bool IsWrapperType(const FieldDescriptor* field_descriptor) {
+  return WellKnownWrapperTypes().find(
+             field_descriptor->message_type()->full_name()) !=
+         WellKnownWrapperTypes().end();
+}
+
 // Accessor class, to work with singular fields
 class ScalarFieldAccessor : public FieldAccessor<ScalarFieldAccessor> {
  public:
-  ScalarFieldAccessor(const Message* msg, const FieldDescriptor* field_desc)
-      : FieldAccessor(msg, field_desc) {}
+  ScalarFieldAccessor(const Message* msg, const FieldDescriptor* field_desc,
+                      bool unset_wrapper_as_null)
+      : FieldAccessor(msg, field_desc),
+        unset_wrapper_as_null_(unset_wrapper_as_null) {}
 
   bool GetBool() const { return GetReflection()->GetBool(*msg_, field_desc_); }
 
@@ -210,8 +232,13 @@ class ScalarFieldAccessor : public FieldAccessor<ScalarFieldAccessor> {
   }
 
   const Message* GetMessage() const {
-    // TODO(issues/109): When the field descriptor is a wrapper type, check if
-    // the field is set. If set, return the unwrapped value, else return 'null'.
+    // Unset wrapper types have special semantics.
+    // If set, return the unwrapped value, else return 'null'.
+    if (unset_wrapper_as_null_ &&
+        !GetReflection()->HasField(*msg_, field_desc_) &&
+        IsWrapperType(field_desc_)) {
+      return nullptr;
+    }
     return &GetReflection()->GetMessage(*msg_, field_desc_);
   }
 
@@ -220,6 +247,9 @@ class ScalarFieldAccessor : public FieldAccessor<ScalarFieldAccessor> {
   }
 
   const Reflection* GetReflection() const { return msg_->GetReflection(); }
+
+ private:
+  bool unset_wrapper_as_null_;
 };
 
 // Accessor class, to work with repeated fields.
@@ -346,7 +376,17 @@ absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
                                         const FieldDescriptor* desc,
                                         google::protobuf::Arena* arena,
                                         CelValue* result) {
-  ScalarFieldAccessor accessor(msg, desc);
+  return CreateValueFromSingleField(
+      msg, desc, ProtoWrapperTypeOptions::kUnsetProtoDefault, arena, result);
+}
+
+absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
+                                        const FieldDescriptor* desc,
+                                        ProtoWrapperTypeOptions options,
+                                        google::protobuf::Arena* arena,
+                                        CelValue* result) {
+  ScalarFieldAccessor accessor(
+      msg, desc, (options == ProtoWrapperTypeOptions::kUnsetNull));
   return accessor.CreateValueFromFieldAccessor(arena, result);
 }
 
@@ -473,6 +513,11 @@ class FieldSetter {
   }
 
   bool AssignMessage(const CelValue& cel_value) const {
+    // Assigning a NULL to a message is OK, but a no-op.
+    if (cel_value.IsNull()) {
+      return true;
+    }
+
     // We attempt to retrieve value if it derives from google::protobuf::Message.
     // That includes both generic Protobuf message types and specific
     // message types stored in CelValue as separate entities.
