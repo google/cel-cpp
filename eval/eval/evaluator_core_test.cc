@@ -1,5 +1,8 @@
 #include "eval/eval/evaluator_core.h"
 
+#include <string>
+#include <utility>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
@@ -63,7 +66,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false, false);
+  ExecutionFrame frame(path, activation, 0, &state, false, false, false, true);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -81,7 +84,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   google::protobuf::Arena arena;
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false, false);
+  ExecutionFrame frame(path, activation, 0, &state, false, false, false, true);
 
   CelValue original = CelValue::CreateInt64(test_value);
   Expr ident;

@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "stack"
@@ -175,7 +177,8 @@ class FlatExprVisitor : public AstVisitor {
       const Resolver& resolver, ExecutionPath* path, bool short_circuiting,
       const absl::flat_hash_map<std::string, CelValue>& constant_idents,
       bool enable_comprehension, bool enable_comprehension_list_append,
-      bool enable_comprehension_vulnerability_check, BuilderWarnings* warnings,
+      bool enable_comprehension_vulnerability_check,
+      bool enable_wrapper_type_null_unboxing, BuilderWarnings* warnings,
       std::set<std::string>* iter_variable_names)
       : resolver_(resolver),
         flattened_path_(path),
@@ -187,6 +190,7 @@ class FlatExprVisitor : public AstVisitor {
         enable_comprehension_list_append_(enable_comprehension_list_append),
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
+        enable_wrapper_type_null_unboxing_(enable_wrapper_type_null_unboxing),
         builder_warnings_(warnings),
         iter_variable_names_(iter_variable_names) {
     GOOGLE_CHECK(iter_variable_names_);
@@ -329,7 +333,8 @@ class FlatExprVisitor : public AstVisitor {
       select_path = it->second;
     }
 
-    AddStep(CreateSelectStep(select_expr, expr->id(), select_path));
+    AddStep(CreateSelectStep(select_expr, expr->id(), select_path,
+                             enable_wrapper_type_null_unboxing_));
   }
 
   // Call node handler group.
@@ -644,6 +649,7 @@ class FlatExprVisitor : public AstVisitor {
   std::stack<const Comprehension*> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
+  bool enable_wrapper_type_null_unboxing_;
 
   BuilderWarnings* builder_warnings_;
 
@@ -1039,7 +1045,8 @@ FlatExprBuilder::CreateExpressionImpl(
                           enable_comprehension_,
                           enable_comprehension_list_append_,
                           enable_comprehension_vulnerability_check_,
-                          &warnings_builder, &iter_variable_names);
+                          enable_wrapper_type_null_unboxing_, &warnings_builder,
+                          &iter_variable_names);
 
   AstTraverse(effective_expr, source_info, &visitor);
 
@@ -1052,7 +1059,7 @@ FlatExprBuilder::CreateExpressionImpl(
           expr, std::move(execution_path), comprehension_max_iterations_,
           std::move(iter_variable_names), enable_unknowns_,
           enable_unknown_function_results_, enable_missing_attribute_errors_,
-          std::move(rewrite_buffer));
+          enable_null_coercion_, std::move(rewrite_buffer));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

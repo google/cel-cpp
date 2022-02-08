@@ -1,5 +1,9 @@
 #include "eval/public/cel_function_adapter.h"
 
+#include <functional>
+#include <string>
+#include <utility>
+
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 

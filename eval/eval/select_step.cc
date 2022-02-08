@@ -1,6 +1,7 @@
 #include "eval/eval/select_step.h"
 
 #include <cstdint>
+#include <string>
 
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
@@ -37,11 +38,15 @@ absl::Status InvalidSelectTargetError() {
 class SelectStep : public ExpressionStepBase {
  public:
   SelectStep(absl::string_view field, bool test_field_presence, int64_t expr_id,
-             absl::string_view select_path)
+             absl::string_view select_path,
+             bool enable_wrapper_type_null_unboxing)
       : ExpressionStepBase(expr_id),
         field_(field),
         test_field_presence_(test_field_presence),
-        select_path_(select_path) {}
+        select_path_(select_path),
+        unboxing_option_(enable_wrapper_type_null_unboxing
+                             ? ProtoWrapperTypeOptions::kUnsetNull
+                             : ProtoWrapperTypeOptions::kUnsetProtoDefault) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
@@ -53,6 +58,7 @@ class SelectStep : public ExpressionStepBase {
   std::string field_;
   bool test_field_presence_;
   std::string select_path_;
+  ProtoWrapperTypeOptions unboxing_option_;
 };
 
 absl::Status SelectStep::CreateValueFromField(const google::protobuf::Message& msg,
@@ -79,7 +85,8 @@ absl::Status SelectStep::CreateValueFromField(const google::protobuf::Message& m
     return absl::OkStatus();
   }
 
-  return CreateValueFromSingleField(&msg, field_desc, arena, result);
+  return CreateValueFromSingleField(&msg, field_desc, unboxing_option_, arena,
+                                    result);
 }
 
 absl::optional<CelValue> CheckForMarkedAttributes(const ExecutionFrame& frame,
@@ -165,16 +172,22 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
-  if (!(arg.IsMap() || arg.IsMessage())) {
-    return InvalidSelectTargetError();
-  }
-
   CelValue result;
   AttributeTrail result_trail;
 
   // Handle unknown resolution.
   if (frame->enable_unknowns() || frame->enable_missing_attribute_errors()) {
     result_trail = trail.Step(&field_, frame->arena());
+  }
+
+  if (arg.IsNull()) {
+    CelValue error_value = CreateErrorValue(frame->arena(), "Message is NULL");
+    frame->value_stack().PopAndPush(error_value, result_trail);
+    return absl::OkStatus();
+  }
+
+  if (!(arg.IsMap() || arg.IsMessage())) {
+    return InvalidSelectTargetError();
   }
 
   absl::optional<CelValue> marked_attribute_check =
@@ -259,9 +272,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id,
-    absl::string_view select_path) {
+    absl::string_view select_path, bool enable_wrapper_type_null_unboxing) {
   return absl::make_unique<SelectStep>(
-      select_expr->field(), select_expr->test_only(), expr_id, select_path);
+      select_expr->field(), select_expr->test_only(), expr_id, select_path,
+      enable_wrapper_type_null_unboxing);
 }
 
 }  // namespace google::api::expr::runtime

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

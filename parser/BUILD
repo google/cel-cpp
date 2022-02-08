@@ -116,6 +116,7 @@ cc_test(
         ":options",
         ":parser",
         ":source_factory",
+        "//internal:benchmark",
         "//internal:testing",
         "//testutil:expr_printer",
         "@com_google_absl//absl/algorithm:container",

@@ -40,7 +40,9 @@ class FlatExprBuilder : public CelExpressionBuilder {
         fail_on_warnings_(true),
         enable_qualified_type_identifiers_(false),
         enable_comprehension_list_append_(false),
-        enable_comprehension_vulnerability_check_(false) {}
+        enable_comprehension_vulnerability_check_(false),
+        enable_null_coercion_(true),
+        enable_wrapper_type_null_unboxing_(false) {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -114,6 +116,24 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_comprehension_vulnerability_check_ = enabled;
   }
 
+  // set_enable_null_coercion allows the evaluator to coerce null values into
+  // message types. This is a legacy behavior from implementing null type as a
+  // special case of messages.
+  //
+  // Note: this will be defaulted to disabled once any known dependencies on the
+  // old behavior are removed or explicitly opted-in.
+  void set_enable_null_coercion(bool enabled) {
+    enable_null_coercion_ = enabled;
+  }
+
+  // If set_enable_wrapper_type_null_unboxing is enabled, the evaluator will
+  // return null for well known wrapper type fields if they are unset.
+  // The default is disabled and follows protobuf behavior (returning the
+  // proto default for the wrapped type).
+  void set_enable_wrapper_type_null_unboxing(bool enabled) {
+    enable_wrapper_type_null_unboxing_ = enabled;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -150,6 +170,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_qualified_type_identifiers_;
   bool enable_comprehension_list_append_;
   bool enable_comprehension_vulnerability_check_;
+  bool enable_null_coercion_;
+  bool enable_wrapper_type_null_unboxing_;
 };
 
 }  // namespace google::api::expr::runtime

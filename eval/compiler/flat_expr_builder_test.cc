@@ -17,6 +17,8 @@
 #include "eval/compiler/flat_expr_builder.h"
 
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -36,11 +38,13 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "parser/parser.h"
 
 namespace google::api::expr::runtime {
 
@@ -48,6 +52,7 @@ namespace {
 
 using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::Expr;
+using google::api::expr::v1alpha1::ParsedExpr;
 using google::api::expr::v1alpha1::SourceInfo;
 
 using google::protobuf::FieldMask;
@@ -1499,6 +1504,46 @@ TEST(FlatExprBuilderTest, EmptyCallList) {
     auto build = builder.CreateExpression(&expr, &source_info);
     ASSERT_FALSE(build.ok());
   }
+}
+
+TEST(FlatExprBuilderTest, NullUnboxingEnabled) {
+  TestMessage message;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("message.int32_wrapper_value"));
+  FlatExprBuilder builder;
+  builder.set_enable_wrapper_type_null_unboxing(true);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_TRUE(result.IsNull());
+}
+
+TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
+  TestMessage message;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("message.int32_wrapper_value"));
+  FlatExprBuilder builder;
+  builder.set_enable_wrapper_type_null_unboxing(false);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result, test::IsCelInt64(0));
 }
 
 }  // namespace

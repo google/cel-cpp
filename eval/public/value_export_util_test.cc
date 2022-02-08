@@ -1,5 +1,6 @@
 #include "eval/public/value_export_util.h"
 
+#include <string>
 #include <utility>
 
 #include "absl/strings/str_cat.h"

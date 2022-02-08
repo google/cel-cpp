@@ -23,8 +23,8 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
 #include "antlr4-runtime.h"
+#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
 
 namespace google::api::expr::parser {
 

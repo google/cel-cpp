@@ -1,3 +1,6 @@
+#include <string>
+#include <utility>
+
 #include "google/api/expr/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"
@@ -148,6 +151,8 @@ int RunServer(bool optimize) {
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
   options.enable_timestamp_duration_overflow_errors = true;
+  options.enable_heterogeneous_equality = true;
+  options.enable_empty_wrapper_null_unboxing = true;
 
   if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;

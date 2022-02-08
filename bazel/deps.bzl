@@ -49,8 +49,8 @@ def base_deps():
         sha256 = RE2_SHA256,
     )
 
-    PROTOBUF_VERSION = "3.18.0"
-    PROTOBUF_SHA = "14e8042b5da37652c92ef6a2759e7d2979d295f60afd7767825e3de68c856c54"
+    PROTOBUF_VERSION = "3.19.2"
+    PROTOBUF_SHA = "4dd35e788944b7686aac898f77df4e9a54da0ca694b8801bd6b2a9ffc1b3085e"
     http_archive(
         name = "com_google_protobuf",
         sha256 = PROTOBUF_SHA,
@@ -71,11 +71,13 @@ def parser_deps():
     """ANTLR dependency for the parser."""
     http_archive(
         name = "rules_antlr",
-        sha256 = "7249d1569293d9b239e23c65f6b4c81a07da921738bde0dfeb231ed98be40429",
-        strip_prefix = "rules_antlr-3cc2f9502a54ceb7b79b37383316b23c4da66f9a",
-        urls = ["https://github.com/marcohu/rules_antlr/archive/3cc2f9502a54ceb7b79b37383316b23c4da66f9a.tar.gz"],
+        sha256 = "26e6a83c665cf6c1093b628b3a749071322f0f70305d12ede30909695ed85591",
+        strip_prefix = "rules_antlr-0.5.0",
+        urls = ["https://github.com/marcohu/rules_antlr/archive/0.5.0.tar.gz"],
     )
 
+    ANTLR4_RUNTIME_GIT_SHA = "70b2edcf98eb612a92d3dbaedb2ce0b69533b0cb"  # Dec 7, 2021
+    ANTLR4_RUNTIME_SHA = ""
     http_archive(
         name = "antlr4_runtimes",
         build_file_content = """
@@ -87,9 +89,9 @@ cc_library(
     includes = ["runtime/Cpp/runtime/src"],
 )
   """,
-        sha256 = "46f5e1af5f4bd28ade55cb632f9a069656b31fc8c2408f9aa045f9b5f5caad64",
-        strip_prefix = "antlr4-4.7.2",
-        urls = ["https://github.com/antlr/antlr4/archive/4.7.2.tar.gz"],
+        sha256 = ANTLR4_RUNTIME_SHA,
+        strip_prefix = "antlr4-" + ANTLR4_RUNTIME_GIT_SHA,
+        urls = ["https://github.com/antlr/antlr4/archive/" + ANTLR4_RUNTIME_GIT_SHA + ".tar.gz"],
     )
 
 def flatbuffers_deps():

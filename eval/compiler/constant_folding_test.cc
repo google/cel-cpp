@@ -1,5 +1,7 @@
 #include "eval/compiler/constant_folding.h"
 
+#include <string>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/util/message_differencer.h"

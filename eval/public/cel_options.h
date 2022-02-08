@@ -114,6 +114,23 @@ struct InterpreterOptions {
   // absolutely enable the feature when using hand-written ASTs for
   // comprehension expressions.
   bool enable_comprehension_vulnerability_check = false;
+
+  // Enable coercing null cel values to messages in function resolution. This
+  // allows extension functions that previously depended on representing null
+  // values as nullptr messages to function.
+  //
+  // Note: This will be disabled by default in the future after clients that
+  // depend on the legacy function resolution are identified.
+  bool enable_null_to_message_coercion = true;
+
+  // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
+  bool enable_heterogeneous_equality = false;
+
+  // Enables unwrapping proto wrapper types to null if unset. e.g. if an
+  // expression access a field of type google.protobuf.Int64Value that is unset,
+  // that will result in a Null cel value, as opposed to returning the
+  // cel representation of the proto defined default int64_t: 0.
+  bool enable_empty_wrapper_null_unboxing = false;
 };
 
 }  // namespace google::api::expr::runtime

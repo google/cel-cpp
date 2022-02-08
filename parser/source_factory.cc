@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <string>
+#include <utility>
 
 #include "google/protobuf/struct.pb.h"
 #include "absl/container/flat_hash_set.h"

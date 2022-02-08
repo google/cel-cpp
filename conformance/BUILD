@@ -77,8 +77,6 @@ cc_binary(
             # Tests which require spec changes.
             # TODO(issues/93): Deprecate Duration.getMilliseconds.
             "--skip_test=timestamps/duration_converters/get_milliseconds",
-            # TODO(issues/128): Remove +-0 handling from spec as it is not handled consistently between Go, Java, and C++
-            "--skip_test=dynamic/float/field_assign_proto2_round_to_zero,field_assign_proto3_round_to_zero",
             # TODO(issues/110): Tune parse limits to mirror those for proto deserialization and C++ safety limits.
             "--skip_test=parse/nest/list_index,message_literal,funcall,list_literal,map_literal;repeat/conditional,add_sub,mul_div,select,index,map_literal,message_literal",
 
@@ -98,19 +96,15 @@ cc_binary(
             "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
             # TODO(issues/116): Debug why dynamic/list/var fails to JSON parse correctly.
             "--skip_test=dynamic/list/var",
-            # TODO(issues/109): Ensure that unset wrapper fields return 'null' rather than the default value of the wrapper.
-            "--skip_test=comparisons/eq_wrapper",
-            "--skip_test=dynamic/int32/field_read_proto2_unset,field_read_proto3_unset;uint32/field_read_proto2_unset;uint64/field_read_proto2_unset;float/field_read_proto2_unset,field_read_proto3_unset;double/field_read_proto2_unset,field_read_proto3_unset",
-            "--skip_test=proto2/empty_field/wkt",
-            "--skip_test=proto3/empty_field/wkt",
             # TODO(issues/117): Integer overflow on enum assignments should error.
             "--skip_test=enums/legacy_proto2/select_big,select_neg",
             # TODO(issues/127): Ensure overflow occurs on conversions of double values which might not work properly on all platforms.
             "--skip_test=conversions/int/double_int_min_range",
 
             # Future features for CEL 1.0
-            # TODO(issues/137): Heterogeneous null comparison support.
-            "--skip_test=comparisons/eq_literal/not_eq_dyn_bool_null,not_eq_dyn_bytes_null,not_eq_dyn_double_null,not_eq_dyn_duration_null,not_eq_dyn_int_null,not_eq_dyn_list_null,not_eq_dyn_map_null,not_eq_dyn_string_null,not_eq_dyn_timestamp_null",
+            # TODO(google/cel-spec/issues/225): These are supported comparisons with heterogeneous equality enabled.
+            "--skip_test=comparisons/eq_literal/eq_list_elem_mixed_types_error,eq_mixed_types_error",
+            "--skip_test=comparisons/ne_literal/ne_mixed_types_error",
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",

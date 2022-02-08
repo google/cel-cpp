@@ -1,6 +1,7 @@
 #include "common/operators.h"
 
 #include <memory>
+#include <string>
 
 namespace google {
 namespace api {

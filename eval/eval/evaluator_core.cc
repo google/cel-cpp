@@ -1,5 +1,7 @@
 #include "eval/eval/evaluator_core.h"
 
+#include <string>
+
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -152,7 +154,7 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
 
   ExecutionFrame frame(path_, activation, max_iterations_, state,
                        enable_unknowns_, enable_unknown_function_results_,
-                       enable_missing_attribute_errors_);
+                       enable_missing_attribute_errors_, enable_null_coercion_);
 
   EvaluatorStack* stack = &frame.value_stack();
   size_t initial_stack_size = stack->size();

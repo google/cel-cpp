@@ -119,6 +119,24 @@ class EvaluatorStack {
     attribute_stack_.reserve(size);
   }
 
+  // If overload resolution fails and some arguments are null, try coercing
+  // to message type nullptr.
+  // Returns true if any values are successfully converted.
+  bool CoerceNullValues(size_t size) {
+    if (!HasEnough(size)) {
+      GOOGLE_LOG(ERROR) << "Trying to coerce more elements (" << size
+                 << ") than the current stack size: " << current_size_;
+    }
+    bool updated = false;
+    for (size_t i = current_size_ - size; i < stack_.size(); i++) {
+      if (stack_[i].IsNull()) {
+        stack_[i] = CelValue::CreateNullMessage();
+        updated = true;
+      }
+    }
+    return updated;
+  }
+
  private:
   std::vector<CelValue> stack_;
   std::vector<AttributeTrail> attribute_stack_;

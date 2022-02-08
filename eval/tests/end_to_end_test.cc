@@ -1,6 +1,9 @@
+#include <string>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/text_format.h"
+#include "absl/status/status.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -19,11 +22,34 @@ namespace runtime {
 
 namespace {
 
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Arena;
-using google::protobuf::TextFormat;
+using ::google::protobuf::TextFormat;
+using cel::internal::StatusIs;
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::SourceInfo;
+// Simple one parameter function that records the message argument it receives.
+class RecordArgFunction : public CelFunction {
+ public:
+  explicit RecordArgFunction(const std::string& name,
+                             std::vector<CelValue>* output)
+      : CelFunction(
+            CelFunctionDescriptor{name, false, {CelValue::Type::kMessage}}),
+        output_(*output) {}
+
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+                        google::protobuf::Arena* arena) const override {
+    if (args.size() != 1) {
+      return absl::Status(absl::StatusCode::kInvalidArgument,
+                          "Bad arguments number");
+    }
+    output_.push_back(args.at(0));
+    *result = CelValue::CreateBool(true);
+    return absl::OkStatus();
+  }
+
+  std::vector<CelValue>& output_;
+};
 
 // Simple end-to-end test, which also serves as usage example.
 TEST(EndToEndTest, SimpleOnePlusOne) {
@@ -189,9 +215,82 @@ TEST(EndToEndTest, NullLiteral) {
   Arena arena;
   // Run evaluation.
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
-  google::protobuf::Value null_value;
-  null_value.set_null_value(protobuf::NULL_VALUE);
   ASSERT_TRUE(result.IsNull());
+}
+
+// Equivalent to 'RecordArg(test_message)'
+constexpr char kNullMessageHandlingExpr[] = R"pb(
+  id: 1
+  call_expr: <
+    function: "RecordArg"
+    args: <
+      ident_expr: < name: "test_message" >
+      id: 2
+    >
+  >
+)pb";
+
+TEST(EndToEndTest, LegacyNullMessageHandling) {
+  InterpreterOptions options;
+  options.enable_null_to_message_coercion = true;
+
+  Expr expr;
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(kNullMessageHandlingExpr, &expr));
+  SourceInfo info;
+
+  auto builder = CreateCelExpressionBuilder(options);
+  std::vector<CelValue> extension_calls;
+  ASSERT_OK(builder->GetRegistry()->Register(
+      absl::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder->CreateExpression(&expr, &info));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("test_message", CelValue::CreateNull());
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  bool result_value;
+  ASSERT_TRUE(result.GetValue(&result_value)) << result.DebugString();
+  ASSERT_TRUE(result_value);
+
+  ASSERT_THAT(extension_calls, testing::SizeIs(1));
+
+  ASSERT_TRUE(extension_calls[0].IsMessage());
+  ASSERT_TRUE(extension_calls[0].MessageOrDie() == nullptr);
+}
+
+TEST(EndToEndTest, StrictNullHandling) {
+  InterpreterOptions options;
+  options.enable_null_to_message_coercion = false;
+
+  Expr expr;
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(kNullMessageHandlingExpr, &expr));
+  SourceInfo info;
+
+  auto builder = CreateCelExpressionBuilder(options);
+  std::vector<CelValue> extension_calls;
+  ASSERT_OK(builder->GetRegistry()->Register(
+      absl::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder->CreateExpression(&expr, &info));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("test_message", CelValue::CreateNull());
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  const CelError* result_value;
+  ASSERT_TRUE(result.GetValue(&result_value)) << result.DebugString();
+  EXPECT_THAT(*result_value,
+              StatusIs(absl::StatusCode::kUnknown,
+                       testing::HasSubstr("No matching overloads")));
 }
 
 }  // namespace
