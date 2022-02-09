@@ -1,9 +1,35 @@
 steps:
-- name: 'gcr.io/cel-analysis/bazel:bionic-3.0.0'
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
   entrypoint: bazel
-  args: ['test', '--test_output=errors', '...']
+  args:
+  - '--output_base=/bazel'
+  - 'test'
+  - '--test_output=errors'
+  - '...'
   id: bazel-test
-  waitFor: ['-']
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
+  entrypoint: bazel
+  args:
+  - '--output_base=/bazel'
+  - 'test'
+  - '--config=asan'
+  - '--test_output=errors'
+  - '...'
+  id: bazel-asan
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
+  entrypoint: bazel
+  env:
+  - 'CC=gcc'
+  - 'CXX=g++'
+  args:
+  - '--output_base=/bazel'
+  - 'test'
+  - '--test_output=errors'
+  - '...'
+  id: bazel-gcc
 timeout: 1h
 options:
   machineType: 'N1_HIGHCPU_8'
+  volumes:
+  - name: bazel
+    path: /bazel

@@ -57,6 +57,7 @@ void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_desc
 
 const google::protobuf::Descriptor* CelTypeRegistry::FindDescriptor(
     absl::string_view fully_qualified_type_name) const {
+  // Public protobuf interface only accepts const string&.
   return google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
       std::string(fully_qualified_type_name));
 }
