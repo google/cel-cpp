@@ -1,8 +1,24 @@
 steps:
-- name: 'gcr.io/cel-analysis/bazel:bionic-3.0.0'
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
   entrypoint: bazel
   args: ['test', '--test_output=errors', '...']
+  env:
+  - 'CC=clang-12'
+  - 'CXX=clang++-12'
   id: bazel-test
+  waitFor: ['-']
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
+  entrypoint: bazel
+  args: ['test', '--test_output=errors', '...']
+  id: bazel-gcc
+  waitFor: ['-']
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
+  entrypoint: bazel
+  args: ['test', '--config=asan', '--test_output=errors', '...']
+  env:
+  - 'CC=clang-12'
+  - 'CXX=clang++-12'
+  id: bazel-asan
   waitFor: ['-']
 timeout: 1h
 options:
