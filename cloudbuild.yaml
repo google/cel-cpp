@@ -1,7 +1,11 @@
 steps:
-- name: 'gcr.io/cel-analysis/bazel:bionic-3.0.0'
+- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
   entrypoint: bazel
-  args: ['test', '--test_output=errors', '...']
+  args:
+  - '--output_base=/workspace/.bazel'
+  - 'test'
+  - '--test_output=errors'
+  - '...'
   id: bazel-test
   waitFor: ['-']
 timeout: 1h
