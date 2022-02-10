@@ -77,7 +77,7 @@ def parser_deps():
     )
 
     ANTLR4_RUNTIME_GIT_SHA = "70b2edcf98eb612a92d3dbaedb2ce0b69533b0cb"  # Dec 7, 2021
-    ANTLR4_RUNTIME_SHA = ""
+    ANTLR4_RUNTIME_SHA = "fae73909f95e1320701e29ac03bab9233293fb5b90d3ce857279f1b46b614c83"
     http_archive(
         name = "antlr4_runtimes",
         build_file_content = """
