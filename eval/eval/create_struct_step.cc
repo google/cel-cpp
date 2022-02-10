@@ -76,7 +76,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
   }
 
   const Message* prototype =
-      MessageFactory::generated_factory()->GetPrototype(descriptor_);
+      frame->message_factory()->GetPrototype(descriptor_);
 
   Message* msg =
       (prototype != nullptr) ? prototype->New(frame->arena()) : nullptr;

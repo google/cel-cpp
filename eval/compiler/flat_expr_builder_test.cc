@@ -16,15 +16,22 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/field_mask.pb.h"
+#include "google/protobuf/descriptor.pb.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/dynamic_message.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -32,6 +39,7 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_options.h"
@@ -60,6 +68,29 @@ using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
+
+inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =
+    "eval/testutil/"
+    "simple_test_message_proto-descriptor-set.proto.bin";
+
+template <class MessageClass>
+absl::Status ReadBinaryProtoFromDisk(absl::string_view file_name,
+                                     MessageClass& message) {
+  std::ifstream file;
+  file.open(file_name, std::fstream::in);
+  if (!file.is_open()) {
+    return absl::NotFoundError(absl::StrFormat("Failed to open file '%s': %s",
+                                               file_name, strerror(errno)));
+  }
+
+  if (!message.ParseFromIstream(&file)) {
+    return absl::InvalidArgumentError(
+        absl::StrFormat("Failed to parse proto of type '%s' from file '%s'",
+                        message.GetTypeName(), file_name));
+  }
+
+  return absl::OkStatus();
+}
 
 class ConcatFunction : public CelFunction {
  public:
@@ -1545,6 +1576,196 @@ TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
 
   EXPECT_THAT(result, test::IsCelInt64(0));
 }
+
+TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr parsed_expr,
+      parser::Parse("google.api.expr.runtime.SimpleTestMessage{}"));
+
+  // This time, the message is unknown. We only have the proto as data, we did
+  // not link the generated message, so it's not included in the generated pool.
+  FlatExprBuilder builder(google::protobuf::DescriptorPool::generated_pool(),
+                          google::protobuf::MessageFactory::generated_factory());
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+
+  // Now we create a custom DescriptorPool to which we add SimpleTestMessage
+  google::protobuf::DescriptorPool desc_pool;
+  google::protobuf::FileDescriptorSet filedesc_set;
+
+  ASSERT_OK(ReadBinaryProtoFromDisk(kSimpleTestMessageDescriptorSetFile,
+                                    filedesc_set));
+  ASSERT_EQ(filedesc_set.file_size(), 1);
+  desc_pool.BuildFile(filedesc_set.file(0));
+
+  google::protobuf::DynamicMessageFactory message_factory(&desc_pool);
+
+  // This time, the message is *known*. We are using a custom descriptor pool
+  // that has been primed with the relevant message.
+  FlatExprBuilder builder2(&desc_pool, &message_factory);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder2.CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsMessage());
+  EXPECT_EQ(result.MessageOrDie()->GetTypeName(),
+            "google.api.expr.runtime.SimpleTestMessage");
+}
+
+TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("message.int64_value"));
+
+  google::protobuf::DescriptorPool desc_pool;
+  google::protobuf::FileDescriptorSet filedesc_set;
+
+  ASSERT_OK(ReadBinaryProtoFromDisk(kSimpleTestMessageDescriptorSetFile,
+                                    filedesc_set));
+  ASSERT_EQ(filedesc_set.file_size(), 1);
+  desc_pool.BuildFile(filedesc_set.file(0));
+
+  google::protobuf::DynamicMessageFactory message_factory(&desc_pool);
+
+  const google::protobuf::Descriptor* desc = desc_pool.FindMessageTypeByName(
+      "google.api.expr.runtime.SimpleTestMessage");
+  const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
+  google::protobuf::Message* message = message_prototype->New();
+  const google::protobuf::Reflection* refl = message->GetReflection();
+  const google::protobuf::FieldDescriptor* field = desc->FindFieldByName("int64_value");
+  refl->SetInt64(message, field, 123);
+
+  // This time, the message is *known*. We are using a custom descriptor pool
+  // that has been primed with the relevant message.
+  FlatExprBuilder builder(&desc_pool, &message_factory);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test::IsCelInt64(123));
+
+  delete message;
+}
+
+std::pair<google::protobuf::Message*, const google::protobuf::Reflection*> CreateTestMessage(
+    const google::protobuf::DescriptorPool& descriptor_pool,
+    google::protobuf::MessageFactory& message_factory, absl::string_view message_type) {
+  const google::protobuf::Descriptor* desc =
+      descriptor_pool.FindMessageTypeByName(message_type);
+  const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
+  google::protobuf::Message* message = message_prototype->New();
+  const google::protobuf::Reflection* refl = message->GetReflection();
+  return std::make_pair(message, refl);
+}
+
+struct CustomDescriptorPoolTestParam final {
+  using SetterFunction =
+      std::function<void(google::protobuf::Message*, const google::protobuf::Reflection*,
+                         const google::protobuf::FieldDescriptor*)>;
+  std::string message_type;
+  std::string field_name;
+  SetterFunction setter;
+  test::CelValueMatcher matcher;
+};
+
+class CustomDescriptorPoolTest
+    : public ::testing::TestWithParam<CustomDescriptorPoolTestParam> {};
+
+// This test in particular checks for conversion errors in cel_proto_wrapper.cc.
+TEST_P(CustomDescriptorPoolTest, TestType) {
+  const CustomDescriptorPoolTestParam& p = GetParam();
+
+  google::protobuf::DescriptorPool descriptor_pool;
+  google::protobuf::Arena arena;
+
+  // Setup descriptor pool and builder
+  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(&descriptor_pool));
+  google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
+  FlatExprBuilder builder(&descriptor_pool, &message_factory);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  // Create test subject, invoke custom setter for message
+  auto [message, reflection] =
+      CreateTestMessage(descriptor_pool, message_factory, p.message_type);
+  const google::protobuf::FieldDescriptor* field =
+      message->GetDescriptor()->FindFieldByName(p.field_name);
+
+  p.setter(message, reflection, field);
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  // Evaluate expression, verify expectation with custom matcher
+  Activation activation;
+  activation.InsertValue("m", CelProtoWrapper::CreateMessage(message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  EXPECT_THAT(result, p.matcher);
+
+  delete message;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ValueTypes, CustomDescriptorPoolTest,
+    ::testing::ValuesIn(std::vector<CustomDescriptorPoolTestParam>{
+        {"google.protobuf.Duration", "seconds",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetInt64(message, field, 10);
+         },
+         test::IsCelDuration(absl::Seconds(10))},
+        {"google.protobuf.DoubleValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetDouble(message, field, 1.2);
+         },
+         test::IsCelDouble(1.2)},
+        {"google.protobuf.Int64Value", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetInt64(message, field, -23);
+         },
+         test::IsCelInt64(-23)},
+        {"google.protobuf.UInt64Value", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetUInt64(message, field, 42);
+         },
+         test::IsCelUint64(42)},
+        {"google.protobuf.BoolValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetBool(message, field, true);
+         },
+         test::IsCelBool(true)},
+        {"google.protobuf.StringValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetString(message, field, "foo");
+         },
+         test::IsCelString("foo")},
+        {"google.protobuf.BytesValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetString(message, field, "bar");
+         },
+         test::IsCelBytes("bar")},
+        {"google.protobuf.Timestamp", "seconds",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetInt64(message, field, 20);
+         },
+         test::IsCelTimestamp(absl::FromUnixSeconds(20))}}));
 
 }  // namespace
 

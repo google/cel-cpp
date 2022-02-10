@@ -44,7 +44,14 @@ const absl::flat_hash_set<const google::protobuf::EnumDescriptor*> GetCoreEnums(
 }  // namespace
 
 CelTypeRegistry::CelTypeRegistry()
-    : types_(GetCoreTypes()), enums_(GetCoreEnums()) {}
+    : descriptor_pool_(google::protobuf::DescriptorPool::generated_pool()),
+      types_(GetCoreTypes()),
+      enums_(GetCoreEnums()) {}
+
+CelTypeRegistry::CelTypeRegistry(const google::protobuf::DescriptorPool* descriptor_pool)
+    : descriptor_pool_(descriptor_pool),
+      types_(GetCoreTypes()),
+      enums_(GetCoreEnums()) {}
 
 void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
   // Registers the fully qualified type name as a CEL type.
@@ -58,7 +65,7 @@ void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_desc
 const google::protobuf::Descriptor* CelTypeRegistry::FindDescriptor(
     absl::string_view fully_qualified_type_name) const {
   // Public protobuf interface only accepts const string&.
-  return google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+  return descriptor_pool_->FindMessageTypeByName(
       std::string(fully_qualified_type_name));
 }
 

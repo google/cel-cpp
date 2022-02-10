@@ -1,7 +1,7 @@
 #include <string>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/conformance_service.pb.h"
+#include "google/api/expr/conformance/v1alpha1/conformance_service.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/eval.pb.h"
@@ -44,8 +44,8 @@ class ConformanceServiceImpl {
         proto3_tests_(&google::api::expr::test::v1::proto3::TestAllTypes::
                           default_instance()) {}
 
-  void Parse(const v1alpha1::ParseRequest* request,
-             v1alpha1::ParseResponse* response) {
+  void Parse(const conformance::v1alpha1::ParseRequest* request,
+             conformance::v1alpha1::ParseResponse* response) {
     if (request->cel_source().empty()) {
       auto issue = response->add_issues();
       issue->set_message("No source code");
@@ -64,15 +64,15 @@ class ConformanceServiceImpl {
     }
   }
 
-  void Check(const v1alpha1::CheckRequest* request,
-             v1alpha1::CheckResponse* response) {
+  void Check(const conformance::v1alpha1::CheckRequest* request,
+             conformance::v1alpha1::CheckResponse* response) {
     auto issue = response->add_issues();
     issue->set_message("Check is not supported");
     issue->set_code(google::rpc::Code::UNIMPLEMENTED);
   }
 
-  void Eval(const v1alpha1::EvalRequest* request,
-            v1alpha1::EvalResponse* response) {
+  void Eval(const conformance::v1alpha1::EvalRequest* request,
+            conformance::v1alpha1::EvalResponse* response) {
     const v1alpha1::Expr* expr = nullptr;
     if (request->has_parsed_expr()) {
       expr = &request->parsed_expr().expr();
@@ -190,8 +190,8 @@ int RunServer(bool optimize) {
     std::getline(std::cin, cmd);
     std::getline(std::cin, input);
     if (cmd == "parse") {
-      v1alpha1::ParseRequest request;
-      v1alpha1::ParseResponse response;
+      conformance::v1alpha1::ParseRequest request;
+      conformance::v1alpha1::ParseResponse response;
       if (!JsonStringToMessage(input, &request).ok()) {
         std::cerr << "Failed to parse JSON" << std::endl;
       }
@@ -200,8 +200,8 @@ int RunServer(bool optimize) {
         std::cerr << "Failed to convert to JSON" << std::endl;
       }
     } else if (cmd == "eval") {
-      v1alpha1::EvalRequest request;
-      v1alpha1::EvalResponse response;
+      conformance::v1alpha1::EvalRequest request;
+      conformance::v1alpha1::EvalResponse response;
       if (!JsonStringToMessage(input, &request).ok()) {
         std::cerr << "Failed to parse JSON" << std::endl;
       }

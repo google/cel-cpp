@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -69,8 +70,9 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
-                                 enable_unknowns);
+  CelExpressionFlatImpl cel_expr(
+      &expr1, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, enable_unknowns);
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -157,8 +159,9 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
                        CreateCreateStructStep(create_struct, expr1.id()));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
-                                 enable_unknowns);
+  CelExpressionFlatImpl cel_expr(
+      &expr1, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, enable_unknowns);
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -179,7 +182,9 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
                        CreateCreateStructStep(create_struct, desc, expr1.id()));
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {}, GetParam());
+  CelExpressionFlatImpl cel_expr(
+      &expr1, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, GetParam());
   Activation activation;
 
   google::protobuf::Arena arena;

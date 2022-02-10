@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
@@ -225,8 +226,9 @@ class FunctionStepTest
         break;
     }
     return absl::make_unique<CelExpressionFlatImpl>(
-        &dummy_expr_, std::move(path), 0, std::set<std::string>(), unknowns,
-        unknown_function_results);
+        &dummy_expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+        google::protobuf::MessageFactory::generated_factory(), 0, std::set<std::string>(),
+        unknowns, unknown_function_results);
   }
 
  private:
@@ -478,9 +480,10 @@ class FunctionStepTestUnknowns
         unknown_functions = false;
         break;
     }
-    return absl::make_unique<CelExpressionFlatImpl>(&expr_, std::move(path), 0,
-                                                    std::set<std::string>(),
-                                                    true, unknown_functions);
+    return absl::make_unique<CelExpressionFlatImpl>(
+        &expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+        google::protobuf::MessageFactory::generated_factory(), 0, std::set<std::string>(),
+        true, unknown_functions);
   }
 
  private:
@@ -629,7 +632,9 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
 
   Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {}, true, true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -678,7 +683,9 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
 
   Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {}, true, true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -727,7 +734,9 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
 
   Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {}, true, true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -771,7 +780,9 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
 
   Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {}, true, true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -871,9 +882,10 @@ TEST_F(FunctionStepNullCoercionTest, EnabledSupportsMessageOverloads) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
-                             true,
-                             /*enable_null_coercion=*/true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true, true,
+      /*enable_null_coercion=*/true);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
   ASSERT_TRUE(value.IsString());
@@ -895,9 +907,10 @@ TEST_F(FunctionStepNullCoercionTest, EnabledPrefersNullOverloads) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
-                             true,
-                             /*enable_null_coercion=*/true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true, true,
+      /*enable_null_coercion=*/true);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
   ASSERT_TRUE(value.IsString());
@@ -918,9 +931,10 @@ TEST_F(FunctionStepNullCoercionTest, EnabledNullMessageDoesNotEscape) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
-                             true,
-                             /*enable_null_coercion=*/true);
+  CelExpressionFlatImpl impl(
+      &dummy_expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true, true,
+      /*enable_null_coercion=*/true);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
   ASSERT_TRUE(value.IsNull());
@@ -941,9 +955,10 @@ TEST_F(FunctionStepNullCoercionTest, Disabled) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), 0, {}, true, true,
-                             true,
-                             /*enable_null_coercion=*/false);
+  CelExpressionFlatImpl impl(
+      &dummy_expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true, true, true,
+      /*enable_null_coercion=*/false);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
   ASSERT_TRUE(value.IsError());

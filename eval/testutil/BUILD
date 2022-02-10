@@ -21,3 +21,10 @@ cc_proto_library(
     name = "test_message_cc_proto",
     deps = [":test_message_protos"],
 )
+
+proto_library(
+    name = "simple_test_message_proto",
+    srcs = [
+        "simple_test_message.proto",
+    ],
+)

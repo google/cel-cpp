@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/activation.h"
@@ -66,7 +67,10 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false, false, true);
+  ExecutionFrame frame(path, activation,
+                       google::protobuf::DescriptorPool::generated_pool(),
+                       google::protobuf::MessageFactory::generated_factory(), 0, &state,
+                       false, false, false, true);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -84,7 +88,10 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   google::protobuf::Arena arena;
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false, false, true);
+  ExecutionFrame frame(path, activation,
+                       google::protobuf::DescriptorPool::generated_pool(),
+                       google::protobuf::MessageFactory::generated_factory(), 0, &state,
+                       false, false, false, true);
 
   CelValue original = CelValue::CreateInt64(test_value);
   Expr ident;
@@ -149,7 +156,10 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
 
   auto dummy_expr = absl::make_unique<Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0,
+                             {});
 
   Activation activation;
   google::protobuf::Arena arena;

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -54,7 +55,9 @@ CelValue EvaluateAttributeHelper(
       std::move(CreateIdentStep(&key_expr->ident_expr(), 2).value()));
   path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
 
-  CelExpressionFlatImpl cel_expr(&expr, std::move(path), 0, {}, enable_unknown);
+  CelExpressionFlatImpl cel_expr(
+      &expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, enable_unknown);
   Activation activation;
 
   activation.InsertValue("container", container);

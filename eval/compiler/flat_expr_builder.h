@@ -19,6 +19,7 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "eval/public/cel_expression.h"
 
@@ -28,8 +29,12 @@ namespace google::api::expr::runtime {
 // Builds instances of CelExpressionFlatImpl.
 class FlatExprBuilder : public CelExpressionBuilder {
  public:
-  FlatExprBuilder()
-      : enable_unknowns_(false),
+  explicit FlatExprBuilder(const google::protobuf::DescriptorPool* descriptor_pool =
+                               google::protobuf::DescriptorPool::generated_pool(),
+                           google::protobuf::MessageFactory* message_factory =
+                               google::protobuf::MessageFactory::generated_factory())
+      : CelExpressionBuilder(descriptor_pool),
+        enable_unknowns_(false),
         enable_unknown_function_results_(false),
         enable_missing_attribute_errors_(false),
         shortcircuiting_(true),
@@ -42,7 +47,9 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_comprehension_list_append_(false),
         enable_comprehension_vulnerability_check_(false),
         enable_null_coercion_(true),
-        enable_wrapper_type_null_unboxing_(false) {}
+        enable_wrapper_type_null_unboxing_(false),
+        descriptor_pool_(descriptor_pool),
+        message_factory_(message_factory) {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -172,6 +179,9 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_comprehension_vulnerability_check_;
   bool enable_null_coercion_;
   bool enable_wrapper_type_null_unboxing_;
+
+  const google::protobuf::DescriptorPool* descriptor_pool_;
+  google::protobuf::MessageFactory* message_factory_;
 };
 
 }  // namespace google::api::expr::runtime

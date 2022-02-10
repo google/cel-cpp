@@ -5,6 +5,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/ident_step.h"
@@ -58,8 +59,10 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
-                                 options.enable_unknowns);
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
+                                 google::protobuf::DescriptorPool::generated_pool(),
+                                 google::protobuf::MessageFactory::generated_factory(), 0,
+                                 {}, options.enable_unknowns);
   Activation activation;
   activation.InsertValue("target", target);
 
@@ -204,7 +207,9 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-  CelExpressionFlatImpl cel_expr(&select_expr, std::move(path), 0, {}, false);
+  CelExpressionFlatImpl cel_expr(
+      &select_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, false);
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -508,8 +513,9 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
 
   google::protobuf::Arena arena;
   bool enable_unknowns = GetParam();
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
-                                 enable_unknowns);
+  CelExpressionFlatImpl cel_expr(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, enable_unknowns);
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -542,8 +548,10 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
-                                 /*enable_unknowns=*/false);
+  CelExpressionFlatImpl cel_expr(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {},
+      /*enable_unknowns=*/false);
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -583,9 +591,10 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {}, false,
-                                 false,
-                                 /*enable_missing_attribute_errors=*/true);
+  CelExpressionFlatImpl cel_expr(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, false, false,
+      /*enable_missing_attribute_errors=*/true);
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -631,7 +640,9 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   path.push_back(*std::move(step0_status));
   path.push_back(*std::move(step1_status));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {}, true);
+  CelExpressionFlatImpl cel_expr(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {}, true);
 
   {
     std::vector<CelAttributePattern> unknown_patterns;

@@ -3,6 +3,7 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "eval/public/cel_value.h"
 #include "internal/proto_util.h"
 
@@ -35,9 +36,9 @@ class CelProtoWrapper {
   // message to native CelValue representation during a protobuf field read.
   // Just as CreateMessage should only be used when reading protobuf values,
   // MaybeWrapValue should only be used when assigning protobuf fields.
-  static absl::optional<CelValue> MaybeWrapValue(absl::string_view type_name,
-                                                 const CelValue& value,
-                                                 google::protobuf::Arena* arena);
+  static absl::optional<CelValue> MaybeWrapValue(
+      const google::protobuf::Descriptor* descriptor, const CelValue& value,
+      google::protobuf::Arena* arena);
 };
 
 }  // namespace google::api::expr::runtime

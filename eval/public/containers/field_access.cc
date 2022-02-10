@@ -572,13 +572,11 @@ class FieldSetter {
         break;
       }
       case FieldDescriptor::CPPTYPE_MESSAGE: {
-        const absl::string_view type_name =
-            field_desc_->message_type()->full_name();
         // When the field is a message, it might be a well-known type with a
         // non-proto representation that requires special handling before it
         // can be set on the field.
-        auto wrapped_value =
-            CelProtoWrapper::MaybeWrapValue(type_name, value, arena_);
+        auto wrapped_value = CelProtoWrapper::MaybeWrapValue(
+            field_desc_->message_type(), value, arena_);
         return AssignMessage(wrapped_value.value_or(value));
       }
       case FieldDescriptor::CPPTYPE_ENUM: {

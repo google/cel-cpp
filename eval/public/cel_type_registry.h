@@ -18,12 +18,14 @@ namespace google::api::expr::runtime {
 // within the standard CelExpressionBuilder.
 //
 // By default, all core CEL types and all linked protobuf message types are
-// implicitly registered by way of the generated descriptor pool. In the future,
-// such type registrations may be explicit to avoid accidentally exposing linked
-// protobuf types to CEL which were intended to remain internal.
+// implicitly registered by way of the generated descriptor pool. A descriptor
+// pool can be given to avoid accidentally exposing linked protobuf types to CEL
+// which were intended to remain internal or to operate on hermetic descriptor
+// pools.
 class CelTypeRegistry {
  public:
   CelTypeRegistry();
+  explicit CelTypeRegistry(const google::protobuf::DescriptorPool* descriptor_pool);
 
   ~CelTypeRegistry() {}
 
@@ -57,6 +59,7 @@ class CelTypeRegistry {
   }
 
  private:
+  const google::protobuf::DescriptorPool* descriptor_pool_;  // externally owned
   // pointer-stability is required for the strings in the types set, which is
   // why a node_hash_set is used instead of another container type.
   absl::node_hash_set<std::string> types_;

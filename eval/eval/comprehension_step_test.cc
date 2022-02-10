@@ -7,6 +7,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
@@ -44,7 +45,8 @@ class ListKeysStepTest : public testing::Test {
   std::unique_ptr<CelExpressionFlatImpl> MakeExpression(
       ExecutionPath&& path, bool unknown_attributes = false) {
     return std::make_unique<CelExpressionFlatImpl>(
-        &dummy_expr_, std::move(path), 0, std::set<std::string>(),
+        &dummy_expr_, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+        google::protobuf::MessageFactory::generated_factory(), 0, std::set<std::string>(),
         unknown_attributes, unknown_attributes);
   }
 

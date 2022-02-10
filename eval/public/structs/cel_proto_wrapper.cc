@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "google/protobuf/any.pb.h"
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
@@ -48,6 +49,7 @@ using google::protobuf::Arena;
 using google::protobuf::Descriptor;
 using google::protobuf::DescriptorPool;
 using google::protobuf::Message;
+using google::protobuf::MessageFactory;
 
 using google::api::expr::internal::EncodeTime;
 using google::protobuf::Any;
@@ -209,7 +211,9 @@ CelValue ValueFromMessage(const Struct* struct_value, Arena* arena) {
       Arena::Create<DynamicMap>(arena, struct_value, arena));
 }
 
-CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
+CelValue ValueFromMessage(const Any* any_value, Arena* arena,
+                          const DescriptorPool* descriptor_pool,
+                          MessageFactory* message_factory) {
   auto type_url = any_value->type_url();
   auto pos = type_url.find_last_of('/');
   if (pos == absl::string_view::npos) {
@@ -220,7 +224,7 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
 
   std::string full_name = std::string(type_url.substr(pos + 1));
   const Descriptor* nested_descriptor =
-      DescriptorPool::generated_pool()->FindMessageTypeByName(full_name);
+      descriptor_pool->FindMessageTypeByName(full_name);
 
   if (nested_descriptor == nullptr) {
     // Descriptor not found for the type
@@ -228,9 +232,7 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
     return CreateErrorValue(arena, "Descriptor not found");
   }
 
-  const Message* prototype =
-      google::protobuf::MessageFactory::generated_factory()->GetPrototype(
-          nested_descriptor);
+  const Message* prototype = message_factory->GetPrototype(nested_descriptor);
   if (prototype == nullptr) {
     // Failed to obtain prototype for the descriptor
     // TODO(issues/25) What error code?
@@ -245,6 +247,11 @@ CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
   }
 
   return CelProtoWrapper::CreateMessage(nested_message, arena);
+}
+
+CelValue ValueFromMessage(const Any* any_value, Arena* arena) {
+  return ValueFromMessage(any_value, arena, DescriptorPool::generated_pool(),
+                          MessageFactory::generated_factory());
 }
 
 CelValue ValueFromMessage(const BoolValue* wrapper, Arena*) {
@@ -314,80 +321,77 @@ class ValueFromMessageFactory {
                                                Arena* arena) const = 0;
 };
 
-// This template class has a good performance, but performes downcast
-// operations on google::protobuf::Message pointers.
-template <class MessageType>
-class CastingValueFromMessageFactory : public ValueFromMessageFactory {
- public:
-  const google::protobuf::Descriptor* GetDescriptor() const override {
-    return MessageType::descriptor();
-  }
-
-  absl::optional<CelValue> CreateValue(const google::protobuf::Message* msg,
-                                       Arena* arena) const override {
-    if (MessageType::descriptor() == msg->GetDescriptor()) {
-      const MessageType* message =
-          google::protobuf::DynamicCastToGenerated<const MessageType>(msg);
-      if (message == nullptr) {
-        auto message_copy = Arena::CreateMessage<MessageType>(arena);
-        message_copy->CopyFrom(*msg);
-        message = message_copy;
-      }
-      return ValueFromMessage(message, arena);
-    }
-    return absl::nullopt;
-  }
-};
-
 // Class makes CelValue from generic protobuf Message.
 // It holds a registry of CelValue factories for specific subtypes of Message.
 // If message does not match any of types stored in registry, generic
 // message-containing CelValue is created.
 class ValueFromMessageMaker {
  public:
-  explicit ValueFromMessageMaker() {
-    Add(absl::make_unique<CastingValueFromMessageFactory<Duration>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<Timestamp>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<Value>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<Struct>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<ListValue>>());
-
-    Add(absl::make_unique<CastingValueFromMessageFactory<Any>>());
-
-    Add(absl::make_unique<CastingValueFromMessageFactory<BoolValue>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<Int32Value>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<UInt32Value>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<Int64Value>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<UInt64Value>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<FloatValue>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<DoubleValue>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<StringValue>>());
-    Add(absl::make_unique<CastingValueFromMessageFactory<BytesValue>>());
+  template <class MessageType>
+  static absl::optional<CelValue> CreateWellknownTypeValue(
+      const google::protobuf::Message* msg, Arena* arena) {
+    const MessageType* message =
+        google::protobuf::DynamicCastToGenerated<const MessageType>(msg);
+    if (message == nullptr) {
+      auto message_copy = Arena::CreateMessage<MessageType>(arena);
+      if (MessageType::descriptor() == msg->GetDescriptor()) {
+        message_copy->CopyFrom(*msg);
+        message = message_copy;
+      } else {
+        // message of well-known type but from a descriptor pool other than the
+        // generated one.
+        std::string serialized_msg;
+        if (msg->SerializeToString(&serialized_msg) &&
+            message_copy->ParseFromString(serialized_msg)) {
+          message = message_copy;
+        }
+      }
+    }
+    return ValueFromMessage(message, arena);
   }
 
-  absl::optional<CelValue> CreateValue(const google::protobuf::Message* value,
-                                       Arena* arena) const {
-    auto it = factories_.find(value->GetDescriptor());
-    if (it == factories_.end()) {
-      // Not found for value->GetDescriptor()->name()
-      return absl::nullopt;
+  static absl::optional<CelValue> CreateValue(const google::protobuf::Message* message,
+                                              Arena* arena) {
+    switch (message->GetDescriptor()->well_known_type()) {
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE:
+        return CreateWellknownTypeValue<DoubleValue>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE:
+        return CreateWellknownTypeValue<FloatValue>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE:
+        return CreateWellknownTypeValue<Int64Value>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE:
+        return CreateWellknownTypeValue<UInt64Value>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE:
+        return CreateWellknownTypeValue<Int32Value>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE:
+        return CreateWellknownTypeValue<UInt32Value>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE:
+        return CreateWellknownTypeValue<StringValue>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE:
+        return CreateWellknownTypeValue<BytesValue>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
+        return CreateWellknownTypeValue<BoolValue>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
+        return CreateWellknownTypeValue<Any>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION:
+        return CreateWellknownTypeValue<Duration>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP:
+        return CreateWellknownTypeValue<Timestamp>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
+        return CreateWellknownTypeValue<Value>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
+        return CreateWellknownTypeValue<ListValue>(message, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
+        return CreateWellknownTypeValue<Struct>(message, arena);
+      // WELLKNOWNTYPE_FIELDMASK has no special CelValue type
+      default:
+        return absl::nullopt;
     }
-    return (it->second)->CreateValue(value, arena);
   }
 
   // Non-copyable, non-assignable
   ValueFromMessageMaker(const ValueFromMessageMaker&) = delete;
   ValueFromMessageMaker& operator=(const ValueFromMessageMaker&) = delete;
-
- private:
-  void Add(std::unique_ptr<ValueFromMessageFactory> factory) {
-    const Descriptor* desc = factory->GetDescriptor();
-    factories_.emplace(desc, std::move(factory));
-  }
-
-  absl::flat_hash_map<const google::protobuf::Descriptor*,
-                      std::unique_ptr<ValueFromMessageFactory>>
-      factories_;
 };
 
 absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue& value,
@@ -768,8 +772,8 @@ absl::optional<const google::protobuf::Message*> MessageFromValue(const CelValue
       }
     } break;
     case CelValue::Type::kMessage: {
-        any->PackFrom(*(value.MessageOrDie()));
-        return any;
+      any->PackFrom(*(value.MessageOrDie()));
+      return any;
     } break;
     default:
       break;
@@ -787,32 +791,6 @@ class MessageFromValueFactory {
       const CelValue& value, Arena* arena) const = 0;
 };
 
-// This template class has a good performance, but performes downcast
-// operations on google::protobuf::Message pointers.
-template <class MessageType>
-class CastingMessageFromValueFactory : public MessageFromValueFactory {
- public:
-  const google::protobuf::Descriptor* GetDescriptor() const override {
-    return MessageType::descriptor();
-  }
-
-  absl::optional<const google::protobuf::Message*> WrapMessage(
-      const CelValue& value, Arena* arena) const override {
-    // If the value is a message type, see if it is already of the proper type
-    // name, and return it directly.
-    if (value.IsMessage()) {
-      const auto* msg = value.MessageOrDie();
-      if (MessageType::descriptor() == msg->GetDescriptor()) {
-        return absl::nullopt;
-      }
-    }
-    // Otherwise, allocate an empty message type, and attempt to populate it
-    // using the proper MessageFromValue overload.
-    auto* msg_buffer = Arena::CreateMessage<MessageType>(arena);
-    return MessageFromValue(value, msg_buffer);
-  }
-};
-
 // MessageFromValueMaker makes a specific protobuf Message instance based on
 // the desired protobuf type name and an input CelValue.
 //
@@ -821,45 +799,67 @@ class CastingMessageFromValueFactory : public MessageFromValueFactory {
 // returns an absent value.
 class MessageFromValueMaker {
  public:
-  explicit MessageFromValueMaker() {
-    Add(absl::make_unique<CastingMessageFromValueFactory<Any>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<BoolValue>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<BytesValue>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<DoubleValue>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<Duration>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<FloatValue>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<ListValue>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<Int32Value>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<Int64Value>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<StringValue>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<Struct>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<Timestamp>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<UInt32Value>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<UInt64Value>>());
-    Add(absl::make_unique<CastingMessageFromValueFactory<Value>>());
-  }
   // Non-copyable, non-assignable
   MessageFromValueMaker(const MessageFromValueMaker&) = delete;
   MessageFromValueMaker& operator=(const MessageFromValueMaker&) = delete;
 
-  absl::optional<const google::protobuf::Message*> MaybeWrapMessage(
-      absl::string_view type_name, const CelValue& value, Arena* arena) const {
-    auto it = factories_.find(type_name);
-    if (it == factories_.end()) {
-      // Descriptor not found for type name.
-      return absl::nullopt;
+  template <class MessageType>
+  static absl::optional<const google::protobuf::Message*> WrapWellknownTypeMessage(
+      const CelValue& value, Arena* arena) {
+    // If the value is a message type, see if it is already of the proper type
+    // name, and return it directly.
+    if (value.IsMessage()) {
+      const auto* msg = value.MessageOrDie();
+      if (MessageType::descriptor()->well_known_type() ==
+          msg->GetDescriptor()->well_known_type()) {
+        return absl::nullopt;
+      }
     }
-    return (it->second)->WrapMessage(value, arena);
+    // Otherwise, allocate an empty message type, and attempt to populate it
+    // using the proper MessageFromValue overload.
+    auto* msg_buffer = Arena::CreateMessage<MessageType>(arena);
+    return MessageFromValue(value, msg_buffer);
   }
 
- private:
-  void Add(std::unique_ptr<MessageFromValueFactory> factory) {
-    const Descriptor* desc = factory->GetDescriptor();
-    factories_.emplace(desc->full_name(), std::move(factory));
+  static absl::optional<const google::protobuf::Message*> MaybeWrapMessage(
+      const google::protobuf::Descriptor* descriptor, const CelValue& value,
+      Arena* arena) {
+    switch (descriptor->well_known_type()) {
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_DOUBLEVALUE:
+        return WrapWellknownTypeMessage<DoubleValue>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_FLOATVALUE:
+        return WrapWellknownTypeMessage<FloatValue>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_INT64VALUE:
+        return WrapWellknownTypeMessage<Int64Value>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT64VALUE:
+        return WrapWellknownTypeMessage<UInt64Value>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_INT32VALUE:
+        return WrapWellknownTypeMessage<Int32Value>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_UINT32VALUE:
+        return WrapWellknownTypeMessage<UInt32Value>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_STRINGVALUE:
+        return WrapWellknownTypeMessage<StringValue>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_BYTESVALUE:
+        return WrapWellknownTypeMessage<BytesValue>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_BOOLVALUE:
+        return WrapWellknownTypeMessage<BoolValue>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_ANY:
+        return WrapWellknownTypeMessage<Any>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_DURATION:
+        return WrapWellknownTypeMessage<Duration>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_TIMESTAMP:
+        return WrapWellknownTypeMessage<Timestamp>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_VALUE:
+        return WrapWellknownTypeMessage<Value>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_LISTVALUE:
+        return WrapWellknownTypeMessage<ListValue>(value, arena);
+      case google::protobuf::Descriptor::WELLKNOWNTYPE_STRUCT:
+        return WrapWellknownTypeMessage<Struct>(value, arena);
+      // WELLKNOWNTYPE_FIELDMASK has no special CelValue type
+      default:
+        return absl::nullopt;
+    }
   }
-
-  absl::flat_hash_map<std::string, std::unique_ptr<MessageFromValueFactory>>
-      factories_;
 };
 
 }  // namespace
@@ -869,23 +869,22 @@ class MessageFromValueMaker {
 // this method contains type checking and downcasts.
 CelValue CelProtoWrapper::CreateMessage(const google::protobuf::Message* value,
                                         Arena* arena) {
-  static const ValueFromMessageMaker* maker = new ValueFromMessageMaker();
-
   // Messages are Nullable types
   if (value == nullptr) {
     return CelValue::CreateNull();
   }
 
-  auto special_value = maker->CreateValue(value, arena);
+  absl::optional<CelValue> special_value;
+
+  special_value = ValueFromMessageMaker::CreateValue(value, arena);
   return special_value.has_value() ? special_value.value()
                                    : CelValue::CreateMessage(value);
 }
 
 absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
-    absl::string_view type_name, const CelValue& value, Arena* arena) {
-  static const MessageFromValueMaker* maker = new MessageFromValueMaker();
-
-  auto msg = maker->MaybeWrapMessage(type_name, value, arena);
+    const google::protobuf::Descriptor* descriptor, const CelValue& value, Arena* arena) {
+  absl::optional<const google::protobuf::Message*> msg =
+      MessageFromValueMaker::MaybeWrapMessage(descriptor, value, arena);
   if (!msg.has_value()) {
     return absl::nullopt;
   }

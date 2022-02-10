@@ -14,6 +14,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -110,13 +111,17 @@ class ExecutionFrame {
   // arena serves as allocation manager during the expression evaluation.
 
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
-                 int max_iterations, CelExpressionFlatEvaluationState* state,
-                 bool enable_unknowns, bool enable_unknown_function_results,
+                 const google::protobuf::DescriptorPool* descriptor_pool,
+                 google::protobuf::MessageFactory* message_factory, int max_iterations,
+                 CelExpressionFlatEvaluationState* state, bool enable_unknowns,
+                 bool enable_unknown_function_results,
                  bool enable_missing_attribute_errors,
                  bool enable_null_coercion)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
+        descriptor_pool_(descriptor_pool),
+        message_factory_(message_factory),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
@@ -156,6 +161,11 @@ class ExecutionFrame {
   bool enable_null_coercion() const { return enable_null_coercion_; }
 
   google::protobuf::Arena* arena() { return state_->arena(); }
+  const google::protobuf::DescriptorPool* descriptor_pool() const {
+    return descriptor_pool_;
+  }
+  google::protobuf::MessageFactory* message_factory() const { return message_factory_; }
+
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
   }
@@ -215,6 +225,8 @@ class ExecutionFrame {
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath& execution_path_;
   const BaseActivation& activation_;
+  const google::protobuf::DescriptorPool* descriptor_pool_;
+  google::protobuf::MessageFactory* message_factory_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
@@ -235,7 +247,10 @@ class CelExpressionFlatImpl : public CelExpression {
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
   CelExpressionFlatImpl(ABSL_ATTRIBUTE_UNUSED const Expr* root_expr,
-                        ExecutionPath path, int max_iterations,
+                        ExecutionPath path,
+                        const google::protobuf::DescriptorPool* descriptor_pool,
+                        google::protobuf::MessageFactory* message_factory,
+                        int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
                         bool enable_unknown_function_results = false,
@@ -244,6 +259,8 @@ class CelExpressionFlatImpl : public CelExpression {
                         std::unique_ptr<Expr> rewritten_expr = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
         path_(std::move(path)),
+        descriptor_pool_(descriptor_pool),
+        message_factory_(message_factory),
         max_iterations_(max_iterations),
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
@@ -282,6 +299,8 @@ class CelExpressionFlatImpl : public CelExpression {
   // Maintain lifecycle of a modified expression.
   std::unique_ptr<Expr> rewritten_expr_;
   const ExecutionPath path_;
+  const google::protobuf::DescriptorPool* descriptor_pool_;
+  google::protobuf::MessageFactory* message_factory_;
   const int max_iterations_;
   const std::set<std::string> iter_variable_names_;
   bool enable_unknowns_;

@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "internal/status_macros.h"
@@ -31,7 +32,10 @@ TEST(IdentStepTest, TestIdentStep) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0,
+                             {});
 
   Activation activation;
   Arena arena;
@@ -59,7 +63,10 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0,
+                             {});
 
   Activation activation;
   Arena arena;
@@ -84,7 +91,9 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {},
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0, {},
                              /*enable_unknowns=*/false);
 
   Activation activation;
@@ -121,8 +130,11 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
 
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {}, false,
-                             false, /*enable_missing_attribute_errors=*/true);
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0, {},
+                             false, false,
+                             /*enable_missing_attribute_errors=*/true);
 
   Activation activation;
   Arena arena;
@@ -160,7 +172,10 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
   // Expression with unknowns enabled.
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {}, true);
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0, {},
+                             true);
 
   Activation activation;
   Arena arena;

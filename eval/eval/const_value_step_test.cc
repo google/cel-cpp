@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
@@ -32,7 +33,9 @@ absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
 
   google::api::expr::v1alpha1::Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {});
+  CelExpressionFlatImpl impl(
+      &dummy_expr, std::move(path), google::protobuf::DescriptorPool::generated_pool(),
+      google::protobuf::MessageFactory::generated_factory(), 0, {});
 
   Activation activation;
 

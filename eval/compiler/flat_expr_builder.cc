@@ -1056,10 +1056,11 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::unique_ptr<CelExpression> expression_impl =
       absl::make_unique<CelExpressionFlatImpl>(
-          expr, std::move(execution_path), comprehension_max_iterations_,
-          std::move(iter_variable_names), enable_unknowns_,
-          enable_unknown_function_results_, enable_missing_attribute_errors_,
-          enable_null_coercion_, std::move(rewrite_buffer));
+          expr, std::move(execution_path), descriptor_pool_, message_factory_,
+          comprehension_max_iterations_, std::move(iter_variable_names),
+          enable_unknowns_, enable_unknown_function_results_,
+          enable_missing_attribute_errors_, enable_null_coercion_,
+          std::move(rewrite_buffer));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

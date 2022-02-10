@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "google/protobuf/descriptor.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -40,8 +41,10 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     path.push_back(std::move(step));
 
     auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
-    CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {},
-                               enable_unknown);
+    CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                               google::protobuf::DescriptorPool::generated_pool(),
+                               google::protobuf::MessageFactory::generated_factory(), 0,
+                               {}, enable_unknown);
 
     Activation activation;
     activation.InsertValue("name0", arg0);
