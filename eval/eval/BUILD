@@ -403,6 +403,7 @@ cc_test(
         "//eval/public:cel_value",
         "//eval/public:unknown_function_result_set",
         "//eval/public/structs:cel_proto_wrapper",
+        "//eval/public/testing:matchers",
         "//eval/testutil:test_message_cc_proto",
         "//internal:status_macros",
         "//internal:testing",

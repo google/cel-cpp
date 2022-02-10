@@ -31,11 +31,14 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-// Non-strict functions are allowed to consume errors and UnknownSets. Currently
-// only the special function "@not_strictly_false" is allowed to do this.
-bool IsNonStrict(const std::string& name) {
-  return (name == builtin::kNotStrictlyFalse ||
-          name == builtin::kNotStrictlyFalseDeprecated);
+// Only non-strict functions are allowed to consume errors and unknown sets.
+bool IsNonStrict(const CelFunction& function) {
+  const CelFunctionDescriptor& descriptor = function.descriptor();
+  // Special case: built-in function "@not_strictly_false" is treated as
+  // non-strict.
+  return !descriptor.is_strict() ||
+         descriptor.name() == builtin::kNotStrictlyFalse ||
+         descriptor.name() == builtin::kNotStrictlyFalseDeprecated;
 }
 
 // Determine if the overload should be considered. Overloads that can consume
@@ -47,7 +50,7 @@ bool ShouldAcceptOverload(const CelFunction* function,
   }
   for (size_t i = 0; i < arguments.size(); i++) {
     if (arguments[i].IsUnknownSet() || arguments[i].IsError()) {
-      return IsNonStrict(function->descriptor().name());
+      return IsNonStrict(*function);
     }
   }
   return true;

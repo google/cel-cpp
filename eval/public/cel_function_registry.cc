@@ -14,6 +14,10 @@ absl::Status CelFunctionRegistry::Register(
         absl::StatusCode::kAlreadyExists,
         "CelFunction with specified parameters already registered");
   }
+  if (!ValidateNonStrictOverload(descriptor)) {
+    return absl::Status(absl::StatusCode::kAlreadyExists,
+                        "Only one overload is allowed for non-strict function");
+  }
 
   auto& overloads = functions_[descriptor.name()];
   overloads.static_overloads.push_back(std::move(function));
@@ -27,6 +31,10 @@ absl::Status CelFunctionRegistry::RegisterLazyFunction(
     return absl::Status(
         absl::StatusCode::kAlreadyExists,
         "CelFunction with specified parameters already registered");
+  }
+  if (!ValidateNonStrictOverload(descriptor)) {
+    return absl::Status(absl::StatusCode::kAlreadyExists,
+                        "Only one overload is allowed for non-strict function");
   }
   auto& overloads = functions_[descriptor.name()];
   LazyFunctionEntry entry = std::make_unique<LazyFunctionEntry::element_type>(
@@ -104,6 +112,29 @@ bool CelFunctionRegistry::DescriptorRegistered(
          !(FindLazyOverloads(descriptor.name(), descriptor.receiver_style(),
                              descriptor.types())
                .empty());
+}
+
+bool CelFunctionRegistry::ValidateNonStrictOverload(
+    const CelFunctionDescriptor& descriptor) const {
+  auto overloads = functions_.find(descriptor.name());
+  if (overloads == functions_.end()) {
+    return true;
+  }
+  const RegistryEntry& entry = overloads->second;
+  if (!descriptor.is_strict()) {
+    // If the newly added overload is a non-strict function, we require that
+    // there are no other overloads, which is not possible here.
+    return false;
+  }
+  // If the newly added overload is a strict function, we need to make sure
+  // that no previous overloads are registered non-strict. If the list of
+  // overload is not empty, we only need to check the first overload. This is
+  // because if the first overload is strict, other overloads must also be
+  // strict by the rule.
+  return (entry.static_overloads.empty() ||
+          entry.static_overloads[0]->descriptor().is_strict()) &&
+         (entry.lazy_overloads.empty() ||
+          entry.lazy_overloads[0]->first.is_strict());
 }
 
 }  // namespace google::api::expr::runtime

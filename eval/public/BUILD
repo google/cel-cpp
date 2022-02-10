@@ -589,6 +589,7 @@ cc_test(
         ":cel_function_registry",
         "//internal:status_macros",
         "//internal:testing",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
 )

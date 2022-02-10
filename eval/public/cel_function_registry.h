@@ -69,6 +69,10 @@ class CelFunctionRegistry {
   // Returns whether the descriptor is registered in either as a lazy funtion or
   // in the static functions.
   bool DescriptorRegistered(const CelFunctionDescriptor& descriptor) const;
+  // Returns true if after adding this function, the rule "a non-strict
+  // function should have only a single overload" will be preserved.
+  bool ValidateNonStrictOverload(const CelFunctionDescriptor& descriptor) const;
+
   using StaticFunctionEntry = std::unique_ptr<CelFunction>;
   using LazyFunctionEntry = std::unique_ptr<
       std::pair<CelFunctionDescriptor, std::unique_ptr<CelFunctionProvider>>>;

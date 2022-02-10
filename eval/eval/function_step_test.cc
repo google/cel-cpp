@@ -19,6 +19,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
@@ -123,11 +124,12 @@ class AddFunction : public CelFunction {
 
 class SinkFunction : public CelFunction {
  public:
-  explicit SinkFunction(CelValue::Type type)
-      : CelFunction(CreateDescriptor(type)) {}
+  explicit SinkFunction(CelValue::Type type, bool is_strict = true)
+      : CelFunction(CreateDescriptor(type, is_strict)) {}
 
-  static CelFunctionDescriptor CreateDescriptor(CelValue::Type type) {
-    return CelFunctionDescriptor{"Sink", false, {type}};
+  static CelFunctionDescriptor CreateDescriptor(CelValue::Type type,
+                                                bool is_strict = true) {
+    return CelFunctionDescriptor{"Sink", false, {type}, is_strict};
   }
 
   static Expr::Call MakeCall() {
@@ -964,6 +966,60 @@ TEST_F(FunctionStepNullCoercionTest, Disabled) {
   ASSERT_TRUE(value.IsError());
 }
 
-}  // namespace
+TEST(FunctionStepStrictnessTest,
+     IfFunctionStrictAndGivenUnknownSkipsInvocation) {
+  UnknownSet unknown_set;
+  CelFunctionRegistry registry;
+  ASSERT_OK(registry.Register(absl::make_unique<ConstFunction>(
+      CelValue::CreateUnknownSet(&unknown_set), "ConstUnknown")));
+  ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
+      CelValue::Type::kUnknownSet, /*is_strict=*/true)));
+  ExecutionPath path;
+  Expr::Call call0 = ConstFunction::MakeCall("ConstUnknown");
+  Expr::Call call1 = SinkFunction::MakeCall();
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step0,
+                       MakeTestFunctionStep(&call0, registry));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step1,
+                       MakeTestFunctionStep(&call1, registry));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  Expr placeholder_expr;
+  CelExpressionFlatImpl impl(&placeholder_expr, std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0, {},
+                             true, true);
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsUnknownSet());
+}
 
+TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
+  UnknownSet unknown_set;
+  CelFunctionRegistry registry;
+  ASSERT_OK(registry.Register(absl::make_unique<ConstFunction>(
+      CelValue::CreateUnknownSet(&unknown_set), "ConstUnknown")));
+  ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
+      CelValue::Type::kUnknownSet, /*is_strict=*/false)));
+  ExecutionPath path;
+  Expr::Call call0 = ConstFunction::MakeCall("ConstUnknown");
+  Expr::Call call1 = SinkFunction::MakeCall();
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step0,
+                       MakeTestFunctionStep(&call0, registry));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step1,
+                       MakeTestFunctionStep(&call1, registry));
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  Expr placeholder_expr;
+  CelExpressionFlatImpl impl(&placeholder_expr, std::move(path),
+                             google::protobuf::DescriptorPool::generated_pool(),
+                             google::protobuf::MessageFactory::generated_factory(), 0, {},
+                             true, true);
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
+  ASSERT_THAT(value, test::IsCelInt64(Eq(0)));
+}
+
+}  // namespace
 }  // namespace google::api::expr::runtime
