@@ -38,6 +38,26 @@ cc_test(
 )
 
 cc_library(
+    name = "memory_manager",
+    srcs = ["memory_manager.cc"],
+    hdrs = ["memory_manager.h"],
+    deps = [
+        "//base/internal:memory_manager",
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
+cc_test(
+    name = "memory_manager_test",
+    srcs = ["memory_manager_test.cc"],
+    deps = [
+        ":memory_manager",
+        "//base/internal:memory_manager",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
     name = "operators",
     srcs = ["operators.cc"],
     hdrs = ["operators.h"],
