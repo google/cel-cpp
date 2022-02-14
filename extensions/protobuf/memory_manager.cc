@@ -25,7 +25,9 @@ MemoryManager::AllocationResult<void*> ProtoMemoryManager::Allocate(
   if (arena_ != nullptr) {
     return {arena_->AllocateAligned(size, align), false};
   }
-  return {::operator new(size, static_cast<std::align_val_t>(align)), true};
+  return {
+      ::operator new(size, static_cast<std::align_val_t>(align), std::nothrow),
+      true};
 }
 
 void ProtoMemoryManager::Deallocate(void* pointer, size_t size, size_t align) {

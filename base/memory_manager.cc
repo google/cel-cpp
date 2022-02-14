@@ -27,7 +27,9 @@ namespace {
 class GlobalMemoryManager final : public MemoryManager {
  private:
   AllocationResult<void*> Allocate(size_t size, size_t align) override {
-    return {::operator new(size, static_cast<std::align_val_t>(align)), true};
+    return {::operator new(size, static_cast<std::align_val_t>(align),
+                           std::nothrow),
+            true};
   }
 
   void Deallocate(void* pointer, size_t size, size_t align) override {

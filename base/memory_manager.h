@@ -22,6 +22,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "base/internal/memory_manager.h"
 
 namespace cel {
@@ -43,22 +44,26 @@ class MemoryManager {
 
   virtual ~MemoryManager() = default;
 
-  // Allocates and constructs `T`.
-  //
-  // TODO(issues/5): mandate out of memory handling and return value?
+  // Allocates and constructs `T`. In the event of an allocation failure nullptr
+  // is returned.
   template <typename T, typename... Args>
   ManagedMemory<T> New(Args&&... args) ABSL_MUST_USE_RESULT {
-    auto [pointer, owned] = Allocate(sizeof(T), alignof(T));
+    size_t size = sizeof(T);
+    size_t align = alignof(T);
+    auto [pointer, owned] = Allocate(size, align);
+    if (ABSL_PREDICT_FALSE(pointer == nullptr)) {
+      return ManagedMemory<T>();
+    }
     ::new (pointer) T(std::forward<Args>(args)...);
-    if (!owned) {
-      if constexpr (!std::is_trivially_destructible_v<T>) {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+      if (!owned) {
         OwnDestructor(pointer,
                       &base_internal::MemoryManagerDestructor<T>::Destruct);
       }
     }
     return ManagedMemory<T>(reinterpret_cast<T*>(pointer),
                             base_internal::MemoryManagerDeleter<T>(
-                                owned ? this : nullptr, sizeof(T), alignof(T)));
+                                owned ? this : nullptr, size, align));
   }
 
  protected:
