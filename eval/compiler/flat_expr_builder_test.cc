@@ -63,10 +63,8 @@ using google::api::expr::v1alpha1::Expr;
 using google::api::expr::v1alpha1::ParsedExpr;
 using google::api::expr::v1alpha1::SourceInfo;
 
-using google::protobuf::FieldMask;
 using testing::Eq;
 using testing::HasSubstr;
-using cel::internal::IsOk;
 using cel::internal::StatusIs;
 
 inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =

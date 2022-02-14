@@ -15,7 +15,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
-using ::google::protobuf::FieldMask;
 using testing::Eq;
 
 using google::protobuf::Arena;

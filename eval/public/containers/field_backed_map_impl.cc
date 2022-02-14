@@ -44,7 +44,6 @@ namespace expr {
 namespace runtime {
 
 namespace {
-using google::protobuf::Arena;
 using google::protobuf::Descriptor;
 using google::protobuf::FieldDescriptor;
 using google::protobuf::MapValueConstRef;

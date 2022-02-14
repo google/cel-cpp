@@ -27,7 +27,6 @@ using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
 
 using testing::Eq;
-using testing::HasSubstr;
 using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
