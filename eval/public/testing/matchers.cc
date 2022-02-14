@@ -1,5 +1,7 @@
 #include "eval/public/testing/matchers.h"
 
+#include <utility>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
@@ -67,19 +69,19 @@ CelValueMatcher EqualsCelValue(const CelValue& v) {
 }
 
 CelValueMatcher IsCelBool(testing::Matcher<bool> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<bool>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<bool>(std::move(m)));
 }
 
 CelValueMatcher IsCelInt64(testing::Matcher<int64_t> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<int64_t>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<int64_t>(std::move(m)));
 }
 
 CelValueMatcher IsCelUint64(testing::Matcher<uint64_t> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<uint64_t>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<uint64_t>(std::move(m)));
 }
 
 CelValueMatcher IsCelDouble(testing::Matcher<double> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<double>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<double>(std::move(m)));
 }
 
 CelValueMatcher IsCelString(testing::Matcher<absl::string_view> m) {
@@ -93,15 +95,16 @@ CelValueMatcher IsCelBytes(testing::Matcher<absl::string_view> m) {
 }
 
 CelValueMatcher IsCelMessage(testing::Matcher<const google::protobuf::Message*> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<const google::protobuf::Message*>(m));
+  return CelValueMatcher(
+      new CelValueMatcherImpl<const google::protobuf::Message*>(std::move(m)));
 }
 
 CelValueMatcher IsCelDuration(testing::Matcher<absl::Duration> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<absl::Duration>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<absl::Duration>(std::move(m)));
 }
 
 CelValueMatcher IsCelTimestamp(testing::Matcher<absl::Time> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<absl::Time>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<absl::Time>(std::move(m)));
 }
 
 CelValueMatcher IsCelError(testing::Matcher<absl::Status> m) {
