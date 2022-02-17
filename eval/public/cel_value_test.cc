@@ -6,13 +6,18 @@
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "base/memory_manager.h"
+#include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
+#include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
 using testing::Eq;
+using cel::internal::StatusIs;
 
 class DummyMap : public CelMap {
  public:
@@ -272,11 +277,6 @@ TEST(CelValueTest, TestCelType) {
   CelValue value_unknown = CelValue::CreateUnknownSet(&unknown_set);
   EXPECT_THAT(value_unknown.type(), Eq(CelValue::Type::kUnknownSet));
   EXPECT_TRUE(value_unknown.ObtainCelType().IsUnknownSet());
-
-  CelValue missing_attribute_error =
-      CreateMissingAttributeError(&arena, "destination.ip");
-  EXPECT_TRUE(IsMissingAttributeError(missing_attribute_error));
-  EXPECT_TRUE(missing_attribute_error.ObtainCelType().IsError());
 }
 
 // This test verifies CelValue support of Unknown type.
@@ -294,10 +294,54 @@ TEST(CelValueTest, TestUnknownSet) {
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
 }
 
-TEST(CelValueTest, UnknownFunctionResultErrors) {
-  ::google::protobuf::Arena arena;
+TEST(CelValueTest, SpecialErrorFactories) {
+  google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  CelValue error = CreateNoSuchKeyError(manager, "key");
+  EXPECT_THAT(error, test::IsCelError(StatusIs(absl::StatusCode::kNotFound)));
+  EXPECT_TRUE(CheckNoSuchKeyError(error));
+
+  error = CreateNoSuchFieldError(manager, "field");
+  EXPECT_THAT(error, test::IsCelError(StatusIs(absl::StatusCode::kNotFound)));
+
+  error = CreateNoMatchingOverloadError(manager, "function");
+  EXPECT_THAT(error, test::IsCelError(StatusIs(absl::StatusCode::kUnknown)));
+  EXPECT_TRUE(CheckNoMatchingOverloadError(error));
+}
+
+TEST(CelValueTest, MissingAttributeErrorsDeprecated) {
+  google::protobuf::Arena arena;
+
+  CelValue missing_attribute_error =
+      CreateMissingAttributeError(&arena, "destination.ip");
+  EXPECT_TRUE(IsMissingAttributeError(missing_attribute_error));
+  EXPECT_TRUE(missing_attribute_error.ObtainCelType().IsError());
+}
+
+TEST(CelValueTest, MissingAttributeErrors) {
+  google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  CelValue missing_attribute_error =
+      CreateMissingAttributeError(manager, "destination.ip");
+  EXPECT_TRUE(IsMissingAttributeError(missing_attribute_error));
+  EXPECT_TRUE(missing_attribute_error.ObtainCelType().IsError());
+}
+
+TEST(CelValueTest, UnknownFunctionResultErrorsDeprecated) {
+  google::protobuf::Arena arena;
 
   CelValue value = CreateUnknownFunctionResultError(&arena, "message");
+  EXPECT_TRUE(value.IsError());
+  EXPECT_TRUE(IsUnknownFunctionResult(value));
+}
+
+TEST(CelValueTest, UnknownFunctionResultErrors) {
+  google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  CelValue value = CreateUnknownFunctionResultError(manager, "message");
   EXPECT_TRUE(value.IsError());
   EXPECT_TRUE(IsUnknownFunctionResult(value));
 }

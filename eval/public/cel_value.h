@@ -32,6 +32,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/memory_manager.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
@@ -529,12 +530,20 @@ class CelMap {
 // Utility method that generates CelValue containing CelError.
 // message an error message
 // error_code error code
-// position location of the error source in CEL expression string the Expr was
-// parsed from. -1, if the position can not be determined.
+CelValue CreateErrorValue(
+    cel::MemoryManager& manager ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::string_view message,
+    absl::StatusCode error_code = absl::StatusCode::kUnknown);
 CelValue CreateErrorValue(
     google::protobuf::Arena* arena, absl::string_view message,
-    absl::StatusCode error_code = absl::StatusCode::kUnknown,
-    int position = -1);
+    absl::StatusCode error_code = absl::StatusCode::kUnknown);
+
+// Utility method for generating a CelValue from an absl::Status.
+inline CelValue CreateErrorValue(cel::MemoryManager& manager
+                                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                 const absl::Status& status) {
+  return CreateErrorValue(manager, status.message(), status.code());
+}
 
 // Utility method for generating a CelValue from an absl::Status.
 inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
@@ -542,28 +551,39 @@ inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
   return CreateErrorValue(arena, status.message(), status.code());
 }
 
-CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena);
+// Create an error for failed overload resolution, optionally including the name
+// of the function.
+CelValue CreateNoMatchingOverloadError(cel::MemoryManager& manager
+                                           ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                       absl::string_view fn = "");
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
-                                       absl::string_view fn);
+                                       absl::string_view fn = "");
 bool CheckNoMatchingOverloadError(CelValue value);
 
+CelValue CreateNoSuchFieldError(cel::MemoryManager& manager
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                absl::string_view field = "");
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena,
                                 absl::string_view field = "");
 
+CelValue CreateNoSuchKeyError(cel::MemoryManager& manager
+                                  ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                              absl::string_view key);
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key);
+
 bool CheckNoSuchKeyError(CelValue value);
-
-ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
-CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
-                                 absl::string_view unknown_path);
-
-ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
-bool IsUnknownValueError(const CelValue& value);
 
 // Returns an error indicating that evaluation has accessed an attribute whose
 // value is undefined. For example, this may represent a field in a proto
 // message bound to the activation whose value can't be determined by the
 // hosting application.
+CelValue CreateMissingAttributeError(cel::MemoryManager& manager
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                     absl::string_view missing_attribute_path);
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
                                      absl::string_view missing_attribute_path);
 
@@ -572,6 +592,10 @@ bool IsMissingAttributeError(const CelValue& value);
 // Returns error indicating the result of the function is unknown. This is used
 // as a signal to create an unknown set if unknown function handling is opted
 // into.
+CelValue CreateUnknownFunctionResultError(cel::MemoryManager& manager
+                                              ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                          absl::string_view help_message);
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
                                           absl::string_view help_message);
 
@@ -580,6 +604,13 @@ CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
 // This is used as a signal to convert to an UnknownSet if the behavior is opted
 // into.
 bool IsUnknownFunctionResult(const CelValue& value);
+
+ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
+CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
+                                 absl::string_view unknown_path);
+
+ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
+bool IsUnknownValueError(const CelValue& value);
 
 }  // namespace google::api::expr::runtime
 
