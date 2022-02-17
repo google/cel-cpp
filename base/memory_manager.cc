@@ -39,9 +39,9 @@ class GlobalMemoryManager final : public MemoryManager {
 
 }  // namespace
 
-MemoryManager* MemoryManager::Global() {
+MemoryManager& MemoryManager::Global() {
   static MemoryManager* const instance = new GlobalMemoryManager();
-  return instance;
+  return *instance;
 }
 
 void MemoryManager::OwnDestructor(void* pointer, void (*destruct)(void*)) {

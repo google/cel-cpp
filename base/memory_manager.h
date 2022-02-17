@@ -40,14 +40,15 @@ using ManagedMemory =
 // different allocation strategies.
 class MemoryManager {
  public:
-  ABSL_ATTRIBUTE_PURE_FUNCTION static MemoryManager* Global();
+  ABSL_ATTRIBUTE_PURE_FUNCTION static MemoryManager& Global();
 
   virtual ~MemoryManager() = default;
 
   // Allocates and constructs `T`. In the event of an allocation failure nullptr
   // is returned.
   template <typename T, typename... Args>
-  ManagedMemory<T> New(Args&&... args) ABSL_MUST_USE_RESULT {
+  ManagedMemory<T> New(Args&&... args)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
     size_t size = sizeof(T);
     size_t align = alignof(T);
     auto [pointer, owned] = Allocate(size, align);

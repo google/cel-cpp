@@ -32,7 +32,7 @@ TEST(ProtoMemoryManager, ArenaConstructable) {
   ProtoMemoryManager memory_manager(&arena);
   EXPECT_TRUE(
       google::protobuf::Arena::is_arena_constructable<google::protobuf::Value>::value);
-  auto* object = NewInProtoArena<google::protobuf::Value>(&memory_manager);
+  auto* object = NewInProtoArena<google::protobuf::Value>(memory_manager);
   EXPECT_NE(object, nullptr);
 }
 
@@ -41,7 +41,7 @@ TEST(ProtoMemoryManager, NotArenaConstructable) {
   ProtoMemoryManager memory_manager(&arena);
   EXPECT_FALSE(
       google::protobuf::Arena::is_arena_constructable<NotArenaCompatible>::value);
-  auto* object = NewInProtoArena<NotArenaCompatible>(&memory_manager);
+  auto* object = NewInProtoArena<NotArenaCompatible>(memory_manager);
   EXPECT_NE(object, nullptr);
   EXPECT_CALL(*object, Delete());
 }
@@ -50,7 +50,7 @@ TEST(ProtoMemoryManagerNoArena, ArenaConstructable) {
   ProtoMemoryManager memory_manager(nullptr);
   EXPECT_TRUE(
       google::protobuf::Arena::is_arena_constructable<google::protobuf::Value>::value);
-  auto* object = NewInProtoArena<google::protobuf::Value>(&memory_manager);
+  auto* object = NewInProtoArena<google::protobuf::Value>(memory_manager);
   EXPECT_NE(object, nullptr);
   delete object;
 }
@@ -59,7 +59,7 @@ TEST(ProtoMemoryManagerNoArena, NotArenaConstructable) {
   ProtoMemoryManager memory_manager(nullptr);
   EXPECT_FALSE(
       google::protobuf::Arena::is_arena_constructable<NotArenaCompatible>::value);
-  auto* object = NewInProtoArena<NotArenaCompatible>(&memory_manager);
+  auto* object = NewInProtoArena<NotArenaCompatible>(memory_manager);
   EXPECT_NE(object, nullptr);
   EXPECT_CALL(*object, Delete());
   delete object;

@@ -240,7 +240,7 @@ CelValue CreateErrorValue(cel::MemoryManager& manager,
                           absl::StatusCode error_code) {
   // TODO(issues/5): assume arena-style allocator while migrating to new
   // value type.
-  CelError* error = NewInProtoArena<CelError>(&manager, error_code, message);
+  CelError* error = NewInProtoArena<CelError>(manager, error_code, message);
   return CelValue::CreateError(error);
 }
 
@@ -338,7 +338,7 @@ CelValue CreateMissingAttributeError(cel::MemoryManager& manager,
   // TODO(issues/5): assume arena-style allocator while migrating
   // to new value type.
   CelError* error = NewInProtoArena<CelError>(
-      &manager, absl::StatusCode::kInvalidArgument,
+      manager, absl::StatusCode::kInvalidArgument,
       absl::StrCat(kErrMissingAttribute, missing_attribute_path));
   error->SetPayload(kPayloadUrlMissingAttributePath,
                     absl::Cord(missing_attribute_path));
@@ -360,7 +360,7 @@ CelValue CreateUnknownFunctionResultError(cel::MemoryManager& manager,
   // TODO(issues/5): Assume arena-style allocation until new value type is
   // introduced
   CelError* error = NewInProtoArena<CelError>(
-      &manager, absl::StatusCode::kUnavailable,
+      manager, absl::StatusCode::kUnavailable,
       absl::StrCat("Unknown function result: ", help_message));
   error->SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
   return CelValue::CreateError(error);

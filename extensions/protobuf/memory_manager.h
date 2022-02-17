@@ -42,7 +42,7 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
 
   ProtoMemoryManager& operator=(ProtoMemoryManager&&) = delete;
 
-  google::protobuf::Arena* arena() const { return arena_; }
+  constexpr google::protobuf::Arena* arena() const { return arena_; }
 
  private:
   AllocationResult<void*> Allocate(size_t size, size_t align) override;
@@ -59,14 +59,13 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
 // is undefined. Unlike `MemoryManager::New`, this method supports arena-enabled
 // messages.
 template <typename T, typename... Args>
-ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManager* memory_manager,
+ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManager& memory_manager,
                                         Args&&... args) {
-  ABSL_ASSERT(memory_manager != nullptr);
 #if !defined(__GNUC__) || defined(__GXX_RTTI)
-  ABSL_ASSERT(dynamic_cast<ProtoMemoryManager*>(memory_manager) != nullptr);
+  ABSL_ASSERT(dynamic_cast<ProtoMemoryManager*>(&memory_manager) != nullptr);
 #endif
   return google::protobuf::Arena::Create<T>(
-      static_cast<ProtoMemoryManager*>(memory_manager)->arena(),
+      static_cast<ProtoMemoryManager&>(memory_manager).arena(),
       std::forward<Args>(args)...);
 }
 

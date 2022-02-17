@@ -26,7 +26,7 @@ struct TriviallyDestructible final {};
 
 TEST(GlobalMemoryManager, TriviallyDestructible) {
   EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
-  auto managed = MemoryManager::Global()->New<TriviallyDestructible>();
+  auto managed = MemoryManager::Global().New<TriviallyDestructible>();
   EXPECT_FALSE(base_internal::IsEmptyDeleter(managed.get_deleter()));
 }
 
@@ -38,7 +38,7 @@ struct NotTriviallyDestuctible final {
 
 TEST(GlobalMemoryManager, NotTriviallyDestuctible) {
   EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
-  auto managed = MemoryManager::Global()->New<NotTriviallyDestuctible>();
+  auto managed = MemoryManager::Global().New<NotTriviallyDestuctible>();
   EXPECT_FALSE(base_internal::IsEmptyDeleter(managed.get_deleter()));
   EXPECT_CALL(*managed, Delete());
 }
