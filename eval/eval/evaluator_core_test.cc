@@ -11,11 +11,13 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
+using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using testing::_;
@@ -86,6 +88,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
 
   Activation activation;
   google::protobuf::Arena arena;
+  ProtoMemoryManager manager(&arena);
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
   ExecutionFrame frame(path, activation,
@@ -98,9 +101,9 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   ident.mutable_ident_expr()->set_name("var");
 
   AttributeTrail original_trail =
-      AttributeTrail(ident, &arena)
+      AttributeTrail(ident, manager)
           .Step(CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                &arena);
+                manager);
   CelValue result;
   const AttributeTrail* trail;
 

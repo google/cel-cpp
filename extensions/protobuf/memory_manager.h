@@ -20,7 +20,10 @@
 #include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "base/memory_manager.h"
+#include "internal/casts.h"
 
 namespace cel::extensions {
 
@@ -43,6 +46,15 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
   ProtoMemoryManager& operator=(ProtoMemoryManager&&) = delete;
 
   constexpr google::protobuf::Arena* arena() const { return arena_; }
+
+  // Expose the underlying google::protobuf::Arena on a generic MemoryManager. This may
+  // only be called on an instance that is guaranteed to be a
+  // ProtoMemoryManager.
+  //
+  // Note: underlying arena may be null.
+  static google::protobuf::Arena* CastToProtoArena(MemoryManager& manager) {
+    return internal::down_cast<ProtoMemoryManager&>(manager).arena();
+  }
 
  private:
   AllocationResult<void*> Allocate(size_t size, size_t align) override;

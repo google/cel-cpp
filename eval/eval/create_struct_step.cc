@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -13,12 +14,14 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::extensions::ProtoMemoryManager;
 using ::google::protobuf::Descriptor;
 using ::google::protobuf::FieldDescriptor;
 using ::google::protobuf::Message;
@@ -64,6 +67,10 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
   absl::Span<const CelValue> args = frame->value_stack().GetSpan(entries_size);
 
+  // This implementation requires arena-backed memory manager.
+  google::protobuf::Arena* arena =
+      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
+
   if (frame->enable_unknowns()) {
     auto unknown_set = frame->attribute_utility().MergeUnknowns(
         args, frame->value_stack().GetAttributeSpan(entries_size),
@@ -78,12 +85,11 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
   const Message* prototype =
       frame->message_factory()->GetPrototype(descriptor_);
 
-  Message* msg =
-      (prototype != nullptr) ? prototype->New(frame->arena()) : nullptr;
+  Message* msg = (prototype != nullptr) ? prototype->New(arena) : nullptr;
 
   if (msg == nullptr) {
     *result = CreateErrorValue(
-        frame->arena(),
+        frame->memory_manager(),
         absl::Substitute("Failed to create message $0", descriptor_->name()));
     return absl::OkStatus();
   }
@@ -149,13 +155,13 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
         }
 
         Message* entry_msg = msg->GetReflection()->AddMessage(msg, entry.field);
-        status = SetValueToSingleField(key, key_field_descriptor, entry_msg,
-                                       frame->arena());
+        status =
+            SetValueToSingleField(key, key_field_descriptor, entry_msg, arena);
         if (!status.ok()) {
           break;
         }
         status = SetValueToSingleField(value.value(), value_field_descriptor,
-                                       entry_msg, frame->arena());
+                                       entry_msg, arena);
         if (!status.ok()) {
           break;
         }
@@ -165,7 +171,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
       const CelList* cel_list;
       if (!arg.GetValue<const CelList*>(&cel_list) || cel_list == nullptr) {
         *result = CreateErrorValue(
-            frame->arena(),
+            frame->memory_manager(),
             absl::Substitute(
                 "Failed to create message $0: value $1 is not CelList",
                 descriptor_->name(), entry.field->name()));
@@ -173,24 +179,24 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
       }
 
       for (int i = 0; i < cel_list->size(); i++) {
-        status = AddValueToRepeatedField((*cel_list)[i], entry.field, msg,
-                                         frame->arena());
+        status =
+            AddValueToRepeatedField((*cel_list)[i], entry.field, msg, arena);
         if (!status.ok()) break;
       }
     } else {
-      status = SetValueToSingleField(arg, entry.field, msg, frame->arena());
+      status = SetValueToSingleField(arg, entry.field, msg, arena);
     }
 
     if (!status.ok()) {
       *result = CreateErrorValue(
-          frame->arena(),
+          frame->memory_manager(),
           absl::Substitute("Failed to create message $0: reason $1",
                            descriptor_->name(), status.ToString()));
       return absl::OkStatus();
     }
   }
 
-  *result = CelProtoWrapper::CreateMessage(msg, frame->arena());
+  *result = CelProtoWrapper::CreateMessage(msg, arena);
 
   return absl::OkStatus();
 }
@@ -237,7 +243,7 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
       CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
           map_entries.data(), map_entries.size()));
   if (!cel_map.ok()) {
-    *result = CreateErrorValue(frame->arena(), cel_map.status());
+    *result = CreateErrorValue(frame->memory_manager(), cel_map.status());
     return absl::OkStatus();
   }
 
@@ -245,7 +251,11 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
   *result = CelValue::CreateMap(cel_map_ptr.get());
 
   // Pass object ownership to Arena.
-  frame->arena()->Own(cel_map_ptr.release());
+  // TODO(issues/5): Update CEL map implementation to tolerate generic
+  // allocation api.
+  google::protobuf::Arena* arena =
+      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
+  arena->Own(cel_map_ptr.release());
 
   return absl::OkStatus();
 }

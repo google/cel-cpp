@@ -15,12 +15,14 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/memory_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
@@ -29,6 +31,7 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
+#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 
@@ -93,13 +96,18 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   std::set<std::string>& iter_variable_names() { return iter_variable_names_; }
 
-  google::protobuf::Arena* arena() { return arena_; }
+  google::protobuf::Arena* arena() { return memory_manager_.arena(); }
+
+  cel::MemoryManager& memory_manager() { return memory_manager_; }
 
  private:
   EvaluatorStack value_stack_;
   std::set<std::string> iter_variable_names_;
   std::vector<IterFrame> iter_stack_;
-  google::protobuf::Arena* arena_;
+  // TODO(issues/5): State owns a ProtoMemoryManager to adapt from the client
+  // provided arena. In the future, clients will have to maintain the particular
+  // manager they want to use for evaluation.
+  cel::extensions::ProtoMemoryManager memory_manager_;
 };
 
 // ExecutionFrame provides context for expression evaluation.
@@ -128,7 +136,7 @@ class ExecutionFrame {
         enable_null_coercion_(enable_null_coercion),
         attribute_utility_(&activation.unknown_attribute_patterns(),
                            &activation.missing_attribute_patterns(),
-                           state->arena()),
+                           state->memory_manager()),
         max_iterations_(max_iterations),
         iterations_(0),
         state_(state) {}
@@ -160,7 +168,8 @@ class ExecutionFrame {
 
   bool enable_null_coercion() const { return enable_null_coercion_; }
 
-  google::protobuf::Arena* arena() { return state_->arena(); }
+  cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
+
   const google::protobuf::DescriptorPool* descriptor_pool() const {
     return descriptor_pool_;
   }

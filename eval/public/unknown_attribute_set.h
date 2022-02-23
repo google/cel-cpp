@@ -19,7 +19,8 @@ class UnknownAttributeSet {
   UnknownAttributeSet& operator=(const UnknownAttributeSet& other) = default;
 
   UnknownAttributeSet() {}
-  UnknownAttributeSet(const std::vector<const CelAttribute*>& attributes) {
+  explicit UnknownAttributeSet(
+      const std::vector<const CelAttribute*>& attributes) {
     attributes_.reserve(attributes.size());
     for (const auto& attr : attributes) {
       Add(attr);

@@ -8,6 +8,7 @@
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_value.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 
@@ -27,7 +28,7 @@ CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     google::protobuf::Arena* arena)
     : value_stack_(value_stack_size),
       iter_variable_names_(iter_variable_names),
-      arena_(arena) {}
+      memory_manager_(arena) {}
 
 void CelExpressionFlatEvaluationState::Reset() {
   iter_stack_.clear();

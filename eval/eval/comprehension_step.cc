@@ -95,7 +95,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
       return frame->JumpTo(error_jump_offset_);
     }
     frame->value_stack().Push(
-        CreateNoMatchingOverloadError(frame->arena(), "<iter_range>"));
+        CreateNoMatchingOverloadError(frame->memory_manager(), "<iter_range>"));
     return frame->JumpTo(error_jump_offset_);
   }
   const CelList* cel_list = iter_range.ListOrDie();
@@ -131,7 +131,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(CelValue::CreateInt64(current_index));
   auto iter_trail = iter_range_attr.Step(
       CelAttributeQualifier::Create(CelValue::CreateInt64(current_index)),
-      frame->arena());
+      frame->memory_manager());
   frame->value_stack().Push(current_value, iter_trail);
   CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, iter_trail));
   return absl::OkStatus();
@@ -168,8 +168,8 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     if (loop_condition_value.IsError() || loop_condition_value.IsUnknownSet()) {
       frame->value_stack().Push(loop_condition_value);
     } else {
-      frame->value_stack().Push(
-          CreateNoMatchingOverloadError(frame->arena(), "<loop_condition>"));
+      frame->value_stack().Push(CreateNoMatchingOverloadError(
+          frame->memory_manager(), "<loop_condition>"));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.

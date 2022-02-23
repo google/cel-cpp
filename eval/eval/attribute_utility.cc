@@ -59,7 +59,7 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
     if (result == nullptr) {
       result = current_set;
     } else {
-      result = Arena::Create<UnknownSet>(arena_, *result, *current_set);
+      result = memory_manager_.New<UnknownSet>(*result, *current_set).release();
     }
   }
 
@@ -97,9 +97,10 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
   if (!attr_set.attributes().empty()) {
     if (initial_set != nullptr) {
       initial_set =
-          Arena::Create<UnknownSet>(arena_, *initial_set, UnknownSet(attr_set));
+          memory_manager_.New<UnknownSet>(*initial_set, UnknownSet(attr_set))
+              .release();
     } else {
-      initial_set = Arena::Create<UnknownSet>(arena_, attr_set);
+      initial_set = memory_manager_.New<UnknownSet>(attr_set).release();
     }
   }
   return MergeUnknowns(args, initial_set);

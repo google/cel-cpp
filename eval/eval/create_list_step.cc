@@ -65,11 +65,15 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   CelList* cel_list;
   if (immutable_) {
-    cel_list = google::protobuf::Arena::Create<ContainerBackedListImpl>(
-        frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+    cel_list = frame->memory_manager()
+                   .New<ContainerBackedListImpl>(
+                       std::vector<CelValue>(args.begin(), args.end()))
+                   .release();
   } else {
-    cel_list = google::protobuf::Arena::Create<MutableListImpl>(
-        frame->arena(), std::vector<CelValue>(args.begin(), args.end()));
+    cel_list = frame->memory_manager()
+                   .New<MutableListImpl>(
+                       std::vector<CelValue>(args.begin(), args.end()))
+                   .release();
   }
   result = CelValue::CreateList(cel_list);
   frame->value_stack().Pop(list_size_);

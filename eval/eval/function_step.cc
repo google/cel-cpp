@@ -26,10 +26,14 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
+#include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using cel::extensions::ProtoMemoryManager;
 
 // Only non-strict functions are allowed to consume errors and unknown sets.
 bool IsNonStrict(const CelFunction& function) {
@@ -70,8 +74,9 @@ std::vector<CelValue> CheckForPartialUnknowns(
     auto attr_set = frame->attribute_utility().CheckForUnknowns(
         attrs.subspan(i, 1), /*use_partial=*/true);
     if (!attr_set.attributes().empty()) {
-      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(frame->arena(),
-                                                           std::move(attr_set));
+      auto unknown_set = frame->memory_manager()
+                             .New<UnknownSet>(std::move(attr_set))
+                             .release();
       result.push_back(CelValue::CreateUnknownSet(unknown_set));
     } else {
       result.push_back(args.at(i));
@@ -126,27 +131,19 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
   }
 
   // Derived class resolves to a single function overload or none.
-  auto status = ResolveFunction(input_args, frame);
-  if (!status.ok()) {
-    return status.status();
-  }
-  const CelFunction* matched_function = status.value();
+  CEL_ASSIGN_OR_RETURN(const CelFunction* matched_function,
+                       ResolveFunction(input_args, frame));
 
   // Overload found and is allowed to consume the arguments.
   if (ShouldAcceptOverload(matched_function, input_args)) {
-    absl::Status status =
-        matched_function->Evaluate(input_args, result, frame->arena());
-    if (!status.ok()) {
-      return status;
-    }
+    google::protobuf::Arena* arena =
+        ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
+    CEL_RETURN_IF_ERROR(matched_function->Evaluate(input_args, result, arena));
+
     if (frame->enable_unknown_function_results() &&
         IsUnknownFunctionResult(*result)) {
-      const auto* function_result =
-          google::protobuf::Arena::Create<UnknownFunctionResult>(
-              frame->arena(), matched_function->descriptor(), id(),
-              std::vector<CelValue>(input_args.begin(), input_args.end()));
-      const auto* unknown_set = google::protobuf::Arena::Create<UnknownSet>(
-          frame->arena(), UnknownFunctionResultSet(function_result));
+      auto unknown_set = frame->attribute_utility().CreateUnknownSet(
+          matched_function->descriptor(), id(), input_args);
       *result = CelValue::CreateUnknownSet(unknown_set);
     }
   } else {
@@ -173,7 +170,7 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
     }
 
     // If no errors or unknowns in input args, create new CelError.
-    *result = CreateNoMatchingOverloadError(frame->arena());
+    *result = CreateNoMatchingOverloadError(frame->memory_manager());
   }
 
   return absl::OkStatus();

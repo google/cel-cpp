@@ -51,7 +51,8 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
 
   CelValue result;
   if (!condition.IsBool()) {
-    result = CreateNoMatchingOverloadError(frame->arena(), builtin::kTernary);
+    result = CreateNoMatchingOverloadError(frame->memory_manager(),
+                                           builtin::kTernary);
   } else if (condition.BoolOrDie()) {
     result = args.at(1);
   } else {

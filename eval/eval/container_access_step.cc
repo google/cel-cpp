@@ -2,10 +2,10 @@
 
 #include <cstdint>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/memory_manager.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_value.h"
@@ -30,33 +30,33 @@ class ContainerAccessStep : public ExpressionStepBase {
 
   ValueAttributePair PerformLookup(ExecutionFrame* frame) const;
   CelValue LookupInMap(const CelMap* cel_map, const CelValue& key,
-                       google::protobuf::Arena* arena) const;
+                       cel::MemoryManager& manager) const;
   CelValue LookupInList(const CelList* cel_list, const CelValue& key,
-                        google::protobuf::Arena* arena) const;
+                        cel::MemoryManager& manager) const;
 };
 
-inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
-                                                 const CelValue& key,
-                                                 google::protobuf::Arena* arena) const {
+inline CelValue ContainerAccessStep::LookupInMap(
+    const CelMap* cel_map, const CelValue& key,
+    cel::MemoryManager& manager) const {
   auto status = CelValue::CheckMapKeyType(key);
   if (!status.ok()) {
-    return CreateErrorValue(arena, status);
+    return CreateErrorValue(manager, status);
   }
   absl::optional<CelValue> maybe_value = (*cel_map)[key];
   if (maybe_value.has_value()) {
     return maybe_value.value();
   }
-  return CreateNoSuchKeyError(arena, "Key not found in map");
+  return CreateNoSuchKeyError(manager, "Key not found in map");
 }
 
-inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
-                                                  const CelValue& key,
-                                                  google::protobuf::Arena* arena) const {
+inline CelValue ContainerAccessStep::LookupInList(
+    const CelList* cel_list, const CelValue& key,
+    cel::MemoryManager& manager) const {
   switch (key.type()) {
     case CelValue::Type::kInt64: {
       int64_t idx = key.Int64OrDie();
       if (idx < 0 || idx >= cel_list->size()) {
-        return CreateErrorValue(arena,
+        return CreateErrorValue(manager,
                                 absl::StrCat("Index error: index=", idx,
                                              " size=", cel_list->size()));
       }
@@ -64,8 +64,8 @@ inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
     }
     default: {
       return CreateErrorValue(
-          arena, absl::StrCat("Index error: expected integer type, got ",
-                              CelValue::TypeName(key.type())));
+          manager, absl::StrCat("Index error: expected integer type, got ",
+                                CelValue::TypeName(key.type())));
     }
   }
 }
@@ -92,12 +92,12 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
         frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments);
     auto container_trail = input_attrs[0];
     trail = container_trail.Step(CelAttributeQualifier::Create(key),
-                                 frame->arena());
+                                 frame->memory_manager());
 
     if (frame->attribute_utility().CheckForUnknown(trail,
                                                    /*use_partial=*/false)) {
-      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
-          frame->arena(), UnknownAttributeSet({trail.attribute()}));
+      auto unknown_set =
+          frame->attribute_utility().CreateUnknownSet(trail.attribute());
 
       return {CelValue::CreateUnknownSet(unknown_set), trail};
     }
@@ -113,17 +113,18 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
   switch (container.type()) {
     case CelValue::Type::kMap: {
       const CelMap* cel_map = container.MapOrDie();
-      return {LookupInMap(cel_map, key, frame->arena()), trail};
+      return {LookupInMap(cel_map, key, frame->memory_manager()), trail};
     }
     case CelValue::Type::kList: {
       const CelList* cel_list = container.ListOrDie();
-      return {LookupInList(cel_list, key, frame->arena()), trail};
+      return {LookupInList(cel_list, key, frame->memory_manager()), trail};
     }
     default: {
-      auto error = CreateErrorValue(
-          frame->arena(), absl::InvalidArgumentError(absl::StrCat(
-                              "Invalid container type: '",
-                              CelValue::TypeName(container.type()), "'")));
+      auto error =
+          CreateErrorValue(frame->memory_manager(),
+                           absl::InvalidArgumentError(absl::StrCat(
+                               "Invalid container type: '",
+                               CelValue::TypeName(container.type()), "'")));
       return {error, trail};
     }
   }
