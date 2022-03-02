@@ -94,19 +94,17 @@ class ManagedMemory final {
     std::swap(align_, other.align_);
   }
 
-  constexpr T& get() ABSL_ATTRIBUTE_LIFETIME_BOUND { return *ptr_; }
-
-  constexpr const T& get() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return *ptr_; }
-
-  constexpr T& operator*() ABSL_ATTRIBUTE_LIFETIME_BOUND { return get(); }
-
-  constexpr const T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return get();
+  constexpr T& get() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_ASSERT(static_cast<bool>(*this));
+    return *ptr_;
   }
 
-  constexpr T* operator->() { return ptr_; }
+  constexpr T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return get(); }
 
-  constexpr const T* operator->() const { return ptr_; }
+  constexpr T* operator->() const {
+    ABSL_ASSERT(static_cast<bool>(*this));
+    return ptr_;
+  }
 
   constexpr explicit operator bool() const { return ptr_ != nullptr; }
 
@@ -126,22 +124,22 @@ class ManagedMemory final {
 };
 
 template <typename T>
-bool operator==(const ManagedMemory<T>& lhs, std::nullptr_t) {
-  return lhs.get() == nullptr;
+constexpr bool operator==(const ManagedMemory<T>& lhs, std::nullptr_t) {
+  return !static_cast<bool>(lhs);
 }
 
 template <typename T>
-bool operator==(std::nullptr_t, const ManagedMemory<T>& rhs) {
-  return rhs.get() == nullptr;
+constexpr bool operator==(std::nullptr_t, const ManagedMemory<T>& rhs) {
+  return !static_cast<bool>(rhs);
 }
 
 template <typename T>
-bool operator!=(const ManagedMemory<T>& lhs, std::nullptr_t) {
+constexpr bool operator!=(const ManagedMemory<T>& lhs, std::nullptr_t) {
   return !operator==(lhs, nullptr);
 }
 
 template <typename T>
-bool operator!=(std::nullptr_t, const ManagedMemory<T>& rhs) {
+constexpr bool operator!=(std::nullptr_t, const ManagedMemory<T>& rhs) {
   return !operator==(nullptr, rhs);
 }
 
