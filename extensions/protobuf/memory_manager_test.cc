@@ -78,7 +78,6 @@ TEST(ProtoMemoryManager, TriviallyDestructible) {
   ProtoMemoryManager memory_manager(&arena);
   EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
   auto managed = memory_manager.New<TriviallyDestructible>();
-  EXPECT_TRUE(base_internal::IsEmptyDeleter(managed.get_deleter()));
 }
 
 TEST(ProtoMemoryManager, NotTriviallyDestuctible) {
@@ -86,7 +85,6 @@ TEST(ProtoMemoryManager, NotTriviallyDestuctible) {
   ProtoMemoryManager memory_manager(&arena);
   EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
   auto managed = memory_manager.New<NotTriviallyDestuctible>();
-  EXPECT_TRUE(base_internal::IsEmptyDeleter(managed.get_deleter()));
   EXPECT_CALL(*managed, Delete());
 }
 
@@ -94,14 +92,12 @@ TEST(ProtoMemoryManagerNoArena, TriviallyDestructible) {
   ProtoMemoryManager memory_manager(nullptr);
   EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
   auto managed = memory_manager.New<TriviallyDestructible>();
-  EXPECT_FALSE(base_internal::IsEmptyDeleter(managed.get_deleter()));
 }
 
 TEST(ProtoMemoryManagerNoArena, NotTriviallyDestuctible) {
   ProtoMemoryManager memory_manager(nullptr);
   EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
   auto managed = memory_manager.New<NotTriviallyDestuctible>();
-  EXPECT_FALSE(base_internal::IsEmptyDeleter(managed.get_deleter()));
   EXPECT_CALL(*managed, Delete());
 }
 

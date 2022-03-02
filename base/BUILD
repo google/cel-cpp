@@ -43,7 +43,10 @@ cc_library(
     hdrs = ["memory_manager.h"],
     deps = [
         "//base/internal:memory_manager",
+        "//internal:no_destructor",
+        "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
     ],
 )
 
@@ -52,7 +55,6 @@ cc_test(
     srcs = ["memory_manager_test.cc"],
     deps = [
         ":memory_manager",
-        "//base/internal:memory_manager",
         "//internal:testing",
     ],
 )

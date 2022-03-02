@@ -16,7 +16,6 @@
 
 #include <type_traits>
 
-#include "base/internal/memory_manager.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -27,7 +26,6 @@ struct TriviallyDestructible final {};
 TEST(GlobalMemoryManager, TriviallyDestructible) {
   EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
   auto managed = MemoryManager::Global().New<TriviallyDestructible>();
-  EXPECT_FALSE(base_internal::IsEmptyDeleter(managed.get_deleter()));
 }
 
 struct NotTriviallyDestuctible final {
@@ -39,44 +37,7 @@ struct NotTriviallyDestuctible final {
 TEST(GlobalMemoryManager, NotTriviallyDestuctible) {
   EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
   auto managed = MemoryManager::Global().New<NotTriviallyDestuctible>();
-  EXPECT_FALSE(base_internal::IsEmptyDeleter(managed.get_deleter()));
   EXPECT_CALL(*managed, Delete());
-}
-
-class BadMemoryManager final : public MemoryManager {
- private:
-  AllocationResult<void*> Allocate(size_t size, size_t align) override {
-    // Return {..., false}, indicating that this was an arena allocation when it
-    // is not, causing OwnDestructor to be called and abort.
-    return {::operator new(size, static_cast<std::align_val_t>(align)), false};
-  }
-
-  void Deallocate(void* pointer, size_t size, size_t align) override {
-    ::operator delete(pointer, size, static_cast<std::align_val_t>(align));
-  }
-};
-
-TEST(BadMemoryManager, OwnDestructorAborts) {
-  BadMemoryManager memory_manager;
-  EXPECT_EXIT(static_cast<void>(memory_manager.New<NotTriviallyDestuctible>()),
-              testing::KilledBySignal(SIGABRT), "");
-}
-
-class BadArenaMemoryManager final : public ArenaMemoryManager {
- private:
-  AllocationResult<void*> Allocate(size_t size, size_t align) override {
-    // Return {..., false}, indicating that this was an arena allocation when it
-    // is not, causing OwnDestructor to be called and abort.
-    return {::operator new(size, static_cast<std::align_val_t>(align)), true};
-  }
-
-  void OwnDestructor(void* pointer, void (*destructor)(void*)) override {}
-};
-
-TEST(BadArenaMemoryManager, DeallocateAborts) {
-  BadArenaMemoryManager memory_manager;
-  EXPECT_EXIT(static_cast<void>(memory_manager.New<NotTriviallyDestuctible>()),
-              testing::KilledBySignal(SIGABRT), "");
 }
 
 }  // namespace

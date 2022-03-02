@@ -34,8 +34,9 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
  public:
   // Passing a nullptr is highly discouraged, but supported for backwards
   // compatibility. If `arena` is a nullptr, `ProtoMemoryManager` acts like
-  // `MemoryManager::Default()`.
-  explicit ProtoMemoryManager(google::protobuf::Arena* arena) : arena_(arena) {}
+  // `MemoryManager::Default()` and then must outlive all allocations.
+  explicit ProtoMemoryManager(google::protobuf::Arena* arena)
+      : ArenaMemoryManager(arena != nullptr), arena_(arena) {}
 
   ProtoMemoryManager(const ProtoMemoryManager&) = delete;
 
@@ -73,11 +74,8 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
 template <typename T, typename... Args>
 ABSL_MUST_USE_RESULT T* NewInProtoArena(MemoryManager& memory_manager,
                                         Args&&... args) {
-#if !defined(__GNUC__) || defined(__GXX_RTTI)
-  ABSL_ASSERT(dynamic_cast<ProtoMemoryManager*>(&memory_manager) != nullptr);
-#endif
   return google::protobuf::Arena::Create<T>(
-      static_cast<ProtoMemoryManager&>(memory_manager).arena(),
+      ProtoMemoryManager::CastToProtoArena(memory_manager),
       std::forward<Args>(args)...);
 }
 

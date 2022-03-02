@@ -23,18 +23,127 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
-#include "base/internal/memory_manager.h"
+#include "base/internal/memory_manager.h"  // IWYU pragma: export
 
 namespace cel {
 
+class MemoryManager;
+class ArenaMemoryManager;
+
 // `ManagedMemory` is a smart pointer which ensures any applicable object
-// destructors and deallocation are eventually performed upon its destruction.
-// While `ManagedManager` is derived from `std::unique_ptr`, it does not make
-// any guarantees that destructors and deallocation are run immediately upon its
-// destruction, just that they will eventually be performed.
+// destructors and deallocation are eventually performed. Copying does not
+// actually copy the underlying T, instead a pointer is copied and optionally
+// reference counted. Moving does not actually move the underlying T, instead a
+// pointer is moved.
+//
+// TODO(issues/5): consider feature parity with std::unique_ptr<T>
 template <typename T>
-using ManagedMemory =
-    std::unique_ptr<T, base_internal::MemoryManagerDeleter<T>>;
+class ManagedMemory final {
+ public:
+  ManagedMemory() = default;
+
+  ManagedMemory(const ManagedMemory<T>& other)
+      : ptr_(other.ptr_), size_(other.size_), align_(other.align_) {
+    Ref();
+  }
+
+  ManagedMemory(ManagedMemory<T>&& other)
+      : ptr_(other.ptr_), size_(other.size_), align_(other.align_) {
+    other.ptr_ = nullptr;
+    other.size_ = other.align_ = 0;
+  }
+
+  ~ManagedMemory() { Unref(); }
+
+  ManagedMemory<T>& operator=(const ManagedMemory<T>& other) {
+    if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
+      other.Ref();
+      Unref();
+      ptr_ = other.ptr_;
+      size_ = other.size_;
+      align_ = other.align_;
+    }
+    return *this;
+  }
+
+  ManagedMemory<T>& operator=(ManagedMemory<T>&& other) {
+    if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
+      reset();
+      swap(other);
+    }
+    return *this;
+  }
+
+  T* release() {
+    ABSL_ASSERT(size_ == 0);
+    T* ptr = ptr_;
+    ptr_ = nullptr;
+    size_ = align_ = 0;
+    return ptr;
+  }
+
+  void reset() {
+    Unref();
+    ptr_ = nullptr;
+    size_ = align_ = 0;
+  }
+
+  void swap(ManagedMemory<T>& other) {
+    std::swap(ptr_, other.ptr_);
+    std::swap(size_, other.size_);
+    std::swap(align_, other.align_);
+  }
+
+  constexpr T& get() ABSL_ATTRIBUTE_LIFETIME_BOUND { return *ptr_; }
+
+  constexpr const T& get() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return *ptr_; }
+
+  constexpr T& operator*() ABSL_ATTRIBUTE_LIFETIME_BOUND { return get(); }
+
+  constexpr const T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return get();
+  }
+
+  constexpr T* operator->() { return ptr_; }
+
+  constexpr const T* operator->() const { return ptr_; }
+
+  constexpr explicit operator bool() const { return ptr_ != nullptr; }
+
+ private:
+  friend class MemoryManager;
+
+  constexpr ManagedMemory(T* ptr, size_t size, size_t align)
+      : ptr_(ptr), size_(size), align_(align) {}
+
+  void Ref() const;
+
+  void Unref() const;
+
+  T* ptr_ = nullptr;
+  size_t size_ = 0;
+  size_t align_ = 0;
+};
+
+template <typename T>
+bool operator==(const ManagedMemory<T>& lhs, std::nullptr_t) {
+  return lhs.get() == nullptr;
+}
+
+template <typename T>
+bool operator==(std::nullptr_t, const ManagedMemory<T>& rhs) {
+  return rhs.get() == nullptr;
+}
+
+template <typename T>
+bool operator!=(const ManagedMemory<T>& lhs, std::nullptr_t) {
+  return !operator==(lhs, nullptr);
+}
+
+template <typename T>
+bool operator!=(std::nullptr_t, const ManagedMemory<T>& rhs) {
+  return !operator==(nullptr, rhs);
+}
 
 // `MemoryManager` is an abstraction over memory management that supports
 // different allocation strategies.
@@ -47,47 +156,78 @@ class MemoryManager {
   // Allocates and constructs `T`. In the event of an allocation failure nullptr
   // is returned.
   template <typename T, typename... Args>
-  ManagedMemory<T> New(Args&&... args)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
+  std::enable_if_t<std::is_constructible_v<T, Args...>, ManagedMemory<T>> New(
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
     size_t size = sizeof(T);
     size_t align = alignof(T);
-    auto [pointer, owned] = Allocate(size, align);
-    if (ABSL_PREDICT_FALSE(pointer == nullptr)) {
-      return ManagedMemory<T>();
-    }
-    ::new (pointer) T(std::forward<Args>(args)...);
-    if constexpr (!std::is_trivially_destructible_v<T>) {
-      if (!owned) {
-        OwnDestructor(pointer,
-                      &base_internal::MemoryManagerDestructor<T>::Destruct);
+    void* pointer = AllocateInternal(size, align);
+    if (ABSL_PREDICT_TRUE(pointer != nullptr)) {
+      ::new (pointer) T(std::forward<Args>(args)...);
+      if constexpr (!std::is_trivially_destructible_v<T>) {
+        if (allocation_only_) {
+          OwnDestructor(pointer,
+                        &base_internal::MemoryManagerDestructor<T>::Destruct);
+        }
       }
     }
-    return ManagedMemory<T>(reinterpret_cast<T*>(pointer),
-                            base_internal::MemoryManagerDeleter<T>(
-                                owned ? this : nullptr, size, align));
+    return ManagedMemory<T>(reinterpret_cast<T*>(pointer), size, align);
   }
 
  protected:
+  MemoryManager() : MemoryManager(false) {}
+
   template <typename Pointer>
   struct AllocationResult final {
     Pointer pointer = nullptr;
-    // If true, the responsibility of deallocating and destructing `pointer` is
-    // passed to the caller of `Allocate`.
-    bool owned = false;
   };
 
  private:
   template <typename T>
-  friend class base_internal::MemoryManagerDeleter;
+  friend class ManagedMemory;
+  friend class ArenaMemoryManager;
 
-  // Delete a previous `New()` result when `AllocationResult::owned` is true.
+  // Only for use by ArenaMemoryManager.
+  explicit MemoryManager(bool allocation_only)
+      : allocation_only_(allocation_only) {}
+
+  void* AllocateInternal(size_t& size, size_t& align);
+
+  static void DeallocateInternal(void* pointer, size_t size, size_t align);
+
+  // Potentially increment the reference count in the control block for the
+  // previously allocated memory from `New()`. This is intended to be called
+  // from `ManagedMemory<T>`.
+  //
+  // If size is 0, then the allocation was arena-based.
+  static void Ref(const void* pointer, size_t size, size_t align);
+
+  // Potentially decrement the reference count in the control block for the
+  // previously allocated memory from `New()`. Returns true if `Delete()` should
+  // be called.
+  //
+  // If size is 0, then the allocation was arena-based and this call is a noop.
+  static bool UnrefInternal(const void* pointer, size_t size, size_t align);
+
+  // Delete a previous `New()` result when `allocation_only_` is false.
   template <typename T>
-  void Delete(T* pointer, size_t size, size_t align) {
-    if (pointer != nullptr) {
-      if constexpr (!std::is_trivially_destructible_v<T>) {
-        pointer->~T();
-      }
-      Deallocate(pointer, size, align);
+  static void Delete(T* pointer, size_t size, size_t align) {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+      pointer->~T();
+    }
+    DeallocateInternal(
+        static_cast<void*>(const_cast<std::remove_const_t<T>*>(pointer)), size,
+        align);
+  }
+
+  // Potentially decrement the reference count in the control block and
+  // deallocate the memory for the previously allocated memory from `New()`.
+  // This is intended to be called from `ManagedMemory<T>`.
+  //
+  // If size is 0, then the allocation was arena-based and this call is a noop.
+  template <typename T>
+  static void Unref(T* pointer, size_t size, size_t align) {
+    if (UnrefInternal(pointer, size, align)) {
+      Delete(pointer, size, align);
     }
   }
 
@@ -115,11 +255,37 @@ class MemoryManager {
   //
   // This method is only valid for arena memory managers.
   virtual void OwnDestructor(void* pointer, void (*destruct)(void*));
+
+  const bool allocation_only_;
 };
+
+template <typename T>
+void ManagedMemory<T>::Ref() const {
+  MemoryManager::Ref(ptr_, size_, align_);
+}
+
+template <typename T>
+void ManagedMemory<T>::Unref() const {
+  MemoryManager::Unref(ptr_, size_, align_);
+}
+
+namespace extensions {
+class ProtoMemoryManager;
+}
 
 // Base class for all arena-based memory managers.
 class ArenaMemoryManager : public MemoryManager {
+ protected:
+  ArenaMemoryManager() : ArenaMemoryManager(true) {}
+
  private:
+  friend class extensions::ProtoMemoryManager;
+
+  // Private so that only ProtoMemoryManager can use it for legacy reasons. All
+  // other derivations of ArenaMemoryManager should be allocation-only.
+  explicit ArenaMemoryManager(bool allocation_only)
+      : MemoryManager(allocation_only) {}
+
   // Default implementation calls std::abort(). If you have a special case where
   // you support deallocating individual allocations, override this.
   void Deallocate(void* pointer, size_t size, size_t align) override;
@@ -127,18 +293,6 @@ class ArenaMemoryManager : public MemoryManager {
   // OwnDestructor is typically required for arena-based memory managers.
   void OwnDestructor(void* pointer, void (*destruct)(void*)) override = 0;
 };
-
-namespace base_internal {
-
-template <typename T>
-void MemoryManagerDeleter<T>::operator()(T* pointer) const {
-  if (memory_manager_) {
-    memory_manager_->Delete(const_cast<std::remove_const_t<T>*>(pointer), size_,
-                            align_);
-  }
-}
-
-}  // namespace base_internal
 
 }  // namespace cel
 

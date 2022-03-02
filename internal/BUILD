@@ -127,6 +127,11 @@ cc_test(
 )
 
 cc_library(
+    name = "no_destructor",
+    hdrs = ["no_destructor.h"],
+)
+
+cc_library(
     name = "proto_util",
     srcs = ["proto_util.cc"],
     hdrs = ["proto_util.h"],
