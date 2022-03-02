@@ -113,6 +113,7 @@ cc_test(
         ":container_backed_map_impl",
         "//eval/public:cel_value",
         "//internal:testing",
+        "@com_google_absl//absl/status",
     ],
 )
 

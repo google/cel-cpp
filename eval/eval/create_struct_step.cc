@@ -11,6 +11,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
@@ -230,32 +231,21 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
   }
 
   std::vector<std::pair<CelValue, CelValue>> map_entries;
-  map_entries.reserve(entry_count_);
+  auto map_builder = frame->memory_manager().New<CelMapBuilder>();
+
   for (size_t i = 0; i < entry_count_; i += 1) {
     int map_key_index = 2 * i;
     int map_value_index = map_key_index + 1;
     const CelValue& map_key = args[map_key_index];
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
-    map_entries.push_back({map_key, args[map_value_index]});
+    auto key_status = map_builder->Add(map_key, args[map_value_index]);
+    if (!key_status.ok()) {
+      *result = CreateErrorValue(frame->memory_manager(), key_status);
+      return absl::OkStatus();
+    }
   }
 
-  auto cel_map =
-      CreateContainerBackedMap(absl::Span<std::pair<CelValue, CelValue>>(
-          map_entries.data(), map_entries.size()));
-  if (!cel_map.ok()) {
-    *result = CreateErrorValue(frame->memory_manager(), cel_map.status());
-    return absl::OkStatus();
-  }
-
-  auto cel_map_ptr = *std::move(cel_map);
-  *result = CelValue::CreateMap(cel_map_ptr.get());
-
-  // Pass object ownership to Arena.
-  // TODO(issues/5): Update CEL map implementation to tolerate generic
-  // allocation api.
-  google::protobuf::Arena* arena =
-      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
-  arena->Own(cel_map_ptr.release());
+  *result = CelValue::CreateMap(map_builder.release());
 
   return absl::OkStatus();
 }

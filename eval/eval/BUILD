@@ -220,6 +220,7 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//eval/public:cel_value",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/containers:field_access",
         "//eval/public/structs:cel_proto_wrapper",

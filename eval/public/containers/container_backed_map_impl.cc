@@ -1,5 +1,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 
+#include <memory>
+
 #include "absl/container/node_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
@@ -79,96 +81,47 @@ class CelValueEq {
   const CelValue& other_;
 };
 
-// CelValue hasher functor.
-class Hasher {
- public:
-  size_t operator()(const CelValue& key) const {
-    return key.template Visit<size_t>(HasherOp());
-  }
-};
-
-// CelValue equality functor.
-class Equal {
- public:
-  //
-  bool operator()(const CelValue& key1, const CelValue& key2) const {
-    if (key1.type() != key2.type()) {
-      return false;
-    }
-    return key1.template Visit<bool>(CelValueEq(key2));
-  }
-};
-
-// CelMap implementation that uses STL map container as backing storage.
-// KeyType is the type of key values stored in CelValue, InnerKeyType is the
-// type of key in STL map.
-class ContainerBackedMapImpl : public CelMap {
- public:
-  static absl::StatusOr<std::unique_ptr<CelMap>> Create(
-      absl::Span<std::pair<CelValue, CelValue>> key_values) {
-    auto cel_map = absl::WrapUnique(new ContainerBackedMapImpl());
-    auto status = cel_map->AddItems(key_values);
-    if (!status.ok()) {
-      return status;
-    }
-    return cel_map;
-  }
-
-  // Map size.
-  int size() const override { return values_map_.size(); }
-
-  // Map element access operator.
-  absl::optional<CelValue> operator[](CelValue cel_key) const override {
-    auto item = values_map_.find(cel_key);
-    if (item == values_map_.end()) {
-      return absl::nullopt;
-    }
-    return item->second;
-  }
-
-  absl::StatusOr<bool> Has(const CelValue& cel_key) const override {
-    return values_map_.contains(cel_key);
-  }
-
-  const CelList* ListKeys() const override { return &key_list_; }
-
- private:
-  class KeyList : public CelList {
-   public:
-    int size() const override { return keys_.size(); }
-
-    CelValue operator[](int index) const override { return keys_[index]; }
-
-    void Add(const CelValue& key) { keys_.push_back(key); }
-
-   private:
-    std::vector<CelValue> keys_;
-  };
-
-  ContainerBackedMapImpl() = default;
-
-  absl::Status AddItems(absl::Span<std::pair<CelValue, CelValue>> key_values) {
-    for (const auto& item : key_values) {
-      auto result = values_map_.emplace(item.first, item.second);
-
-      // Failed to insert pair into map - addition failed.
-      if (!result.second) {
-        return absl::InvalidArgumentError("duplicate map keys");
-      }
-      key_list_.Add(item.first);
-    }
-    return absl::OkStatus();
-  }
-
-  absl::node_hash_map<CelValue, CelValue, Hasher, Equal> values_map_;
-  KeyList key_list_;
-};
-
 }  // namespace
+
+// Map element access operator.
+absl::optional<CelValue> CelMapBuilder::operator[](CelValue cel_key) const {
+  auto item = values_map_.find(cel_key);
+  if (item == values_map_.end()) {
+    return absl::nullopt;
+  }
+  return item->second;
+}
+
+absl::Status CelMapBuilder::Add(CelValue key, CelValue value) {
+  auto [unused, inserted] = values_map_.emplace(key, value);
+
+  if (!inserted) {
+    return absl::InvalidArgumentError("duplicate map keys");
+  }
+  key_list_.Add(key);
+  return absl::OkStatus();
+}
+
+// CelValue hasher functor.
+size_t CelMapBuilder::Hasher::operator()(const CelValue& key) const {
+  return key.template Visit<size_t>(HasherOp());
+}
+
+bool CelMapBuilder::Equal::operator()(const CelValue& key1,
+                                      const CelValue& key2) const {
+  if (key1.type() != key2.type()) {
+    return false;
+  }
+  return key1.template Visit<bool>(CelValueEq(key2));
+}
 
 absl::StatusOr<std::unique_ptr<CelMap>> CreateContainerBackedMap(
     absl::Span<std::pair<CelValue, CelValue>> key_values) {
-  return ContainerBackedMapImpl::Create(key_values);
+  auto map = std::make_unique<CelMapBuilder>();
+  for (const auto& key_value : key_values) {
+    CEL_RETURN_IF_ERROR(map->Add(key_value.first, key_value.second));
+  }
+  return map;
 }
 
 }  // namespace runtime
