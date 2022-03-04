@@ -239,6 +239,7 @@ cc_library(
         ":cel_builtins",
         ":cel_function_adapter",
         ":cel_function_registry",
+        ":cel_number",
         ":cel_options",
         ":cel_value",
         "//eval/eval:mutable_list_impl",
@@ -879,5 +880,25 @@ cc_test(
         "@com_google_absl//absl/time",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "cel_number",
+    srcs = ["cel_number.cc"],
+    hdrs = ["cel_number.h"],
+    deps = [
+        ":cel_value",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "cel_number_test",
+    srcs = ["cel_number_test.cc"],
+    deps = [
+        ":cel_number",
+        "//internal:testing",
+        "@com_google_absl//absl/types:optional",
     ],
 )

@@ -35,6 +35,7 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
@@ -52,14 +53,6 @@ namespace {
 
 using ::google::protobuf::Arena;
 using ::google::protobuf::util::MessageDifferencer;
-
-constexpr int64_t kInt64Max = std::numeric_limits<int64_t>::max();
-constexpr int64_t kInt64Min = std::numeric_limits<int64_t>::lowest();
-constexpr uint64_t kUint64Max = std::numeric_limits<uint64_t>::max();
-constexpr uint64_t kUintToIntMax = static_cast<uint64_t>(kInt64Max);
-constexpr double kDoubleToIntMax = static_cast<double>(kInt64Max);
-constexpr double kDoubleToIntMin = static_cast<double>(kInt64Min);
-constexpr double kDoubleToUintMax = static_cast<double>(kUint64Max);
 
 // Forward declaration of the functors for generic equality operator.
 // Equal only defined for same-typed values.
@@ -165,147 +158,24 @@ bool GreaterThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
   return absl::operator>=(t1, t2);
 }
 
-inline int32_t CompareDouble(double d1, double d2) {
-  double cmp = d1 - d2;
-  return cmp < 0 ? -1 : cmp > 0 ? 1 : 0;
+template <typename T, typename U>
+bool CrossNumericLessThan(Arena* arena, T t, U u) {
+  return CelNumber(t) < CelNumber(u);
 }
 
-int32_t CompareDoubleInt(double d, int64_t i) {
-  if (d < kDoubleToIntMin) {
-    return -1;
-  }
-  if (d > kDoubleToIntMax) {
-    return 1;
-  }
-  return CompareDouble(d, static_cast<double>(i));
+template <typename T, typename U>
+bool CrossNumericGreaterThan(Arena* arena, T t, U u) {
+  return CelNumber(t) > CelNumber(u);
 }
 
-inline int32_t CompareIntDouble(int64_t i, double d) {
-  return -CompareDoubleInt(d, i);
+template <typename T, typename U>
+bool CrossNumericLessOrEqualTo(Arena* arena, T t, U u) {
+  return CelNumber(t) <= CelNumber(u);
 }
 
-int32_t CompareDoubleUint(double d, uint64_t u) {
-  if (d < 0.0) {
-    return -1;
-  }
-  if (d > kDoubleToUintMax) {
-    return 1;
-  }
-  return CompareDouble(d, static_cast<double>(u));
-}
-
-inline int32_t CompareUintDouble(uint64_t u, double d) {
-  return -CompareDoubleUint(d, u);
-}
-
-int32_t CompareIntUint(int64_t i, uint64_t u) {
-  if (i < 0 || u > kUintToIntMax) {
-    return -1;
-  }
-  // Note, the type conversion cannot overflow as the overflow condition is
-  // checked earlier as part of the special case comparison.
-  int64_t cmp = i - static_cast<int64_t>(u);
-  return cmp < 0 ? -1 : cmp > 0 ? 1 : 0;
-}
-
-inline int32_t CompareUintInt(uint64_t u, int64_t i) {
-  return -CompareIntUint(i, u);
-}
-
-bool LessThanDoubleInt(Arena*, double d, int64_t i) {
-  return CompareDoubleInt(d, i) == -1;
-}
-
-bool LessThanIntDouble(Arena*, int64_t i, double d) {
-  return CompareIntDouble(i, d) == -1;
-}
-
-bool LessThanDoubleUint(Arena*, double d, uint64_t u) {
-  return CompareDoubleInt(d, u) == -1;
-}
-
-bool LessThanUintDouble(Arena*, uint64_t u, double d) {
-  return CompareIntDouble(u, d) == -1;
-}
-
-bool LessThanIntUint(Arena*, int64_t i, uint64_t u) {
-  return CompareIntUint(i, u) == -1;
-}
-
-bool LessThanUintInt(Arena*, uint64_t u, int64_t i) {
-  return CompareUintInt(u, i) == -1;
-}
-
-bool LessThanOrEqualDoubleInt(Arena*, double d, int64_t i) {
-  return CompareDoubleInt(d, i) <= 0;
-}
-
-bool LessThanOrEqualIntDouble(Arena*, int64_t i, double d) {
-  return CompareIntDouble(i, d) <= 0;
-}
-
-bool LessThanOrEqualDoubleUint(Arena*, double d, uint64_t u) {
-  return CompareDoubleInt(d, u) <= 0;
-}
-
-bool LessThanOrEqualUintDouble(Arena*, uint64_t u, double d) {
-  return CompareIntDouble(u, d) <= 0;
-}
-
-bool LessThanOrEqualIntUint(Arena*, int64_t i, uint64_t u) {
-  return CompareIntUint(i, u) <= 0;
-}
-
-bool LessThanOrEqualUintInt(Arena*, uint64_t u, int64_t i) {
-  return CompareUintInt(u, i) <= 0;
-}
-
-bool GreaterThanDoubleInt(Arena*, double d, int64_t i) {
-  return CompareDoubleInt(d, i) == 1;
-}
-
-bool GreaterThanIntDouble(Arena*, int64_t i, double d) {
-  return CompareIntDouble(i, d) == 1;
-}
-
-bool GreaterThanDoubleUint(Arena*, double d, uint64_t u) {
-  return CompareDoubleInt(d, u) == 1;
-}
-
-bool GreaterThanUintDouble(Arena*, uint64_t u, double d) {
-  return CompareIntDouble(u, d) == 1;
-}
-
-bool GreaterThanIntUint(Arena*, int64_t i, uint64_t u) {
-  return CompareIntUint(i, u) == 1;
-}
-
-bool GreaterThanUintInt(Arena*, uint64_t u, int64_t i) {
-  return CompareUintInt(u, i) == 1;
-}
-
-bool GreaterThanOrEqualDoubleInt(Arena*, double d, int64_t i) {
-  return CompareDoubleInt(d, i) >= 0;
-}
-
-bool GreaterThanOrEqualIntDouble(Arena*, int64_t i, double d) {
-  return CompareIntDouble(i, d) >= 0;
-}
-
-bool GreaterThanOrEqualDoubleUint(Arena*, double d, uint64_t u) {
-  return CompareDoubleInt(d, u) >= 0;
-}
-
-bool GreaterThanOrEqualUintDouble(Arena*, uint64_t u, double d) {
-  return CompareIntDouble(u, d) >= 0;
-}
-
-bool GreaterThanOrEqualIntUint(Arena*, int64_t i, uint64_t u) {
-  return CompareIntUint(i, u) >= 0;
-}
-
-bool GreaterThanOrEqualUintInt(Arena*, uint64_t u, int64_t i) {
-  return CompareUintInt(u, i) >= 0;
+template <typename T, typename U>
+bool CrossNumericGreaterOrEqualTo(Arena* arena, T t, U u) {
+  return CelNumber(t) >= CelNumber(u);
 }
 
 bool MessageNullEqual(Arena* arena, const google::protobuf::Message* t1,
@@ -603,6 +473,23 @@ CelValue GeneralizedInequal(Arena* arena, CelValue t1, CelValue t2) {
   return CreateNoMatchingOverloadError(arena, builtin::kInequal);
 }
 
+template <typename T, typename U>
+absl::Status RegisterCrossNumericComparisons(CelFunctionRegistry* registry) {
+  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+      builtin::kLess, /*receiver_style=*/false, &CrossNumericLessThan<T, U>,
+      registry)));
+  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+      builtin::kGreater, /*receiver_style=*/false,
+      &CrossNumericGreaterThan<T, U>, registry)));
+  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+      builtin::kGreaterOrEqual, /*receiver_style=*/false,
+      &CrossNumericGreaterOrEqualTo<T, U>, registry)));
+  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+      builtin::kLessOrEqual, /*receiver_style=*/false,
+      &CrossNumericLessOrEqualTo<T, U>, registry)));
+  return absl::OkStatus();
+}
+
 absl::Status RegisterHeterogeneousComparisonFunctions(
     CelFunctionRegistry* registry) {
   CEL_RETURN_IF_ERROR(
@@ -614,109 +501,20 @@ absl::Status RegisterHeterogeneousComparisonFunctions(
           builtin::kInequal, /*receiver_style=*/false, &GeneralizedInequal,
           registry)));
 
-  // Cross-type numeric less than operator
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, int64_t>::CreateAndRegister(
-          builtin::kLess, /*receiver_style=*/false, &LessThanDoubleInt,
-          registry)));
+      (RegisterCrossNumericComparisons<double, int64_t>(registry)));
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, uint64_t>::CreateAndRegister(
-          builtin::kLess, /*receiver_style=*/false, &LessThanDoubleUint,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, uint64_t>::CreateAndRegister(
-          builtin::kLess, /*receiver_style=*/false, &LessThanIntUint,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, double>::CreateAndRegister(
-          builtin::kLess, /*receiver_style=*/false, &LessThanIntDouble,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, double>::CreateAndRegister(
-          builtin::kLess, /*receiver_style=*/false, &LessThanUintDouble,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, int64_t>::CreateAndRegister(
-          builtin::kLess, /*receiver_style=*/false, &LessThanUintInt,
-          registry)));
+      (RegisterCrossNumericComparisons<double, uint64_t>(registry)));
 
-  // Cross-type numeric less than or equal operator
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, int64_t>::CreateAndRegister(
-          builtin::kLessOrEqual, /*receiver_style=*/false,
-          &LessThanOrEqualDoubleInt, registry)));
+      (RegisterCrossNumericComparisons<uint64_t, double>(registry)));
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, uint64_t>::CreateAndRegister(
-          builtin::kLessOrEqual, /*receiver_style=*/false,
-          &LessThanOrEqualDoubleUint, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, uint64_t>::CreateAndRegister(
-          builtin::kLessOrEqual, /*receiver_style=*/false,
-          &LessThanOrEqualIntUint, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, double>::CreateAndRegister(
-          builtin::kLessOrEqual, /*receiver_style=*/false,
-          &LessThanOrEqualIntDouble, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, double>::CreateAndRegister(
-          builtin::kLessOrEqual, /*receiver_style=*/false,
-          &LessThanOrEqualUintDouble, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, int64_t>::CreateAndRegister(
-          builtin::kLessOrEqual, /*receiver_style=*/false,
-          &LessThanOrEqualUintInt, registry)));
+      (RegisterCrossNumericComparisons<uint64_t, int64_t>(registry)));
 
-  // Cross-type numeric greater than operator
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, int64_t>::CreateAndRegister(
-          builtin::kGreater, /*receiver_style=*/false, &GreaterThanDoubleInt,
-          registry)));
+      (RegisterCrossNumericComparisons<int64_t, double>(registry)));
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, uint64_t>::CreateAndRegister(
-          builtin::kGreater, /*receiver_style=*/false, &GreaterThanDoubleUint,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, uint64_t>::CreateAndRegister(
-          builtin::kGreater, /*receiver_style=*/false, &GreaterThanIntUint,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, double>::CreateAndRegister(
-          builtin::kGreater, /*receiver_style=*/false, &GreaterThanIntDouble,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, double>::CreateAndRegister(
-          builtin::kGreater, /*receiver_style=*/false, &GreaterThanUintDouble,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, int64_t>::CreateAndRegister(
-          builtin::kGreater, /*receiver_style=*/false, &GreaterThanUintInt,
-          registry)));
-
-  // Cross-type numeric greater than or equal operator
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, int64_t>::CreateAndRegister(
-          builtin::kGreaterOrEqual, /*receiver_style=*/false,
-          &GreaterThanOrEqualDoubleInt, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, double, uint64_t>::CreateAndRegister(
-          builtin::kGreaterOrEqual, /*receiver_style=*/false,
-          &GreaterThanOrEqualDoubleUint, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, uint64_t>::CreateAndRegister(
-          builtin::kGreaterOrEqual, /*receiver_style=*/false,
-          &GreaterThanOrEqualIntUint, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, int64_t, double>::CreateAndRegister(
-          builtin::kGreaterOrEqual, /*receiver_style=*/false,
-          &GreaterThanOrEqualIntDouble, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, double>::CreateAndRegister(
-          builtin::kGreaterOrEqual, /*receiver_style=*/false,
-          &GreaterThanOrEqualUintDouble, registry)));
-  CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<bool, uint64_t, int64_t>::CreateAndRegister(
-          builtin::kGreaterOrEqual, /*receiver_style=*/false,
-          &GreaterThanOrEqualUintInt, registry)));
+      (RegisterCrossNumericComparisons<int64_t, uint64_t>(registry)));
 
   CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<bool>(registry));
   CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<int64_t>(registry));
@@ -762,58 +560,13 @@ absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
       v2.type() == CelValue::Type::kNullType) {
     return false;
   }
-  switch (v1.type()) {
-    case CelValue::Type::kDouble: {
-      double d;
-      v1.GetValue(&d);
-      if (std::isnan(d)) {
-        return false;
-      }
-      switch (v2.type()) {
-        case CelValue::Type::kInt64:
-          return CompareDoubleInt(d, v2.Int64OrDie()) == 0;
-        case CelValue::Type::kUint64:
-          return CompareDoubleUint(d, v2.Uint64OrDie()) == 0;
-        default:
-          return absl::nullopt;
-      }
-    }
-    case CelValue::Type::kInt64:
-      int64_t i;
-      v1.GetValue(&i);
-      switch (v2.type()) {
-        case CelValue::Type::kDouble: {
-          double d;
-          v2.GetValue(&d);
-          if (std::isnan(d)) {
-            return false;
-          }
-          return CompareIntDouble(i, d) == 0;
-        }
-        case CelValue::Type::kUint64:
-          return CompareIntUint(i, v2.Uint64OrDie()) == 0;
-        default:
-          return absl::nullopt;
-      }
-    case CelValue::Type::kUint64:
-      uint64_t u;
-      v1.GetValue(&u);
-      switch (v2.type()) {
-        case CelValue::Type::kDouble: {
-          double d;
-          v2.GetValue(&d);
-          if (std::isnan(d)) {
-            return false;
-          }
-          return CompareUintDouble(u, d) == 0;
-        }
-        case CelValue::Type::kInt64:
-          return CompareUintInt(u, v2.Int64OrDie()) == 0;
-        default:
-          return absl::nullopt;
-      }
-    default:
-      return absl::nullopt;
+  absl::optional<CelNumber> lhs = GetNumberFromCelValue(v1);
+  absl::optional<CelNumber> rhs = GetNumberFromCelValue(v2);
+
+  if (rhs.has_value() && lhs.has_value()) {
+    return *lhs == *rhs;
+  } else {
+    return absl::nullopt;
   }
 }
 
