@@ -14,17 +14,31 @@
 
 // IWYU pragma: private
 
-#ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_H_
-#define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_H_
+#ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
+#define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
 
 #include <cstddef>
 #include <utility>
 
 namespace cel {
 
+template <typename T>
+class ManagedMemory;
 class MemoryManager;
 
 namespace base_internal {
+
+class Resource;
+
+template <typename T>
+constexpr size_t GetManagedMemorySize(const ManagedMemory<T>& managed_memory);
+
+template <typename T>
+constexpr size_t GetManagedMemoryAlignment(
+    const ManagedMemory<T>& managed_memory);
+
+template <typename T>
+constexpr T* ManagedMemoryRelease(ManagedMemory<T>& managed_memory);
 
 template <typename T>
 class MemoryManagerDestructor final {
@@ -38,4 +52,4 @@ class MemoryManagerDestructor final {
 
 }  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_H_
+#endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_

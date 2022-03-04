@@ -19,7 +19,8 @@ licenses(["notice"])
 cc_library(
     name = "memory_manager",
     textual_hdrs = [
-        "memory_manager.h",
+        "memory_manager.pre.h",
+        "memory_manager.post.h",
     ],
 )
 

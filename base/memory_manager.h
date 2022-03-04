@@ -23,7 +23,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
-#include "base/internal/memory_manager.h"  // IWYU pragma: export
+#include "base/internal/memory_manager.pre.h"  // IWYU pragma: export
 
 namespace cel {
 
@@ -76,10 +76,7 @@ class ManagedMemory final {
 
   T* release() {
     ABSL_ASSERT(size_ == 0);
-    T* ptr = ptr_;
-    ptr_ = nullptr;
-    size_ = align_ = 0;
-    return ptr;
+    return base_internal::ManagedMemoryRelease(*this);
   }
 
   void reset() {
@@ -94,22 +91,31 @@ class ManagedMemory final {
     std::swap(align_, other.align_);
   }
 
-  constexpr T& get() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(static_cast<bool>(*this));
-    return *ptr_;
-  }
+  constexpr T* get() const { return ptr_; }
 
-  constexpr T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND { return get(); }
+  constexpr T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    ABSL_ASSERT(static_cast<bool>(*this));
+    return *get();
+  }
 
   constexpr T* operator->() const {
     ABSL_ASSERT(static_cast<bool>(*this));
-    return ptr_;
+    return get();
   }
 
-  constexpr explicit operator bool() const { return ptr_ != nullptr; }
+  constexpr explicit operator bool() const { return get() != nullptr; }
 
  private:
   friend class MemoryManager;
+  template <typename F>
+  friend constexpr size_t base_internal::GetManagedMemorySize(
+      const ManagedMemory<F>& managed_memory);
+  template <typename F>
+  friend constexpr size_t base_internal::GetManagedMemoryAlignment(
+      const ManagedMemory<F>& managed_memory);
+  template <typename F>
+  friend constexpr F* base_internal::ManagedMemoryRelease(
+      ManagedMemory<F>& managed_memory);
 
   constexpr ManagedMemory(T* ptr, size_t size, size_t align)
       : ptr_(ptr), size_(size), align_(align) {}
@@ -154,8 +160,8 @@ class MemoryManager {
   // Allocates and constructs `T`. In the event of an allocation failure nullptr
   // is returned.
   template <typename T, typename... Args>
-  std::enable_if_t<std::is_constructible_v<T, Args...>, ManagedMemory<T>> New(
-      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
+  ManagedMemory<T> New(Args&&... args)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
     size_t size = sizeof(T);
     size_t align = alignof(T);
     void* pointer = AllocateInternal(size, align);
@@ -183,6 +189,7 @@ class MemoryManager {
   template <typename T>
   friend class ManagedMemory;
   friend class ArenaMemoryManager;
+  friend class base_internal::Resource;
 
   // Only for use by ArenaMemoryManager.
   explicit MemoryManager(bool allocation_only)
@@ -293,5 +300,7 @@ class ArenaMemoryManager : public MemoryManager {
 };
 
 }  // namespace cel
+
+#include "base/internal/memory_manager.post.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_MEMORY_MANAGER_H_
