@@ -17,6 +17,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 #include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
@@ -30,6 +31,19 @@ constexpr uint64_t kUintToIntMax = static_cast<uint64_t>(kInt64Max);
 constexpr double kDoubleToIntMax = static_cast<double>(kInt64Max);
 constexpr double kDoubleToIntMin = static_cast<double>(kInt64Min);
 constexpr double kDoubleToUintMax = static_cast<double>(kUint64Max);
+
+// The highest integer values that are round-trippable after rounding and
+// casting to double.
+template <typename T>
+constexpr int RoundingError() {
+  return 1 << (std::numeric_limits<T>::digits -
+               std::numeric_limits<double>::digits - 1);
+}
+
+constexpr double kMaxDoubleRepresentableAsInt =
+    static_cast<double>(kInt64Max - RoundingError<int64_t>());
+constexpr double kMaxDoubleRepresentableAsUint =
+    static_cast<double>(kUint64Max - RoundingError<uint64_t>());
 
 namespace internal {
 
@@ -169,6 +183,26 @@ struct CompareVisitor {
   NumberVariant rhs;
 };
 
+struct LosslessConvertibleToIntVisitor {
+  constexpr bool operator()(double value) const {
+    return value >= kDoubleToIntMin && value <= kMaxDoubleRepresentableAsInt &&
+           value == static_cast<double>(static_cast<int64_t>(value));
+  }
+  constexpr bool operator()(uint64_t value) const {
+    return value <= kUintToIntMax;
+  }
+  constexpr bool operator()(int64_t value) const { return true; }
+};
+
+struct LosslessConvertibleToUintVisitor {
+  constexpr bool operator()(double value) const {
+    return value >= 0 && value <= kMaxDoubleRepresentableAsUint &&
+           value == static_cast<double>(static_cast<uint64_t>(value));
+  }
+  constexpr bool operator()(uint64_t value) const { return true; }
+  constexpr bool operator()(int64_t value) const { return value >= 0; }
+};
+
 }  // namespace internal
 
 // Utility class for CEL number operations.
@@ -197,6 +231,35 @@ class CelNumber {
   constexpr explicit CelNumber(double double_value) : value_(double_value) {}
   constexpr explicit CelNumber(int64_t int_value) : value_(int_value) {}
   constexpr explicit CelNumber(uint64_t uint_value) : value_(uint_value) {}
+
+  // Return a double representation of the value.
+  constexpr double AsDouble() const {
+    return absl::visit(internal::ConversionVisitor<double>(), value_);
+  }
+
+  // Return signed int64_t representation for the value.
+  // Caller must guarantee the underlying value is representatble as an
+  // int.
+  constexpr int64_t AsInt() const {
+    return absl::visit(internal::ConversionVisitor<int64_t>(), value_);
+  }
+
+  // Return unsigned int64_t representation for the value.
+  // Caller must guarantee the underlying value is representable as an
+  // uint.
+  constexpr uint64_t AsUint() const {
+    return absl::visit(internal::ConversionVisitor<uint64_t>(), value_);
+  }
+
+  // For key lookups, check if the conversion to signed int is lossless.
+  constexpr bool LosslessConvertibleToInt() const {
+    return absl::visit(internal::LosslessConvertibleToIntVisitor(), value_);
+  }
+
+  // For key lookups, check if the conversion to unsigned int is lossless.
+  constexpr bool LosslessConvertibleToUint() const {
+    return absl::visit(internal::LosslessConvertibleToUintVisitor(), value_);
+  }
 
   constexpr bool operator<(CelNumber other) const {
     return Compare(other) == internal::ComparisonResult::kLesser;
