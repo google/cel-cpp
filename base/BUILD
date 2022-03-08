@@ -20,6 +20,16 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "handle",
+    hdrs = ["handle.h"],
+    deps = [
+        "//base/internal:handle",
+        "//internal:casts",
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
+cc_library(
     name = "kind",
     srcs = ["kind.cc"],
     hdrs = ["kind.h"],

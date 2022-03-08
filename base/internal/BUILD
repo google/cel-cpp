@@ -16,6 +16,20 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
+# These headers should only ever be used by ../handle.h. They are here to avoid putting
+# large amounts of implementation details in public headers.
+cc_library(
+    name = "handle",
+    textual_hdrs = [
+        "handle.pre.h",
+        "handle.post.h",
+    ],
+    deps = [
+        "//base:memory_manager",
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
 cc_library(
     name = "memory_manager",
     textual_hdrs = [
