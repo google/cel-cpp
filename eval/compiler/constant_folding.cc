@@ -104,7 +104,8 @@ class ConstantFoldingTransform {
             matched_function = overload;
           }
         }
-        if (matched_function == nullptr) {
+        if (matched_function == nullptr ||
+            matched_function->descriptor().is_strict()) {
           // propagate argument errors up the expression
           for (const CelValue& arg : arg_values) {
             if (arg.IsError()) {
@@ -112,6 +113,8 @@ class ConstantFoldingTransform {
               return true;
             }
           }
+        }
+        if (matched_function == nullptr) {
           makeConstant(
               CreateNoMatchingOverloadError(arena_, call_expr->function()),
               out);

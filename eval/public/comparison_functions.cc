@@ -276,8 +276,8 @@ absl::optional<bool> Inequal(const CelMap* t1, const CelMap* t2) {
 }
 
 bool MessageEqual(const google::protobuf::Message& m1, const google::protobuf::Message& m2) {
-  // Equality behavior is undefined if input messages have different
-  // descriptors.
+  // Equality behavior is undefined for message differencer if input messages
+  // have different descriptors. For CEL just return false.
   if (m1.GetDescriptor() != m2.GetDescriptor()) {
     return false;
   }
@@ -460,6 +460,8 @@ CelValue GeneralizedEqual(Arena* arena, CelValue t1, CelValue t2) {
   if (result.has_value()) {
     return CelValue::CreateBool(*result);
   }
+  // Note: With full heterogeneous equality enabled, this only happens for
+  // containers containing special value types (errors, unknowns).
   return CreateNoMatchingOverloadError(arena, builtin::kEqual);
 }
 
@@ -556,18 +558,21 @@ absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
     return HomogenousCelValueEqual<HeterogeneousEqualProvider>(v1, v2);
   }
 
-  if (v1.type() == CelValue::Type::kNullType ||
-      v2.type() == CelValue::Type::kNullType) {
-    return false;
-  }
   absl::optional<CelNumber> lhs = GetNumberFromCelValue(v1);
   absl::optional<CelNumber> rhs = GetNumberFromCelValue(v2);
 
   if (rhs.has_value() && lhs.has_value()) {
     return *lhs == *rhs;
-  } else {
+  }
+
+  // TODO(issues/5): It's currently possible for the interpreter to create a
+  // map containing an Error. Return no matching overload to propagate an error
+  // instead of a false result.
+  if (v1.IsError() || v1.IsUnknownSet() || v2.IsError() || v2.IsUnknownSet()) {
     return absl::nullopt;
   }
+
+  return false;
 }
 
 absl::Status RegisterComparisonFunctions(CelFunctionRegistry* registry,

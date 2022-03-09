@@ -103,8 +103,9 @@ cc_binary(
 
             # Future features for CEL 1.0
             # TODO(google/cel-spec/issues/225): These are supported comparisons with heterogeneous equality enabled.
-            "--skip_test=comparisons/eq_literal/eq_list_elem_mixed_types_error,eq_mixed_types_error",
+            "--skip_test=comparisons/eq_literal/eq_list_elem_mixed_types_error,eq_mixed_types_error,eq_map_value_mixed_types_error",
             "--skip_test=comparisons/ne_literal/ne_mixed_types_error",
+            "--skip_test=macros/exists/list_elem_type_exhaustive,map_key_type_exhaustive",
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
             "--skip_test=enums/strong_proto2",
             "--skip_test=enums/strong_proto3",
