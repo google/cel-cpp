@@ -22,138 +22,399 @@
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "base/internal/type.h"
+#include "base/handle.h"
+#include "base/internal/type.pre.h"  // IWYU pragma: export
 #include "base/kind.h"
-#include "internal/reference_counted.h"
+#include "base/memory_manager.h"
 
 namespace cel {
 
-class Value;
+class Type;
+class NullType;
+class ErrorType;
+class DynType;
+class AnyType;
+class BoolType;
+class IntType;
+class UintType;
+class DoubleType;
+class StringType;
+class BytesType;
+class DurationType;
+class TimestampType;
+class TypeFactory;
+
+class NullValue;
+class ErrorValue;
+class BoolValue;
+class IntValue;
+class UintValue;
+class DoubleValue;
+class BytesValue;
+class DurationValue;
+class TimestampValue;
+class ValueFactory;
+
+namespace internal {
+template <typename T>
+class NoDestructor;
+}
 
 // A representation of a CEL type that enables reflection, for static analysis,
 // and introspection, for program construction, of types.
-class Type final {
+class Type : public base_internal::Resource {
  public:
-  // Returns the null type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Null();
-
-  // Returns the error type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Error();
-
-  // Returns the dynamic type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Dyn();
-
-  // Returns the any type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Any();
-
-  // Returns the bool type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Bool();
-
-  // Returns the int type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Int();
-
-  // Returns the uint type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Uint();
-
-  // Returns the double type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Double();
-
-  // Returns the string type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& String();
-
-  // Returns the bytes type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Bytes();
-
-  // Returns the duration type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Duration();
-
-  // Returns the timestamp type.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Type& Timestamp();
-
-  // Equivalent to `Type::Null()`.
-  constexpr Type() : Type(nullptr) {}
-
-  Type(const Type& other);
-
-  Type(Type&& other);
-
-  ~Type() { internal::Unref(impl_); }
-
-  Type& operator=(const Type& other);
-
-  Type& operator=(Type&& other);
-
   // Returns the type kind.
-  Kind kind() const { return impl_ ? impl_->kind() : Kind::kNullType; }
+  virtual Kind kind() const = 0;
 
   // Returns the type name, i.e. "list".
-  absl::string_view name() const { return impl_ ? impl_->name() : "null_type"; }
+  virtual absl::string_view name() const = 0;
 
   // Returns the type parameters of the type, i.e. key and value type of map.
-  absl::Span<const Type> parameters() const {
-    return impl_ ? impl_->parameters() : absl::Span<const Type>();
-  }
+  virtual absl::Span<const Transient<const Type>> parameters() const;
 
-  bool IsNull() const { return kind() == Kind::kNullType; }
+ private:
+  friend class NullType;
+  friend class ErrorType;
+  friend class DynType;
+  friend class AnyType;
+  friend class BoolType;
+  friend class IntType;
+  friend class UintType;
+  friend class DoubleType;
+  friend class StringType;
+  friend class BytesType;
+  friend class DurationType;
+  friend class TimestampType;
+  friend class base_internal::TypeHandleBase;
 
-  bool IsError() const { return kind() == Kind::kError; }
+  Type() = default;
+  Type(const Type&) = default;
+  Type(Type&&) = default;
 
-  bool IsDyn() const { return kind() == Kind::kDyn; }
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return true; }
 
-  bool IsAny() const { return kind() == Kind::kAny; }
+  // For non-inlined types that are reference counted, this is the result of
+  // `sizeof` and `alignof` for the most derived class.
+  std::pair<size_t, size_t> SizeAndAlignment() const override;
 
-  bool IsBool() const { return kind() == Kind::kBool; }
+  using base_internal::Resource::Ref;
+  using base_internal::Resource::Unref;
 
-  bool IsInt() const { return kind() == Kind::kInt; }
+  // Called by base_internal::TypeHandleBase.
+  virtual bool Equals(const Type& other) const;
 
-  bool IsUint() const { return kind() == Kind::kUint; }
+  // Called by base_internal::TypeHandleBase.
+  virtual void HashValue(absl::HashState state) const;
+};
 
-  bool IsDouble() const { return kind() == Kind::kDouble; }
+class NullType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kNullType; }
 
-  bool IsString() const { return kind() == Kind::kString; }
+  absl::string_view name() const override { return "null_type"; }
 
-  bool IsBytes() const { return kind() == Kind::kBytes; }
+ private:
+  friend class NullValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
 
-  bool IsDuration() const { return kind() == Kind::kDuration; }
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kNullType; }
 
-  bool IsTimestamp() const { return kind() == Kind::kTimestamp; }
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullType& Get();
 
-  template <typename H>
-  friend H AbslHashValue(H state, const Type& type) {
-    type.HashValue(absl::HashState::Create(&state));
-    return std::move(state);
-  }
+  NullType() = default;
 
-  friend void swap(Type& lhs, Type& rhs) {
-    const base_internal::BaseType* impl = lhs.impl_;
-    lhs.impl_ = rhs.impl_;
-    rhs.impl_ = impl;
-  }
+  NullType(const NullType&) = delete;
+  NullType(NullType&&) = delete;
+};
 
-  friend bool operator==(const Type& lhs, const Type& rhs) {
-    return lhs.Equals(rhs);
-  }
+class ErrorType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kError; }
 
-  friend bool operator!=(const Type& lhs, const Type& rhs) {
-    return !operator==(lhs, rhs);
+  absl::string_view name() const override { return "*error*"; }
+
+ private:
+  friend class ErrorValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kError; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const ErrorType& Get();
+
+  ErrorType() = default;
+
+  ErrorType(const ErrorType&) = delete;
+  ErrorType(ErrorType&&) = delete;
+};
+
+class DynType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kDyn; }
+
+  absl::string_view name() const override { return "dyn"; }
+
+ private:
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kDyn; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const DynType& Get();
+
+  DynType() = default;
+
+  DynType(const DynType&) = delete;
+  DynType(DynType&&) = delete;
+};
+
+class AnyType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kAny; }
+
+  absl::string_view name() const override { return "google.protobuf.Any"; }
+
+ private:
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kAny; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const AnyType& Get();
+
+  AnyType() = default;
+
+  AnyType(const AnyType&) = delete;
+  AnyType(AnyType&&) = delete;
+};
+
+class BoolType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kBool; }
+
+  absl::string_view name() const override { return "bool"; }
+
+ private:
+  friend class BoolValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kBool; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const BoolType& Get();
+
+  BoolType() = default;
+
+  BoolType(const BoolType&) = delete;
+  BoolType(BoolType&&) = delete;
+};
+
+class IntType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kInt; }
+
+  absl::string_view name() const override { return "int"; }
+
+ private:
+  friend class IntValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kInt; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const IntType& Get();
+
+  IntType() = default;
+
+  IntType(const IntType&) = delete;
+  IntType(IntType&&) = delete;
+};
+
+class UintType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kUint; }
+
+  absl::string_view name() const override { return "uint"; }
+
+ private:
+  friend class UintValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kUint; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const UintType& Get();
+
+  UintType() = default;
+
+  UintType(const UintType&) = delete;
+  UintType(UintType&&) = delete;
+};
+
+class DoubleType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kDouble; }
+
+  absl::string_view name() const override { return "double"; }
+
+ private:
+  friend class DoubleValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kDouble; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const DoubleType& Get();
+
+  DoubleType() = default;
+
+  DoubleType(const DoubleType&) = delete;
+  DoubleType(DoubleType&&) = delete;
+};
+
+class StringType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kString; }
+
+  absl::string_view name() const override { return "string"; }
+
+ private:
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kString; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const StringType& Get();
+
+  StringType() = default;
+
+  StringType(const StringType&) = delete;
+  StringType(StringType&&) = delete;
+};
+
+class BytesType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kBytes; }
+
+  absl::string_view name() const override { return "bytes"; }
+
+ private:
+  friend class BytesValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kBytes; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const BytesType& Get();
+
+  BytesType() = default;
+
+  BytesType(const BytesType&) = delete;
+  BytesType(BytesType&&) = delete;
+};
+
+class DurationType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kDuration; }
+
+  absl::string_view name() const override { return "google.protobuf.Duration"; }
+
+ private:
+  friend class DurationValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kDuration; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const DurationType& Get();
+
+  DurationType() = default;
+
+  DurationType(const DurationType&) = delete;
+  DurationType(DurationType&&) = delete;
+};
+
+class TimestampType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kTimestamp; }
+
+  absl::string_view name() const override {
+    return "google.protobuf.Timestamp";
   }
 
  private:
-  friend class Value;
+  friend class TimestampValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
 
-  static void Initialize();
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kTimestamp; }
 
-  static const Type& Simple(Kind kind);
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const TimestampType& Get();
 
-  constexpr explicit Type(const base_internal::BaseType* impl) : impl_(impl) {}
+  TimestampType() = default;
 
-  bool Equals(const Type& other) const;
-
-  void HashValue(absl::HashState state) const;
-
-  const base_internal::BaseType* impl_;
+  TimestampType(const TimestampType&) = delete;
+  TimestampType(TimestampType&&) = delete;
 };
 
 }  // namespace cel
+
+// type.pre.h forward declares types so they can be friended above. The types
+// themselves need to be defined after everything else as they need to access or
+// derive from the above types. We do this in type.post.h to avoid mudying this
+// header and making it difficult to read.
+#include "base/internal/type.post.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPE_H_

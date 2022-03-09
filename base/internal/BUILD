@@ -46,31 +46,18 @@ cc_library(
     ],
 )
 
+# These headers should only ever be used by ../type.h. They are here to avoid putting
+# large amounts of implementation details in public headers.
 cc_library(
     name = "type",
-    hdrs = ["type.h"],
-    deps = [
-        "//base:kind",
-        "//internal:reference_counted",
-        "@com_google_absl//absl/hash",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
+    textual_hdrs = [
+        "type.pre.h",
+        "type.post.h",
     ],
-)
-
-cc_library(
-    name = "value",
-    hdrs = ["value.h"],
     deps = [
-        ":type",
-        "//base:kind",
-        "//internal:casts",
-        "//internal:reference_counted",
-        "@com_google_absl//absl/base:config",
+        "//base:handle",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/numeric:bits",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
     ],
 )
