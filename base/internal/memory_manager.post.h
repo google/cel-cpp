@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// IWYU pragma: private
+// IWYU pragma: private, include "base/memory_manager.h"
 
 #ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_POST_H_
 #define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_POST_H_
