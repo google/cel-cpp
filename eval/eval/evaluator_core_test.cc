@@ -72,7 +72,11 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionFrame frame(path, activation,
                        google::protobuf::DescriptorPool::generated_pool(),
                        google::protobuf::MessageFactory::generated_factory(), 0, &state,
-                       false, false, false, true);
+                       /*enable_unknowns=*/false,
+                       /*enable_unknown_funcion_results=*/false,
+                       /*enable_missing_attribute_errors=*/false,
+                       /*enable_null_coercion=*/true,
+                       /*enable_heterogeneous_numeric_lookups=*/true);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -94,7 +98,11 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   ExecutionFrame frame(path, activation,
                        google::protobuf::DescriptorPool::generated_pool(),
                        google::protobuf::MessageFactory::generated_factory(), 0, &state,
-                       false, false, false, true);
+                       /*enable_unknowns=*/false,
+                       /*enable_unknown_funcion_results=*/false,
+                       /*enable_missing_attribute_errors=*/false,
+                       /*enable_null_coercion=*/true,
+                       /*enable_heterogeneous_numeric_lookups=*/true);
 
   CelValue original = CelValue::CreateInt64(test_value);
   Expr ident;

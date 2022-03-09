@@ -48,6 +48,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_comprehension_vulnerability_check_(false),
         enable_null_coercion_(true),
         enable_wrapper_type_null_unboxing_(false),
+        enable_heterogeneous_equality_(false),
         descriptor_pool_(descriptor_pool),
         message_factory_(message_factory) {}
 
@@ -141,6 +142,13 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_wrapper_type_null_unboxing_ = enabled;
   }
 
+  // If enable_heterogeneous_equality is enabled, the evaluator will use
+  // hetergeneous equality semantics. This includes the == operator and numeric
+  // index lookups in containers.
+  void set_enable_heterogeneous_equality(bool enabled) {
+    enable_heterogeneous_equality_ = enabled;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -179,6 +187,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_comprehension_vulnerability_check_;
   bool enable_null_coercion_;
   bool enable_wrapper_type_null_unboxing_;
+  bool enable_heterogeneous_equality_;
 
   const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::MessageFactory* message_factory_;

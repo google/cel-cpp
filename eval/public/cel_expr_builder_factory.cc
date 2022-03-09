@@ -178,6 +178,8 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   builder->set_enable_null_coercion(options.enable_null_to_message_coercion);
   builder->set_enable_wrapper_type_null_unboxing(
       options.enable_empty_wrapper_null_unboxing);
+  builder->set_enable_heterogeneous_equality(
+      options.enable_heterogeneous_equality);
 
   switch (options.unknown_processing) {
     case UnknownProcessingOptions::kAttributeAndFunction:

@@ -1060,7 +1060,7 @@ FlatExprBuilder::CreateExpressionImpl(
           comprehension_max_iterations_, std::move(iter_variable_names),
           enable_unknowns_, enable_unknown_function_results_,
           enable_missing_attribute_errors_, enable_null_coercion_,
-          std::move(rewrite_buffer));
+          enable_heterogeneous_equality_, std::move(rewrite_buffer));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

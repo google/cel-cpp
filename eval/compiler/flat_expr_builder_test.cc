@@ -58,11 +58,6 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::CheckedExpr;
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::ParsedExpr;
-using google::api::expr::v1alpha1::SourceInfo;
-
 using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
@@ -1573,6 +1568,42 @@ TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
                        expression->Evaluate(activation, &arena));
 
   EXPECT_THAT(result, test::IsCelInt64(0));
+}
+
+TEST(FlatExprBuilderTest, HeterogeneousEqualityEnabled) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("{1: 2, 2u: 3}[1.0]"));
+  FlatExprBuilder builder;
+  builder.set_enable_heterogeneous_equality(true);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result, test::IsCelInt64(2));
+}
+
+TEST(FlatExprBuilderTest, HeterogeneousEqualityDisabled) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("{1: 2, 2u: 3}[1.0]"));
+  FlatExprBuilder builder;
+  builder.set_enable_heterogeneous_equality(false);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result,
+              test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
+                                        HasSubstr("Invalid map key type"))));
 }
 
 TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {

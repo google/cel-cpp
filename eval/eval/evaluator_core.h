@@ -124,7 +124,8 @@ class ExecutionFrame {
                  CelExpressionFlatEvaluationState* state, bool enable_unknowns,
                  bool enable_unknown_function_results,
                  bool enable_missing_attribute_errors,
-                 bool enable_null_coercion)
+                 bool enable_null_coercion,
+                 bool enable_heterogeneous_numeric_lookups)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
@@ -134,6 +135,8 @@ class ExecutionFrame {
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
         enable_null_coercion_(enable_null_coercion),
+        enable_heterogeneous_numeric_lookups_(
+            enable_heterogeneous_numeric_lookups),
         attribute_utility_(&activation.unknown_attribute_patterns(),
                            &activation.missing_attribute_patterns(),
                            state->memory_manager()),
@@ -167,6 +170,10 @@ class ExecutionFrame {
   }
 
   bool enable_null_coercion() const { return enable_null_coercion_; }
+
+  bool enable_heterogeneous_numeric_lookups() const {
+    return enable_heterogeneous_numeric_lookups_;
+  }
 
   cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
 
@@ -240,6 +247,7 @@ class ExecutionFrame {
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
   bool enable_null_coercion_;
+  bool enable_heterogeneous_numeric_lookups_;
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
@@ -265,6 +273,7 @@ class CelExpressionFlatImpl : public CelExpression {
                         bool enable_unknown_function_results = false,
                         bool enable_missing_attribute_errors = false,
                         bool enable_null_coercion = true,
+                        bool enable_heterogeneous_equality = false,
                         std::unique_ptr<Expr> rewritten_expr = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
         path_(std::move(path)),
@@ -275,7 +284,8 @@ class CelExpressionFlatImpl : public CelExpression {
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
-        enable_null_coercion_(enable_null_coercion) {}
+        enable_null_coercion_(enable_null_coercion),
+        enable_heterogeneous_equality_(enable_heterogeneous_equality) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -316,6 +326,7 @@ class CelExpressionFlatImpl : public CelExpression {
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
   bool enable_null_coercion_;
+  bool enable_heterogeneous_equality_;
 };
 
 }  // namespace google::api::expr::runtime

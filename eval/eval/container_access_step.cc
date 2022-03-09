@@ -8,6 +8,7 @@
 #include "base/memory_manager.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_number.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 
@@ -30,44 +31,83 @@ class ContainerAccessStep : public ExpressionStepBase {
 
   ValueAttributePair PerformLookup(ExecutionFrame* frame) const;
   CelValue LookupInMap(const CelMap* cel_map, const CelValue& key,
-                       cel::MemoryManager& manager) const;
+                       ExecutionFrame* frame) const;
   CelValue LookupInList(const CelList* cel_list, const CelValue& key,
-                        cel::MemoryManager& manager) const;
+                        ExecutionFrame* frame) const;
 };
 
-inline CelValue ContainerAccessStep::LookupInMap(
-    const CelMap* cel_map, const CelValue& key,
-    cel::MemoryManager& manager) const {
-  auto status = CelValue::CheckMapKeyType(key);
+inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
+                                                 const CelValue& key,
+                                                 ExecutionFrame* frame) const {
+  if (frame->enable_heterogeneous_numeric_lookups()) {
+    // Double isn't a supported key type but may be convertible to an integer.
+    absl::optional<CelNumber> number = GetNumberFromCelValue(key);
+    if (number.has_value()) {
+      // consider uint as uint first then try coercion.
+      if (key.IsUint64()) {
+        absl::optional<CelValue> maybe_value = (*cel_map)[key];
+        if (maybe_value.has_value()) {
+          return *maybe_value;
+        }
+      }
+      if (number->LosslessConvertibleToInt()) {
+        absl::optional<CelValue> maybe_value =
+            (*cel_map)[CelValue::CreateInt64(number->AsInt())];
+        if (maybe_value.has_value()) {
+          return *maybe_value;
+        }
+      }
+      if (number->LosslessConvertibleToUint()) {
+        absl::optional<CelValue> maybe_value =
+            (*cel_map)[CelValue::CreateUint64(number->AsUint())];
+        if (maybe_value.has_value()) {
+          return *maybe_value;
+        }
+      }
+      return CreateNoSuchKeyError(frame->memory_manager(),
+                                  "Key not found in map");
+    }
+  }
+
+  absl::Status status = CelValue::CheckMapKeyType(key);
   if (!status.ok()) {
-    return CreateErrorValue(manager, status);
+    return CreateErrorValue(frame->memory_manager(), status);
   }
   absl::optional<CelValue> maybe_value = (*cel_map)[key];
   if (maybe_value.has_value()) {
     return maybe_value.value();
   }
-  return CreateNoSuchKeyError(manager, "Key not found in map");
+
+  return CreateNoSuchKeyError(frame->memory_manager(), "Key not found in map");
 }
 
-inline CelValue ContainerAccessStep::LookupInList(
-    const CelList* cel_list, const CelValue& key,
-    cel::MemoryManager& manager) const {
-  switch (key.type()) {
-    case CelValue::Type::kInt64: {
-      int64_t idx = key.Int64OrDie();
-      if (idx < 0 || idx >= cel_list->size()) {
-        return CreateErrorValue(manager,
-                                absl::StrCat("Index error: index=", idx,
-                                             " size=", cel_list->size()));
-      }
-      return (*cel_list)[idx];
+inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
+                                                  const CelValue& key,
+                                                  ExecutionFrame* frame) const {
+  absl::optional<int64_t> maybe_idx;
+  if (frame->enable_heterogeneous_numeric_lookups()) {
+    auto number = GetNumberFromCelValue(key);
+    if (number.has_value() && number->LosslessConvertibleToInt()) {
+      maybe_idx = number->AsInt();
     }
-    default: {
-      return CreateErrorValue(
-          manager, absl::StrCat("Index error: expected integer type, got ",
-                                CelValue::TypeName(key.type())));
-    }
+  } else if (int64_t held_int; key.GetValue(&held_int)) {
+    maybe_idx = held_int;
   }
+
+  if (maybe_idx.has_value()) {
+    int64_t idx = *maybe_idx;
+    if (idx < 0 || idx >= cel_list->size()) {
+      return CreateErrorValue(
+          frame->memory_manager(),
+          absl::StrCat("Index error: index=", idx, " size=", cel_list->size()));
+    }
+    return (*cel_list)[idx];
+  }
+
+  return CreateErrorValue(
+      frame->memory_manager(),
+      absl::StrCat("Index error: expected integer type, got ",
+                   CelValue::TypeName(key.type())));
 }
 
 ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
@@ -113,11 +153,11 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
   switch (container.type()) {
     case CelValue::Type::kMap: {
       const CelMap* cel_map = container.MapOrDie();
-      return {LookupInMap(cel_map, key, frame->memory_manager()), trail};
+      return {LookupInMap(cel_map, key, frame), trail};
     }
     case CelValue::Type::kList: {
       const CelList* cel_list = container.ListOrDie();
-      return {LookupInList(cel_list, key, frame->memory_manager()), trail};
+      return {LookupInList(cel_list, key, frame), trail};
     }
     default: {
       auto error =
