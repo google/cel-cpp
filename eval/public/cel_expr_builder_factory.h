@@ -23,9 +23,6 @@ inline std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
                                     options);
 }
 
-absl::Status AddStandardMessageTypesToDescriptorPool(
-    google::protobuf::DescriptorPool* descriptor_pool);
-
 }  // namespace runtime
 }  // namespace expr
 }  // namespace api

@@ -404,19 +404,8 @@ cc_library(
         ":cel_expression",
         ":cel_options",
         "//eval/compiler:flat_expr_builder",
+        "//internal:proto_util",
         "@com_google_absl//absl/status",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "cel_expr_builder_factory_test",
-    srcs = ["cel_expr_builder_factory_test.cc"],
-    deps = [
-        ":cel_expr_builder_factory",
-        "//eval/testutil:test_message_cc_proto",
-        "//internal:testing",
-        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_protobuf//:protobuf",
     ],
 )

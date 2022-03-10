@@ -45,6 +45,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -1717,7 +1718,7 @@ TEST_P(CustomDescriptorPoolTest, TestType) {
   google::protobuf::Arena arena;
 
   // Setup descriptor pool and builder
-  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(&descriptor_pool));
+  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
   google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
   FlatExprBuilder builder(&descriptor_pool, &message_factory);

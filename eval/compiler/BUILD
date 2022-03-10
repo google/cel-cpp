@@ -71,6 +71,7 @@ cc_test(
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
         "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/structs:cel_proto_descriptor_pool_builder",
         "//eval/public/structs:cel_proto_wrapper",
         "//eval/public/testing:matchers",
         "//eval/testutil:test_message_cc_proto",

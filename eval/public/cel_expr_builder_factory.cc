@@ -16,148 +16,31 @@
 
 #include "eval/public/cel_expr_builder_factory.h"
 
+#include <string>
 #include <utility>
 
-#include "google/protobuf/any.pb.h"
-#include "google/protobuf/duration.pb.h"
-#include "google/protobuf/struct.pb.h"
-#include "google/protobuf/timestamp.pb.h"
-#include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/cel_options.h"
+#include "internal/proto_util.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
-template <class MessageType>
-absl::Status ValidateStandardMessageType(
-    const google::protobuf::DescriptorPool* descriptor_pool) {
-  const google::protobuf::Descriptor* descriptor = MessageType::descriptor();
-  const google::protobuf::Descriptor* descriptor_from_pool =
-      descriptor_pool->FindMessageTypeByName(descriptor->full_name());
-  if (descriptor_from_pool == nullptr) {
-    return absl::NotFoundError(
-        absl::StrFormat("Descriptor '%s' not found in descriptor pool",
-                        descriptor->full_name()));
-  }
-  if (descriptor_from_pool == descriptor) {
-    return absl::OkStatus();
-  }
-  google::protobuf::DescriptorProto descriptor_proto;
-  google::protobuf::DescriptorProto descriptor_from_pool_proto;
-  descriptor->CopyTo(&descriptor_proto);
-  descriptor_from_pool->CopyTo(&descriptor_from_pool_proto);
-  if (!google::protobuf::util::MessageDifferencer::Equals(descriptor_proto,
-                                                descriptor_from_pool_proto)) {
-    return absl::FailedPreconditionError(absl::StrFormat(
-        "The descriptor for '%s' in the descriptor pool differs from the "
-        "compiled-in generated version",
-        descriptor->full_name()));
-  }
-  return absl::OkStatus();
-}
-
-template <class MessageType>
-absl::Status AddOrValidateMessageType(google::protobuf::DescriptorPool* descriptor_pool) {
-  const google::protobuf::Descriptor* descriptor = MessageType::descriptor();
-  if (descriptor_pool->FindMessageTypeByName(descriptor->full_name()) !=
-      nullptr) {
-    return ValidateStandardMessageType<MessageType>(descriptor_pool);
-  }
-  google::protobuf::FileDescriptorProto file_descriptor_proto;
-  descriptor->file()->CopyTo(&file_descriptor_proto);
-  if (descriptor_pool->BuildFile(file_descriptor_proto) == nullptr) {
-    return absl::InternalError(
-        absl::StrFormat("Failed to add descriptor '%s' to descriptor pool",
-                        descriptor->full_name()));
-  }
-  return absl::OkStatus();
-}
-
-absl::Status ValidateStandardMessageTypes(
-    const google::protobuf::DescriptorPool* descriptor_pool) {
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::Any>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::BoolValue>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::BytesValue>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::DoubleValue>(
-          descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::Duration>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::FloatValue>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::Int32Value>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::Int64Value>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::ListValue>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::StringValue>(
-          descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::Struct>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(ValidateStandardMessageType<google::protobuf::Timestamp>(
-      descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::UInt32Value>(
-          descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::UInt64Value>(
-          descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      ValidateStandardMessageType<google::protobuf::Value>(descriptor_pool));
-  return absl::OkStatus();
-}
-
+using ::google::api::expr::internal::ValidateStandardMessageTypes;
 }  // namespace
-
-absl::Status AddStandardMessageTypesToDescriptorPool(
-    google::protobuf::DescriptorPool* descriptor_pool) {
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Any>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::BoolValue>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::BytesValue>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::DoubleValue>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Duration>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::FloatValue>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Int32Value>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Int64Value>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::ListValue>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::StringValue>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Struct>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Timestamp>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::UInt32Value>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::UInt64Value>(descriptor_pool));
-  CEL_RETURN_IF_ERROR(
-      AddOrValidateMessageType<google::protobuf::Value>(descriptor_pool));
-  return absl::OkStatus();
-}
 
 std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
     const google::protobuf::DescriptorPool* descriptor_pool,
     google::protobuf::MessageFactory* message_factory,
     const InterpreterOptions& options) {
-  if (!ValidateStandardMessageTypes(descriptor_pool).ok()) {
+  if (descriptor_pool == nullptr) {
+    GOOGLE_LOG(ERROR) << "Cannot pass nullptr as descriptor pool to "
+                  "CreateCelExpressionBuilder";
+    return nullptr;
+  }
+  if (auto s = ValidateStandardMessageTypes(*descriptor_pool); !s.ok()) {
+    GOOGLE_LOG(WARNING) << "Failed to validate standard message types: " << s;
     return nullptr;
   }
   auto builder =

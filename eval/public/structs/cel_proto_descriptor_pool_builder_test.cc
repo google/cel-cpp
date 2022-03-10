@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "eval/public/cel_expr_builder_factory.h"
+#include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 
 #include <string>
 
@@ -28,6 +28,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using testing::HasSubstr;
+using testing::UnorderedElementsAre;
 using cel::internal::StatusIs;
 
 TEST(DescriptorPoolUtilsTest, PopulatesEmptyDescriptorPool) {
@@ -68,7 +69,7 @@ TEST(DescriptorPoolUtilsTest, PopulatesEmptyDescriptorPool) {
   ASSERT_EQ(descriptor_pool.FindMessageTypeByName("google.protobuf.Value"),
             nullptr);
 
-  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(&descriptor_pool));
+  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
 
   EXPECT_NE(descriptor_pool.FindMessageTypeByName("google.protobuf.Any"),
             nullptr);
@@ -127,7 +128,7 @@ TEST(DescriptorPoolUtilsTest, AcceptsPreAddedStandardTypes) {
     ASSERT_NE(descriptor_pool.BuildFile(file_descriptor_proto), nullptr);
   }
 
-  EXPECT_OK(AddStandardMessageTypesToDescriptorPool(&descriptor_pool));
+  EXPECT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
 }
 
 TEST(DescriptorPoolUtilsTest, RejectsModifiedStandardType) {
@@ -155,8 +156,22 @@ TEST(DescriptorPoolUtilsTest, RejectsModifiedStandardType) {
   descriptor_pool.BuildFile(file_descriptor_proto);
 
   EXPECT_THAT(
-      AddStandardMessageTypesToDescriptorPool(&descriptor_pool),
+      AddStandardMessageTypesToDescriptorPool(descriptor_pool),
       StatusIs(absl::StatusCode::kFailedPrecondition, HasSubstr("differs")));
+}
+
+TEST(DescriptorPoolUtilsTest, GetStandardMessageTypesFileDescriptorSet) {
+  google::protobuf::FileDescriptorSet fdset = GetStandardMessageTypesFileDescriptorSet();
+  std::vector<std::string> file_names;
+  for (int i = 0; i < fdset.file_size(); ++i) {
+    file_names.push_back(fdset.file(i).name());
+  }
+  EXPECT_THAT(file_names,
+              UnorderedElementsAre("google/protobuf/any.proto",
+                                   "google/protobuf/struct.proto",
+                                   "google/protobuf/wrappers.proto",
+                                   "google/protobuf/timestamp.proto",
+                                   "google/protobuf/duration.proto"));
 }
 
 }  // namespace

@@ -38,6 +38,31 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "cel_proto_descriptor_pool_builder",
+    srcs = ["cel_proto_descriptor_pool_builder.cc"],
+    hdrs = ["cel_proto_descriptor_pool_builder.h"],
+    deps = [
+        "//internal:proto_util",
+        "//internal:status_macros",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "cel_proto_descriptor_pool_builder_test",
+    srcs = ["cel_proto_descriptor_pool_builder_test.cc"],
+    deps = [
+        ":cel_proto_descriptor_pool_builder",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:testing",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_test(
     name = "cel_proto_wrapper_test",
     size = "small",
