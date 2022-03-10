@@ -17,14 +17,19 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/time/time.h"
+#include "base/memory_manager.h"
 #include "base/type.h"
+#include "base/type_factory.h"
+#include "base/value_factory.h"
 #include "internal/strings.h"
 #include "internal/testing.h"
 #include "internal/time.h"
@@ -34,26 +39,69 @@ namespace {
 
 using cel::internal::StatusIs;
 
+template <typename T>
+Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
+  return std::move(status_or_handle).value();
+}
+
+class TestTypeFactory final : public TypeFactory {
+ public:
+  TestTypeFactory() : TypeFactory(MemoryManager::Global()) {}
+};
+
+class TestValueFactory final : public ValueFactory {
+ public:
+  TestValueFactory() : ValueFactory(MemoryManager::Global()) {}
+};
+
 template <class T>
 constexpr void IS_INITIALIZED(T&) {}
 
-TEST(Value, TypeTraits) {
-  EXPECT_TRUE(std::is_default_constructible_v<Value>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Value>);
-  EXPECT_TRUE(std::is_move_constructible_v<Value>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Value>);
-  EXPECT_TRUE(std::is_move_assignable_v<Value>);
-  EXPECT_TRUE(std::is_swappable_v<Value>);
+TEST(Value, HandleSize) {
+  // Advisory test to ensure we attempt to keep the size of Value handles under
+  // 32 bytes. As of the time of writing they are 24 bytes.
+  EXPECT_LE(sizeof(base_internal::ValueHandleData), 32);
+}
+
+TEST(Value, TransientHandleTypeTraits) {
+  EXPECT_TRUE(std::is_default_constructible_v<Transient<Value>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Transient<Value>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Transient<Value>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Transient<Value>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Transient<Value>>);
+  EXPECT_TRUE(std::is_swappable_v<Transient<Value>>);
+  EXPECT_TRUE(std::is_default_constructible_v<Transient<const Value>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Transient<const Value>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Transient<const Value>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Transient<const Value>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Transient<const Value>>);
+  EXPECT_TRUE(std::is_swappable_v<Transient<const Value>>);
+}
+
+TEST(Value, PersistentHandleTypeTraits) {
+  EXPECT_TRUE(std::is_default_constructible_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_swappable_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_default_constructible_v<Persistent<const Value>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<const Value>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Persistent<const Value>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<const Value>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Persistent<const Value>>);
+  EXPECT_TRUE(std::is_swappable_v<Persistent<const Value>>);
 }
 
 TEST(Value, DefaultConstructor) {
-  Value value;
-  EXPECT_EQ(value, Value::Null());
+  TestValueFactory value_factory;
+  Transient<const Value> value;
+  EXPECT_EQ(value, value_factory.GetNullValue());
 }
 
 struct ConstructionAssignmentTestCase final {
   std::string name;
-  std::function<Value()> default_value;
+  std::function<Persistent<const Value>(ValueFactory&)> default_value;
 };
 
 using ConstructionAssignmentTest =
@@ -61,122 +109,171 @@ using ConstructionAssignmentTest =
 
 TEST_P(ConstructionAssignmentTest, CopyConstructor) {
   const auto& test_case = GetParam();
-  Value from(test_case.default_value());
-  Value to(from);
+  TestValueFactory value_factory;
+  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> to(from);
   IS_INITIALIZED(to);
-  EXPECT_EQ(to, test_case.default_value());
+  EXPECT_EQ(to, test_case.default_value(value_factory));
 }
 
 TEST_P(ConstructionAssignmentTest, MoveConstructor) {
   const auto& test_case = GetParam();
-  Value from(test_case.default_value());
-  Value to(std::move(from));
+  TestValueFactory value_factory;
+  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> to(std::move(from));
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, Value::Null());
-  EXPECT_EQ(to, test_case.default_value());
+  EXPECT_EQ(from, value_factory.GetNullValue());
+  EXPECT_EQ(to, test_case.default_value(value_factory));
 }
 
 TEST_P(ConstructionAssignmentTest, CopyAssignment) {
   const auto& test_case = GetParam();
-  Value from(test_case.default_value());
-  Value to;
+  TestValueFactory value_factory;
+  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> to;
   to = from;
   EXPECT_EQ(to, from);
 }
 
 TEST_P(ConstructionAssignmentTest, MoveAssignment) {
   const auto& test_case = GetParam();
-  Value from(test_case.default_value());
-  Value to;
+  TestValueFactory value_factory;
+  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> to;
   to = std::move(from);
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, Value::Null());
-  EXPECT_EQ(to, test_case.default_value());
+  EXPECT_EQ(from, value_factory.GetNullValue());
+  EXPECT_EQ(to, test_case.default_value(value_factory));
 }
 
 INSTANTIATE_TEST_SUITE_P(
     ConstructionAssignmentTest, ConstructionAssignmentTest,
     testing::ValuesIn<ConstructionAssignmentTestCase>({
-        {"Null", Value::Null},
-        {"Bool", Value::False},
-        {"Int", []() { return Value::Int(0); }},
-        {"Uint", []() { return Value::Uint(0); }},
-        {"Double", []() { return Value::Double(0.0); }},
-        {"Duration", []() { return Value::ZeroDuration(); }},
-        {"Timestamp", []() { return Value::UnixEpoch(); }},
-        {"Error", []() { return Value::Error(absl::CancelledError()); }},
-        {"Bytes", Bytes::Empty},
+        {"Null",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return value_factory.GetNullValue();
+         }},
+        {"Bool",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return value_factory.CreateBoolValue(false);
+         }},
+        {"Int",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return value_factory.CreateIntValue(0);
+         }},
+        {"Uint",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return value_factory.CreateUintValue(0);
+         }},
+        {"Double",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return value_factory.CreateDoubleValue(0.0);
+         }},
+        {"Duration",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
+         }},
+        {"Timestamp",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
+         }},
+        {"Error",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return value_factory.CreateErrorValue(absl::CancelledError());
+         }},
+        {"Bytes",
+         [](ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateBytesValue(0));
+         }},
     }),
     [](const testing::TestParamInfo<ConstructionAssignmentTestCase>& info) {
       return info.param.name;
     });
 
 TEST(Value, Swap) {
-  Value lhs = Value::Int(0);
-  Value rhs = Value::Uint(0);
+  TestValueFactory value_factory;
+  Persistent<const Value> lhs = value_factory.CreateIntValue(0);
+  Persistent<const Value> rhs = value_factory.CreateUintValue(0);
   std::swap(lhs, rhs);
-  EXPECT_EQ(lhs, Value::Uint(0));
-  EXPECT_EQ(rhs, Value::Int(0));
+  EXPECT_EQ(lhs, value_factory.CreateUintValue(0));
+  EXPECT_EQ(rhs, value_factory.CreateIntValue(0));
 }
 
-TEST(Value, NaN) { EXPECT_TRUE(std::isnan(Value::NaN().AsDouble())); }
-
-TEST(Value, PositiveInfinity) {
-  EXPECT_TRUE(std::isinf(Value::PositiveInfinity().AsDouble()));
-  EXPECT_FALSE(std::signbit(Value::PositiveInfinity().AsDouble()));
+TEST(NullValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(value_factory.GetNullValue()->DebugString(), "null");
 }
 
-TEST(Value, NegativeInfinity) {
-  EXPECT_TRUE(std::isinf(Value::NegativeInfinity().AsDouble()));
-  EXPECT_TRUE(std::signbit(Value::NegativeInfinity().AsDouble()));
+TEST(BoolValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(value_factory.CreateBoolValue(false)->DebugString(), "false");
+  EXPECT_EQ(value_factory.CreateBoolValue(true)->DebugString(), "true");
 }
 
-TEST(Value, ZeroDuration) {
-  EXPECT_EQ(Value::ZeroDuration().AsDuration(), absl::ZeroDuration());
+TEST(IntValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(value_factory.CreateIntValue(-1)->DebugString(), "-1");
+  EXPECT_EQ(value_factory.CreateIntValue(0)->DebugString(), "0");
+  EXPECT_EQ(value_factory.CreateIntValue(1)->DebugString(), "1");
+  EXPECT_EQ(value_factory.CreateIntValue(std::numeric_limits<int64_t>::min())
+                ->DebugString(),
+            "-9223372036854775808");
+  EXPECT_EQ(value_factory.CreateIntValue(std::numeric_limits<int64_t>::max())
+                ->DebugString(),
+            "9223372036854775807");
 }
 
-TEST(Value, UnixEpoch) {
-  EXPECT_EQ(Value::UnixEpoch().AsTimestamp(), absl::UnixEpoch());
+TEST(UintValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(value_factory.CreateUintValue(0)->DebugString(), "0u");
+  EXPECT_EQ(value_factory.CreateUintValue(1)->DebugString(), "1u");
+  EXPECT_EQ(value_factory.CreateUintValue(std::numeric_limits<uint64_t>::max())
+                ->DebugString(),
+            "18446744073709551615u");
 }
 
-TEST(Null, DebugString) { EXPECT_EQ(Value::Null().DebugString(), "null"); }
+TEST(DoubleValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(value_factory.CreateDoubleValue(-1.0)->DebugString(), "-1.0");
+  EXPECT_EQ(value_factory.CreateDoubleValue(0.0)->DebugString(), "0.0");
+  EXPECT_EQ(value_factory.CreateDoubleValue(1.0)->DebugString(), "1.0");
+  EXPECT_EQ(value_factory.CreateDoubleValue(-1.1)->DebugString(), "-1.1");
+  EXPECT_EQ(value_factory.CreateDoubleValue(0.1)->DebugString(), "0.1");
+  EXPECT_EQ(value_factory.CreateDoubleValue(1.1)->DebugString(), "1.1");
+  EXPECT_EQ(value_factory.CreateDoubleValue(-9007199254740991.0)->DebugString(),
+            "-9.0072e+15");
+  EXPECT_EQ(value_factory.CreateDoubleValue(9007199254740991.0)->DebugString(),
+            "9.0072e+15");
+  EXPECT_EQ(value_factory.CreateDoubleValue(-9007199254740991.1)->DebugString(),
+            "-9.0072e+15");
+  EXPECT_EQ(value_factory.CreateDoubleValue(9007199254740991.1)->DebugString(),
+            "9.0072e+15");
+  EXPECT_EQ(value_factory.CreateDoubleValue(9007199254740991.1)->DebugString(),
+            "9.0072e+15");
 
-TEST(Bool, DebugString) {
-  EXPECT_EQ(Value::False().DebugString(), "false");
-  EXPECT_EQ(Value::True().DebugString(), "true");
+  EXPECT_EQ(
+      value_factory.CreateDoubleValue(std::numeric_limits<double>::quiet_NaN())
+          ->DebugString(),
+      "nan");
+  EXPECT_EQ(
+      value_factory.CreateDoubleValue(std::numeric_limits<double>::infinity())
+          ->DebugString(),
+      "+infinity");
+  EXPECT_EQ(
+      value_factory.CreateDoubleValue(-std::numeric_limits<double>::infinity())
+          ->DebugString(),
+      "-infinity");
 }
 
-TEST(Int, DebugString) {
-  EXPECT_EQ(Value::Int(-1).DebugString(), "-1");
-  EXPECT_EQ(Value::Int(0).DebugString(), "0");
-  EXPECT_EQ(Value::Int(1).DebugString(), "1");
-}
-
-TEST(Uint, DebugString) {
-  EXPECT_EQ(Value::Uint(0).DebugString(), "0u");
-  EXPECT_EQ(Value::Uint(1).DebugString(), "1u");
-}
-
-TEST(Double, DebugString) {
-  EXPECT_EQ(Value::Double(-1.0).DebugString(), "-1.0");
-  EXPECT_EQ(Value::Double(0.0).DebugString(), "0.0");
-  EXPECT_EQ(Value::Double(1.0).DebugString(), "1.0");
-  EXPECT_EQ(Value::Double(-1.1).DebugString(), "-1.1");
-  EXPECT_EQ(Value::Double(0.1).DebugString(), "0.1");
-  EXPECT_EQ(Value::Double(1.1).DebugString(), "1.1");
-
-  EXPECT_EQ(Value::NaN().DebugString(), "nan");
-  EXPECT_EQ(Value::PositiveInfinity().DebugString(), "+infinity");
-  EXPECT_EQ(Value::NegativeInfinity().DebugString(), "-infinity");
-}
-
-TEST(Duration, DebugString) {
-  EXPECT_EQ(Value::ZeroDuration().DebugString(),
+TEST(DurationValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(DurationValue::Zero(value_factory)->DebugString(),
             internal::FormatDuration(absl::ZeroDuration()).value());
 }
 
-TEST(Timestamp, DebugString) {
-  EXPECT_EQ(Value::UnixEpoch().DebugString(),
+TEST(TimestampValue, DebugString) {
+  TestValueFactory value_factory;
+  EXPECT_EQ(TimestampValue::UnixEpoch(value_factory)->DebugString(),
             internal::FormatTimestamp(absl::UnixEpoch()).value());
 }
 
@@ -185,238 +282,317 @@ TEST(Timestamp, DebugString) {
 // feature is not available in C++17.
 
 TEST(Value, Error) {
-  Value error_value = Value::Error(absl::CancelledError());
-  EXPECT_TRUE(error_value.IsError());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto error_value = value_factory.CreateErrorValue(absl::CancelledError());
+  EXPECT_TRUE(error_value.Is<ErrorValue>());
+  EXPECT_FALSE(error_value.Is<NullValue>());
   EXPECT_EQ(error_value, error_value);
-  EXPECT_EQ(error_value, Value::Error(absl::CancelledError()));
-  EXPECT_EQ(error_value.AsError(), absl::CancelledError());
+  EXPECT_EQ(error_value,
+            value_factory.CreateErrorValue(absl::CancelledError()));
+  EXPECT_EQ(error_value->value(), absl::CancelledError());
 }
 
 TEST(Value, Bool) {
-  Value false_value = Value::False();
-  EXPECT_TRUE(false_value.IsBool());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto false_value = BoolValue::False(value_factory);
+  EXPECT_TRUE(false_value.Is<BoolValue>());
+  EXPECT_FALSE(false_value.Is<NullValue>());
   EXPECT_EQ(false_value, false_value);
-  EXPECT_EQ(false_value, Value::Bool(false));
-  EXPECT_EQ(false_value.kind(), Kind::kBool);
-  EXPECT_EQ(false_value.type(), Type::Bool());
-  EXPECT_FALSE(false_value.AsBool());
+  EXPECT_EQ(false_value, value_factory.CreateBoolValue(false));
+  EXPECT_EQ(false_value->kind(), Kind::kBool);
+  EXPECT_EQ(false_value->type(), type_factory.GetBoolType());
+  EXPECT_FALSE(false_value->value());
 
-  Value true_value = Value::True();
-  EXPECT_TRUE(true_value.IsBool());
+  auto true_value = BoolValue::True(value_factory);
+  EXPECT_TRUE(true_value.Is<BoolValue>());
+  EXPECT_FALSE(true_value.Is<NullValue>());
   EXPECT_EQ(true_value, true_value);
-  EXPECT_EQ(true_value, Value::Bool(true));
-  EXPECT_EQ(true_value.kind(), Kind::kBool);
-  EXPECT_EQ(true_value.type(), Type::Bool());
-  EXPECT_TRUE(true_value.AsBool());
+  EXPECT_EQ(true_value, value_factory.CreateBoolValue(true));
+  EXPECT_EQ(true_value->kind(), Kind::kBool);
+  EXPECT_EQ(true_value->type(), type_factory.GetBoolType());
+  EXPECT_TRUE(true_value->value());
 
   EXPECT_NE(false_value, true_value);
   EXPECT_NE(true_value, false_value);
 }
 
 TEST(Value, Int) {
-  Value zero_value = Value::Int(0);
-  EXPECT_TRUE(zero_value.IsInt());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = value_factory.CreateIntValue(0);
+  EXPECT_TRUE(zero_value.Is<IntValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Value::Int(0));
-  EXPECT_EQ(zero_value.kind(), Kind::kInt);
-  EXPECT_EQ(zero_value.type(), Type::Int());
-  EXPECT_EQ(zero_value.AsInt(), 0);
+  EXPECT_EQ(zero_value, value_factory.CreateIntValue(0));
+  EXPECT_EQ(zero_value->kind(), Kind::kInt);
+  EXPECT_EQ(zero_value->type(), type_factory.GetIntType());
+  EXPECT_EQ(zero_value->value(), 0);
 
-  Value one_value = Value::Int(1);
-  EXPECT_TRUE(one_value.IsInt());
+  auto one_value = value_factory.CreateIntValue(1);
+  EXPECT_TRUE(one_value.Is<IntValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Value::Int(1));
-  EXPECT_EQ(one_value.kind(), Kind::kInt);
-  EXPECT_EQ(one_value.type(), Type::Int());
-  EXPECT_EQ(one_value.AsInt(), 1);
+  EXPECT_EQ(one_value, value_factory.CreateIntValue(1));
+  EXPECT_EQ(one_value->kind(), Kind::kInt);
+  EXPECT_EQ(one_value->type(), type_factory.GetIntType());
+  EXPECT_EQ(one_value->value(), 1);
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
 TEST(Value, Uint) {
-  Value zero_value = Value::Uint(0);
-  EXPECT_TRUE(zero_value.IsUint());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = value_factory.CreateUintValue(0);
+  EXPECT_TRUE(zero_value.Is<UintValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Value::Uint(0));
-  EXPECT_EQ(zero_value.kind(), Kind::kUint);
-  EXPECT_EQ(zero_value.type(), Type::Uint());
-  EXPECT_EQ(zero_value.AsUint(), 0);
+  EXPECT_EQ(zero_value, value_factory.CreateUintValue(0));
+  EXPECT_EQ(zero_value->kind(), Kind::kUint);
+  EXPECT_EQ(zero_value->type(), type_factory.GetUintType());
+  EXPECT_EQ(zero_value->value(), 0);
 
-  Value one_value = Value::Uint(1);
-  EXPECT_TRUE(one_value.IsUint());
+  auto one_value = value_factory.CreateUintValue(1);
+  EXPECT_TRUE(one_value.Is<UintValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Value::Uint(1));
-  EXPECT_EQ(one_value.kind(), Kind::kUint);
-  EXPECT_EQ(one_value.type(), Type::Uint());
-  EXPECT_EQ(one_value.AsUint(), 1);
+  EXPECT_EQ(one_value, value_factory.CreateUintValue(1));
+  EXPECT_EQ(one_value->kind(), Kind::kUint);
+  EXPECT_EQ(one_value->type(), type_factory.GetUintType());
+  EXPECT_EQ(one_value->value(), 1);
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
 TEST(Value, Double) {
-  Value zero_value = Value::Double(0.0);
-  EXPECT_TRUE(zero_value.IsDouble());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = value_factory.CreateDoubleValue(0.0);
+  EXPECT_TRUE(zero_value.Is<DoubleValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Value::Double(0.0));
-  EXPECT_EQ(zero_value.kind(), Kind::kDouble);
-  EXPECT_EQ(zero_value.type(), Type::Double());
-  EXPECT_EQ(zero_value.AsDouble(), 0.0);
+  EXPECT_EQ(zero_value, value_factory.CreateDoubleValue(0.0));
+  EXPECT_EQ(zero_value->kind(), Kind::kDouble);
+  EXPECT_EQ(zero_value->type(), type_factory.GetDoubleType());
+  EXPECT_EQ(zero_value->value(), 0.0);
 
-  Value one_value = Value::Double(1.0);
-  EXPECT_TRUE(one_value.IsDouble());
+  auto one_value = value_factory.CreateDoubleValue(1.0);
+  EXPECT_TRUE(one_value.Is<DoubleValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Value::Double(1.0));
-  EXPECT_EQ(one_value.kind(), Kind::kDouble);
-  EXPECT_EQ(one_value.type(), Type::Double());
-  EXPECT_EQ(one_value.AsDouble(), 1.0);
+  EXPECT_EQ(one_value, value_factory.CreateDoubleValue(1.0));
+  EXPECT_EQ(one_value->kind(), Kind::kDouble);
+  EXPECT_EQ(one_value->type(), type_factory.GetDoubleType());
+  EXPECT_EQ(one_value->value(), 1.0);
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
 TEST(Value, Duration) {
-  Value zero_value = Value::ZeroDuration();
-  EXPECT_TRUE(zero_value.IsDuration());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value =
+      Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
+  EXPECT_TRUE(zero_value.Is<DurationValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Value::ZeroDuration());
-  EXPECT_EQ(zero_value.kind(), Kind::kDuration);
-  EXPECT_EQ(zero_value.type(), Type::Duration());
-  EXPECT_EQ(zero_value.AsDuration(), absl::ZeroDuration());
+  EXPECT_EQ(zero_value,
+            Must(value_factory.CreateDurationValue(absl::ZeroDuration())));
+  EXPECT_EQ(zero_value->kind(), Kind::kDuration);
+  EXPECT_EQ(zero_value->type(), type_factory.GetDurationType());
+  EXPECT_EQ(zero_value->value(), absl::ZeroDuration());
 
-  ASSERT_OK_AND_ASSIGN(Value one_value, Value::Duration(absl::ZeroDuration() +
-                                                        absl::Nanoseconds(1)));
-  EXPECT_TRUE(one_value.IsDuration());
+  auto one_value = Must(value_factory.CreateDurationValue(
+      absl::ZeroDuration() + absl::Nanoseconds(1)));
+  EXPECT_TRUE(one_value.Is<DurationValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value.kind(), Kind::kDuration);
-  EXPECT_EQ(one_value.type(), Type::Duration());
-  EXPECT_EQ(one_value.AsDuration(),
-            absl::ZeroDuration() + absl::Nanoseconds(1));
+  EXPECT_EQ(one_value->kind(), Kind::kDuration);
+  EXPECT_EQ(one_value->type(), type_factory.GetDurationType());
+  EXPECT_EQ(one_value->value(), absl::ZeroDuration() + absl::Nanoseconds(1));
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 
-  EXPECT_THAT(Value::Duration(absl::InfiniteDuration()),
+  EXPECT_THAT(value_factory.CreateDurationValue(absl::InfiniteDuration()),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST(Value, Timestamp) {
-  Value zero_value = Value::UnixEpoch();
-  EXPECT_TRUE(zero_value.IsTimestamp());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
+  EXPECT_TRUE(zero_value.Is<TimestampValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Value::UnixEpoch());
-  EXPECT_EQ(zero_value.kind(), Kind::kTimestamp);
-  EXPECT_EQ(zero_value.type(), Type::Timestamp());
-  EXPECT_EQ(zero_value.AsTimestamp(), absl::UnixEpoch());
+  EXPECT_EQ(zero_value,
+            Must(value_factory.CreateTimestampValue(absl::UnixEpoch())));
+  EXPECT_EQ(zero_value->kind(), Kind::kTimestamp);
+  EXPECT_EQ(zero_value->type(), type_factory.GetTimestampType());
+  EXPECT_EQ(zero_value->value(), absl::UnixEpoch());
 
-  ASSERT_OK_AND_ASSIGN(Value one_value, Value::Timestamp(absl::UnixEpoch() +
-                                                         absl::Nanoseconds(1)));
-  EXPECT_TRUE(one_value.IsTimestamp());
+  auto one_value = Must(value_factory.CreateTimestampValue(
+      absl::UnixEpoch() + absl::Nanoseconds(1)));
+  EXPECT_TRUE(one_value.Is<TimestampValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value.kind(), Kind::kTimestamp);
-  EXPECT_EQ(one_value.type(), Type::Timestamp());
-  EXPECT_EQ(one_value.AsTimestamp(), absl::UnixEpoch() + absl::Nanoseconds(1));
+  EXPECT_EQ(one_value->kind(), Kind::kTimestamp);
+  EXPECT_EQ(one_value->type(), type_factory.GetTimestampType());
+  EXPECT_EQ(one_value->value(), absl::UnixEpoch() + absl::Nanoseconds(1));
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 
-  EXPECT_THAT(Value::Timestamp(absl::InfiniteFuture()),
+  EXPECT_THAT(value_factory.CreateTimestampValue(absl::InfiniteFuture()),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST(Value, BytesFromString) {
-  Value zero_value = Bytes::New(std::string("0"));
-  EXPECT_TRUE(zero_value.IsBytes());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateBytesValue(std::string("0")));
+  EXPECT_TRUE(zero_value.Is<BytesValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Bytes::New(std::string("0")));
-  EXPECT_EQ(zero_value.kind(), Kind::kBytes);
-  EXPECT_EQ(zero_value.type(), Type::Bytes());
-  EXPECT_EQ(zero_value.AsBytes().ToString(), "0");
+  EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue(std::string("0"))));
+  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(zero_value->ToString(), "0");
 
-  Value one_value = Bytes::New(std::string("1"));
-  EXPECT_TRUE(one_value.IsBytes());
+  auto one_value = Must(value_factory.CreateBytesValue(std::string("1")));
+  EXPECT_TRUE(one_value.Is<BytesValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Bytes::New(std::string("1")));
-  EXPECT_EQ(one_value.kind(), Kind::kBytes);
-  EXPECT_EQ(one_value.type(), Type::Bytes());
-  EXPECT_EQ(one_value.AsBytes().ToString(), "1");
+  EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue(std::string("1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(one_value->ToString(), "1");
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
 TEST(Value, BytesFromStringView) {
-  Value zero_value = Bytes::New(absl::string_view("0"));
-  EXPECT_TRUE(zero_value.IsBytes());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value =
+      Must(value_factory.CreateBytesValue(absl::string_view("0")));
+  EXPECT_TRUE(zero_value.Is<BytesValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Bytes::New(absl::string_view("0")));
-  EXPECT_EQ(zero_value.kind(), Kind::kBytes);
-  EXPECT_EQ(zero_value.type(), Type::Bytes());
-  EXPECT_EQ(zero_value.AsBytes().ToString(), "0");
+  EXPECT_EQ(zero_value,
+            Must(value_factory.CreateBytesValue(absl::string_view("0"))));
+  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(zero_value->ToString(), "0");
 
-  Value one_value = Bytes::New(absl::string_view("1"));
-  EXPECT_TRUE(one_value.IsBytes());
+  auto one_value = Must(value_factory.CreateBytesValue(absl::string_view("1")));
+  EXPECT_TRUE(one_value.Is<BytesValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Bytes::New(absl::string_view("1")));
-  EXPECT_EQ(one_value.kind(), Kind::kBytes);
-  EXPECT_EQ(one_value.type(), Type::Bytes());
-  EXPECT_EQ(one_value.AsBytes().ToString(), "1");
+  EXPECT_EQ(one_value,
+            Must(value_factory.CreateBytesValue(absl::string_view("1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(one_value->ToString(), "1");
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
 TEST(Value, BytesFromCord) {
-  Value zero_value = Bytes::New(absl::Cord("0"));
-  EXPECT_TRUE(zero_value.IsBytes());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateBytesValue(absl::Cord("0")));
+  EXPECT_TRUE(zero_value.Is<BytesValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Bytes::New(absl::Cord("0")));
-  EXPECT_EQ(zero_value.kind(), Kind::kBytes);
-  EXPECT_EQ(zero_value.type(), Type::Bytes());
-  EXPECT_EQ(zero_value.AsBytes().ToCord(), "0");
+  EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue(absl::Cord("0"))));
+  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(zero_value->ToCord(), "0");
 
-  Value one_value = Bytes::New(absl::Cord("1"));
-  EXPECT_TRUE(one_value.IsBytes());
+  auto one_value = Must(value_factory.CreateBytesValue(absl::Cord("1")));
+  EXPECT_TRUE(one_value.Is<BytesValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Bytes::New(absl::Cord("1")));
-  EXPECT_EQ(one_value.kind(), Kind::kBytes);
-  EXPECT_EQ(one_value.type(), Type::Bytes());
-  EXPECT_EQ(one_value.AsBytes().ToCord(), "1");
+  EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue(absl::Cord("1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(one_value->ToCord(), "1");
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
 TEST(Value, BytesFromLiteral) {
-  Value zero_value = Bytes::New("0");
-  EXPECT_TRUE(zero_value.IsBytes());
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateBytesValue("0"));
+  EXPECT_TRUE(zero_value.Is<BytesValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Bytes::New("0"));
-  EXPECT_EQ(zero_value.kind(), Kind::kBytes);
-  EXPECT_EQ(zero_value.type(), Type::Bytes());
-  EXPECT_EQ(zero_value.AsBytes().ToString(), "0");
+  EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue("0")));
+  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(zero_value->ToString(), "0");
 
-  Value one_value = Bytes::New("1");
-  EXPECT_TRUE(one_value.IsBytes());
+  auto one_value = Must(value_factory.CreateBytesValue("1"));
+  EXPECT_TRUE(one_value.Is<BytesValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Bytes::New("1"));
-  EXPECT_EQ(one_value.kind(), Kind::kBytes);
-  EXPECT_EQ(one_value.type(), Type::Bytes());
-  EXPECT_EQ(one_value.AsBytes().ToString(), "1");
+  EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue("1")));
+  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(one_value->ToString(), "1");
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
 }
 
-Value MakeStringBytes(absl::string_view value) { return Bytes::New(value); }
+TEST(Value, BytesFromExternal) {
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateBytesValue("0", []() {}));
+  EXPECT_TRUE(zero_value.Is<BytesValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue("0", []() {})));
+  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(zero_value->ToString(), "0");
 
-Value MakeCordBytes(absl::string_view value) {
-  return Bytes::New(absl::Cord(value));
+  auto one_value = Must(value_factory.CreateBytesValue("1", []() {}));
+  EXPECT_TRUE(one_value.Is<BytesValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue("1", []() {})));
+  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
+  EXPECT_EQ(one_value->ToString(), "1");
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
 }
 
-Value MakeWrappedBytes(absl::string_view value) {
-  return Bytes::Wrap(value, []() {});
+Persistent<const BytesValue> MakeStringBytes(ValueFactory& value_factory,
+                                             absl::string_view value) {
+  return Must(value_factory.CreateBytesValue(value));
+}
+
+Persistent<const BytesValue> MakeCordBytes(ValueFactory& value_factory,
+                                           absl::string_view value) {
+  return Must(value_factory.CreateBytesValue(absl::Cord(value)));
+}
+
+Persistent<const BytesValue> MakeExternalBytes(ValueFactory& value_factory,
+                                               absl::string_view value) {
+  return Must(value_factory.CreateBytesValue(value, []() {}));
 }
 
 struct BytesConcatTestCase final {
@@ -428,42 +604,52 @@ using BytesConcatTest = testing::TestWithParam<BytesConcatTestCase>;
 
 TEST_P(BytesConcatTest, Concat) {
   const BytesConcatTestCase& test_case = GetParam();
-  EXPECT_TRUE(Bytes::Concat(MakeStringBytes(test_case.lhs).AsBytes(),
-                            MakeStringBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeStringBytes(test_case.lhs).AsBytes(),
-                            MakeCordBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeStringBytes(test_case.lhs).AsBytes(),
-                            MakeWrappedBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeCordBytes(test_case.lhs).AsBytes(),
-                            MakeStringBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeCordBytes(test_case.lhs).AsBytes(),
-                            MakeWrappedBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeCordBytes(test_case.lhs).AsBytes(),
-                            MakeCordBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeWrappedBytes(test_case.lhs).AsBytes(),
-                            MakeStringBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeWrappedBytes(test_case.lhs).AsBytes(),
-                            MakeCordBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(Bytes::Concat(MakeWrappedBytes(test_case.lhs).AsBytes(),
-                            MakeWrappedBytes(test_case.rhs).AsBytes())
-                  .AsBytes()
-                  .Equals(test_case.lhs + test_case.rhs));
+  TestValueFactory value_factory;
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeStringBytes(value_factory, test_case.lhs),
+                              MakeStringBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeStringBytes(value_factory, test_case.lhs),
+                              MakeCordBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeStringBytes(value_factory, test_case.lhs),
+                              MakeExternalBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeCordBytes(value_factory, test_case.lhs),
+                              MakeStringBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeCordBytes(value_factory, test_case.lhs),
+                              MakeCordBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeCordBytes(value_factory, test_case.lhs),
+                              MakeExternalBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeExternalBytes(value_factory, test_case.lhs),
+                              MakeStringBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeExternalBytes(value_factory, test_case.lhs),
+                              MakeCordBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(value_factory,
+                              MakeExternalBytes(value_factory, test_case.lhs),
+                              MakeExternalBytes(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
 }
 
 INSTANTIATE_TEST_SUITE_P(BytesConcatTest, BytesConcatTest,
@@ -489,9 +675,13 @@ using BytesSizeTest = testing::TestWithParam<BytesSizeTestCase>;
 
 TEST_P(BytesSizeTest, Size) {
   const BytesSizeTestCase& test_case = GetParam();
-  EXPECT_EQ(MakeStringBytes(test_case.data).AsBytes().size(), test_case.size);
-  EXPECT_EQ(MakeCordBytes(test_case.data).AsBytes().size(), test_case.size);
-  EXPECT_EQ(MakeWrappedBytes(test_case.data).AsBytes().size(), test_case.size);
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->size(),
+            test_case.size);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->size(),
+            test_case.size);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->size(),
+            test_case.size);
 }
 
 INSTANTIATE_TEST_SUITE_P(BytesSizeTest, BytesSizeTest,
@@ -511,9 +701,12 @@ using BytesEmptyTest = testing::TestWithParam<BytesEmptyTestCase>;
 
 TEST_P(BytesEmptyTest, Empty) {
   const BytesEmptyTestCase& test_case = GetParam();
-  EXPECT_EQ(MakeStringBytes(test_case.data).AsBytes().empty(), test_case.empty);
-  EXPECT_EQ(MakeCordBytes(test_case.data).AsBytes().empty(), test_case.empty);
-  EXPECT_EQ(MakeWrappedBytes(test_case.data).AsBytes().empty(),
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->empty(),
+            test_case.empty);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->empty(),
+            test_case.empty);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->empty(),
             test_case.empty);
 }
 
@@ -534,41 +727,33 @@ using BytesEqualsTest = testing::TestWithParam<BytesEqualsTestCase>;
 
 TEST_P(BytesEqualsTest, Equals) {
   const BytesEqualsTestCase& test_case = GetParam();
-  EXPECT_EQ(MakeStringBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeStringBytes(test_case.rhs).AsBytes()),
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.lhs)
+                ->Equals(MakeStringBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeStringBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeCordBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.lhs)
+                ->Equals(MakeCordBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeStringBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeWrappedBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.lhs)
+                ->Equals(MakeExternalBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeCordBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeStringBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.lhs)
+                ->Equals(MakeStringBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeCordBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeWrappedBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.lhs)
+                ->Equals(MakeCordBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeCordBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeCordBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.lhs)
+                ->Equals(MakeExternalBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeWrappedBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeStringBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.lhs)
+                ->Equals(MakeStringBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeWrappedBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeCordBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.lhs)
+                ->Equals(MakeCordBytes(value_factory, test_case.rhs)),
             test_case.equals);
-  EXPECT_EQ(MakeWrappedBytes(test_case.lhs)
-                .AsBytes()
-                .Equals(MakeWrappedBytes(test_case.rhs).AsBytes()),
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.lhs)
+                ->Equals(MakeExternalBytes(value_factory, test_case.rhs)),
             test_case.equals);
 }
 
@@ -598,50 +783,42 @@ int NormalizeCompareResult(int compare) { return std::clamp(compare, -1, 1); }
 
 TEST_P(BytesCompareTest, Equals) {
   const BytesCompareTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
   EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeStringBytes(test_case.rhs).AsBytes())),
+                MakeStringBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeStringBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeCordBytes(test_case.rhs).AsBytes())),
+                MakeStringBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeCordBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeWrappedBytes(test_case.rhs).AsBytes())),
+                MakeStringBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeExternalBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeStringBytes(test_case.rhs).AsBytes())),
+                MakeCordBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeStringBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeWrappedBytes(test_case.rhs).AsBytes())),
+                MakeCordBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeCordBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeCordBytes(test_case.rhs).AsBytes())),
+                MakeCordBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeExternalBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeWrappedBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeStringBytes(test_case.rhs).AsBytes())),
+                MakeExternalBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeStringBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeWrappedBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeCordBytes(test_case.rhs).AsBytes())),
+                MakeExternalBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeCordBytes(value_factory, test_case.rhs))),
             test_case.compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeWrappedBytes(test_case.lhs)
-                    .AsBytes()
-                    .Compare(MakeWrappedBytes(test_case.rhs).AsBytes())),
+                MakeExternalBytes(value_factory, test_case.lhs)
+                    ->Compare(MakeExternalBytes(value_factory, test_case.rhs))),
             test_case.compare);
 }
 
@@ -667,11 +844,12 @@ using BytesDebugStringTest = testing::TestWithParam<BytesDebugStringTestCase>;
 
 TEST_P(BytesDebugStringTest, ToCord) {
   const BytesDebugStringTestCase& test_case = GetParam();
-  EXPECT_EQ(MakeStringBytes(test_case.data).DebugString(),
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->DebugString(),
             internal::FormatBytesLiteral(test_case.data));
-  EXPECT_EQ(MakeCordBytes(test_case.data).DebugString(),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->DebugString(),
             internal::FormatBytesLiteral(test_case.data));
-  EXPECT_EQ(MakeWrappedBytes(test_case.data).DebugString(),
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->DebugString(),
             internal::FormatBytesLiteral(test_case.data));
 }
 
@@ -691,10 +869,12 @@ using BytesToStringTest = testing::TestWithParam<BytesToStringTestCase>;
 
 TEST_P(BytesToStringTest, ToString) {
   const BytesToStringTestCase& test_case = GetParam();
-  EXPECT_EQ(MakeStringBytes(test_case.data).AsBytes().ToString(),
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->ToString(),
             test_case.data);
-  EXPECT_EQ(MakeCordBytes(test_case.data).AsBytes().ToString(), test_case.data);
-  EXPECT_EQ(MakeWrappedBytes(test_case.data).AsBytes().ToString(),
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->ToString(),
+            test_case.data);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->ToString(),
             test_case.data);
 }
 
@@ -714,9 +894,12 @@ using BytesToCordTest = testing::TestWithParam<BytesToCordTestCase>;
 
 TEST_P(BytesToCordTest, ToCord) {
   const BytesToCordTestCase& test_case = GetParam();
-  EXPECT_EQ(MakeStringBytes(test_case.data).AsBytes().ToCord(), test_case.data);
-  EXPECT_EQ(MakeCordBytes(test_case.data).AsBytes().ToCord(), test_case.data);
-  EXPECT_EQ(MakeWrappedBytes(test_case.data).AsBytes().ToCord(),
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->ToCord(),
+            test_case.data);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->ToCord(),
+            test_case.data);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->ToCord(),
             test_case.data);
 }
 
@@ -729,19 +912,23 @@ INSTANTIATE_TEST_SUITE_P(BytesToCordTest, BytesToCordTest,
                          }));
 
 TEST(Value, SupportsAbslHash) {
+  TestValueFactory value_factory;
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
-      Value::Null(),
-      Value::Error(absl::CancelledError()),
-      Value::Bool(false),
-      Value::Int(0),
-      Value::Uint(0),
-      Value::Double(0.0),
-      Value::ZeroDuration(),
-      Value::UnixEpoch(),
-      Bytes::Empty(),
-      Bytes::New("foo"),
-      Bytes::New(absl::Cord("bar")),
-      Bytes::Wrap("baz", []() {}),
+      Persistent<const Value>(value_factory.GetNullValue()),
+      Persistent<const Value>(
+          value_factory.CreateErrorValue(absl::CancelledError())),
+      Persistent<const Value>(value_factory.CreateBoolValue(false)),
+      Persistent<const Value>(value_factory.CreateIntValue(0)),
+      Persistent<const Value>(value_factory.CreateUintValue(0)),
+      Persistent<const Value>(value_factory.CreateDoubleValue(0.0)),
+      Persistent<const Value>(
+          Must(value_factory.CreateDurationValue(absl::ZeroDuration()))),
+      Persistent<const Value>(
+          Must(value_factory.CreateTimestampValue(absl::UnixEpoch()))),
+      Persistent<const Value>(value_factory.GetBytesValue()),
+      Persistent<const Value>(Must(value_factory.CreateBytesValue("foo"))),
+      Persistent<const Value>(
+          Must(value_factory.CreateBytesValue(absl::Cord("bar")))),
   }));
 }
 

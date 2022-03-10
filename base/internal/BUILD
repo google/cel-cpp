@@ -54,10 +54,21 @@ cc_library(
         "type.pre.h",
         "type.post.h",
     ],
+)
+
+cc_library(
+    name = "value",
+    textual_hdrs = [
+        "value.pre.h",
+        "value.post.h",
+    ],
     deps = [
         "//base:handle",
+        "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
     ],
 )

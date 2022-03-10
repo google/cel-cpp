@@ -129,3 +129,57 @@ cc_test(
         "@com_google_absl//absl/hash:hash_testing",
     ],
 )
+
+cc_library(
+    name = "value",
+    srcs = [
+        "value.cc",
+        "value_factory.cc",
+    ],
+    hdrs = [
+        "value.h",
+        "value_factory.h",
+    ],
+    deps = [
+        ":handle",
+        ":kind",
+        ":memory_manager",
+        ":type",
+        "//base/internal:value",
+        "//internal:casts",
+        "//internal:no_destructor",
+        "//internal:status_macros",
+        "//internal:strings",
+        "//internal:time",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "value_test",
+    srcs = [
+        "value_factory_test.cc",
+        "value_test.cc",
+    ],
+    deps = [
+        ":memory_manager",
+        ":type",
+        ":value",
+        "//internal:strings",
+        "//internal:testing",
+        "//internal:time",
+        "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+    ],
+)

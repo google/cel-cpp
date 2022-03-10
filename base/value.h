@@ -16,365 +16,484 @@
 #define THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 
 #include <cstdint>
-#include <limits>
-#include <memory>
+#include <functional>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/casts.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
-#include "base/internal/value.h"
+#include "base/handle.h"
+#include "base/internal/value.pre.h"  // IWYU pragma: export
 #include "base/kind.h"
+#include "base/memory_manager.h"
 #include "base/type.h"
-#include "internal/casts.h"
 
 namespace cel {
 
+class Value;
+class NullValue;
+class ErrorValue;
+class BoolValue;
+class IntValue;
+class UintValue;
+class DoubleValue;
+class BytesValue;
+class DurationValue;
+class TimestampValue;
+class ValueFactory;
+
+namespace internal {
+template <typename T>
+class NoDestructor;
+}
+
 // A representation of a CEL value that enables reflection and introspection of
 // values.
-//
-// TODO(issues/5): document once derived implementations stabilize
-class Value final {
+class Value : public base_internal::Resource {
  public:
-  // Returns the null value.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value Null() { return Value(); }
-
-  // Constructs an error value. It is required that `status` is non-OK,
-  // otherwise behavior is undefined.
-  static Value Error(const absl::Status& status);
-
-  // Returns a bool value.
-  static Value Bool(bool value) { return Value(value); }
-
-  // Returns the false bool value. Equivalent to `Value::Bool(false)`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value False() { return Bool(false); }
-
-  // Returns the true bool value. Equivalent to `Value::Bool(true)`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value True() { return Bool(true); }
-
-  // Returns an int value.
-  static Value Int(int64_t value) { return Value(value); }
-
-  // Returns a uint value.
-  static Value Uint(uint64_t value) { return Value(value); }
-
-  // Returns a double value.
-  static Value Double(double value) { return Value(value); }
-
-  // Returns a NaN double value. Equivalent to `Value::Double(NAN)`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value NaN() {
-    return Double(std::numeric_limits<double>::quiet_NaN());
-  }
-
-  // Returns a positive infinity double value. Equivalent to
-  // `Value::Double(INFINITY)`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value PositiveInfinity() {
-    return Double(std::numeric_limits<double>::infinity());
-  }
-
-  // Returns a negative infinity double value. Equivalent to
-  // `Value::Double(-INFINITY)`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value NegativeInfinity() {
-    return Double(-std::numeric_limits<double>::infinity());
-  }
-
-  // Returns a duration value or a `absl::StatusCode::kInvalidArgument` error if
-  // the value is not in the valid range.
-  static absl::StatusOr<Value> Duration(absl::Duration value);
-
-  // Returns the zero duration value. Equivalent to
-  // `Value::Duration(absl::ZeroDuration())`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value ZeroDuration() {
-    return Value(Kind::kDuration, 0, 0);
-  }
-
-  // Returns a timestamp value or a `absl::StatusCode::kInvalidArgument` error
-  // if the value is not in the valid range.
-  static absl::StatusOr<Value> Timestamp(absl::Time value);
-
-  // Returns the zero timestamp value. Equivalent to
-  // `Value::Timestamp(absl::UnixEpoch())`.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value UnixEpoch() {
-    return Value(Kind::kTimestamp, 0, 0);
-  }
-
-  // Equivalent to `Value::Null()`.
-  constexpr Value() = default;
-
-  Value(const Value& other);
-
-  Value(Value&& other);
-
-  ~Value();
-
-  Value& operator=(const Value& other);
-
-  Value& operator=(Value&& other);
-
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
-  cel::Type type() const {
-    return metadata_.simple_tag()
-               ? cel::Type::Simple(metadata_.kind())
-               : cel::Type(internal::Ref(metadata_.base_type()));
-  }
+  virtual Transient<const Type> type() const = 0;
 
   // Returns the kind of the value. This is equivalent to `type().kind()` but
   // faster in many scenarios. As such it should be preffered when only the kind
   // is required.
-  Kind kind() const { return metadata_.kind(); }
+  virtual Kind kind() const { return type()->kind(); }
 
-  // True if this is the null value, false otherwise.
-  bool IsNull() const { return kind() == Kind::kNullType; }
-
-  // True if this is an error value, false otherwise.
-  bool IsError() const { return kind() == Kind::kError; }
-
-  // True if this is a bool value, false otherwise.
-  bool IsBool() const { return kind() == Kind::kBool; }
-
-  // True if this is an int value, false otherwise.
-  bool IsInt() const { return kind() == Kind::kInt; }
-
-  // True if this is a uint value, false otherwise.
-  bool IsUint() const { return kind() == Kind::kUint; }
-
-  // True if this is a double value, false otherwise.
-  bool IsDouble() const { return kind() == Kind::kDouble; }
-
-  // True if this is a duration value, false otherwise.
-  bool IsDuration() const { return kind() == Kind::kDuration; }
-
-  // True if this is a timestamp value, false otherwise.
-  bool IsTimestamp() const { return kind() == Kind::kTimestamp; }
-
-  // True if this is a bytes value, false otherwise.
-  bool IsBytes() const { return kind() == Kind::kBytes; }
-
-  // Returns the C++ error value. Requires `kind() == Kind::kError` or behavior
-  // is undefined.
-  const absl::Status& AsError() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(IsError());
-    return content_.error_value();
-  }
-
-  // Returns the C++ bool value. Requires `kind() == Kind::kBool` or behavior is
-  // undefined.
-  bool AsBool() const {
-    ABSL_ASSERT(IsBool());
-    return content_.bool_value();
-  }
-
-  // Returns the C++ int value. Requires `kind() == Kind::kInt` or behavior is
-  // undefined.
-  int64_t AsInt() const {
-    ABSL_ASSERT(IsInt());
-    return content_.int_value();
-  }
-
-  // Returns the C++ uint value. Requires `kind() == Kind::kUint` or behavior is
-  // undefined.
-  uint64_t AsUint() const {
-    ABSL_ASSERT(IsUint());
-    return content_.uint_value();
-  }
-
-  // Returns the C++ double value. Requires `kind() == Kind::kDouble` or
-  // behavior is undefined.
-  double AsDouble() const {
-    ABSL_ASSERT(IsDouble());
-    return content_.double_value();
-  }
-
-  // Returns the C++ duration value. Requires `kind() == Kind::kDuration` or
-  // behavior is undefined.
-  absl::Duration AsDuration() const {
-    ABSL_ASSERT(IsDuration());
-    return absl::Seconds(content_.int_value()) +
-           absl::Nanoseconds(
-               absl::bit_cast<int32_t>(metadata_.extended_content()));
-  }
-
-  // Returns the C++ timestamp value. Requires `kind() == Kind::kTimestamp` or
-  // behavior is undefined.
-  absl::Time AsTimestamp() const {
-    // Timestamp is stored as the duration since Unix Epoch.
-    ABSL_ASSERT(IsTimestamp());
-    return absl::UnixEpoch() + absl::Seconds(content_.int_value()) +
-           absl::Nanoseconds(
-               absl::bit_cast<int32_t>(metadata_.extended_content()));
-  }
-
-  std::string DebugString() const;
-
-  const Bytes& AsBytes() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(IsBytes());
-    return internal::down_cast<const Bytes&>(*content_.reffed_value());
-  }
-
-  template <typename H>
-  friend H AbslHashValue(H state, const Value& value) {
-    value.HashValue(absl::HashState::Create(&state));
-    return std::move(state);
-  }
-
-  friend void swap(Value& lhs, Value& rhs) { lhs.Swap(rhs); }
-
-  friend bool operator==(const Value& lhs, const Value& rhs) {
-    return lhs.Equals(rhs);
-  }
-
-  friend bool operator!=(const Value& lhs, const Value& rhs) {
-    return !operator==(lhs, rhs);
-  }
+  virtual std::string DebugString() const = 0;
 
  private:
-  friend class Bytes;
+  friend class NullValue;
+  friend class ErrorValue;
+  friend class BoolValue;
+  friend class IntValue;
+  friend class UintValue;
+  friend class DoubleValue;
+  friend class BytesValue;
+  friend class DurationValue;
+  friend class TimestampValue;
+  friend class base_internal::ValueHandleBase;
+  friend class base_internal::StringBytesValue;
+  friend class base_internal::ExternalDataBytesValue;
 
-  using Metadata = base_internal::ValueMetadata;
-  using Content = base_internal::ValueContent;
+  Value() = default;
+  Value(const Value&) = default;
+  Value(Value&&) = default;
 
-  static void InitializeSingletons();
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return true; }
 
-  static void Destruct(Value* dest);
+  // For non-inlined values that are reference counted, this is the result of
+  // `sizeof` and `alignof` for the most derived class.
+  std::pair<size_t, size_t> SizeAndAlignment() const override;
 
-  constexpr explicit Value(bool value)
-      : metadata_(Kind::kBool), content_(value) {}
+  // Expose to some value implementations using friendship.
+  using base_internal::Resource::Ref;
+  using base_internal::Resource::Unref;
 
-  constexpr explicit Value(int64_t value)
-      : metadata_(Kind::kInt), content_(value) {}
+  // Called by base_internal::ValueHandleBase for inlined values.
+  virtual void CopyTo(Value& address) const;
 
-  constexpr explicit Value(uint64_t value)
-      : metadata_(Kind::kUint), content_(value) {}
+  // Called by base_internal::ValueHandleBase for inlined values.
+  virtual void MoveTo(Value& address);
 
-  constexpr explicit Value(double value)
-      : metadata_(Kind::kDouble), content_(value) {}
+  // Called by base_internal::ValueHandleBase.
+  virtual bool Equals(const Value& other) const = 0;
 
-  explicit Value(const absl::Status& status)
-      : metadata_(Kind::kError), content_(status) {}
-
-  constexpr Value(Kind kind, base_internal::BaseValue* base_value)
-      : metadata_(kind), content_(base_value) {}
-
-  constexpr Value(Kind kind, int64_t content, uint32_t extended_content)
-      : metadata_(kind, extended_content), content_(content) {}
-
-  bool Equals(const Value& other) const;
-
-  void HashValue(absl::HashState state) const;
-
-  void Swap(Value& other);
-
-  Metadata metadata_;
-  Content content_;
+  // Called by base_internal::ValueHandleBase.
+  virtual void HashValue(absl::HashState state) const = 0;
 };
 
-// A CEL bytes value specific interface that can be accessed via
-// `cel::Value::AsBytes`. It acts as a facade over various native
-// representations and provides efficient implementations of CEL builtin
-// functions.
-class Bytes final : public base_internal::BaseValue {
+class NullValue final : public Value, public base_internal::ResourceInlined {
  public:
-  // Returns a bytes value which has a size of 0 and is empty.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static Value Empty();
+  static Persistent<const NullValue> Get(ValueFactory& value_factory);
 
-  // Returns a bytes value with `value` as its contents.
-  static Value New(std::string value);
+  Transient<const Type> type() const override;
 
-  // Returns a bytes value with a copy of `value` as its contents.
-  static Value New(absl::string_view value) {
-    return New(std::string(value.data(), value.size()));
-  }
+  Kind kind() const override { return Kind::kNullType; }
 
-  // Returns a bytes value with a copy of `value` as its contents.
-  //
-  // This is needed for `Value::Bytes("foo")` to be an unambiguous function
-  // call.
-  static Value New(const char* value) {
-    ABSL_ASSERT(value != nullptr);
-    return New(absl::string_view(value));
-  }
+  std::string DebugString() const override;
 
-  // Returns a bytes value with `value` as its contents.
-  static Value New(absl::Cord value);
+ private:
+  friend class ValueFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
 
-  // Returns a bytes value with `value` as its contents. Unlike `New()` this
-  // does not copy `value`, instead it expects the contents pointed to by
-  // `value` to live as long as the returned instance. `releaser` is used to
-  // notify the caller when the contents pointed to by `value` are no longer
-  // required.
-  template <typename Releaser>
-  static std::enable_if_t<std::is_invocable_r_v<void, Releaser>, Value> Wrap(
-      absl::string_view value, Releaser&& releaser);
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kNullType; }
 
-  static Value Concat(const Bytes& lhs, const Bytes& rhs);
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullValue& Get();
+
+  NullValue() = default;
+  NullValue(const NullValue&) = default;
+  NullValue(NullValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+};
+
+class ErrorValue final : public Value, public base_internal::ResourceInlined {
+ public:
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kError; }
+
+  std::string DebugString() const override;
+
+  const absl::Status& value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kError; }
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit ErrorValue(absl::Status value) : value_(std::move(value)) {}
+
+  ErrorValue() = delete;
+
+  ErrorValue(const ErrorValue&) = default;
+  ErrorValue(ErrorValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  absl::Status value_;
+};
+
+class BoolValue final : public Value, public base_internal::ResourceInlined {
+ public:
+  static Persistent<const BoolValue> False(ValueFactory& value_factory);
+
+  static Persistent<const BoolValue> True(ValueFactory& value_factory);
+
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kBool; }
+
+  std::string DebugString() const override;
+
+  constexpr bool value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kBool; }
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit BoolValue(bool value) : value_(value) {}
+
+  BoolValue() = delete;
+
+  BoolValue(const BoolValue&) = default;
+  BoolValue(BoolValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  bool value_;
+};
+
+class IntValue final : public Value, public base_internal::ResourceInlined {
+ public:
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kInt; }
+
+  std::string DebugString() const override;
+
+  constexpr int64_t value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kInt; }
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit IntValue(int64_t value) : value_(value) {}
+
+  IntValue() = delete;
+
+  IntValue(const IntValue&) = default;
+  IntValue(IntValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  int64_t value_;
+};
+
+class UintValue final : public Value, public base_internal::ResourceInlined {
+ public:
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kUint; }
+
+  std::string DebugString() const override;
+
+  constexpr uint64_t value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kUint; }
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit UintValue(uint64_t value) : value_(value) {}
+
+  UintValue() = delete;
+
+  UintValue(const UintValue&) = default;
+  UintValue(UintValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  uint64_t value_;
+};
+
+class DoubleValue final : public Value, public base_internal::ResourceInlined {
+ public:
+  static Persistent<const DoubleValue> NaN(ValueFactory& value_factory);
+
+  static Persistent<const DoubleValue> PositiveInfinity(
+      ValueFactory& value_factory);
+
+  static Persistent<const DoubleValue> NegativeInfinity(
+      ValueFactory& value_factory);
+
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kDouble; }
+
+  std::string DebugString() const override;
+
+  constexpr double value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kDouble; }
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit DoubleValue(double value) : value_(value) {}
+
+  DoubleValue() = delete;
+
+  DoubleValue(const DoubleValue&) = default;
+  DoubleValue(DoubleValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  double value_;
+};
+
+class BytesValue : public Value {
+ protected:
+  using Rep = absl::variant<absl::string_view,
+                            std::reference_wrapper<const absl::Cord>>;
+
+ public:
+  static Persistent<const BytesValue> Empty(ValueFactory& value_factory);
+
+  // Concat concatenates the contents of two ByteValue, returning a new
+  // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
+  // the input ByteValue.
+  static absl::StatusOr<Persistent<const BytesValue>> Concat(
+      ValueFactory& value_factory, const Transient<const BytesValue>& lhs,
+      const Transient<const BytesValue>& rhs);
+
+  Transient<const Type> type() const final;
+
+  Kind kind() const final { return Kind::kBytes; }
+
+  std::string DebugString() const final;
 
   size_t size() const;
 
   bool empty() const;
 
   bool Equals(absl::string_view bytes) const;
-
   bool Equals(const absl::Cord& bytes) const;
-
-  bool Equals(const Bytes& bytes) const;
+  bool Equals(const Transient<const BytesValue>& bytes) const;
 
   int Compare(absl::string_view bytes) const;
-
   int Compare(const absl::Cord& bytes) const;
-
-  int Compare(const Bytes& bytes) const;
+  int Compare(const Transient<const BytesValue>& bytes) const;
 
   std::string ToString() const;
 
-  absl::Cord ToCord() const;
+  absl::Cord ToCord() const {
+    // Without the handle we cannot know if this is reference counted.
+    return ToCord(/*reference_counted=*/false);
+  }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+  friend class base_internal::InlinedCordBytesValue;
+  friend class base_internal::InlinedStringViewBytesValue;
+  friend class base_internal::StringBytesValue;
+  friend class base_internal::ExternalDataBytesValue;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kBytes; }
+
+  BytesValue() = default;
+  BytesValue(const BytesValue&) = default;
+  BytesValue(BytesValue&&) = default;
+
+  // Get the contents of this BytesValue as absl::Cord. When reference_counted
+  // is true, the implementation can potentially return an absl::Cord that wraps
+  // the contents instead of copying.
+  virtual absl::Cord ToCord(bool reference_counted) const = 0;
+
+  // Get the contents of this BytesValue as either absl::string_view or const
+  // absl::Cord&.
+  virtual Rep rep() const = 0;
+
+  // See comments for respective member functions on `Value`.
+  bool Equals(const Value& other) const final;
+  void HashValue(absl::HashState state) const final;
+};
+
+class DurationValue final : public Value,
+                            public base_internal::ResourceInlined {
+ public:
+  static Persistent<const DurationValue> Zero(ValueFactory& value_factory);
+
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kDuration; }
 
   std::string DebugString() const override;
 
- protected:
-  bool Equals(const Value& value) const override;
-
-  void HashValue(absl::HashState state) const override;
+  constexpr absl::Duration value() const { return value_; }
 
  private:
-  friend class Value;
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
 
-  Bytes() : Bytes(std::string()) {}
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kDuration; }
 
-  explicit Bytes(std::string value)
-      : base_internal::BaseValue(),
-        data_(absl::in_place_index<0>, std::move(value)) {}
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit DurationValue(absl::Duration value) : value_(value) {}
 
-  explicit Bytes(absl::Cord value)
-      : base_internal::BaseValue(),
-        data_(absl::in_place_index<1>, std::move(value)) {}
+  DurationValue() = delete;
 
-  explicit Bytes(base_internal::ExternalData value)
-      : base_internal::BaseValue(),
-        data_(absl::in_place_index<2>, std::move(value)) {}
+  DurationValue(const DurationValue&) = default;
+  DurationValue(DurationValue&&) = default;
 
-  absl::variant<std::string, absl::Cord, base_internal::ExternalData> data_;
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  absl::Duration value_;
 };
 
-template <typename Releaser>
-std::enable_if_t<std::is_invocable_r_v<void, Releaser>, Value> Bytes::Wrap(
-    absl::string_view value, Releaser&& releaser) {
-  if (value.empty()) {
-    std::forward<Releaser>(releaser)();
-    return Empty();
+class TimestampValue final : public Value,
+                             public base_internal::ResourceInlined {
+ public:
+  static Persistent<const TimestampValue> UnixEpoch(
+      ValueFactory& value_factory);
+
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kTimestamp; }
+
+  std::string DebugString() const override;
+
+  constexpr absl::Time value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) {
+    return value.kind() == Kind::kTimestamp;
   }
-  return Value(Kind::kBytes,
-               new Bytes(base_internal::ExternalData(
-                   value.data(), value.size(),
-                   std::make_unique<base_internal::ExternalDataReleaser>(
-                       std::forward<Releaser>(releaser)))));
-}
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit TimestampValue(absl::Time value) : value_(value) {}
+
+  TimestampValue() = delete;
+
+  TimestampValue(const TimestampValue&) = default;
+  TimestampValue(TimestampValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  absl::Time value_;
+};
 
 }  // namespace cel
+
+// value.pre.h forward declares types so they can be friended above. The types
+// themselves need to be defined after everything else as they need to access or
+// derive from the above types. We do this in value.post.h to avoid mudying this
+// header and making it difficult to read.
+#include "base/internal/value.post.h"  // IWYU pragma: export
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUE_H_

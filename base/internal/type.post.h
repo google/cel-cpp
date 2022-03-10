@@ -32,10 +32,10 @@ namespace cel {
 
 namespace base_internal {
 
-// Base implementation of persistent and transient handles. This contains
-// implementation details shared among both, but is never used directly. The
-// derived classes are responsible for defining appropriate constructors and
-// assignments.
+// Base implementation of persistent and transient handles for types. This
+// contains implementation details shared among both, but is never used
+// directly. The derived classes are responsible for defining appropriate
+// constructors and assignments.
 class TypeHandleBase {
  public:
   constexpr TypeHandleBase() = default;

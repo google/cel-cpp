@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,14 +31,91 @@
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "base/internal/value.h"
-#include "internal/reference_counted.h"
+#include "absl/time/time.h"
+#include "base/value_factory.h"
+#include "internal/casts.h"
+#include "internal/no_destructor.h"
 #include "internal/status_macros.h"
 #include "internal/strings.h"
 #include "internal/time.h"
 
 namespace cel {
+
+#define CEL_INTERNAL_VALUE_IMPL(name)   \
+  template class Transient<name>;       \
+  template class Transient<const name>; \
+  template class Persistent<name>;      \
+  template class Persistent<const name>
+CEL_INTERNAL_VALUE_IMPL(Value);
+CEL_INTERNAL_VALUE_IMPL(NullValue);
+CEL_INTERNAL_VALUE_IMPL(ErrorValue);
+CEL_INTERNAL_VALUE_IMPL(BoolValue);
+CEL_INTERNAL_VALUE_IMPL(IntValue);
+CEL_INTERNAL_VALUE_IMPL(UintValue);
+CEL_INTERNAL_VALUE_IMPL(DoubleValue);
+CEL_INTERNAL_VALUE_IMPL(BytesValue);
+CEL_INTERNAL_VALUE_IMPL(DurationValue);
+CEL_INTERNAL_VALUE_IMPL(TimestampValue);
+#undef CEL_INTERNAL_VALUE_IMPL
+
+namespace {
+
+using base_internal::TransientHandleFactory;
+
+// Both are equivalent to std::construct_at implementation from C++20.
+#define CEL_COPY_TO_IMPL(type, src, dest) \
+  ::new (const_cast<void*>(               \
+      static_cast<const volatile void*>(std::addressof(dest)))) type(src)
+#define CEL_MOVE_TO_IMPL(type, src, dest)                     \
+  ::new (const_cast<void*>(static_cast<const volatile void*>( \
+      std::addressof(dest)))) type(std::move(src))
+
+}  // namespace
+
+std::pair<size_t, size_t> Value::SizeAndAlignment() const {
+  // Currently most implementations of Value are not reference counted, so those
+  // that are override this and those that do not inherit this. Using 0 here
+  // will trigger runtime asserts in case of undefined behavior.
+  return std::pair<size_t, size_t>(0, 0);
+}
+
+void Value::CopyTo(Value& address) const {}
+
+void Value::MoveTo(Value& address) {}
+
+Persistent<const NullValue> NullValue::Get(ValueFactory& value_factory) {
+  return value_factory.GetNullValue();
+}
+
+Transient<const Type> NullValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const NullType>(
+      NullType::Get());
+}
+
+std::string NullValue::DebugString() const { return "null"; }
+
+const NullValue& NullValue::Get() {
+  static const internal::NoDestructor<NullValue> instance;
+  return *instance;
+}
+
+void NullValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(NullValue, *this, address);
+}
+
+void NullValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(NullValue, *this, address);
+}
+
+bool NullValue::Equals(const Value& other) const {
+  return kind() == other.kind();
+}
+
+void NullValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), 0);
+}
 
 namespace {
 
@@ -72,441 +150,250 @@ void StatusHashValue(absl::HashState state, const absl::Status& status) {
   }
 }
 
-// SimpleValues holds common values that are frequently needed and should not be
-// constructed everytime they are required, usually because they would require a
-// heap allocation. An example of this is an empty byte string.
-struct SimpleValues final {
- public:
-  SimpleValues() = default;
-
-  SimpleValues(const SimpleValues&) = delete;
-
-  SimpleValues(SimpleValues&&) = delete;
-
-  SimpleValues& operator=(const SimpleValues&) = delete;
-
-  SimpleValues& operator=(SimpleValues&&) = delete;
-
-  Value empty_bytes;
-};
-
-ABSL_CONST_INIT absl::once_flag simple_values_once;
-ABSL_CONST_INIT SimpleValues* simple_values = nullptr;
-
 }  // namespace
 
-Value Value::Error(const absl::Status& status) {
-  ABSL_ASSERT(!status.ok());
-  if (ABSL_PREDICT_FALSE(status.ok())) {
-    return Value(absl::UnknownError(
-        "If you are seeing this message the caller attempted to construct an "
-        "error value from a successful status. Refusing to fail "
-        "successfully."));
-  }
-  return Value(status);
+Transient<const Type> ErrorValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const ErrorType>(
+      ErrorType::Get());
 }
 
-absl::StatusOr<Value> Value::Duration(absl::Duration value) {
-  CEL_RETURN_IF_ERROR(internal::ValidateDuration(value));
-  int64_t seconds = absl::IDivDuration(value, absl::Seconds(1), &value);
-  int64_t nanoseconds = absl::IDivDuration(value, absl::Nanoseconds(1), &value);
-  return Value(Kind::kDuration, seconds,
-               absl::bit_cast<uint32_t>(static_cast<int32_t>(nanoseconds)));
+std::string ErrorValue::DebugString() const { return value().ToString(); }
+
+void ErrorValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(ErrorValue, *this, address);
 }
 
-absl::StatusOr<Value> Value::Timestamp(absl::Time value) {
-  CEL_RETURN_IF_ERROR(internal::ValidateTimestamp(value));
-  absl::Duration duration = value - absl::UnixEpoch();
-  int64_t seconds = absl::IDivDuration(duration, absl::Seconds(1), &duration);
-  int64_t nanoseconds =
-      absl::IDivDuration(duration, absl::Nanoseconds(1), &duration);
-  return Value(Kind::kTimestamp, seconds,
-               absl::bit_cast<uint32_t>(static_cast<int32_t>(nanoseconds)));
+void ErrorValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(ErrorValue, *this, address);
 }
 
-Value::Value(const Value& other) {
-  // metadata_ is currently equal to the simple null type.
-  // content_ is zero initialized.
-  switch (other.kind()) {
-    case Kind::kNullType:
-      // `this` is already the null value, do nothing.
-      return;
-    case Kind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kDouble:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kDuration:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kTimestamp:
-      // `other` is a simple value and simple type. We only need to trivially
-      // copy metadata_ and content_.
-      metadata_.CopyFrom(other.metadata_);
-      content_.construct_trivial_value(other.content_.trivial_value());
-      return;
-    case Kind::kError:
-      // `other` is an error value and a simple type. We need to trivially copy
-      // metadata_ and copy construct the error value to content_.
-      metadata_.CopyFrom(other.metadata_);
-      content_.construct_error_value(other.content_.error_value());
-      return;
-    case Kind::kBytes:
-      // `other` is a reffed value and a simple type. We need to trivially copy
-      // metadata_ and copy construct the reffed value to content_.
-      metadata_.CopyFrom(other.metadata_);
-      content_.construct_reffed_value(other.content_.reffed_value());
-      return;
-    default:
-      // TODO(issues/5): remove after implementing other kinds
-      std::abort();
-  }
+bool ErrorValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const ErrorValue&>(other).value();
 }
 
-Value::Value(Value&& other) {
-  // metadata_ is currently equal to the simple null type.
-  // content_ is currently zero initialized.
-  switch (other.kind()) {
-    case Kind::kNullType:
-      // `this` and `other` are already the null value, do nothing.
-      return;
-    case Kind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kDouble:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kDuration:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kTimestamp:
-      // `other` is a simple value and simple type. Trivially copy and then
-      // clear metadata_ and content_, making `other` equivalent to `Value()` or
-      // `Value::Null()`.
-      metadata_.MoveFrom(std::move(other.metadata_));
-      content_.construct_trivial_value(other.content_.trivial_value());
-      other.content_.destruct_trivial_value();
-      break;
-    case Kind::kError:
-      // `other` is an error value and simple type. Trivially copy and then
-      // clear metadata_ and copy construct and then clear content_, making
-      // `other` equivalent to `Value()` or `Value::Null()`.
-      metadata_.MoveFrom(std::move(other.metadata_));
-      content_.construct_error_value(other.content_.error_value());
-      other.content_.destruct_error_value();
-      break;
-    case Kind::kBytes:
-      // `other` is a reffed value and simple type. Trivially copy and then
-      // clear metadata_ and trivially move content_, making
-      // `other` equivalent to `Value()` or `Value::Null()`.
-      metadata_.MoveFrom(std::move(other.metadata_));
-      content_.adopt_reffed_value(other.content_.release_reffed_value());
-      break;
-    default:
-      // TODO(issues/5): remove after implementing other kinds
-      std::abort();
-  }
+void ErrorValue::HashValue(absl::HashState state) const {
+  StatusHashValue(absl::HashState::combine(std::move(state), type()), value());
 }
 
-Value::~Value() { Destruct(this); }
+Persistent<const BoolValue> BoolValue::False(ValueFactory& value_factory) {
+  return value_factory.CreateBoolValue(false);
+}
 
-Value& Value::operator=(const Value& other) {
-  if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
-    switch (other.kind()) {
-      case Kind::kNullType:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kBool:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kInt:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kUint:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kDouble:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kDuration:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kTimestamp:
-        // `this` could be a simple value, an error value, or a reffed value.
-        // First we destruct resetting `this` to `Value()`. Then we perform the
-        // equivalent work of the copy constructor.
-        Destruct(this);
-        metadata_.CopyFrom(other.metadata_);
-        content_.construct_trivial_value(other.content_.trivial_value());
-        break;
-      case Kind::kError:
-        if (kind() == Kind::kError) {
-          // `this` and `other` are error values. Perform a copy assignment
-          // which is faster than destructing and copy constructing.
-          content_.assign_error_value(other.content_.error_value());
-        } else {
-          // `this` could be a simple value or a reffed value. First we destruct
-          // resetting `this` to `Value()`. Then we perform the equivalent work
-          // of the copy constructor.
-          Destruct(this);
-          content_.construct_error_value(other.content_.error_value());
-        }
-        // Always copy metadata, for forward compatibility in case other bits
-        // are added.
-        metadata_.CopyFrom(other.metadata_);
-        break;
-      case Kind::kBytes: {
-        // `this` could be a simple value, an error value, or a reffed value.
-        // First we destruct resetting `this` to `Value()`. Then we perform the
-        // equivalent work of the copy constructor.
-        base_internal::BaseValue* reffed_value =
-            internal::Ref(other.content_.reffed_value());
-        Destruct(this);
-        metadata_.CopyFrom(other.metadata_);
-        // Adopt is typically used for moves, but in this case we already
-        // increment the reference count, so it is equivalent to a move.
-        content_.adopt_reffed_value(reffed_value);
-      } break;
-      default:
-        // TODO(issues/5): remove after implementing other kinds
-        std::abort();
+Persistent<const BoolValue> BoolValue::True(ValueFactory& value_factory) {
+  return value_factory.CreateBoolValue(true);
+}
+
+Transient<const Type> BoolValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const BoolType>(
+      BoolType::Get());
+}
+
+std::string BoolValue::DebugString() const {
+  return value() ? "true" : "false";
+}
+
+void BoolValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(BoolValue, *this, address);
+}
+
+void BoolValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(BoolValue, *this, address);
+}
+
+bool BoolValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const BoolValue&>(other).value();
+}
+
+void BoolValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
+}
+
+Transient<const Type> IntValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const IntType>(
+      IntType::Get());
+}
+
+std::string IntValue::DebugString() const { return absl::StrCat(value()); }
+
+void IntValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(IntValue, *this, address);
+}
+
+void IntValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(IntValue, *this, address);
+}
+
+bool IntValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const IntValue&>(other).value();
+}
+
+void IntValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
+}
+
+Transient<const Type> UintValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const UintType>(
+      UintType::Get());
+}
+
+std::string UintValue::DebugString() const {
+  return absl::StrCat(value(), "u");
+}
+
+void UintValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(UintValue, *this, address);
+}
+
+void UintValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(UintValue, *this, address);
+}
+
+bool UintValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const UintValue&>(other).value();
+}
+
+void UintValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
+}
+
+Persistent<const DoubleValue> DoubleValue::NaN(ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(
+      std::numeric_limits<double>::quiet_NaN());
+}
+
+Persistent<const DoubleValue> DoubleValue::PositiveInfinity(
+    ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(
+      std::numeric_limits<double>::infinity());
+}
+
+Persistent<const DoubleValue> DoubleValue::NegativeInfinity(
+    ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(
+      -std::numeric_limits<double>::infinity());
+}
+
+Transient<const Type> DoubleValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const DoubleType>(
+      DoubleType::Get());
+}
+
+std::string DoubleValue::DebugString() const {
+  if (std::isfinite(value())) {
+    if (std::floor(value()) != value()) {
+      // The double is not representable as a whole number, so use
+      // absl::StrCat which will add decimal places.
+      return absl::StrCat(value());
     }
-  }
-  return *this;
-}
-
-Value& Value::operator=(Value&& other) {
-  if (ABSL_PREDICT_TRUE(this != std::addressof(other))) {
-    switch (other.kind()) {
-      case Kind::kNullType:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kBool:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kInt:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kUint:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kDouble:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kDuration:
-        ABSL_FALLTHROUGH_INTENDED;
-      case Kind::kTimestamp:
-        // `this` could be a simple value, an error value, or a reffed value.
-        // First we destruct resetting `this` to `Value()`. Then we perform the
-        // equivalent work of the move constructor.
-        Destruct(this);
-        metadata_.MoveFrom(std::move(other.metadata_));
-        content_.construct_trivial_value(other.content_.trivial_value());
-        other.content_.destruct_trivial_value();
-        break;
-      case Kind::kError:
-        if (kind() == Kind::kError) {
-          // `this` and `other` are error values. Perform a copy assignment
-          // which is faster than destructing and copy constructing. `other`
-          // will be reset below.
-          content_.assign_error_value(other.content_.error_value());
-        } else {
-          // `this` could be a simple value or a reffed value. First we destruct
-          // resetting `this` to `Value()`. Then we perform the equivalent work
-          // of the copy constructor.
-          Destruct(this);
-          content_.construct_error_value(other.content_.error_value());
-        }
-        // Always copy metadata, for forward compatibility in case other bits
-        // are added.
-        metadata_.CopyFrom(other.metadata_);
-        // Reset `other` to `Value()`.
-        Destruct(std::addressof(other));
-        break;
-      case Kind::kBytes:
-        // `this` could be a simple value, an error value, or a reffed value.
-        // First we destruct resetting `this` to `Value()`. Then we perform the
-        // equivalent work of the move constructor.
-        Destruct(this);
-        metadata_.MoveFrom(std::move(other.metadata_));
-        content_.adopt_reffed_value(other.content_.release_reffed_value());
-        break;
-      default:
-        // TODO(issues/5): remove after implementing other kinds
-        std::abort();
+    // absl::StrCat historically would represent 0.0 as 0, and we want the
+    // decimal places so ZetaSQL correctly assumes the type as double
+    // instead of int64_t.
+    std::string stringified = absl::StrCat(value());
+    if (!absl::StrContains(stringified, '.')) {
+      absl::StrAppend(&stringified, ".0");
+    } else {
+      // absl::StrCat has a decimal now? Use it directly.
     }
+    return stringified;
   }
-  return *this;
+  if (std::isnan(value())) {
+    return "nan";
+  }
+  if (std::signbit(value())) {
+    return "-infinity";
+  }
+  return "+infinity";
 }
 
-std::string Value::DebugString() const {
-  switch (kind()) {
-    case Kind::kNullType:
-      return "null";
-    case Kind::kBool:
-      return AsBool() ? "true" : "false";
-    case Kind::kInt:
-      return absl::StrCat(AsInt());
-    case Kind::kUint:
-      return absl::StrCat(AsUint(), "u");
-    case Kind::kDouble: {
-      if (std::isfinite(AsDouble())) {
-        if (static_cast<double>(static_cast<int64_t>(AsDouble())) !=
-            AsDouble()) {
-          // The double is not representable as a whole number, so use
-          // absl::StrCat which will add decimal places.
-          return absl::StrCat(AsDouble());
-        }
-        // absl::StrCat historically would represent 0.0 as 0, and we want the
-        // decimal places so ZetaSQL correctly assumes the type as double
-        // instead of int64_t.
-        std::string stringified = absl::StrCat(AsDouble());
-        if (!absl::StrContains(stringified, '.')) {
-          absl::StrAppend(&stringified, ".0");
-        } else {
-          // absl::StrCat has a decimal now? Use it directly.
-        }
-        return stringified;
-      }
-      if (std::isnan(AsDouble())) {
-        return "nan";
-      }
-      if (std::signbit(AsDouble())) {
-        return "-infinity";
-      }
-      return "+infinity";
-    }
-    case Kind::kDuration:
-      return internal::FormatDuration(AsDuration()).value();
-    case Kind::kTimestamp:
-      return internal::FormatTimestamp(AsTimestamp()).value();
-    case Kind::kError:
-      return AsError().ToString();
-    case Kind::kBytes:
-      return content_.reffed_value()->DebugString();
-    default:
-      // TODO(issues/5): remove after implementing other kinds
-      std::abort();
-  }
+void DoubleValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(DoubleValue, *this, address);
 }
 
-void Value::InitializeSingletons() {
-  absl::call_once(simple_values_once, []() {
-    ABSL_ASSERT(simple_values == nullptr);
-    simple_values = new SimpleValues();
-    simple_values->empty_bytes = Value(Kind::kBytes, new cel::Bytes());
-  });
+void DoubleValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(DoubleValue, *this, address);
 }
 
-void Value::Destruct(Value* dest) {
-  // Perform any deallocations or destructions necessary and reset the state
-  // of `dest` to `Value()` making it the null value.
-  switch (dest->kind()) {
-    case Kind::kNullType:
-      return;
-    case Kind::kBool:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kInt:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kUint:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kDouble:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kDuration:
-      ABSL_FALLTHROUGH_INTENDED;
-    case Kind::kTimestamp:
-      dest->content_.destruct_trivial_value();
-      break;
-    case Kind::kError:
-      dest->content_.destruct_error_value();
-      break;
-    case Kind::kBytes:
-      dest->content_.destruct_reffed_value();
-      break;
-    default:
-      // TODO(issues/5): remove after implementing other kinds
-      std::abort();
-  }
-  dest->metadata_.Reset();
+bool DoubleValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const DoubleValue&>(other).value();
 }
 
-void Value::HashValue(absl::HashState state) const {
-  state = absl::HashState::combine(std::move(state), type());
-  switch (kind()) {
-    case Kind::kNullType:
-      absl::HashState::combine(std::move(state), 0);
-      return;
-    case Kind::kBool:
-      absl::HashState::combine(std::move(state), AsBool());
-      return;
-    case Kind::kInt:
-      absl::HashState::combine(std::move(state), AsInt());
-      return;
-    case Kind::kUint:
-      absl::HashState::combine(std::move(state), AsUint());
-      return;
-    case Kind::kDouble:
-      absl::HashState::combine(std::move(state), AsDouble());
-      return;
-    case Kind::kDuration:
-      absl::HashState::combine(std::move(state), AsDuration());
-      return;
-    case Kind::kTimestamp:
-      absl::HashState::combine(std::move(state), AsTimestamp());
-      return;
-    case Kind::kError:
-      StatusHashValue(std::move(state), AsError());
-      return;
-    case Kind::kBytes:
-      content_.reffed_value()->HashValue(std::move(state));
-      return;
-    default:
-      // TODO(issues/5): remove after implementing other kinds
-      std::abort();
-  }
+void DoubleValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
 }
 
-bool Value::Equals(const Value& other) const {
-  // Comparing types is not enough as type may only compare the type name,
-  // which could be the same in separate environments but different kinds. So
-  // we also compare the kinds.
-  if (kind() != other.kind() || type() != other.type()) {
-    return false;
-  }
-  switch (kind()) {
-    case Kind::kNullType:
-      return true;
-    case Kind::kBool:
-      return AsBool() == other.AsBool();
-    case Kind::kInt:
-      return AsInt() == other.AsInt();
-    case Kind::kUint:
-      return AsUint() == other.AsUint();
-    case Kind::kDouble:
-      return AsDouble() == other.AsDouble();
-    case Kind::kDuration:
-      return AsDuration() == other.AsDuration();
-    case Kind::kTimestamp:
-      return AsTimestamp() == other.AsTimestamp();
-    case Kind::kError:
-      return AsError() == other.AsError();
-    case Kind::kBytes:
-      return content_.reffed_value()->Equals(other);
-    default:
-      // TODO(issues/5): remove after implementing other kinds
-      std::abort();
-  }
+Persistent<const DurationValue> DurationValue::Zero(
+    ValueFactory& value_factory) {
+  // Should never fail, tests assert this.
+  return value_factory.CreateDurationValue(absl::ZeroDuration()).value();
 }
 
-void Value::Swap(Value& other) {
-  // TODO(issues/5): Optimize this after other values are implemented
-  Value tmp(std::move(other));
-  other = std::move(*this);
-  *this = std::move(tmp);
+Transient<const Type> DurationValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const DurationType>(
+      DurationType::Get());
+}
+
+std::string DurationValue::DebugString() const {
+  return internal::FormatDuration(value()).value();
+}
+
+void DurationValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(DurationValue, *this, address);
+}
+
+void DurationValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(DurationValue, *this, address);
+}
+
+bool DurationValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const DurationValue&>(other).value();
+}
+
+void DurationValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
+}
+
+Persistent<const TimestampValue> TimestampValue::UnixEpoch(
+    ValueFactory& value_factory) {
+  // Should never fail, tests assert this.
+  return value_factory.CreateTimestampValue(absl::UnixEpoch()).value();
+}
+
+Transient<const Type> TimestampValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const TimestampType>(
+      TimestampType::Get());
+}
+
+std::string TimestampValue::DebugString() const {
+  return internal::FormatTimestamp(value()).value();
+}
+
+void TimestampValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(TimestampValue, *this, address);
+}
+
+void TimestampValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(TimestampValue, *this, address);
+}
+
+bool TimestampValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const TimestampValue&>(other).value();
+}
+
+void TimestampValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
 }
 
 namespace {
 
-constexpr absl::string_view ExternalDataToStringView(
-    const base_internal::ExternalData& external_data) {
-  return absl::string_view(static_cast<const char*>(external_data.data),
-                           external_data.size);
-}
-
 struct DebugStringVisitor final {
-  std::string operator()(const std::string& value) const {
+  std::string operator()(absl::string_view value) const {
     return internal::FormatBytesLiteral(value);
   }
 
@@ -515,67 +402,30 @@ struct DebugStringVisitor final {
     if (value.GetFlat(&flat)) {
       return internal::FormatBytesLiteral(flat);
     }
-    return internal::FormatBytesLiteral(value.ToString());
+    return internal::FormatBytesLiteral(static_cast<std::string>(value));
   }
-
-  std::string operator()(const base_internal::ExternalData& value) const {
-    return internal::FormatBytesLiteral(ExternalDataToStringView(value));
-  }
-};
-
-struct ToCordReleaser final {
-  void operator()() const { internal::Unref(refcnt); }
-
-  const internal::ReferenceCounted* refcnt;
 };
 
 struct ToStringVisitor final {
-  std::string operator()(const std::string& value) const { return value; }
+  std::string operator()(absl::string_view value) const {
+    return std::string(value);
+  }
 
   std::string operator()(const absl::Cord& value) const {
-    return value.ToString();
-  }
-
-  std::string operator()(const base_internal::ExternalData& value) const {
-    return std::string(static_cast<const char*>(value.data), value.size);
-  }
-};
-
-struct ToCordVisitor final {
-  const internal::ReferenceCounted* refcnt;
-
-  absl::Cord operator()(const std::string& value) const {
-    internal::Ref(refcnt);
-    return absl::MakeCordFromExternal(value, ToCordReleaser{refcnt});
-  }
-
-  absl::Cord operator()(const absl::Cord& value) const { return value; }
-
-  absl::Cord operator()(const base_internal::ExternalData& value) const {
-    internal::Ref(refcnt);
-    return absl::MakeCordFromExternal(ExternalDataToStringView(value),
-                                      ToCordReleaser{refcnt});
+    return static_cast<std::string>(value);
   }
 };
 
 struct SizeVisitor final {
-  size_t operator()(const std::string& value) const { return value.size(); }
+  size_t operator()(absl::string_view value) const { return value.size(); }
 
   size_t operator()(const absl::Cord& value) const { return value.size(); }
-
-  size_t operator()(const base_internal::ExternalData& value) const {
-    return value.size;
-  }
 };
 
 struct EmptyVisitor final {
-  bool operator()(const std::string& value) const { return value.empty(); }
+  bool operator()(absl::string_view value) const { return value.empty(); }
 
   bool operator()(const absl::Cord& value) const { return value.empty(); }
-
-  bool operator()(const base_internal::ExternalData& value) const {
-    return value.size == 0;
-  }
 };
 
 bool EqualsImpl(absl::string_view lhs, absl::string_view rhs) {
@@ -615,7 +465,7 @@ class EqualsVisitor final {
  public:
   explicit EqualsVisitor(const T& ref) : ref_(ref) {}
 
-  bool operator()(const std::string& value) const {
+  bool operator()(absl::string_view value) const {
     return EqualsImpl(value, ref_);
   }
 
@@ -623,29 +473,21 @@ class EqualsVisitor final {
     return EqualsImpl(value, ref_);
   }
 
-  bool operator()(const base_internal::ExternalData& value) const {
-    return EqualsImpl(ExternalDataToStringView(value), ref_);
-  }
-
  private:
   const T& ref_;
 };
 
 template <>
-class EqualsVisitor<Bytes> final {
+class EqualsVisitor<BytesValue> final {
  public:
-  explicit EqualsVisitor(const Bytes& ref) : ref_(ref) {}
+  explicit EqualsVisitor(const BytesValue& ref) : ref_(ref) {}
 
-  bool operator()(const std::string& value) const { return ref_.Equals(value); }
+  bool operator()(absl::string_view value) const { return ref_.Equals(value); }
 
   bool operator()(const absl::Cord& value) const { return ref_.Equals(value); }
 
-  bool operator()(const base_internal::ExternalData& value) const {
-    return ref_.Equals(ExternalDataToStringView(value));
-  }
-
  private:
-  const Bytes& ref_;
+  const BytesValue& ref_;
 };
 
 template <typename T>
@@ -653,7 +495,7 @@ class CompareVisitor final {
  public:
   explicit CompareVisitor(const T& ref) : ref_(ref) {}
 
-  int operator()(const std::string& value) const {
+  int operator()(absl::string_view value) const {
     return CompareImpl(value, ref_);
   }
 
@@ -661,48 +503,33 @@ class CompareVisitor final {
     return CompareImpl(value, ref_);
   }
 
-  int operator()(const base_internal::ExternalData& value) const {
-    return CompareImpl(ExternalDataToStringView(value), ref_);
-  }
-
  private:
   const T& ref_;
 };
 
 template <>
-class CompareVisitor<Bytes> final {
+class CompareVisitor<BytesValue> final {
  public:
-  explicit CompareVisitor(const Bytes& ref) : ref_(ref) {}
-
-  int operator()(const std::string& value) const { return ref_.Compare(value); }
+  explicit CompareVisitor(const BytesValue& ref) : ref_(ref) {}
 
   int operator()(const absl::Cord& value) const { return ref_.Compare(value); }
 
   int operator()(absl::string_view value) const { return ref_.Compare(value); }
 
-  int operator()(const base_internal::ExternalData& value) const {
-    return ref_.Compare(ExternalDataToStringView(value));
-  }
-
  private:
-  const Bytes& ref_;
+  const BytesValue& ref_;
 };
 
 class HashValueVisitor final {
  public:
   explicit HashValueVisitor(absl::HashState state) : state_(std::move(state)) {}
 
-  void operator()(const std::string& value) {
+  void operator()(absl::string_view value) {
     absl::HashState::combine(std::move(state_), value);
   }
 
   void operator()(const absl::Cord& value) {
     absl::HashState::combine(std::move(state_), value);
-  }
-
-  void operator()(const base_internal::ExternalData& value) {
-    absl::HashState::combine(std::move(state_),
-                             ExternalDataToStringView(value));
   }
 
  private:
@@ -711,79 +538,148 @@ class HashValueVisitor final {
 
 }  // namespace
 
-Value Bytes::Empty() {
-  Value::InitializeSingletons();
-  return simple_values->empty_bytes;
+Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
+  return value_factory.GetBytesValue();
 }
 
-Value Bytes::New(std::string value) {
-  if (value.empty()) {
-    return Empty();
+absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
+    ValueFactory& value_factory, const Transient<const BytesValue>& lhs,
+    const Transient<const BytesValue>& rhs) {
+  absl::Cord cord = lhs->ToCord(base_internal::IsManagedHandle(lhs));
+  cord.Append(rhs->ToCord(base_internal::IsManagedHandle(rhs)));
+  return value_factory.CreateBytesValue(std::move(cord));
+}
+
+Transient<const Type> BytesValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const BytesType>(
+      BytesType::Get());
+}
+
+size_t BytesValue::size() const { return absl::visit(SizeVisitor{}, rep()); }
+
+bool BytesValue::empty() const { return absl::visit(EmptyVisitor{}, rep()); }
+
+bool BytesValue::Equals(absl::string_view bytes) const {
+  return absl::visit(EqualsVisitor<absl::string_view>(bytes), rep());
+}
+
+bool BytesValue::Equals(const absl::Cord& bytes) const {
+  return absl::visit(EqualsVisitor<absl::Cord>(bytes), rep());
+}
+
+bool BytesValue::Equals(const Transient<const BytesValue>& bytes) const {
+  return absl::visit(EqualsVisitor<BytesValue>(*this), bytes->rep());
+}
+
+int BytesValue::Compare(absl::string_view bytes) const {
+  return absl::visit(CompareVisitor<absl::string_view>(bytes), rep());
+}
+
+int BytesValue::Compare(const absl::Cord& bytes) const {
+  return absl::visit(CompareVisitor<absl::Cord>(bytes), rep());
+}
+
+int BytesValue::Compare(const Transient<const BytesValue>& bytes) const {
+  return absl::visit(CompareVisitor<BytesValue>(*this), bytes->rep());
+}
+
+std::string BytesValue::ToString() const {
+  return absl::visit(ToStringVisitor{}, rep());
+}
+
+std::string BytesValue::DebugString() const {
+  return absl::visit(DebugStringVisitor{}, rep());
+}
+
+bool BytesValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         absl::visit(EqualsVisitor<BytesValue>(*this),
+                     internal::down_cast<const BytesValue&>(other).rep());
+}
+
+void BytesValue::HashValue(absl::HashState state) const {
+  absl::visit(
+      HashValueVisitor(absl::HashState::combine(std::move(state), type())),
+      rep());
+}
+
+namespace base_internal {
+
+absl::Cord InlinedCordBytesValue::ToCord(bool reference_counted) const {
+  static_cast<void>(reference_counted);
+  return value_;
+}
+
+void InlinedCordBytesValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(InlinedCordBytesValue, *this, address);
+}
+
+void InlinedCordBytesValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(InlinedCordBytesValue, *this, address);
+}
+
+typename InlinedCordBytesValue::Rep InlinedCordBytesValue::rep() const {
+  return Rep(absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
+             std::cref(value_));
+}
+
+absl::Cord InlinedStringViewBytesValue::ToCord(bool reference_counted) const {
+  static_cast<void>(reference_counted);
+  return absl::Cord(value_);
+}
+
+void InlinedStringViewBytesValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(InlinedStringViewBytesValue, *this, address);
+}
+
+void InlinedStringViewBytesValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(InlinedStringViewBytesValue, *this, address);
+}
+
+typename InlinedStringViewBytesValue::Rep InlinedStringViewBytesValue::rep()
+    const {
+  return Rep(absl::in_place_type<absl::string_view>, value_);
+}
+
+std::pair<size_t, size_t> StringBytesValue::SizeAndAlignment() const {
+  return std::make_pair(sizeof(StringBytesValue), alignof(StringBytesValue));
+}
+
+absl::Cord StringBytesValue::ToCord(bool reference_counted) const {
+  if (reference_counted) {
+    Ref();
+    return absl::MakeCordFromExternal(absl::string_view(value_),
+                                      [this]() { Unref(); });
   }
-  return Value(Kind::kBytes, new Bytes(std::move(value)));
+  return absl::Cord(value_);
 }
 
-Value Bytes::New(absl::Cord value) {
-  if (value.empty()) {
-    return Empty();
+typename StringBytesValue::Rep StringBytesValue::rep() const {
+  return Rep(absl::in_place_type<absl::string_view>, absl::string_view(value_));
+}
+
+std::pair<size_t, size_t> ExternalDataBytesValue::SizeAndAlignment() const {
+  return std::make_pair(sizeof(ExternalDataBytesValue),
+                        alignof(ExternalDataBytesValue));
+}
+
+absl::Cord ExternalDataBytesValue::ToCord(bool reference_counted) const {
+  if (reference_counted) {
+    Ref();
+    return absl::MakeCordFromExternal(
+        absl::string_view(static_cast<const char*>(value_.data), value_.size),
+        [this]() { Unref(); });
   }
-  return Value(Kind::kBytes, new Bytes(std::move(value)));
+  return absl::Cord(
+      absl::string_view(static_cast<const char*>(value_.data), value_.size));
 }
 
-Value Bytes::Concat(const Bytes& lhs, const Bytes& rhs) {
-  absl::Cord value;
-  value.Append(lhs.ToCord());
-  value.Append(rhs.ToCord());
-  return New(std::move(value));
+typename ExternalDataBytesValue::Rep ExternalDataBytesValue::rep() const {
+  return Rep(
+      absl::in_place_type<absl::string_view>,
+      absl::string_view(static_cast<const char*>(value_.data), value_.size));
 }
 
-size_t Bytes::size() const { return absl::visit(SizeVisitor{}, data_); }
-
-bool Bytes::empty() const { return absl::visit(EmptyVisitor{}, data_); }
-
-bool Bytes::Equals(absl::string_view bytes) const {
-  return absl::visit(EqualsVisitor<absl::string_view>(bytes), data_);
-}
-
-bool Bytes::Equals(const absl::Cord& bytes) const {
-  return absl::visit(EqualsVisitor<absl::Cord>(bytes), data_);
-}
-
-bool Bytes::Equals(const Bytes& bytes) const {
-  return absl::visit(EqualsVisitor<Bytes>(*this), bytes.data_);
-}
-
-int Bytes::Compare(absl::string_view bytes) const {
-  return absl::visit(CompareVisitor<absl::string_view>(bytes), data_);
-}
-
-int Bytes::Compare(const absl::Cord& bytes) const {
-  return absl::visit(CompareVisitor<absl::Cord>(bytes), data_);
-}
-
-int Bytes::Compare(const Bytes& bytes) const {
-  return absl::visit(CompareVisitor<Bytes>(*this), bytes.data_);
-}
-
-std::string Bytes::ToString() const {
-  return absl::visit(ToStringVisitor{}, data_);
-}
-
-absl::Cord Bytes::ToCord() const {
-  return absl::visit(ToCordVisitor{this}, data_);
-}
-
-std::string Bytes::DebugString() const {
-  return absl::visit(DebugStringVisitor{}, data_);
-}
-
-bool Bytes::Equals(const Value& value) const {
-  ABSL_ASSERT(value.IsBytes());
-  return absl::visit(EqualsVisitor<Bytes>(*this), value.AsBytes().data_);
-}
-
-void Bytes::HashValue(absl::HashState state) const {
-  absl::visit(HashValueVisitor(std::move(state)), data_);
-}
+}  // namespace base_internal
 
 }  // namespace cel
