@@ -148,6 +148,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "proto_util_test",
+    srcs = ["proto_util_test.cc"],
+    deps = [
+        ":proto_util",
+        ":testing",
+        "//eval/public/structs:cel_proto_descriptor_pool_builder",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_library(
     name = "reference_counted",
     hdrs = ["reference_counted.h"],

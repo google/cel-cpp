@@ -74,8 +74,17 @@ absl::Status ValidateStandardMessageType(
   google::protobuf::DescriptorProto descriptor_from_pool_proto;
   descriptor->CopyTo(&descriptor_proto);
   descriptor_from_pool->CopyTo(&descriptor_from_pool_proto);
-  if (!google::protobuf::util::MessageDifferencer::Equals(descriptor_proto,
-                                                descriptor_from_pool_proto)) {
+
+  google::protobuf::util::MessageDifferencer descriptor_differencer;
+  // The json_name is a compiler detail and does not change the message content.
+  // It can differ, e.g., between C++ and Go compilers. Hence ignore.
+  const google::protobuf::FieldDescriptor* json_name_field_desc =
+      google::protobuf::FieldDescriptorProto::descriptor()->FindFieldByName("json_name");
+  if (json_name_field_desc != nullptr) {
+    descriptor_differencer.IgnoreField(json_name_field_desc);
+  }
+  if (!descriptor_differencer.Compare(descriptor_proto,
+                                      descriptor_from_pool_proto)) {
     return absl::FailedPreconditionError(absl::StrFormat(
         "The descriptor for '%s' in the descriptor pool differs from the "
         "compiled-in generated version",
