@@ -34,5 +34,13 @@ TEST(ValueFactory, CreateErrorValueReplacesOk) {
               StatusIs(absl::StatusCode::kUnknown));
 }
 
+TEST(ValueFactory, CreateStringValueIllegalByteSequence) {
+  TestValueFactory value_factory;
+  EXPECT_THAT(value_factory.CreateStringValue("\xff"),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(value_factory.CreateStringValue(absl::Cord("\xff")),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
 }  // namespace
 }  // namespace cel

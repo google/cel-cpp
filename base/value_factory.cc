@@ -24,16 +24,21 @@
 #include "base/value.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
+#include "internal/utf8.h"
 
 namespace cel {
 
 namespace {
 
 using base_internal::ExternalDataBytesValue;
+using base_internal::ExternalDataStringValue;
 using base_internal::InlinedCordBytesValue;
+using base_internal::InlinedCordStringValue;
 using base_internal::InlinedStringViewBytesValue;
+using base_internal::InlinedStringViewStringValue;
 using base_internal::PersistentHandleFactory;
 using base_internal::StringBytesValue;
+using base_internal::StringStringValue;
 using base_internal::TransientHandleFactory;
 
 }  // namespace
@@ -89,6 +94,35 @@ absl::StatusOr<Persistent<const BytesValue>> ValueFactory::CreateBytesValue(
       std::move(value));
 }
 
+absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
+    std::string value) {
+  // Avoid persisting empty strings which may have underlying storage after
+  // mutating.
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+  auto [count, ok] = internal::Utf8Validate(value);
+  if (ABSL_PREDICT_FALSE(!ok)) {
+    return absl::InvalidArgumentError(
+        "Illegal byte sequence in UTF-8 encoded string");
+  }
+  return PersistentHandleFactory<const StringValue>::Make<StringStringValue>(
+      memory_manager(), count, std::move(value));
+}
+
+absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
+    absl::Cord value) {
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+  auto [count, ok] = internal::Utf8Validate(value);
+  if (ABSL_PREDICT_FALSE(!ok)) {
+    return absl::InvalidArgumentError(
+        "Illegal byte sequence in UTF-8 encoded string");
+  }
+  return CreateStringValue(std::move(value), count);
+}
+
 absl::StatusOr<Persistent<const DurationValue>>
 ValueFactory::CreateDurationValue(absl::Duration value) {
   CEL_RETURN_IF_ERROR(internal::ValidateDuration(value));
@@ -112,6 +146,26 @@ absl::StatusOr<Persistent<const BytesValue>> ValueFactory::CreateBytesValue(
     base_internal::ExternalData value) {
   return PersistentHandleFactory<const BytesValue>::Make<
       ExternalDataBytesValue>(memory_manager(), std::move(value));
+}
+
+Persistent<const StringValue> ValueFactory::GetEmptyStringValue() {
+  return PersistentHandleFactory<const StringValue>::Make<
+      InlinedStringViewStringValue>(absl::string_view());
+}
+
+absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
+    absl::Cord value, size_t size) {
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+  return PersistentHandleFactory<const StringValue>::Make<
+      InlinedCordStringValue>(size, std::move(value));
+}
+
+absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
+    base_internal::ExternalData value) {
+  return PersistentHandleFactory<const StringValue>::Make<
+      ExternalDataStringValue>(memory_manager(), std::move(value));
 }
 
 }  // namespace cel

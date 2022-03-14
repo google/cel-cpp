@@ -580,6 +580,136 @@ TEST(Value, BytesFromExternal) {
   EXPECT_NE(one_value, zero_value);
 }
 
+TEST(Value, StringFromString) {
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateStringValue(std::string("0")));
+  EXPECT_TRUE(zero_value.Is<StringValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value,
+            Must(value_factory.CreateStringValue(std::string("0"))));
+  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(zero_value->ToString(), "0");
+
+  auto one_value = Must(value_factory.CreateStringValue(std::string("1")));
+  EXPECT_TRUE(one_value.Is<StringValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value, Must(value_factory.CreateStringValue(std::string("1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(one_value->ToString(), "1");
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(Value, StringFromStringView) {
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value =
+      Must(value_factory.CreateStringValue(absl::string_view("0")));
+  EXPECT_TRUE(zero_value.Is<StringValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value,
+            Must(value_factory.CreateStringValue(absl::string_view("0"))));
+  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(zero_value->ToString(), "0");
+
+  auto one_value =
+      Must(value_factory.CreateStringValue(absl::string_view("1")));
+  EXPECT_TRUE(one_value.Is<StringValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value,
+            Must(value_factory.CreateStringValue(absl::string_view("1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(one_value->ToString(), "1");
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(Value, StringFromCord) {
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateStringValue(absl::Cord("0")));
+  EXPECT_TRUE(zero_value.Is<StringValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue(absl::Cord("0"))));
+  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(zero_value->ToCord(), "0");
+
+  auto one_value = Must(value_factory.CreateStringValue(absl::Cord("1")));
+  EXPECT_TRUE(one_value.Is<StringValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value, Must(value_factory.CreateStringValue(absl::Cord("1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(one_value->ToCord(), "1");
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(Value, StringFromLiteral) {
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateStringValue("0"));
+  EXPECT_TRUE(zero_value.Is<StringValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue("0")));
+  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(zero_value->ToString(), "0");
+
+  auto one_value = Must(value_factory.CreateStringValue("1"));
+  EXPECT_TRUE(one_value.Is<StringValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value, Must(value_factory.CreateStringValue("1")));
+  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(one_value->ToString(), "1");
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(Value, StringFromExternal) {
+  TestValueFactory value_factory;
+  TestTypeFactory type_factory;
+  auto zero_value = Must(value_factory.CreateStringValue("0", []() {}));
+  EXPECT_TRUE(zero_value.Is<StringValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue("0", []() {})));
+  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(zero_value->ToString(), "0");
+
+  auto one_value = Must(value_factory.CreateStringValue("1", []() {}));
+  EXPECT_TRUE(one_value.Is<StringValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value, Must(value_factory.CreateStringValue("1", []() {})));
+  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->type(), type_factory.GetStringType());
+  EXPECT_EQ(one_value->ToString(), "1");
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
 Persistent<const BytesValue> MakeStringBytes(ValueFactory& value_factory,
                                              absl::string_view value) {
   return Must(value_factory.CreateBytesValue(value));
@@ -911,6 +1041,337 @@ INSTANTIATE_TEST_SUITE_P(BytesToCordTest, BytesToCordTest,
                              {"\xef\xbf\xbd"},
                          }));
 
+Persistent<const StringValue> MakeStringString(ValueFactory& value_factory,
+                                               absl::string_view value) {
+  return Must(value_factory.CreateStringValue(value));
+}
+
+Persistent<const StringValue> MakeCordString(ValueFactory& value_factory,
+                                             absl::string_view value) {
+  return Must(value_factory.CreateStringValue(absl::Cord(value)));
+}
+
+Persistent<const StringValue> MakeExternalString(ValueFactory& value_factory,
+                                                 absl::string_view value) {
+  return Must(value_factory.CreateStringValue(value, []() {}));
+}
+
+struct StringConcatTestCase final {
+  std::string lhs;
+  std::string rhs;
+};
+
+using StringConcatTest = testing::TestWithParam<StringConcatTestCase>;
+
+TEST_P(StringConcatTest, Concat) {
+  const StringConcatTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeStringString(value_factory, test_case.lhs),
+                               MakeStringString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeStringString(value_factory, test_case.lhs),
+                               MakeCordString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, MakeStringString(value_factory, test_case.lhs),
+               MakeExternalString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeCordString(value_factory, test_case.lhs),
+                               MakeStringString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeCordString(value_factory, test_case.lhs),
+                               MakeCordString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, MakeCordString(value_factory, test_case.lhs),
+               MakeExternalString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeExternalString(value_factory, test_case.lhs),
+                               MakeStringString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeExternalString(value_factory, test_case.lhs),
+                               MakeCordString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, MakeExternalString(value_factory, test_case.lhs),
+               MakeExternalString(value_factory, test_case.rhs)))
+          ->Equals(test_case.lhs + test_case.rhs));
+}
+
+INSTANTIATE_TEST_SUITE_P(StringConcatTest, StringConcatTest,
+                         testing::ValuesIn<StringConcatTestCase>({
+                             {"", ""},
+                             {"", std::string("\0", 1)},
+                             {std::string("\0", 1), ""},
+                             {std::string("\0", 1), std::string("\0", 1)},
+                             {"", "foo"},
+                             {"foo", ""},
+                             {"foo", "foo"},
+                             {"bar", "foo"},
+                             {"foo", "bar"},
+                             {"bar", "bar"},
+                         }));
+
+struct StringSizeTestCase final {
+  std::string data;
+  size_t size;
+};
+
+using StringSizeTest = testing::TestWithParam<StringSizeTestCase>;
+
+TEST_P(StringSizeTest, Size) {
+  const StringSizeTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->size(),
+            test_case.size);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->size(),
+            test_case.size);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->size(),
+            test_case.size);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringSizeTest, StringSizeTest,
+                         testing::ValuesIn<StringSizeTestCase>({
+                             {"", 0},
+                             {"1", 1},
+                             {"foo", 3},
+                             {"\xef\xbf\xbd", 1},
+                         }));
+
+struct StringEmptyTestCase final {
+  std::string data;
+  bool empty;
+};
+
+using StringEmptyTest = testing::TestWithParam<StringEmptyTestCase>;
+
+TEST_P(StringEmptyTest, Empty) {
+  const StringEmptyTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->empty(),
+            test_case.empty);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->empty(),
+            test_case.empty);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->empty(),
+            test_case.empty);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringEmptyTest, StringEmptyTest,
+                         testing::ValuesIn<StringEmptyTestCase>({
+                             {"", true},
+                             {std::string("\0", 1), false},
+                             {"1", false},
+                         }));
+
+struct StringEqualsTestCase final {
+  std::string lhs;
+  std::string rhs;
+  bool equals;
+};
+
+using StringEqualsTest = testing::TestWithParam<StringEqualsTestCase>;
+
+TEST_P(StringEqualsTest, Equals) {
+  const StringEqualsTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringString(value_factory, test_case.lhs)
+                ->Equals(MakeStringString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeStringString(value_factory, test_case.lhs)
+                ->Equals(MakeCordString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeStringString(value_factory, test_case.lhs)
+                ->Equals(MakeExternalString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.lhs)
+                ->Equals(MakeStringString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.lhs)
+                ->Equals(MakeCordString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.lhs)
+                ->Equals(MakeExternalString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.lhs)
+                ->Equals(MakeStringString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.lhs)
+                ->Equals(MakeCordString(value_factory, test_case.rhs)),
+            test_case.equals);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.lhs)
+                ->Equals(MakeExternalString(value_factory, test_case.rhs)),
+            test_case.equals);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringEqualsTest, StringEqualsTest,
+                         testing::ValuesIn<StringEqualsTestCase>({
+                             {"", "", true},
+                             {"", std::string("\0", 1), false},
+                             {std::string("\0", 1), "", false},
+                             {std::string("\0", 1), std::string("\0", 1), true},
+                             {"", "foo", false},
+                             {"foo", "", false},
+                             {"foo", "foo", true},
+                             {"bar", "foo", false},
+                             {"foo", "bar", false},
+                             {"bar", "bar", true},
+                         }));
+
+struct StringCompareTestCase final {
+  std::string lhs;
+  std::string rhs;
+  int compare;
+};
+
+using StringCompareTest = testing::TestWithParam<StringCompareTestCase>;
+
+TEST_P(StringCompareTest, Equals) {
+  const StringCompareTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeStringString(value_factory, test_case.lhs)
+                    ->Compare(MakeStringString(value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeStringString(value_factory, test_case.lhs)
+                    ->Compare(MakeCordString(value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeStringString(value_factory, test_case.lhs)
+              ->Compare(MakeExternalString(value_factory, test_case.rhs))),
+      test_case.compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeCordString(value_factory, test_case.lhs)
+                    ->Compare(MakeStringString(value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeCordString(value_factory, test_case.lhs)
+                    ->Compare(MakeCordString(value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(NormalizeCompareResult(MakeCordString(value_factory, test_case.lhs)
+                                       ->Compare(MakeExternalString(
+                                           value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeExternalString(value_factory, test_case.lhs)
+                    ->Compare(MakeStringString(value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeExternalString(value_factory, test_case.lhs)
+                    ->Compare(MakeCordString(value_factory, test_case.rhs))),
+            test_case.compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeExternalString(value_factory, test_case.lhs)
+              ->Compare(MakeExternalString(value_factory, test_case.rhs))),
+      test_case.compare);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringCompareTest, StringCompareTest,
+                         testing::ValuesIn<StringCompareTestCase>({
+                             {"", "", 0},
+                             {"", std::string("\0", 1), -1},
+                             {std::string("\0", 1), "", 1},
+                             {std::string("\0", 1), std::string("\0", 1), 0},
+                             {"", "foo", -1},
+                             {"foo", "", 1},
+                             {"foo", "foo", 0},
+                             {"bar", "foo", -1},
+                             {"foo", "bar", 1},
+                             {"bar", "bar", 0},
+                         }));
+
+struct StringDebugStringTestCase final {
+  std::string data;
+};
+
+using StringDebugStringTest = testing::TestWithParam<StringDebugStringTestCase>;
+
+TEST_P(StringDebugStringTest, ToCord) {
+  const StringDebugStringTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->DebugString(),
+            internal::FormatStringLiteral(test_case.data));
+  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->DebugString(),
+            internal::FormatStringLiteral(test_case.data));
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->DebugString(),
+            internal::FormatStringLiteral(test_case.data));
+}
+
+INSTANTIATE_TEST_SUITE_P(StringDebugStringTest, StringDebugStringTest,
+                         testing::ValuesIn<StringDebugStringTestCase>({
+                             {""},
+                             {"1"},
+                             {"foo"},
+                             {"\xef\xbf\xbd"},
+                         }));
+
+struct StringToStringTestCase final {
+  std::string data;
+};
+
+using StringToStringTest = testing::TestWithParam<StringToStringTestCase>;
+
+TEST_P(StringToStringTest, ToString) {
+  const StringToStringTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->ToString(),
+            test_case.data);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->ToString(),
+            test_case.data);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->ToString(),
+            test_case.data);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringToStringTest, StringToStringTest,
+                         testing::ValuesIn<StringToStringTestCase>({
+                             {""},
+                             {"1"},
+                             {"foo"},
+                             {"\xef\xbf\xbd"},
+                         }));
+
+struct StringToCordTestCase final {
+  std::string data;
+};
+
+using StringToCordTest = testing::TestWithParam<StringToCordTestCase>;
+
+TEST_P(StringToCordTest, ToCord) {
+  const StringToCordTestCase& test_case = GetParam();
+  TestValueFactory value_factory;
+  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->ToCord(),
+            test_case.data);
+  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->ToCord(),
+            test_case.data);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->ToCord(),
+            test_case.data);
+}
+
+INSTANTIATE_TEST_SUITE_P(StringToCordTest, StringToCordTest,
+                         testing::ValuesIn<StringToCordTestCase>({
+                             {""},
+                             {"1"},
+                             {"foo"},
+                             {"\xef\xbf\xbd"},
+                         }));
+
 TEST(Value, SupportsAbslHash) {
   TestValueFactory value_factory;
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
@@ -929,6 +1390,10 @@ TEST(Value, SupportsAbslHash) {
       Persistent<const Value>(Must(value_factory.CreateBytesValue("foo"))),
       Persistent<const Value>(
           Must(value_factory.CreateBytesValue(absl::Cord("bar")))),
+      Persistent<const Value>(value_factory.GetStringValue()),
+      Persistent<const Value>(Must(value_factory.CreateStringValue("foo"))),
+      Persistent<const Value>(
+          Must(value_factory.CreateStringValue(absl::Cord("bar")))),
   }));
 }
 

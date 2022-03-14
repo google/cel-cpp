@@ -151,6 +151,7 @@ cc_library(
         "//internal:status_macros",
         "//internal:strings",
         "//internal:time",
+        "//internal:utf8",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:inlined_vector",

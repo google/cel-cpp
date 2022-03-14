@@ -51,6 +51,7 @@ class IntValue;
 class UintValue;
 class DoubleValue;
 class BytesValue;
+class StringValue;
 class DurationValue;
 class TimestampValue;
 class ValueFactory;
@@ -315,6 +316,7 @@ class StringType final : public Type {
   absl::string_view name() const override { return "string"; }
 
  private:
+  friend class StringValue;
   friend class TypeFactory;
   template <typename T>
   friend class internal::NoDestructor;

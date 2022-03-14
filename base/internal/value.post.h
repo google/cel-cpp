@@ -130,8 +130,114 @@ class ExternalDataBytesValue final : public BytesValue {
   ExternalData value_;
 };
 
-// Class used to assert the object memory layout for vptr at compile time,
-// otherwise it is unused.
+// Implementation of StringValue that is stored inlined within a handle. Since
+// absl::Cord is reference counted itself, this is more efficient then storing
+// this on the heap.
+class InlinedCordStringValue final : public StringValue,
+                                     public ResourceInlined {
+ private:
+  template <HandleType H>
+  friend class ValueHandle;
+
+  explicit InlinedCordStringValue(absl::Cord value)
+      : InlinedCordStringValue(0, std::move(value)) {}
+
+  InlinedCordStringValue(size_t size, absl::Cord value)
+      : StringValue(size), value_(std::move(value)) {}
+
+  InlinedCordStringValue() = delete;
+
+  InlinedCordStringValue(const InlinedCordStringValue&) = default;
+  InlinedCordStringValue(InlinedCordStringValue&&) = default;
+
+  // See comments for respective member functions on `StringValue` and `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  absl::Cord ToCord(bool reference_counted) const override;
+  Rep rep() const override;
+
+  absl::Cord value_;
+};
+
+// Implementation of StringValue that is stored inlined within a handle. This
+// class is inheritently unsafe and care should be taken when using it.
+// Typically this should only be used for empty strings or data that is static
+// and lives for the duration of a program.
+class InlinedStringViewStringValue final : public StringValue,
+                                           public ResourceInlined {
+ private:
+  template <HandleType H>
+  friend class ValueHandle;
+
+  explicit InlinedStringViewStringValue(absl::string_view value)
+      : InlinedStringViewStringValue(0, value) {}
+
+  InlinedStringViewStringValue(size_t size, absl::string_view value)
+      : StringValue(size), value_(value) {}
+
+  InlinedStringViewStringValue() = delete;
+
+  InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
+  InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
+
+  // See comments for respective member functions on `StringValue` and `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  absl::Cord ToCord(bool reference_counted) const override;
+  Rep rep() const override;
+
+  absl::string_view value_;
+};
+
+// Implementation of StringValue that uses std::string and is allocated on the
+// heap, potentially reference counted.
+class StringStringValue final : public StringValue {
+ private:
+  friend class cel::MemoryManager;
+
+  explicit StringStringValue(std::string value)
+      : StringStringValue(0, std::move(value)) {}
+
+  StringStringValue(size_t size, std::string value)
+      : StringValue(size), value_(std::move(value)) {}
+
+  StringStringValue() = delete;
+  StringStringValue(const StringStringValue&) = delete;
+  StringStringValue(StringStringValue&&) = delete;
+
+  // See comments for respective member functions on `StringValue` and `Value`.
+  std::pair<size_t, size_t> SizeAndAlignment() const override;
+  absl::Cord ToCord(bool reference_counted) const override;
+  Rep rep() const override;
+
+  std::string value_;
+};
+
+// Implementation of StringValue that wraps a contiguous array of bytes and
+// calls the releaser when it is no longer needed. It is stored on the heap and
+// potentially reference counted.
+class ExternalDataStringValue final : public StringValue {
+ private:
+  friend class cel::MemoryManager;
+
+  explicit ExternalDataStringValue(ExternalData value)
+      : ExternalDataStringValue(0, std::move(value)) {}
+
+  ExternalDataStringValue(size_t size, ExternalData value)
+      : StringValue(size), value_(std::move(value)) {}
+
+  ExternalDataStringValue() = delete;
+  ExternalDataStringValue(const ExternalDataStringValue&) = delete;
+  ExternalDataStringValue(ExternalDataStringValue&&) = delete;
+
+  // See comments for respective member functions on `StringValue` and `Value`.
+  std::pair<size_t, size_t> SizeAndAlignment() const override;
+  absl::Cord ToCord(bool reference_counted) const override;
+  Rep rep() const override;
+
+  ExternalData value_;
+};
+
 struct ABSL_ATTRIBUTE_UNUSED CheckVptrOffsetBase {
   virtual ~CheckVptrOffsetBase() = default;
 
@@ -161,7 +267,8 @@ union ValueHandleData final {
   void* vptr;
   std::aligned_union_t<sizeof(void*), NullValue, ErrorValue, BoolValue,
                        IntValue, UintValue, DoubleValue, InlinedCordBytesValue,
-                       InlinedStringViewBytesValue, DurationValue,
+                       InlinedStringViewBytesValue, InlinedCordStringValue,
+                       InlinedStringViewStringValue, DurationValue,
                        TimestampValue>
       padding;
 };
@@ -545,6 +652,7 @@ CEL_INTERNAL_VALUE_DECL(IntValue);
 CEL_INTERNAL_VALUE_DECL(UintValue);
 CEL_INTERNAL_VALUE_DECL(DoubleValue);
 CEL_INTERNAL_VALUE_DECL(BytesValue);
+CEL_INTERNAL_VALUE_DECL(StringValue);
 CEL_INTERNAL_VALUE_DECL(DurationValue);
 CEL_INTERNAL_VALUE_DECL(TimestampValue);
 #undef CEL_INTERNAL_VALUE_DECL

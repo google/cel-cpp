@@ -45,6 +45,10 @@ class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;
 class StringBytesValue;
 class ExternalDataBytesValue;
+class InlinedCordStringValue;
+class InlinedStringViewStringValue;
+class StringStringValue;
+class ExternalDataStringValue;
 
 // Type erased state capable of holding a pointer to remote storage or storing
 // objects less than two pointers in size inline.

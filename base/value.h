@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -43,6 +44,7 @@ class IntValue;
 class UintValue;
 class DoubleValue;
 class BytesValue;
+class StringValue;
 class DurationValue;
 class TimestampValue;
 class ValueFactory;
@@ -74,11 +76,14 @@ class Value : public base_internal::Resource {
   friend class UintValue;
   friend class DoubleValue;
   friend class BytesValue;
+  friend class StringValue;
   friend class DurationValue;
   friend class TimestampValue;
   friend class base_internal::ValueHandleBase;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
+  friend class base_internal::StringStringValue;
+  friend class base_internal::ExternalDataStringValue;
 
   Value() = default;
   Value(const Value&) = default;
@@ -405,6 +410,83 @@ class BytesValue : public Value {
   // See comments for respective member functions on `Value`.
   bool Equals(const Value& other) const final;
   void HashValue(absl::HashState state) const final;
+};
+
+class StringValue : public Value {
+ protected:
+  using Rep = absl::variant<absl::string_view,
+                            std::reference_wrapper<const absl::Cord>>;
+
+ public:
+  static Persistent<const StringValue> Empty(ValueFactory& value_factory);
+
+  static absl::StatusOr<Persistent<const StringValue>> Concat(
+      ValueFactory& value_factory, const Transient<const StringValue>& lhs,
+      const Transient<const StringValue>& rhs);
+
+  Transient<const Type> type() const final;
+
+  Kind kind() const final { return Kind::kString; }
+
+  std::string DebugString() const final;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  bool Equals(absl::string_view string) const;
+  bool Equals(const absl::Cord& string) const;
+  bool Equals(const Transient<const StringValue>& string) const;
+
+  int Compare(absl::string_view string) const;
+  int Compare(const absl::Cord& string) const;
+  int Compare(const Transient<const StringValue>& string) const;
+
+  std::string ToString() const;
+
+  absl::Cord ToCord() const {
+    // Without the handle we cannot know if this is reference counted.
+    return ToCord(/*reference_counted=*/false);
+  }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+  friend class base_internal::InlinedCordStringValue;
+  friend class base_internal::InlinedStringViewStringValue;
+  friend class base_internal::StringStringValue;
+  friend class base_internal::ExternalDataStringValue;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kString; }
+
+  explicit StringValue(size_t size) : size_(size) {}
+
+  StringValue() = default;
+
+  StringValue(const StringValue& other)
+      : StringValue(other.size_.load(std::memory_order_relaxed)) {}
+
+  StringValue(StringValue&& other)
+      : StringValue(other.size_.exchange(0, std::memory_order_relaxed)) {}
+
+  // Get the contents of this BytesValue as absl::Cord. When reference_counted
+  // is true, the implementation can potentially return an absl::Cord that wraps
+  // the contents instead of copying.
+  virtual absl::Cord ToCord(bool reference_counted) const = 0;
+
+  // Get the contents of this StringValue as either absl::string_view or const
+  // absl::Cord&.
+  virtual Rep rep() const = 0;
+
+  // See comments for respective member functions on `Value`.
+  bool Equals(const Value& other) const final;
+  void HashValue(absl::HashState state) const final;
+
+  // Lazily cached code point count.
+  mutable std::atomic<size_t> size_ = 0;
 };
 
 class DurationValue final : public Value,

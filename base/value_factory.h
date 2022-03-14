@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
@@ -86,6 +87,40 @@ class ValueFactory {
             std::forward<Releaser>(releaser))));
   }
 
+  Persistent<const StringValue> GetStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetEmptyStringValue();
+  }
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
+      const char* value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateStringValue(absl::string_view(value));
+  }
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
+      absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateStringValue(std::string(value));
+  }
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
+      std::string value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
+      absl::Cord value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  template <typename Releaser>
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
+      absl::string_view value,
+      Releaser&& releaser) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    if (value.empty()) {
+      std::forward<Releaser>(releaser)();
+      return GetEmptyStringValue();
+    }
+    return CreateStringValue(base_internal::ExternalData(
+        static_cast<const void*>(value.data()), value.size(),
+        std::make_unique<base_internal::ExternalDataReleaser>(
+            std::forward<Releaser>(releaser))));
+  }
+
   absl::StatusOr<Persistent<const DurationValue>> CreateDurationValue(
       absl::Duration value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -100,10 +135,21 @@ class ValueFactory {
   MemoryManager& memory_manager() const { return memory_manager_; }
 
  private:
+  friend class StringValue;
+
   Persistent<const BytesValue> GetEmptyBytesValue()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<Persistent<const BytesValue>> CreateBytesValue(
+      base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Persistent<const StringValue> GetEmptyStringValue()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
+      absl::Cord value, size_t size) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
       base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager_;
