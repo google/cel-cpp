@@ -131,6 +131,15 @@ cc_test(
 )
 
 cc_library(
+    name = "type_provider",
+    hdrs = ["type_provider.h"],
+    deps = [
+        "//eval/public/structs:legacy_type_adapter",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "value",
     srcs = [
         "value.cc",

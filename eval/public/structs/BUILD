@@ -85,3 +85,26 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "legacy_type_adapter",
+    hdrs = ["legacy_type_adapter.h"],
+    deps = [
+        "//base:memory_manager",
+        "//eval/public:cel_value",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "legacy_type_adapter_test",
+    srcs = ["legacy_type_adapter_test.cc"],
+    deps = [
+        ":legacy_type_adapter",
+        "//eval/public:cel_value",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
