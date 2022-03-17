@@ -104,6 +104,7 @@ cc_library(
     hdrs = [
         "type.h",
         "type_factory.h",
+        "type_provider.h",
     ],
     deps = [
         ":handle",
@@ -127,15 +128,6 @@ cc_test(
         ":type",
         "//internal:testing",
         "@com_google_absl//absl/hash:hash_testing",
-    ],
-)
-
-cc_library(
-    name = "type_provider",
-    hdrs = ["type_provider.h"],
-    deps = [
-        "//eval/public/structs:legacy_type_adapter",
-        "@com_google_absl//absl/strings",
     ],
 )
 

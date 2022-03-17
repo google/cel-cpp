@@ -15,10 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 
-#include "absl/strings/string_view.h"
-#include "eval/public/structs/legacy_type_adapter.h"
-
 namespace cel {
+
+class TypeFactory;
 
 // Interface for a TypeProvider, allowing host applications to inject
 // functionality for operating on custom types in the CEL interpreter.
@@ -33,16 +32,6 @@ namespace cel {
 class TypeProvider {
  public:
   virtual ~TypeProvider() = default;
-
-  // Return LegacyTypeAdapter for the fully qualified type name if available.
-  //
-  // nullopt values are interpreted as not present.
-  //
-  // Returned non-null pointers from the adapter implemententation must remain
-  // valid as long as the type provider.
-  // TODO(issues/5): add alternative for new type system.
-  virtual absl::optional<google::api::expr::runtime::LegacyTypeAdapter>
-  ProvideLegacyType(absl::string_view name) const = 0;
 };
 
 }  // namespace cel

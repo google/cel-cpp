@@ -87,6 +87,16 @@ cc_test(
 )
 
 cc_library(
+    name = "legacy_type_provider",
+    hdrs = ["legacy_type_provider.h"],
+    deps = [
+        ":legacy_type_adapter",
+        "//base:type",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
     name = "legacy_type_adapter",
     hdrs = ["legacy_type_adapter.h"],
     deps = [
