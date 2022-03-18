@@ -40,6 +40,11 @@ constexpr T* ManagedMemoryRelease(ManagedMemory<T>& managed_memory) {
   return ptr;
 }
 
+inline MemoryManager& GetMemoryManager(const void* pointer, size_t size,
+                                       size_t align) {
+  return MemoryManager::Get(pointer, size, align);
+}
+
 }  // namespace cel::base_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_POST_H_

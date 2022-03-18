@@ -25,6 +25,8 @@
 
 namespace cel {
 
+class MemoryManager;
+
 template <typename T>
 class Transient;
 
@@ -182,6 +184,12 @@ class Transient final : private base_internal::HandlePolicy<T> {
   friend bool base_internal::IsUnmanagedHandle(const Transient<F>& handle);
   template <typename F>
   friend bool base_internal::IsInlinedHandle(const Transient<F>& handle);
+  template <typename F>
+  friend MemoryManager& base_internal::GetMemoryManager(
+      const Transient<F>& handle);
+  template <typename F>
+  friend MemoryManager& base_internal::GetMemoryManager(
+      const Persistent<F>& handle);
 
   template <typename... Args>
   explicit Transient(base_internal::HandleInPlace, Args&&... args)
@@ -397,6 +405,12 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   friend bool base_internal::IsUnmanagedHandle(const Persistent<F>& handle);
   template <typename F>
   friend bool base_internal::IsInlinedHandle(const Persistent<F>& handle);
+  template <typename F>
+  friend MemoryManager& base_internal::GetMemoryManager(
+      const Transient<F>& handle);
+  template <typename F>
+  friend MemoryManager& base_internal::GetMemoryManager(
+      const Persistent<F>& handle);
 
   template <typename... Args>
   explicit Persistent(base_internal::HandleInPlace, Args&&... args)

@@ -33,6 +33,8 @@ class Transient;
 template <typename T>
 class Persistent;
 
+class MemoryManager;
+
 namespace base_internal {
 
 class TypeHandleBase;
@@ -70,6 +72,13 @@ struct HandleInPlace {
 // and Transient. Think std::in_place.
 inline constexpr HandleInPlace kHandleInPlace{};
 
+// If IsManagedHandle returns true, get a reference to the memory manager that
+// is managing it.
+template <typename T>
+MemoryManager& GetMemoryManager(const Transient<T>& handle);
+template <typename T>
+MemoryManager& GetMemoryManager(const Persistent<T>& handle);
+
 // Virtual base class for all classes that can be managed by handles.
 class Resource {
  public:
@@ -85,6 +94,10 @@ class Resource {
   friend class ValueHandleBase;
   template <HandleType H, typename T>
   friend struct HandleFactory;
+  template <typename T>
+  friend MemoryManager& GetMemoryManager(const Transient<T>& handle);
+  template <typename T>
+  friend MemoryManager& GetMemoryManager(const Persistent<T>& handle);
 
   Resource() = default;
   Resource(const Resource&) = default;

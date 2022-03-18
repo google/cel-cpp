@@ -28,11 +28,6 @@ namespace {
 
 using testing::SizeIs;
 
-class TestTypeFactory final : public TypeFactory {
- public:
-  TestTypeFactory() : TypeFactory(MemoryManager::Global()) {}
-};
-
 template <class T>
 constexpr void IS_INITIALIZED(T&) {}
 
@@ -67,13 +62,13 @@ TEST(Type, PersistentHandleTypeTraits) {
 }
 
 TEST(Type, CopyConstructor) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   Transient<const Type> type(type_factory.GetIntType());
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST(Type, MoveConstructor) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   Transient<const Type> from(type_factory.GetIntType());
   Transient<const Type> to(std::move(from));
   IS_INITIALIZED(from);
@@ -82,14 +77,14 @@ TEST(Type, MoveConstructor) {
 }
 
 TEST(Type, CopyAssignment) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   Transient<const Type> type(type_factory.GetNullType());
   type = type_factory.GetIntType();
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST(Type, MoveAssignment) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   Transient<const Type> from(type_factory.GetIntType());
   Transient<const Type> to(type_factory.GetNullType());
   to = std::move(from);
@@ -99,7 +94,7 @@ TEST(Type, MoveAssignment) {
 }
 
 TEST(Type, Swap) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   Transient<const Type> lhs = type_factory.GetIntType();
   Transient<const Type> rhs = type_factory.GetUintType();
   std::swap(lhs, rhs);
@@ -112,7 +107,7 @@ TEST(Type, Swap) {
 // feature is not available in C++17.
 
 TEST(Type, Null) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetNullType()->kind(), Kind::kNullType);
   EXPECT_EQ(type_factory.GetNullType()->name(), "null_type");
   EXPECT_THAT(type_factory.GetNullType()->parameters(), SizeIs(0));
@@ -130,7 +125,7 @@ TEST(Type, Null) {
 }
 
 TEST(Type, Error) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetErrorType()->kind(), Kind::kError);
   EXPECT_EQ(type_factory.GetErrorType()->name(), "*error*");
   EXPECT_THAT(type_factory.GetErrorType()->parameters(), SizeIs(0));
@@ -148,7 +143,7 @@ TEST(Type, Error) {
 }
 
 TEST(Type, Dyn) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetDynType()->kind(), Kind::kDyn);
   EXPECT_EQ(type_factory.GetDynType()->name(), "dyn");
   EXPECT_THAT(type_factory.GetDynType()->parameters(), SizeIs(0));
@@ -166,7 +161,7 @@ TEST(Type, Dyn) {
 }
 
 TEST(Type, Any) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetAnyType()->kind(), Kind::kAny);
   EXPECT_EQ(type_factory.GetAnyType()->name(), "google.protobuf.Any");
   EXPECT_THAT(type_factory.GetAnyType()->parameters(), SizeIs(0));
@@ -184,7 +179,7 @@ TEST(Type, Any) {
 }
 
 TEST(Type, Bool) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetBoolType()->kind(), Kind::kBool);
   EXPECT_EQ(type_factory.GetBoolType()->name(), "bool");
   EXPECT_THAT(type_factory.GetBoolType()->parameters(), SizeIs(0));
@@ -202,7 +197,7 @@ TEST(Type, Bool) {
 }
 
 TEST(Type, Int) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetIntType()->kind(), Kind::kInt);
   EXPECT_EQ(type_factory.GetIntType()->name(), "int");
   EXPECT_THAT(type_factory.GetIntType()->parameters(), SizeIs(0));
@@ -220,7 +215,7 @@ TEST(Type, Int) {
 }
 
 TEST(Type, Uint) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetUintType()->kind(), Kind::kUint);
   EXPECT_EQ(type_factory.GetUintType()->name(), "uint");
   EXPECT_THAT(type_factory.GetUintType()->parameters(), SizeIs(0));
@@ -238,7 +233,7 @@ TEST(Type, Uint) {
 }
 
 TEST(Type, Double) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetDoubleType()->kind(), Kind::kDouble);
   EXPECT_EQ(type_factory.GetDoubleType()->name(), "double");
   EXPECT_THAT(type_factory.GetDoubleType()->parameters(), SizeIs(0));
@@ -256,7 +251,7 @@ TEST(Type, Double) {
 }
 
 TEST(Type, String) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetStringType()->kind(), Kind::kString);
   EXPECT_EQ(type_factory.GetStringType()->name(), "string");
   EXPECT_THAT(type_factory.GetStringType()->parameters(), SizeIs(0));
@@ -274,7 +269,7 @@ TEST(Type, String) {
 }
 
 TEST(Type, Bytes) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetBytesType()->kind(), Kind::kBytes);
   EXPECT_EQ(type_factory.GetBytesType()->name(), "bytes");
   EXPECT_THAT(type_factory.GetBytesType()->parameters(), SizeIs(0));
@@ -292,7 +287,7 @@ TEST(Type, Bytes) {
 }
 
 TEST(Type, Duration) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetDurationType()->kind(), Kind::kDuration);
   EXPECT_EQ(type_factory.GetDurationType()->name(), "google.protobuf.Duration");
   EXPECT_THAT(type_factory.GetDurationType()->parameters(), SizeIs(0));
@@ -310,7 +305,7 @@ TEST(Type, Duration) {
 }
 
 TEST(Type, Timestamp) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_EQ(type_factory.GetTimestampType()->kind(), Kind::kTimestamp);
   EXPECT_EQ(type_factory.GetTimestampType()->name(),
             "google.protobuf.Timestamp");
@@ -329,7 +324,7 @@ TEST(Type, Timestamp) {
 }
 
 TEST(Type, SupportsAbslHash) {
-  TestTypeFactory type_factory;
+  TypeFactory type_factory(MemoryManager::Global());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
       Persistent<const Type>(type_factory.GetNullType()),
       Persistent<const Type>(type_factory.GetErrorType()),

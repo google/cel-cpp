@@ -222,6 +222,11 @@ void MemoryManager::DeallocateInternal(void* pointer, size_t size,
   memory_manager->Deallocate(pointer, size, align);
 }
 
+MemoryManager& MemoryManager::Get(const void* pointer, size_t size,
+                                  size_t align) {
+  return *GetControlBlock(pointer, size, align)->memory_manager;
+}
+
 void MemoryManager::Ref(const void* pointer, size_t size, size_t align) {
   if (pointer != nullptr && size != 0) {
     ABSL_ASSERT(absl::has_single_bit(align));  // Assert aligned to power of 2.

@@ -32,9 +32,15 @@
 
 namespace cel {
 
-class ValueFactory {
+class ValueFactory final {
  public:
-  virtual ~ValueFactory() = default;
+  explicit ValueFactory(
+      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : memory_manager_(memory_manager) {}
+
+  ValueFactory(const ValueFactory&) = delete;
+
+  ValueFactory& operator=(const ValueFactory&) = delete;
 
   Persistent<const NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -128,13 +134,10 @@ class ValueFactory {
       absl::Time value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
-  // Prevent direct intantiation until more pure virtual methods are added.
-  explicit ValueFactory(MemoryManager& memory_manager)
-      : memory_manager_(memory_manager) {}
-
   MemoryManager& memory_manager() const { return memory_manager_; }
 
  private:
+  friend class BytesValue;
   friend class StringValue;
 
   Persistent<const BytesValue> GetEmptyBytesValue()

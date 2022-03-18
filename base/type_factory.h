@@ -24,9 +24,15 @@ namespace cel {
 
 // TypeFactory provides member functions to get and create type implementations
 // of builtin types.
-class TypeFactory {
+class TypeFactory final {
  public:
-  virtual ~TypeFactory() = default;
+  explicit TypeFactory(
+      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : memory_manager_(memory_manager) {}
+
+  TypeFactory(const TypeFactory&) = delete;
+
+  TypeFactory& operator=(const TypeFactory&) = delete;
 
   Persistent<const NullType> GetNullType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -55,10 +61,6 @@ class TypeFactory {
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
-  // Prevent direct intantiation until more pure virtual methods are added.
-  explicit TypeFactory(MemoryManager& memory_manager)
-      : memory_manager_(memory_manager) {}
-
   // Ignore unused for now, as it will be used in the future.
   ABSL_ATTRIBUTE_UNUSED MemoryManager& memory_manager() const {
     return memory_manager_;

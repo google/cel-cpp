@@ -137,6 +137,24 @@ bool IsInlinedHandle(const Persistent<T>& handle) {
   return handle.impl_.IsInlined();
 }
 
+template <typename T>
+MemoryManager& GetMemoryManager(const Transient<T>& handle) {
+  ABSL_ASSERT(IsManagedHandle(handle));
+  auto [size, align] =
+      static_cast<const Resource*>(handle.operator->())->SizeAndAlignment();
+  return GetMemoryManager(static_cast<const void*>(handle.operator->()), size,
+                          align);
+}
+
+template <typename T>
+MemoryManager& GetMemoryManager(const Persistent<T>& handle) {
+  ABSL_ASSERT(IsManagedHandle(handle));
+  auto [size, align] =
+      static_cast<const Resource*>(handle.operator->())->SizeAndAlignment();
+  return GetMemoryManager(static_cast<const void*>(handle.operator->()), size,
+                          align);
+}
+
 }  // namespace cel::base_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_HANDLE_POST_H_

@@ -40,6 +40,8 @@ constexpr size_t GetManagedMemoryAlignment(
 template <typename T>
 constexpr T* ManagedMemoryRelease(ManagedMemory<T>& managed_memory);
 
+MemoryManager& GetMemoryManager(const void* pointer, size_t size, size_t align);
+
 template <typename T>
 class MemoryManagerDestructor final {
  private:

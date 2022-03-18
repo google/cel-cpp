@@ -190,10 +190,15 @@ class MemoryManager {
   friend class ManagedMemory;
   friend class ArenaMemoryManager;
   friend class base_internal::Resource;
+  friend MemoryManager& base_internal::GetMemoryManager(const void* pointer,
+                                                        size_t size,
+                                                        size_t align);
 
   // Only for use by ArenaMemoryManager.
   explicit MemoryManager(bool allocation_only)
       : allocation_only_(allocation_only) {}
+
+  static MemoryManager& Get(const void* pointer, size_t size, size_t align);
 
   void* AllocateInternal(size_t& size, size_t& align);
 

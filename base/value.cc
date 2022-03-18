@@ -589,6 +589,14 @@ class HashValueVisitor final {
   absl::HashState state_;
 };
 
+template <typename T>
+bool CanPerformZeroCopy(MemoryManager& memory_manager,
+                        const Transient<T>& handle) {
+  return base_internal::IsManagedHandle(handle) &&
+         std::addressof(memory_manager) ==
+             std::addressof(base_internal::GetMemoryManager(handle));
+}
+
 }  // namespace
 
 Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
@@ -598,8 +606,15 @@ Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
 absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
     ValueFactory& value_factory, const Transient<const BytesValue>& lhs,
     const Transient<const BytesValue>& rhs) {
-  absl::Cord cord = lhs->ToCord(base_internal::IsManagedHandle(lhs));
-  cord.Append(rhs->ToCord(base_internal::IsManagedHandle(rhs)));
+  absl::Cord cord;
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      lhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), lhs)));
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      rhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), rhs)));
   return value_factory.CreateBytesValue(std::move(cord));
 }
 
@@ -665,8 +680,15 @@ Persistent<const StringValue> StringValue::Empty(ValueFactory& value_factory) {
 absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
     ValueFactory& value_factory, const Transient<const StringValue>& lhs,
     const Transient<const StringValue>& rhs) {
-  absl::Cord cord = lhs->ToCord(base_internal::IsManagedHandle(lhs));
-  cord.Append(rhs->ToCord(base_internal::IsManagedHandle(rhs)));
+  absl::Cord cord;
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      lhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), lhs)));
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      rhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), rhs)));
   size_t size = 0;
   size_t lhs_size = lhs->size_.load(std::memory_order_relaxed);
   if (lhs_size != 0 && !lhs->empty()) {
