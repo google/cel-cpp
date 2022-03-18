@@ -45,6 +45,7 @@ using CelError = absl::Status;
 class CelList;
 class CelMap;
 class UnknownSet;
+class LegacyTypeAdapter;
 
 class CelValue {
  public:
@@ -452,6 +453,7 @@ class CelValue {
   }
 
   friend class CelProtoWrapper;
+  friend class ProtoMessageTypeAdapter;
   friend class EvaluatorStack;
 };
 

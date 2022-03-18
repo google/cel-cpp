@@ -118,3 +118,68 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "proto_message_type_adapter",
+    srcs = ["proto_message_type_adapter.cc"],
+    hdrs = ["proto_message_type_adapter.h"],
+    deps = [
+        ":cel_proto_wrapper",
+        ":legacy_type_adapter",
+        "//base:memory_manager",
+        "//eval/public:cel_value",
+        "//eval/public/containers:field_access",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "proto_message_type_adapter_test",
+    srcs = ["proto_message_type_adapter_test.cc"],
+    deps = [
+        ":cel_proto_wrapper",
+        ":proto_message_type_adapter",
+        "//eval/public:cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/public/testing:matchers",
+        "//eval/testutil:test_message_cc_proto",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "protobuf_descriptor_type_provider",
+    srcs = ["protobuf_descriptor_type_provider.cc"],
+    hdrs = ["protobuf_descriptor_type_provider.h"],
+    deps = [
+        ":proto_message_type_adapter",
+        "//eval/public:cel_value",
+        "//eval/public/structs:legacy_type_provider",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "protobuf_descriptor_type_provider_test",
+    srcs = ["protobuf_descriptor_type_provider_test.cc"],
+    deps = [
+        ":protobuf_descriptor_type_provider",
+        "//eval/public:cel_value",
+        "//eval/public/testing:matchers",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
+        "//internal:testing",
+    ],
+)
