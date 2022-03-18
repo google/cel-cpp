@@ -24,14 +24,18 @@ namespace cel {
 
 // TypeFactory provides member functions to get and create type implementations
 // of builtin types.
-class TypeFactory final {
+//
+// While TypeFactory is not final and has a virtual destructor, inheriting it is
+// forbidden outside of the CEL codebase.
+class TypeFactory {
  public:
   explicit TypeFactory(
       MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : memory_manager_(memory_manager) {}
 
-  TypeFactory(const TypeFactory&) = delete;
+  virtual ~TypeFactory() = default;
 
+  TypeFactory(const TypeFactory&) = delete;
   TypeFactory& operator=(const TypeFactory&) = delete;
 
   Persistent<const NullType> GetNullType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -59,6 +63,10 @@ class TypeFactory final {
 
   Persistent<const TimestampType> GetTimestampType()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  // TODO(issues/5): Add CreateStructType<T, Args...>(Args...)
+  // and CreateEnumType<T, Args...>(Args...) which returns
+  // Persistent<const T>
 
  protected:
   // Ignore unused for now, as it will be used in the future.

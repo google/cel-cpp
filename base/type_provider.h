@@ -15,6 +15,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "base/handle.h"
+#include "base/type.h"
+
 namespace cel {
 
 class TypeFactory;
@@ -32,6 +38,15 @@ class TypeFactory;
 class TypeProvider {
  public:
   virtual ~TypeProvider() = default;
+
+  // Return a persistent handle to a Type for the fully qualified type name, if
+  // available.
+  //
+  // An empty handle is returned if the provider cannot find the requested type.
+  virtual absl::StatusOr<Persistent<const Type>> ProvideType(
+      TypeFactory& type_factory, absl::string_view name) const {
+    return absl::UnimplementedError("ProvideType is not yet implemented");
+  }
 };
 
 }  // namespace cel

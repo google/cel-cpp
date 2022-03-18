@@ -39,7 +39,6 @@ class ValueFactory final {
       : memory_manager_(memory_manager) {}
 
   ValueFactory(const ValueFactory&) = delete;
-
   ValueFactory& operator=(const ValueFactory&) = delete;
 
   Persistent<const NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -132,6 +131,9 @@ class ValueFactory final {
 
   absl::StatusOr<Persistent<const TimestampValue>> CreateTimestampValue(
       absl::Time value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  // TODO(issues/5): Add CreateStructType<T, Args...>(Args...) and
+  // CreateEnumType<T, Args...>(Args...) which returns Persistent<T>
 
  protected:
   MemoryManager& memory_manager() const { return memory_manager_; }
