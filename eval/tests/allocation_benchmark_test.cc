@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/rpc/context/attribute_context.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/base/attributes.h"
 #include "absl/container/btree_map.h"
@@ -195,6 +196,46 @@ static void BM_AllocateMessage(benchmark::State& state) {
 }
 
 BENCHMARK(BM_AllocateMessage);
+
+static void BM_AllocateLargeMessage(benchmark::State& state) {
+  // Make sure attribute context is loaded in the generated descriptor pool.
+  rpc::context::AttributeContext context;
+  static_cast<void>(context);
+
+  google::protobuf::Arena arena;
+  std::string expr(R"(
+  google.rpc.context.AttributeContext{
+      source: google.rpc.context.AttributeContext.Peer{
+        ip: '192.168.0.1',
+        port: 1025,
+        labels: {"abc": "123", "def": "456"}
+      },
+      request: google.rpc.context.AttributeContext.Request{
+        method: 'GET',
+        path: 'root',
+        host: 'www.example.com'
+      },
+      resource: google.rpc.context.AttributeContext.Resource{
+        labels: {"abc": "123", "def": "456"},
+      }
+  })");
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, Parse(expr));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+
+  for (auto _ : state) {
+    Activation activation;
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsMessage());
+  }
+}
+
+BENCHMARK(BM_AllocateLargeMessage);
 
 static void BM_AllocateList(benchmark::State& state) {
   google::protobuf::Arena arena;
