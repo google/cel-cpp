@@ -338,6 +338,22 @@ TEST(CelValueEqualImplTest, MapMixedValueTypesInequal) {
               Optional(false));
 }
 
+TEST(CelValueEqualImplTest, MapMixedKeyTypesEqual) {
+  std::vector<std::pair<CelValue, CelValue>> lhs_data{
+      {CelValue::CreateUint64(1), CelValue::CreateStringView("abc")}};
+  std::vector<std::pair<CelValue, CelValue>> rhs_data{
+      {CelValue::CreateInt64(1), CelValue::CreateStringView("abc")}};
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelMap> lhs,
+                       CreateContainerBackedMap(absl::MakeSpan(lhs_data)));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelMap> rhs,
+                       CreateContainerBackedMap(absl::MakeSpan(rhs_data)));
+
+  EXPECT_THAT(CelValueEqualImpl(CelValue::CreateMap(lhs.get()),
+                                CelValue::CreateMap(rhs.get())),
+              Optional(true));
+}
+
 TEST(CelValueEqualImplTest, MapMixedKeyTypesInequal) {
   std::vector<std::pair<CelValue, CelValue>> lhs_data{
       {CelValue::CreateInt64(1), CelValue::CreateStringView("abc")}};
