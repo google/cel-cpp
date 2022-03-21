@@ -246,22 +246,6 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
     CelValue v1 = (*t1)[key].value();
     absl::optional<CelValue> v2 = (*t2)[key];
     if (!v2.has_value()) {
-      auto number = GetNumberFromCelValue(key);
-      if (!number.has_value()) {
-        return false;
-      }
-      if (key.IsUint64()) {
-        v2 = (*t2)[key];
-      }
-      if (!v2.has_value() && number->LosslessConvertibleToInt()) {
-        v2 = (*t2)[CelValue::CreateInt64(number->AsInt())];
-      }
-      if (!key.IsUint64() && !v2.has_value() &&
-          number->LosslessConvertibleToUint()) {
-        v2 = (*t2)[CelValue::CreateUint64(number->AsUint())];
-      }
-    }
-    if (!v2.has_value()) {
       return false;
     }
     absl::optional<bool> eq = EqualsProvider()(v1, *v2);
@@ -270,6 +254,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
       return eq;
     }
   }
+
   return true;
 }
 

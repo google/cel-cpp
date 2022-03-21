@@ -388,7 +388,7 @@ class BuiltinsTest : public ::testing::Test {
 
     ASSERT_EQ(result_value.IsBool(), true);
     ASSERT_EQ(result_value.BoolOrDie(), result)
-        << " for " << value.DebugString();
+        << " for " << CelValue::TypeName(value.type());
   }
 
   void TestInDeprecatedMap(const CelMap* cel_map, const CelValue& value,
@@ -1579,8 +1579,11 @@ TEST_F(BuiltinsTest, TestMapInError) {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(
         builtin::kIn, {}, {key, CelValue::CreateMap(&cel_map)}, &result_value));
-    EXPECT_TRUE(result_value.IsBool());
-    EXPECT_FALSE(result_value.BoolOrDie());
+
+    EXPECT_TRUE(result_value.IsError());
+    EXPECT_EQ(result_value.ErrorOrDie()->message(), "bad key type");
+    EXPECT_EQ(result_value.ErrorOrDie()->code(),
+              absl::StatusCode::kInvalidArgument);
   }
 }
 
@@ -1605,14 +1608,7 @@ TEST_F(BuiltinsTest, TestInt64MapIn) {
   FakeInt64Map cel_map(data);
   TestInMap(&cel_map, CelValue::CreateInt64(-4), true);
   TestInMap(&cel_map, CelValue::CreateInt64(4), false);
-  TestInMap(&cel_map, CelValue::CreateUint64(3), true);
-  TestInMap(&cel_map, CelValue::CreateUint64(4), false);
-  TestInMap(&cel_map, CelValue::CreateDouble(NAN), false);
-  TestInMap(&cel_map, CelValue::CreateDouble(-4.0), true);
-  TestInMap(&cel_map, CelValue::CreateDouble(-4.1), false);
-  TestInMap(&cel_map,
-            CelValue::CreateDouble(std::numeric_limits<uint64_t>::max()),
-            false);
+  TestInMap(&cel_map, CelValue::CreateUint64(3), false);
 }
 
 TEST_F(BuiltinsTest, TestUint64MapIn) {
@@ -1624,11 +1620,7 @@ TEST_F(BuiltinsTest, TestUint64MapIn) {
   FakeUint64Map cel_map(data);
   TestInMap(&cel_map, CelValue::CreateUint64(4), true);
   TestInMap(&cel_map, CelValue::CreateUint64(44), false);
-  TestInMap(&cel_map, CelValue::CreateDouble(4.0), true);
-  TestInMap(&cel_map, CelValue::CreateDouble(-4.0), false);
-  TestInMap(&cel_map, CelValue::CreateDouble(7.0), false);
-  TestInMap(&cel_map, CelValue::CreateInt64(4), true);
-  TestInMap(&cel_map, CelValue::CreateInt64(-1), false);
+  TestInMap(&cel_map, CelValue::CreateInt64(4), false);
 }
 
 TEST_F(BuiltinsTest, TestStringMapIn) {
