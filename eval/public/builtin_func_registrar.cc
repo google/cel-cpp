@@ -29,10 +29,12 @@
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/comparison_functions.h"
@@ -552,37 +554,96 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
     }
   }
 
-  auto boolKeyInSet = [](Arena* arena, bool key,
-                         const CelMap* cel_map) -> CelValue {
+  auto boolKeyInSet = [options](Arena* arena, bool key,
+                                const CelMap* cel_map) -> CelValue {
     const auto& result = cel_map->Has(CelValue::CreateBool(key));
+    if (result.ok()) {
+      return CelValue::CreateBool(*result);
+    }
+    if (options.enable_heterogeneous_equality) {
+      return CelValue::CreateBool(false);
+    }
+    return CreateErrorValue(arena, result.status());
+  };
+
+  auto intKeyInSet = [options](Arena* arena, int64_t key,
+                               const CelMap* cel_map) -> CelValue {
+    CelValue int_key = CelValue::CreateInt64(key);
+    const auto& result = cel_map->Has(int_key);
+    if (options.enable_heterogeneous_equality) {
+      if (result.ok() && *result) {
+        return CelValue::CreateBool(*result);
+      }
+      absl::optional<CelNumber> number = GetNumberFromCelValue(int_key);
+      if (number->LosslessConvertibleToUint()) {
+        const auto& result =
+            cel_map->Has(CelValue::CreateUint64(number->AsUint()));
+        if (result.ok() && *result) {
+          return CelValue::CreateBool(*result);
+        }
+      }
+      return CelValue::CreateBool(false);
+    }
     if (!result.ok()) {
       return CreateErrorValue(arena, result.status());
     }
     return CelValue::CreateBool(*result);
   };
-  auto intKeyInSet = [](Arena* arena, int64_t key,
-                        const CelMap* cel_map) -> CelValue {
-    const auto& result = cel_map->Has(CelValue::CreateInt64(key));
-    if (!result.ok()) {
-      return CreateErrorValue(arena, result.status());
-    }
-    return CelValue::CreateBool(*result);
-  };
-  auto stringKeyInSet = [](Arena* arena, CelValue::StringHolder key,
-                           const CelMap* cel_map) -> CelValue {
+
+  auto stringKeyInSet = [options](Arena* arena, CelValue::StringHolder key,
+                                  const CelMap* cel_map) -> CelValue {
     const auto& result = cel_map->Has(CelValue::CreateString(key));
+    if (result.ok()) {
+      return CelValue::CreateBool(*result);
+    }
+    if (options.enable_heterogeneous_equality) {
+      return CelValue::CreateBool(false);
+    }
+    return CreateErrorValue(arena, result.status());
+  };
+
+  auto uintKeyInSet = [options](Arena* arena, uint64_t key,
+                                const CelMap* cel_map) -> CelValue {
+    CelValue uint_key = CelValue::CreateUint64(key);
+    const auto& result = cel_map->Has(uint_key);
+    if (options.enable_heterogeneous_equality) {
+      if (result.ok() && *result) {
+        return CelValue::CreateBool(*result);
+      }
+      absl::optional<CelNumber> number = GetNumberFromCelValue(uint_key);
+      if (number->LosslessConvertibleToInt()) {
+        const auto& result =
+            cel_map->Has(CelValue::CreateInt64(number->AsInt()));
+        if (result.ok() && *result) {
+          return CelValue::CreateBool(*result);
+        }
+      }
+      return CelValue::CreateBool(false);
+    }
     if (!result.ok()) {
       return CreateErrorValue(arena, result.status());
     }
     return CelValue::CreateBool(*result);
   };
-  auto uintKeyInSet = [](Arena* arena, uint64_t key,
-                         const CelMap* cel_map) -> CelValue {
-    const auto& result = cel_map->Has(CelValue::CreateUint64(key));
-    if (!result.ok()) {
-      return CreateErrorValue(arena, result.status());
+
+  auto doubleKeyInSet = [](Arena* arena, double key,
+                           const CelMap* cel_map) -> CelValue {
+    absl::optional<CelNumber> number =
+        GetNumberFromCelValue(CelValue::CreateDouble(key));
+    if (number->LosslessConvertibleToInt()) {
+      const auto& result = cel_map->Has(CelValue::CreateInt64(number->AsInt()));
+      if (result.ok() && *result) {
+        return CelValue::CreateBool(*result);
+      }
     }
-    return CelValue::CreateBool(*result);
+    if (number->LosslessConvertibleToUint()) {
+      const auto& result =
+          cel_map->Has(CelValue::CreateUint64(number->AsUint()));
+      if (result.ok() && *result) {
+        return CelValue::CreateBool(*result);
+      }
+    }
+    return CelValue::CreateBool(false);
   };
 
   for (auto op : in_operators) {
@@ -606,6 +667,13 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
         FunctionAdapter<CelValue, uint64_t, const CelMap*>::CreateAndRegister(
             op, false, uintKeyInSet, registry);
     if (!status.ok()) return status;
+
+    if (options.enable_heterogeneous_equality) {
+      status =
+          FunctionAdapter<CelValue, double, const CelMap*>::CreateAndRegister(
+              op, false, doubleKeyInSet, registry);
+      if (!status.ok()) return status;
+    }
   }
   return absl::OkStatus();
 }
