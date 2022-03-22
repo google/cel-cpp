@@ -54,6 +54,12 @@ cc_library(
         "type.pre.h",
         "type.post.h",
     ],
+    deps = [
+        "//base:handle",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/numeric:bits",
+    ],
 )
 
 cc_library(

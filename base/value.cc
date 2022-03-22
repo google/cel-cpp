@@ -27,6 +27,7 @@
 #include "absl/base/call_once.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/container/btree_set.h"
 #include "absl/container/inlined_vector.h"
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
@@ -61,6 +62,7 @@ CEL_INTERNAL_VALUE_IMPL(BytesValue);
 CEL_INTERNAL_VALUE_IMPL(StringValue);
 CEL_INTERNAL_VALUE_IMPL(DurationValue);
 CEL_INTERNAL_VALUE_IMPL(TimestampValue);
+CEL_INTERNAL_VALUE_IMPL(EnumValue);
 #undef CEL_INTERNAL_VALUE_IMPL
 
 namespace {
@@ -762,6 +764,45 @@ void StringValue::HashValue(absl::HashState state) const {
   absl::visit(
       HashValueVisitor(absl::HashState::combine(std::move(state), type())),
       rep());
+}
+
+struct EnumType::NewInstanceVisitor final {
+  const EnumType& enum_type;
+  ValueFactory& value_factory;
+
+  absl::StatusOr<Persistent<const EnumValue>> operator()(
+      absl::string_view name) const {
+    return enum_type.NewInstanceByName(value_factory, name);
+  }
+
+  absl::StatusOr<Persistent<const EnumValue>> operator()(int64_t number) const {
+    return enum_type.NewInstanceByNumber(value_factory, number);
+  }
+};
+
+absl::StatusOr<Persistent<const EnumValue>> EnumValue::New(
+    const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
+    EnumType::ConstantId id) {
+  CEL_ASSIGN_OR_RETURN(
+      auto enum_value,
+      absl::visit(EnumType::NewInstanceVisitor{*enum_type, value_factory},
+                  id.data_));
+  if (!enum_value->type_) {
+    // In case somebody is caching, we avoid setting the type_ if it has already
+    // been set, to avoid a race condition where one CPU sees a half written
+    // pointer.
+    const_cast<EnumValue&>(*enum_value).type_ = enum_type;
+  }
+  return enum_value;
+}
+
+bool EnumValue::Equals(const Value& other) const {
+  return kind() == other.kind() && type() == other.type() &&
+         number() == internal::down_cast<const EnumValue&>(other).number();
+}
+
+void EnumValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), number());
 }
 
 namespace base_internal {

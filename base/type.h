@@ -15,13 +15,16 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_H_
 
+#include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/hash/hash.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/type.pre.h"  // IWYU pragma: export
 #include "base/kind.h"
@@ -42,7 +45,9 @@ class StringType;
 class BytesType;
 class DurationType;
 class TimestampType;
+class EnumType;
 class TypeFactory;
+class TypeProvider;
 
 class NullValue;
 class ErrorValue;
@@ -54,6 +59,7 @@ class BytesValue;
 class StringValue;
 class DurationValue;
 class TimestampValue;
+class EnumValue;
 class ValueFactory;
 
 namespace internal {
@@ -87,6 +93,7 @@ class Type : public base_internal::Resource {
   friend class BytesType;
   friend class DurationType;
   friend class TimestampType;
+  friend class EnumType;
   friend class base_internal::TypeHandleBase;
 
   Type() = default;
@@ -411,6 +418,123 @@ class TimestampType final : public Type {
   TimestampType(TimestampType&&) = delete;
 };
 
+// EnumType represents an enumeration type. An enumeration is a set of constants
+// that can be looked up by name and/or number.
+class EnumType : public Type {
+ public:
+  struct Constant;
+
+  class ConstantId final {
+   public:
+    explicit ConstantId(absl::string_view name)
+        : data_(absl::in_place_type<absl::string_view>, name) {}
+
+    explicit ConstantId(int64_t number)
+        : data_(absl::in_place_type<int64_t>, number) {}
+
+    ConstantId() = delete;
+
+    ConstantId(const ConstantId&) = default;
+    ConstantId& operator=(const ConstantId&) = default;
+
+   private:
+    friend class EnumType;
+    friend class EnumValue;
+
+    absl::variant<absl::string_view, int64_t> data_;
+  };
+
+  Kind kind() const final { return Kind::kEnum; }
+
+  absl::Span<const Transient<const Type>> parameters() const final {
+    return Type::parameters();
+  }
+
+  // Find the constant definition for the given identifier.
+  absl::StatusOr<Constant> FindConstant(ConstantId id) const;
+
+ protected:
+  EnumType() = default;
+
+  // Construct a new instance of EnumValue with a type of this. Called by
+  // EnumValue::New.
+  virtual absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
+      ValueFactory& value_factory, absl::string_view name) const = 0;
+
+  // Construct a new instance of EnumValue with a type of this. Called by
+  // EnumValue::New.
+  virtual absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
+      ValueFactory& value_factory, int64_t number) const = 0;
+
+  // Called by FindConstant.
+  virtual absl::StatusOr<Constant> FindConstantByName(
+      absl::string_view name) const = 0;
+
+  // Called by FindConstant.
+  virtual absl::StatusOr<Constant> FindConstantByNumber(
+      int64_t number) const = 0;
+
+ private:
+  struct NewInstanceVisitor;
+  struct FindConstantVisitor;
+
+  friend struct NewInstanceVisitor;
+  friend struct FindConstantVisitor;
+  friend class EnumValue;
+  friend class TypeFactory;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kEnum; }
+
+  EnumType(const EnumType&) = delete;
+  EnumType(EnumType&&) = delete;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+};
+
+// CEL_DECLARE_ENUM_TYPE declares `enum_type` as an enumeration type. It must be
+// part of the class definition of `enum_type`.
+//
+// class MyEnumType : public cel::EnumType {
+//  ...
+// private:
+//   CEL_DECLARE_ENUM_TYPE(MyEnumType);
+// };
+#define CEL_DECLARE_ENUM_TYPE(enum_type)             \
+ private:                                            \
+  friend class ::cel::base_internal::TypeHandleBase; \
+                                                     \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override;
+
+// CEL_IMPLEMENT_ENUM_TYPE implements `enum_type` as an enumeration type. It
+// must be called after the class definition of `enum_type`.
+//
+// class MyEnumType : public cel::EnumType {
+//  ...
+// private:
+//   CEL_DECLARE_ENUM_TYPE(MyEnumType);
+// };
+//
+// CEL_IMPLEMENT_ENUM_TYPE(MyEnumType);
+#define CEL_IMPLEMENT_ENUM_TYPE(enum_type)                                 \
+  static_assert(::std::is_base_of_v<::cel::EnumType, enum_type>,           \
+                #enum_type " must inherit from cel::EnumType");            \
+  static_assert(!::std::is_abstract_v<enum_type>,                          \
+                "this must not be abstract");                              \
+                                                                           \
+  ::std::pair<::std::size_t, ::std::size_t> enum_type::SizeAndAlignment()  \
+      const {                                                              \
+    static_assert(                                                         \
+        ::std::is_same_v<enum_type,                                        \
+                         ::std::remove_const_t<                            \
+                             ::std::remove_reference_t<decltype(*this)>>>, \
+        "this must be the same as " #enum_type);                           \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_type),    \
+                                                     alignof(enum_type));  \
+  }
+
 }  // namespace cel
 
 // type.pre.h forward declares types so they can be friended above. The types
@@ -418,5 +542,19 @@ class TimestampType final : public Type {
 // derive from the above types. We do this in type.post.h to avoid mudying this
 // header and making it difficult to read.
 #include "base/internal/type.post.h"  // IWYU pragma: export
+
+namespace cel {
+
+struct EnumType::Constant final {
+  explicit Constant(absl::string_view name, int64_t number)
+      : name(name), number(number) {}
+
+  // The unqualified enumeration value name.
+  absl::string_view name;
+  // The enumeration value number.
+  int64_t number;
+};
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPE_H_

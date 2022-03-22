@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "internal/no_destructor.h"
 
@@ -40,6 +41,7 @@ CEL_INTERNAL_TYPE_IMPL(BytesType);
 CEL_INTERNAL_TYPE_IMPL(StringType);
 CEL_INTERNAL_TYPE_IMPL(DurationType);
 CEL_INTERNAL_TYPE_IMPL(TimestampType);
+CEL_INTERNAL_TYPE_IMPL(EnumType);
 #undef CEL_INTERNAL_TYPE_IMPL
 
 absl::Span<const Transient<const Type>> Type::parameters() const { return {}; }
@@ -115,6 +117,22 @@ const DurationType& DurationType::Get() {
 const TimestampType& TimestampType::Get() {
   static const internal::NoDestructor<TimestampType> instance;
   return *instance;
+}
+
+struct EnumType::FindConstantVisitor final {
+  const EnumType& enum_type;
+
+  absl::StatusOr<Constant> operator()(absl::string_view name) const {
+    return enum_type.FindConstantByName(name);
+  }
+
+  absl::StatusOr<Constant> operator()(int64_t number) const {
+    return enum_type.FindConstantByNumber(number);
+  }
+};
+
+absl::StatusOr<EnumType::Constant> EnumType::FindConstant(ConstantId id) const {
+  return absl::visit(FindConstantVisitor{*this}, id.data_);
 }
 
 }  // namespace cel

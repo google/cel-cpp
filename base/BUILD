@@ -120,6 +120,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -130,8 +131,10 @@ cc_test(
         ":handle",
         ":memory_manager",
         ":type",
+        ":value",
         "//internal:testing",
         "@com_google_absl//absl/hash:hash_testing",
+        "@com_google_absl//absl/status",
     ],
 )
 
@@ -159,6 +162,7 @@ cc_library(
         "//internal:utf8",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status",

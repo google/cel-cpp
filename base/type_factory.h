@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_FACTORY_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_FACTORY_H_
 
+#include <type_traits>
+
 #include "absl/base/attributes.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
@@ -28,6 +30,14 @@ namespace cel {
 // While TypeFactory is not final and has a virtual destructor, inheriting it is
 // forbidden outside of the CEL codebase.
 class TypeFactory {
+ private:
+  template <typename T, typename U>
+  using PropagateConstT = std::conditional_t<std::is_const_v<T>, const U, U>;
+
+  template <typename T, typename U, typename V>
+  using EnableIfBaseOfT =
+      std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
+
  public:
   explicit TypeFactory(
       MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
@@ -64,14 +74,14 @@ class TypeFactory {
   Persistent<const TimestampType> GetTimestampType()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // TODO(issues/5): Add CreateStructType<T, Args...>(Args...)
-  // and CreateEnumType<T, Args...>(Args...) which returns
-  // Persistent<const T>
-
- protected:
-  // Ignore unused for now, as it will be used in the future.
-  ABSL_ATTRIBUTE_UNUSED MemoryManager& memory_manager() const {
-    return memory_manager_;
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<EnumType, T,
+                  absl::StatusOr<Persistent<PropagateConstT<T, EnumType>>>>
+  CreateEnumType(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::PersistentHandleFactory<PropagateConstT<
+        T, EnumType>>::template Make<std::remove_const_t<T>>(memory_manager(),
+                                                             std::forward<Args>(
+                                                                 args)...);
   }
 
  private:
@@ -84,6 +94,8 @@ class TypeFactory {
         base_internal::TransientHandleFactory<const T>::template MakeUnmanaged<
             const T>(T::Get()));
   }
+
+  MemoryManager& memory_manager() const { return memory_manager_; }
 
   MemoryManager& memory_manager_;
 };

@@ -39,6 +39,87 @@ namespace {
 
 using cel::internal::StatusIs;
 
+enum class TestEnum {
+  kValue1 = 1,
+  kValue2 = 2,
+};
+
+class TestEnumValue final : public EnumValue {
+ public:
+  explicit TestEnumValue(TestEnum test_enum) : test_enum_(test_enum) {}
+
+  std::string DebugString() const override { return std::string(name()); }
+
+  absl::string_view name() const override {
+    switch (test_enum_) {
+      case TestEnum::kValue1:
+        return "VALUE1";
+      case TestEnum::kValue2:
+        return "VALUE2";
+    }
+  }
+
+  int64_t number() const override {
+    switch (test_enum_) {
+      case TestEnum::kValue1:
+        return 1;
+      case TestEnum::kValue2:
+        return 2;
+    }
+  }
+
+ private:
+  CEL_DECLARE_ENUM_VALUE(TestEnumValue);
+
+  TestEnum test_enum_;
+};
+
+CEL_IMPLEMENT_ENUM_VALUE(TestEnumValue);
+
+class TestEnumType final : public EnumType {
+ public:
+  using EnumType::EnumType;
+
+  absl::string_view name() const override { return "test_enum.TestEnum"; }
+
+ protected:
+  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
+      ValueFactory& value_factory, absl::string_view name) const override {
+    if (name == "VALUE1") {
+      return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
+    } else if (name == "VALUE2") {
+      return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
+    }
+    return absl::NotFoundError("");
+  }
+
+  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
+      ValueFactory& value_factory, int64_t number) const override {
+    switch (number) {
+      case 1:
+        return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
+      case 2:
+        return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
+      default:
+        return absl::NotFoundError("");
+    }
+  }
+
+  absl::StatusOr<Constant> FindConstantByName(
+      absl::string_view name) const override {
+    return absl::UnimplementedError("");
+  }
+
+  absl::StatusOr<Constant> FindConstantByNumber(int64_t number) const override {
+    return absl::UnimplementedError("");
+  }
+
+ private:
+  CEL_DECLARE_ENUM_TYPE(TestEnumType);
+};
+
+CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
+
 template <typename T>
 Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
   return std::move(status_or_handle).value();
@@ -1362,8 +1443,74 @@ INSTANTIATE_TEST_SUITE_P(StringToCordTest, StringToCordTest,
                              {"\xef\xbf\xbd"},
                          }));
 
+TEST(Value, Enum) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  ASSERT_OK_AND_ASSIGN(
+      auto one_value,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
+  EXPECT_TRUE(one_value.Is<EnumValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value, Must(EnumValue::New(enum_type, value_factory,
+                                           EnumType::ConstantId("VALUE1"))));
+  EXPECT_EQ(one_value->kind(), Kind::kEnum);
+  EXPECT_EQ(one_value->type(), enum_type);
+  EXPECT_EQ(one_value->name(), "VALUE1");
+  EXPECT_EQ(one_value->number(), 1);
+
+  ASSERT_OK_AND_ASSIGN(
+      auto two_value,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE2")));
+  EXPECT_TRUE(two_value.Is<EnumValue>());
+  EXPECT_FALSE(two_value.Is<NullValue>());
+  EXPECT_EQ(two_value, two_value);
+  EXPECT_EQ(two_value->kind(), Kind::kEnum);
+  EXPECT_EQ(two_value->type(), enum_type);
+  EXPECT_EQ(two_value->name(), "VALUE2");
+  EXPECT_EQ(two_value->number(), 2);
+
+  EXPECT_NE(one_value, two_value);
+  EXPECT_NE(two_value, one_value);
+}
+
+TEST(EnumType, NewInstance) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  ASSERT_OK_AND_ASSIGN(
+      auto one_value,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
+  ASSERT_OK_AND_ASSIGN(
+      auto two_value,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE2")));
+  ASSERT_OK_AND_ASSIGN(
+      auto one_value_by_number,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId(1)));
+  ASSERT_OK_AND_ASSIGN(
+      auto two_value_by_number,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId(2)));
+  EXPECT_EQ(one_value, one_value_by_number);
+  EXPECT_EQ(two_value, two_value_by_number);
+
+  EXPECT_THAT(
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE3")),
+      StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(EnumValue::New(enum_type, value_factory, EnumType::ConstantId(3)),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
 TEST(Value, SupportsAbslHash) {
   ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  ASSERT_OK_AND_ASSIGN(
+      auto enum_value,
+      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
       Persistent<const Value>(value_factory.GetNullValue()),
       Persistent<const Value>(
@@ -1384,6 +1531,7 @@ TEST(Value, SupportsAbslHash) {
       Persistent<const Value>(Must(value_factory.CreateStringValue("foo"))),
       Persistent<const Value>(
           Must(value_factory.CreateStringValue(absl::Cord("bar")))),
+      Persistent<const Value>(enum_value),
   }));
 }
 

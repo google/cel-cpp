@@ -40,6 +40,10 @@ class TypeHandleBase {
  public:
   constexpr TypeHandleBase() = default;
 
+  // Used by derived classes to bypass default construction to perform their own
+  // construction.
+  explicit TypeHandleBase(HandleInPlace) {}
+
   // Called by `Transient` and `Persistent` to implement the same operator. They
   // will handle enforcing const correctness.
   Type& operator*() const { return get(); }
@@ -163,6 +167,24 @@ class TypeHandle<HandleType::kPersistent> final : public TypeHandleBase {
 
   explicit TypeHandle(const TransientTypeHandle& other) { rep_ = other.Ref(); }
 
+  template <typename T, typename F>
+  TypeHandle(UnmanagedResource<T>, F& from) : TypeHandleBase(kHandleInPlace) {
+    uintptr_t rep = reinterpret_cast<uintptr_t>(
+        static_cast<const Type*>(static_cast<const T*>(std::addressof(from))));
+    ABSL_ASSERT(absl::countr_zero(rep) >=
+                2);  // Verify the lower 2 bits are available.
+    rep_ = rep | kTypeHandleUnmanaged;
+  }
+
+  template <typename T, typename F>
+  TypeHandle(ManagedResource<T>, F& from) : TypeHandleBase(kHandleInPlace) {
+    uintptr_t rep = reinterpret_cast<uintptr_t>(
+        static_cast<const Type*>(static_cast<const T*>(std::addressof(from))));
+    ABSL_ASSERT(absl::countr_zero(rep) >=
+                2);  // Verify the lower 2 bits are available.
+    rep_ = rep;
+  }
+
   ~TypeHandle() { Unref(); }
 
   TypeHandle& operator=(const PersistentTypeHandle& other) {
@@ -242,6 +264,7 @@ CEL_INTERNAL_TYPE_DECL(BytesType);
 CEL_INTERNAL_TYPE_DECL(StringType);
 CEL_INTERNAL_TYPE_DECL(DurationType);
 CEL_INTERNAL_TYPE_DECL(TimestampType);
+CEL_INTERNAL_TYPE_DECL(EnumType);
 #undef CEL_INTERNAL_TYPE_DECL
 
 }  // namespace cel

@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -47,6 +48,7 @@ class BytesValue;
 class StringValue;
 class DurationValue;
 class TimestampValue;
+class EnumValue;
 class ValueFactory;
 
 namespace internal {
@@ -79,6 +81,7 @@ class Value : public base_internal::Resource {
   friend class StringValue;
   friend class DurationValue;
   friend class TimestampValue;
+  friend class EnumValue;
   friend class base_internal::ValueHandleBase;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
@@ -569,6 +572,89 @@ class TimestampValue final : public Value,
 
   absl::Time value_;
 };
+
+// EnumValue represents a single constant belonging to cel::EnumType.
+class EnumValue : public Value {
+ public:
+  static absl::StatusOr<Persistent<const EnumValue>> New(
+      const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
+      EnumType::ConstantId id);
+
+  Transient<const Type> type() const final {
+    ABSL_ASSERT(type_);
+    return type_;
+  }
+
+  Kind kind() const final { return Kind::kEnum; }
+
+  virtual int64_t number() const = 0;
+
+  virtual absl::string_view name() const = 0;
+
+ protected:
+  EnumValue() = default;
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kEnum; }
+
+  EnumValue(const EnumValue&) = delete;
+  EnumValue(EnumValue&&) = delete;
+
+  bool Equals(const Value& other) const final;
+  void HashValue(absl::HashState state) const final;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Set lazily, by EnumValue::New.
+  Persistent<const EnumType> type_;
+};
+
+// CEL_DECLARE_ENUM_VALUE declares `enum_value` as an enumeration value. It must
+// be part of the class definition of `enum_value`.
+//
+// class MyEnumValue : public cel::EnumValue {
+//  ...
+// private:
+//   CEL_DECLARE_ENUM_VALUE(MyEnumValue);
+// };
+#define CEL_DECLARE_ENUM_VALUE(enum_value)            \
+ private:                                             \
+  friend class ::cel::base_internal::ValueHandleBase; \
+                                                      \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override;
+
+// CEL_IMPLEMENT_ENUM_VALUE implements `enum_value` as an enumeration value. It
+// must be called after the class definition of `enum_value`.
+//
+// class MyEnumValue : public cel::EnumValue {
+//  ...
+// private:
+//   CEL_DECLARE_ENUM_VALUE(MyEnumValue);
+// };
+//
+// CEL_IMPLEMENT_ENUM_VALUE(MyEnumValue);
+#define CEL_IMPLEMENT_ENUM_VALUE(enum_value)                               \
+  static_assert(::std::is_base_of_v<::cel::EnumValue, enum_value>,         \
+                #enum_value " must inherit from cel::EnumValue");          \
+  static_assert(!::std::is_abstract_v<enum_value>,                         \
+                "this must not be abstract");                              \
+                                                                           \
+  ::std::pair<::std::size_t, ::std::size_t> enum_value::SizeAndAlignment() \
+      const {                                                              \
+    static_assert(                                                         \
+        ::std::is_same_v<enum_value,                                       \
+                         ::std::remove_const_t<                            \
+                             ::std::remove_reference_t<decltype(*this)>>>, \
+        "this must be the same as " #enum_value);                          \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_value),   \
+                                                     alignof(enum_value)); \
+  }
 
 }  // namespace cel
 

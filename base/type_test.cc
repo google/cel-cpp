@@ -18,15 +18,72 @@
 #include <utility>
 
 #include "absl/hash/hash_testing.h"
+#include "absl/status/status.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/type_factory.h"
+#include "base/value.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
 
 using testing::SizeIs;
+using cel::internal::StatusIs;
+
+enum class TestEnum {
+  kValue1 = 1,
+  kValue2 = 2,
+};
+
+class TestEnumType final : public EnumType {
+ public:
+  using EnumType::EnumType;
+
+  absl::string_view name() const override { return "test_enum.TestEnum"; }
+
+ protected:
+  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
+      ValueFactory& value_factory, absl::string_view name) const override {
+    return absl::UnimplementedError("");
+  }
+
+  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
+      ValueFactory& value_factory, int64_t number) const override {
+    return absl::UnimplementedError("");
+  }
+
+  absl::StatusOr<Constant> FindConstantByName(
+      absl::string_view name) const override {
+    if (name == "VALUE1") {
+      return Constant("VALUE1", static_cast<int64_t>(TestEnum::kValue1));
+    } else if (name == "VALUE2") {
+      return Constant("VALUE2", static_cast<int64_t>(TestEnum::kValue2));
+    }
+    return absl::NotFoundError("");
+  }
+
+  absl::StatusOr<Constant> FindConstantByNumber(int64_t number) const override {
+    switch (number) {
+      case 1:
+        return Constant("VALUE1", static_cast<int64_t>(TestEnum::kValue1));
+      case 2:
+        return Constant("VALUE2", static_cast<int64_t>(TestEnum::kValue2));
+      default:
+        return absl::NotFoundError("");
+    }
+  }
+
+ private:
+  CEL_DECLARE_ENUM_TYPE(TestEnumType);
+};
+
+CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
+
+template <typename T>
+Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
+  return std::move(status_or_handle).value();
+}
 
 template <class T>
 constexpr void IS_INITIALIZED(T&) {}
@@ -122,6 +179,7 @@ TEST(Type, Null) {
   EXPECT_FALSE(type_factory.GetNullType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetNullType().Is<EnumType>());
 }
 
 TEST(Type, Error) {
@@ -140,6 +198,7 @@ TEST(Type, Error) {
   EXPECT_FALSE(type_factory.GetErrorType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetErrorType().Is<EnumType>());
 }
 
 TEST(Type, Dyn) {
@@ -158,6 +217,7 @@ TEST(Type, Dyn) {
   EXPECT_FALSE(type_factory.GetDynType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetDynType().Is<EnumType>());
 }
 
 TEST(Type, Any) {
@@ -176,6 +236,7 @@ TEST(Type, Any) {
   EXPECT_FALSE(type_factory.GetAnyType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetAnyType().Is<EnumType>());
 }
 
 TEST(Type, Bool) {
@@ -194,6 +255,7 @@ TEST(Type, Bool) {
   EXPECT_FALSE(type_factory.GetBoolType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetBoolType().Is<EnumType>());
 }
 
 TEST(Type, Int) {
@@ -212,6 +274,7 @@ TEST(Type, Int) {
   EXPECT_FALSE(type_factory.GetIntType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetIntType().Is<EnumType>());
 }
 
 TEST(Type, Uint) {
@@ -230,6 +293,7 @@ TEST(Type, Uint) {
   EXPECT_FALSE(type_factory.GetUintType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetUintType().Is<EnumType>());
 }
 
 TEST(Type, Double) {
@@ -248,6 +312,7 @@ TEST(Type, Double) {
   EXPECT_FALSE(type_factory.GetDoubleType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetDoubleType().Is<EnumType>());
 }
 
 TEST(Type, String) {
@@ -266,6 +331,7 @@ TEST(Type, String) {
   EXPECT_FALSE(type_factory.GetStringType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetStringType().Is<EnumType>());
 }
 
 TEST(Type, Bytes) {
@@ -284,6 +350,7 @@ TEST(Type, Bytes) {
   EXPECT_TRUE(type_factory.GetBytesType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetBytesType().Is<EnumType>());
 }
 
 TEST(Type, Duration) {
@@ -302,6 +369,7 @@ TEST(Type, Duration) {
   EXPECT_FALSE(type_factory.GetDurationType().Is<BytesType>());
   EXPECT_TRUE(type_factory.GetDurationType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetDurationType().Is<EnumType>());
 }
 
 TEST(Type, Timestamp) {
@@ -321,6 +389,59 @@ TEST(Type, Timestamp) {
   EXPECT_FALSE(type_factory.GetTimestampType().Is<BytesType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<DurationType>());
   EXPECT_TRUE(type_factory.GetTimestampType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetTimestampType().Is<EnumType>());
+}
+
+TEST(Type, Enum) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  EXPECT_EQ(enum_type->kind(), Kind::kEnum);
+  EXPECT_EQ(enum_type->name(), "test_enum.TestEnum");
+  EXPECT_THAT(enum_type->parameters(), SizeIs(0));
+  EXPECT_FALSE(enum_type.Is<NullType>());
+  EXPECT_FALSE(enum_type.Is<DynType>());
+  EXPECT_FALSE(enum_type.Is<AnyType>());
+  EXPECT_FALSE(enum_type.Is<BoolType>());
+  EXPECT_FALSE(enum_type.Is<IntType>());
+  EXPECT_FALSE(enum_type.Is<UintType>());
+  EXPECT_FALSE(enum_type.Is<DoubleType>());
+  EXPECT_FALSE(enum_type.Is<StringType>());
+  EXPECT_FALSE(enum_type.Is<BytesType>());
+  EXPECT_FALSE(enum_type.Is<DurationType>());
+  EXPECT_FALSE(enum_type.Is<TimestampType>());
+  EXPECT_TRUE(enum_type.Is<EnumType>());
+}
+
+TEST(EnumType, FindConstant) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+
+  ASSERT_OK_AND_ASSIGN(auto value1,
+                       enum_type->FindConstant(EnumType::ConstantId("VALUE1")));
+  EXPECT_EQ(value1.name, "VALUE1");
+  EXPECT_EQ(value1.number, 1);
+
+  ASSERT_OK_AND_ASSIGN(value1,
+                       enum_type->FindConstant(EnumType::ConstantId(1)));
+  EXPECT_EQ(value1.name, "VALUE1");
+  EXPECT_EQ(value1.number, 1);
+
+  ASSERT_OK_AND_ASSIGN(auto value2,
+                       enum_type->FindConstant(EnumType::ConstantId("VALUE2")));
+  EXPECT_EQ(value2.name, "VALUE2");
+  EXPECT_EQ(value2.number, 2);
+
+  ASSERT_OK_AND_ASSIGN(value2,
+                       enum_type->FindConstant(EnumType::ConstantId(2)));
+  EXPECT_EQ(value2.name, "VALUE2");
+  EXPECT_EQ(value2.number, 2);
+
+  EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId("VALUE3")),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId(3)),
+              StatusIs(absl::StatusCode::kNotFound));
 }
 
 TEST(Type, SupportsAbslHash) {
@@ -338,6 +459,7 @@ TEST(Type, SupportsAbslHash) {
       Persistent<const Type>(type_factory.GetBytesType()),
       Persistent<const Type>(type_factory.GetDurationType()),
       Persistent<const Type>(type_factory.GetTimestampType()),
+      Persistent<const Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
   }));
 }
 
