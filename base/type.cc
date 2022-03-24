@@ -19,6 +19,7 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
+#include "internal/casts.h"
 #include "internal/no_destructor.h"
 
 namespace cel {
@@ -42,6 +43,7 @@ CEL_INTERNAL_TYPE_IMPL(StringType);
 CEL_INTERNAL_TYPE_IMPL(DurationType);
 CEL_INTERNAL_TYPE_IMPL(TimestampType);
 CEL_INTERNAL_TYPE_IMPL(EnumType);
+CEL_INTERNAL_TYPE_IMPL(ListType);
 #undef CEL_INTERNAL_TYPE_IMPL
 
 absl::Span<const Transient<const Type>> Type::parameters() const { return {}; }
@@ -133,6 +135,19 @@ struct EnumType::FindConstantVisitor final {
 
 absl::StatusOr<EnumType::Constant> EnumType::FindConstant(ConstantId id) const {
   return absl::visit(FindConstantVisitor{*this}, id.data_);
+}
+
+bool ListType::Equals(const Type& other) const {
+  if (kind() != other.kind()) {
+    return false;
+  }
+  return element() == internal::down_cast<const ListType&>(other).element();
+}
+
+void ListType::HashValue(absl::HashState state) const {
+  // We specifically hash the element first and then call the parent method to
+  // avoid hash suffix/prefix collisions.
+  Type::HashValue(absl::HashState::combine(std::move(state), element()));
 }
 
 }  // namespace cel

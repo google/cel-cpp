@@ -113,12 +113,15 @@ cc_library(
         ":kind",
         ":memory_manager",
         "//base/internal:type",
+        "//internal:casts",
         "//internal:no_destructor",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
     ],
@@ -126,7 +129,10 @@ cc_library(
 
 cc_test(
     name = "type_test",
-    srcs = ["type_test.cc"],
+    srcs = [
+        "type_factory_test.cc",
+        "type_test.cc",
+    ],
     deps = [
         ":handle",
         ":memory_manager",

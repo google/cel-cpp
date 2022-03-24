@@ -14,6 +14,11 @@
 
 #include "base/type_factory.h"
 
+#include <utility>
+
+#include "absl/base/optimization.h"
+#include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "base/handle.h"
 #include "base/type.h"
 
@@ -21,9 +26,29 @@ namespace cel {
 
 namespace {
 
+using base_internal::PersistentHandleFactory;
 using base_internal::TransientHandleFactory;
 
 }  // namespace
+
+namespace base_internal {
+
+class ListTypeImpl final : public ListType {
+ public:
+  explicit ListTypeImpl(Persistent<const Type> element)
+      : element_(std::move(element)) {}
+
+  Transient<const Type> element() const override { return element_; }
+
+ private:
+  std::pair<size_t, size_t> SizeAndAlignment() const override {
+    return std::make_pair(sizeof(ListTypeImpl), alignof(ListTypeImpl));
+  }
+
+  Persistent<const Type> element_;
+};
+
+}  // namespace base_internal
 
 Persistent<const NullType> TypeFactory::GetNullType() {
   return WrapSingletonType<NullType>();
@@ -71,6 +96,25 @@ Persistent<const DurationType> TypeFactory::GetDurationType() {
 
 Persistent<const TimestampType> TypeFactory::GetTimestampType() {
   return WrapSingletonType<TimestampType>();
+}
+
+absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
+    const Persistent<const Type>& element) {
+  absl::MutexLock lock(&mutex_);
+  auto existing = list_types_.find(element);
+  if (existing != list_types_.end()) {
+    return existing->second;
+  }
+  auto list_type = PersistentHandleFactory<const ListType>::Make<
+      const base_internal::ListTypeImpl>(memory_manager(), element);
+  if (ABSL_PREDICT_FALSE(!list_type)) {
+    // TODO(issues/5): maybe have the handle factories return statuses as
+    // they can add details on the size and alignment more easily and
+    // consistently?
+    return absl::ResourceExhaustedError("Failed to allocate memory");
+  }
+  list_types_.insert({element, list_type});
+  return list_type;
 }
 
 }  // namespace cel

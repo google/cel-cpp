@@ -180,6 +180,7 @@ TEST(Type, Null) {
   EXPECT_FALSE(type_factory.GetNullType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetNullType().Is<ListType>());
 }
 
 TEST(Type, Error) {
@@ -199,6 +200,7 @@ TEST(Type, Error) {
   EXPECT_FALSE(type_factory.GetErrorType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetErrorType().Is<ListType>());
 }
 
 TEST(Type, Dyn) {
@@ -218,6 +220,7 @@ TEST(Type, Dyn) {
   EXPECT_FALSE(type_factory.GetDynType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetDynType().Is<ListType>());
 }
 
 TEST(Type, Any) {
@@ -237,6 +240,7 @@ TEST(Type, Any) {
   EXPECT_FALSE(type_factory.GetAnyType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetAnyType().Is<ListType>());
 }
 
 TEST(Type, Bool) {
@@ -256,6 +260,7 @@ TEST(Type, Bool) {
   EXPECT_FALSE(type_factory.GetBoolType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetBoolType().Is<ListType>());
 }
 
 TEST(Type, Int) {
@@ -275,6 +280,7 @@ TEST(Type, Int) {
   EXPECT_FALSE(type_factory.GetIntType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetIntType().Is<ListType>());
 }
 
 TEST(Type, Uint) {
@@ -294,6 +300,7 @@ TEST(Type, Uint) {
   EXPECT_FALSE(type_factory.GetUintType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetUintType().Is<ListType>());
 }
 
 TEST(Type, Double) {
@@ -313,6 +320,7 @@ TEST(Type, Double) {
   EXPECT_FALSE(type_factory.GetDoubleType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetDoubleType().Is<ListType>());
 }
 
 TEST(Type, String) {
@@ -332,6 +340,7 @@ TEST(Type, String) {
   EXPECT_FALSE(type_factory.GetStringType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetStringType().Is<ListType>());
 }
 
 TEST(Type, Bytes) {
@@ -351,6 +360,7 @@ TEST(Type, Bytes) {
   EXPECT_FALSE(type_factory.GetBytesType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetBytesType().Is<ListType>());
 }
 
 TEST(Type, Duration) {
@@ -370,6 +380,7 @@ TEST(Type, Duration) {
   EXPECT_TRUE(type_factory.GetDurationType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetDurationType().Is<ListType>());
 }
 
 TEST(Type, Timestamp) {
@@ -390,6 +401,7 @@ TEST(Type, Timestamp) {
   EXPECT_FALSE(type_factory.GetTimestampType().Is<DurationType>());
   EXPECT_TRUE(type_factory.GetTimestampType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetTimestampType().Is<ListType>());
 }
 
 TEST(Type, Enum) {
@@ -411,6 +423,32 @@ TEST(Type, Enum) {
   EXPECT_FALSE(enum_type.Is<DurationType>());
   EXPECT_FALSE(enum_type.Is<TimestampType>());
   EXPECT_TRUE(enum_type.Is<EnumType>());
+  EXPECT_FALSE(enum_type.Is<ListType>());
+}
+
+TEST(Type, List) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetBoolType()));
+  EXPECT_EQ(list_type,
+            Must(type_factory.CreateListType(type_factory.GetBoolType())));
+  EXPECT_EQ(list_type->kind(), Kind::kList);
+  EXPECT_EQ(list_type->name(), "list");
+  EXPECT_EQ(list_type->element(), type_factory.GetBoolType());
+  EXPECT_THAT(list_type->parameters(), SizeIs(0));
+  EXPECT_FALSE(list_type.Is<NullType>());
+  EXPECT_FALSE(list_type.Is<DynType>());
+  EXPECT_FALSE(list_type.Is<AnyType>());
+  EXPECT_FALSE(list_type.Is<BoolType>());
+  EXPECT_FALSE(list_type.Is<IntType>());
+  EXPECT_FALSE(list_type.Is<UintType>());
+  EXPECT_FALSE(list_type.Is<DoubleType>());
+  EXPECT_FALSE(list_type.Is<StringType>());
+  EXPECT_FALSE(list_type.Is<BytesType>());
+  EXPECT_FALSE(list_type.Is<DurationType>());
+  EXPECT_FALSE(list_type.Is<TimestampType>());
+  EXPECT_FALSE(list_type.Is<EnumType>());
+  EXPECT_TRUE(list_type.Is<ListType>());
 }
 
 TEST(EnumType, FindConstant) {
@@ -460,6 +498,8 @@ TEST(Type, SupportsAbslHash) {
       Persistent<const Type>(type_factory.GetDurationType()),
       Persistent<const Type>(type_factory.GetTimestampType()),
       Persistent<const Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
+      Persistent<const Type>(
+          Must(type_factory.CreateListType(type_factory.GetBoolType()))),
   }));
 }
 

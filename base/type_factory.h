@@ -18,6 +18,9 @@
 #include <type_traits>
 
 #include "absl/base/attributes.h"
+#include "absl/base/thread_annotations.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/synchronization/mutex.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/type.h"
@@ -84,6 +87,9 @@ class TypeFactory {
                                                                  args)...);
   }
 
+  absl::StatusOr<Persistent<const ListType>> CreateListType(
+      const Persistent<const Type>& element) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
  private:
   template <typename T>
   static Persistent<const T> WrapSingletonType() {
@@ -98,6 +104,11 @@ class TypeFactory {
   MemoryManager& memory_manager() const { return memory_manager_; }
 
   MemoryManager& memory_manager_;
+  absl::Mutex mutex_;
+  // Mapping from list element types to the list type. This allows us to cache
+  // list types and avoid re-creating the same type.
+  absl::flat_hash_map<Persistent<const Type>, Persistent<const ListType>>
+      list_types_ ABSL_GUARDED_BY(mutex_);
 };
 
 }  // namespace cel

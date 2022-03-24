@@ -46,6 +46,7 @@ class BytesType;
 class DurationType;
 class TimestampType;
 class EnumType;
+class ListType;
 class TypeFactory;
 class TypeProvider;
 
@@ -94,6 +95,7 @@ class Type : public base_internal::Resource {
   friend class DurationType;
   friend class TimestampType;
   friend class EnumType;
+  friend class ListType;
   friend class base_internal::TypeHandleBase;
 
   Type() = default;
@@ -534,6 +536,44 @@ class EnumType : public Type {
     return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_type),    \
                                                      alignof(enum_type));  \
   }
+
+// ListType represents a list type. A list is a sequential container where each
+// element is the same type.
+class ListType : public Type {
+  // I would have liked to make this class final, but we cannot instantiate
+  // Persistent<const Type> or Transient<const Type> at this point. It must be
+  // done after the post include below. Maybe we should separate out the post
+  // includes on a per type basis so we can do that?
+ public:
+  Kind kind() const final { return Kind::kList; }
+
+  absl::string_view name() const final { return "list"; }
+
+  // Returns the type of the elements in the list.
+  virtual Transient<const Type> element() const = 0;
+
+ private:
+  friend class TypeFactory;
+  friend class base_internal::TypeHandleBase;
+  friend class base_internal::ListTypeImpl;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kList; }
+
+  ListType() = default;
+
+  ListType(const ListType&) = delete;
+  ListType(ListType&&) = delete;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by base_internal::TypeHandleBase.
+  bool Equals(const Type& other) const final;
+
+  // Called by base_internal::TypeHandleBase.
+  void HashValue(absl::HashState state) const final;
+};
 
 }  // namespace cel
 

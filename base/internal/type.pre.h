@@ -39,6 +39,8 @@ inline constexpr uintptr_t kTypeHandleBits =
     kTypeHandleUnmanaged | kTypeHandleReserved;
 inline constexpr uintptr_t kTypeHandleMask = ~kTypeHandleBits;
 
+class ListTypeImpl;
+
 }  // namespace cel::base_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_TYPE_PRE_H_
