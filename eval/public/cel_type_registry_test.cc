@@ -1,9 +1,14 @@
 #include "eval/public/cel_type_registry.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include "google/protobuf/any.pb.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/string_view.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/structs/legacy_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 
@@ -12,6 +17,27 @@ namespace google::api::expr::runtime {
 namespace {
 
 using testing::Eq;
+
+class TestTypeProvider : public LegacyTypeProvider {
+ public:
+  explicit TestTypeProvider(std::vector<std::string> types)
+      : types_(std::move(types)) {}
+
+  // Return a type adapter for an opaque type
+  // (no reflection operations supported).
+  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
+      absl::string_view name) const override {
+    for (const auto& type : types_) {
+      if (name == type) {
+        return LegacyTypeAdapter(/*access=*/nullptr, /*mutation=*/nullptr);
+      }
+    }
+    return absl::nullopt;
+  }
+
+ private:
+  std::vector<std::string> types_;
+};
 
 TEST(CelTypeRegistryTest, TestRegisterEnumDescriptor) {
   CelTypeRegistry registry;
@@ -42,17 +68,28 @@ TEST(CelTypeRegistryTest, TestRegisterTypeName) {
   EXPECT_THAT(type->CelTypeOrDie().value(), Eq("custom_type"));
 }
 
-TEST(CelTypeRegistryTest, TestFindDescriptorFound) {
+TEST(CelTypeRegistryTest, TestFindTypeAdapterFound) {
   CelTypeRegistry registry;
-  auto desc = registry.FindDescriptor("google.protobuf.Any");
-  ASSERT_TRUE(desc != nullptr);
-  EXPECT_THAT(desc->full_name(), Eq("google.protobuf.Any"));
+  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
+      std::vector<std::string>{"google.protobuf.Any"}));
+  auto desc = registry.FindTypeAdapter("google.protobuf.Any");
+  ASSERT_TRUE(desc.has_value());
 }
 
-TEST(CelTypeRegistryTest, TestFindDescriptorNotFound) {
+TEST(CelTypeRegistryTest, TestFindTypeAdapterFoundMultipleProviders) {
   CelTypeRegistry registry;
-  auto desc = registry.FindDescriptor("missing.MessageType");
-  EXPECT_TRUE(desc == nullptr);
+  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
+      std::vector<std::string>{"google.protobuf.Int64"}));
+  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
+      std::vector<std::string>{"google.protobuf.Any"}));
+  auto desc = registry.FindTypeAdapter("google.protobuf.Any");
+  ASSERT_TRUE(desc.has_value());
+}
+
+TEST(CelTypeRegistryTest, TestFindTypeAdapterNotFound) {
+  CelTypeRegistry registry;
+  auto desc = registry.FindTypeAdapter("missing.MessageType");
+  EXPECT_FALSE(desc.has_value());
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {

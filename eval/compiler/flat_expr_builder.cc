@@ -560,16 +560,18 @@ class FlatExprVisitor : public AstVisitor {
     // If the message name is not empty, then the message name must be resolved
     // within the container, and if a descriptor is found, then a proto message
     // creation step will be created.
-    auto message_desc = resolver_.FindDescriptor(message_name, expr->id());
-    if (ValidateOrError(message_desc != nullptr,
-                        "Invalid message creation: missing descriptor for '",
+    auto type_adapter = resolver_.FindTypeAdapter(message_name, expr->id());
+    if (ValidateOrError(type_adapter.has_value() &&
+                            type_adapter->mutation_apis() != nullptr,
+                        "Invalid struct creation: missing type info for '",
                         message_name, "'")) {
       for (const auto& entry : struct_expr->entries()) {
         ValidateOrError(entry.has_field_key(),
-                        "Message entry missing field name");
-        ValidateOrError(entry.has_value(), "Message entry missing value");
+                        "Struct entry missing field name");
+        ValidateOrError(entry.has_value(), "Struct entry missing value");
       }
-      AddStep(CreateCreateStructStep(struct_expr, message_desc, expr->id()));
+      AddStep(CreateCreateStructStep(struct_expr, type_adapter->mutation_apis(),
+                                     expr->id()));
     }
   }
 

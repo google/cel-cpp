@@ -69,6 +69,19 @@ const google::protobuf::Descriptor* CelTypeRegistry::FindDescriptor(
       std::string(fully_qualified_type_name));
 }
 
+// Find a type's CelValue instance by its fully qualified name.
+absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
+    absl::string_view fully_qualified_type_name) const {
+  for (const auto& provider : type_providers_) {
+    auto maybe_adapter = provider->ProvideLegacyType(fully_qualified_type_name);
+    if (maybe_adapter.has_value()) {
+      return maybe_adapter;
+    }
+  }
+
+  return absl::nullopt;
+}
+
 absl::optional<CelValue> CelTypeRegistry::FindType(
     absl::string_view fully_qualified_type_name) const {
   // Searches through explicitly registered type names first.

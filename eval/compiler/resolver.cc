@@ -9,6 +9,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
@@ -144,18 +145,18 @@ std::vector<const CelFunctionProvider*> Resolver::FindLazyOverloads(
   return funcs;
 }
 
-const google::protobuf::Descriptor* Resolver::FindDescriptor(absl::string_view name,
-                                                   int64_t expr_id) const {
+absl::optional<LegacyTypeAdapter> Resolver::FindTypeAdapter(
+    absl::string_view name, int64_t expr_id) const {
   // Resolve the fully qualified names and then defer to the type registry
   // for possible matches.
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
-    auto desc = type_registry_->FindDescriptor(name);
-    if (desc != nullptr) {
-      return desc;
+    auto maybe_adapter = type_registry_->FindTypeAdapter(name);
+    if (maybe_adapter.has_value()) {
+      return maybe_adapter;
     }
   }
-  return nullptr;
+  return absl::nullopt;
 }
 
 }  // namespace google::api::expr::runtime

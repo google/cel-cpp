@@ -39,7 +39,7 @@ namespace google::api::expr::runtime {
 class LegacyTypeAdapter {
  public:
   // Interface for mutation apis.
-  // Note: in the new type system, the provider represents this by returning
+  // Note: in the new type system, a type provider represents this by returning
   // a cel::Type and cel::ValueFactory for the type.
   class MutationApis {
    public:

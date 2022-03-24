@@ -29,6 +29,7 @@
 #include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
@@ -47,6 +48,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -206,6 +208,10 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   Expr expr;
   SourceInfo source_info;
   FlatExprBuilder builder;
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
 
   // Don't set either the field or the value for the message creation step.
   auto* create_message = expr.mutable_struct_expr();
@@ -213,13 +219,13 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   auto* entry = create_message->add_entries();
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Message entry missing field name")));
+                       HasSubstr("Struct entry missing field name")));
 
   // Set the entry field, but not the value.
   entry->set_field_key("bool_value");
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Message entry missing value")));
+                       HasSubstr("Struct entry missing value")));
 }
 
 TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {
@@ -1616,6 +1622,11 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
   // not link the generated message, so it's not included in the generated pool.
   FlatExprBuilder builder(google::protobuf::DescriptorPool::generated_pool(),
                           google::protobuf::MessageFactory::generated_factory());
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+
   EXPECT_THAT(
       builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
       StatusIs(absl::StatusCode::kInvalidArgument));
@@ -1634,6 +1645,10 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
   // This time, the message is *known*. We are using a custom descriptor pool
   // that has been primed with the relevant message.
   FlatExprBuilder builder2(&desc_pool, &message_factory);
+  builder2.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(&desc_pool,
+                                                   &message_factory));
+
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder2.CreateExpression(&parsed_expr.expr(),
                                                  &parsed_expr.source_info()));
@@ -1722,6 +1737,9 @@ TEST_P(CustomDescriptorPoolTest, TestType) {
   google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
   FlatExprBuilder builder(&descriptor_pool, &message_factory);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(&descriptor_pool,
+                                                   &message_factory));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
 
   // Create test subject, invoke custom setter for message

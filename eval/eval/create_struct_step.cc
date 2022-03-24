@@ -2,10 +2,10 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -13,31 +13,23 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/containers/field_access.h"
-#include "eval/public/structs/cel_proto_wrapper.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::extensions::ProtoMemoryManager;
-using ::google::protobuf::Descriptor;
-using ::google::protobuf::FieldDescriptor;
-using ::google::protobuf::Message;
-using ::google::protobuf::MessageFactory;
-
 class CreateStructStepForMessage : public ExpressionStepBase {
  public:
   struct FieldEntry {
-    const FieldDescriptor* field;
+    std::string field_name;
   };
 
-  CreateStructStepForMessage(int64_t expr_id, const Descriptor* descriptor,
-                             std::vector<FieldEntry> entries)
+  CreateStructStepForMessage(
+      int64_t expr_id, const LegacyTypeAdapter::MutationApis* type_adapter,
+      std::vector<FieldEntry> entries)
       : ExpressionStepBase(expr_id),
-        descriptor_(descriptor),
+        type_adapter_(type_adapter),
         entries_(std::move(entries)) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
@@ -45,7 +37,7 @@ class CreateStructStepForMessage : public ExpressionStepBase {
  private:
   absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
-  const Descriptor* descriptor_;
+  const LegacyTypeAdapter::MutationApis* type_adapter_;
   std::vector<FieldEntry> entries_;
 };
 
@@ -68,10 +60,6 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
   absl::Span<const CelValue> args = frame->value_stack().GetSpan(entries_size);
 
-  // This implementation requires arena-backed memory manager.
-  google::protobuf::Arena* arena =
-      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
-
   if (frame->enable_unknowns()) {
     auto unknown_set = frame->attribute_utility().MergeUnknowns(
         args, frame->value_stack().GetAttributeSpan(entries_size),
@@ -83,121 +71,20 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
     }
   }
 
-  const Message* prototype =
-      frame->message_factory()->GetPrototype(descriptor_);
-
-  Message* msg = (prototype != nullptr) ? prototype->New(arena) : nullptr;
-
-  if (msg == nullptr) {
-    *result = CreateErrorValue(
-        frame->memory_manager(),
-        absl::Substitute("Failed to create message $0", descriptor_->name()));
-    return absl::OkStatus();
-  }
+  CEL_ASSIGN_OR_RETURN(CelValue instance,
+                       type_adapter_->NewInstance(frame->memory_manager()));
 
   int index = 0;
   for (const auto& entry : entries_) {
     const CelValue& arg = args[index++];
 
-    absl::Status status = absl::OkStatus();
-
-    if (entry.field->is_map()) {
-      constexpr int kKeyField = 1;
-      constexpr int kValueField = 2;
-
-      const CelMap* cel_map;
-      if (!arg.GetValue<const CelMap*>(&cel_map) || cel_map == nullptr) {
-        status = absl::InvalidArgumentError(absl::Substitute(
-            "Failed to create message $0, field $1: value is not CelMap",
-            descriptor_->name(), entry.field->name()));
-        break;
-      }
-
-      auto entry_descriptor = entry.field->message_type();
-
-      if (entry_descriptor == nullptr) {
-        status = absl::InvalidArgumentError(
-            absl::Substitute("Failed to create message $0, field $1: failed to "
-                             "find map entry descriptor",
-                             descriptor_->name(), entry.field->name()));
-        break;
-      }
-
-      auto key_field_descriptor =
-          entry_descriptor->FindFieldByNumber(kKeyField);
-      auto value_field_descriptor =
-          entry_descriptor->FindFieldByNumber(kValueField);
-
-      if (key_field_descriptor == nullptr) {
-        status = absl::InvalidArgumentError(
-            absl::Substitute("Failed to create message $0, field $1: failed to "
-                             "find key field descriptor",
-                             descriptor_->name(), entry.field->name()));
-        break;
-      }
-      if (value_field_descriptor == nullptr) {
-        status = absl::InvalidArgumentError(
-            absl::Substitute("Failed to create message $0, field $1: failed to "
-                             "find value field descriptor",
-                             descriptor_->name(), entry.field->name()));
-        break;
-      }
-
-      const CelList* key_list = cel_map->ListKeys();
-      for (int i = 0; i < key_list->size(); i++) {
-        CelValue key = (*key_list)[i];
-
-        auto value = (*cel_map)[key];
-        if (!value.has_value()) {
-          status = absl::InvalidArgumentError(absl::Substitute(
-              "Failed to create message $0, field $1: Error serializing CelMap",
-              descriptor_->name(), entry.field->name()));
-          break;
-        }
-
-        Message* entry_msg = msg->GetReflection()->AddMessage(msg, entry.field);
-        status =
-            SetValueToSingleField(key, key_field_descriptor, entry_msg, arena);
-        if (!status.ok()) {
-          break;
-        }
-        status = SetValueToSingleField(value.value(), value_field_descriptor,
-                                       entry_msg, arena);
-        if (!status.ok()) {
-          break;
-        }
-      }
-
-    } else if (entry.field->is_repeated()) {
-      const CelList* cel_list;
-      if (!arg.GetValue<const CelList*>(&cel_list) || cel_list == nullptr) {
-        *result = CreateErrorValue(
-            frame->memory_manager(),
-            absl::Substitute(
-                "Failed to create message $0: value $1 is not CelList",
-                descriptor_->name(), entry.field->name()));
-        return absl::OkStatus();
-      }
-
-      for (int i = 0; i < cel_list->size(); i++) {
-        status =
-            AddValueToRepeatedField((*cel_list)[i], entry.field, msg, arena);
-        if (!status.ok()) break;
-      }
-    } else {
-      status = SetValueToSingleField(arg, entry.field, msg, arena);
-    }
-
-    if (!status.ok()) {
-      *result = CreateErrorValue(
-          frame->memory_manager(),
-          absl::Substitute("Failed to create message $0: reason $1",
-                           descriptor_->name(), status.ToString()));
-      return absl::OkStatus();
-    }
+    CEL_RETURN_IF_ERROR(type_adapter_->SetField(
+        entry.field_name, arg, frame->memory_manager(), instance));
   }
 
-  *result = CelProtoWrapper::CreateMessage(msg, arena);
+  CEL_RETURN_IF_ERROR(
+      type_adapter_->AdaptFromWellKnownType(frame->memory_manager(), instance));
+  *result = instance;
 
   return absl::OkStatus();
 }
@@ -208,7 +95,10 @@ absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   }
 
   CelValue result;
-  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result));
+  absl::Status status = DoEvaluate(frame, &result);
+  if (!status.ok()) {
+    result = CreateErrorValue(frame->memory_manager(), status);
+  }
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(result);
 
@@ -268,22 +158,20 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
-    const Descriptor* message_desc, int64_t expr_id) {
-  if (message_desc != nullptr) {
+    const LegacyTypeAdapter::MutationApis* type_adapter, int64_t expr_id) {
+  if (type_adapter != nullptr) {
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
     for (const auto& entry : create_struct_expr->entries()) {
-      const FieldDescriptor* field_desc =
-          message_desc->FindFieldByName(entry.field_key());
-      if (field_desc == nullptr) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Invalid message creation: field '", entry.field_key(),
-                         "' not found in '", message_desc->full_name(), "'"));
+      if (!type_adapter->DefinesField(entry.field_key())) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Invalid message creation: field '", entry.field_key(),
+            "' not found in '", create_struct_expr->message_name(), "'"));
       }
-      entries.push_back({field_desc});
+      entries.push_back({entry.field_key()});
     }
 
-    return std::make_unique<CreateStructStepForMessage>(expr_id, message_desc,
+    return std::make_unique<CreateStructStepForMessage>(expr_id, type_adapter,
                                                         std::move(entries));
   } else {
     // Make map-creating step.

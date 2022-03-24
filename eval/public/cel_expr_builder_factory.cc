@@ -16,14 +16,16 @@
 
 #include "eval/public/cel_expr_builder_factory.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/structs/proto_message_type_adapter.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "internal/proto_util.h"
-
 namespace google::api::expr::runtime {
 
 namespace {
@@ -45,6 +47,9 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
   }
   auto builder =
       absl::make_unique<FlatExprBuilder>(descriptor_pool, message_factory);
+  builder->GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(descriptor_pool,
+                                                   message_factory));
   builder->set_shortcircuiting(options.short_circuiting);
   builder->set_constant_folding(options.constant_folding,
                                 options.constant_arena);

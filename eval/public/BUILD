@@ -406,6 +406,8 @@ cc_library(
         ":cel_expression",
         ":cel_options",
         "//eval/compiler:flat_expr_builder",
+        "//eval/public/structs:proto_message_type_adapter",
+        "//eval/public/structs:protobuf_descriptor_type_provider",
         "//internal:proto_util",
         "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
@@ -612,6 +614,7 @@ cc_library(
     hdrs = ["cel_type_registry.h"],
     deps = [
         ":cel_value",
+        "//eval/public/structs:legacy_type_provider",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/status",
@@ -627,9 +630,12 @@ cc_test(
     srcs = ["cel_type_registry_test.cc"],
     deps = [
         ":cel_type_registry",
+        ":cel_value",
+        "//eval/public/structs:legacy_type_provider",
         "//eval/testutil:test_message_cc_proto",
         "//internal:testing",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )
