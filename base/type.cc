@@ -14,6 +14,7 @@
 
 #include "base/type.h"
 
+#include <string>
 #include <utility>
 
 #include "absl/types/span.h"
@@ -47,6 +48,8 @@ CEL_INTERNAL_TYPE_IMPL(ListType);
 #undef CEL_INTERNAL_TYPE_IMPL
 
 absl::Span<const Transient<const Type>> Type::parameters() const { return {}; }
+
+std::string Type::DebugString() const { return std::string(name()); }
 
 std::pair<size_t, size_t> Type::SizeAndAlignment() const {
   // Currently no implementation of Type is reference counted. However once we

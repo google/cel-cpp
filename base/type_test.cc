@@ -482,6 +482,82 @@ TEST(EnumType, FindConstant) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
+TEST(NullType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetNullType()->DebugString(), "null_type");
+}
+
+TEST(ErrorType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetErrorType()->DebugString(), "*error*");
+}
+
+TEST(DynType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetDynType()->DebugString(), "dyn");
+}
+
+TEST(AnyType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetAnyType()->DebugString(), "google.protobuf.Any");
+}
+
+TEST(BoolType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetBoolType()->DebugString(), "bool");
+}
+
+TEST(IntType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetIntType()->DebugString(), "int");
+}
+
+TEST(UintType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetUintType()->DebugString(), "uint");
+}
+
+TEST(DoubleType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetDoubleType()->DebugString(), "double");
+}
+
+TEST(StringType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetStringType()->DebugString(), "string");
+}
+
+TEST(BytesType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetBytesType()->DebugString(), "bytes");
+}
+
+TEST(DurationType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetDurationType()->DebugString(),
+            "google.protobuf.Duration");
+}
+
+TEST(TimestampType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetTimestampType()->DebugString(),
+            "google.protobuf.Timestamp");
+}
+
+TEST(EnumType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  EXPECT_EQ(enum_type->DebugString(), "test_enum.TestEnum");
+}
+
+TEST(ListType, DebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetBoolType()));
+  EXPECT_EQ(list_type->DebugString(), "list");
+}
+
 TEST(Type, SupportsAbslHash) {
   TypeFactory type_factory(MemoryManager::Global());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({

@@ -81,6 +81,8 @@ class Type : public base_internal::Resource {
   // Returns the type parameters of the type, i.e. key and value type of map.
   virtual absl::Span<const Transient<const Type>> parameters() const;
 
+  virtual std::string DebugString() const;
+
  private:
   friend class NullType;
   friend class ErrorType;
