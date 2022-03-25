@@ -25,6 +25,7 @@ cc_test(
     srcs = ["matchers_test.cc"],
     deps = [
         ":matchers",
+        "//eval/public/containers:container_backed_list_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "//eval/testutil:test_message_cc_proto",
         "//internal:testing",

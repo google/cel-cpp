@@ -59,8 +59,50 @@ CelValueMatcher IsCelTimestamp(testing::Matcher<absl::Time> m);
 // The matcher |m| is wrapped to allow using the testing::status::... matchers.
 CelValueMatcher IsCelError(testing::Matcher<absl::Status> m);
 
-// TODO(issues/73): add helpers for working with maps, unknown sets, and
-// lists.
+// A matcher that wraps a Container matcher so that container matchers can be
+// used for matching CelList.
+//
+// This matcher can be avoided if CelList supported the iterators needed by the
+// standard container matchers but given that it is an interface it is a much
+// larger project.
+//
+// TODO(issues/73): Re-use CelValueMatcherImpl. There are template details
+// that need to be worked out specifically on how CelValueMatcherImpl can accept
+// a generic matcher for CelList instead of testing::Matcher<CelList>.
+template <typename ContainerMatcher>
+class CelListMatcher : public testing::MatcherInterface<const CelValue&> {
+ public:
+  explicit CelListMatcher(ContainerMatcher m) : container_matcher_(m) {}
+
+  bool MatchAndExplain(const CelValue& v,
+                       testing::MatchResultListener* listener) const override {
+    const CelList* cel_list;
+    if (!v.GetValue(&cel_list) || cel_list == nullptr) return false;
+
+    std::vector<CelValue> cel_vector;
+    cel_vector.reserve(cel_list->size());
+    for (int i = 0; i < cel_list->size(); ++i) {
+      cel_vector.push_back((*cel_list)[i]);
+    }
+    return container_matcher_.Matches(cel_vector);
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    CelValue::Type type =
+        static_cast<CelValue::Type>(CelValue::IndexOf<const CelList*>::value);
+    *os << absl::StrCat("type is ", CelValue::TypeName(type), " and ");
+    container_matcher_.DescribeTo(os);
+  }
+
+ private:
+  const testing::Matcher<std::vector<CelValue>> container_matcher_;
+};
+
+template <typename ContainerMatcher>
+CelValueMatcher IsCelList(ContainerMatcher m) {
+  return CelValueMatcher(new CelListMatcher(m));
+}
+// TODO(issues/73): add helpers for working with maps and unknown sets.
 
 }  // namespace test
 }  // namespace runtime
