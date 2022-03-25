@@ -40,6 +40,7 @@ inline constexpr uintptr_t kTypeHandleBits =
 inline constexpr uintptr_t kTypeHandleMask = ~kTypeHandleBits;
 
 class ListTypeImpl;
+class MapTypeImpl;
 
 }  // namespace cel::base_internal
 

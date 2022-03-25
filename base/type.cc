@@ -45,6 +45,7 @@ CEL_INTERNAL_TYPE_IMPL(DurationType);
 CEL_INTERNAL_TYPE_IMPL(TimestampType);
 CEL_INTERNAL_TYPE_IMPL(EnumType);
 CEL_INTERNAL_TYPE_IMPL(ListType);
+CEL_INTERNAL_TYPE_IMPL(MapType);
 #undef CEL_INTERNAL_TYPE_IMPL
 
 absl::Span<const Transient<const Type>> Type::parameters() const { return {}; }
@@ -151,6 +152,20 @@ void ListType::HashValue(absl::HashState state) const {
   // We specifically hash the element first and then call the parent method to
   // avoid hash suffix/prefix collisions.
   Type::HashValue(absl::HashState::combine(std::move(state), element()));
+}
+
+bool MapType::Equals(const Type& other) const {
+  if (kind() != other.kind()) {
+    return false;
+  }
+  return key() == internal::down_cast<const MapType&>(other).key() &&
+         value() == internal::down_cast<const MapType&>(other).value();
+}
+
+void MapType::HashValue(absl::HashState state) const {
+  // We specifically hash the element first and then call the parent method to
+  // avoid hash suffix/prefix collisions.
+  Type::HashValue(absl::HashState::combine(std::move(state), key(), value()));
 }
 
 }  // namespace cel

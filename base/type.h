@@ -47,6 +47,7 @@ class DurationType;
 class TimestampType;
 class EnumType;
 class ListType;
+class MapType;
 class TypeFactory;
 class TypeProvider;
 
@@ -98,6 +99,7 @@ class Type : public base_internal::Resource {
   friend class TimestampType;
   friend class EnumType;
   friend class ListType;
+  friend class MapType;
   friend class base_internal::TypeHandleBase;
 
   Type() = default;
@@ -567,6 +569,47 @@ class ListType : public Type {
 
   ListType(const ListType&) = delete;
   ListType(ListType&&) = delete;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by base_internal::TypeHandleBase.
+  bool Equals(const Type& other) const final;
+
+  // Called by base_internal::TypeHandleBase.
+  void HashValue(absl::HashState state) const final;
+};
+
+// MapType represents a map type. A map is container of key and value pairs
+// where each key appears at most once.
+class MapType : public Type {
+  // I would have liked to make this class final, but we cannot instantiate
+  // Persistent<const Type> or Transient<const Type> at this point. It must be
+  // done after the post include below. Maybe we should separate out the post
+  // includes on a per type basis so we can do that?
+ public:
+  Kind kind() const final { return Kind::kMap; }
+
+  absl::string_view name() const final { return "map"; }
+
+  // Returns the type of the keys in the map.
+  virtual Transient<const Type> key() const = 0;
+
+  // Returns the type of the values in the map.
+  virtual Transient<const Type> value() const = 0;
+
+ private:
+  friend class TypeFactory;
+  friend class base_internal::TypeHandleBase;
+  friend class base_internal::MapTypeImpl;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kMap; }
+
+  MapType() = default;
+
+  MapType(const MapType&) = delete;
+  MapType(MapType&&) = delete;
 
   std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 

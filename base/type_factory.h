@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_FACTORY_H_
 
 #include <type_traits>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
@@ -90,6 +91,10 @@ class TypeFactory {
   absl::StatusOr<Persistent<const ListType>> CreateListType(
       const Persistent<const Type>& element) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Persistent<const MapType>> CreateMapType(
+      const Persistent<const Type>& key,
+      const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
  private:
   template <typename T>
   static Persistent<const T> WrapSingletonType() {
@@ -104,11 +109,19 @@ class TypeFactory {
   MemoryManager& memory_manager() const { return memory_manager_; }
 
   MemoryManager& memory_manager_;
-  absl::Mutex mutex_;
+
+  absl::Mutex list_types_mutex_;
   // Mapping from list element types to the list type. This allows us to cache
   // list types and avoid re-creating the same type.
   absl::flat_hash_map<Persistent<const Type>, Persistent<const ListType>>
-      list_types_ ABSL_GUARDED_BY(mutex_);
+      list_types_ ABSL_GUARDED_BY(list_types_mutex_);
+
+  absl::Mutex map_types_mutex_;
+  // Mapping from map key and value types to the map type. This allows us to
+  // cache map types and avoid re-creating the same type.
+  absl::flat_hash_map<std::pair<Persistent<const Type>, Persistent<const Type>>,
+                      Persistent<const MapType>>
+      map_types_ ABSL_GUARDED_BY(map_types_mutex_);
 };
 
 }  // namespace cel

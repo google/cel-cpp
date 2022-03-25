@@ -48,6 +48,24 @@ class ListTypeImpl final : public ListType {
   Persistent<const Type> element_;
 };
 
+class MapTypeImpl final : public MapType {
+ public:
+  MapTypeImpl(Persistent<const Type> key, Persistent<const Type> value)
+      : key_(std::move(key)), value_(std::move(value)) {}
+
+  Transient<const Type> key() const override { return key_; }
+
+  Transient<const Type> value() const override { return value_; }
+
+ private:
+  std::pair<size_t, size_t> SizeAndAlignment() const override {
+    return std::make_pair(sizeof(MapTypeImpl), alignof(MapTypeImpl));
+  }
+
+  Persistent<const Type> key_;
+  Persistent<const Type> value_;
+};
+
 }  // namespace base_internal
 
 Persistent<const NullType> TypeFactory::GetNullType() {
@@ -100,7 +118,7 @@ Persistent<const TimestampType> TypeFactory::GetTimestampType() {
 
 absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
     const Persistent<const Type>& element) {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(&list_types_mutex_);
   auto existing = list_types_.find(element);
   if (existing != list_types_.end()) {
     return existing->second;
@@ -115,6 +133,26 @@ absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
   }
   list_types_.insert({element, list_type});
   return list_type;
+}
+
+absl::StatusOr<Persistent<const MapType>> TypeFactory::CreateMapType(
+    const Persistent<const Type>& key, const Persistent<const Type>& value) {
+  auto key_and_value = std::make_pair(key, value);
+  absl::MutexLock lock(&map_types_mutex_);
+  auto existing = map_types_.find(key_and_value);
+  if (existing != map_types_.end()) {
+    return existing->second;
+  }
+  auto map_type = PersistentHandleFactory<const MapType>::Make<
+      const base_internal::MapTypeImpl>(memory_manager(), key, value);
+  if (ABSL_PREDICT_FALSE(!map_type)) {
+    // TODO(issues/5): maybe have the handle factories return statuses as
+    // they can add details on the size and alignment more easily and
+    // consistently?
+    return absl::ResourceExhaustedError("Failed to allocate memory");
+  }
+  map_types_.insert({std::move(key_and_value), map_type});
+  return map_type;
 }
 
 }  // namespace cel

@@ -30,5 +30,16 @@ TEST(TypeFactory, CreateListTypeCaches) {
   EXPECT_EQ(list_type_1.operator->(), list_type_2.operator->());
 }
 
+TEST(TypeFactory, CreateMapTypeCaches) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto map_type_1,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetBoolType()));
+  ASSERT_OK_AND_ASSIGN(auto map_type_2,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetBoolType()));
+  EXPECT_EQ(map_type_1.operator->(), map_type_2.operator->());
+}
+
 }  // namespace
 }  // namespace cel
