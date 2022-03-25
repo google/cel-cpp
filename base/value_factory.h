@@ -35,9 +35,6 @@ namespace cel {
 
 class ValueFactory final {
  private:
-  template <typename T, typename U>
-  using PropagateConstT = std::conditional_t<std::is_const_v<T>, const U, U>;
-
   template <typename T, typename U, typename V>
   using EnableIfBaseOfT =
       std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
@@ -142,13 +139,10 @@ class ValueFactory final {
       absl::Time value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<EnumValue, T,
-                  absl::StatusOr<Persistent<PropagateConstT<T, EnumValue>>>>
-  CreateEnumValue(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::
-        PersistentHandleFactory<PropagateConstT<T, EnumValue>>::template Make<
-            std::remove_const_t<T>>(memory_manager(),
-                                    std::forward<Args>(args)...);
+  EnableIfBaseOfT<EnumValue, T, absl::StatusOr<Persistent<T>>> CreateEnumValue(
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::PersistentHandleFactory<T>::template Make<
+        std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
   }
 
  private:

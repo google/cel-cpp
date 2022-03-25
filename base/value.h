@@ -34,6 +34,8 @@
 #include "base/kind.h"
 #include "base/memory_manager.h"
 #include "base/type.h"
+#include "internal/casts.h"
+#include "internal/rtti.h"
 
 namespace cel {
 
@@ -595,6 +597,8 @@ class EnumValue : public Value {
   EnumValue() = default;
 
  private:
+  friend internal::TypeInfo base_internal::GetEnumValueTypeId(
+      const EnumValue& enum_value);
   template <base_internal::HandleType H>
   friend class base_internal::ValueHandle;
   friend class base_internal::ValueHandleBase;
@@ -611,6 +615,9 @@ class EnumValue : public Value {
 
   std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 
+  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  virtual internal::TypeInfo TypeId() const = 0;
+
   // Set lazily, by EnumValue::New.
   Persistent<const EnumType> type_;
 };
@@ -623,11 +630,15 @@ class EnumValue : public Value {
 // private:
 //   CEL_DECLARE_ENUM_VALUE(MyEnumValue);
 // };
-#define CEL_DECLARE_ENUM_VALUE(enum_value)            \
- private:                                             \
-  friend class ::cel::base_internal::ValueHandleBase; \
-                                                      \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override;
+#define CEL_DECLARE_ENUM_VALUE(enum_value)                                     \
+ private:                                                                      \
+  friend class ::cel::base_internal::ValueHandleBase;                          \
+                                                                               \
+  static bool Is(const ::cel::Value& value);                                   \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
 
 // CEL_IMPLEMENT_ENUM_VALUE implements `enum_value` as an enumeration value. It
 // must be called after the class definition of `enum_value`.
@@ -639,21 +650,32 @@ class EnumValue : public Value {
 // };
 //
 // CEL_IMPLEMENT_ENUM_VALUE(MyEnumValue);
-#define CEL_IMPLEMENT_ENUM_VALUE(enum_value)                               \
-  static_assert(::std::is_base_of_v<::cel::EnumValue, enum_value>,         \
-                #enum_value " must inherit from cel::EnumValue");          \
-  static_assert(!::std::is_abstract_v<enum_value>,                         \
-                "this must not be abstract");                              \
-                                                                           \
-  ::std::pair<::std::size_t, ::std::size_t> enum_value::SizeAndAlignment() \
-      const {                                                              \
-    static_assert(                                                         \
-        ::std::is_same_v<enum_value,                                       \
-                         ::std::remove_const_t<                            \
-                             ::std::remove_reference_t<decltype(*this)>>>, \
-        "this must be the same as " #enum_value);                          \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_value),   \
-                                                     alignof(enum_value)); \
+#define CEL_IMPLEMENT_ENUM_VALUE(enum_value)                                  \
+  static_assert(::std::is_base_of_v<::cel::EnumValue, enum_value>,            \
+                #enum_value " must inherit from cel::EnumValue");             \
+  static_assert(!::std::is_abstract_v<enum_value>,                            \
+                "this must not be abstract");                                 \
+                                                                              \
+  bool enum_value::Is(const ::cel::Value& value) {                            \
+    return value.kind() == ::cel::Kind::kEnum &&                              \
+           ::cel::base_internal::GetEnumValueTypeId(                          \
+               ::cel::internal::down_cast<const ::cel::EnumValue&>(value)) == \
+               ::cel::internal::TypeId<enum_value>();                         \
+  }                                                                           \
+                                                                              \
+  ::std::pair<::std::size_t, ::std::size_t> enum_value::SizeAndAlignment()    \
+      const {                                                                 \
+    static_assert(                                                            \
+        ::std::is_same_v<enum_value,                                          \
+                         ::std::remove_const_t<                               \
+                             ::std::remove_reference_t<decltype(*this)>>>,    \
+        "this must be the same as " #enum_value);                             \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_value),      \
+                                                     alignof(enum_value));    \
+  }                                                                           \
+                                                                              \
+  ::cel::internal::TypeInfo enum_value::TypeId() const {                      \
+    return ::cel::internal::TypeId<enum_value>();                             \
   }
 
 }  // namespace cel

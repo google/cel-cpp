@@ -1452,6 +1452,7 @@ TEST(Value, Enum) {
       auto one_value,
       EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
   EXPECT_TRUE(one_value.Is<EnumValue>());
+  EXPECT_TRUE(one_value.Is<TestEnumValue>());
   EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(EnumValue::New(enum_type, value_factory,
@@ -1465,6 +1466,7 @@ TEST(Value, Enum) {
       auto two_value,
       EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE2")));
   EXPECT_TRUE(two_value.Is<EnumValue>());
+  EXPECT_TRUE(two_value.Is<TestEnumValue>());
   EXPECT_FALSE(two_value.Is<NullValue>());
   EXPECT_EQ(two_value, two_value);
   EXPECT_EQ(two_value->kind(), Kind::kEnum);

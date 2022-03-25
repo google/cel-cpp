@@ -27,10 +27,15 @@
 #include "absl/hash/hash.h"
 #include "absl/numeric/bits.h"
 #include "base/handle.h"
+#include "internal/rtti.h"
 
 namespace cel {
 
 namespace base_internal {
+
+inline internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type) {
+  return enum_type.TypeId();
+}
 
 // Base implementation of persistent and transient handles for types. This
 // contains implementation details shared among both, but is never used

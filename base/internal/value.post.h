@@ -37,6 +37,10 @@ namespace cel {
 
 namespace base_internal {
 
+inline internal::TypeInfo GetEnumValueTypeId(const EnumValue& enum_value) {
+  return enum_value.TypeId();
+}
+
 // Implementation of BytesValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.

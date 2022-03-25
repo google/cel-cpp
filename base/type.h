@@ -29,6 +29,8 @@
 #include "base/internal/type.pre.h"  // IWYU pragma: export
 #include "base/kind.h"
 #include "base/memory_manager.h"
+#include "internal/casts.h"
+#include "internal/rtti.h"
 
 namespace cel {
 
@@ -481,6 +483,8 @@ class EnumType : public Type {
       int64_t number) const = 0;
 
  private:
+  friend internal::TypeInfo base_internal::GetEnumTypeTypeId(
+      const EnumType& enum_type);
   struct NewInstanceVisitor;
   struct FindConstantVisitor;
 
@@ -498,6 +502,9 @@ class EnumType : public Type {
   EnumType(EnumType&&) = delete;
 
   std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by CEL_IMPLEMENT_ENUM_TYPE() and Is() to perform type checking.
+  virtual internal::TypeInfo TypeId() const = 0;
 };
 
 // CEL_DECLARE_ENUM_TYPE declares `enum_type` as an enumeration type. It must be
@@ -508,11 +515,15 @@ class EnumType : public Type {
 // private:
 //   CEL_DECLARE_ENUM_TYPE(MyEnumType);
 // };
-#define CEL_DECLARE_ENUM_TYPE(enum_type)             \
- private:                                            \
-  friend class ::cel::base_internal::TypeHandleBase; \
-                                                     \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override;
+#define CEL_DECLARE_ENUM_TYPE(enum_type)                                       \
+ private:                                                                      \
+  friend class ::cel::base_internal::TypeHandleBase;                           \
+                                                                               \
+  static bool Is(const ::cel::Type& type);                                     \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
 
 // CEL_IMPLEMENT_ENUM_TYPE implements `enum_type` as an enumeration type. It
 // must be called after the class definition of `enum_type`.
@@ -524,21 +535,32 @@ class EnumType : public Type {
 // };
 //
 // CEL_IMPLEMENT_ENUM_TYPE(MyEnumType);
-#define CEL_IMPLEMENT_ENUM_TYPE(enum_type)                                 \
-  static_assert(::std::is_base_of_v<::cel::EnumType, enum_type>,           \
-                #enum_type " must inherit from cel::EnumType");            \
-  static_assert(!::std::is_abstract_v<enum_type>,                          \
-                "this must not be abstract");                              \
-                                                                           \
-  ::std::pair<::std::size_t, ::std::size_t> enum_type::SizeAndAlignment()  \
-      const {                                                              \
-    static_assert(                                                         \
-        ::std::is_same_v<enum_type,                                        \
-                         ::std::remove_const_t<                            \
-                             ::std::remove_reference_t<decltype(*this)>>>, \
-        "this must be the same as " #enum_type);                           \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_type),    \
-                                                     alignof(enum_type));  \
+#define CEL_IMPLEMENT_ENUM_TYPE(enum_type)                                  \
+  static_assert(::std::is_base_of_v<::cel::EnumType, enum_type>,            \
+                #enum_type " must inherit from cel::EnumType");             \
+  static_assert(!::std::is_abstract_v<enum_type>,                           \
+                "this must not be abstract");                               \
+                                                                            \
+  bool enum_type::Is(const ::cel::Type& type) {                             \
+    return type.kind() == ::cel::Kind::kEnum &&                             \
+           ::cel::base_internal::GetEnumTypeTypeId(                         \
+               ::cel::internal::down_cast<const ::cel::EnumType&>(type)) == \
+               ::cel::internal::TypeId<enum_type>();                        \
+  }                                                                         \
+                                                                            \
+  ::std::pair<::std::size_t, ::std::size_t> enum_type::SizeAndAlignment()   \
+      const {                                                               \
+    static_assert(                                                          \
+        ::std::is_same_v<enum_type,                                         \
+                         ::std::remove_const_t<                             \
+                             ::std::remove_reference_t<decltype(*this)>>>,  \
+        "this must be the same as " #enum_type);                            \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_type),     \
+                                                     alignof(enum_type));   \
+  }                                                                         \
+                                                                            \
+  ::cel::internal::TypeInfo enum_type::TypeId() const {                     \
+    return ::cel::internal::TypeId<enum_type>();                            \
   }
 
 // ListType represents a list type. A list is a sequential container where each

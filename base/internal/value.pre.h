@@ -22,8 +22,13 @@
 #include <utility>
 
 #include "base/handle.h"
+#include "internal/rtti.h"
 
-namespace cel::base_internal {
+namespace cel {
+
+class EnumValue;
+
+namespace base_internal {
 
 class ValueHandleBase;
 template <HandleType H>
@@ -40,6 +45,8 @@ inline constexpr uintptr_t kValueHandleUnmanaged = 1 << 1;
 inline constexpr uintptr_t kValueHandleBits =
     kValueHandleManaged | kValueHandleUnmanaged;
 inline constexpr uintptr_t kValueHandleMask = ~kValueHandleBits;
+
+internal::TypeInfo GetEnumValueTypeId(const EnumValue& enum_value);
 
 class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;
@@ -157,6 +164,8 @@ struct ExternalData final {
   std::unique_ptr<ExternalDataReleaser> releaser;
 };
 
-}  // namespace cel::base_internal
+}  // namespace base_internal
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_VALUE_PRE_H_

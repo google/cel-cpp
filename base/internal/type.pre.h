@@ -20,8 +20,13 @@
 #include <cstdint>
 
 #include "base/handle.h"
+#include "internal/rtti.h"
 
-namespace cel::base_internal {
+namespace cel {
+
+class EnumType;
+
+namespace base_internal {
 
 class TypeHandleBase;
 template <HandleType H>
@@ -42,6 +47,10 @@ inline constexpr uintptr_t kTypeHandleMask = ~kTypeHandleBits;
 class ListTypeImpl;
 class MapTypeImpl;
 
-}  // namespace cel::base_internal
+internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type);
+
+}  // namespace base_internal
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_TYPE_PRE_H_

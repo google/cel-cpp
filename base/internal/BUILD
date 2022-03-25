@@ -56,6 +56,7 @@ cc_library(
     ],
     deps = [
         "//base:handle",
+        "//internal:rtti",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/numeric:bits",
@@ -71,6 +72,7 @@ cc_library(
     deps = [
         "//base:handle",
         "//internal:casts",
+        "//internal:rtti",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/numeric:bits",

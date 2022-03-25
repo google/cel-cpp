@@ -435,6 +435,7 @@ TEST(Type, Enum) {
   EXPECT_FALSE(enum_type.Is<DurationType>());
   EXPECT_FALSE(enum_type.Is<TimestampType>());
   EXPECT_TRUE(enum_type.Is<EnumType>());
+  EXPECT_TRUE(enum_type.Is<TestEnumType>());
   EXPECT_FALSE(enum_type.Is<ListType>());
   EXPECT_FALSE(enum_type.Is<MapType>());
 }
