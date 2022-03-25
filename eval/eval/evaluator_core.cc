@@ -153,8 +153,8 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
       ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
   state->Reset();
 
-  ExecutionFrame frame(path_, activation, descriptor_pool_, message_factory_,
-                       max_iterations_, state, enable_unknowns_,
+  ExecutionFrame frame(path_, activation, &type_registry_, max_iterations_,
+                       state, enable_unknowns_,
                        enable_unknown_function_results_,
                        enable_missing_attribute_errors_, enable_null_coercion_,
                        enable_heterogeneous_equality_);

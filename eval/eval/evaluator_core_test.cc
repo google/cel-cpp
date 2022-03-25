@@ -7,6 +7,7 @@
 #include "google/protobuf/descriptor.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
@@ -69,9 +70,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation,
-                       google::protobuf::DescriptorPool::generated_pool(),
-                       google::protobuf::MessageFactory::generated_factory(), 0, &state,
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
                        /*enable_unknowns=*/false,
                        /*enable_unknown_funcion_results=*/false,
                        /*enable_missing_attribute_errors=*/false,
@@ -95,9 +94,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   ProtoMemoryManager manager(&arena);
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation,
-                       google::protobuf::DescriptorPool::generated_pool(),
-                       google::protobuf::MessageFactory::generated_factory(), 0, &state,
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
                        /*enable_unknowns=*/false,
                        /*enable_unknown_funcion_results=*/false,
                        /*enable_missing_attribute_errors=*/false,
@@ -168,9 +165,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   auto dummy_expr = absl::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             google::protobuf::DescriptorPool::generated_pool(),
-                             google::protobuf::MessageFactory::generated_factory(), 0,
-                             {});
+                             &TestTypeRegistry(), 0, {});
 
   Activation activation;
   google::protobuf::Arena arena;

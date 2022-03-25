@@ -19,9 +19,11 @@ cc_library(
         ":attribute_utility",
         ":evaluator_stack",
         "//base:memory_manager",
+        "//eval/compiler:resolver",
         "//eval/public:base_activation",
         "//eval/public:cel_attribute",
         "//eval/public:cel_expression",
+        "//eval/public:cel_type_registry",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "//extensions/protobuf:memory_manager",
@@ -300,6 +302,7 @@ cc_test(
         ":comprehension_step",
         ":evaluator_core",
         ":ident_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
         "//eval/public:cel_options",
@@ -323,6 +326,7 @@ cc_test(
     deps = [
         ":attribute_trail",
         ":evaluator_core",
+        ":test_type_registry",
         "//eval/compiler:flat_expr_builder",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
@@ -345,6 +349,7 @@ cc_test(
     deps = [
         ":const_value_step",
         ":evaluator_core",
+        ":test_type_registry",
         "//eval/public:activation",
         "//internal:status_macros",
         "//internal:testing",
@@ -363,6 +368,7 @@ cc_test(
     deps = [
         ":container_access_step",
         ":ident_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_attribute",
@@ -393,6 +399,7 @@ cc_test(
     deps = [
         ":evaluator_core",
         ":ident_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//internal:status_macros",
         "//internal:testing",
@@ -412,6 +419,7 @@ cc_test(
         ":expression_build_warning",
         ":function_step",
         ":ident_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
         "//eval/public:cel_function",
@@ -440,6 +448,7 @@ cc_test(
     deps = [
         ":ident_step",
         ":logic_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
@@ -458,6 +467,7 @@ cc_test(
     deps = [
         ":ident_step",
         ":select_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
         "//eval/public:unknown_attribute_set",
@@ -484,6 +494,7 @@ cc_test(
         ":const_value_step",
         ":create_list_step",
         ":ident_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
         "//eval/public:unknown_attribute_set",
@@ -504,6 +515,7 @@ cc_test(
     deps = [
         ":create_struct_step",
         ":ident_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:cel_type_registry",
         "//eval/public/containers:container_backed_list_impl",
@@ -650,6 +662,7 @@ cc_test(
     deps = [
         ":ident_step",
         ":ternary_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
@@ -686,12 +699,27 @@ cc_test(
     deps = [
         ":evaluator_core",
         ":shadowable_value_step",
+        ":test_type_registry",
         "//eval/public:activation",
         "//eval/public:cel_value",
         "//internal:status_macros",
         "//internal:testing",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "test_type_registry",
+    testonly = True,
+    srcs = ["test_type_registry.cc"],
+    hdrs = ["test_type_registry.h"],
+    deps = [
+        "//eval/public:cel_type_registry",
+        "//eval/public/containers:field_access",
+        "//eval/public/structs:protobuf_descriptor_type_provider",
+        "//internal:no_destructor",
         "@com_google_protobuf//:protobuf",
     ],
 )

@@ -23,12 +23,14 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/memory_manager.h"
+#include "eval/compiler/resolver.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -119,8 +121,7 @@ class ExecutionFrame {
   // arena serves as allocation manager during the expression evaluation.
 
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
-                 const google::protobuf::DescriptorPool* descriptor_pool,
-                 google::protobuf::MessageFactory* message_factory, int max_iterations,
+                 const CelTypeRegistry* type_registry, int max_iterations,
                  CelExpressionFlatEvaluationState* state, bool enable_unknowns,
                  bool enable_unknown_function_results,
                  bool enable_missing_attribute_errors,
@@ -129,8 +130,7 @@ class ExecutionFrame {
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
-        descriptor_pool_(descriptor_pool),
-        message_factory_(message_factory),
+        type_registry_(*type_registry),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
@@ -177,10 +177,7 @@ class ExecutionFrame {
 
   cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
 
-  const google::protobuf::DescriptorPool* descriptor_pool() const {
-    return descriptor_pool_;
-  }
-  google::protobuf::MessageFactory* message_factory() const { return message_factory_; }
+  const CelTypeRegistry& type_registry() { return type_registry_; }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
@@ -241,8 +238,7 @@ class ExecutionFrame {
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath& execution_path_;
   const BaseActivation& activation_;
-  const google::protobuf::DescriptorPool* descriptor_pool_;
-  google::protobuf::MessageFactory* message_factory_;
+  const CelTypeRegistry& type_registry_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
@@ -265,8 +261,7 @@ class CelExpressionFlatImpl : public CelExpression {
   // bound).
   CelExpressionFlatImpl(ABSL_ATTRIBUTE_UNUSED const Expr* root_expr,
                         ExecutionPath path,
-                        const google::protobuf::DescriptorPool* descriptor_pool,
-                        google::protobuf::MessageFactory* message_factory,
+                        const CelTypeRegistry* type_registry,
                         int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
@@ -277,8 +272,7 @@ class CelExpressionFlatImpl : public CelExpression {
                         std::unique_ptr<Expr> rewritten_expr = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
         path_(std::move(path)),
-        descriptor_pool_(descriptor_pool),
-        message_factory_(message_factory),
+        type_registry_(*type_registry),
         max_iterations_(max_iterations),
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
@@ -318,8 +312,7 @@ class CelExpressionFlatImpl : public CelExpression {
   // Maintain lifecycle of a modified expression.
   std::unique_ptr<Expr> rewritten_expr_;
   const ExecutionPath path_;
-  const google::protobuf::DescriptorPool* descriptor_pool_;
-  google::protobuf::MessageFactory* message_factory_;
+  const CelTypeRegistry& type_registry_;
   const int max_iterations_;
   const std::set<std::string> iter_variable_names_;
   bool enable_unknowns_;

@@ -1058,7 +1058,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::unique_ptr<CelExpression> expression_impl =
       absl::make_unique<CelExpressionFlatImpl>(
-          expr, std::move(execution_path), descriptor_pool_, message_factory_,
+          expr, std::move(execution_path), GetTypeRegistry(),
           comprehension_max_iterations_, std::move(iter_variable_names),
           enable_unknowns_, enable_unknown_function_results_,
           enable_missing_attribute_errors_, enable_null_coercion_,
