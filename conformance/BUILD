@@ -77,8 +77,6 @@ cc_binary(
             # Tests which require spec changes.
             # TODO(issues/93): Deprecate Duration.getMilliseconds.
             "--skip_test=timestamps/duration_converters/get_milliseconds",
-            # TODO(issues/110): Tune parse limits to mirror those for proto deserialization and C++ safety limits.
-            "--skip_test=parse/nest/list_index,message_literal,funcall,list_literal,map_literal;repeat/conditional,add_sub,mul_div,select,index,map_literal,message_literal",
 
             # Broken test cases which should be supported.
             # TODO(issues/112): Unbound functions result in empty eval response.

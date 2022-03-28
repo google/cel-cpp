@@ -196,8 +196,10 @@ int RunServer(bool optimize) {
         std::cerr << "Failed to parse JSON" << std::endl;
       }
       service.Parse(&request, &response);
-      if (!MessageToJsonString(response, &output).ok()) {
-        std::cerr << "Failed to convert to JSON" << std::endl;
+      auto status = MessageToJsonString(response, &output);
+      if (!status.ok()) {
+        std::cerr << "Failed to convert to JSON:" << status.ToString()
+                  << std::endl;
       }
     } else if (cmd == "eval") {
       conformance::v1alpha1::EvalRequest request;
@@ -206,8 +208,10 @@ int RunServer(bool optimize) {
         std::cerr << "Failed to parse JSON" << std::endl;
       }
       service.Eval(&request, &response);
-      if (!MessageToJsonString(response, &output).ok()) {
-        std::cerr << "Failed to convert to JSON" << std::endl;
+      auto status = MessageToJsonString(response, &output);
+      if (!status.ok()) {
+        std::cerr << "Failed to convert to JSON:" << status.ToString()
+                  << std::endl;
       }
     } else if (cmd.empty()) {
       return 0;
