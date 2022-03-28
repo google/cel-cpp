@@ -28,6 +28,9 @@ using CelValueMatcher = testing::Matcher<CelValue>;
 // Tests equality to CelValue v using the set_util implementation.
 CelValueMatcher EqualsCelValue(const CelValue& v);
 
+// Matches CelValues of type null.
+CelValueMatcher IsCelNull();
+
 // Matches CelValues of type bool whose held value matches |m|.
 CelValueMatcher IsCelBool(testing::Matcher<bool> m);
 

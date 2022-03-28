@@ -7,10 +7,7 @@
 #include "absl/strings/string_view.h"
 #include "eval/public/set_util.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 void PrintTo(const CelValue& value, std::ostream* os) {
   *os << value.DebugString();
@@ -19,6 +16,7 @@ void PrintTo(const CelValue& value, std::ostream* os) {
 namespace test {
 namespace {
 
+using testing::_;
 using testing::MatcherInterface;
 using testing::MatchResultListener;
 
@@ -68,6 +66,10 @@ CelValueMatcher EqualsCelValue(const CelValue& v) {
   return CelValueMatcher(new CelValueEqualImpl(v));
 }
 
+CelValueMatcher IsCelNull() {
+  return CelValueMatcher(new CelValueMatcherImpl<CelValue::NullType>(_));
+}
+
 CelValueMatcher IsCelBool(testing::Matcher<bool> m) {
   return CelValueMatcher(new CelValueMatcherImpl<bool>(std::move(m)));
 }
@@ -114,7 +116,4 @@ CelValueMatcher IsCelError(testing::Matcher<absl::Status> m) {
 }
 
 }  // namespace test
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

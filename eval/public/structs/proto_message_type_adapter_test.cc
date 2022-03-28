@@ -22,6 +22,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
@@ -32,32 +33,103 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using testing::_;
 using testing::EqualsProto;
 using testing::HasSubstr;
+using testing::Optional;
+using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
-TEST(ProtoMessageTypeAdapter, HasFieldNotYetImplemented) {
+TEST(ProtoMessageTypeAdapter, HasFieldSingular) {
   google::protobuf::Arena arena;
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+
+  TestMessage example;
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.HasField("int64_value", value), IsOkAndHolds(false));
+  example.set_int64_value(10);
+  EXPECT_THAT(adapter.HasField("int64_value", value), IsOkAndHolds(true));
+}
+
+TEST(ProtoMessageTypeAdapter, HasFieldRepeated) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+
+  TestMessage example;
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.HasField("int64_list", value), IsOkAndHolds(false));
+  example.add_int64_list(10);
+  EXPECT_THAT(adapter.HasField("int64_list", value), IsOkAndHolds(true));
+}
+
+TEST(ProtoMessageTypeAdapter, HasFieldMap) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
 
   TestMessage example;
   example.set_int64_value(10);
 
   CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
 
-  EXPECT_THAT(adapter.HasField("value", value),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_THAT(adapter.HasField("int64_int32_map", value), IsOkAndHolds(false));
+  (*example.mutable_int64_int32_map())[2] = 3;
+  EXPECT_THAT(adapter.HasField("int64_int32_map", value), IsOkAndHolds(true));
 }
 
-TEST(ProtoMessageTypeAdapter, GetFieldNotYetImplemented) {
+TEST(ProtoMessageTypeAdapter, HasFieldUnknownField) {
   google::protobuf::Arena arena;
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+
+  TestMessage example;
+  example.set_int64_value(10);
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.HasField("unknown_field", value),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(ProtoMessageTypeAdapter, HasFieldNonMessageType) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+
+  CelValue value = CelValue::CreateInt64(10);
+
+  EXPECT_THAT(adapter.HasField("unknown_field", value),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldSingular) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   TestMessage example;
@@ -66,7 +138,156 @@ TEST(ProtoMessageTypeAdapter, GetFieldNotYetImplemented) {
   CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
 
   EXPECT_THAT(adapter.GetField("int64_value", value, manager),
-              StatusIs(absl::StatusCode::kUnimplemented));
+              IsOkAndHolds(test::IsCelInt64(10)));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldNoSuchField) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.set_int64_value(10);
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.GetField("unknown_field", value, manager),
+              IsOkAndHolds(test::IsCelError(StatusIs(
+                  absl::StatusCode::kNotFound, HasSubstr("unknown_field")))));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldNotAMessage) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  CelValue value = CelValue::CreateNull();
+
+  EXPECT_THAT(adapter.GetField("int64_value", value, manager),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldRepeated) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.add_int64_list(10);
+  example.add_int64_list(20);
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       adapter.GetField("int64_list", value, manager));
+
+  const CelList* held_value;
+  ASSERT_TRUE(result.GetValue(&held_value)) << result.DebugString();
+
+  EXPECT_EQ(held_value->size(), 2);
+  EXPECT_THAT((*held_value)[0], test::IsCelInt64(10));
+  EXPECT_THAT((*held_value)[1], test::IsCelInt64(20));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldMap) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  (*example.mutable_int64_int32_map())[10] = 20;
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       adapter.GetField("int64_int32_map", value, manager));
+
+  const CelMap* held_value;
+  ASSERT_TRUE(result.GetValue(&held_value)) << result.DebugString();
+
+  EXPECT_EQ(held_value->size(), 1);
+  EXPECT_THAT((*held_value)[CelValue::CreateInt64(10)],
+              Optional(test::IsCelInt64(20)));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldWrapperType) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.mutable_int64_wrapper_value()->set_value(10);
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.GetField("int64_wrapper_value", value, manager),
+              IsOkAndHolds(test::IsCelInt64(10)));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldWrapperTypeUnsetNullUnbox) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.GetField("int64_wrapper_value", value, manager),
+              IsOkAndHolds(test::IsCelNull()));
+
+  // Wrapper field present, but default value.
+  example.mutable_int64_wrapper_value()->clear_value();
+  EXPECT_THAT(adapter.GetField("int64_wrapper_value", value, manager),
+              IsOkAndHolds(test::IsCelInt64(_)));
+}
+
+TEST(ProtoMessageTypeAdapter, GetFieldWrapperTypeUnsetDefaultValueUnbox) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetProtoDefault);
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+
+  CelValue value = CelProtoWrapper::CreateMessage(&example, &arena);
+
+  EXPECT_THAT(adapter.GetField("int64_wrapper_value", value, manager),
+              IsOkAndHolds(test::IsCelInt64(_)));
+
+  // Wrapper field present with unset value is used to signal Null, but legacy
+  // behavior just returns the proto default value.
+  example.mutable_int64_wrapper_value()->clear_value();
+  // Same behavior for this option.
+  EXPECT_THAT(adapter.GetField("int64_wrapper_value", value, manager),
+              IsOkAndHolds(test::IsCelInt64(_)));
 }
 
 TEST(ProtoMessageTypeAdapter, NewInstance) {
@@ -74,7 +295,8 @@ TEST(ProtoMessageTypeAdapter, NewInstance) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue result, adapter.NewInstance(manager));
@@ -97,7 +319,8 @@ TEST(ProtoMessageTypeAdapter, NewInstanceUnsupportedDescriptor) {
 
   ProtoMessageTypeAdapter adapter(
       pool.FindMessageTypeByName("google.api.expr.runtime.FakeMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   // Message factory doesn't know how to create our custom message, even though
@@ -111,7 +334,8 @@ TEST(ProtoMessageTypeAdapter, DefinesField) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
 
   EXPECT_TRUE(adapter.DefinesField("int64_value"));
   EXPECT_FALSE(adapter.DefinesField("not_a_field"));
@@ -122,7 +346,8 @@ TEST(ProtoMessageTypeAdapter, SetFieldSingular) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, adapter.NewInstance(manager));
@@ -145,7 +370,8 @@ TEST(ProtoMessageTypeAdapter, SetFieldMap) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   CelMapBuilder builder;
@@ -172,7 +398,8 @@ TEST(ProtoMessageTypeAdapter, SetFieldRepeated) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ContainerBackedListImpl list(
@@ -194,7 +421,8 @@ TEST(ProtoMessageTypeAdapter, SetFieldNotAField) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue instance, adapter.NewInstance(manager));
@@ -210,7 +438,8 @@ TEST(ProtoMesssageTypeAdapter, SetFieldWrongType) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ContainerBackedListImpl list(
@@ -249,7 +478,8 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNotAMessage) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   CelValue int_value = CelValue::CreateInt64(42);
@@ -264,7 +494,8 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownType) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.protobuf.Int64Value"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue instance, adapter.NewInstance(manager));
@@ -281,7 +512,8 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeUnspecial) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   ASSERT_OK_AND_ASSIGN(CelValue instance, adapter.NewInstance(manager));
@@ -299,7 +531,8 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeNotAMessageError) {
   ProtoMessageTypeAdapter adapter(
       google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
           "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
+      google::protobuf::MessageFactory::generated_factory(),
+      ProtoWrapperTypeOptions::kUnsetNull);
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   CelValue instance = CelValue::CreateNull();

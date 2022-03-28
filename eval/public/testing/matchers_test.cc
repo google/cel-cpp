@@ -8,11 +8,7 @@
 #include "internal/testing.h"
 #include "testutil/util.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
-namespace test {
+namespace google::api::expr::runtime::test {
 namespace {
 
 using testing::Contains;
@@ -64,6 +60,9 @@ TEST(IsCelValue, EqualitySmoketest) {
 }
 
 TEST(PrimitiveMatchers, Smoketest) {
+  EXPECT_THAT(CelValue::CreateNull(), IsCelNull());
+  EXPECT_THAT(CelValue::CreateBool(false), Not(IsCelNull()));
+
   EXPECT_THAT(CelValue::CreateBool(true), IsCelBool(true));
   EXPECT_THAT(CelValue::CreateBool(false), IsCelBool(Not(true)));
 
@@ -153,8 +152,4 @@ TEST(ListMatchers, All) {
 }
 
 }  // namespace
-}  // namespace test
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime::test

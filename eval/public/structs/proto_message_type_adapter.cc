@@ -22,12 +22,17 @@
 #include "absl/strings/substitute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/field_access.h"
+#include "eval/public/containers/field_backed_list_impl.h"
+#include "eval/public/containers/field_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
+using ::cel::extensions::ProtoMemoryManager;
+using ::google::protobuf::FieldDescriptor;
 using ::google::protobuf::Message;
+using ::google::protobuf::Reflection;
 
 absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
     bool assertion, absl::string_view field, absl::string_view detail) const {
@@ -42,8 +47,7 @@ absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::NewInstance(
     cel::MemoryManager& memory_manager) const {
   // This implementation requires arena-backed memory manager.
-  google::protobuf::Arena* arena =
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
+  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
   const Message* prototype = message_factory_->GetPrototype(descriptor_);
 
   Message* msg = (prototype != nullptr) ? prototype->New(arena) : nullptr;
@@ -61,13 +65,69 @@ bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {
 
 absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
     absl::string_view field_name, const CelValue& value) const {
-  return absl::UnimplementedError("Not yet implemented.");
+  const google::protobuf::Message* message;
+  if (!value.GetValue(&message) || message == nullptr) {
+    return absl::InvalidArgumentError("HasField called on non-message type.");
+  }
+
+  const Reflection* reflection = message->GetReflection();
+  ABSL_ASSERT(descriptor_ == message->GetDescriptor());
+
+  const FieldDescriptor* field_desc = descriptor_->FindFieldByName(field_name.data());
+
+  if (field_desc == nullptr) {
+    return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
+  }
+
+  if (field_desc->is_map()) {
+    // When the map field appears in a has(msg.map_field) expression, the map
+    // is considered 'present' when it is non-empty. Since maps are repeated
+    // fields they don't participate with standard proto presence testing since
+    // the repeated field is always at least empty.
+    return reflection->FieldSize(*message, field_desc) != 0;
+  }
+
+  if (field_desc->is_repeated()) {
+    // When the list field appears in a has(msg.list_field) expression, the list
+    // is considered 'present' when it is non-empty.
+    return reflection->FieldSize(*message, field_desc) != 0;
+  }
+
+  // Standard proto presence test for non-repeated fields.
+  return reflection->HasField(*message, field_desc);
 }
 
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
     absl::string_view field_name, const CelValue& instance,
     cel::MemoryManager& memory_manager) const {
-  return absl::UnimplementedError("Not yet implemented.");
+  const google::protobuf::Message* message;
+  if (!instance.GetValue(&message) || message == nullptr) {
+    return absl::InvalidArgumentError("GetField called on non-message type.");
+  }
+
+  const FieldDescriptor* field_desc = descriptor_->FindFieldByName(field_name.data());
+
+  if (field_desc == nullptr) {
+    return CreateNoSuchFieldError(memory_manager, field_name);
+  }
+
+  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+
+  if (field_desc->is_map()) {
+    CelMap* map = google::protobuf::Arena::Create<FieldBackedMapImpl>(arena, message,
+                                                            field_desc, arena);
+    return CelValue::CreateMap(map);
+  }
+  if (field_desc->is_repeated()) {
+    CelList* list = google::protobuf::Arena::Create<FieldBackedListImpl>(
+        arena, message, field_desc, arena);
+    return CelValue::CreateList(list);
+  }
+
+  CelValue result;
+  CEL_RETURN_IF_ERROR(CreateValueFromSingleField(
+      message, field_desc, unboxing_option_, arena, &result));
+  return result;
 }
 
 absl::Status ProtoMessageTypeAdapter::SetField(

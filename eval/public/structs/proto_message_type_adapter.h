@@ -21,6 +21,7 @@
 #include "absl/strings/string_view.h"
 #include "base/memory_manager.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/field_access.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 
 namespace google::api::expr::runtime {
@@ -29,8 +30,12 @@ class ProtoMessageTypeAdapter : public LegacyTypeAdapter::AccessApis,
                                 public LegacyTypeAdapter::MutationApis {
  public:
   ProtoMessageTypeAdapter(const google::protobuf::Descriptor* descriptor,
-                          google::protobuf::MessageFactory* message_factory)
-      : message_factory_(message_factory), descriptor_(descriptor) {}
+                          google::protobuf::MessageFactory* message_factory,
+                          ProtoWrapperTypeOptions unboxing_option =
+                              ProtoWrapperTypeOptions::kUnsetNull)
+      : message_factory_(message_factory),
+        descriptor_(descriptor),
+        unboxing_option_(unboxing_option) {}
 
   ~ProtoMessageTypeAdapter() override = default;
 
@@ -61,6 +66,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeAdapter::AccessApis,
 
   google::protobuf::MessageFactory* message_factory_;
   const google::protobuf::Descriptor* descriptor_;
+  ProtoWrapperTypeOptions unboxing_option_;
 };
 
 }  // namespace google::api::expr::runtime
