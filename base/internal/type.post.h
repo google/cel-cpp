@@ -37,6 +37,10 @@ inline internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type) {
   return enum_type.TypeId();
 }
 
+inline internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type) {
+  return struct_type.TypeId();
+}
+
 // Base implementation of persistent and transient handles for types. This
 // contains implementation details shared among both, but is never used
 // directly. The derived classes are responsible for defining appropriate
@@ -270,6 +274,7 @@ CEL_INTERNAL_TYPE_DECL(StringType);
 CEL_INTERNAL_TYPE_DECL(DurationType);
 CEL_INTERNAL_TYPE_DECL(TimestampType);
 CEL_INTERNAL_TYPE_DECL(EnumType);
+CEL_INTERNAL_TYPE_DECL(StructType);
 CEL_INTERNAL_TYPE_DECL(ListType);
 CEL_INTERNAL_TYPE_DECL(MapType);
 #undef CEL_INTERNAL_TYPE_DECL

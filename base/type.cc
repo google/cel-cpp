@@ -20,6 +20,7 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
+#include "base/type_manager.h"
 #include "internal/casts.h"
 #include "internal/no_destructor.h"
 
@@ -139,6 +140,24 @@ struct EnumType::FindConstantVisitor final {
 
 absl::StatusOr<EnumType::Constant> EnumType::FindConstant(ConstantId id) const {
   return absl::visit(FindConstantVisitor{*this}, id.data_);
+}
+
+struct StructType::FindFieldVisitor final {
+  const StructType& struct_type;
+  TypeManager& type_manager;
+
+  absl::StatusOr<Field> operator()(absl::string_view name) const {
+    return struct_type.FindFieldByName(type_manager, name);
+  }
+
+  absl::StatusOr<Field> operator()(int64_t number) const {
+    return struct_type.FindFieldByNumber(type_manager, number);
+  }
+};
+
+absl::StatusOr<StructType::Field> StructType::FindField(
+    TypeManager& type_manager, FieldId id) const {
+  return absl::visit(FindFieldVisitor{*this, type_manager}, id.data_);
 }
 
 bool ListType::Equals(const Type& other) const {

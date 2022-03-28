@@ -25,6 +25,7 @@
 namespace cel {
 
 class EnumType;
+class StructType;
 
 namespace base_internal {
 
@@ -48,6 +49,8 @@ class ListTypeImpl;
 class MapTypeImpl;
 
 internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type);
+
+internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
 
 }  // namespace base_internal
 

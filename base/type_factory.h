@@ -82,6 +82,13 @@ class TypeFactory {
         std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
   }
 
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<StructType, T, absl::StatusOr<Persistent<T>>>
+  CreateStructType(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::PersistentHandleFactory<T>::template Make<
+        std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
+  }
+
   absl::StatusOr<Persistent<const ListType>> CreateListType(
       const Persistent<const Type>& element) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 

@@ -25,7 +25,10 @@ namespace cel {
 // and registering type implementations.
 //
 // TODO(issues/5): more comments after solidifying role
-class TypeManager : public TypeFactory, public TypeRegistry {};
+class TypeManager : public TypeFactory, public TypeRegistry {
+ public:
+  using TypeFactory::TypeFactory;
+};
 
 }  // namespace cel
 

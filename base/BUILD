@@ -140,6 +140,7 @@ cc_test(
         ":type",
         ":value",
         "//internal:testing",
+        "@com_google_absl//absl/hash",
         "@com_google_absl//absl/hash:hash_testing",
         "@com_google_absl//absl/status",
     ],

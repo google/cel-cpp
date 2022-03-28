@@ -17,11 +17,13 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/value.h"
 #include "internal/testing.h"
 
@@ -79,6 +81,56 @@ class TestEnumType final : public EnumType {
 };
 
 CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
+
+// struct TestStruct {
+//   bool bool_field;
+//   int64_t int_field;
+//   uint64_t uint_field;
+//   double double_field;
+// };
+
+class TestStructType final : public StructType {
+ public:
+  using StructType::StructType;
+
+  absl::string_view name() const override { return "test_struct.TestStruct"; }
+
+ protected:
+  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
+                                        absl::string_view name) const override {
+    if (name == "bool_field") {
+      return Field("bool_field", 0, type_manager.GetBoolType());
+    } else if (name == "int_field") {
+      return Field("int_field", 1, type_manager.GetIntType());
+    } else if (name == "uint_field") {
+      return Field("uint_field", 2, type_manager.GetUintType());
+    } else if (name == "double_field") {
+      return Field("double_field", 3, type_manager.GetDoubleType());
+    }
+    return absl::NotFoundError("");
+  }
+
+  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
+                                          int64_t number) const override {
+    switch (number) {
+      case 0:
+        return Field("bool_field", 0, type_manager.GetBoolType());
+      case 1:
+        return Field("int_field", 1, type_manager.GetIntType());
+      case 2:
+        return Field("uint_field", 2, type_manager.GetUintType());
+      case 3:
+        return Field("double_field", 3, type_manager.GetDoubleType());
+      default:
+        return absl::NotFoundError("");
+    }
+  }
+
+ private:
+  CEL_DECLARE_STRUCT_TYPE(TestStructType);
+};
+
+CEL_IMPLEMENT_STRUCT_TYPE(TestStructType);
 
 template <typename T>
 Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
@@ -180,6 +232,7 @@ TEST(Type, Null) {
   EXPECT_FALSE(type_factory.GetNullType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetNullType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<MapType>());
 }
@@ -201,6 +254,7 @@ TEST(Type, Error) {
   EXPECT_FALSE(type_factory.GetErrorType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetErrorType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<MapType>());
 }
@@ -222,6 +276,7 @@ TEST(Type, Dyn) {
   EXPECT_FALSE(type_factory.GetDynType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetDynType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<MapType>());
 }
@@ -243,6 +298,7 @@ TEST(Type, Any) {
   EXPECT_FALSE(type_factory.GetAnyType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetAnyType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<MapType>());
 }
@@ -264,6 +320,7 @@ TEST(Type, Bool) {
   EXPECT_FALSE(type_factory.GetBoolType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetBoolType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<MapType>());
 }
@@ -285,6 +342,7 @@ TEST(Type, Int) {
   EXPECT_FALSE(type_factory.GetIntType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetIntType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<MapType>());
 }
@@ -306,6 +364,7 @@ TEST(Type, Uint) {
   EXPECT_FALSE(type_factory.GetUintType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetUintType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<MapType>());
 }
@@ -327,6 +386,7 @@ TEST(Type, Double) {
   EXPECT_FALSE(type_factory.GetDoubleType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetDoubleType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<MapType>());
 }
@@ -348,6 +408,7 @@ TEST(Type, String) {
   EXPECT_FALSE(type_factory.GetStringType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetStringType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<MapType>());
 }
@@ -369,6 +430,7 @@ TEST(Type, Bytes) {
   EXPECT_FALSE(type_factory.GetBytesType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetBytesType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<MapType>());
 }
@@ -390,6 +452,7 @@ TEST(Type, Duration) {
   EXPECT_TRUE(type_factory.GetDurationType().Is<DurationType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetDurationType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<MapType>());
 }
@@ -412,6 +475,7 @@ TEST(Type, Timestamp) {
   EXPECT_FALSE(type_factory.GetTimestampType().Is<DurationType>());
   EXPECT_TRUE(type_factory.GetTimestampType().Is<TimestampType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetTimestampType().Is<StructType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<MapType>());
 }
@@ -436,6 +500,32 @@ TEST(Type, Enum) {
   EXPECT_FALSE(enum_type.Is<TimestampType>());
   EXPECT_TRUE(enum_type.Is<EnumType>());
   EXPECT_TRUE(enum_type.Is<TestEnumType>());
+  EXPECT_FALSE(enum_type.Is<StructType>());
+  EXPECT_FALSE(enum_type.Is<ListType>());
+  EXPECT_FALSE(enum_type.Is<MapType>());
+}
+
+TEST(Type, Struct) {
+  TypeManager type_manager(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_manager.CreateStructType<TestStructType>());
+  EXPECT_EQ(enum_type->kind(), Kind::kStruct);
+  EXPECT_EQ(enum_type->name(), "test_struct.TestStruct");
+  EXPECT_THAT(enum_type->parameters(), SizeIs(0));
+  EXPECT_FALSE(enum_type.Is<NullType>());
+  EXPECT_FALSE(enum_type.Is<DynType>());
+  EXPECT_FALSE(enum_type.Is<AnyType>());
+  EXPECT_FALSE(enum_type.Is<BoolType>());
+  EXPECT_FALSE(enum_type.Is<IntType>());
+  EXPECT_FALSE(enum_type.Is<UintType>());
+  EXPECT_FALSE(enum_type.Is<DoubleType>());
+  EXPECT_FALSE(enum_type.Is<StringType>());
+  EXPECT_FALSE(enum_type.Is<BytesType>());
+  EXPECT_FALSE(enum_type.Is<DurationType>());
+  EXPECT_FALSE(enum_type.Is<TimestampType>());
+  EXPECT_FALSE(enum_type.Is<EnumType>());
+  EXPECT_TRUE(enum_type.Is<StructType>());
+  EXPECT_TRUE(enum_type.Is<TestStructType>());
   EXPECT_FALSE(enum_type.Is<ListType>());
   EXPECT_FALSE(enum_type.Is<MapType>());
 }
@@ -462,6 +552,7 @@ TEST(Type, List) {
   EXPECT_FALSE(list_type.Is<DurationType>());
   EXPECT_FALSE(list_type.Is<TimestampType>());
   EXPECT_FALSE(list_type.Is<EnumType>());
+  EXPECT_FALSE(list_type.Is<StructType>());
   EXPECT_TRUE(list_type.Is<ListType>());
   EXPECT_FALSE(list_type.Is<MapType>());
 }
@@ -494,6 +585,7 @@ TEST(Type, Map) {
   EXPECT_FALSE(map_type.Is<DurationType>());
   EXPECT_FALSE(map_type.Is<TimestampType>());
   EXPECT_FALSE(map_type.Is<EnumType>());
+  EXPECT_FALSE(map_type.Is<StructType>());
   EXPECT_FALSE(map_type.Is<ListType>());
   EXPECT_TRUE(map_type.Is<MapType>());
 }
@@ -526,6 +618,70 @@ TEST(EnumType, FindConstant) {
   EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId("VALUE3")),
               StatusIs(absl::StatusCode::kNotFound));
   EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId(3)),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(StructType, FindField) {
+  TypeManager type_manager(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_manager.CreateStructType<TestStructType>());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto field1,
+      struct_type->FindField(type_manager, StructType::FieldId("bool_field")));
+  EXPECT_EQ(field1.name, "bool_field");
+  EXPECT_EQ(field1.number, 0);
+  EXPECT_EQ(field1.type, type_manager.GetBoolType());
+
+  ASSERT_OK_AND_ASSIGN(
+      field1, struct_type->FindField(type_manager, StructType::FieldId(0)));
+  EXPECT_EQ(field1.name, "bool_field");
+  EXPECT_EQ(field1.number, 0);
+  EXPECT_EQ(field1.type, type_manager.GetBoolType());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto field2,
+      struct_type->FindField(type_manager, StructType::FieldId("int_field")));
+  EXPECT_EQ(field2.name, "int_field");
+  EXPECT_EQ(field2.number, 1);
+  EXPECT_EQ(field2.type, type_manager.GetIntType());
+
+  ASSERT_OK_AND_ASSIGN(
+      field2, struct_type->FindField(type_manager, StructType::FieldId(1)));
+  EXPECT_EQ(field2.name, "int_field");
+  EXPECT_EQ(field2.number, 1);
+  EXPECT_EQ(field2.type, type_manager.GetIntType());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto field3,
+      struct_type->FindField(type_manager, StructType::FieldId("uint_field")));
+  EXPECT_EQ(field3.name, "uint_field");
+  EXPECT_EQ(field3.number, 2);
+  EXPECT_EQ(field3.type, type_manager.GetUintType());
+
+  ASSERT_OK_AND_ASSIGN(
+      field3, struct_type->FindField(type_manager, StructType::FieldId(2)));
+  EXPECT_EQ(field3.name, "uint_field");
+  EXPECT_EQ(field3.number, 2);
+  EXPECT_EQ(field3.type, type_manager.GetUintType());
+
+  ASSERT_OK_AND_ASSIGN(
+      auto field4, struct_type->FindField(type_manager,
+                                          StructType::FieldId("double_field")));
+  EXPECT_EQ(field4.name, "double_field");
+  EXPECT_EQ(field4.number, 3);
+  EXPECT_EQ(field4.type, type_manager.GetDoubleType());
+
+  ASSERT_OK_AND_ASSIGN(
+      field4, struct_type->FindField(type_manager, StructType::FieldId(3)));
+  EXPECT_EQ(field4.name, "double_field");
+  EXPECT_EQ(field4.number, 3);
+  EXPECT_EQ(field4.type, type_manager.GetDoubleType());
+
+  EXPECT_THAT(struct_type->FindField(type_manager,
+                                     StructType::FieldId("missing_field")),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_type->FindField(type_manager, StructType::FieldId(4)),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -598,6 +754,13 @@ TEST(EnumType, DebugString) {
   EXPECT_EQ(enum_type->DebugString(), "test_enum.TestEnum");
 }
 
+TEST(StructType, DebugString) {
+  TypeManager type_manager(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_manager.CreateStructType<TestStructType>());
+  EXPECT_EQ(struct_type->DebugString(), "test_struct.TestStruct");
+}
+
 TEST(ListType, DebugString) {
   TypeFactory type_factory(MemoryManager::Global());
   ASSERT_OK_AND_ASSIGN(auto list_type,
@@ -629,6 +792,8 @@ TEST(Type, SupportsAbslHash) {
       Persistent<const Type>(type_factory.GetDurationType()),
       Persistent<const Type>(type_factory.GetTimestampType()),
       Persistent<const Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
+      Persistent<const Type>(
+          Must(type_factory.CreateStructType<TestStructType>())),
       Persistent<const Type>(
           Must(type_factory.CreateListType(type_factory.GetBoolType()))),
       Persistent<const Type>(Must(type_factory.CreateMapType(

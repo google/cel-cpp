@@ -52,6 +52,7 @@ class ListType;
 class MapType;
 class TypeFactory;
 class TypeProvider;
+class TypeManager;
 
 class NullValue;
 class ErrorValue;
@@ -100,6 +101,7 @@ class Type : public base_internal::Resource {
   friend class DurationType;
   friend class TimestampType;
   friend class EnumType;
+  friend class StructType;
   friend class ListType;
   friend class MapType;
   friend class base_internal::TypeHandleBase;
@@ -563,6 +565,131 @@ class EnumType : public Type {
     return ::cel::internal::TypeId<enum_type>();                            \
   }
 
+// StructType represents an struct type. An struct is a set of fields
+// that can be looked up by name and/or number.
+class StructType : public Type {
+ public:
+  struct Field;
+
+  class FieldId final {
+   public:
+    explicit FieldId(absl::string_view name)
+        : data_(absl::in_place_type<absl::string_view>, name) {}
+
+    explicit FieldId(int64_t number)
+        : data_(absl::in_place_type<int64_t>, number) {}
+
+    FieldId() = delete;
+
+    FieldId(const FieldId&) = default;
+    FieldId& operator=(const FieldId&) = default;
+
+   private:
+    friend class StructType;
+
+    absl::variant<absl::string_view, int64_t> data_;
+  };
+
+  Kind kind() const final { return Kind::kStruct; }
+
+  absl::Span<const Transient<const Type>> parameters() const final {
+    return Type::parameters();
+  }
+
+  // Find the field definition for the given identifier.
+  absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
+
+ protected:
+  StructType() = default;
+
+  // TODO(issues/5): NewInstance
+
+  // Called by FindField.
+  virtual absl::StatusOr<Field> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const = 0;
+
+  // Called by FindField.
+  virtual absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
+                                                  int64_t number) const = 0;
+
+ private:
+  friend internal::TypeInfo base_internal::GetStructTypeTypeId(
+      const StructType& struct_type);
+  struct FindFieldVisitor;
+
+  friend struct FindFieldVisitor;
+  friend class TypeFactory;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kStruct; }
+
+  StructType(const StructType&) = delete;
+  StructType(StructType&&) = delete;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
+  virtual internal::TypeInfo TypeId() const = 0;
+};
+
+// CEL_DECLARE_STRUCT_TYPE declares `struct_type` as an struct type. It must be
+// part of the class definition of `struct_type`.
+//
+// class MyStructType : public cel::StructType {
+//  ...
+// private:
+//   CEL_DECLARE_STRUCT_TYPE(MyStructType);
+// };
+#define CEL_DECLARE_STRUCT_TYPE(struct_type)                                   \
+ private:                                                                      \
+  friend class ::cel::base_internal::TypeHandleBase;                           \
+                                                                               \
+  static bool Is(const ::cel::Type& type);                                     \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
+
+// CEL_IMPLEMENT_ENUM_TYPE implements `struct_type` as an struct type. It
+// must be called after the class definition of `struct_type`.
+//
+// class MyStructType : public cel::StructType {
+//  ...
+// private:
+//   CEL_DECLARE_STRUCT_TYPE(MyStructType);
+// };
+//
+// CEL_IMPLEMENT_STRUCT_TYPE(MyStructType);
+#define CEL_IMPLEMENT_STRUCT_TYPE(struct_type)                                \
+  static_assert(::std::is_base_of_v<::cel::StructType, struct_type>,          \
+                #struct_type " must inherit from cel::StructType");           \
+  static_assert(!::std::is_abstract_v<struct_type>,                           \
+                "this must not be abstract");                                 \
+                                                                              \
+  bool struct_type::Is(const ::cel::Type& type) {                             \
+    return type.kind() == ::cel::Kind::kStruct &&                             \
+           ::cel::base_internal::GetStructTypeTypeId(                         \
+               ::cel::internal::down_cast<const ::cel::StructType&>(type)) == \
+               ::cel::internal::TypeId<struct_type>();                        \
+  }                                                                           \
+                                                                              \
+  ::std::pair<::std::size_t, ::std::size_t> struct_type::SizeAndAlignment()   \
+      const {                                                                 \
+    static_assert(                                                            \
+        ::std::is_same_v<struct_type,                                         \
+                         ::std::remove_const_t<                               \
+                             ::std::remove_reference_t<decltype(*this)>>>,    \
+        "this must be the same as " #struct_type);                            \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(struct_type),     \
+                                                     alignof(struct_type));   \
+  }                                                                           \
+                                                                              \
+  ::cel::internal::TypeInfo struct_type::TypeId() const {                     \
+    return ::cel::internal::TypeId<struct_type>();                            \
+  }
+
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
 class ListType : public Type {
@@ -660,6 +787,19 @@ struct EnumType::Constant final {
   absl::string_view name;
   // The enumeration value number.
   int64_t number;
+};
+
+struct StructType::Field final {
+  explicit Field(absl::string_view name, int64_t number,
+                 Persistent<const Type> type)
+      : name(name), number(number), type(std::move(type)) {}
+
+  // The field name.
+  absl::string_view name;
+  // The field number.
+  int64_t number;
+  // The field type;
+  Persistent<const Type> type;
 };
 
 }  // namespace cel
