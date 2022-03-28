@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
@@ -160,6 +161,10 @@ absl::StatusOr<StructType::Field> StructType::FindField(
   return absl::visit(FindFieldVisitor{*this, type_manager}, id.data_);
 }
 
+std::string ListType::DebugString() const {
+  return absl::StrCat(name(), "(", element()->DebugString(), ")");
+}
+
 bool ListType::Equals(const Type& other) const {
   if (kind() != other.kind()) {
     return false;
@@ -171,6 +176,11 @@ void ListType::HashValue(absl::HashState state) const {
   // We specifically hash the element first and then call the parent method to
   // avoid hash suffix/prefix collisions.
   Type::HashValue(absl::HashState::combine(std::move(state), element()));
+}
+
+std::string MapType::DebugString() const {
+  return absl::StrCat(name(), "(", key()->DebugString(), ", ",
+                      value()->DebugString(), ")");
 }
 
 bool MapType::Equals(const Type& other) const {

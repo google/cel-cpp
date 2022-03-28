@@ -702,6 +702,8 @@ class ListType : public Type {
 
   absl::string_view name() const final { return "list"; }
 
+  std::string DebugString() const final;
+
   // Returns the type of the elements in the list.
   virtual Transient<const Type> element() const = 0;
 
@@ -739,6 +741,8 @@ class MapType : public Type {
   Kind kind() const final { return Kind::kMap; }
 
   absl::string_view name() const final { return "map"; }
+
+  std::string DebugString() const final;
 
   // Returns the type of the keys in the map.
   virtual Transient<const Type> key() const = 0;

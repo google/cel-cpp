@@ -765,7 +765,7 @@ TEST(ListType, DebugString) {
   TypeFactory type_factory(MemoryManager::Global());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetBoolType()));
-  EXPECT_EQ(list_type->DebugString(), "list");
+  EXPECT_EQ(list_type->DebugString(), "list(bool)");
 }
 
 TEST(MapType, DebugString) {
@@ -773,7 +773,7 @@ TEST(MapType, DebugString) {
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetBoolType()));
-  EXPECT_EQ(map_type->DebugString(), "map");
+  EXPECT_EQ(map_type->DebugString(), "map(string, bool)");
 }
 
 TEST(Type, SupportsAbslHash) {
