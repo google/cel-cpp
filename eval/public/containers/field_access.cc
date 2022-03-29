@@ -30,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/casts.h"
 #include "internal/overflow.h"
 
 namespace google::api::expr::runtime {
@@ -341,35 +342,6 @@ class MapValueAccessor : public FieldAccessor<MapValueAccessor> {
   const MapValueConstRef* value_ref_;
 };
 
-// Helper classes that should retrieve values from CelValue,
-// when CelValue content inherits from Message.
-template <class T, bool ZZ>
-class MessageRetriever {
- public:
-  absl::optional<const Message*> operator()(const T&) const { return {}; }
-};
-
-// Partial specialization, valid when T is assignable to message
-//
-template <class T>
-class MessageRetriever<T, true> {
- public:
-  absl::optional<const Message*> operator()(const T& arg) const {
-    const Message* msg = arg;
-    return msg;
-  }
-};
-
-class MessageRetrieverOp {
- public:
-  template <typename T>
-  absl::optional<const Message*> operator()(const T& arg) {
-    // Metaprogramming hacks...
-    return MessageRetriever<T, std::is_assignable<const Message*&, T>::value>()(
-        arg);
-  }
-};
-
 }  // namespace
 
 absl::Status CreateValueFromSingleField(const google::protobuf::Message* msg,
@@ -518,18 +490,14 @@ class FieldSetter {
       return true;
     }
 
-    // We attempt to retrieve value if it derives from google::protobuf::Message.
-    // That includes both generic Protobuf message types and specific
-    // message types stored in CelValue as separate entities.
-    auto value = cel_value.template Visit<absl::optional<const Message*>>(
-        MessageRetrieverOp());
-
-    if (!value.has_value()) {
-      return false;
+    if (CelValue::MessageWrapper wrapper;
+        cel_value.GetValue(&wrapper) && wrapper.HasFullProto()) {
+      static_cast<const Derived*>(this)->SetMessage(
+          cel::internal::down_cast<const Message*>(wrapper.message_ptr()));
+      return true;
     }
 
-    static_cast<const Derived*>(this)->SetMessage(value.value());
-    return true;
+    return false;
   }
 
   // This method provides message field content, wrapped in CelValue.

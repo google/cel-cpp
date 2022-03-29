@@ -34,6 +34,7 @@
 #include "absl/types/variant.h"
 #include "base/memory_manager.h"
 #include "eval/public/cel_value_internal.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
 
@@ -114,13 +115,21 @@ class CelValue {
   // absl::variant.
   using NullType = absl::monostate;
 
+  // MessageWrapper wraps a tagged MessageLite with the accessors used to
+  // get field values.
+  //
+  // message_ptr(): get the MessageLite pointer for the wrapper.
+  //
+  // HasFullProto(): returns whether it's safe to downcast to google::protobuf::Message.
+  using MessageWrapper = internal::MessageWrapper;
+
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type
   // enum
   using ValueHolder = internal::ValueHolder<
       NullType, bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
-      const google::protobuf::Message*, absl::Duration, absl::Time, const CelList*,
-      const CelMap*, const UnknownSet*, CelTypeHolder, const CelError*>;
+      MessageWrapper, absl::Duration, absl::Time, const CelList*, const CelMap*,
+      const UnknownSet*, CelTypeHolder, const CelError*>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -139,7 +148,7 @@ class CelValue {
     kDouble = IndexOf<double>::value,
     kString = IndexOf<StringHolder>::value,
     kBytes = IndexOf<BytesHolder>::value,
-    kMessage = IndexOf<const google::protobuf::Message*>::value,
+    kMessage = IndexOf<MessageWrapper>::value,
     kDuration = IndexOf<absl::Duration>::value,
     kTimestamp = IndexOf<absl::Time>::value,
     kList = IndexOf<const CelList*>::value,
@@ -282,7 +291,10 @@ class CelValue {
   // Returns stored const Message* value.
   // Fails if stored value type is not const Message*.
   const google::protobuf::Message* MessageOrDie() const {
-    return GetValueOrDie<const google::protobuf::Message*>(Type::kMessage);
+    MessageWrapper wrapped = GetValueOrDie<MessageWrapper>(Type::kMessage);
+    ABSL_ASSERT(wrapped.HasFullProto());
+    return cel::internal::down_cast<const google::protobuf::Message*>(
+        wrapped.message_ptr());
   }
 
   // Returns stored duration value.
@@ -341,7 +353,7 @@ class CelValue {
 
   bool IsBytes() const { return value_.is<BytesHolder>(); }
 
-  bool IsMessage() const { return value_.is<const google::protobuf::Message*>(); }
+  bool IsMessage() const { return value_.is<MessageWrapper>(); }
 
   bool IsDuration() const { return value_.is<absl::Duration>(); }
 
@@ -359,20 +371,55 @@ class CelValue {
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
+  // Note: this depends on the internals of CelValue, so use with caution.
+  template <class ReturnType, class Op>
+  ReturnType InternalVisit(Op&& op) const {
+    return value_.template Visit<ReturnType>(std::forward<Op>(op));
+  }
+
+  // Invokes op() with the active value, and returns the result.
+  // All overloads of op() must have the same return type.
+  // TODO(issues/5): Move to CelProtoWrapper to retain the assumed
+  // google::protobuf::Message variant version behavior for client code.
   template <class ReturnType, class Op>
   ReturnType Visit(Op&& op) const {
-    return value_.template Visit<ReturnType>(op);
+    return value_.template Visit<ReturnType>(
+        internal::MessageVisitAdapter<Op, ReturnType>(std::forward<Op>(op)));
   }
 
   // Template-style getter.
   // Returns true, if assignment successful
   template <typename Arg>
   bool GetValue(Arg* value) const {
-    return this->template Visit<bool>(AssignerOp<Arg>(value));
+    return this->template InternalVisit<bool>(AssignerOp<Arg>(value));
+  }
+
+  // Specialization for MessageWrapper to support legacy behavior while
+  // migrating off hard dependency on google::protobuf::Message.
+  // TODO(issues/5): Move to CelProtoWrapper.
+  template <>
+  bool GetValue(const google::protobuf::Message** value) const {
+    auto* held_value = value_.get<MessageWrapper>();
+    if (held_value == nullptr || !held_value->HasFullProto()) {
+      return false;
+    }
+
+    *value = cel::internal::down_cast<const google::protobuf::Message*>(
+        held_value->message_ptr());
+    return true;
   }
 
   // Provides type names for internal logging.
   static std::string TypeName(Type value_type);
+
+  // Factory for message wrapper. This should only be used by internal
+  // libraries.
+  // TODO(issues/5): exposed for testing while wiring adapter APIs. Should
+  // make private visibility after refactors are done.
+  static CelValue CreateMessageWrapper(MessageWrapper value) {
+    CheckNullPointer(value.message_ptr(), Type::kMessage);
+    return CelValue(value);
+  }
 
  private:
   ValueHolder value_;
@@ -401,7 +448,11 @@ class CelValue {
     }
 
     bool operator()(NullType) const { return true; }
-    bool operator()(const google::protobuf::Message* arg) const { return arg == nullptr; }
+    // Note: this is not typically possible, but is supported for allowing
+    // function resolution for null ptrs as Messages.
+    bool operator()(const MessageWrapper& arg) const {
+      return arg.message_ptr() == nullptr;
+    }
   };
 
   // Constructs CelValue wrapping value supplied as argument.
@@ -413,13 +464,14 @@ class CelValue {
   // internal libraries.
   static CelValue CreateMessage(const google::protobuf::Message* value) {
     CheckNullPointer(value, Type::kMessage);
-    return CelValue(value);
+    return CelValue(MessageWrapper(value));
   }
 
   // This is provided for backwards compatibility with resolving null to message
   // overloads.
   static CelValue CreateNullMessage() {
-    return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
+    return CelValue(
+        MessageWrapper(static_cast<const google::protobuf::Message*>(nullptr)));
   }
 
   // Crashes with a null pointer error.
@@ -455,6 +507,7 @@ class CelValue {
   friend class CelProtoWrapper;
   friend class ProtoMessageTypeAdapter;
   friend class EvaluatorStack;
+  friend class TestOnly_FactoryAccessor;
 };
 
 static_assert(absl::is_trivially_destructible<CelValue>::value,

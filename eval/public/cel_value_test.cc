@@ -10,6 +10,7 @@
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
+#include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -373,6 +374,35 @@ TEST(CelValueTest, DebugString) {
             "CelError: INTERNAL: Blah...");
 
   // List and map DebugString() test coverage is in cel_proto_wrapper_test.cc.
+}
+
+TEST(CelValueTest, Message) {
+  TestMessage message;
+  auto value =
+      CelValue::CreateMessageWrapper(CelValue::MessageWrapper(&message));
+  EXPECT_TRUE(value.IsMessage());
+  CelValue::MessageWrapper held;
+  ASSERT_TRUE(value.GetValue(&held));
+  EXPECT_TRUE(held.HasFullProto());
+  EXPECT_EQ(held.message_ptr(),
+            static_cast<const google::protobuf::MessageLite*>(&message));
+}
+
+TEST(CelValueTest, MessageLite) {
+  TestMessage message;
+  // Upcast to message lite.
+  const google::protobuf::MessageLite* ptr = &message;
+  auto value = CelValue::CreateMessageWrapper(CelValue::MessageWrapper(ptr));
+  EXPECT_TRUE(value.IsMessage());
+  CelValue::MessageWrapper held;
+  ASSERT_TRUE(value.GetValue(&held));
+  EXPECT_FALSE(held.HasFullProto());
+  EXPECT_EQ(held.message_ptr(), &message);
+}
+
+TEST(CelValueTest, Size) {
+  // CelValue performance degrades when it becomes larger.
+  static_assert(sizeof(CelValue) <= 3 * sizeof(uintptr_t));
 }
 
 }  // namespace google::api::expr::runtime

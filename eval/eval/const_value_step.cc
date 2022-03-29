@@ -7,6 +7,7 @@
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/proto_util.h"
 
 namespace google::api::expr::runtime {
 
@@ -58,10 +59,12 @@ absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
       value = CelValue::CreateBytes(&const_expr->bytes_value());
       break;
     case Constant::kDurationValue:
-      value = CelProtoWrapper::CreateDuration(&const_expr->duration_value());
+      value = CelValue::CreateDuration(
+          expr::internal::DecodeDuration(const_expr->duration_value()));
       break;
     case Constant::kTimestampValue:
-      value = CelProtoWrapper::CreateTimestamp(&const_expr->timestamp_value());
+      value = CelValue::CreateTimestamp(
+          expr::internal::DecodeTime(const_expr->timestamp_value()));
       break;
     default:
       // constant with no kind specified

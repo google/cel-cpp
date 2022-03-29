@@ -8,10 +8,14 @@ namespace runtime {
 namespace internal {
 
 template <>
+absl::optional<CelValue::Type> TypeCodeMatch<const google::protobuf::Message*>() {
+  return CelValue::Type::kMessage;
+}
+
+template <>
 absl::optional<CelValue::Type> TypeCodeMatch<CelValue>() {
   return CelValue::Type::kAny;
 }
-
 
 }  // namespace internal
 

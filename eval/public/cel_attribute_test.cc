@@ -7,12 +7,10 @@
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 namespace {
 
 using google::api::expr::v1alpha1::Expr;
@@ -22,6 +20,7 @@ using ::google::protobuf::Timestamp;
 using testing::Eq;
 using testing::IsEmpty;
 using testing::SizeIs;
+using cel::internal::StatusIs;
 
 class DummyMap : public CelMap {
  public:
@@ -351,14 +350,29 @@ TEST(CelAttribute, AsStringInvalidRoot) {
 TEST(CelAttribute, InvalidQualifiers) {
   Expr expr;
   expr.mutable_ident_expr()->set_name("var");
+  google::protobuf::Arena arena;
 
-  CelAttribute attr(expr, {
-                              CelAttributeQualifier::Create(
-                                  CelValue::CreateDuration(absl::Minutes(2))),
-                          });
+  CelAttribute attr1(expr, {
+                               CelAttributeQualifier::Create(
+                                   CelValue::CreateDuration(absl::Minutes(2))),
+                           });
+  CelAttribute attr2(expr,
+                     {
+                         CelAttributeQualifier::Create(
+                             CelProtoWrapper::CreateMessage(&expr, &arena)),
+                     });
 
-  EXPECT_EQ(attr.AsString().status().code(),
-            absl::StatusCode::kInvalidArgument);
+  // Implementation detail: Messages as attribute qualifiers are unsupported,
+  // so the implementation treats them inequal to any other. This is included
+  // for coverage.
+  EXPECT_FALSE(attr1 == attr2);
+  EXPECT_FALSE(attr2 == attr1);
+  EXPECT_FALSE(attr2 == attr2);
+
+  // If the attribute includes an unsupported qualifier, return invalid argument
+  // error.
+  EXPECT_THAT(attr1.AsString(), StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(attr2.AsString(), StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
 TEST(CelAttribute, AsStringQualiferTypes) {
@@ -379,7 +393,4 @@ TEST(CelAttribute, AsStringQualiferTypes) {
 }
 
 }  // namespace
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

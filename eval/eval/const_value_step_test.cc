@@ -3,11 +3,15 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/duration.pb.h"
+#include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
+#include "absl/time/time.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
+#include "eval/public/testing/matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
@@ -17,8 +21,10 @@ namespace {
 
 using testing::Eq;
 
-using google::api::expr::v1alpha1::Constant;
-using google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::Constant;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::protobuf::Duration;
+using ::google::protobuf::Timestamp;
 
 using google::protobuf::Arena;
 
@@ -160,6 +166,44 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
 
   ASSERT_TRUE(value.IsBytes());
   EXPECT_THAT(value.BytesOrDie().value(), Eq("test"));
+}
+
+TEST(ConstValueStepTest, TestEvaluationConstDuration) {
+  Expr expr;
+  auto const_expr = expr.mutable_const_expr();
+  Duration* duration = const_expr->mutable_duration_value();
+  duration->set_seconds(5);
+  duration->set_nanos(2000);
+
+  google::protobuf::Arena arena;
+
+  auto status = RunConstantExpression(&expr, const_expr, &arena);
+
+  ASSERT_OK(status);
+
+  auto value = status.value();
+
+  EXPECT_THAT(value,
+              test::IsCelDuration(absl::Seconds(5) + absl::Nanoseconds(2000)));
+}
+
+TEST(ConstValueStepTest, TestEvaluationConstTimestamp) {
+  Expr expr;
+  auto const_expr = expr.mutable_const_expr();
+  Timestamp* timestamp_proto = const_expr->mutable_timestamp_value();
+  timestamp_proto->set_seconds(3600);
+  timestamp_proto->set_nanos(1000);
+
+  google::protobuf::Arena arena;
+
+  auto status = RunConstantExpression(&expr, const_expr, &arena);
+
+  ASSERT_OK(status);
+
+  auto value = status.value();
+
+  EXPECT_THAT(value, test::IsCelTimestamp(absl::FromUnixSeconds(3600) +
+                                          absl::Nanoseconds(1000)));
 }
 
 }  // namespace

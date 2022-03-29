@@ -29,6 +29,7 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
+        "//internal:casts",
         "//internal:overflow",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",

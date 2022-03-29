@@ -19,60 +19,19 @@
 #include "eval/public/cel_value_internal.h"
 #include "internal/status_macros.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelAttributeQualifier represents a segment in
 // attribute resolutuion path. A segment can be qualified by values of
 // following types: string/int64_t/uint64/bool.
 class CelAttributeQualifier {
- private:
-  // Helper class, used to implement CelAttributeQualifier::operator==.
-  class EqualVisitor {
-   public:
-    template <class T>
-    class NestedEqualVisitor {
-     public:
-      explicit NestedEqualVisitor(const T& arg) : arg_(arg) {}
-
-      template <class U>
-      bool operator()(const U&) const {
-        return false;
-      }
-
-      bool operator()(const T& other) const { return other == arg_; }
-
-     private:
-      const T& arg_;
-    };
-
-    explicit EqualVisitor(const CelValue& other) : other_(other) {}
-
-    template <class Type>
-    bool operator()(const Type& arg) {
-      return other_.template Visit<bool>(NestedEqualVisitor<Type>(arg));
-    }
-
-   private:
-    const CelValue& other_;
-  };
-
-  CelValue value_;
-
-  explicit CelAttributeQualifier(CelValue value) : value_(value) {}
-
  public:
   // Factory method.
   static CelAttributeQualifier Create(CelValue value) {
     return CelAttributeQualifier(value);
   }
 
-  template <typename T, typename Op>
-  T Visit(Op&& operation) const {
-    return value_.Visit<T>(operation);
-  }
+  CelValue::Type type() const { return value_.type(); }
 
   // Family of Get... methods. Return values if requested type matches the
   // stored one.
@@ -101,14 +60,23 @@ class CelAttributeQualifier {
     return IsMatch(other.value_);
   }
 
-  bool IsMatch(const CelValue& cel_value) const {
-    return value_.template Visit<bool>(EqualVisitor(cel_value));
-  }
+  bool IsMatch(const CelValue& cel_value) const;
 
   bool IsMatch(absl::string_view other_key) const {
     absl::optional<absl::string_view> key = GetStringKey();
     return (key.has_value() && key.value() == other_key);
   }
+
+ private:
+  friend class CelAttribute;
+  explicit CelAttributeQualifier(CelValue value) : value_(value) {}
+
+  template <typename T, typename Op>
+  T Visit(Op&& operation) const {
+    return value_.InternalVisit<T>(operation);
+  }
+
+  CelValue value_;
 };
 
 // CelAttributeQualifierPattern matches a segment in
@@ -119,7 +87,8 @@ class CelAttributeQualifierPattern {
   // Qualifier value. If not set, treated as wildcard.
   absl::optional<CelAttributeQualifier> value_;
 
-  CelAttributeQualifierPattern(absl::optional<CelAttributeQualifier> value)
+  explicit CelAttributeQualifierPattern(
+      absl::optional<CelAttributeQualifier> value)
       : value_(value) {}
 
  public:
@@ -246,9 +215,6 @@ CelAttributePattern CreateCelAttributePattern(
                                         CelAttributeQualifierPattern>>
         path_spec = {});
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_ATTRIBUTE_PATTERN_H_

@@ -17,7 +17,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
 
+#include <cstdint>
+#include <utility>
+
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
+#include "absl/base/macros.h"
+#include "absl/numeric/bits.h"
 #include "absl/types/variant.h"
+#include "internal/casts.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -73,6 +81,59 @@ class ValueHolder {
 
  private:
   absl::variant<Args...> value_;
+};
+
+class MessageWrapper {
+ public:
+  static_assert(alignof(google::protobuf::MessageLite) >= 2,
+                "Assume that valid MessageLite ptrs have a free low-order bit");
+  MessageWrapper() : message_ptr_(0) {}
+  explicit MessageWrapper(const google::protobuf::MessageLite* message)
+      : message_ptr_(reinterpret_cast<uintptr_t>(message)) {
+    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+  }
+
+  explicit MessageWrapper(const google::protobuf::Message* message)
+      : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask) {
+    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+  }
+
+  bool HasFullProto() const { return (message_ptr_ & kTagMask) == kTagMask; }
+
+  const google::protobuf::MessageLite* message_ptr() const {
+    return reinterpret_cast<const google::protobuf::MessageLite*>(message_ptr_ &
+                                                        kPtrMask);
+  }
+
+ private:
+  static constexpr uintptr_t kTagMask = 1 << 0;
+  static constexpr uintptr_t kPtrMask = ~kTagMask;
+  uintptr_t message_ptr_;
+  // TODO(issues/5): add LegacyTypeAccessApis to expose generic accessors for
+  // MessageLite.
+};
+
+static_assert(sizeof(MessageWrapper) <= 2 * sizeof(uintptr_t),
+              "MessageWrapper must not increase CelValue size.");
+
+// Adapter for visitor clients that depend on google::protobuf::Message as a variant type.
+template <typename Op, typename T>
+struct MessageVisitAdapter {
+  explicit MessageVisitAdapter(Op&& op) : op(std::forward<Op>(op)) {}
+
+  template <typename ArgT>
+  T operator()(const ArgT& arg) {
+    return op(arg);
+  }
+
+  template <>
+  T operator()(const MessageWrapper& wrapper) {
+    ABSL_ASSERT(wrapper.HasFullProto());
+    return op(cel::internal::down_cast<const google::protobuf::Message*>(
+        wrapper.message_ptr()));
+  }
+
+  Op op;
 };
 
 }  // namespace google::api::expr::runtime::internal

@@ -2,10 +2,12 @@
 
 #include <utility>
 
+#include "google/protobuf/message.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/set_util.h"
+#include "internal/casts.h"
 
 namespace google::api::expr::runtime {
 
@@ -42,7 +44,7 @@ template <typename UnderlyingType>
 class CelValueMatcherImpl : public testing::MatcherInterface<const CelValue&> {
  public:
   explicit CelValueMatcherImpl(testing::Matcher<UnderlyingType> m)
-      : underlying_type_matcher_(m) {}
+      : underlying_type_matcher_(std::move(m)) {}
   bool MatchAndExplain(const CelValue& v,
                        testing::MatchResultListener* listener) const override {
     UnderlyingType arg;
@@ -58,6 +60,32 @@ class CelValueMatcherImpl : public testing::MatcherInterface<const CelValue&> {
 
  private:
   const testing::Matcher<UnderlyingType> underlying_type_matcher_;
+};
+
+// Template specialization for google::protobuf::Message.
+template <>
+class CelValueMatcherImpl<const google::protobuf::Message*>
+    : public testing::MatcherInterface<const CelValue&> {
+ public:
+  explicit CelValueMatcherImpl(testing::Matcher<const google::protobuf::Message*> m)
+      : underlying_type_matcher_(std::move(m)) {}
+  bool MatchAndExplain(const CelValue& v,
+                       testing::MatchResultListener* listener) const override {
+    CelValue::MessageWrapper arg;
+    return v.GetValue(&arg) && arg.HasFullProto() &&
+           underlying_type_matcher_.Matches(
+               cel::internal::down_cast<const google::protobuf::Message*>(
+                   arg.message_ptr()));
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    *os << absl::StrCat("type is ",
+                        CelValue::TypeName(CelValue::Type::kMessage), " and ");
+    underlying_type_matcher_.DescribeTo(os);
+  }
+
+ private:
+  const testing::Matcher<const google::protobuf::Message*> underlying_type_matcher_;
 };
 
 }  // namespace

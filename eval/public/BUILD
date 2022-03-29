@@ -24,7 +24,11 @@ cc_library(
         "cel_value_internal.h",
     ],
     deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -40,6 +44,7 @@ cc_library(
         ":cel_value_internal",
         "//base:memory_manager",
         "//extensions/protobuf:memory_manager",
+        "//internal:casts",
         "//internal:status_macros",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
@@ -165,11 +170,13 @@ cc_library(
     deps = [
         ":cel_function",
         ":cel_function_registry",
+        ":cel_value",
         "//eval/public/structs:cel_proto_wrapper",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -457,6 +464,7 @@ cc_test(
         ":unknown_set",
         "//base:memory_manager",
         "//eval/public/testing:matchers",
+        "//eval/testutil:test_message_cc_proto",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "//internal:testing",
@@ -476,6 +484,7 @@ cc_test(
         ":cel_attribute",
         ":cel_value",
         "//eval/public/structs:cel_proto_wrapper",
+        "//internal:status_macros",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
