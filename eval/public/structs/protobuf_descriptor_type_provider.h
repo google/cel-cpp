@@ -21,6 +21,7 @@
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -54,7 +55,8 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
   ProtoWrapperTypeOptions unboxing_option_;
   mutable absl::flat_hash_map<std::string,
                               std::unique_ptr<ProtoMessageTypeAdapter>>
-      type_cache_;
+      type_cache_ ABSL_GUARDED_BY(mu_);
+  mutable absl::Mutex mu_;
 };
 
 }  // namespace google::api::expr::runtime

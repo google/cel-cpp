@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
+#include "absl/synchronization/mutex.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 
@@ -26,13 +27,16 @@ namespace google::api::expr::runtime {
 absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
     absl::string_view name) const {
   const ProtoMessageTypeAdapter* result = nullptr;
-  auto it = type_cache_.find(name);
-  if (it != type_cache_.end()) {
-    result = it->second.get();
-  } else {
-    auto type_provider = GetType(name);
-    result = type_provider.get();
-    type_cache_[name] = std::move(type_provider);
+  {
+    absl::MutexLock lock(&mu_);
+    auto it = type_cache_.find(name);
+    if (it != type_cache_.end()) {
+      result = it->second.get();
+    } else {
+      auto type_provider = GetType(name);
+      result = type_provider.get();
+      type_cache_[name] = std::move(type_provider);
+    }
   }
   if (result == nullptr) {
     return absl::nullopt;
