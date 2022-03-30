@@ -96,6 +96,11 @@ class TestStructType final : public StructType {
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:
+  absl::StatusOr<Persistent<StructValue>> NewInstance(
+      ValueFactory& value_factory) const override {
+    return absl::UnimplementedError("");
+  }
+
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const override {
     if (name == "bool_field") {

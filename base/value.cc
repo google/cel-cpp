@@ -63,6 +63,7 @@ CEL_INTERNAL_VALUE_IMPL(StringValue);
 CEL_INTERNAL_VALUE_IMPL(DurationValue);
 CEL_INTERNAL_VALUE_IMPL(TimestampValue);
 CEL_INTERNAL_VALUE_IMPL(EnumValue);
+CEL_INTERNAL_VALUE_IMPL(StructValue);
 #undef CEL_INTERNAL_VALUE_IMPL
 
 namespace {
@@ -803,6 +804,73 @@ bool EnumValue::Equals(const Value& other) const {
 
 void EnumValue::HashValue(absl::HashState state) const {
   absl::HashState::combine(std::move(state), type(), number());
+}
+
+struct StructValue::SetFieldVisitor final {
+  StructValue& struct_value;
+  const Persistent<const Value>& value;
+
+  absl::Status operator()(absl::string_view name) const {
+    return struct_value.SetFieldByName(name, value);
+  }
+
+  absl::Status operator()(int64_t number) const {
+    return struct_value.SetFieldByNumber(number, value);
+  }
+};
+
+struct StructValue::GetFieldVisitor final {
+  const StructValue& struct_value;
+  ValueFactory& value_factory;
+
+  absl::StatusOr<Persistent<const Value>> operator()(
+      absl::string_view name) const {
+    return struct_value.GetFieldByName(value_factory, name);
+  }
+
+  absl::StatusOr<Persistent<const Value>> operator()(int64_t number) const {
+    return struct_value.GetFieldByNumber(value_factory, number);
+  }
+};
+
+struct StructValue::HasFieldVisitor final {
+  const StructValue& struct_value;
+
+  absl::StatusOr<bool> operator()(absl::string_view name) const {
+    return struct_value.HasFieldByName(name);
+  }
+
+  absl::StatusOr<bool> operator()(int64_t number) const {
+    return struct_value.HasFieldByNumber(number);
+  }
+};
+
+absl::StatusOr<Persistent<StructValue>> StructValue::New(
+    const Persistent<const StructType>& struct_type,
+    ValueFactory& value_factory) {
+  CEL_ASSIGN_OR_RETURN(auto struct_value,
+                       struct_type->NewInstance(value_factory));
+  if (!struct_value->type_) {
+    // In case somebody is caching, we avoid setting the type_ if it has already
+    // been set, to avoid a race condition where one CPU sees a half written
+    // pointer.
+    const_cast<StructValue&>(*struct_value).type_ = struct_type;
+  }
+  return struct_value;
+}
+
+absl::Status StructValue::SetField(FieldId field,
+                                   const Persistent<const Value>& value) {
+  return absl::visit(SetFieldVisitor{*this, value}, field.data_);
+}
+
+absl::StatusOr<Persistent<const Value>> StructValue::GetField(
+    ValueFactory& value_factory, FieldId field) const {
+  return absl::visit(GetFieldVisitor{*this, value_factory}, field.data_);
+}
+
+absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
+  return absl::visit(HasFieldVisitor{*this}, field.data_);
 }
 
 namespace base_internal {

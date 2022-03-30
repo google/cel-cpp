@@ -51,6 +51,7 @@ class StringValue;
 class DurationValue;
 class TimestampValue;
 class EnumValue;
+class StructValue;
 class ValueFactory;
 
 namespace internal {
@@ -84,6 +85,7 @@ class Value : public base_internal::Resource {
   friend class DurationValue;
   friend class TimestampValue;
   friend class EnumValue;
+  friend class StructValue;
   friend class base_internal::ValueHandleBase;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
@@ -676,6 +678,137 @@ class EnumValue : public Value {
                                                                               \
   ::cel::internal::TypeInfo enum_value::TypeId() const {                      \
     return ::cel::internal::TypeId<enum_value>();                             \
+  }
+
+// StructValue represents an instance of cel::StructType.
+class StructValue : public Value {
+ public:
+  using FieldId = StructType::FieldId;
+
+  static absl::StatusOr<Persistent<StructValue>> New(
+      const Persistent<const StructType>& struct_type,
+      ValueFactory& value_factory);
+
+  Transient<const Type> type() const final {
+    ABSL_ASSERT(type_);
+    return type_;
+  }
+
+  Kind kind() const final { return Kind::kStruct; }
+
+  absl::Status SetField(FieldId field, const Persistent<const Value>& value);
+
+  absl::StatusOr<Persistent<const Value>> GetField(ValueFactory& value_factory,
+                                                   FieldId field) const;
+
+  absl::StatusOr<bool> HasField(FieldId field) const;
+
+ protected:
+  StructValue() = default;
+
+  virtual absl::Status SetFieldByName(absl::string_view name,
+                                      const Persistent<const Value>& value) = 0;
+
+  virtual absl::Status SetFieldByNumber(
+      int64_t number, const Persistent<const Value>& value) = 0;
+
+  virtual absl::StatusOr<Persistent<const Value>> GetFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const = 0;
+
+  virtual absl::StatusOr<Persistent<const Value>> GetFieldByNumber(
+      ValueFactory& value_factory, int64_t number) const = 0;
+
+  virtual absl::StatusOr<bool> HasFieldByName(absl::string_view name) const = 0;
+
+  virtual absl::StatusOr<bool> HasFieldByNumber(int64_t number) const = 0;
+
+ private:
+  struct SetFieldVisitor;
+  struct GetFieldVisitor;
+  struct HasFieldVisitor;
+
+  friend struct SetFieldVisitor;
+  friend struct GetFieldVisitor;
+  friend struct HasFieldVisitor;
+  friend internal::TypeInfo base_internal::GetStructValueTypeId(
+      const StructValue& struct_value);
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kStruct; }
+
+  StructValue(const StructValue&) = delete;
+  StructValue(StructValue&&) = delete;
+
+  bool Equals(const Value& other) const override = 0;
+  void HashValue(absl::HashState state) const override = 0;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  virtual internal::TypeInfo TypeId() const = 0;
+
+  // Set lazily, by StructValue::New.
+  Persistent<const StructType> type_;
+};
+
+// CEL_DECLARE_STRUCT_VALUE declares `struct_value` as an struct value. It must
+// be part of the class definition of `struct_value`.
+//
+// class MyStructValue : public cel::StructValue {
+//  ...
+// private:
+//   CEL_DECLARE_STRUCT_VALUE(MyStructValue);
+// };
+#define CEL_DECLARE_STRUCT_VALUE(struct_value)                                 \
+ private:                                                                      \
+  friend class ::cel::base_internal::ValueHandleBase;                          \
+                                                                               \
+  static bool Is(const ::cel::Value& value);                                   \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
+
+// CEL_IMPLEMENT_STRUCT_VALUE implements `struct_value` as an struct
+// value. It must be called after the class definition of `struct_value`.
+//
+// class MyStructValue : public cel::StructValue {
+//  ...
+// private:
+//   CEL_DECLARE_STRUCT_VALUE(MyStructValue);
+// };
+//
+// CEL_IMPLEMENT_STRUCT_VALUE(MyStructValue);
+#define CEL_IMPLEMENT_STRUCT_VALUE(struct_value)                             \
+  static_assert(::std::is_base_of_v<::cel::StructValue, struct_value>,       \
+                #struct_value " must inherit from cel::StructValue");        \
+  static_assert(!::std::is_abstract_v<struct_value>,                         \
+                "this must not be abstract");                                \
+                                                                             \
+  bool struct_value::Is(const ::cel::Value& value) {                         \
+    return value.kind() == ::cel::Kind::kStruct &&                           \
+           ::cel::base_internal::GetStructValueTypeId(                       \
+               ::cel::internal::down_cast<const ::cel::StructValue&>(        \
+                   value)) == ::cel::internal::TypeId<struct_value>();       \
+  }                                                                          \
+                                                                             \
+  ::std::pair<::std::size_t, ::std::size_t> struct_value::SizeAndAlignment() \
+      const {                                                                \
+    static_assert(                                                           \
+        ::std::is_same_v<struct_value,                                       \
+                         ::std::remove_const_t<                              \
+                             ::std::remove_reference_t<decltype(*this)>>>,   \
+        "this must be the same as " #struct_value);                          \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(struct_value),   \
+                                                     alignof(struct_value)); \
+  }                                                                          \
+                                                                             \
+  ::cel::internal::TypeInfo struct_value::TypeId() const {                   \
+    return ::cel::internal::TypeId<struct_value>();                          \
   }
 
 }  // namespace cel

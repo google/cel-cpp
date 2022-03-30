@@ -22,13 +22,16 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "base/memory_manager.h"
 #include "base/type.h"
 #include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/value_factory.h"
 #include "internal/strings.h"
 #include "internal/testing.h"
@@ -37,6 +40,8 @@
 namespace cel {
 namespace {
 
+using testing::Eq;
+using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
 enum class TestEnum {
@@ -119,6 +124,224 @@ class TestEnumType final : public EnumType {
 };
 
 CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
+
+struct TestStruct final {
+  bool bool_field = false;
+  int64_t int_field = 0;
+  uint64_t uint_field = 0;
+  double double_field = 0.0;
+};
+
+bool operator==(const TestStruct& lhs, const TestStruct& rhs) {
+  return lhs.bool_field == rhs.bool_field && lhs.int_field == rhs.int_field &&
+         lhs.uint_field == rhs.uint_field &&
+         lhs.double_field == rhs.double_field;
+}
+
+template <typename H>
+H AbslHashValue(H state, const TestStruct& test_struct) {
+  return H::combine(std::move(state), test_struct.bool_field,
+                    test_struct.int_field, test_struct.uint_field,
+                    test_struct.double_field);
+}
+
+class TestStructValue final : public StructValue {
+ public:
+  explicit TestStructValue(TestStruct value) : value_(std::move(value)) {}
+
+  std::string DebugString() const override {
+    return absl::StrCat("bool_field: ", value().bool_field,
+                        " int_field: ", value().int_field,
+                        " uint_field: ", value().uint_field,
+                        " double_field: ", value().double_field);
+  }
+
+  const TestStruct& value() const { return value_; }
+
+ protected:
+  absl::Status SetFieldByName(absl::string_view name,
+                              const Persistent<const Value>& value) override {
+    if (name == "bool_field") {
+      if (!value.Is<BoolValue>()) {
+        return absl::InvalidArgumentError("");
+      }
+      value_.bool_field = value.As<const BoolValue>()->value();
+    } else if (name == "int_field") {
+      if (!value.Is<IntValue>()) {
+        return absl::InvalidArgumentError("");
+      }
+      value_.int_field = value.As<const IntValue>()->value();
+    } else if (name == "uint_field") {
+      if (!value.Is<UintValue>()) {
+        return absl::InvalidArgumentError("");
+      }
+      value_.uint_field = value.As<const UintValue>()->value();
+    } else if (name == "double_field") {
+      if (!value.Is<DoubleValue>()) {
+        return absl::InvalidArgumentError("");
+      }
+      value_.double_field = value.As<const DoubleValue>()->value();
+    } else {
+      return absl::NotFoundError("");
+    }
+    return absl::OkStatus();
+  }
+
+  absl::Status SetFieldByNumber(int64_t number,
+                                const Persistent<const Value>& value) override {
+    switch (number) {
+      case 0:
+        if (!value.Is<BoolValue>()) {
+          return absl::InvalidArgumentError("");
+        }
+        value_.bool_field = value.As<const BoolValue>()->value();
+        break;
+      case 1:
+        if (!value.Is<IntValue>()) {
+          return absl::InvalidArgumentError("");
+        }
+        value_.int_field = value.As<const IntValue>()->value();
+        break;
+      case 2:
+        if (!value.Is<UintValue>()) {
+          return absl::InvalidArgumentError("");
+        }
+        value_.uint_field = value.As<const UintValue>()->value();
+        break;
+      case 3:
+        if (!value.Is<DoubleValue>()) {
+          return absl::InvalidArgumentError("");
+        }
+        value_.double_field = value.As<const DoubleValue>()->value();
+        break;
+      default:
+        return absl::NotFoundError("");
+    }
+    return absl::OkStatus();
+  }
+
+  absl::StatusOr<Persistent<const Value>> GetFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const override {
+    if (name == "bool_field") {
+      return value_factory.CreateBoolValue(value().bool_field);
+    } else if (name == "int_field") {
+      return value_factory.CreateIntValue(value().int_field);
+    } else if (name == "uint_field") {
+      return value_factory.CreateUintValue(value().uint_field);
+    } else if (name == "double_field") {
+      return value_factory.CreateDoubleValue(value().double_field);
+    }
+    return absl::NotFoundError("");
+  }
+
+  absl::StatusOr<Persistent<const Value>> GetFieldByNumber(
+      ValueFactory& value_factory, int64_t number) const override {
+    switch (number) {
+      case 0:
+        return value_factory.CreateBoolValue(value().bool_field);
+      case 1:
+        return value_factory.CreateIntValue(value().int_field);
+      case 2:
+        return value_factory.CreateUintValue(value().uint_field);
+      case 3:
+        return value_factory.CreateDoubleValue(value().double_field);
+      default:
+        return absl::NotFoundError("");
+    }
+  }
+
+  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const override {
+    if (name == "bool_field") {
+      return true;
+    } else if (name == "int_field") {
+      return true;
+    } else if (name == "uint_field") {
+      return true;
+    } else if (name == "double_field") {
+      return true;
+    }
+    return absl::NotFoundError("");
+  }
+
+  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const override {
+    switch (number) {
+      case 0:
+        return true;
+      case 1:
+        return true;
+      case 2:
+        return true;
+      case 3:
+        return true;
+      default:
+        return absl::NotFoundError("");
+    }
+  }
+
+ private:
+  bool Equals(const Value& other) const override {
+    return Is(other) &&
+           value() == static_cast<const TestStructValue&>(other).value();
+  }
+
+  void HashValue(absl::HashState state) const override {
+    absl::HashState::combine(std::move(state), type(), value());
+  }
+
+  TestStruct value_;
+
+  CEL_DECLARE_STRUCT_VALUE(TestStructValue);
+};
+
+CEL_IMPLEMENT_STRUCT_VALUE(TestStructValue);
+
+class TestStructType final : public StructType {
+ public:
+  using StructType::StructType;
+
+  absl::string_view name() const override { return "test_struct.TestStruct"; }
+
+ protected:
+  absl::StatusOr<Persistent<StructValue>> NewInstance(
+      ValueFactory& value_factory) const override {
+    return value_factory.CreateStructValue<TestStructValue>(TestStruct{});
+  }
+
+  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
+                                        absl::string_view name) const override {
+    if (name == "bool_field") {
+      return Field("bool_field", 0, type_manager.GetBoolType());
+    } else if (name == "int_field") {
+      return Field("int_field", 1, type_manager.GetIntType());
+    } else if (name == "uint_field") {
+      return Field("uint_field", 2, type_manager.GetUintType());
+    } else if (name == "double_field") {
+      return Field("double_field", 3, type_manager.GetDoubleType());
+    }
+    return absl::NotFoundError("");
+  }
+
+  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
+                                          int64_t number) const override {
+    switch (number) {
+      case 0:
+        return Field("bool_field", 0, type_manager.GetBoolType());
+      case 1:
+        return Field("int_field", 1, type_manager.GetIntType());
+      case 2:
+        return Field("uint_field", 2, type_manager.GetUintType());
+      case 3:
+        return Field("double_field", 3, type_manager.GetDoubleType());
+      default:
+        return absl::NotFoundError("");
+    }
+  }
+
+ private:
+  CEL_DECLARE_STRUCT_TYPE(TestStructType);
+};
+
+CEL_IMPLEMENT_STRUCT_TYPE(TestStructType);
 
 template <typename T>
 Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
@@ -1505,14 +1728,197 @@ TEST(EnumType, NewInstance) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
+TEST(Value, Struct) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_factory.CreateStructType<TestStructType>());
+  ASSERT_OK_AND_ASSIGN(auto zero_value,
+                       StructValue::New(struct_type, value_factory));
+  EXPECT_TRUE(zero_value.Is<StructValue>());
+  EXPECT_TRUE(zero_value.Is<TestStructValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(StructValue::New(struct_type, value_factory)));
+  EXPECT_EQ(zero_value->kind(), Kind::kStruct);
+  EXPECT_EQ(zero_value->type(), struct_type);
+  EXPECT_EQ(zero_value.As<TestStructValue>()->value(), TestStruct{});
+
+  ASSERT_OK_AND_ASSIGN(auto one_value,
+                       StructValue::New(struct_type, value_factory));
+  ASSERT_OK(one_value->SetField(StructValue::FieldId("bool_field"),
+                                value_factory.CreateBoolValue(true)));
+  ASSERT_OK(one_value->SetField(StructValue::FieldId("int_field"),
+                                value_factory.CreateIntValue(1)));
+  ASSERT_OK(one_value->SetField(StructValue::FieldId("uint_field"),
+                                value_factory.CreateUintValue(1)));
+  ASSERT_OK(one_value->SetField(StructValue::FieldId("double_field"),
+                                value_factory.CreateDoubleValue(1.0)));
+  EXPECT_TRUE(one_value.Is<StructValue>());
+  EXPECT_TRUE(one_value.Is<TestStructValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value->kind(), Kind::kStruct);
+  EXPECT_EQ(one_value->type(), struct_type);
+  EXPECT_EQ(one_value.As<TestStructValue>()->value(),
+            (TestStruct{true, 1, 1, 1.0}));
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(StructValue, SetField) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_factory.CreateStructType<TestStructType>());
+  ASSERT_OK_AND_ASSIGN(auto struct_value,
+                       StructValue::New(struct_type, value_factory));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId("bool_field"),
+                                   value_factory.CreateBoolValue(true)));
+  EXPECT_THAT(
+      struct_value->GetField(value_factory, StructValue::FieldId("bool_field")),
+      IsOkAndHolds(Eq(value_factory.CreateBoolValue(true))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId(0),
+                                   value_factory.CreateBoolValue(false)));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(0)),
+              IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId("int_field"),
+                                   value_factory.CreateIntValue(1)));
+  EXPECT_THAT(
+      struct_value->GetField(value_factory, StructValue::FieldId("int_field")),
+      IsOkAndHolds(Eq(value_factory.CreateIntValue(1))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId(1),
+                                   value_factory.CreateIntValue(0)));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(1)),
+              IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId("uint_field"),
+                                   value_factory.CreateUintValue(1)));
+  EXPECT_THAT(
+      struct_value->GetField(value_factory, StructValue::FieldId("uint_field")),
+      IsOkAndHolds(Eq(value_factory.CreateUintValue(1))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId(2),
+                                   value_factory.CreateUintValue(0)));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(2)),
+              IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId("double_field"),
+                                   value_factory.CreateDoubleValue(1.0)));
+  EXPECT_THAT(struct_value->GetField(value_factory,
+                                     StructValue::FieldId("double_field")),
+              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(1.0))));
+  EXPECT_OK(struct_value->SetField(StructValue::FieldId(3),
+                                   value_factory.CreateDoubleValue(0.0)));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(3)),
+              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
+
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("bool_field"),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(0),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("int_field"),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(1),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("uint_field"),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(2),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("double_field"),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(3),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("missing_field"),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(4),
+                                     value_factory.GetNullValue()),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(StructValue, GetField) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_factory.CreateStructType<TestStructType>());
+  ASSERT_OK_AND_ASSIGN(auto struct_value,
+                       StructValue::New(struct_type, value_factory));
+  EXPECT_THAT(
+      struct_value->GetField(value_factory, StructValue::FieldId("bool_field")),
+      IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(0)),
+              IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
+  EXPECT_THAT(
+      struct_value->GetField(value_factory, StructValue::FieldId("int_field")),
+      IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(1)),
+              IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
+  EXPECT_THAT(
+      struct_value->GetField(value_factory, StructValue::FieldId("uint_field")),
+      IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(2)),
+              IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
+  EXPECT_THAT(struct_value->GetField(value_factory,
+                                     StructValue::FieldId("double_field")),
+              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
+  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(3)),
+              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
+  EXPECT_THAT(struct_value->GetField(value_factory,
+                                     StructValue::FieldId("missing_field")),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(4)),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(StructValue, HasField) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_factory.CreateStructType<TestStructType>());
+  ASSERT_OK_AND_ASSIGN(auto struct_value,
+                       StructValue::New(struct_type, value_factory));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("bool_field")),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(0)),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("int_field")),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(1)),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("uint_field")),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(2)),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("double_field")),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(3)),
+              IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("missing_field")),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(4)),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
 TEST(Value, SupportsAbslHash) {
   ValueFactory value_factory(MemoryManager::Global());
   TypeFactory type_factory(MemoryManager::Global());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
+  ASSERT_OK_AND_ASSIGN(auto struct_type,
+                       type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(
       auto enum_value,
       EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
+  ASSERT_OK_AND_ASSIGN(auto struct_value,
+                       StructValue::New(struct_type, value_factory));
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
       Persistent<const Value>(value_factory.GetNullValue()),
       Persistent<const Value>(
@@ -1534,6 +1940,7 @@ TEST(Value, SupportsAbslHash) {
       Persistent<const Value>(
           Must(value_factory.CreateStringValue(absl::Cord("bar")))),
       Persistent<const Value>(enum_value),
+      Persistent<const Value>(struct_value),
   }));
 }
 

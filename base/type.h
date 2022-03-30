@@ -65,6 +65,7 @@ class StringValue;
 class DurationValue;
 class TimestampValue;
 class EnumValue;
+class StructValue;
 class ValueFactory;
 
 namespace internal {
@@ -586,6 +587,7 @@ class StructType : public Type {
 
    private:
     friend class StructType;
+    friend class StructValue;
 
     absl::variant<absl::string_view, int64_t> data_;
   };
@@ -602,7 +604,8 @@ class StructType : public Type {
  protected:
   StructType() = default;
 
-  // TODO(issues/5): NewInstance
+  virtual absl::StatusOr<Persistent<StructValue>> NewInstance(
+      ValueFactory& value_factory) const = 0;
 
   // Called by FindField.
   virtual absl::StatusOr<Field> FindFieldByName(
@@ -620,6 +623,7 @@ class StructType : public Type {
   friend struct FindFieldVisitor;
   friend class TypeFactory;
   friend class base_internal::TypeHandleBase;
+  friend class StructValue;
 
   // Called by base_internal::TypeHandleBase to implement Is for Transient and
   // Persistent.

@@ -196,9 +196,11 @@ cc_test(
         "//internal:strings",
         "//internal:testing",
         "//internal:time",
+        "@com_google_absl//absl/hash",
         "@com_google_absl//absl/hash:hash_testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
     ],
 )

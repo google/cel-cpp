@@ -27,6 +27,7 @@
 namespace cel {
 
 class EnumValue;
+class StructValue;
 
 namespace base_internal {
 
@@ -47,6 +48,8 @@ inline constexpr uintptr_t kValueHandleBits =
 inline constexpr uintptr_t kValueHandleMask = ~kValueHandleBits;
 
 internal::TypeInfo GetEnumValueTypeId(const EnumValue& enum_value);
+
+internal::TypeInfo GetStructValueTypeId(const StructValue& struct_value);
 
 class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;

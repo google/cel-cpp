@@ -41,6 +41,11 @@ inline internal::TypeInfo GetEnumValueTypeId(const EnumValue& enum_value) {
   return enum_value.TypeId();
 }
 
+inline internal::TypeInfo GetStructValueTypeId(
+    const StructValue& struct_value) {
+  return struct_value.TypeId();
+}
+
 // Implementation of BytesValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
@@ -660,6 +665,7 @@ CEL_INTERNAL_VALUE_DECL(StringValue);
 CEL_INTERNAL_VALUE_DECL(DurationValue);
 CEL_INTERNAL_VALUE_DECL(TimestampValue);
 CEL_INTERNAL_VALUE_DECL(EnumValue);
+CEL_INTERNAL_VALUE_DECL(StructValue);
 #undef CEL_INTERNAL_VALUE_DECL
 
 }  // namespace cel
