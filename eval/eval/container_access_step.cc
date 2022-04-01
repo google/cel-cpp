@@ -64,8 +64,7 @@ inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
           return *maybe_value;
         }
       }
-      return CreateNoSuchKeyError(frame->memory_manager(),
-                                  "Key not found in map");
+      return CreateNoSuchKeyError(frame->memory_manager(), key.DebugString());
     }
   }
 
@@ -78,7 +77,7 @@ inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
     return maybe_value.value();
   }
 
-  return CreateNoSuchKeyError(frame->memory_manager(), "Key not found in map");
+  return CreateNoSuchKeyError(frame->memory_manager(), key.DebugString());
 }
 
 inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,

@@ -36,6 +36,7 @@ using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Struct;
 using testing::_;
+using testing::AllOf;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
@@ -201,6 +202,10 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
       CelValue::CreateString(&kKey1), std::get<0>(param), std::get<1>(param));
 
   ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kNotFound,
+                       AllOf(HasSubstr("Key not found in map : "),
+                             HasSubstr("testkey1"))));
 }
 
 TEST_F(ContainerAccessStepTest, TestInvalidReceiverCreateContainerAccessStep) {
