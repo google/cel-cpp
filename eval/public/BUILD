@@ -160,15 +160,30 @@ cc_library(
 )
 
 cc_library(
-    name = "cel_function_adapter",
-    srcs = [
-        "cel_function_adapter.cc",
+    name = "cel_function_adapter_impl",
+    hdrs = [
+        "cel_function_adapter_impl.h",
     ],
+    deps = [
+        ":cel_function",
+        ":cel_function_registry",
+        ":cel_value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "cel_function_adapter",
     hdrs = [
         "cel_function_adapter.h",
     ],
     deps = [
         ":cel_function",
+        ":cel_function_adapter_impl",
         ":cel_function_registry",
         ":cel_value",
         "//eval/public/structs:cel_proto_wrapper",
