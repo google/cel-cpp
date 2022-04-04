@@ -26,8 +26,8 @@
 
 namespace google::api::expr::runtime {
 
-class ProtoMessageTypeAdapter : public LegacyTypeAdapter::AccessApis,
-                                public LegacyTypeAdapter::MutationApis {
+class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
+                                public LegacyTypeMutationApis {
  public:
   ProtoMessageTypeAdapter(const google::protobuf::Descriptor* descriptor,
                           google::protobuf::MessageFactory* message_factory,

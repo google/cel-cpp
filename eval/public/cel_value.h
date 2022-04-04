@@ -120,6 +120,8 @@ class CelValue {
   //
   // message_ptr(): get the MessageLite pointer for the wrapper.
   //
+  // access_apis(): get the accessors used for the type.
+  //
   // HasFullProto(): returns whether it's safe to downcast to google::protobuf::Message.
   using MessageWrapper = internal::MessageWrapper;
 

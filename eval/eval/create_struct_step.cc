@@ -25,9 +25,9 @@ class CreateStructStepForMessage : public ExpressionStepBase {
     std::string field_name;
   };
 
-  CreateStructStepForMessage(
-      int64_t expr_id, const LegacyTypeAdapter::MutationApis* type_adapter,
-      std::vector<FieldEntry> entries)
+  CreateStructStepForMessage(int64_t expr_id,
+                             const LegacyTypeMutationApis* type_adapter,
+                             std::vector<FieldEntry> entries)
       : ExpressionStepBase(expr_id),
         type_adapter_(type_adapter),
         entries_(std::move(entries)) {}
@@ -37,7 +37,7 @@ class CreateStructStepForMessage : public ExpressionStepBase {
  private:
   absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
-  const LegacyTypeAdapter::MutationApis* type_adapter_;
+  const LegacyTypeMutationApis* type_adapter_;
   std::vector<FieldEntry> entries_;
 };
 
@@ -158,7 +158,7 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
-    const LegacyTypeAdapter::MutationApis* type_adapter, int64_t expr_id) {
+    const LegacyTypeMutationApis* type_adapter, int64_t expr_id) {
   if (type_adapter != nullptr) {
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 

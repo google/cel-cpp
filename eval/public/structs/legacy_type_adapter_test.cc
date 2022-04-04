@@ -23,7 +23,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-class TestMutationApiImpl : public LegacyTypeAdapter::MutationApis {
+class TestMutationApiImpl : public LegacyTypeMutationApis {
  public:
   TestMutationApiImpl() {}
   bool DefinesField(absl::string_view field_name) const override {

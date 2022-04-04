@@ -14,7 +14,7 @@ namespace google::api::expr::runtime {
 // Factory method for CreateStruct - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
-    const LegacyTypeAdapter::MutationApis* type_adapter, int64_t expr_id);
+    const LegacyTypeMutationApis* type_adapter, int64_t expr_id);
 
 inline absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
     const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
