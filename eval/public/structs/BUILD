@@ -188,3 +188,9 @@ cc_test(
         "//internal:testing",
     ],
 )
+
+cc_library(
+    name = "legacy_type_info_apis",
+    hdrs = ["legacy_type_info_apis.h"],
+    deps = ["//eval/public:cel_value_internal"],
+)
