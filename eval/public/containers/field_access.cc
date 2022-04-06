@@ -736,9 +736,9 @@ absl::Status SetValueToSingleField(const CelValue& value,
              ? absl::OkStatus()
              : absl::InvalidArgumentError(absl::Substitute(
                    "Could not assign supplied argument to message \"$0\" field "
-                   "\"$1\" of type $2: value was \"$3\"",
+                   "\"$1\" of type $2: value type \"$3\"",
                    msg->GetDescriptor()->name(), desc->name(),
-                   desc->type_name(), value.DebugString()));
+                   desc->type_name(), CelValue::TypeName(value.type())));
 }
 
 absl::Status AddValueToRepeatedField(const CelValue& value,
@@ -748,10 +748,10 @@ absl::Status AddValueToRepeatedField(const CelValue& value,
   return (setter.SetFieldFromCelValue(value))
              ? absl::OkStatus()
              : absl::InvalidArgumentError(absl::Substitute(
-                   "Could not add supplied argument \"$2\" to message \"$0\" "
-                   "field \"$1\".",
+                   "Could not add supplied argument to message \"$0\" field "
+                   "\"$1\" of type $2: value type \"$3\"",
                    msg->GetDescriptor()->name(), desc->name(),
-                   value.DebugString()));
+                   desc->type_name(), CelValue::TypeName(value.type())));
 }
 
 }  // namespace google::api::expr::runtime
