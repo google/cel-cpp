@@ -462,6 +462,7 @@ TEST_F(ContainerAccessHeterogeneousLookupsTest, StringKeyUnaffected) {
 class ContainerAccessHeterogeneousLookupsDisabledTest : public testing::Test {
  public:
   ContainerAccessHeterogeneousLookupsDisabledTest() {
+    options_.enable_heterogeneous_equality = false;
     builder_ = CreateCelExpressionBuilder(options_);
   }
 

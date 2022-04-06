@@ -123,9 +123,10 @@ class BuiltinsTest : public ::testing::Test {
   // Helper method. Looks up in registry and tests for no matching equality
   // overload.
   void TestNoMatchingEqualOverload(const CelValue& ref, const CelValue& other) {
+    options_.enable_heterogeneous_equality = false;
     CelValue eq_value;
     ASSERT_NO_FATAL_FAILURE(
-        PerformRun(builtin::kEqual, {}, {ref, other}, &eq_value));
+        PerformRun(builtin::kEqual, {}, {ref, other}, &eq_value, options_));
     ASSERT_TRUE(eq_value.IsError())
         << " for " << CelValue::TypeName(ref.type()) << " and "
         << CelValue::TypeName(other.type());
@@ -133,7 +134,7 @@ class BuiltinsTest : public ::testing::Test {
 
     CelValue ineq_value;
     ASSERT_NO_FATAL_FAILURE(
-        PerformRun(builtin::kInequal, {}, {ref, other}, &ineq_value));
+        PerformRun(builtin::kInequal, {}, {ref, other}, &ineq_value, options_));
     ASSERT_TRUE(ineq_value.IsError())
         << " for " << CelValue::TypeName(ref.type()) << " and "
         << CelValue::TypeName(other.type());
@@ -1617,6 +1618,7 @@ TEST_F(BuiltinsTest, TestInt64MapIn) {
     data[value] = CelValue::CreateInt64(value * value);
   }
   FakeInt64Map cel_map(data);
+  options_.enable_heterogeneous_equality = false;
   TestInMap(&cel_map, CelValue::CreateInt64(-4), true);
   TestInMap(&cel_map, CelValue::CreateInt64(4), false);
   TestInMap(&cel_map, CelValue::CreateUint64(3), false);
@@ -1640,6 +1642,7 @@ TEST_F(BuiltinsTest, TestUint64MapIn) {
     data[value] = CelValue::CreateUint64(value * value);
   }
   FakeUint64Map cel_map(data);
+  options_.enable_heterogeneous_equality = false;
   TestInMap(&cel_map, CelValue::CreateUint64(4), true);
   TestInMap(&cel_map, CelValue::CreateUint64(44), false);
   TestInMap(&cel_map, CelValue::CreateInt64(4), false);
