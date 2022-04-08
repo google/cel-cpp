@@ -27,6 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/time/time.h"
 #include "base/memory_manager.h"
 #include "base/type.h"
@@ -343,8 +344,52 @@ class TestStructType final : public StructType {
 
 CEL_IMPLEMENT_STRUCT_TYPE(TestStructType);
 
+class TestListValue final : public ListValue {
+ public:
+  explicit TestListValue(const Persistent<const ListType>& type,
+                         std::vector<int64_t> elements)
+      : ListValue(type), elements_(std::move(elements)) {
+    ABSL_ASSERT(type->element().Is<IntType>());
+  }
+
+  size_t size() const override { return elements_.size(); }
+
+  absl::StatusOr<Transient<const Value>> Get(ValueFactory& value_factory,
+                                             size_t index) const override {
+    return value_factory.CreateIntValue(elements_[index]);
+  }
+
+  std::string DebugString() const override {
+    return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
+  }
+
+  const std::vector<int64_t>& value() const { return elements_; }
+
+ private:
+  bool Equals(const Value& other) const override {
+    return Is(other) &&
+           elements_ ==
+               internal::down_cast<const TestListValue&>(other).elements_;
+  }
+
+  void HashValue(absl::HashState state) const override {
+    absl::HashState::combine(std::move(state), type(), elements_);
+  }
+
+  std::vector<int64_t> elements_;
+
+  CEL_DECLARE_LIST_VALUE(TestListValue);
+};
+
+CEL_IMPLEMENT_LIST_VALUE(TestListValue);
+
 template <typename T>
 Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
+  return std::move(status_or_handle).value();
+}
+
+template <typename T>
+Transient<T> Must(absl::StatusOr<Transient<T>> status_or_handle) {
   return std::move(status_or_handle).value();
 }
 
@@ -395,7 +440,8 @@ TEST(Value, DefaultConstructor) {
 
 struct ConstructionAssignmentTestCase final {
   std::string name;
-  std::function<Persistent<const Value>(ValueFactory&)> default_value;
+  std::function<Persistent<const Value>(TypeFactory&, ValueFactory&)>
+      default_value;
 };
 
 using ConstructionAssignmentTest =
@@ -403,27 +449,33 @@ using ConstructionAssignmentTest =
 
 TEST_P(ConstructionAssignmentTest, CopyConstructor) {
   const auto& test_case = GetParam();
+  TypeFactory type_factory(MemoryManager::Global());
   ValueFactory value_factory(MemoryManager::Global());
-  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> from(
+      test_case.default_value(type_factory, value_factory));
   Persistent<const Value> to(from);
   IS_INITIALIZED(to);
-  EXPECT_EQ(to, test_case.default_value(value_factory));
+  EXPECT_EQ(to, test_case.default_value(type_factory, value_factory));
 }
 
 TEST_P(ConstructionAssignmentTest, MoveConstructor) {
   const auto& test_case = GetParam();
+  TypeFactory type_factory(MemoryManager::Global());
   ValueFactory value_factory(MemoryManager::Global());
-  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> from(
+      test_case.default_value(type_factory, value_factory));
   Persistent<const Value> to(std::move(from));
   IS_INITIALIZED(from);
   EXPECT_EQ(from, value_factory.GetNullValue());
-  EXPECT_EQ(to, test_case.default_value(value_factory));
+  EXPECT_EQ(to, test_case.default_value(type_factory, value_factory));
 }
 
 TEST_P(ConstructionAssignmentTest, CopyAssignment) {
   const auto& test_case = GetParam();
+  TypeFactory type_factory(MemoryManager::Global());
   ValueFactory value_factory(MemoryManager::Global());
-  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> from(
+      test_case.default_value(type_factory, value_factory));
   Persistent<const Value> to;
   to = from;
   EXPECT_EQ(to, from);
@@ -431,53 +483,71 @@ TEST_P(ConstructionAssignmentTest, CopyAssignment) {
 
 TEST_P(ConstructionAssignmentTest, MoveAssignment) {
   const auto& test_case = GetParam();
+  TypeFactory type_factory(MemoryManager::Global());
   ValueFactory value_factory(MemoryManager::Global());
-  Persistent<const Value> from(test_case.default_value(value_factory));
+  Persistent<const Value> from(
+      test_case.default_value(type_factory, value_factory));
   Persistent<const Value> to;
   to = std::move(from);
   IS_INITIALIZED(from);
   EXPECT_EQ(from, value_factory.GetNullValue());
-  EXPECT_EQ(to, test_case.default_value(value_factory));
+  EXPECT_EQ(to, test_case.default_value(type_factory, value_factory));
 }
 
 INSTANTIATE_TEST_SUITE_P(
     ConstructionAssignmentTest, ConstructionAssignmentTest,
     testing::ValuesIn<ConstructionAssignmentTestCase>({
         {"Null",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return value_factory.GetNullValue();
          }},
         {"Bool",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return value_factory.CreateBoolValue(false);
          }},
         {"Int",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return value_factory.CreateIntValue(0);
          }},
         {"Uint",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return value_factory.CreateUintValue(0);
          }},
         {"Double",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return value_factory.CreateDoubleValue(0.0);
          }},
         {"Duration",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
          }},
         {"Timestamp",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
          }},
         {"Error",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
            return value_factory.CreateErrorValue(absl::CancelledError());
          }},
         {"Bytes",
-         [](ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateBytesValue(0));
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateBytesValue(nullptr));
+         }},
+        {"List",
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateListValue<TestListValue>(
+               Must(type_factory.CreateListType(type_factory.GetIntType())),
+               std::vector<int64_t>{}));
          }},
     }),
     [](const testing::TestParamInfo<ConstructionAssignmentTestCase>& info) {
@@ -1907,6 +1977,78 @@ TEST(StructValue, HasField) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
+TEST(Value, List) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto zero_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{}));
+  EXPECT_TRUE(zero_value.Is<ListValue>());
+  EXPECT_TRUE(zero_value.Is<TestListValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(value_factory.CreateListValue<TestListValue>(
+                            list_type, std::vector<int64_t>{})));
+  EXPECT_EQ(zero_value->kind(), Kind::kList);
+  EXPECT_EQ(zero_value->type(), list_type);
+  EXPECT_EQ(zero_value.As<TestListValue>()->value(), std::vector<int64_t>{});
+
+  ASSERT_OK_AND_ASSIGN(auto one_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{1}));
+  EXPECT_TRUE(one_value.Is<ListValue>());
+  EXPECT_TRUE(one_value.Is<TestListValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value->kind(), Kind::kList);
+  EXPECT_EQ(one_value->type(), list_type);
+  EXPECT_EQ(one_value.As<TestListValue>()->value(), std::vector<int64_t>{1});
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(ListValue, DebugString) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{}));
+  EXPECT_EQ(list_value->DebugString(), "[]");
+  ASSERT_OK_AND_ASSIGN(list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{0, 1, 2, 3, 4, 5}));
+  EXPECT_EQ(list_value->DebugString(), "[0, 1, 2, 3, 4, 5]");
+}
+
+TEST(ListValue, Get) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{}));
+  EXPECT_TRUE(list_value->empty());
+  EXPECT_EQ(list_value->size(), 0);
+
+  ASSERT_OK_AND_ASSIGN(list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{0, 1, 2}));
+  EXPECT_FALSE(list_value->empty());
+  EXPECT_EQ(list_value->size(), 3);
+  EXPECT_EQ(Must(list_value->Get(value_factory, 0)),
+            value_factory.CreateIntValue(0));
+  EXPECT_EQ(Must(list_value->Get(value_factory, 1)),
+            value_factory.CreateIntValue(1));
+  EXPECT_EQ(Must(list_value->Get(value_factory, 2)),
+            value_factory.CreateIntValue(2));
+}
+
 TEST(Value, SupportsAbslHash) {
   ValueFactory value_factory(MemoryManager::Global());
   TypeFactory type_factory(MemoryManager::Global());
@@ -1919,6 +2061,11 @@ TEST(Value, SupportsAbslHash) {
       EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
   ASSERT_OK_AND_ASSIGN(auto struct_value,
                        StructValue::New(struct_type, value_factory));
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{}));
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
       Persistent<const Value>(value_factory.GetNullValue()),
       Persistent<const Value>(
@@ -1941,6 +2088,7 @@ TEST(Value, SupportsAbslHash) {
           Must(value_factory.CreateStringValue(absl::Cord("bar")))),
       Persistent<const Value>(enum_value),
       Persistent<const Value>(struct_value),
+      Persistent<const Value>(list_value),
   }));
 }
 

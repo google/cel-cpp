@@ -28,6 +28,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/value.pre.h"  // IWYU pragma: export
@@ -52,7 +53,9 @@ class DurationValue;
 class TimestampValue;
 class EnumValue;
 class StructValue;
+class ListValue;
 class ValueFactory;
+class TypedListValueFactory;
 
 namespace internal {
 template <typename T>
@@ -86,6 +89,7 @@ class Value : public base_internal::Resource {
   friend class TimestampValue;
   friend class EnumValue;
   friend class StructValue;
+  friend class ListValue;
   friend class base_internal::ValueHandleBase;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
@@ -809,6 +813,116 @@ class StructValue : public Value {
                                                                              \
   ::cel::internal::TypeInfo struct_value::TypeId() const {                   \
     return ::cel::internal::TypeId<struct_value>();                          \
+  }
+
+// ListValue represents an instance of cel::ListType.
+class ListValue : public Value {
+ public:
+  // TODO(issues/5): implement iterators so we can have cheap concated lists
+
+  Transient<const Type> type() const final {
+    ABSL_ASSERT(type_);
+    return type_;
+  }
+
+  Kind kind() const final { return Kind::kList; }
+
+  virtual size_t size() const = 0;
+
+  virtual bool empty() const { return size() == 0; }
+
+  virtual absl::StatusOr<Transient<const Value>> Get(
+      ValueFactory& value_factory, size_t index) const = 0;
+
+ protected:
+  explicit ListValue(const Persistent<const ListType>& type) : type_(type) {}
+
+ private:
+  friend internal::TypeInfo base_internal::GetListValueTypeId(
+      const ListValue& list_value);
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kList; }
+
+  ListValue(const ListValue&) = delete;
+  ListValue(ListValue&&) = delete;
+
+  // TODO(issues/5): I do not like this, we should have these two take a
+  // ValueFactory and return absl::StatusOr<bool> and absl::Status. We support
+  // lazily created values, so errors can occur during equality testing.
+  // Especially if there are different value implementations for the same type.
+  bool Equals(const Value& other) const override = 0;
+  void HashValue(absl::HashState state) const override = 0;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  virtual internal::TypeInfo TypeId() const = 0;
+
+  const Persistent<const ListType> type_;
+};
+
+// TODO(issues/5): generalize the macros to avoid repeating them when they
+// are ultimately very similar.
+
+// CEL_DECLARE_LIST_VALUE declares `list_value` as an list value. It must
+// be part of the class definition of `list_value`.
+//
+// class MyListValue : public cel::ListValue {
+//  ...
+// private:
+//   CEL_DECLARE_LIST_VALUE(MyListValue);
+// };
+#define CEL_DECLARE_LIST_VALUE(list_value)                                     \
+ private:                                                                      \
+  friend class ::cel::base_internal::ValueHandleBase;                          \
+                                                                               \
+  static bool Is(const ::cel::Value& value);                                   \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
+
+// CEL_IMPLEMENT_LIST_VALUE implements `list_value` as an list
+// value. It must be called after the class definition of `list_value`.
+//
+// class MyListValue : public cel::ListValue {
+//  ...
+// private:
+//   CEL_DECLARE_LIST_VALUE(MyListValue);
+// };
+//
+// CEL_IMPLEMENT_LIST_VALUE(MyListValue);
+#define CEL_IMPLEMENT_LIST_VALUE(list_value)                                  \
+  static_assert(::std::is_base_of_v<::cel::ListValue, list_value>,            \
+                #list_value " must inherit from cel::ListValue");             \
+  static_assert(!::std::is_abstract_v<list_value>,                            \
+                "this must not be abstract");                                 \
+                                                                              \
+  bool list_value::Is(const ::cel::Value& value) {                            \
+    return value.kind() == ::cel::Kind::kList &&                              \
+           ::cel::base_internal::GetListValueTypeId(                          \
+               ::cel::internal::down_cast<const ::cel::ListValue&>(value)) == \
+               ::cel::internal::TypeId<list_value>();                         \
+  }                                                                           \
+                                                                              \
+  ::std::pair<::std::size_t, ::std::size_t> list_value::SizeAndAlignment()    \
+      const {                                                                 \
+    static_assert(                                                            \
+        ::std::is_same_v<list_value,                                          \
+                         ::std::remove_const_t<                               \
+                             ::std::remove_reference_t<decltype(*this)>>>,    \
+        "this must be the same as " #list_value);                             \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(list_value),      \
+                                                     alignof(list_value));    \
+  }                                                                           \
+                                                                              \
+  ::cel::internal::TypeInfo list_value::TypeId() const {                      \
+    return ::cel::internal::TypeId<list_value>();                             \
   }
 
 }  // namespace cel

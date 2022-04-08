@@ -46,6 +46,10 @@ inline internal::TypeInfo GetStructValueTypeId(
   return struct_value.TypeId();
 }
 
+inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
+  return list_value.TypeId();
+}
+
 // Implementation of BytesValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
@@ -494,6 +498,8 @@ class ValueHandle<HandleType::kTransient> final : public ValueHandleBase {
   ValueHandle& operator=(TransientValueHandle&& other) {
     if (not_empty_and_inlined()) {
       DestructInlined(*this);
+    } else {
+      Reset();
     }
     Base::Move(other, *this);
     return *this;
@@ -586,6 +592,7 @@ class ValueHandle<HandleType::kPersistent> final : public ValueHandleBase {
       DestructInlined(*this);
     } else if (reffed()) {
       Unref();
+      Reset();
     }
     Base::Move(other, *this);
     return *this;
@@ -666,6 +673,7 @@ CEL_INTERNAL_VALUE_DECL(DurationValue);
 CEL_INTERNAL_VALUE_DECL(TimestampValue);
 CEL_INTERNAL_VALUE_DECL(EnumValue);
 CEL_INTERNAL_VALUE_DECL(StructValue);
+CEL_INTERNAL_VALUE_DECL(ListValue);
 #undef CEL_INTERNAL_VALUE_DECL
 
 }  // namespace cel
