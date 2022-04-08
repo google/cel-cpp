@@ -576,6 +576,57 @@ void BM_ReadProtoMap(benchmark::State& state) {
 
 BENCHMARK(BM_ReadProtoMap);
 
+void BM_NestedProtoFieldRead(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+      !request.a.b.c.d.e
+   )cel"));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
+
+  RequestContext request;
+  request.mutable_a()->mutable_b()->mutable_c()->mutable_d()->set_e(false);
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_NestedProtoFieldRead);
+
+void BM_NestedProtoFieldReadDefaults(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+      !request.a.b.c.d.e
+   )cel"));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
+
+  RequestContext request;
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_NestedProtoFieldReadDefaults);
+
 // This expression has no equivalent CEL expression.
 // Sum a square with a nested comprehension
 constexpr char kNestedListSum[] = R"(
