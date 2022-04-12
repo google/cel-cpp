@@ -39,6 +39,64 @@ cc_library(
 )
 
 cc_library(
+    name = "protobuf_value_factory",
+    hdrs = [
+        "protobuf_value_factory.h",
+    ],
+    deps = [
+        "//eval/public:cel_value",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "cel_proto_wrap_util",
+    srcs = [
+        "cel_proto_wrap_util.cc",
+    ],
+    hdrs = [
+        "cel_proto_wrap_util.h",
+    ],
+    deps = [
+        ":protobuf_value_factory",
+        "//eval/public:cel_value",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:overflow",
+        "//internal:proto_util",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "cel_proto_wrap_util_test",
+    size = "small",
+    srcs = [
+        "cel_proto_wrap_util_test.cc",
+    ],
+    deps = [
+        ":cel_proto_wrap_util",
+        ":protobuf_value_factory",
+        "//eval/public:cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:proto_util",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//testutil:util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "cel_proto_descriptor_pool_builder",
     srcs = ["cel_proto_descriptor_pool_builder.cc"],
     hdrs = ["cel_proto_descriptor_pool_builder.h"],
