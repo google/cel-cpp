@@ -27,13 +27,12 @@ cc_library(
         "field_access.h",
     ],
     deps = [
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
-        "//internal:casts",
-        "//internal:overflow",
-        "@com_google_absl//absl/container:flat_hash_set",
+        "//eval/public/structs:field_access_impl",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )

@@ -180,6 +180,7 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public/containers:field_access",
         "//eval/public/containers:field_backed_list_impl",

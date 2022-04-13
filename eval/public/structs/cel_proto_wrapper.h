@@ -17,6 +17,10 @@ class CelProtoWrapper {
   static CelValue CreateMessage(const google::protobuf::Message* value,
                                 google::protobuf::Arena* arena);
 
+  // Internal utility for creating a CelValue wrapping a user defined type.
+  // Assumes that the message has been properly unpacked.
+  static CelValue InternalWrapMessage(const google::protobuf::Message* message);
+
   // CreateDuration creates CelValue from a non-null protobuf duration value.
   static CelValue CreateDuration(const google::protobuf::Duration* value) {
     return CelValue(expr::internal::DecodeDuration(*value));

@@ -32,6 +32,15 @@ enum class UnknownProcessingOptions {
   kAttributeAndFunction
 };
 
+// Options for handling unset wrapper types on field access.
+enum class ProtoWrapperTypeOptions {
+  // Default: legacy behavior following proto semantics (unset behaves as though
+  // it is set to default value).
+  kUnsetProtoDefault,
+  // CEL spec behavior, unset wrapper is treated as a null value when accessed.
+  kUnsetNull,
+};
+
 // Interpreter options for controlling evaluation and builtin functions.
 struct InterpreterOptions {
   // Level of unknown support enabled.

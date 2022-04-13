@@ -27,17 +27,17 @@ using ::google::protobuf::Arena;
 using ::google::protobuf::Descriptor;
 using ::google::protobuf::Message;
 
-CelValue WrapMessage(const Message* m) {
-  return CelValue::CreateMessageWrapper(CelValue::MessageWrapper(m));
-}
-
 }  // namespace
+
+CelValue CelProtoWrapper::InternalWrapMessage(const Message* message) {
+  return CelValue::CreateMessage(message);
+}
 
 // CreateMessage creates CelValue from google::protobuf::Message.
 // As some of CEL basic types are subclassing google::protobuf::Message,
 // this method contains type checking and downcasts.
 CelValue CelProtoWrapper::CreateMessage(const Message* value, Arena* arena) {
-  return internal::UnwrapMessageToValue(value, &WrapMessage, arena);
+  return internal::UnwrapMessageToValue(value, &InternalWrapMessage, arena);
 }
 
 absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
@@ -45,7 +45,7 @@ absl::optional<CelValue> CelProtoWrapper::MaybeWrapValue(
   const Message* msg =
       internal::MaybeWrapValueToMessage(descriptor, value, arena);
   if (msg != nullptr) {
-    return WrapMessage(msg);
+    return InternalWrapMessage(msg);
   } else {
     return absl::nullopt;
   }

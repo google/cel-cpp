@@ -102,6 +102,7 @@ cc_library(
     deps = [
         ":cel_proto_wrap_util",
         ":protobuf_value_factory",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//internal:casts",
         "//internal:overflow",
