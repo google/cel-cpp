@@ -30,7 +30,7 @@ namespace google::api::expr::runtime::internal {
 //
 // Used to break cyclic dependency between field access and message wrapping --
 // not intended for general use.
-using ProtobufValueFactory = std::function<CelValue(const google::protobuf::Message*)>;
+using ProtobufValueFactory = CelValue (*)(const google::protobuf::Message*);
 }  // namespace google::api::expr::runtime::internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_PROTOBUF_VALUE_FACTORY_H_
