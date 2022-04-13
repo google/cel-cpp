@@ -38,16 +38,17 @@ class LegacyTypeMutationApis {
 
   // Create a new empty instance of the type.
   // May return a status if the type is not possible to create.
-  virtual absl::StatusOr<CelValue> NewInstance(
+  virtual absl::StatusOr<CelValue::MessageWrapper> NewInstance(
       cel::MemoryManager& memory_manager) const = 0;
 
   // Normalize special types to a native CEL value after building.
   // The default implementation is a no-op.
   // The interpreter guarantees that instance is uniquely owned by the
   // interpreter, and can be safely mutated.
-  virtual absl::Status AdaptFromWellKnownType(
-      cel::MemoryManager& memory_manager, CelValue& instance) const {
-    return absl::OkStatus();
+  virtual absl::StatusOr<CelValue> AdaptFromWellKnownType(
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper instance) const {
+    return CelValue::CreateMessageWrapper(instance);
   }
 
   // Set field on instance to value.
@@ -56,7 +57,7 @@ class LegacyTypeMutationApis {
   virtual absl::Status SetField(absl::string_view field_name,
                                 const CelValue& value,
                                 cel::MemoryManager& memory_manager,
-                                CelValue& instance) const = 0;
+                                CelValue::MessageWrapper& instance) const = 0;
 };
 
 // Interface for access apis.
@@ -68,12 +69,13 @@ class LegacyTypeAccessApis {
 
   // Return whether an instance of the type has field set to a non-default
   // value.
-  virtual absl::StatusOr<bool> HasField(absl::string_view field_name,
-                                        const CelValue& value) const = 0;
+  virtual absl::StatusOr<bool> HasField(
+      absl::string_view field_name,
+      const CelValue::MessageWrapper& value) const = 0;
 
   // Access field on instance.
   virtual absl::StatusOr<CelValue> GetField(
-      absl::string_view field_name, const CelValue& instance,
+      absl::string_view field_name, const CelValue::MessageWrapper& instance,
       cel::MemoryManager& memory_manager) const = 0;
 };
 

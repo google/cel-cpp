@@ -71,7 +71,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(CelValue instance,
+  CEL_ASSIGN_OR_RETURN(CelValue::MessageWrapper instance,
                        type_adapter_->NewInstance(frame->memory_manager()));
 
   int index = 0;
@@ -82,9 +82,8 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
         entry.field_name, arg, frame->memory_manager(), instance));
   }
 
-  CEL_RETURN_IF_ERROR(
-      type_adapter_->AdaptFromWellKnownType(frame->memory_manager(), instance));
-  *result = instance;
+  CEL_ASSIGN_OR_RETURN(*result, type_adapter_->AdaptFromWellKnownType(
+                                    frame->memory_manager(), instance));
 
   return absl::OkStatus();
 }

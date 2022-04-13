@@ -35,17 +35,17 @@ TEST(ProtobufDescriptorProvider, Basic) {
   ASSERT_TRUE(type_adapter->mutation_apis() != nullptr);
 
   ASSERT_TRUE(type_adapter->mutation_apis()->DefinesField("value"));
-  ASSERT_OK_AND_ASSIGN(CelValue value,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper value,
                        type_adapter->mutation_apis()->NewInstance(manager));
 
-  ASSERT_TRUE(value.IsMessage());
   ASSERT_OK(type_adapter->mutation_apis()->SetField(
       "value", CelValue::CreateInt64(10), manager, value));
 
-  ASSERT_OK(
+  ASSERT_OK_AND_ASSIGN(
+      CelValue adapted,
       type_adapter->mutation_apis()->AdaptFromWellKnownType(manager, value));
 
-  EXPECT_THAT(value, test::IsCelInt64(10));
+  EXPECT_THAT(adapted, test::IsCelInt64(10));
 }
 
 // This is an implementation detail, but testing for coverage.

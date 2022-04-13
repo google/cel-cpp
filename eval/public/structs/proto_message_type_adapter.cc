@@ -21,11 +21,13 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/cel_value_internal.h"
 #include "eval/public/containers/field_access.h"
 #include "eval/public/containers/field_backed_list_impl.h"
 #include "eval/public/containers/field_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -44,7 +46,7 @@ absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
   return absl::OkStatus();
 }
 
-absl::StatusOr<CelValue> ProtoMessageTypeAdapter::NewInstance(
+absl::StatusOr<CelValue::MessageWrapper> ProtoMessageTypeAdapter::NewInstance(
     cel::MemoryManager& memory_manager) const {
   // This implementation requires arena-backed memory manager.
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
@@ -56,7 +58,7 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::NewInstance(
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to create message ", descriptor_->name()));
   }
-  return CelValue::CreateMessage(msg);
+  return CelValue::MessageWrapper(msg);
 }
 
 bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {
@@ -64,11 +66,12 @@ bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {
 }
 
 absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
-    absl::string_view field_name, const CelValue& value) const {
-  const google::protobuf::Message* message;
-  if (!value.GetValue(&message) || message == nullptr) {
-    return absl::InvalidArgumentError("HasField called on non-message type.");
+    absl::string_view field_name, const CelValue::MessageWrapper& value) const {
+  if (!value.HasFullProto() || value.message_ptr() == nullptr) {
+    return absl::InvalidArgumentError("GetField called on non-message type.");
   }
+  const google::protobuf::Message* message =
+      cel::internal::down_cast<const google::protobuf::Message*>(value.message_ptr());
 
   const Reflection* reflection = message->GetReflection();
   ABSL_ASSERT(descriptor_ == message->GetDescriptor());
@@ -98,13 +101,13 @@ absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
 }
 
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
-    absl::string_view field_name, const CelValue& instance,
+    absl::string_view field_name, const CelValue::MessageWrapper& instance,
     cel::MemoryManager& memory_manager) const {
-  const google::protobuf::Message* message;
-  if (!instance.GetValue(&message) || message == nullptr) {
+  if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
     return absl::InvalidArgumentError("GetField called on non-message type.");
   }
-
+  const google::protobuf::Message* message =
+      cel::internal::down_cast<const google::protobuf::Message*>(instance.message_ptr());
   const FieldDescriptor* field_desc = descriptor_->FindFieldByName(field_name.data());
 
   if (field_desc == nullptr) {
@@ -132,14 +135,18 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
 
 absl::Status ProtoMessageTypeAdapter::SetField(
     absl::string_view field_name, const CelValue& value,
-    cel::MemoryManager& memory_manager, CelValue& instance) const {
+    cel::MemoryManager& memory_manager,
+    CelValue::MessageWrapper& instance) const {
   // Assume proto arena implementation if this provider is used.
   google::protobuf::Arena* arena =
       cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
-  const google::protobuf::Message* message = nullptr;
-  if (!instance.GetValue(&message) || message == nullptr) {
+
+  if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
     return absl::InternalError("SetField called on non-message type.");
   }
+
+  const google::protobuf::Message* message =
+      cel::internal::down_cast<const google::protobuf::Message*>(instance.message_ptr());
 
   // Interpreter guarantees this is the top-level instance.
   google::protobuf::Message* mutable_message = const_cast<Message*>(message);
@@ -207,19 +214,19 @@ absl::Status ProtoMessageTypeAdapter::SetField(
   return absl::OkStatus();
 }
 
-absl::Status ProtoMessageTypeAdapter::AdaptFromWellKnownType(
-    cel::MemoryManager& memory_manager, CelValue& instance) const {
+absl::StatusOr<CelValue> ProtoMessageTypeAdapter::AdaptFromWellKnownType(
+    cel::MemoryManager& memory_manager,
+    CelValue::MessageWrapper instance) const {
   // Assume proto arena implementation if this provider is used.
   google::protobuf::Arena* arena =
       cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
-  const google::protobuf::Message* message;
-  if (!instance.GetValue(&message) || message == nullptr) {
+  if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
     return absl::InternalError(
         "Adapt from well-known type failed: not a message");
   }
-
-  instance = CelProtoWrapper::CreateMessage(message, arena);
-  return absl::OkStatus();
+  auto* message =
+      cel::internal::down_cast<const google::protobuf::Message*>(instance.message_ptr());
+  return CelProtoWrapper::CreateMessage(message, arena);
 }
 
 }  // namespace google::api::expr::runtime

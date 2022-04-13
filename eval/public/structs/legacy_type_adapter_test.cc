@@ -16,12 +16,15 @@
 
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/testing/matchers.h"
+#include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 namespace {
+using testing::EqualsProto;
 
 class TestMutationApiImpl : public LegacyTypeMutationApis {
  public:
@@ -30,26 +33,31 @@ class TestMutationApiImpl : public LegacyTypeMutationApis {
     return false;
   }
 
-  absl::StatusOr<CelValue> NewInstance(
+  absl::StatusOr<CelValue::MessageWrapper> NewInstance(
       cel::MemoryManager& memory_manager) const override {
     return absl::UnimplementedError("Not implemented");
   }
 
   absl::Status SetField(absl::string_view field_name, const CelValue& value,
                         cel::MemoryManager& memory_manager,
-                        CelValue& instance) const override {
+                        CelValue::MessageWrapper& instance) const override {
     return absl::UnimplementedError("Not implemented");
   }
 };
 
 TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
-  CelValue v;
+  TestMessage message;
+  internal::MessageWrapper wrapper(&message);
   google::protobuf::Arena arena;
   cel::extensions::ProtoMemoryManager manager(&arena);
 
   TestMutationApiImpl impl;
 
-  EXPECT_OK(impl.AdaptFromWellKnownType(manager, v));
+  ASSERT_OK_AND_ASSIGN(CelValue v,
+                       impl.AdaptFromWellKnownType(manager, wrapper));
+
+  EXPECT_THAT(v,
+              test::IsCelMessage(EqualsProto(TestMessage::default_instance())));
 }
 
 }  // namespace

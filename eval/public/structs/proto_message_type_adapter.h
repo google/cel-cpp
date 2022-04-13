@@ -39,7 +39,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
 
   ~ProtoMessageTypeAdapter() override = default;
 
-  absl::StatusOr<CelValue> NewInstance(
+  absl::StatusOr<CelValue::MessageWrapper> NewInstance(
       cel::MemoryManager& memory_manager) const override;
 
   bool DefinesField(absl::string_view field_name) const override;
@@ -47,17 +47,19 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
   absl::Status SetField(absl::string_view field_name, const CelValue& value,
 
                         cel::MemoryManager& memory_manager,
-                        CelValue& instance) const override;
+                        CelValue::MessageWrapper& instance) const override;
 
-  absl::Status AdaptFromWellKnownType(cel::MemoryManager& memory_manager,
-                                      CelValue& instance) const override;
+  absl::StatusOr<CelValue> AdaptFromWellKnownType(
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper instance) const override;
 
   absl::StatusOr<CelValue> GetField(
-      absl::string_view field_name, const CelValue& instance,
+      absl::string_view field_name, const CelValue::MessageWrapper& instance,
       cel::MemoryManager& memory_manager) const override;
 
-  absl::StatusOr<bool> HasField(absl::string_view field_name,
-                                const CelValue& value) const override;
+  absl::StatusOr<bool> HasField(
+      absl::string_view field_name,
+      const CelValue::MessageWrapper& value) const override;
 
  private:
   // Helper for standardizing error messages for SetField operation.
