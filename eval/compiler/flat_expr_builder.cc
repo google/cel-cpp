@@ -1016,19 +1016,23 @@ FlatExprBuilder::CreateExpressionImpl(
 
   const Expr* effective_expr = expr;
   // transformed expression preserving expression IDs
+  bool rewrites_enabled = enable_qualified_identifier_rewrites_ ||
+                          (reference_map != nullptr && !reference_map->empty());
   std::unique_ptr<Expr> rewrite_buffer = nullptr;
+
   // TODO(issues/98): A type checker may perform these rewrites, but there
   // currently isn't a signal to expose that in an expression. If that becomes
   // available, we can skip the reference resolve step here if it's already
   // done.
-  if (reference_map != nullptr && !reference_map->empty()) {
-    absl::StatusOr<absl::optional<Expr>> rewritten = ResolveReferences(
-        *effective_expr, *reference_map, resolver, &warnings_builder);
+  if (rewrites_enabled) {
+    rewrite_buffer = std::make_unique<Expr>(*expr);
+    absl::StatusOr<bool> rewritten =
+        ResolveReferences(reference_map, resolver, source_info,
+                          warnings_builder, rewrite_buffer.get());
     if (!rewritten.ok()) {
       return rewritten.status();
     }
-    if (rewritten->has_value()) {
-      rewrite_buffer = std::make_unique<Expr>((*std::move(rewritten)).value());
+    if (*rewritten) {
       effective_expr = rewrite_buffer.get();
     }
     // TODO(issues/99): we could setup a check step here that confirms all of

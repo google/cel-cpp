@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -36,6 +37,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
@@ -625,6 +627,192 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("container: 'bad.'")));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupport) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "ext.XOr", /*receiver_style=*/false,
+      [](google::protobuf::Arena*, bool a, bool b) { return a != b; },
+      builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("a", CelValue::CreateBool(false));
+  act1.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+
+  Activation act2;
+  act2.InsertValue("a", CelValue::CreateBool(true));
+  act2.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(result, cel_expr->Evaluate(act2, &arena));
+  EXPECT_THAT(result, test::IsCelBool(false));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportWithContainer) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("XOr(a, b)"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("ext");
+  using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "ext.XOr", /*receiver_style=*/false,
+      [](google::protobuf::Arena*, bool a, bool b) { return a != b; },
+      builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("a", CelValue::CreateBool(false));
+  act1.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+
+  Activation act2;
+  act2.InsertValue("a", CelValue::CreateBool(true));
+  act2.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(result, cel_expr->Evaluate(act2, &arena));
+  EXPECT_THAT(result, test::IsCelBool(false));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrder) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.b.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return true; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return false; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return false; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest,
+     ParsedNamespacedFunctionResolutionOrderParentContainer) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return true; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return false; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return false; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest,
+     ParsedNamespacedFunctionResolutionOrderExplicitGlobal) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(".c.d.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return false; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return true; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return false; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrderReceiverCall) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("e.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return false; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return false; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return true; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("e", CelValue::CreateBool(false));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportDisabled) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
+  FlatExprBuilder builder;
+  builder.set_fail_on_warnings(false);
+  std::vector<absl::Status> build_warnings;
+  builder.set_container("ext");
+  using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "ext.XOr", /*receiver_style=*/false,
+      [](google::protobuf::Arena*, bool a, bool b) { return a != b; },
+      builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_expr, builder.CreateExpression(&expr.expr(), &expr.source_info(),
+                                              &build_warnings));
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("a", CelValue::CreateBool(false));
+  act1.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelError(StatusIs(absl::StatusCode::kUnknown,
+                                                HasSubstr("ext"))));
 }
 
 TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {

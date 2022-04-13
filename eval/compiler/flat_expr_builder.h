@@ -49,6 +49,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_null_coercion_(true),
         enable_wrapper_type_null_unboxing_(false),
         enable_heterogeneous_equality_(false),
+        enable_qualified_identifier_rewrites_(false),
         descriptor_pool_(descriptor_pool),
         message_factory_(message_factory) {}
 
@@ -149,6 +150,17 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_heterogeneous_equality_ = enabled;
   }
 
+  // If enable_qualified_identifier_rewrites is true, the evaluator will attempt
+  // to disambiguate namespace qualified identifiers.
+  //
+  // For functions, this will attempt to determine whether a function call is a
+  // receiver call or a namespace qualified function.
+  void set_enable_qualified_identifier_rewrites(
+      bool enable_qualified_identifier_rewrites) {
+    enable_qualified_identifier_rewrites_ =
+        enable_qualified_identifier_rewrites;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -188,6 +200,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_null_coercion_;
   bool enable_wrapper_type_null_unboxing_;
   bool enable_heterogeneous_equality_;
+  bool enable_qualified_identifier_rewrites_;
 
   const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::MessageFactory* message_factory_;

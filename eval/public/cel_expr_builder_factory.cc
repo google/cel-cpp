@@ -68,6 +68,8 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
       options.enable_empty_wrapper_null_unboxing);
   builder->set_enable_heterogeneous_equality(
       options.enable_heterogeneous_equality);
+  builder->set_enable_qualified_identifier_rewrites(
+      options.enable_qualified_identifier_rewrites);
 
   switch (options.unknown_processing) {
     case UnknownProcessingOptions::kAttributeAndFunction:

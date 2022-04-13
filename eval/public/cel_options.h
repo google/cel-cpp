@@ -131,6 +131,13 @@ struct InterpreterOptions {
   // that will result in a Null cel value, as opposed to returning the
   // cel representation of the proto defined default int64_t: 0.
   bool enable_empty_wrapper_null_unboxing = false;
+
+  // Enables expression rewrites to disambiguate namespace qualified identifiers
+  // from container access for variables and receiver-style calls for functions.
+  //
+  // Note: This makes an implicit copy of the input expression for lifetime
+  // safety.
+  bool enable_qualified_identifier_rewrites = false;
 };
 
 }  // namespace google::api::expr::runtime

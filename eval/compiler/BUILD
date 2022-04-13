@@ -59,6 +59,7 @@ cc_test(
     ],
     deps = [
         ":flat_expr_builder",
+        "//eval/eval:expression_build_warning",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_attribute",
@@ -167,9 +168,12 @@ cc_library(
         ":resolver",
         "//eval/eval:const_value_step",
         "//eval/eval:expression_build_warning",
+        "//eval/public:ast_rewrite",
         "//eval/public:cel_builtins",
         "//eval/public:cel_function_registry",
+        "//eval/public:source_position",
         "//internal:status_macros",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -213,6 +217,7 @@ cc_test(
         "//testutil:util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
