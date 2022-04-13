@@ -92,6 +92,47 @@ cc_test(
 )
 
 cc_library(
+    name = "field_access_impl",
+    srcs = [
+        "field_access_impl.cc",
+    ],
+    hdrs = [
+        "field_access_impl.h",
+    ],
+    deps = [
+        ":cel_proto_wrap_util",
+        ":protobuf_value_factory",
+        "//eval/public:cel_value",
+        "//internal:casts",
+        "//internal:overflow",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "field_access_impl_test",
+    srcs = ["field_access_impl_test.cc"],
+    deps = [
+        ":cel_proto_wrapper",
+        ":field_access_impl",
+        "//eval/public:cel_value",
+        "//eval/public/testing:matchers",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:testing",
+        "//internal:time",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "cel_proto_descriptor_pool_builder",
     srcs = ["cel_proto_descriptor_pool_builder.cc"],
     hdrs = ["cel_proto_descriptor_pool_builder.h"],
