@@ -1,14 +1,28 @@
-#include "eval/public/containers/field_backed_map_impl.h"
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+#include "eval/public/containers/internal_field_backed_map_impl.h"
 
 #include <limits>
 #include <string>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 
-namespace google::api::expr::runtime {
+namespace google::api::expr::runtime::internal {
 namespace {
 
 using testing::Eq;
@@ -16,14 +30,28 @@ using testing::HasSubstr;
 using testing::UnorderedPointwise;
 using cel::internal::StatusIs;
 
-// Test factory for FieldBackedMaps from message and field name.
-std::unique_ptr<FieldBackedMapImpl> CreateMap(const TestMessage* message,
-                                              const std::string& field,
-                                              google::protobuf::Arena* arena) {
+class FieldBackedMapTestImpl : public FieldBackedMapImpl {
+ public:
+  FieldBackedMapTestImpl(const google::protobuf::Message* message,
+                         const google::protobuf::FieldDescriptor* descriptor,
+                         google::protobuf::Arena* arena)
+      : FieldBackedMapImpl(message, descriptor,
+                           &CelProtoWrapper::InternalWrapMessage, arena) {}
+
+  // For code coverage, expose fallback lookups used when not compiled with
+  // support for optimized versions.
+  using FieldBackedMapImpl::LegacyHasMapValue;
+  using FieldBackedMapImpl::LegacyLookupMapValue;
+};
+
+// Helper method. Creates simple pipeline containing Select step and runs it.
+std::unique_ptr<FieldBackedMapTestImpl> CreateMap(const TestMessage* message,
+                                                  const std::string& field,
+                                                  google::protobuf::Arena* arena) {
   const google::protobuf::FieldDescriptor* field_desc =
       message->GetDescriptor()->FindFieldByName(field);
 
-  return absl::make_unique<FieldBackedMapImpl>(message, field_desc, arena);
+  return absl::make_unique<FieldBackedMapTestImpl>(message, field_desc, arena);
 }
 
 TEST(FieldBackedMapImplTest, BadKeyTypeTest) {
@@ -42,10 +70,17 @@ TEST(FieldBackedMapImplTest, BadKeyTypeTest) {
     EXPECT_FALSE(result.ok());
     EXPECT_THAT(result.status().code(), Eq(absl::StatusCode::kInvalidArgument));
 
+    result = cel_map->LegacyHasMapValue(CelValue::CreateNull());
     EXPECT_FALSE(result.ok());
     EXPECT_THAT(result.status().code(), Eq(absl::StatusCode::kInvalidArgument));
 
     auto lookup = (*cel_map)[CelValue::CreateNull()];
+    EXPECT_TRUE(lookup.has_value());
+    EXPECT_TRUE(lookup->IsError());
+    EXPECT_THAT(lookup->ErrorOrDie()->code(),
+                Eq(absl::StatusCode::kInvalidArgument));
+
+    lookup = cel_map->LegacyLookupMapValue(CelValue::CreateNull());
     EXPECT_TRUE(lookup.has_value());
     EXPECT_TRUE(lookup->IsError());
     EXPECT_THAT(lookup->ErrorOrDie()->code(),
@@ -65,10 +100,14 @@ TEST(FieldBackedMapImplTest, Int32KeyTest) {
   EXPECT_EQ((*cel_map)[CelValue::CreateInt64(0)]->Int64OrDie(), 1);
   EXPECT_EQ((*cel_map)[CelValue::CreateInt64(1)]->Int64OrDie(), 2);
   EXPECT_TRUE(cel_map->Has(CelValue::CreateInt64(1)).value_or(false));
+  EXPECT_TRUE(
+      cel_map->LegacyHasMapValue(CelValue::CreateInt64(1)).value_or(false));
 
   // Look up nonexistent key
   EXPECT_FALSE((*cel_map)[CelValue::CreateInt64(3)].has_value());
   EXPECT_FALSE(cel_map->Has(CelValue::CreateInt64(3)).value_or(true));
+  EXPECT_FALSE(
+      cel_map->LegacyHasMapValue(CelValue::CreateInt64(3)).value_or(true));
 }
 
 TEST(FieldBackedMapImplTest, Int32KeyOutOfRangeTest) {
@@ -100,6 +139,10 @@ TEST(FieldBackedMapImplTest, Int64KeyTest) {
   EXPECT_EQ((*cel_map)[CelValue::CreateInt64(0)]->Int64OrDie(), 1);
   EXPECT_EQ((*cel_map)[CelValue::CreateInt64(1)]->Int64OrDie(), 2);
   EXPECT_TRUE(cel_map->Has(CelValue::CreateInt64(1)).value_or(false));
+  EXPECT_EQ(
+      cel_map->LegacyLookupMapValue(CelValue::CreateInt64(1))->Int64OrDie(), 2);
+  EXPECT_TRUE(
+      cel_map->LegacyHasMapValue(CelValue::CreateInt64(1)).value_or(false));
 
   // Look up nonexistent key
   EXPECT_EQ((*cel_map)[CelValue::CreateInt64(3)].has_value(), false);
@@ -115,6 +158,8 @@ TEST(FieldBackedMapImplTest, BoolKeyTest) {
 
   EXPECT_EQ((*cel_map)[CelValue::CreateBool(false)]->Int64OrDie(), 1);
   EXPECT_TRUE(cel_map->Has(CelValue::CreateBool(false)).value_or(false));
+  EXPECT_TRUE(
+      cel_map->LegacyHasMapValue(CelValue::CreateBool(false)).value_or(false));
   // Look up nonexistent key
   EXPECT_EQ((*cel_map)[CelValue::CreateBool(true)].has_value(), false);
 
@@ -134,6 +179,8 @@ TEST(FieldBackedMapImplTest, Uint32KeyTest) {
   EXPECT_EQ((*cel_map)[CelValue::CreateUint64(0)]->Uint64OrDie(), 1UL);
   EXPECT_EQ((*cel_map)[CelValue::CreateUint64(1)]->Uint64OrDie(), 2UL);
   EXPECT_TRUE(cel_map->Has(CelValue::CreateUint64(1)).value_or(false));
+  EXPECT_TRUE(
+      cel_map->LegacyHasMapValue(CelValue::CreateUint64(1)).value_or(false));
 
   // Look up nonexistent key
   EXPECT_EQ((*cel_map)[CelValue::CreateUint64(3)].has_value(), false);
@@ -164,6 +211,8 @@ TEST(FieldBackedMapImplTest, Uint64KeyTest) {
   EXPECT_EQ((*cel_map)[CelValue::CreateUint64(0)]->Int64OrDie(), 1);
   EXPECT_EQ((*cel_map)[CelValue::CreateUint64(1)]->Int64OrDie(), 2);
   EXPECT_TRUE(cel_map->Has(CelValue::CreateUint64(1)).value_or(false));
+  EXPECT_TRUE(
+      cel_map->LegacyHasMapValue(CelValue::CreateUint64(1)).value_or(false));
 
   // Look up nonexistent key
   EXPECT_EQ((*cel_map)[CelValue::CreateUint64(3)].has_value(), false);
@@ -185,6 +234,8 @@ TEST(FieldBackedMapImplTest, StringKeyTest) {
   EXPECT_EQ((*cel_map)[CelValue::CreateString(&test0)]->Int64OrDie(), 1);
   EXPECT_EQ((*cel_map)[CelValue::CreateString(&test1)]->Int64OrDie(), 2);
   EXPECT_TRUE(cel_map->Has(CelValue::CreateString(&test1)).value_or(false));
+  EXPECT_TRUE(cel_map->LegacyHasMapValue(CelValue::CreateString(&test1))
+                  .value_or(false));
 
   // Look up nonexistent key
   EXPECT_EQ((*cel_map)[CelValue::CreateString(&test_notfound)].has_value(),
@@ -234,4 +285,4 @@ TEST(FieldBackedMapImplTest, KeyListTest) {
 }
 
 }  // namespace
-}  // namespace google::api::expr::runtime
+}  // namespace google::api::expr::runtime::internal
