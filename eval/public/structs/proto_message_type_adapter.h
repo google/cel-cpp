@@ -20,8 +20,8 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "base/memory_manager.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/field_access.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 
 namespace google::api::expr::runtime {
@@ -30,12 +30,8 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
                                 public LegacyTypeMutationApis {
  public:
   ProtoMessageTypeAdapter(const google::protobuf::Descriptor* descriptor,
-                          google::protobuf::MessageFactory* message_factory,
-                          ProtoWrapperTypeOptions unboxing_option =
-                              ProtoWrapperTypeOptions::kUnsetNull)
-      : message_factory_(message_factory),
-        descriptor_(descriptor),
-        unboxing_option_(unboxing_option) {}
+                          google::protobuf::MessageFactory* message_factory)
+      : message_factory_(message_factory), descriptor_(descriptor) {}
 
   ~ProtoMessageTypeAdapter() override = default;
 
@@ -55,6 +51,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
 
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
+      ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManager& memory_manager) const override;
 
   absl::StatusOr<bool> HasField(
@@ -68,7 +65,6 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
 
   google::protobuf::MessageFactory* message_factory_;
   const google::protobuf::Descriptor* descriptor_;
-  ProtoWrapperTypeOptions unboxing_option_;
 };
 
 }  // namespace google::api::expr::runtime

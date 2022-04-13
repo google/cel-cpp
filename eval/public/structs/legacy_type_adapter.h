@@ -20,6 +20,7 @@
 
 #include "absl/status/status.h"
 #include "base/memory_manager.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
@@ -76,6 +77,7 @@ class LegacyTypeAccessApis {
   // Access field on instance.
   virtual absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
+      ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManager& memory_manager) const = 0;
 };
 

@@ -102,6 +102,7 @@ absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
 
 absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
     absl::string_view field_name, const CelValue::MessageWrapper& instance,
+    ProtoWrapperTypeOptions unboxing_option,
     cel::MemoryManager& memory_manager) const {
   if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
     return absl::InvalidArgumentError("GetField called on non-message type.");
@@ -129,7 +130,7 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::GetField(
 
   CelValue result;
   CEL_RETURN_IF_ERROR(CreateValueFromSingleField(
-      message, field_desc, unboxing_option_, arena, &result));
+      message, field_desc, unboxing_option, arena, &result));
   return result;
 }
 

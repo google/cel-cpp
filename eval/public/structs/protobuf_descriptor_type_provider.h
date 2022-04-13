@@ -37,9 +37,7 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
  public:
   ProtobufDescriptorProvider(const google::protobuf::DescriptorPool* pool,
                              google::protobuf::MessageFactory* factory)
-      : descriptor_pool_(pool),
-        message_factory_(factory),
-        unboxing_option_(ProtoWrapperTypeOptions::kUnsetNull) {}
+      : descriptor_pool_(pool), message_factory_(factory) {}
 
   absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override;

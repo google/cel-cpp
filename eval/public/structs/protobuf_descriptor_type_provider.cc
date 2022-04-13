@@ -53,7 +53,7 @@ std::unique_ptr<ProtoMessageTypeAdapter> ProtobufDescriptorProvider::GetType(
     return nullptr;
   }
 
-  return std::make_unique<ProtoMessageTypeAdapter>(descriptor, message_factory_,
-                                                   unboxing_option_);
+  return std::make_unique<ProtoMessageTypeAdapter>(descriptor,
+                                                   message_factory_);
 }
 }  // namespace google::api::expr::runtime

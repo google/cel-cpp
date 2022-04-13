@@ -196,6 +196,7 @@ cc_library(
     hdrs = ["legacy_type_adapter.h"],
     deps = [
         "//base:memory_manager",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "@com_google_absl//absl/status",
     ],
@@ -224,6 +225,7 @@ cc_library(
         ":cel_proto_wrapper",
         ":legacy_type_adapter",
         "//base:memory_manager",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:cel_value_internal",
         "//eval/public/containers:field_access",
