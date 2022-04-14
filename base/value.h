@@ -638,15 +638,8 @@ class EnumValue : public Value {
 // private:
 //   CEL_DECLARE_ENUM_VALUE(MyEnumValue);
 // };
-#define CEL_DECLARE_ENUM_VALUE(enum_value)                                     \
- private:                                                                      \
-  friend class ::cel::base_internal::ValueHandleBase;                          \
-                                                                               \
-  static bool Is(const ::cel::Value& value);                                   \
-                                                                               \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
-                                                                               \
-  ::cel::internal::TypeInfo TypeId() const override;
+#define CEL_DECLARE_ENUM_VALUE(enum_value) \
+  CEL_INTERNAL_DECLARE_VALUE(Enum, enum_value)
 
 // CEL_IMPLEMENT_ENUM_VALUE implements `enum_value` as an enumeration value. It
 // must be called after the class definition of `enum_value`.
@@ -658,33 +651,8 @@ class EnumValue : public Value {
 // };
 //
 // CEL_IMPLEMENT_ENUM_VALUE(MyEnumValue);
-#define CEL_IMPLEMENT_ENUM_VALUE(enum_value)                                  \
-  static_assert(::std::is_base_of_v<::cel::EnumValue, enum_value>,            \
-                #enum_value " must inherit from cel::EnumValue");             \
-  static_assert(!::std::is_abstract_v<enum_value>,                            \
-                "this must not be abstract");                                 \
-                                                                              \
-  bool enum_value::Is(const ::cel::Value& value) {                            \
-    return value.kind() == ::cel::Kind::kEnum &&                              \
-           ::cel::base_internal::GetEnumValueTypeId(                          \
-               ::cel::internal::down_cast<const ::cel::EnumValue&>(value)) == \
-               ::cel::internal::TypeId<enum_value>();                         \
-  }                                                                           \
-                                                                              \
-  ::std::pair<::std::size_t, ::std::size_t> enum_value::SizeAndAlignment()    \
-      const {                                                                 \
-    static_assert(                                                            \
-        ::std::is_same_v<enum_value,                                          \
-                         ::std::remove_const_t<                               \
-                             ::std::remove_reference_t<decltype(*this)>>>,    \
-        "this must be the same as " #enum_value);                             \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_value),      \
-                                                     alignof(enum_value));    \
-  }                                                                           \
-                                                                              \
-  ::cel::internal::TypeInfo enum_value::TypeId() const {                      \
-    return ::cel::internal::TypeId<enum_value>();                             \
-  }
+#define CEL_IMPLEMENT_ENUM_VALUE(enum_value) \
+  CEL_INTERNAL_IMPLEMENT_VALUE(Enum, enum_value)
 
 // StructValue represents an instance of cel::StructType.
 class StructValue : public Value {
@@ -754,7 +722,7 @@ class StructValue : public Value {
 
   std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 
-  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
   // Set lazily, by StructValue::New.
@@ -769,15 +737,8 @@ class StructValue : public Value {
 // private:
 //   CEL_DECLARE_STRUCT_VALUE(MyStructValue);
 // };
-#define CEL_DECLARE_STRUCT_VALUE(struct_value)                                 \
- private:                                                                      \
-  friend class ::cel::base_internal::ValueHandleBase;                          \
-                                                                               \
-  static bool Is(const ::cel::Value& value);                                   \
-                                                                               \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
-                                                                               \
-  ::cel::internal::TypeInfo TypeId() const override;
+#define CEL_DECLARE_STRUCT_VALUE(struct_value) \
+  CEL_INTERNAL_DECLARE_VALUE(Struct, struct_value)
 
 // CEL_IMPLEMENT_STRUCT_VALUE implements `struct_value` as an struct
 // value. It must be called after the class definition of `struct_value`.
@@ -789,33 +750,8 @@ class StructValue : public Value {
 // };
 //
 // CEL_IMPLEMENT_STRUCT_VALUE(MyStructValue);
-#define CEL_IMPLEMENT_STRUCT_VALUE(struct_value)                             \
-  static_assert(::std::is_base_of_v<::cel::StructValue, struct_value>,       \
-                #struct_value " must inherit from cel::StructValue");        \
-  static_assert(!::std::is_abstract_v<struct_value>,                         \
-                "this must not be abstract");                                \
-                                                                             \
-  bool struct_value::Is(const ::cel::Value& value) {                         \
-    return value.kind() == ::cel::Kind::kStruct &&                           \
-           ::cel::base_internal::GetStructValueTypeId(                       \
-               ::cel::internal::down_cast<const ::cel::StructValue&>(        \
-                   value)) == ::cel::internal::TypeId<struct_value>();       \
-  }                                                                          \
-                                                                             \
-  ::std::pair<::std::size_t, ::std::size_t> struct_value::SizeAndAlignment() \
-      const {                                                                \
-    static_assert(                                                           \
-        ::std::is_same_v<struct_value,                                       \
-                         ::std::remove_const_t<                              \
-                             ::std::remove_reference_t<decltype(*this)>>>,   \
-        "this must be the same as " #struct_value);                          \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(struct_value),   \
-                                                     alignof(struct_value)); \
-  }                                                                          \
-                                                                             \
-  ::cel::internal::TypeInfo struct_value::TypeId() const {                   \
-    return ::cel::internal::TypeId<struct_value>();                          \
-  }
+#define CEL_IMPLEMENT_STRUCT_VALUE(struct_value) \
+  CEL_INTERNAL_IMPLEMENT_VALUE(Struct, struct_value)
 
 // ListValue represents an instance of cel::ListType.
 class ListValue : public Value {
@@ -859,14 +795,11 @@ class ListValue : public Value {
 
   std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 
-  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
   const Persistent<const ListType> type_;
 };
-
-// TODO(issues/5): generalize the macros to avoid repeating them when they
-// are ultimately very similar.
 
 // CEL_DECLARE_LIST_VALUE declares `list_value` as an list value. It must
 // be part of the class definition of `list_value`.
@@ -876,15 +809,8 @@ class ListValue : public Value {
 // private:
 //   CEL_DECLARE_LIST_VALUE(MyListValue);
 // };
-#define CEL_DECLARE_LIST_VALUE(list_value)                                     \
- private:                                                                      \
-  friend class ::cel::base_internal::ValueHandleBase;                          \
-                                                                               \
-  static bool Is(const ::cel::Value& value);                                   \
-                                                                               \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
-                                                                               \
-  ::cel::internal::TypeInfo TypeId() const override;
+#define CEL_DECLARE_LIST_VALUE(list_value) \
+  CEL_INTERNAL_DECLARE_VALUE(List, list_value)
 
 // CEL_IMPLEMENT_LIST_VALUE implements `list_value` as an list
 // value. It must be called after the class definition of `list_value`.
@@ -896,33 +822,8 @@ class ListValue : public Value {
 // };
 //
 // CEL_IMPLEMENT_LIST_VALUE(MyListValue);
-#define CEL_IMPLEMENT_LIST_VALUE(list_value)                                  \
-  static_assert(::std::is_base_of_v<::cel::ListValue, list_value>,            \
-                #list_value " must inherit from cel::ListValue");             \
-  static_assert(!::std::is_abstract_v<list_value>,                            \
-                "this must not be abstract");                                 \
-                                                                              \
-  bool list_value::Is(const ::cel::Value& value) {                            \
-    return value.kind() == ::cel::Kind::kList &&                              \
-           ::cel::base_internal::GetListValueTypeId(                          \
-               ::cel::internal::down_cast<const ::cel::ListValue&>(value)) == \
-               ::cel::internal::TypeId<list_value>();                         \
-  }                                                                           \
-                                                                              \
-  ::std::pair<::std::size_t, ::std::size_t> list_value::SizeAndAlignment()    \
-      const {                                                                 \
-    static_assert(                                                            \
-        ::std::is_same_v<list_value,                                          \
-                         ::std::remove_const_t<                               \
-                             ::std::remove_reference_t<decltype(*this)>>>,    \
-        "this must be the same as " #list_value);                             \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(list_value),      \
-                                                     alignof(list_value));    \
-  }                                                                           \
-                                                                              \
-  ::cel::internal::TypeInfo list_value::TypeId() const {                      \
-    return ::cel::internal::TypeId<list_value>();                             \
-  }
+#define CEL_IMPLEMENT_LIST_VALUE(list_value) \
+  CEL_INTERNAL_IMPLEMENT_VALUE(List, list_value)
 
 // MapValue represents an instance of cel::MapType.
 class MapValue : public Value {
@@ -962,15 +863,12 @@ class MapValue : public Value {
 
   std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 
-  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
   // Set lazily, by EnumValue::New.
   Persistent<const MapType> type_;
 };
-
-// TODO(issues/5): generalize the macros to avoid repeating them when they
-// are ultimately very similar.
 
 // CEL_DECLARE_MAP_VALUE declares `map_value` as an map value. It must
 // be part of the class definition of `map_value`.
@@ -980,15 +878,8 @@ class MapValue : public Value {
 // private:
 //   CEL_DECLARE_MAP_VALUE(MyMapValue);
 // };
-#define CEL_DECLARE_MAP_VALUE(map_value)                                       \
- private:                                                                      \
-  friend class ::cel::base_internal::ValueHandleBase;                          \
-                                                                               \
-  static bool Is(const ::cel::Value& value);                                   \
-                                                                               \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
-                                                                               \
-  ::cel::internal::TypeInfo TypeId() const override;
+#define CEL_DECLARE_MAP_VALUE(map_value) \
+  CEL_INTERNAL_DECLARE_VALUE(Map, map_value)
 
 // CEL_IMPLEMENT_MAP_VALUE implements `map_value` as an map
 // value. It must be called after the class definition of `map_value`.
@@ -1000,33 +891,8 @@ class MapValue : public Value {
 // };
 //
 // CEL_IMPLEMENT_MAP_VALUE(MyMapValue);
-#define CEL_IMPLEMENT_MAP_VALUE(map_value)                                   \
-  static_assert(::std::is_base_of_v<::cel::MapValue, map_value>,             \
-                #map_value " must inherit from cel::MapValue");              \
-  static_assert(!::std::is_abstract_v<map_value>,                            \
-                "this must not be abstract");                                \
-                                                                             \
-  bool map_value::Is(const ::cel::Value& value) {                            \
-    return value.kind() == ::cel::Kind::kMap &&                              \
-           ::cel::base_internal::GetMapValueTypeId(                          \
-               ::cel::internal::down_cast<const ::cel::MapValue&>(value)) == \
-               ::cel::internal::TypeId<map_value>();                         \
-  }                                                                          \
-                                                                             \
-  ::std::pair<::std::size_t, ::std::size_t> map_value::SizeAndAlignment()    \
-      const {                                                                \
-    static_assert(                                                           \
-        ::std::is_same_v<map_value,                                          \
-                         ::std::remove_const_t<                              \
-                             ::std::remove_reference_t<decltype(*this)>>>,   \
-        "this must be the same as " #map_value);                             \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(map_value),      \
-                                                     alignof(map_value));    \
-  }                                                                          \
-                                                                             \
-  ::cel::internal::TypeInfo map_value::TypeId() const {                      \
-    return ::cel::internal::TypeId<map_value>();                             \
-  }
+#define CEL_IMPLEMENT_MAP_VALUE(map_value) \
+  CEL_INTERNAL_IMPLEMENT_VALUE(Map, map_value)
 
 }  // namespace cel
 

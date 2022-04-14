@@ -56,4 +56,41 @@ internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
 
 }  // namespace cel
 
+#define CEL_INTERNAL_DECLARE_TYPE(base, derived)                               \
+ private:                                                                      \
+  friend class ::cel::base_internal::TypeHandleBase;                           \
+                                                                               \
+  static bool Is(const ::cel::Type& type);                                     \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
+
+#define CEL_INTERNAL_IMPLEMENT_TYPE(base, derived)                            \
+  static_assert(::std::is_base_of_v<::cel::base##Type, derived>,              \
+                #derived " must inherit from cel::" #base "Type");            \
+  static_assert(!::std::is_abstract_v<derived>, "this must not be abstract"); \
+                                                                              \
+  bool derived::Is(const ::cel::Type& type) {                                 \
+    return type.kind() == ::cel::Kind::k##base &&                             \
+           ::cel::base_internal::Get##base##TypeTypeId(                       \
+               ::cel::internal::down_cast<const ::cel::base##Type&>(type)) == \
+               ::cel::internal::TypeId<derived>();                            \
+  }                                                                           \
+                                                                              \
+  ::std::pair<::std::size_t, ::std::size_t> derived::SizeAndAlignment()       \
+      const {                                                                 \
+    static_assert(                                                            \
+        ::std::is_same_v<derived,                                             \
+                         ::std::remove_const_t<                               \
+                             ::std::remove_reference_t<decltype(*this)>>>,    \
+        "this must be the same as " #derived);                                \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(derived),         \
+                                                     alignof(derived));       \
+  }                                                                           \
+                                                                              \
+  ::cel::internal::TypeInfo derived::TypeId() const {                         \
+    return ::cel::internal::TypeId<derived>();                                \
+  }
+
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_TYPE_PRE_H_

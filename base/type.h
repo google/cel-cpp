@@ -518,15 +518,8 @@ class EnumType : public Type {
 // private:
 //   CEL_DECLARE_ENUM_TYPE(MyEnumType);
 // };
-#define CEL_DECLARE_ENUM_TYPE(enum_type)                                       \
- private:                                                                      \
-  friend class ::cel::base_internal::TypeHandleBase;                           \
-                                                                               \
-  static bool Is(const ::cel::Type& type);                                     \
-                                                                               \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
-                                                                               \
-  ::cel::internal::TypeInfo TypeId() const override;
+#define CEL_DECLARE_ENUM_TYPE(enum_type) \
+  CEL_INTERNAL_DECLARE_TYPE(Enum, enum_type)
 
 // CEL_IMPLEMENT_ENUM_TYPE implements `enum_type` as an enumeration type. It
 // must be called after the class definition of `enum_type`.
@@ -538,33 +531,8 @@ class EnumType : public Type {
 // };
 //
 // CEL_IMPLEMENT_ENUM_TYPE(MyEnumType);
-#define CEL_IMPLEMENT_ENUM_TYPE(enum_type)                                  \
-  static_assert(::std::is_base_of_v<::cel::EnumType, enum_type>,            \
-                #enum_type " must inherit from cel::EnumType");             \
-  static_assert(!::std::is_abstract_v<enum_type>,                           \
-                "this must not be abstract");                               \
-                                                                            \
-  bool enum_type::Is(const ::cel::Type& type) {                             \
-    return type.kind() == ::cel::Kind::kEnum &&                             \
-           ::cel::base_internal::GetEnumTypeTypeId(                         \
-               ::cel::internal::down_cast<const ::cel::EnumType&>(type)) == \
-               ::cel::internal::TypeId<enum_type>();                        \
-  }                                                                         \
-                                                                            \
-  ::std::pair<::std::size_t, ::std::size_t> enum_type::SizeAndAlignment()   \
-      const {                                                               \
-    static_assert(                                                          \
-        ::std::is_same_v<enum_type,                                         \
-                         ::std::remove_const_t<                             \
-                             ::std::remove_reference_t<decltype(*this)>>>,  \
-        "this must be the same as " #enum_type);                            \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(enum_type),     \
-                                                     alignof(enum_type));   \
-  }                                                                         \
-                                                                            \
-  ::cel::internal::TypeInfo enum_type::TypeId() const {                     \
-    return ::cel::internal::TypeId<enum_type>();                            \
-  }
+#define CEL_IMPLEMENT_ENUM_TYPE(enum_type) \
+  CEL_INTERNAL_IMPLEMENT_TYPE(Enum, enum_type)
 
 // StructType represents an struct type. An struct is a set of fields
 // that can be looked up by name and/or number.
@@ -646,15 +614,8 @@ class StructType : public Type {
 // private:
 //   CEL_DECLARE_STRUCT_TYPE(MyStructType);
 // };
-#define CEL_DECLARE_STRUCT_TYPE(struct_type)                                   \
- private:                                                                      \
-  friend class ::cel::base_internal::TypeHandleBase;                           \
-                                                                               \
-  static bool Is(const ::cel::Type& type);                                     \
-                                                                               \
-  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
-                                                                               \
-  ::cel::internal::TypeInfo TypeId() const override;
+#define CEL_DECLARE_STRUCT_TYPE(struct_type) \
+  CEL_INTERNAL_DECLARE_TYPE(Struct, struct_type)
 
 // CEL_IMPLEMENT_ENUM_TYPE implements `struct_type` as an struct type. It
 // must be called after the class definition of `struct_type`.
@@ -666,33 +627,8 @@ class StructType : public Type {
 // };
 //
 // CEL_IMPLEMENT_STRUCT_TYPE(MyStructType);
-#define CEL_IMPLEMENT_STRUCT_TYPE(struct_type)                                \
-  static_assert(::std::is_base_of_v<::cel::StructType, struct_type>,          \
-                #struct_type " must inherit from cel::StructType");           \
-  static_assert(!::std::is_abstract_v<struct_type>,                           \
-                "this must not be abstract");                                 \
-                                                                              \
-  bool struct_type::Is(const ::cel::Type& type) {                             \
-    return type.kind() == ::cel::Kind::kStruct &&                             \
-           ::cel::base_internal::GetStructTypeTypeId(                         \
-               ::cel::internal::down_cast<const ::cel::StructType&>(type)) == \
-               ::cel::internal::TypeId<struct_type>();                        \
-  }                                                                           \
-                                                                              \
-  ::std::pair<::std::size_t, ::std::size_t> struct_type::SizeAndAlignment()   \
-      const {                                                                 \
-    static_assert(                                                            \
-        ::std::is_same_v<struct_type,                                         \
-                         ::std::remove_const_t<                               \
-                             ::std::remove_reference_t<decltype(*this)>>>,    \
-        "this must be the same as " #struct_type);                            \
-    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(struct_type),     \
-                                                     alignof(struct_type));   \
-  }                                                                           \
-                                                                              \
-  ::cel::internal::TypeInfo struct_type::TypeId() const {                     \
-    return ::cel::internal::TypeId<struct_type>();                            \
-  }
+#define CEL_IMPLEMENT_STRUCT_TYPE(struct_type) \
+  CEL_INTERNAL_IMPLEMENT_TYPE(Struct, struct_type)
 
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
