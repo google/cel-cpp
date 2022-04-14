@@ -54,6 +54,7 @@ class TimestampValue;
 class EnumValue;
 class StructValue;
 class ListValue;
+class MapValue;
 class ValueFactory;
 class TypedListValueFactory;
 
@@ -90,6 +91,7 @@ class Value : public base_internal::Resource {
   friend class EnumValue;
   friend class StructValue;
   friend class ListValue;
+  friend class MapValue;
   friend class base_internal::ValueHandleBase;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
@@ -820,10 +822,7 @@ class ListValue : public Value {
  public:
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  Transient<const Type> type() const final {
-    ABSL_ASSERT(type_);
-    return type_;
-  }
+  Transient<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kList; }
 
@@ -923,6 +922,110 @@ class ListValue : public Value {
                                                                               \
   ::cel::internal::TypeInfo list_value::TypeId() const {                      \
     return ::cel::internal::TypeId<list_value>();                             \
+  }
+
+// MapValue represents an instance of cel::MapType.
+class MapValue : public Value {
+ public:
+  Transient<const Type> type() const final { return type_; }
+
+  Kind kind() const final { return Kind::kMap; }
+
+  virtual size_t size() const = 0;
+
+  virtual bool empty() const { return size() == 0; }
+
+  virtual absl::StatusOr<Transient<const Value>> Get(
+      ValueFactory& value_factory, const Transient<const Value>& key) const = 0;
+
+  virtual absl::StatusOr<bool> Has(const Transient<const Value>& key) const = 0;
+
+ protected:
+  explicit MapValue(const Persistent<const MapType>& type) : type_(type) {}
+
+ private:
+  friend internal::TypeInfo base_internal::GetMapValueTypeId(
+      const MapValue& map_value);
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kMap; }
+
+  MapValue(const MapValue&) = delete;
+  MapValue(MapValue&&) = delete;
+
+  bool Equals(const Value& other) const override = 0;
+  void HashValue(absl::HashState state) const override = 0;
+
+  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+
+  // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
+  virtual internal::TypeInfo TypeId() const = 0;
+
+  // Set lazily, by EnumValue::New.
+  Persistent<const MapType> type_;
+};
+
+// TODO(issues/5): generalize the macros to avoid repeating them when they
+// are ultimately very similar.
+
+// CEL_DECLARE_MAP_VALUE declares `map_value` as an map value. It must
+// be part of the class definition of `map_value`.
+//
+// class MyMapValue : public cel::MapValue {
+//  ...
+// private:
+//   CEL_DECLARE_MAP_VALUE(MyMapValue);
+// };
+#define CEL_DECLARE_MAP_VALUE(map_value)                                       \
+ private:                                                                      \
+  friend class ::cel::base_internal::ValueHandleBase;                          \
+                                                                               \
+  static bool Is(const ::cel::Value& value);                                   \
+                                                                               \
+  ::std::pair<::std::size_t, ::std::size_t> SizeAndAlignment() const override; \
+                                                                               \
+  ::cel::internal::TypeInfo TypeId() const override;
+
+// CEL_IMPLEMENT_MAP_VALUE implements `map_value` as an map
+// value. It must be called after the class definition of `map_value`.
+//
+// class MyMapValue : public cel::MapValue {
+//  ...
+// private:
+//   CEL_DECLARE_MAP_VALUE(MyMapValue);
+// };
+//
+// CEL_IMPLEMENT_MAP_VALUE(MyMapValue);
+#define CEL_IMPLEMENT_MAP_VALUE(map_value)                                   \
+  static_assert(::std::is_base_of_v<::cel::MapValue, map_value>,             \
+                #map_value " must inherit from cel::MapValue");              \
+  static_assert(!::std::is_abstract_v<map_value>,                            \
+                "this must not be abstract");                                \
+                                                                             \
+  bool map_value::Is(const ::cel::Value& value) {                            \
+    return value.kind() == ::cel::Kind::kMap &&                              \
+           ::cel::base_internal::GetMapValueTypeId(                          \
+               ::cel::internal::down_cast<const ::cel::MapValue&>(value)) == \
+               ::cel::internal::TypeId<map_value>();                         \
+  }                                                                          \
+                                                                             \
+  ::std::pair<::std::size_t, ::std::size_t> map_value::SizeAndAlignment()    \
+      const {                                                                \
+    static_assert(                                                           \
+        ::std::is_same_v<map_value,                                          \
+                         ::std::remove_const_t<                              \
+                             ::std::remove_reference_t<decltype(*this)>>>,   \
+        "this must be the same as " #map_value);                             \
+    return ::std::pair<::std::size_t, ::std::size_t>(sizeof(map_value),      \
+                                                     alignof(map_value));    \
+  }                                                                          \
+                                                                             \
+  ::cel::internal::TypeInfo map_value::TypeId() const {                      \
+    return ::cel::internal::TypeId<map_value>();                             \
   }
 
 }  // namespace cel

@@ -29,6 +29,7 @@ namespace cel {
 class EnumValue;
 class StructValue;
 class ListValue;
+class MapValue;
 
 namespace base_internal {
 
@@ -53,6 +54,8 @@ internal::TypeInfo GetEnumValueTypeId(const EnumValue& enum_value);
 internal::TypeInfo GetStructValueTypeId(const StructValue& struct_value);
 
 internal::TypeInfo GetListValueTypeId(const ListValue& list_value);
+
+internal::TypeInfo GetMapValueTypeId(const MapValue& map_value);
 
 class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;

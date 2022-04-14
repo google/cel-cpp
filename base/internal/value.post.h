@@ -50,6 +50,10 @@ inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
   return list_value.TypeId();
 }
 
+inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
+  return map_value.TypeId();
+}
+
 // Implementation of BytesValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
@@ -674,6 +678,7 @@ CEL_INTERNAL_VALUE_DECL(TimestampValue);
 CEL_INTERNAL_VALUE_DECL(EnumValue);
 CEL_INTERNAL_VALUE_DECL(StructValue);
 CEL_INTERNAL_VALUE_DECL(ListValue);
+CEL_INTERNAL_VALUE_DECL(MapValue);
 #undef CEL_INTERNAL_VALUE_DECL
 
 }  // namespace cel

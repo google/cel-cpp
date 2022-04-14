@@ -161,6 +161,15 @@ class ValueFactory final {
                                 std::forward<Args>(args)...);
   }
 
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<MapValue, T, absl::StatusOr<Persistent<T>>> CreateMapValue(
+      const Persistent<const MapType>& type,
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::PersistentHandleFactory<T>::template Make<
+        std::remove_const_t<T>>(memory_manager(), type,
+                                std::forward<Args>(args)...);
+  }
+
  private:
   friend class BytesValue;
   friend class StringValue;

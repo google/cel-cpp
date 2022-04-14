@@ -18,6 +18,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <map>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -356,6 +357,9 @@ class TestListValue final : public ListValue {
 
   absl::StatusOr<Transient<const Value>> Get(ValueFactory& value_factory,
                                              size_t index) const override {
+    if (index >= size()) {
+      return absl::OutOfRangeError("");
+    }
     return value_factory.CreateIntValue(elements_[index]);
   }
 
@@ -382,6 +386,69 @@ class TestListValue final : public ListValue {
 };
 
 CEL_IMPLEMENT_LIST_VALUE(TestListValue);
+
+class TestMapValue final : public MapValue {
+ public:
+  explicit TestMapValue(const Persistent<const MapType>& type,
+                        std::map<std::string, int64_t> entries)
+      : MapValue(type), entries_(std::move(entries)) {
+    ABSL_ASSERT(type->key().Is<StringType>());
+    ABSL_ASSERT(type->value().Is<IntType>());
+  }
+
+  size_t size() const override { return entries_.size(); }
+
+  absl::StatusOr<Transient<const Value>> Get(
+      ValueFactory& value_factory,
+      const Transient<const Value>& key) const override {
+    if (!key.Is<StringValue>()) {
+      return absl::InvalidArgumentError("");
+    }
+    auto entry = entries_.find(key.As<const StringValue>()->ToString());
+    if (entry == entries_.end()) {
+      return absl::NotFoundError("");
+    }
+    return value_factory.CreateIntValue(entry->second);
+  }
+
+  absl::StatusOr<bool> Has(const Transient<const Value>& key) const override {
+    if (!key.Is<StringValue>()) {
+      return absl::InvalidArgumentError("");
+    }
+    auto entry = entries_.find(key.As<const StringValue>()->ToString());
+    if (entry == entries_.end()) {
+      return false;
+    }
+    return true;
+  }
+
+  std::string DebugString() const override {
+    std::vector<std::string> parts;
+    for (const auto& entry : entries_) {
+      parts.push_back(absl::StrCat(internal::FormatStringLiteral(entry.first),
+                                   ": ", entry.second));
+    }
+    return absl::StrCat("{", absl::StrJoin(parts, ", "), "}");
+  }
+
+  const std::map<std::string, int64_t>& value() const { return entries_; }
+
+ private:
+  bool Equals(const Value& other) const override {
+    return Is(other) &&
+           entries_ == internal::down_cast<const TestMapValue&>(other).entries_;
+  }
+
+  void HashValue(absl::HashState state) const override {
+    absl::HashState::combine(std::move(state), type(), entries_);
+  }
+
+  std::map<std::string, int64_t> entries_;
+
+  CEL_DECLARE_MAP_VALUE(TestMapValue);
+};
+
+CEL_IMPLEMENT_MAP_VALUE(TestMapValue);
 
 template <typename T>
 Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
@@ -548,6 +615,14 @@ INSTANTIATE_TEST_SUITE_P(
            return Must(value_factory.CreateListValue<TestListValue>(
                Must(type_factory.CreateListType(type_factory.GetIntType())),
                std::vector<int64_t>{}));
+         }},
+        {"Map",
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateMapValue<TestMapValue>(
+               Must(type_factory.CreateMapType(type_factory.GetStringType(),
+                                               type_factory.GetIntType())),
+               std::map<std::string, int64_t>{}));
          }},
     }),
     [](const testing::TestParamInfo<ConstructionAssignmentTestCase>& info) {
@@ -2047,6 +2122,104 @@ TEST(ListValue, Get) {
             value_factory.CreateIntValue(1));
   EXPECT_EQ(Must(list_value->Get(value_factory, 2)),
             value_factory.CreateIntValue(2));
+  EXPECT_THAT(list_value->Get(value_factory, 3),
+              StatusIs(absl::StatusCode::kOutOfRange));
+}
+
+TEST(Value, Map) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto zero_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{}));
+  EXPECT_TRUE(zero_value.Is<MapValue>());
+  EXPECT_TRUE(zero_value.Is<TestMapValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, Must(value_factory.CreateMapValue<TestMapValue>(
+                            map_type, std::map<std::string, int64_t>{})));
+  EXPECT_EQ(zero_value->kind(), Kind::kMap);
+  EXPECT_EQ(zero_value->type(), map_type);
+  EXPECT_EQ(zero_value.As<TestMapValue>()->value(),
+            (std::map<std::string, int64_t>{}));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto one_value,
+      value_factory.CreateMapValue<TestMapValue>(
+          map_type, std::map<std::string, int64_t>{{"foo", 1}}));
+  EXPECT_TRUE(one_value.Is<MapValue>());
+  EXPECT_TRUE(one_value.Is<TestMapValue>());
+  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_EQ(one_value, one_value);
+  EXPECT_EQ(one_value->kind(), Kind::kMap);
+  EXPECT_EQ(one_value->type(), map_type);
+  EXPECT_EQ(one_value.As<TestMapValue>()->value(),
+            (std::map<std::string, int64_t>{{"foo", 1}}));
+
+  EXPECT_NE(zero_value, one_value);
+  EXPECT_NE(one_value, zero_value);
+}
+
+TEST(MapValue, DebugString) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{}));
+  EXPECT_EQ(map_value->DebugString(), "{}");
+  ASSERT_OK_AND_ASSIGN(map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{
+                                         {"foo", 1}, {"bar", 2}, {"baz", 3}}));
+  EXPECT_EQ(map_value->DebugString(), "{\"bar\": 2, \"baz\": 3, \"foo\": 1}");
+}
+
+TEST(MapValue, GetAndHas) {
+  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{}));
+  EXPECT_TRUE(map_value->empty());
+  EXPECT_EQ(map_value->size(), 0);
+
+  ASSERT_OK_AND_ASSIGN(map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{
+                                         {"foo", 1}, {"bar", 2}, {"baz", 3}}));
+  EXPECT_FALSE(map_value->empty());
+  EXPECT_EQ(map_value->size(), 3);
+  EXPECT_EQ(Must(map_value->Get(value_factory,
+                                Must(value_factory.CreateStringValue("foo")))),
+            value_factory.CreateIntValue(1));
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("foo"))),
+              IsOkAndHolds(true));
+  EXPECT_EQ(Must(map_value->Get(value_factory,
+                                Must(value_factory.CreateStringValue("bar")))),
+            value_factory.CreateIntValue(2));
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("bar"))),
+              IsOkAndHolds(true));
+  EXPECT_EQ(Must(map_value->Get(value_factory,
+                                Must(value_factory.CreateStringValue("baz")))),
+            value_factory.CreateIntValue(3));
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("baz"))),
+              IsOkAndHolds(true));
+  EXPECT_THAT(map_value->Get(value_factory, value_factory.CreateIntValue(0)),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(map_value->Get(value_factory,
+                             Must(value_factory.CreateStringValue("missing"))),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("missing"))),
+              IsOkAndHolds(false));
 }
 
 TEST(Value, SupportsAbslHash) {
@@ -2066,6 +2239,12 @@ TEST(Value, SupportsAbslHash) {
   ASSERT_OK_AND_ASSIGN(auto list_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{}));
+  ASSERT_OK_AND_ASSIGN(auto map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{}));
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
       Persistent<const Value>(value_factory.GetNullValue()),
       Persistent<const Value>(
@@ -2089,6 +2268,7 @@ TEST(Value, SupportsAbslHash) {
       Persistent<const Value>(enum_value),
       Persistent<const Value>(struct_value),
       Persistent<const Value>(list_value),
+      Persistent<const Value>(map_value),
   }));
 }
 
