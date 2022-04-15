@@ -607,7 +607,26 @@ INSTANTIATE_TEST_SUITE_P(
         {"Bytes",
          [](TypeFactory& type_factory,
             ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateBytesValue(nullptr));
+           return Must(value_factory.CreateBytesValue(""));
+         }},
+        {"String",
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(value_factory.CreateStringValue(""));
+         }},
+        {"Enum",
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(
+               EnumValue::New(Must(type_factory.CreateEnumType<TestEnumType>()),
+                              value_factory, EnumType::ConstantId("VALUE1")));
+         }},
+        {"Struct",
+         [](TypeFactory& type_factory,
+            ValueFactory& value_factory) -> Persistent<const Value> {
+           return Must(StructValue::New(
+               Must(type_factory.CreateStructType<TestStructType>()),
+               value_factory));
          }},
         {"List",
          [](TypeFactory& type_factory,
