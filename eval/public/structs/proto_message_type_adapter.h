@@ -23,6 +23,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 
 namespace google::api::expr::runtime {
 
@@ -66,6 +67,11 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
   google::protobuf::MessageFactory* message_factory_;
   const google::protobuf::Descriptor* descriptor_;
 };
+
+// Returns a TypeInfo provider representing an arbitrary message.
+// This allows for the legacy duck-typed behavior of messages on field access
+// instead of expecting a particular message type given a TypeInfo.
+const LegacyTypeInfoApis& GetGenericProtoTypeInfoInstance();
 
 }  // namespace google::api::expr::runtime
 

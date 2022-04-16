@@ -28,7 +28,7 @@ class LegacyTypeAccessApis;
 // message).
 //
 // Provides ability to obtain field access apis, type info, and debug
-// representation of a message/
+// representation of a message.
 //
 // This is implemented as a separate class from LegacyTypeAccessApis to resolve
 // cyclic dependency between CelValue (which needs to access these apis to
