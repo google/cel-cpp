@@ -40,15 +40,15 @@
 #include "eval/public/structs/protobuf_value_factory.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/overflow.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime::internal {
 
 namespace {
 
-using google::api::expr::internal::DecodeDuration;
-using google::api::expr::internal::DecodeTime;
-using google::api::expr::internal::EncodeTime;
+using cel::internal::DecodeDuration;
+using cel::internal::DecodeTime;
+using cel::internal::EncodeTime;
 using google::protobuf::Any;
 using google::protobuf::BoolValue;
 using google::protobuf::BytesValue;
@@ -411,7 +411,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Duration* dur
   if (!value.GetValue(&val)) {
     return nullptr;
   }
-  auto status = google::api::expr::internal::EncodeDuration(val, duration);
+  auto status = cel::internal::EncodeDuration(val, duration);
   if (!status.ok()) {
     return nullptr;
   }
@@ -603,7 +603,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json) 
       // Convert duration values to a protobuf JSON format.
       absl::Duration val;
       if (value.GetValue(&val)) {
-        auto encode = google::api::expr::internal::EncodeDurationToString(val);
+        auto encode = cel::internal::EncodeDurationToString(val);
         if (!encode.ok()) {
           return nullptr;
         }
@@ -635,7 +635,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json) 
       // Convert timestamp values to a protobuf JSON format.
       absl::Time val;
       if (value.GetValue(&val)) {
-        auto encode = google::api::expr::internal::EncodeTimeToString(val);
+        auto encode = cel::internal::EncodeTimeToString(val);
         if (!encode.ok()) {
           return nullptr;
         }

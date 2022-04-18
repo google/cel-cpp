@@ -5,7 +5,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "eval/public/cel_value.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime {
 
@@ -23,12 +23,12 @@ class CelProtoWrapper {
 
   // CreateDuration creates CelValue from a non-null protobuf duration value.
   static CelValue CreateDuration(const google::protobuf::Duration* value) {
-    return CelValue(expr::internal::DecodeDuration(*value));
+    return CelValue(cel::internal::DecodeDuration(*value));
   }
 
   // CreateTimestamp creates CelValue from a non-null protobuf timestamp value.
   static CelValue CreateTimestamp(const google::protobuf::Timestamp* value) {
-    return CelValue(expr::internal::DecodeTime(*value));
+    return CelValue(cel::internal::DecodeTime(*value));
   }
 
   // MaybeWrapValue attempts to wrap the input value in a proto message with

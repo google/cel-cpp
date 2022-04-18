@@ -41,7 +41,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "internal/casts.h"
 #include "internal/overflow.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -51,9 +51,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::internal::EncodeDurationToString;
+using ::cel::internal::EncodeTimeToString;
 using ::cel::internal::MaxTimestamp;
-using ::google::api::expr::internal::EncodeDurationToString;
-using ::google::api::expr::internal::EncodeTimeToString;
 using ::google::protobuf::Arena;
 
 // Time representing `9999-12-31T23:59:59.999999999Z`.

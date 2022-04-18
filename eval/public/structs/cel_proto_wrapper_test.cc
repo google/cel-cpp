@@ -19,7 +19,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
@@ -162,7 +162,7 @@ TEST_F(CelProtoWrapperTest, TestDuration) {
   CelValue value = CelProtoWrapper::CreateDuration(&msg_duration);
   EXPECT_TRUE(value.IsDuration());
   Duration out;
-  auto status = expr::internal::EncodeDuration(value.DurationOrDie(), &out);
+  auto status = cel::internal::EncodeDuration(value.DurationOrDie(), &out);
   EXPECT_TRUE(status.ok());
   EXPECT_THAT(out, testutil::EqualsProto(msg_duration));
 }
@@ -183,7 +183,7 @@ TEST_F(CelProtoWrapperTest, TestTimestamp) {
   //  CelValue value = CelValue::CreateString("test");
   EXPECT_TRUE(value.IsTimestamp());
   Timestamp out;
-  auto status = expr::internal::EncodeTime(value.TimestampOrDie(), &out);
+  auto status = cel::internal::EncodeTime(value.TimestampOrDie(), &out);
   EXPECT_TRUE(status.ok());
   EXPECT_THAT(out, testutil::EqualsProto(msg_timestamp));
 }

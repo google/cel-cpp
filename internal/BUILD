@@ -137,13 +137,11 @@ cc_library(
     hdrs = ["proto_util.h"],
     deps = [
         ":status_macros",
-        ":time",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
-        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -155,6 +153,33 @@ cc_test(
         ":proto_util",
         ":testing",
         "//eval/public/structs:cel_proto_descriptor_pool_builder",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "proto_time_encoding",
+    srcs = ["proto_time_encoding.cc"],
+    hdrs = ["proto_time_encoding.h"],
+    deps = [
+        ":status_macros",
+        ":time",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "proto_time_encoding_test",
+    srcs = ["proto_time_encoding_test.cc"],
+    deps = [
+        ":proto_time_encoding",
+        ":testing",
+        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )

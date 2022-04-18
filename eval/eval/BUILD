@@ -88,7 +88,7 @@ cc_library(
         ":expression_step_base",
         "//eval/public:cel_value",
         "//eval/public/structs:cel_proto_wrapper",
-        "//internal:proto_util",
+        "//internal:proto_time_encoding",
         "@com_google_absl//absl/status:statusor",
         "@com_google_protobuf//:protobuf",
     ],
