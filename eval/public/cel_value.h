@@ -118,9 +118,10 @@ class CelValue {
   // MessageWrapper wraps a tagged MessageLite with the accessors used to
   // get field values.
   //
-  // message_ptr(): get the MessageLite pointer for the wrapper.
+  // message_ptr(): get the MessageLite pointer of the wrapped message.
   //
-  // access_apis(): get the accessors used for the type.
+  // legacy_type_info(): get type information about the wrapped message. see
+  //    LegacyTypeInfoApis.
   //
   // HasFullProto(): returns whether it's safe to downcast to google::protobuf::Message.
   using MessageWrapper = internal::MessageWrapper;
@@ -420,6 +421,7 @@ class CelValue {
   // make private visibility after refactors are done.
   static CelValue CreateMessageWrapper(MessageWrapper value) {
     CheckNullPointer(value.message_ptr(), Type::kMessage);
+    CheckNullPointer(value.legacy_type_info(), Type::kMessage);
     return CelValue(value);
   }
 
@@ -462,18 +464,11 @@ class CelValue {
   template <class T>
   explicit CelValue(T value) : value_(value) {}
 
-  // Overloads for creating Message types. This should only be used by
-  // internal libraries.
-  static CelValue CreateMessage(const google::protobuf::Message* value) {
-    CheckNullPointer(value, Type::kMessage);
-    return CelValue(MessageWrapper(value));
-  }
-
   // This is provided for backwards compatibility with resolving null to message
   // overloads.
   static CelValue CreateNullMessage() {
     return CelValue(
-        MessageWrapper(static_cast<const google::protobuf::Message*>(nullptr)));
+        MessageWrapper(static_cast<const google::protobuf::Message*>(nullptr), nullptr));
   }
 
   // Crashes with a null pointer error.

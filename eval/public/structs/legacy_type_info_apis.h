@@ -49,9 +49,13 @@ class LegacyTypeInfoApis {
       const internal::MessageWrapper& wrapped_message) const = 0;
 
   // Return a pointer to the wrapped message's access api implementation.
-  // The CEL interpreter assumes that the  is owned externally and will
-  // outlive any CelValues created by the interpreter.
-  // Nullptr means the value does not provide access apis.
+  //
+  // The CEL interpreter assumes that the returned pointer is owned externally
+  // and will outlive any CelValues created by the interpreter.
+  //
+  // Nullptr signals that the value does not provide access apis. For field
+  // access, the interpreter will treat this the same as accessing a field that
+  // is not defined for the type.
   virtual const LegacyTypeAccessApis* GetAccessApis(
       const internal::MessageWrapper& wrapped_message) const = 0;
 };

@@ -45,10 +45,6 @@ using testing::EqualsProto;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
-CelValue MessageValueFactory(const google::protobuf::Message* message) {
-  return CelValue::CreateMessageWrapper(CelValue::MessageWrapper(message));
-}
-
 TEST(FieldAccessTest, SetDuration) {
   Arena arena;
   TestAllTypes msg;
@@ -195,8 +191,8 @@ TEST_P(SingleFieldTest, Getter) {
       CreateValueFromSingleField(
           &test_message,
           test_message.GetDescriptor()->FindFieldByName(field_name().data()),
-          ProtoWrapperTypeOptions::kUnsetProtoDefault, &MessageValueFactory,
-          &arena));
+          ProtoWrapperTypeOptions::kUnsetProtoDefault,
+          &CelProtoWrapper::InternalWrapMessage, &arena));
 
   EXPECT_THAT(accessed_value, test::EqualsCelValue(cel_value()));
 }
@@ -255,8 +251,8 @@ TEST(CreateValueFromSingleFieldTest, GetMessage) {
       CreateValueFromSingleField(
           &test_message,
           test_message.GetDescriptor()->FindFieldByName("standalone_message"),
-          ProtoWrapperTypeOptions::kUnsetProtoDefault, &MessageValueFactory,
-          &arena));
+          ProtoWrapperTypeOptions::kUnsetProtoDefault,
+          &CelProtoWrapper::InternalWrapMessage, &arena));
 
   EXPECT_THAT(accessed_value, test::IsCelMessage(EqualsProto("bb: 10")));
 }
@@ -372,7 +368,7 @@ TEST_P(RepeatedFieldTest, GetFirstElem) {
       CreateValueFromRepeatedField(
           &test_message,
           test_message.GetDescriptor()->FindFieldByName(field_name().data()), 0,
-          &MessageValueFactory, &arena));
+          &CelProtoWrapper::InternalWrapMessage, &arena));
 
   EXPECT_THAT(accessed_value, test::EqualsCelValue(cel_value()));
 }
@@ -427,7 +423,7 @@ TEST(RepeatedFieldTest, GetMessage) {
                            &test_message,
                            test_message.GetDescriptor()->FindFieldByName(
                                "repeated_nested_message"),
-                           0, &MessageValueFactory, &arena));
+                           0, &CelProtoWrapper::InternalWrapMessage, &arena));
 
   EXPECT_THAT(accessed_value, test::IsCelMessage(EqualsProto("bb: 30")));
 }
@@ -507,11 +503,11 @@ TEST(CreateValueFromFieldTest, UnsetWrapperTypesNullIfEnabled) {
 
   for (const auto& field : kWrapperFieldNames) {
     ASSERT_OK_AND_ASSIGN(
-        result,
-        CreateValueFromSingleField(
-            &test_message,
-            TestAllTypes::GetDescriptor()->FindFieldByName(field),
-            ProtoWrapperTypeOptions::kUnsetNull, &MessageValueFactory, &arena));
+        result, CreateValueFromSingleField(
+                    &test_message,
+                    TestAllTypes::GetDescriptor()->FindFieldByName(field),
+                    ProtoWrapperTypeOptions::kUnsetNull,
+                    &CelProtoWrapper::InternalWrapMessage, &arena));
     ASSERT_TRUE(result.IsNull()) << field << ": " << result.DebugString();
   }
 }
@@ -529,7 +525,7 @@ TEST(CreateValueFromFieldTest, UnsetWrapperTypesDefaultValueIfDisabled) {
                     &test_message,
                     TestAllTypes::GetDescriptor()->FindFieldByName(field),
                     ProtoWrapperTypeOptions::kUnsetProtoDefault,
-                    &MessageValueFactory, &arena));
+                    &CelProtoWrapper::InternalWrapMessage, &arena));
     ASSERT_FALSE(result.IsNull()) << field << ": " << result.DebugString();
   }
 }
@@ -560,85 +556,88 @@ TEST(CreateValueFromFieldTest, SetWrapperTypesDefaultValue) {
       CreateValueFromSingleField(
           &test_message,
           TestAllTypes::GetDescriptor()->FindFieldByName("single_bool_wrapper"),
-          ProtoWrapperTypeOptions::kUnsetNull, &MessageValueFactory, &arena));
+          ProtoWrapperTypeOptions::kUnsetNull,
+          &CelProtoWrapper::InternalWrapMessage, &arena));
   EXPECT_THAT(result, test::IsCelBool(false));
 
-  ASSERT_OK_AND_ASSIGN(
-      result,
-      CreateValueFromSingleField(&test_message,
-                                 TestAllTypes::GetDescriptor()->FindFieldByName(
-                                     "single_int64_wrapper"),
-                                 ProtoWrapperTypeOptions::kUnsetNull,
-                                 &MessageValueFactory, &arena));
+  ASSERT_OK_AND_ASSIGN(result,
+                       CreateValueFromSingleField(
+                           &test_message,
+                           TestAllTypes::GetDescriptor()->FindFieldByName(
+                               "single_int64_wrapper"),
+                           ProtoWrapperTypeOptions::kUnsetNull,
+                           &CelProtoWrapper::InternalWrapMessage, &arena));
+  EXPECT_THAT(result, test::IsCelInt64(0));
+
+  ASSERT_OK_AND_ASSIGN(result,
+                       CreateValueFromSingleField(
+                           &test_message,
+                           TestAllTypes::GetDescriptor()->FindFieldByName(
+                               "single_int32_wrapper"),
+                           ProtoWrapperTypeOptions::kUnsetNull,
+                           &CelProtoWrapper::InternalWrapMessage, &arena));
   EXPECT_THAT(result, test::IsCelInt64(0));
 
   ASSERT_OK_AND_ASSIGN(
       result,
       CreateValueFromSingleField(&test_message,
                                  TestAllTypes::GetDescriptor()->FindFieldByName(
-                                     "single_int32_wrapper"),
+                                     "single_uint64_wrapper"),
                                  ProtoWrapperTypeOptions::kUnsetNull,
-                                 &MessageValueFactory, &arena));
-  EXPECT_THAT(result, test::IsCelInt64(0));
+                                 &CelProtoWrapper::InternalWrapMessage,
 
-  ASSERT_OK_AND_ASSIGN(
-      result, CreateValueFromSingleField(
-                  &test_message,
-                  TestAllTypes::GetDescriptor()->FindFieldByName(
-                      "single_uint64_wrapper"),
-                  ProtoWrapperTypeOptions::kUnsetNull, &MessageValueFactory,
-
-                  &arena));
-  EXPECT_THAT(result, test::IsCelUint64(0));
-
-  ASSERT_OK_AND_ASSIGN(
-      result, CreateValueFromSingleField(
-                  &test_message,
-                  TestAllTypes::GetDescriptor()->FindFieldByName(
-                      "single_uint32_wrapper"),
-                  ProtoWrapperTypeOptions::kUnsetNull, &MessageValueFactory,
-
-                  &arena));
+                                 &arena));
   EXPECT_THAT(result, test::IsCelUint64(0));
 
   ASSERT_OK_AND_ASSIGN(
       result,
       CreateValueFromSingleField(&test_message,
                                  TestAllTypes::GetDescriptor()->FindFieldByName(
-                                     "single_double_wrapper"),
+                                     "single_uint32_wrapper"),
                                  ProtoWrapperTypeOptions::kUnsetNull,
+                                 &CelProtoWrapper::InternalWrapMessage,
 
-                                 &MessageValueFactory, &arena));
+                                 &arena));
+  EXPECT_THAT(result, test::IsCelUint64(0));
+
+  ASSERT_OK_AND_ASSIGN(result,
+                       CreateValueFromSingleField(
+                           &test_message,
+                           TestAllTypes::GetDescriptor()->FindFieldByName(
+                               "single_double_wrapper"),
+                           ProtoWrapperTypeOptions::kUnsetNull,
+
+                           &CelProtoWrapper::InternalWrapMessage, &arena));
   EXPECT_THAT(result, test::IsCelDouble(0.0f));
 
-  ASSERT_OK_AND_ASSIGN(
-      result,
-      CreateValueFromSingleField(&test_message,
-                                 TestAllTypes::GetDescriptor()->FindFieldByName(
-                                     "single_float_wrapper"),
-                                 ProtoWrapperTypeOptions::kUnsetNull,
+  ASSERT_OK_AND_ASSIGN(result,
+                       CreateValueFromSingleField(
+                           &test_message,
+                           TestAllTypes::GetDescriptor()->FindFieldByName(
+                               "single_float_wrapper"),
+                           ProtoWrapperTypeOptions::kUnsetNull,
 
-                                 &MessageValueFactory, &arena));
+                           &CelProtoWrapper::InternalWrapMessage, &arena));
   EXPECT_THAT(result, test::IsCelDouble(0.0f));
 
-  ASSERT_OK_AND_ASSIGN(
-      result,
-      CreateValueFromSingleField(&test_message,
-                                 TestAllTypes::GetDescriptor()->FindFieldByName(
-                                     "single_string_wrapper"),
-                                 ProtoWrapperTypeOptions::kUnsetNull,
+  ASSERT_OK_AND_ASSIGN(result,
+                       CreateValueFromSingleField(
+                           &test_message,
+                           TestAllTypes::GetDescriptor()->FindFieldByName(
+                               "single_string_wrapper"),
+                           ProtoWrapperTypeOptions::kUnsetNull,
 
-                                 &MessageValueFactory, &arena));
+                           &CelProtoWrapper::InternalWrapMessage, &arena));
   EXPECT_THAT(result, test::IsCelString(""));
 
-  ASSERT_OK_AND_ASSIGN(
-      result,
-      CreateValueFromSingleField(&test_message,
-                                 TestAllTypes::GetDescriptor()->FindFieldByName(
-                                     "single_bytes_wrapper"),
-                                 ProtoWrapperTypeOptions::kUnsetNull,
+  ASSERT_OK_AND_ASSIGN(result,
+                       CreateValueFromSingleField(
+                           &test_message,
+                           TestAllTypes::GetDescriptor()->FindFieldByName(
+                               "single_bytes_wrapper"),
+                           ProtoWrapperTypeOptions::kUnsetNull,
 
-                                 &MessageValueFactory, &arena));
+                           &CelProtoWrapper::InternalWrapMessage, &arena));
   EXPECT_THAT(result, test::IsCelBytes(""));
 }
 

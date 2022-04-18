@@ -27,6 +27,7 @@
 #include "eval/public/containers/field_access.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -75,7 +76,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldSingular) {
   const LegacyTypeAccessApis& accessor = GetAccessApis();
   TestMessage example;
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("int64_value", value), IsOkAndHolds(false));
   example.set_int64_value(10);
@@ -88,7 +89,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldRepeated) {
 
   TestMessage example;
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("int64_list", value), IsOkAndHolds(false));
   example.add_int64_list(10);
@@ -102,7 +103,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldMap) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("int64_int32_map", value), IsOkAndHolds(false));
   (*example.mutable_int64_int32_map())[2] = 3;
@@ -116,7 +117,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldUnknownField) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("unknown_field", value),
               StatusIs(absl::StatusCode::kNotFound));
@@ -127,7 +128,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldNonMessageType) {
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
   internal::MessageWrapper value(
-      static_cast<const google::protobuf::MessageLite*>(nullptr));
+      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
 
   EXPECT_THAT(accessor.HasField("unknown_field", value),
               StatusIs(absl::StatusCode::kInternal));
@@ -142,7 +143,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldSingular) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -158,7 +159,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldNoSuchField) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("unknown_field", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -173,7 +174,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldNotAMessage) {
   ProtoMemoryManager manager(&arena);
 
   internal::MessageWrapper value(
-      static_cast<const google::protobuf::MessageLite*>(nullptr));
+      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -190,7 +191,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldRepeated) {
   example.add_int64_list(10);
   example.add_int64_list(20);
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
@@ -214,7 +215,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldMap) {
   TestMessage example;
   (*example.mutable_int64_int32_map())[10] = 20;
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
@@ -238,7 +239,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldWrapperType) {
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_wrapper_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -253,7 +254,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldWrapperTypeUnsetNullUnbox) {
 
   TestMessage example;
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_wrapper_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -275,7 +276,7 @@ TEST_P(ProtoMessageTypeAccessorTest,
 
   TestMessage example;
 
-  internal::MessageWrapper value(&example);
+  internal::MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(
       accessor.GetField("int64_wrapper_value", value,
@@ -299,7 +300,7 @@ TEST(GetGenericProtoTypeInfoInstance, GetTypeName) {
   const LegacyTypeInfoApis& info_api = GetGenericProtoTypeInfoInstance();
 
   TestMessage test_message;
-  CelValue::MessageWrapper wrapped_message(&test_message);
+  CelValue::MessageWrapper wrapped_message(&test_message, nullptr);
 
   EXPECT_EQ(info_api.GetTypename(wrapped_message), test_message.GetTypeName());
 }
@@ -309,7 +310,7 @@ TEST(GetGenericProtoTypeInfoInstance, DebugString) {
 
   TestMessage test_message;
   test_message.set_string_value("abcd");
-  CelValue::MessageWrapper wrapped_message(&test_message);
+  CelValue::MessageWrapper wrapped_message(&test_message, nullptr);
 
   EXPECT_EQ(info_api.DebugString(wrapped_message), test_message.DebugString());
 }
@@ -319,7 +320,7 @@ TEST(GetGenericProtoTypeInfoInstance, GetAccessApis) {
 
   TestMessage test_message;
   test_message.set_string_value("abcd");
-  CelValue::MessageWrapper wrapped_message(&test_message);
+  CelValue::MessageWrapper wrapped_message(&test_message, nullptr);
 
   auto* accessor = info_api.GetAccessApis(wrapped_message);
   google::protobuf::Arena arena;
@@ -339,14 +340,14 @@ TEST(GetGenericProtoTypeInfoInstance, FallbackForNonMessage) {
   test_message.set_string_value("abcd");
   // Upcast to signal no google::protobuf::Message / reflection support.
   CelValue::MessageWrapper wrapped_message(
-      static_cast<const google::protobuf::MessageLite*>(&test_message));
+      static_cast<const google::protobuf::MessageLite*>(&test_message), nullptr);
 
   EXPECT_EQ(info_api.GetTypename(wrapped_message), "<unknown message>");
   EXPECT_EQ(info_api.DebugString(wrapped_message), "<unknown message>");
 
   // Check for not-null.
   CelValue::MessageWrapper null_message(
-      static_cast<const google::protobuf::Message*>(nullptr));
+      static_cast<const google::protobuf::Message*>(nullptr), nullptr);
 
   EXPECT_EQ(info_api.GetTypename(null_message), "<unknown message>");
   EXPECT_EQ(info_api.DebugString(null_message), "<unknown message>");
@@ -537,7 +538,7 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNotAMessage) {
 
   CelValue int_value = CelValue::CreateInt64(42);
   CelValue::MessageWrapper instance(
-      static_cast<const google::protobuf::MessageLite*>(nullptr));
+      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
 
   EXPECT_THAT(adapter.SetField("int64_value", int_value, manager, instance),
               StatusIs(absl::StatusCode::kInternal));
@@ -553,7 +554,7 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNullMessage) {
 
   CelValue int_value = CelValue::CreateInt64(42);
   CelValue::MessageWrapper instance(
-      static_cast<const google::protobuf::Message*>(nullptr));
+      static_cast<const google::protobuf::Message*>(nullptr), nullptr);
 
   EXPECT_THAT(adapter.SetField("int64_value", int_value, manager, instance),
               StatusIs(absl::StatusCode::kInternal));
@@ -607,7 +608,7 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeNotAMessageError) {
   ProtoMemoryManager manager(&arena);
 
   CelValue::MessageWrapper instance(
-      static_cast<const google::protobuf::MessageLite*>(nullptr));
+      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
 
   // Interpreter guaranteed to call this with a message type, otherwise,
   // something has broken.

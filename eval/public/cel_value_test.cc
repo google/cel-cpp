@@ -7,6 +7,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/memory_manager.h"
+#include "eval/public/cel_value_internal.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -378,26 +381,29 @@ TEST(CelValueTest, DebugString) {
 
 TEST(CelValueTest, Message) {
   TestMessage message;
-  auto value =
-      CelValue::CreateMessageWrapper(CelValue::MessageWrapper(&message));
+  auto value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(&message, TrivialTypeInfo::GetInstance()));
   EXPECT_TRUE(value.IsMessage());
   CelValue::MessageWrapper held;
   ASSERT_TRUE(value.GetValue(&held));
   EXPECT_TRUE(held.HasFullProto());
   EXPECT_EQ(held.message_ptr(),
             static_cast<const google::protobuf::MessageLite*>(&message));
+  EXPECT_EQ(held.legacy_type_info(), TrivialTypeInfo::GetInstance());
 }
 
 TEST(CelValueTest, MessageLite) {
   TestMessage message;
   // Upcast to message lite.
   const google::protobuf::MessageLite* ptr = &message;
-  auto value = CelValue::CreateMessageWrapper(CelValue::MessageWrapper(ptr));
+  auto value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(ptr, TrivialTypeInfo::GetInstance()));
   EXPECT_TRUE(value.IsMessage());
   CelValue::MessageWrapper held;
   ASSERT_TRUE(value.GetValue(&held));
   EXPECT_FALSE(held.HasFullProto());
   EXPECT_EQ(held.message_ptr(), &message);
+  EXPECT_EQ(held.legacy_type_info(), TrivialTypeInfo::GetInstance());
 }
 
 TEST(CelValueTest, Size) {

@@ -30,10 +30,13 @@
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/cel_value_internal.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/protobuf_value_factory.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/no_destructor.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -66,7 +69,8 @@ using google::protobuf::UInt64Value;
 using google::protobuf::Arena;
 
 CelValue ProtobufValueFactoryImpl(const google::protobuf::Message* m) {
-  return CelValue::CreateMessageWrapper(CelValue::MessageWrapper(m));
+  return CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(m, TrivialTypeInfo::GetInstance()));
 }
 
 class CelProtoWrapperTest : public ::testing::Test {

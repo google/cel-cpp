@@ -16,6 +16,7 @@
 
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -47,7 +48,7 @@ class TestMutationApiImpl : public LegacyTypeMutationApis {
 
 TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
   TestMessage message;
-  internal::MessageWrapper wrapper(&message);
+  internal::MessageWrapper wrapper(&message, TrivialTypeInfo::GetInstance());
   google::protobuf::Arena arena;
   cel::extensions::ProtoMemoryManager manager(&arena);
 

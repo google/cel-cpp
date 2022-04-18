@@ -202,7 +202,6 @@ cc_library(
         "internal_field_backed_map_impl.h",
     ],
     deps = [
-        ":field_access",
         "//eval/public:cel_value",
         "//eval/public/structs:field_access_impl",
         "//eval/public/structs:protobuf_value_factory",

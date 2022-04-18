@@ -24,7 +24,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/field_access.h"
 #include "eval/public/structs/field_access_impl.h"
 #include "eval/public/structs/protobuf_value_factory.h"
 

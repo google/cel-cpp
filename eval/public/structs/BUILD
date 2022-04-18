@@ -26,7 +26,9 @@ cc_library(
     ],
     deps = [
         ":cel_proto_wrap_util",
+        ":proto_message_type_adapter",
         "//eval/public:cel_value",
+        "//eval/public:cel_value_internal",
         "//internal:proto_time_encoding",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
@@ -75,11 +77,15 @@ cc_test(
     ],
     deps = [
         ":cel_proto_wrap_util",
+        ":legacy_type_info_apis",
         ":protobuf_value_factory",
+        ":trivial_legacy_type_info",
         "//eval/public:cel_value",
+        "//eval/public:cel_value_internal",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:no_destructor",
         "//internal:proto_time_encoding",
         "//internal:status_macros",
         "//internal:testing",
@@ -207,6 +213,7 @@ cc_test(
     srcs = ["legacy_type_adapter_test.cc"],
     deps = [
         ":legacy_type_adapter",
+        ":trivial_legacy_type_info",
         "//eval/public:cel_value",
         "//eval/public/testing:matchers",
         "//eval/testutil:test_message_cc_proto",
@@ -230,7 +237,6 @@ cc_library(
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:cel_value_internal",
-        "//eval/public/containers:field_access",
         "//eval/public/containers:internal_field_backed_list_impl",
         "//eval/public/containers:internal_field_backed_map_impl",
         "//extensions/protobuf:memory_manager",
@@ -249,6 +255,7 @@ cc_test(
     deps = [
         ":cel_proto_wrapper",
         ":legacy_type_adapter",
+        ":legacy_type_info_apis",
         ":proto_message_type_adapter",
         "//eval/public:cel_value",
         "//eval/public:cel_value_internal",
@@ -299,4 +306,25 @@ cc_library(
     name = "legacy_type_info_apis",
     hdrs = ["legacy_type_info_apis.h"],
     deps = ["//eval/public:cel_value_internal"],
+)
+
+cc_library(
+    name = "trivial_legacy_type_info",
+    testonly = True,
+    hdrs = ["trivial_legacy_type_info.h"],
+    deps = [
+        ":legacy_type_info_apis",
+        "//eval/public:cel_value_internal",
+        "//internal:no_destructor",
+    ],
+)
+
+cc_test(
+    name = "trivial_legacy_type_info_test",
+    srcs = ["trivial_legacy_type_info_test.cc"],
+    deps = [
+        ":trivial_legacy_type_info",
+        "//eval/public:cel_value_internal",
+        "//internal:testing",
+    ],
 )

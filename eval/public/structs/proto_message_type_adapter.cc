@@ -24,7 +24,6 @@
 #include "absl/strings/substitute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_internal.h"
-#include "eval/public/containers/field_access.h"
 #include "eval/public/containers/internal_field_backed_list_impl.h"
 #include "eval/public/containers/internal_field_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrap_util.h"
@@ -184,7 +183,8 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
 };
 
 CelValue MessageCelValueFactory(const google::protobuf::Message* message) {
-  return CelValue::CreateMessageWrapper(internal::MessageWrapper(message));
+  return CelValue::CreateMessageWrapper(internal::MessageWrapper(
+      message, &DucktypedMessageAdapter::GetSingleton()));
 }
 
 }  // namespace
@@ -211,7 +211,7 @@ absl::StatusOr<CelValue::MessageWrapper> ProtoMessageTypeAdapter::NewInstance(
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to create message ", descriptor_->name()));
   }
-  return CelValue::MessageWrapper(msg);
+  return CelValue::MessageWrapper(msg, &GetGenericProtoTypeInfoInstance());
 }
 
 bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {

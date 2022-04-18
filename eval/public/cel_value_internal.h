@@ -27,7 +27,12 @@
 #include "absl/types/variant.h"
 #include "internal/casts.h"
 
-namespace google::api::expr::runtime::internal {
+namespace google::api::expr::runtime {
+
+// Forward declare to resolve circular dependency.
+class LegacyTypeInfoApis;
+
+namespace internal {
 
 // Helper classes needed for IndexOf metafunction implementation.
 template <int N, bool>
@@ -87,14 +92,19 @@ class MessageWrapper {
  public:
   static_assert(alignof(google::protobuf::MessageLite) >= 2,
                 "Assume that valid MessageLite ptrs have a free low-order bit");
-  MessageWrapper() : message_ptr_(0) {}
-  explicit MessageWrapper(const google::protobuf::MessageLite* message)
-      : message_ptr_(reinterpret_cast<uintptr_t>(message)) {
+  MessageWrapper() : message_ptr_(0), legacy_type_info_(nullptr) {}
+
+  MessageWrapper(const google::protobuf::MessageLite* message,
+                 const LegacyTypeInfoApis* legacy_type_info)
+      : message_ptr_(reinterpret_cast<uintptr_t>(message)),
+        legacy_type_info_(legacy_type_info) {
     ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
   }
 
-  explicit MessageWrapper(const google::protobuf::Message* message)
-      : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask) {
+  MessageWrapper(const google::protobuf::Message* message,
+                 const LegacyTypeInfoApis* legacy_type_info)
+      : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask),
+        legacy_type_info_(legacy_type_info) {
     ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
   }
 
@@ -105,10 +115,15 @@ class MessageWrapper {
                                                         kPtrMask);
   }
 
+  const LegacyTypeInfoApis* legacy_type_info() const {
+    return legacy_type_info_;
+  }
+
  private:
   static constexpr uintptr_t kTagMask = 1 << 0;
   static constexpr uintptr_t kPtrMask = ~kTagMask;
   uintptr_t message_ptr_;
+  const LegacyTypeInfoApis* legacy_type_info_;
   // TODO(issues/5): add LegacyTypeAccessApis to expose generic accessors for
   // MessageLite.
 };
@@ -136,6 +151,7 @@ struct MessageVisitAdapter {
   Op op;
 };
 
-}  // namespace google::api::expr::runtime::internal
+}  // namespace internal
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
