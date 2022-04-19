@@ -38,6 +38,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::google::protobuf::Int64Value;
 using testing::_;
 using testing::EqualsProto;
 using testing::HasSubstr;
@@ -291,6 +292,80 @@ TEST_P(ProtoMessageTypeAccessorTest,
       accessor.GetField("int64_wrapper_value", value,
                         ProtoWrapperTypeOptions::kUnsetProtoDefault, manager),
       IsOkAndHolds(test::IsCelInt64(_)));
+}
+
+TEST_P(ProtoMessageTypeAccessorTest, IsEqualTo) {
+  google::protobuf::Arena arena;
+  const LegacyTypeAccessApis& accessor = GetAccessApis();
+
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.mutable_int64_wrapper_value()->set_value(10);
+  TestMessage example2;
+  example2.mutable_int64_wrapper_value()->set_value(10);
+
+  internal::MessageWrapper value(&example, nullptr);
+  internal::MessageWrapper value2(&example2, nullptr);
+
+  EXPECT_TRUE(accessor.IsEqualTo(value, value2));
+  EXPECT_TRUE(accessor.IsEqualTo(value2, value));
+}
+
+TEST_P(ProtoMessageTypeAccessorTest, IsEqualToSameTypeInequal) {
+  google::protobuf::Arena arena;
+  const LegacyTypeAccessApis& accessor = GetAccessApis();
+
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.mutable_int64_wrapper_value()->set_value(10);
+  TestMessage example2;
+  example2.mutable_int64_wrapper_value()->set_value(12);
+
+  internal::MessageWrapper value(&example, nullptr);
+  internal::MessageWrapper value2(&example2, nullptr);
+
+  EXPECT_FALSE(accessor.IsEqualTo(value, value2));
+  EXPECT_FALSE(accessor.IsEqualTo(value2, value));
+}
+
+TEST_P(ProtoMessageTypeAccessorTest, IsEqualToDifferentTypeInequal) {
+  google::protobuf::Arena arena;
+  const LegacyTypeAccessApis& accessor = GetAccessApis();
+
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.mutable_int64_wrapper_value()->set_value(10);
+  Int64Value example2;
+  example2.set_value(10);
+
+  internal::MessageWrapper value(&example, nullptr);
+  internal::MessageWrapper value2(&example2, nullptr);
+
+  EXPECT_FALSE(accessor.IsEqualTo(value, value2));
+  EXPECT_FALSE(accessor.IsEqualTo(value2, value));
+}
+
+TEST_P(ProtoMessageTypeAccessorTest, IsEqualToNonMessageInequal) {
+  google::protobuf::Arena arena;
+  const LegacyTypeAccessApis& accessor = GetAccessApis();
+
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage example;
+  example.mutable_int64_wrapper_value()->set_value(10);
+  TestMessage example2;
+  example2.mutable_int64_wrapper_value()->set_value(10);
+
+  internal::MessageWrapper value(&example, nullptr);
+  // Upcast to message lite to prevent unwrapping to message.
+  internal::MessageWrapper value2(
+      static_cast<const google::protobuf::MessageLite*>(&example2), nullptr);
+
+  EXPECT_FALSE(accessor.IsEqualTo(value, value2));
+  EXPECT_FALSE(accessor.IsEqualTo(value2, value));
 }
 
 INSTANTIATE_TEST_SUITE_P(GenericAndSpecific, ProtoMessageTypeAccessorTest,

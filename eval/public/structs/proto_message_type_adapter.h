@@ -59,6 +59,9 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
       absl::string_view field_name,
       const CelValue::MessageWrapper& value) const override;
 
+  bool IsEqualTo(const CelValue::MessageWrapper& instance,
+                 const CelValue::MessageWrapper& other_instance) const override;
+
  private:
   // Helper for standardizing error messages for SetField operation.
   absl::Status ValidateSetFieldOp(bool assertion, absl::string_view field,

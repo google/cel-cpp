@@ -88,7 +88,7 @@ TEST(LegacyTypeAdapterAccessApis, DefaultAlwaysInequal) {
 
   TestAccessApiImpl impl;
 
-  EXPECT_FALSE(impl.IsEqual(wrapper, wrapper2));
+  EXPECT_FALSE(impl.IsEqualTo(wrapper, wrapper2));
 }
 
 }  // namespace

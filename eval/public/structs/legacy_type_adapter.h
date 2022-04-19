@@ -88,8 +88,8 @@ class LegacyTypeAccessApis {
   // return whether they are equal.
   // To conform to the CEL spec, message equality should follow the behavior of
   // MessageDifferencer::Equals.
-  virtual bool IsEqual(const CelValue::MessageWrapper& instance,
-                       const CelValue::MessageWrapper& other_instance) const {
+  virtual bool IsEqualTo(const CelValue::MessageWrapper& instance,
+                         const CelValue::MessageWrapper& other_instance) const {
     return false;
   }
 };

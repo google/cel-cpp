@@ -18,6 +18,7 @@
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -58,6 +59,15 @@ inline absl::StatusOr<const google::protobuf::Message*> UnwrapMessage(
         absl::StrCat(op, " called on non-message type."));
   }
   return cel::internal::down_cast<const google::protobuf::Message*>(value.message_ptr());
+}
+
+bool ProtoEquals(const google::protobuf::Message& m1, const google::protobuf::Message& m2) {
+  // Equality behavior is undefined for message differencer if input messages
+  // have different descriptors. For CEL just return false.
+  if (m1.GetDescriptor() != m2.GetDescriptor()) {
+    return false;
+  }
+  return google::protobuf::util::MessageDifferencer::Equals(m1, m2);
 }
 
 // Shared implementation for HasField.
@@ -146,6 +156,21 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
                          UnwrapMessage(instance, "GetField"));
     return GetFieldImpl(message, message->GetDescriptor(), field_name,
                         unboxing_option, memory_manager);
+  }
+
+  bool IsEqualTo(
+      const CelValue::MessageWrapper& instance,
+      const CelValue::MessageWrapper& other_instance) const override {
+    absl::StatusOr<const google::protobuf::Message*> lhs =
+        UnwrapMessage(instance, "IsEqualTo");
+    absl::StatusOr<const google::protobuf::Message*> rhs =
+        UnwrapMessage(other_instance, "IsEqualTo");
+    if (!lhs.ok() || !rhs.ok()) {
+      // Treat this as though the underlying types are different, just return
+      // false.
+      return false;
+    }
+    return ProtoEquals(**lhs, **rhs);
   }
 
   // Implement TypeInfo Apis
@@ -323,6 +348,21 @@ absl::StatusOr<CelValue> ProtoMessageTypeAdapter::AdaptFromWellKnownType(
                        UnwrapMessage(instance, "AdaptFromWellKnownType"));
   return internal::UnwrapMessageToValue(message, &MessageCelValueFactory,
                                         arena);
+}
+
+bool ProtoMessageTypeAdapter::IsEqualTo(
+    const CelValue::MessageWrapper& instance,
+    const CelValue::MessageWrapper& other_instance) const {
+  absl::StatusOr<const google::protobuf::Message*> lhs =
+      UnwrapMessage(instance, "IsEqualTo");
+  absl::StatusOr<const google::protobuf::Message*> rhs =
+      UnwrapMessage(other_instance, "IsEqualTo");
+  if (!lhs.ok() || !rhs.ok()) {
+    // Treat this as though the underlying types are different, just return
+    // false.
+    return false;
+  }
+  return ProtoEquals(**lhs, **rhs);
 }
 
 const LegacyTypeInfoApis& GetGenericProtoTypeInfoInstance() {
