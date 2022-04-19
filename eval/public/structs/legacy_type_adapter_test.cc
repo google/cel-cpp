@@ -46,6 +46,23 @@ class TestMutationApiImpl : public LegacyTypeMutationApis {
   }
 };
 
+class TestAccessApiImpl : public LegacyTypeAccessApis {
+ public:
+  TestAccessApiImpl() {}
+  absl::StatusOr<bool> HasField(
+      absl::string_view field_name,
+      const CelValue::MessageWrapper& value) const override {
+    return absl::UnimplementedError("Not implemented");
+  }
+
+  absl::StatusOr<CelValue> GetField(
+      absl::string_view field_name, const CelValue::MessageWrapper& instance,
+      ProtoWrapperTypeOptions unboxing_option,
+      cel::MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError("Not implemented");
+  }
+};
+
 TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
   TestMessage message;
   internal::MessageWrapper wrapper(&message, TrivialTypeInfo::GetInstance());
@@ -59,6 +76,19 @@ TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
 
   EXPECT_THAT(v,
               test::IsCelMessage(EqualsProto(TestMessage::default_instance())));
+}
+
+TEST(LegacyTypeAdapterAccessApis, DefaultAlwaysInequal) {
+  TestMessage message;
+  internal::MessageWrapper wrapper(&message, nullptr);
+  internal::MessageWrapper wrapper2(&message, nullptr);
+
+  google::protobuf::Arena arena;
+  cel::extensions::ProtoMemoryManager manager(&arena);
+
+  TestAccessApiImpl impl;
+
+  EXPECT_FALSE(impl.IsEqual(wrapper, wrapper2));
 }
 
 }  // namespace

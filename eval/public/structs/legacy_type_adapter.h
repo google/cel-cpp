@@ -79,6 +79,19 @@ class LegacyTypeAccessApis {
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManager& memory_manager) const = 0;
+
+  // Interface for equality operator.
+  // The interpreter will check that both instances report to be the same type,
+  // but implementations should confirm that both instances are actually of the
+  // same type.
+  // If the two instances are of different type, return false. Otherwise,
+  // return whether they are equal.
+  // To conform to the CEL spec, message equality should follow the behavior of
+  // MessageDifferencer::Equals.
+  virtual bool IsEqual(const CelValue::MessageWrapper& instance,
+                       const CelValue::MessageWrapper& other_instance) const {
+    return false;
+  }
 };
 
 // Type information about a legacy Struct type.
