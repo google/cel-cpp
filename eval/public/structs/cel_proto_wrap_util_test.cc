@@ -858,9 +858,11 @@ TEST_F(CelProtoWrapperTest, WrapFailureErrorToAny) {
 
 TEST_F(CelProtoWrapperTest, DebugString) {
   google::protobuf::Empty e;
+  // Note: the value factory is trivial so the debug string for a message-typed
+  // value is uninteresting.
   EXPECT_EQ(UnwrapMessageToValue(&e, &ProtobufValueFactoryImpl, arena())
                 .DebugString(),
-            "Message: ");
+            "Message: opaque");
 
   ListValue list_value;
   list_value.add_values()->set_bool_value(true);

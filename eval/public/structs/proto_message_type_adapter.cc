@@ -168,7 +168,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
     }
     auto* message = cel::internal::down_cast<const google::protobuf::Message*>(
         wrapped_message.message_ptr());
-    return message->DebugString();
+    return message->ShortDebugString();
   }
 
   const LegacyTypeAccessApis* GetAccessApis(

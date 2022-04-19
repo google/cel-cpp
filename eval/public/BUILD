@@ -43,6 +43,7 @@ cc_library(
     deps = [
         ":cel_value_internal",
         "//base:memory_manager",
+        "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
         "//internal:casts",
         "//internal:status_macros",

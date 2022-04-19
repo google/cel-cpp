@@ -390,6 +390,9 @@ TEST(CelValueTest, Message) {
   EXPECT_EQ(held.message_ptr(),
             static_cast<const google::protobuf::MessageLite*>(&message));
   EXPECT_EQ(held.legacy_type_info(), TrivialTypeInfo::GetInstance());
+  // TrivialTypeInfo doesn't provide any details about the specific message.
+  EXPECT_EQ(value.ObtainCelType().CelTypeOrDie().value(), "opaque type");
+  EXPECT_EQ(value.DebugString(), "Message: opaque");
 }
 
 TEST(CelValueTest, MessageLite) {
@@ -404,6 +407,8 @@ TEST(CelValueTest, MessageLite) {
   EXPECT_FALSE(held.HasFullProto());
   EXPECT_EQ(held.message_ptr(), &message);
   EXPECT_EQ(held.legacy_type_info(), TrivialTypeInfo::GetInstance());
+  EXPECT_EQ(value.ObtainCelType().CelTypeOrDie().value(), "opaque type");
+  EXPECT_EQ(value.DebugString(), "Message: opaque");
 }
 
 TEST(CelValueTest, Size) {

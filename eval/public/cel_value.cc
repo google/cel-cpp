@@ -10,6 +10,8 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "base/memory_manager.h"
+#include "eval/public/cel_value_internal.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
@@ -71,8 +73,10 @@ struct DebugStringVisitor {
     return absl::StrFormat("%s", arg.value());
   }
 
-  std::string operator()(const google::protobuf::Message* arg) {
-    return arg == nullptr ? "NULL" : arg->ShortDebugString();
+  std::string operator()(const internal::MessageWrapper& arg) {
+    return arg.message_ptr() == nullptr
+               ? "NULL"
+               : arg.legacy_type_info()->DebugString(arg);
   }
 
   std::string operator()(absl::Duration arg) {
@@ -199,13 +203,15 @@ CelValue CelValue::ObtainCelType() const {
     case Type::kBytes:
       return CreateCelType(CelTypeHolder(kBytesTypeName));
     case Type::kMessage: {
-      auto msg = MessageOrDie();
-      if (msg == nullptr) {
+      MessageWrapper wrapper;
+      CelValue::GetValue(&wrapper);
+      if (wrapper.message_ptr() == nullptr) {
         return CreateCelType(CelTypeHolder(kNullTypeName));
       }
       // Descritptor::full_name() returns const reference, so using pointer
       // should be safe.
-      return CreateCelType(CelTypeHolder(msg->GetDescriptor()->full_name()));
+      return CreateCelType(
+          CelTypeHolder(wrapper.legacy_type_info()->GetTypename(wrapper)));
     }
     case Type::kDuration:
       return CreateCelType(CelTypeHolder(kDurationTypeName));
@@ -232,7 +238,7 @@ CelValue CelValue::ObtainCelType() const {
 // Returns debug string describing a value
 const std::string CelValue::DebugString() const {
   return absl::StrCat(CelValue::TypeName(type()), ": ",
-                      Visit<std::string>(DebugStringVisitor()));
+                      InternalVisit<std::string>(DebugStringVisitor()));
 }
 
 CelValue CreateErrorValue(cel::MemoryManager& manager,

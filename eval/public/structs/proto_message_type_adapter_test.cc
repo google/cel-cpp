@@ -312,7 +312,8 @@ TEST(GetGenericProtoTypeInfoInstance, DebugString) {
   test_message.set_string_value("abcd");
   CelValue::MessageWrapper wrapped_message(&test_message, nullptr);
 
-  EXPECT_EQ(info_api.DebugString(wrapped_message), test_message.DebugString());
+  EXPECT_EQ(info_api.DebugString(wrapped_message),
+            test_message.ShortDebugString());
 }
 
 TEST(GetGenericProtoTypeInfoInstance, GetAccessApis) {
