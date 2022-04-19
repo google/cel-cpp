@@ -176,7 +176,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
     return this;
   }
 
-  static DucktypedMessageAdapter& GetSingleton() {
+  static const DucktypedMessageAdapter& GetSingleton() {
     static cel::internal::NoDestructor<DucktypedMessageAdapter> instance;
     return *instance;
   }
@@ -211,7 +211,7 @@ absl::StatusOr<CelValue::MessageWrapper> ProtoMessageTypeAdapter::NewInstance(
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to create message ", descriptor_->name()));
   }
-  return CelValue::MessageWrapper(msg, &GetGenericProtoTypeInfoInstance());
+  return internal::MessageWrapper(msg, &GetGenericProtoTypeInfoInstance());
 }
 
 bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {
