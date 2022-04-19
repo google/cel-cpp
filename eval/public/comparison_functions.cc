@@ -21,8 +21,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "google/protobuf/map_field.h"
-#include "google/protobuf/util/message_differencer.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
@@ -38,7 +36,9 @@
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/cel_value_internal.h"
+#include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "internal/casts.h"
 #include "internal/overflow.h"
 #include "internal/status_macros.h"
@@ -51,7 +51,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::google::protobuf::Arena;
-using ::google::protobuf::util::MessageDifferencer;
 
 // Forward declaration of the functors for generic equality operator.
 // Equal only defined for same-typed values.
@@ -295,13 +294,22 @@ absl::optional<bool> Inequal(const CelMap* t1, const CelMap* t2) {
   return absl::nullopt;
 }
 
-bool MessageEqual(const google::protobuf::Message& m1, const google::protobuf::Message& m2) {
-  // Equality behavior is undefined for message differencer if input messages
-  // have different descriptors. For CEL just return false.
-  if (m1.GetDescriptor() != m2.GetDescriptor()) {
+bool MessageEqual(const CelValue::MessageWrapper& m1,
+                  const CelValue::MessageWrapper& m2) {
+  const LegacyTypeInfoApis* lhs_type_info = m1.legacy_type_info();
+  const LegacyTypeInfoApis* rhs_type_info = m2.legacy_type_info();
+
+  if (lhs_type_info->GetTypename(m1) != rhs_type_info->GetTypename(m2)) {
     return false;
   }
-  return MessageDifferencer::Equals(m1, m2);
+
+  const LegacyTypeAccessApis* accessor = lhs_type_info->GetAccessApis(m1);
+
+  if (accessor == nullptr) {
+    return false;
+  }
+
+  return accessor->IsEqualTo(m1, m2);
 }
 
 // Generic equality for CEL values of the same type.
@@ -572,8 +580,9 @@ absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2) {
   if (v1.type() == v2.type()) {
     // Message equality is only defined if heterogeneous comparions are enabled
     // to preserve the legacy behavior for equality.
-    if (v1.type() == CelValue::Type::kMessage) {
-      return MessageEqual(*v1.MessageOrDie(), *v2.MessageOrDie());
+    if (CelValue::MessageWrapper lhs, rhs;
+        v1.GetValue(&lhs) && v2.GetValue(&rhs)) {
+      return MessageEqual(lhs, rhs);
     }
     return HomogenousCelValueEqual<HeterogeneousEqualProvider>(v1, v2);
   }

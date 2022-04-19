@@ -44,11 +44,13 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/cel_value_internal.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_backed_list_impl.h"
 #include "eval/public/set_util.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
@@ -395,6 +397,44 @@ TEST(CelValueEqualImplTest, NestedMaps) {
   EXPECT_THAT(CelValueEqualImpl(CelValue::CreateMap(lhs.get()),
                                 CelValue::CreateMap(rhs.get())),
               Optional(false));
+}
+
+TEST(CelValueEqualImplTest, ProtoEqualityDifferingTypenameInequal) {
+  // If message wrappers report a different typename, treat as inequal without
+  // calling into the provided equal implementation.
+  google::protobuf::Arena arena;
+  TestMessage example;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
+    int32_value: 1
+    uint32_value: 2
+    string_value: "test"
+  )",
+                                                  &example));
+
+  CelValue lhs = CelProtoWrapper::CreateMessage(&example, &arena);
+  CelValue rhs = CelValue::CreateMessageWrapper(
+      internal::MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+
+  EXPECT_THAT(CelValueEqualImpl(lhs, rhs), Optional(false));
+}
+
+TEST(CelValueEqualImplTest, ProtoEqualityNoAccessorInequal) {
+  // If message wrappers report no access apis, then treat as inequal.
+  google::protobuf::Arena arena;
+  TestMessage example;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
+    int32_value: 1
+    uint32_value: 2
+    string_value: "test"
+  )",
+                                                  &example));
+
+  CelValue lhs = CelValue::CreateMessageWrapper(
+      internal::MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+  CelValue rhs = CelValue::CreateMessageWrapper(
+      internal::MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+
+  EXPECT_THAT(CelValueEqualImpl(lhs, rhs), Optional(false));
 }
 
 TEST(CelValueEqualImplTest, ProtoEqualityAny) {
