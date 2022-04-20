@@ -53,7 +53,9 @@ enum class TestEnum {
 
 class TestEnumValue final : public EnumValue {
  public:
-  explicit TestEnumValue(TestEnum test_enum) : test_enum_(test_enum) {}
+  explicit TestEnumValue(const Persistent<const EnumType>& type,
+                         TestEnum test_enum)
+      : EnumValue(type), test_enum_(test_enum) {}
 
   std::string DebugString() const override { return std::string(name()); }
 
@@ -91,22 +93,22 @@ class TestEnumType final : public EnumType {
 
  protected:
   absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      ValueFactory& value_factory, absl::string_view name) const override {
+      TypedEnumValueFactory& factory, absl::string_view name) const override {
     if (name == "VALUE1") {
-      return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
+      return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
     } else if (name == "VALUE2") {
-      return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
+      return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
     }
     return absl::NotFoundError("");
   }
 
   absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      ValueFactory& value_factory, int64_t number) const override {
+      TypedEnumValueFactory& factory, int64_t number) const override {
     switch (number) {
       case 1:
-        return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
+        return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
       case 2:
-        return value_factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
+        return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
       default:
         return absl::NotFoundError("");
     }
@@ -149,7 +151,9 @@ H AbslHashValue(H state, const TestStruct& test_struct) {
 
 class TestStructValue final : public StructValue {
  public:
-  explicit TestStructValue(TestStruct value) : value_(std::move(value)) {}
+  explicit TestStructValue(const Persistent<const StructType>& type,
+                           TestStruct value)
+      : StructValue(type), value_(std::move(value)) {}
 
   std::string DebugString() const override {
     return absl::StrCat("bool_field: ", value().bool_field,
@@ -305,8 +309,8 @@ class TestStructType final : public StructType {
 
  protected:
   absl::StatusOr<Persistent<StructValue>> NewInstance(
-      ValueFactory& value_factory) const override {
-    return value_factory.CreateStructValue<TestStructValue>(TestStruct{});
+      TypedStructValueFactory& factory) const override {
+    return factory.CreateStructValue<TestStructValue>(TestStruct{});
   }
 
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,

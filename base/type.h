@@ -67,6 +67,8 @@ class TimestampValue;
 class EnumValue;
 class StructValue;
 class ValueFactory;
+class TypedEnumValueFactory;
+class TypedStructValueFactory;
 
 namespace internal {
 template <typename T>
@@ -470,12 +472,12 @@ class EnumType : public Type {
   // Construct a new instance of EnumValue with a type of this. Called by
   // EnumValue::New.
   virtual absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      ValueFactory& value_factory, absl::string_view name) const = 0;
+      TypedEnumValueFactory& factory, absl::string_view name) const = 0;
 
   // Construct a new instance of EnumValue with a type of this. Called by
   // EnumValue::New.
   virtual absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      ValueFactory& value_factory, int64_t number) const = 0;
+      TypedEnumValueFactory& factory, int64_t number) const = 0;
 
   // Called by FindConstant.
   virtual absl::StatusOr<Constant> FindConstantByName(
@@ -573,7 +575,7 @@ class StructType : public Type {
   StructType() = default;
 
   virtual absl::StatusOr<Persistent<StructValue>> NewInstance(
-      ValueFactory& value_factory) const = 0;
+      TypedStructValueFactory& factory) const = 0;
 
   // Called by FindField.
   virtual absl::StatusOr<Field> FindFieldByName(

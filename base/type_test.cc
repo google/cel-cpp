@@ -46,12 +46,12 @@ class TestEnumType final : public EnumType {
 
  protected:
   absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      ValueFactory& value_factory, absl::string_view name) const override {
+      TypedEnumValueFactory& factory, absl::string_view name) const override {
     return absl::UnimplementedError("");
   }
 
   absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      ValueFactory& value_factory, int64_t number) const override {
+      TypedEnumValueFactory& factory, int64_t number) const override {
     return absl::UnimplementedError("");
   }
 
@@ -97,7 +97,7 @@ class TestStructType final : public StructType {
 
  protected:
   absl::StatusOr<Persistent<StructValue>> NewInstance(
-      ValueFactory& value_factory) const override {
+      TypedStructValueFactory& factory) const override {
     return absl::UnimplementedError("");
   }
 

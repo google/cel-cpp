@@ -769,16 +769,18 @@ void StringValue::HashValue(absl::HashState state) const {
 }
 
 struct EnumType::NewInstanceVisitor final {
-  const EnumType& enum_type;
+  const Persistent<const EnumType>& enum_type;
   ValueFactory& value_factory;
 
   absl::StatusOr<Persistent<const EnumValue>> operator()(
       absl::string_view name) const {
-    return enum_type.NewInstanceByName(value_factory, name);
+    TypedEnumValueFactory factory(value_factory, enum_type);
+    return enum_type->NewInstanceByName(factory, name);
   }
 
   absl::StatusOr<Persistent<const EnumValue>> operator()(int64_t number) const {
-    return enum_type.NewInstanceByNumber(value_factory, number);
+    TypedEnumValueFactory factory(value_factory, enum_type);
+    return enum_type->NewInstanceByNumber(factory, number);
   }
 };
 
@@ -787,7 +789,7 @@ absl::StatusOr<Persistent<const EnumValue>> EnumValue::New(
     EnumType::ConstantId id) {
   CEL_ASSIGN_OR_RETURN(
       auto enum_value,
-      absl::visit(EnumType::NewInstanceVisitor{*enum_type, value_factory},
+      absl::visit(EnumType::NewInstanceVisitor{enum_type, value_factory},
                   id.data_));
   if (!enum_value->type_) {
     // In case somebody is caching, we avoid setting the type_ if it has already
@@ -849,8 +851,8 @@ struct StructValue::HasFieldVisitor final {
 absl::StatusOr<Persistent<StructValue>> StructValue::New(
     const Persistent<const StructType>& struct_type,
     ValueFactory& value_factory) {
-  CEL_ASSIGN_OR_RETURN(auto struct_value,
-                       struct_type->NewInstance(value_factory));
+  TypedStructValueFactory factory(value_factory, struct_type);
+  CEL_ASSIGN_OR_RETURN(auto struct_value, struct_type->NewInstance(factory));
   if (!struct_value->type_) {
     // In case somebody is caching, we avoid setting the type_ if it has already
     // been set, to avoid a race condition where one CPU sees a half written

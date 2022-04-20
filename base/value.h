@@ -56,7 +56,6 @@ class StructValue;
 class ListValue;
 class MapValue;
 class ValueFactory;
-class TypedListValueFactory;
 
 namespace internal {
 template <typename T>
@@ -590,10 +589,7 @@ class EnumValue : public Value {
       const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
       EnumType::ConstantId id);
 
-  Transient<const Type> type() const final {
-    ABSL_ASSERT(type_);
-    return type_;
-  }
+  Transient<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kEnum; }
 
@@ -602,7 +598,9 @@ class EnumValue : public Value {
   virtual absl::string_view name() const = 0;
 
  protected:
-  EnumValue() = default;
+  explicit EnumValue(const Persistent<const EnumType>& type) : type_(type) {
+    ABSL_ASSERT(type_);
+  }
 
  private:
   friend internal::TypeInfo base_internal::GetEnumValueTypeId(
@@ -626,7 +624,6 @@ class EnumValue : public Value {
   // Called by CEL_IMPLEMENT_ENUM_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  // Set lazily, by EnumValue::New.
   Persistent<const EnumType> type_;
 };
 
@@ -663,10 +660,7 @@ class StructValue : public Value {
       const Persistent<const StructType>& struct_type,
       ValueFactory& value_factory);
 
-  Transient<const Type> type() const final {
-    ABSL_ASSERT(type_);
-    return type_;
-  }
+  Transient<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kStruct; }
 
@@ -678,7 +672,9 @@ class StructValue : public Value {
   absl::StatusOr<bool> HasField(FieldId field) const;
 
  protected:
-  StructValue() = default;
+  explicit StructValue(const Persistent<const StructType>& type) : type_(type) {
+    ABSL_ASSERT(type_);
+  }
 
   virtual absl::Status SetFieldByName(absl::string_view name,
                                       const Persistent<const Value>& value) = 0;
@@ -725,7 +721,6 @@ class StructValue : public Value {
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  // Set lazily, by StructValue::New.
   Persistent<const StructType> type_;
 };
 

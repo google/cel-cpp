@@ -140,16 +140,20 @@ class ValueFactory final {
 
   template <typename T, typename... Args>
   EnableIfBaseOfT<EnumValue, T, absl::StatusOr<Persistent<T>>> CreateEnumValue(
+      const Persistent<const EnumType>& enum_type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::PersistentHandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
+        std::remove_const_t<T>>(memory_manager(), enum_type,
+                                std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>
   EnableIfBaseOfT<StructValue, T, absl::StatusOr<Persistent<T>>>
-  CreateStructValue(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  CreateStructValue(const Persistent<const StructType>& struct_type,
+                    Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::PersistentHandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
+        std::remove_const_t<T>>(memory_manager(), struct_type,
+                                std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>
@@ -192,6 +196,59 @@ class ValueFactory final {
       base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager_;
+};
+
+// TypedEnumValueFactory creates EnumValue scoped to a specific EnumType. Used
+// with EnumType::NewInstance.
+class TypedEnumValueFactory final {
+ private:
+  template <typename T, typename U, typename V>
+  using EnableIfBaseOfT =
+      std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
+
+ public:
+  TypedEnumValueFactory(
+      ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
+      const Persistent<const EnumType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_factory_(value_factory), enum_type_(enum_type) {}
+
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<EnumValue, T, absl::StatusOr<Persistent<T>>> CreateEnumValue(
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_factory_.CreateEnumValue<T>(enum_type_,
+                                             std::forward<Args>(args)...);
+  }
+
+ private:
+  ValueFactory& value_factory_;
+  const Persistent<const EnumType>& enum_type_;
+};
+
+// TypedStructValueFactory creates StructValue scoped to a specific StructType.
+// Used with StructType::NewInstance.
+class TypedStructValueFactory final {
+ private:
+  template <typename T, typename U, typename V>
+  using EnableIfBaseOfT =
+      std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
+
+ public:
+  TypedStructValueFactory(ValueFactory& value_factory
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                          const Persistent<const StructType>& enum_type
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : value_factory_(value_factory), struct_type_(enum_type) {}
+
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Persistent<T>>>
+  CreateStructValue(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_factory_.CreateStructValue<T>(struct_type_,
+                                               std::forward<Args>(args)...);
+  }
+
+ private:
+  ValueFactory& value_factory_;
+  const Persistent<const StructType>& struct_type_;
 };
 
 }  // namespace cel
