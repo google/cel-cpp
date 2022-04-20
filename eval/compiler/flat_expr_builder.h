@@ -19,7 +19,6 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "eval/public/cel_expression.h"
 
@@ -29,29 +28,10 @@ namespace google::api::expr::runtime {
 // Builds instances of CelExpressionFlatImpl.
 class FlatExprBuilder : public CelExpressionBuilder {
  public:
-  explicit FlatExprBuilder(const google::protobuf::DescriptorPool* descriptor_pool =
-                               google::protobuf::DescriptorPool::generated_pool(),
-                           google::protobuf::MessageFactory* message_factory =
-                               google::protobuf::MessageFactory::generated_factory())
-      : CelExpressionBuilder(descriptor_pool),
-        enable_unknowns_(false),
-        enable_unknown_function_results_(false),
-        enable_missing_attribute_errors_(false),
-        shortcircuiting_(true),
-        constant_folding_(false),
-        constant_arena_(nullptr),
-        enable_comprehension_(true),
-        comprehension_max_iterations_(0),
-        fail_on_warnings_(true),
-        enable_qualified_type_identifiers_(false),
-        enable_comprehension_list_append_(false),
-        enable_comprehension_vulnerability_check_(false),
-        enable_null_coercion_(true),
-        enable_wrapper_type_null_unboxing_(false),
-        enable_heterogeneous_equality_(false),
-        enable_qualified_identifier_rewrites_(false),
-        descriptor_pool_(descriptor_pool),
-        message_factory_(message_factory) {}
+  FlatExprBuilder() : CelExpressionBuilder() {}
+
+  explicit FlatExprBuilder(const google::protobuf::DescriptorPool* descriptor_pool)
+      : CelExpressionBuilder(descriptor_pool) {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -184,26 +164,23 @@ class FlatExprBuilder : public CelExpressionBuilder {
       std::vector<absl::Status>* warnings) const;
 
  private:
-  bool enable_unknowns_;
-  bool enable_unknown_function_results_;
-  bool enable_missing_attribute_errors_;
-  bool shortcircuiting_;
+  bool enable_unknowns_ = false;
+  bool enable_unknown_function_results_ = false;
+  bool enable_missing_attribute_errors_ = false;
+  bool shortcircuiting_ = true;
 
-  bool constant_folding_;
-  google::protobuf::Arena* constant_arena_;
-  bool enable_comprehension_;
-  int comprehension_max_iterations_;
-  bool fail_on_warnings_;
-  bool enable_qualified_type_identifiers_;
-  bool enable_comprehension_list_append_;
-  bool enable_comprehension_vulnerability_check_;
-  bool enable_null_coercion_;
-  bool enable_wrapper_type_null_unboxing_;
-  bool enable_heterogeneous_equality_;
-  bool enable_qualified_identifier_rewrites_;
-
-  const google::protobuf::DescriptorPool* descriptor_pool_;
-  google::protobuf::MessageFactory* message_factory_;
+  bool constant_folding_ = false;
+  google::protobuf::Arena* constant_arena_ = nullptr;
+  bool enable_comprehension_ = true;
+  int comprehension_max_iterations_ = 0;
+  bool fail_on_warnings_ = true;
+  bool enable_qualified_type_identifiers_ = false;
+  bool enable_comprehension_list_append_ = false;
+  bool enable_comprehension_vulnerability_check_ = false;
+  bool enable_null_coercion_ = true;
+  bool enable_wrapper_type_null_unboxing_ = false;
+  bool enable_heterogeneous_equality_ = false;
+  bool enable_qualified_identifier_rewrites_ = false;
 };
 
 }  // namespace google::api::expr::runtime

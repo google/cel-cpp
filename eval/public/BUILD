@@ -923,6 +923,32 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "portable_cel_expr_builder_factory",
+    srcs = ["portable_cel_expr_builder_factory.cc"],
+    hdrs = ["portable_cel_expr_builder_factory.h"],
+    deps = [
+        ":cel_expression",
+        ":cel_options",
+        "//eval/compiler:flat_expr_builder",
+        "//eval/public/structs:legacy_type_provider",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "portable_cel_expr_builder_factory_test",
+    srcs = ["portable_cel_expr_builder_factory_test.cc"],
+    deps = [
+        ":builtin_func_registrar",
+        ":portable_cel_expr_builder_factory",
+        "//eval/public/structs:cel_proto_descriptor_pool_builder",
+        "//eval/public/structs:protobuf_descriptor_type_provider",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_test(
     name = "cel_number_test",
     srcs = ["cel_number_test.cc"],

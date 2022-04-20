@@ -55,6 +55,9 @@ class CelTypeRegistry {
     type_providers_.push_back(std::move(provider));
   }
 
+  // Get the first registered type provider.
+  std::shared_ptr<const LegacyTypeProvider> GetFirstTypeProvider() const;
+
   // Find a type adapter given a fully qualified type name.
   // Adapter provides a generic interface for the reflecion operations the
   // interpreter needs to provide.
@@ -81,7 +84,7 @@ class CelTypeRegistry {
   // why a node_hash_set is used instead of another container type.
   absl::node_hash_set<std::string> types_;
   absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
-  std::vector<std::unique_ptr<LegacyTypeProvider>> type_providers_;
+  std::vector<std::shared_ptr<LegacyTypeProvider>> type_providers_;
 };
 
 }  // namespace google::api::expr::runtime

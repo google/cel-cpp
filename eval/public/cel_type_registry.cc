@@ -62,6 +62,14 @@ void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_desc
   enums_.insert(enum_descriptor);
 }
 
+std::shared_ptr<const LegacyTypeProvider>
+CelTypeRegistry::GetFirstTypeProvider() const {
+  if (type_providers_.empty()) {
+    return nullptr;
+  }
+  return type_providers_[0];
+}
+
 const google::protobuf::Descriptor* CelTypeRegistry::FindDescriptor(
     absl::string_view fully_qualified_type_name) const {
   // Public protobuf interface only accepts const string&.
