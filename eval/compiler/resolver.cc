@@ -7,6 +7,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
@@ -39,25 +40,23 @@ Resolver::Resolver(absl::string_view container,
   }
 
   for (const auto& prefix : namespace_prefixes_) {
-    for (auto enum_desc : type_registry->Enums()) {
-      absl::string_view enum_name = enum_desc->full_name();
+    for (auto iter = type_registry->enums_map().begin();
+         iter != type_registry->enums_map().end(); ++iter) {
+      absl::string_view enum_name = iter->first;
       if (!absl::StartsWith(enum_name, prefix)) {
         continue;
       }
 
       auto remainder = absl::StripPrefix(enum_name, prefix);
-      for (int i = 0; i < enum_desc->value_count(); i++) {
-        auto value_desc = enum_desc->value(i);
-        if (value_desc) {
-          // "prefixes" container is ascending-ordered. As such, we will be
-          // assigning enum reference to the deepest available.
-          // E.g. if both a.b.c.Name and a.b.Name are available, and
-          // we try to reference "Name" with the scope of "a.b.c",
-          // it will be resolved to "a.b.c.Name".
-          auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
-                                  value_desc->name());
-          enum_value_map_[key] = CelValue::CreateInt64(value_desc->number());
-        }
+      for (const auto& enumerator : iter->second) {
+        // "prefixes" container is ascending-ordered. As such, we will be
+        // assigning enum reference to the deepest available.
+        // E.g. if both a.b.c.Name and a.b.Name are available, and
+        // we try to reference "Name" with the scope of "a.b.c",
+        // it will be resolved to "a.b.c.Name".
+        auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
+                                enumerator.name);
+        enum_value_map_[key] = CelValue::CreateInt64(enumerator.number);
       }
     }
   }

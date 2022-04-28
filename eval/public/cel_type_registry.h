@@ -2,9 +2,11 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/status/statusor.h"
@@ -28,6 +30,12 @@ namespace google::api::expr::runtime {
 // pools.
 class CelTypeRegistry {
  public:
+  // Internal representation for enumerators.
+  struct Enumerator {
+    std::string name;
+    int64_t number;
+  };
+
   CelTypeRegistry();
   explicit CelTypeRegistry(const google::protobuf::DescriptorPool* descriptor_pool);
 
@@ -74,16 +82,27 @@ class CelTypeRegistry {
     return enums_;
   }
 
+  // Return the registered enums configured within the type registry in the
+  // internal format.
+  const absl::flat_hash_map<std::string, std::vector<Enumerator>>& enums_map()
+      const {
+    return enums_map_;
+  }
+
  private:
   // Find a protobuf Descriptor given a fully qualified protobuf type name.
   const google::protobuf::Descriptor* FindDescriptor(
       absl::string_view fully_qualified_type_name) const;
 
   const google::protobuf::DescriptorPool* descriptor_pool_;  // externally owned
-  // pointer-stability is required for the strings in the types set, which is
-  // why a node_hash_set is used instead of another container type.
+
+  // node_hash_set provides pointer-stability, which is required for the
+  // strings backing CelType objects.
   absl::node_hash_set<std::string> types_;
+  // Set of registered enums.
   absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
+  // Internal representation for enums.
+  absl::flat_hash_map<std::string, std::vector<Enumerator>> enums_map_;
   std::vector<std::shared_ptr<LegacyTypeProvider>> type_providers_;
 };
 

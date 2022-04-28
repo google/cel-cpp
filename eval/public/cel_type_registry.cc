@@ -1,6 +1,7 @@
 #include "eval/public/cel_type_registry.h"
 
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "google/protobuf/struct.pb.h"
@@ -10,6 +11,7 @@
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
+#include "internal/no_destructor.h"
 
 namespace google::api::expr::runtime {
 
@@ -32,12 +34,59 @@ const absl::node_hash_set<std::string>& GetCoreTypes() {
   return *kCoreTypes;
 }
 
-const absl::flat_hash_set<const google::protobuf::EnumDescriptor*> GetCoreEnums() {
-  static const auto* const kCoreEnums =
-      new absl::flat_hash_set<const google::protobuf::EnumDescriptor*>{
-          // Register the NULL_VALUE enum.
-          google::protobuf::NullValue_descriptor(),
-      };
+using DescriptorSet = absl::flat_hash_set<const google::protobuf::EnumDescriptor*>;
+using EnumMap =
+    absl::flat_hash_map<std::string, std::vector<CelTypeRegistry::Enumerator>>;
+
+void AddEnumFromDescriptor(const google::protobuf::EnumDescriptor* desc, EnumMap& map) {
+  std::vector<CelTypeRegistry::Enumerator> enumerators;
+  enumerators.reserve(desc->value_count());
+  for (int i = 0; i < desc->value_count(); i++) {
+    enumerators.push_back({desc->value(i)->name(), desc->value(i)->number()});
+  }
+  map.insert(std::pair(desc->full_name(), std::move(enumerators)));
+}
+
+// Portable version. Add overloads for specfic core supported enums.
+template <typename T, typename U = void>
+struct EnumAdderT {
+  template <typename EnumT>
+  void AddEnum(DescriptorSet&) {}
+
+  template <typename EnumT>
+  void AddEnum(EnumMap&) {}
+
+  template <>
+  void AddEnum<google::protobuf::NullValue>(EnumMap& map) {
+    map["google.protobuf.NullValue"] = {{"NULL_VALUE", 0}};
+  }
+};
+
+template <typename T>
+struct EnumAdderT<T, typename std::enable_if<
+                         std::is_base_of_v<google::protobuf::Message, T>, void>::type> {
+  template <typename EnumT>
+  void AddEnum(DescriptorSet& set) {
+    set.insert(google::protobuf::GetEnumDescriptor<EnumT>());
+  }
+
+  template <typename EnumT>
+  void AddEnum(EnumMap& map) {
+    const google::protobuf::EnumDescriptor* desc = google::protobuf::GetEnumDescriptor<EnumT>();
+    AddEnumFromDescriptor(desc, map);
+  }
+};
+
+// Enable loading the linked descriptor if using the full proto runtime.
+// Otherwise, only support explcitly defined enums.
+using EnumAdder = EnumAdderT<google::protobuf::Struct>;
+
+const absl::flat_hash_set<const google::protobuf::EnumDescriptor*>& GetCoreEnums() {
+  static cel::internal::NoDestructor<DescriptorSet> kCoreEnums([]() {
+    absl::flat_hash_set<const google::protobuf::EnumDescriptor*> instance;
+    EnumAdder().AddEnum<google::protobuf::NullValue>(instance);
+    return instance;
+  }());
   return *kCoreEnums;
 }
 
@@ -46,12 +95,16 @@ const absl::flat_hash_set<const google::protobuf::EnumDescriptor*> GetCoreEnums(
 CelTypeRegistry::CelTypeRegistry()
     : descriptor_pool_(google::protobuf::DescriptorPool::generated_pool()),
       types_(GetCoreTypes()),
-      enums_(GetCoreEnums()) {}
+      enums_(GetCoreEnums()) {
+  EnumAdder().AddEnum<google::protobuf::NullValue>(enums_map_);
+}
 
 CelTypeRegistry::CelTypeRegistry(const google::protobuf::DescriptorPool* descriptor_pool)
     : descriptor_pool_(descriptor_pool),
       types_(GetCoreTypes()),
-      enums_(GetCoreEnums()) {}
+      enums_(GetCoreEnums()) {
+  EnumAdder().AddEnum<google::protobuf::NullValue>(enums_map_);
+}
 
 void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
   // Registers the fully qualified type name as a CEL type.
@@ -60,6 +113,7 @@ void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
 
 void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_descriptor) {
   enums_.insert(enum_descriptor);
+  AddEnumFromDescriptor(enum_descriptor, enums_map_);
 }
 
 std::shared_ptr<const LegacyTypeProvider>
