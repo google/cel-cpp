@@ -205,3 +205,29 @@ cc_test(
         "@com_google_absl//absl/time",
     ],
 )
+
+cc_library(
+    name = "ast",
+    hdrs = [
+        "ast.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "ast_test",
+    srcs = [
+        "ast_test.cc",
+    ],
+    deps = [
+        ":ast",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
