@@ -34,7 +34,7 @@ namespace internal {
 // Used for CEL type deduction based on C++ native type.
 struct TypeCodeMatcher {
   template <typename T>
-  constexpr absl::optional<CelValue::Type> type_code() {
+  constexpr std::optional<CelValue::Type> type_code() {
     int index = CelValue::IndexOf<T>::value;
     if (index < 0) return {};
     CelValue::Type arg_type = static_cast<CelValue::Type>(index);
@@ -47,7 +47,7 @@ struct TypeCodeMatcher {
   // A bit of a trick - to pass Any kind of value, we use generic CelValue
   // parameters.
   template <>
-  constexpr absl::optional<CelValue::Type> type_code<CelValue>() {
+  constexpr std::optional<CelValue::Type> type_code<CelValue>() {
     return CelValue::Type::kAny;
   }
 };

@@ -222,6 +222,37 @@ cc_library(
 )
 
 cc_library(
+    name = "portable_cel_function_adapter",
+    hdrs = [
+        "portable_cel_function_adapter.h",
+    ],
+    deps = [
+        ":cel_function",
+        ":cel_function_adapter_impl",
+        ":cel_function_registry",
+        ":cel_value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "portable_cel_function_adapter_test",
+    size = "small",
+    srcs = [
+        "portable_cel_function_adapter_test.cc",
+    ],
+    deps = [
+        ":portable_cel_function_adapter",
+        "//internal:status_macros",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
     name = "cel_function_provider",
     srcs = [
         "cel_function_provider.cc",

@@ -7,14 +7,9 @@
 
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
-#include "eval/public/cel_function.h"
 #include "eval/public/cel_function_adapter_impl.h"
-#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -23,12 +18,12 @@ namespace internal {
 // A type code matcher that adds support for google::protobuf::Message.
 struct ProtoAdapterTypeCodeMatcher {
   template <typename T>
-  constexpr absl::optional<CelValue::Type> type_code() {
+  constexpr std::optional<CelValue::Type> type_code() {
     return internal::TypeCodeMatcher().type_code<T>();
   }
 
   template <>
-  constexpr absl::optional<CelValue::Type> type_code<const google::protobuf::Message*>() {
+  constexpr std::optional<CelValue::Type> type_code<const google::protobuf::Message*>() {
     return CelValue::Type::kMessage;
   }
 };
