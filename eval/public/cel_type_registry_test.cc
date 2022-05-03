@@ -197,16 +197,16 @@ TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
   EXPECT_THAT(type->CelTypeOrDie().value(), Eq("int"));
 }
 
-TEST(CelTypeRegistryTest, TestFindTypeProtobufTypeFound) {
+TEST(CelTypeRegistryTest, TestFindTypeAdapterTypeFound) {
   CelTypeRegistry registry;
+  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
+      std::vector<std::string>{"google.protobuf.Int64"}));
+  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
+      std::vector<std::string>{"google.protobuf.Any"}));
   auto type = registry.FindType("google.protobuf.Any");
-  if constexpr (std::is_base_of_v<google::protobuf::Message, google::protobuf::Any>) {
-    ASSERT_TRUE(type.has_value());
-    EXPECT_TRUE(type->IsCelType());
-    EXPECT_THAT(type->CelTypeOrDie().value(), Eq("google.protobuf.Any"));
-  } else {
-    EXPECT_FALSE(type.has_value());
-  }
+  ASSERT_TRUE(type.has_value());
+  EXPECT_TRUE(type->IsCelType());
+  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("google.protobuf.Any"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {

@@ -1808,7 +1808,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
 
   // This time, the message is unknown. We only have the proto as data, we did
   // not link the generated message, so it's not included in the generated pool.
-  FlatExprBuilder builder(google::protobuf::DescriptorPool::generated_pool());
+  FlatExprBuilder builder;
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -1831,7 +1831,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
 
   // This time, the message is *known*. We are using a custom descriptor pool
   // that has been primed with the relevant message.
-  FlatExprBuilder builder2(&desc_pool);
+  FlatExprBuilder builder2;
   builder2.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(&desc_pool,
                                                    &message_factory));
@@ -1871,9 +1871,9 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
   const google::protobuf::FieldDescriptor* field = desc->FindFieldByName("int64_value");
   refl->SetInt64(message, field, 123);
 
-  // This time, the message is *known*. We are using a custom descriptor pool
-  // that has been primed with the relevant message.
-  FlatExprBuilder builder(&desc_pool);
+  // The since this is access only, the evaluator will work with message duck
+  // typing.
+  FlatExprBuilder builder;
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -1923,7 +1923,7 @@ TEST_P(CustomDescriptorPoolTest, TestType) {
   ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
   google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
-  FlatExprBuilder builder(&descriptor_pool);
+  FlatExprBuilder builder;
   builder.GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(&descriptor_pool,
                                                    &message_factory));

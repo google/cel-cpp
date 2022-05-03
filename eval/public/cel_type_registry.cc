@@ -9,6 +9,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
 #include "internal/no_destructor.h"
@@ -93,21 +94,13 @@ const absl::flat_hash_set<const google::protobuf::EnumDescriptor*>& GetCoreEnums
 }  // namespace
 
 CelTypeRegistry::CelTypeRegistry()
-    : descriptor_pool_(google::protobuf::DescriptorPool::generated_pool()),
-      types_(GetCoreTypes()),
-      enums_(GetCoreEnums()) {
-  EnumAdder().AddEnum<google::protobuf::NullValue>(enums_map_);
-}
-
-CelTypeRegistry::CelTypeRegistry(const google::protobuf::DescriptorPool* descriptor_pool)
-    : descriptor_pool_(descriptor_pool),
-      types_(GetCoreTypes()),
-      enums_(GetCoreEnums()) {
+    : types_(GetCoreTypes()), enums_(GetCoreEnums()) {
   EnumAdder().AddEnum<google::protobuf::NullValue>(enums_map_);
 }
 
 void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
   // Registers the fully qualified type name as a CEL type.
+  absl::MutexLock lock(&mutex_);
   types_.insert(std::move(fully_qualified_type_name));
 }
 
@@ -122,13 +115,6 @@ CelTypeRegistry::GetFirstTypeProvider() const {
     return nullptr;
   }
   return type_providers_[0];
-}
-
-const google::protobuf::Descriptor* CelTypeRegistry::FindDescriptor(
-    absl::string_view fully_qualified_type_name) const {
-  // Public protobuf interface only accepts const string&.
-  return descriptor_pool_->FindMessageTypeByName(
-      std::string(fully_qualified_type_name));
 }
 
 // Find a type's CelValue instance by its fully qualified name.
@@ -146,6 +132,7 @@ absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
 
 absl::optional<CelValue> CelTypeRegistry::FindType(
     absl::string_view fully_qualified_type_name) const {
+  absl::MutexLock lock(&mutex_);
   // Searches through explicitly registered type names first.
   auto type = types_.find(fully_qualified_type_name);
   // The CelValue returned by this call will remain valid as long as the
@@ -154,12 +141,14 @@ absl::optional<CelValue> CelTypeRegistry::FindType(
     return CelValue::CreateCelTypeView(*type);
   }
 
-  // By default falls back to looking at whether the protobuf descriptor is
-  // linked into the binary. In the future, this functionality may be disabled,
-  // but this is most consistent with the current CEL C++ behavior.
-  auto desc = FindDescriptor(fully_qualified_type_name);
-  if (desc != nullptr) {
-    return CelValue::CreateCelTypeView(desc->full_name());
+  // By default falls back to looking at whether the type is provided by one
+  // of the registered providers (generally, one backed by the generated
+  // DescriptorPool).
+  auto adapter = FindTypeAdapter(fully_qualified_type_name);
+  if (adapter.has_value()) {
+    auto [iter, inserted] =
+        types_.insert(std::string(fully_qualified_type_name));
+    return CelValue::CreateCelTypeView(*iter);
   }
   return absl::nullopt;
 }

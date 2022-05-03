@@ -45,7 +45,7 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
     GOOGLE_LOG(WARNING) << "Failed to validate standard message types: " << s;
     return nullptr;
   }
-  auto builder = absl::make_unique<FlatExprBuilder>(descriptor_pool);
+  auto builder = std::make_unique<FlatExprBuilder>();
   builder->GetTypeRegistry()->RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(descriptor_pool,
                                                    message_factory));

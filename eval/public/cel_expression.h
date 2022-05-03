@@ -80,11 +80,6 @@ class CelExpressionBuilder {
         type_registry_(absl::make_unique<CelTypeRegistry>()),
         container_("") {}
 
-  explicit CelExpressionBuilder(const google::protobuf::DescriptorPool* descriptor_pool)
-      : func_registry_(absl::make_unique<CelFunctionRegistry>()),
-        type_registry_(absl::make_unique<CelTypeRegistry>(descriptor_pool)),
-        container_("") {}
-
   virtual ~CelExpressionBuilder() {}
 
   // Creates CelExpression object from AST tree.

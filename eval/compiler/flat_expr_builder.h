@@ -30,9 +30,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
  public:
   FlatExprBuilder() : CelExpressionBuilder() {}
 
-  explicit FlatExprBuilder(const google::protobuf::DescriptorPool* descriptor_pool)
-      : CelExpressionBuilder(descriptor_pool) {}
-
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
 

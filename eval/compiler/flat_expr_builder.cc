@@ -19,11 +19,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <stack>
 #include <string>
 #include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
-#include "stack"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"

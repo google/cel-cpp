@@ -6,11 +6,13 @@
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 
@@ -37,7 +39,6 @@ class CelTypeRegistry {
   };
 
   CelTypeRegistry();
-  explicit CelTypeRegistry(const google::protobuf::DescriptorPool* descriptor_pool);
 
   ~CelTypeRegistry() {}
 
@@ -90,15 +91,10 @@ class CelTypeRegistry {
   }
 
  private:
-  // Find a protobuf Descriptor given a fully qualified protobuf type name.
-  const google::protobuf::Descriptor* FindDescriptor(
-      absl::string_view fully_qualified_type_name) const;
-
-  const google::protobuf::DescriptorPool* descriptor_pool_;  // externally owned
-
+  mutable absl::Mutex mutex_;
   // node_hash_set provides pointer-stability, which is required for the
   // strings backing CelType objects.
-  absl::node_hash_set<std::string> types_;
+  mutable absl::node_hash_set<std::string> types_ ABSL_GUARDED_BY(mutex_);
   // Set of registered enums.
   absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
   // Internal representation for enums.

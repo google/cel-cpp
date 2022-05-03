@@ -98,14 +98,19 @@ TEST(ResolverTest, TestFindConstantUnqualifiedType) {
 }
 
 TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
+  google::protobuf::LinkMessageReflection<TestMessage>();
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("cel", &func_registry, &type_registry);
 
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
-  EXPECT_TRUE(type_value.has_value());
-  EXPECT_TRUE(type_value->IsCelType());
+  ASSERT_TRUE(type_value.has_value());
+  ASSERT_TRUE(type_value->IsCelType());
   EXPECT_THAT(type_value->CelTypeOrDie().value(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
@@ -113,6 +118,10 @@ TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
 TEST(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("", &func_registry, &type_registry, false);
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
