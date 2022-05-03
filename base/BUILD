@@ -54,9 +54,13 @@ cc_library(
     deps = [
         "//base/internal:memory_manager",
         "//internal:no_destructor",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:dynamic_annotations",
         "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 

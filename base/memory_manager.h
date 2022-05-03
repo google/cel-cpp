@@ -285,6 +285,12 @@ class ProtoMemoryManager;
 
 // Base class for all arena-based memory managers.
 class ArenaMemoryManager : public MemoryManager {
+ public:
+  // Returns the default implementation of an arena-based memory manager. In
+  // most cases it should be good enough, however you should not rely on its
+  // performance characteristics.
+  static std::unique_ptr<ArenaMemoryManager> Default();
+
  protected:
   ArenaMemoryManager() : ArenaMemoryManager(true) {}
 

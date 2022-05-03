@@ -49,5 +49,18 @@ TEST(ManagedMemory, Null) {
   EXPECT_EQ(nullptr, ManagedMemory<TriviallyDestructible>());
 }
 
+struct LargeStruct {
+  char padding[4096 - alignof(char)];
+};
+
+TEST(DefaultArenaMemoryManager, OddSizes) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  size_t page_size = base_internal::GetPageSize();
+  for (size_t allocated = 0; allocated <= page_size;
+       allocated += sizeof(LargeStruct)) {
+    static_cast<void>(memory_manager->New<LargeStruct>());
+  }
+}
+
 }  // namespace
 }  // namespace cel

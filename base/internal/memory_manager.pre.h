@@ -28,6 +28,8 @@ class MemoryManager;
 
 namespace base_internal {
 
+size_t GetPageSize();
+
 class Resource;
 
 template <typename T>
