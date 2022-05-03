@@ -31,10 +31,10 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     const InterpreterOptions& options) {
   if (type_provider == nullptr) {
     GOOGLE_LOG(ERROR) << "Cannot pass nullptr as type_provider to "
-                  "CreateProtoLiteExprBuilder";
+                  "CreatePortableExprBuilder";
     return nullptr;
   }
-  auto builder = absl::make_unique<FlatExprBuilder>();
+  auto builder = std::make_unique<FlatExprBuilder>();
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
   // LINT.IfChange
   builder->set_shortcircuiting(options.short_circuiting);

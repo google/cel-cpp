@@ -180,7 +180,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       break;
     }
     case CelValue::Type::kMessage: {
-      if (arg.MessageOrDie() == nullptr) {
+      if (CelValue::MessageWrapper w;
+          arg.GetValue(&w) && w.message_ptr() == nullptr) {
         frame->value_stack().PopAndPush(
             CreateErrorValue(frame->memory_manager(), "Message is NULL"),
             result_trail);
