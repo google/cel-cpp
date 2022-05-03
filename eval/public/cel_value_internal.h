@@ -25,14 +25,10 @@
 #include "absl/base/macros.h"
 #include "absl/numeric/bits.h"
 #include "absl/types/variant.h"
+#include "eval/public/message_wrapper.h"
 #include "internal/casts.h"
 
-namespace google::api::expr::runtime {
-
-// Forward declare to resolve circular dependency.
-class LegacyTypeInfoApis;
-
-namespace internal {
+namespace google::api::expr::runtime::internal {
 
 // Helper classes needed for IndexOf metafunction implementation.
 template <int N, bool>
@@ -88,49 +84,6 @@ class ValueHolder {
   absl::variant<Args...> value_;
 };
 
-class MessageWrapper {
- public:
-  static_assert(alignof(google::protobuf::MessageLite) >= 2,
-                "Assume that valid MessageLite ptrs have a free low-order bit");
-  MessageWrapper() : message_ptr_(0), legacy_type_info_(nullptr) {}
-
-  MessageWrapper(const google::protobuf::MessageLite* message,
-                 const LegacyTypeInfoApis* legacy_type_info)
-      : message_ptr_(reinterpret_cast<uintptr_t>(message)),
-        legacy_type_info_(legacy_type_info) {
-    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
-  }
-
-  MessageWrapper(const google::protobuf::Message* message,
-                 const LegacyTypeInfoApis* legacy_type_info)
-      : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask),
-        legacy_type_info_(legacy_type_info) {
-    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
-  }
-
-  bool HasFullProto() const { return (message_ptr_ & kTagMask) == kTagMask; }
-
-  const google::protobuf::MessageLite* message_ptr() const {
-    return reinterpret_cast<const google::protobuf::MessageLite*>(message_ptr_ &
-                                                        kPtrMask);
-  }
-
-  const LegacyTypeInfoApis* legacy_type_info() const {
-    return legacy_type_info_;
-  }
-
- private:
-  static constexpr uintptr_t kTagMask = 1 << 0;
-  static constexpr uintptr_t kPtrMask = ~kTagMask;
-  uintptr_t message_ptr_;
-  const LegacyTypeInfoApis* legacy_type_info_;
-  // TODO(issues/5): add LegacyTypeAccessApis to expose generic accessors for
-  // MessageLite.
-};
-
-static_assert(sizeof(MessageWrapper) <= 2 * sizeof(uintptr_t),
-              "MessageWrapper must not increase CelValue size.");
-
 // Adapter for visitor clients that depend on google::protobuf::Message as a variant type.
 template <typename Op, typename T>
 struct MessageVisitAdapter {
@@ -151,7 +104,6 @@ struct MessageVisitAdapter {
   Op op;
 };
 
-}  // namespace internal
-}  // namespace google::api::expr::runtime
+}  // namespace google::api::expr::runtime::internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_

@@ -34,6 +34,7 @@
 #include "absl/types/variant.h"
 #include "base/memory_manager.h"
 #include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
 #include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
@@ -115,16 +116,7 @@ class CelValue {
   // absl::variant.
   using NullType = absl::monostate;
 
-  // MessageWrapper wraps a tagged MessageLite with the accessors used to
-  // get field values.
-  //
-  // message_ptr(): get the MessageLite pointer of the wrapped message.
-  //
-  // legacy_type_info(): get type information about the wrapped message. see
-  //    LegacyTypeInfoApis.
-  //
-  // HasFullProto(): returns whether it's safe to downcast to google::protobuf::Message.
-  using MessageWrapper = internal::MessageWrapper;
+  using MessageWrapper = MessageWrapper;
 
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type

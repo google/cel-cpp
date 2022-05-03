@@ -24,9 +24,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/cel_value_internal.h"
 #include "eval/public/containers/internal_field_backed_list_impl.h"
 #include "eval/public/containers/internal_field_backed_map_impl.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/cel_proto_wrap_util.h"
 #include "eval/public/structs/field_access_impl.h"
 #include "eval/public/structs/legacy_type_adapter.h"
@@ -175,7 +175,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
 
   // Implement TypeInfo Apis
   const std::string& GetTypename(
-      const internal::MessageWrapper& wrapped_message) const override {
+      const MessageWrapper& wrapped_message) const override {
     if (!wrapped_message.HasFullProto() ||
         wrapped_message.message_ptr() == nullptr) {
       return UnsupportedTypeName();
@@ -186,7 +186,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   }
 
   std::string DebugString(
-      const internal::MessageWrapper& wrapped_message) const override {
+      const MessageWrapper& wrapped_message) const override {
     if (!wrapped_message.HasFullProto() ||
         wrapped_message.message_ptr() == nullptr) {
       return UnsupportedTypeName();
@@ -197,7 +197,7 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
   }
 
   const LegacyTypeAccessApis* GetAccessApis(
-      const internal::MessageWrapper& wrapped_message) const override {
+      const MessageWrapper& wrapped_message) const override {
     return this;
   }
 
@@ -208,8 +208,8 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
 };
 
 CelValue MessageCelValueFactory(const google::protobuf::Message* message) {
-  return CelValue::CreateMessageWrapper(internal::MessageWrapper(
-      message, &DucktypedMessageAdapter::GetSingleton()));
+  return CelValue::CreateMessageWrapper(
+      MessageWrapper(message, &DucktypedMessageAdapter::GetSingleton()));
 }
 
 }  // namespace
@@ -236,7 +236,7 @@ absl::StatusOr<CelValue::MessageWrapper> ProtoMessageTypeAdapter::NewInstance(
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to create message ", descriptor_->name()));
   }
-  return internal::MessageWrapper(msg, &GetGenericProtoTypeInfoInstance());
+  return MessageWrapper(msg, &GetGenericProtoTypeInfoInstance());
 }
 
 bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {

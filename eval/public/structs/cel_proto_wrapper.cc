@@ -17,7 +17,7 @@
 #include "google/protobuf/message.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/cel_proto_wrap_util.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 
@@ -33,7 +33,7 @@ using ::google::protobuf::Message;
 
 CelValue CelProtoWrapper::InternalWrapMessage(const Message* message) {
   return CelValue::CreateMessageWrapper(
-      internal::MessageWrapper(message, &GetGenericProtoTypeInfoInstance()));
+      MessageWrapper(message, &GetGenericProtoTypeInfoInstance()));
 }
 
 // CreateMessage creates CelValue from google::protobuf::Message.

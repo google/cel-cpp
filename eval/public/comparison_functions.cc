@@ -37,7 +37,7 @@
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "internal/casts.h"

@@ -73,7 +73,7 @@ struct DebugStringVisitor {
     return absl::StrFormat("%s", arg.value());
   }
 
-  std::string operator()(const internal::MessageWrapper& arg) {
+  std::string operator()(const MessageWrapper& arg) {
     return arg.message_ptr() == nullptr
                ? "NULL"
                : arg.legacy_type_info()->DebugString(arg);

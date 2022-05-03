@@ -65,7 +65,7 @@ class TestAccessApiImpl : public LegacyTypeAccessApis {
 
 TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
   TestMessage message;
-  internal::MessageWrapper wrapper(&message, TrivialTypeInfo::GetInstance());
+  MessageWrapper wrapper(&message, TrivialTypeInfo::GetInstance());
   google::protobuf::Arena arena;
   cel::extensions::ProtoMemoryManager manager(&arena);
 
@@ -80,8 +80,8 @@ TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
 
 TEST(LegacyTypeAdapterAccessApis, DefaultAlwaysInequal) {
   TestMessage message;
-  internal::MessageWrapper wrapper(&message, nullptr);
-  internal::MessageWrapper wrapper2(&message, nullptr);
+  MessageWrapper wrapper(&message, nullptr);
+  MessageWrapper wrapper2(&message, nullptr);
 
   google::protobuf::Arena arena;
   cel::extensions::ProtoMemoryManager manager(&arena);

@@ -21,10 +21,10 @@
 #include "google/protobuf/message_lite.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/cel_value_internal.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_access.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
@@ -77,7 +77,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldSingular) {
   const LegacyTypeAccessApis& accessor = GetAccessApis();
   TestMessage example;
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("int64_value", value), IsOkAndHolds(false));
   example.set_int64_value(10);
@@ -90,7 +90,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldRepeated) {
 
   TestMessage example;
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("int64_list", value), IsOkAndHolds(false));
   example.add_int64_list(10);
@@ -104,7 +104,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldMap) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("int64_int32_map", value), IsOkAndHolds(false));
   (*example.mutable_int64_int32_map())[2] = 3;
@@ -118,7 +118,7 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldUnknownField) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.HasField("unknown_field", value),
               StatusIs(absl::StatusCode::kNotFound));
@@ -128,8 +128,8 @@ TEST_P(ProtoMessageTypeAccessorTest, HasFieldNonMessageType) {
   google::protobuf::Arena arena;
   const LegacyTypeAccessApis& accessor = GetAccessApis();
 
-  internal::MessageWrapper value(
-      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
+  MessageWrapper value(static_cast<const google::protobuf::MessageLite*>(nullptr),
+                       nullptr);
 
   EXPECT_THAT(accessor.HasField("unknown_field", value),
               StatusIs(absl::StatusCode::kInternal));
@@ -144,7 +144,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldSingular) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -160,7 +160,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldNoSuchField) {
   TestMessage example;
   example.set_int64_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("unknown_field", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -174,8 +174,8 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldNotAMessage) {
 
   ProtoMemoryManager manager(&arena);
 
-  internal::MessageWrapper value(
-      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
+  MessageWrapper value(static_cast<const google::protobuf::MessageLite*>(nullptr),
+                       nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -192,7 +192,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldRepeated) {
   example.add_int64_list(10);
   example.add_int64_list(20);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
@@ -216,7 +216,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldMap) {
   TestMessage example;
   (*example.mutable_int64_int32_map())[10] = 20;
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
@@ -240,7 +240,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldWrapperType) {
   TestMessage example;
   example.mutable_int64_wrapper_value()->set_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_wrapper_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -255,7 +255,7 @@ TEST_P(ProtoMessageTypeAccessorTest, GetFieldWrapperTypeUnsetNullUnbox) {
 
   TestMessage example;
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(accessor.GetField("int64_wrapper_value", value,
                                 ProtoWrapperTypeOptions::kUnsetNull, manager),
@@ -277,7 +277,7 @@ TEST_P(ProtoMessageTypeAccessorTest,
 
   TestMessage example;
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
 
   EXPECT_THAT(
       accessor.GetField("int64_wrapper_value", value,
@@ -305,8 +305,8 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualTo) {
   TestMessage example2;
   example2.mutable_int64_wrapper_value()->set_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
-  internal::MessageWrapper value2(&example2, nullptr);
+  MessageWrapper value(&example, nullptr);
+  MessageWrapper value2(&example2, nullptr);
 
   EXPECT_TRUE(accessor.IsEqualTo(value, value2));
   EXPECT_TRUE(accessor.IsEqualTo(value2, value));
@@ -323,8 +323,8 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualToSameTypeInequal) {
   TestMessage example2;
   example2.mutable_int64_wrapper_value()->set_value(12);
 
-  internal::MessageWrapper value(&example, nullptr);
-  internal::MessageWrapper value2(&example2, nullptr);
+  MessageWrapper value(&example, nullptr);
+  MessageWrapper value2(&example2, nullptr);
 
   EXPECT_FALSE(accessor.IsEqualTo(value, value2));
   EXPECT_FALSE(accessor.IsEqualTo(value2, value));
@@ -341,8 +341,8 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualToDifferentTypeInequal) {
   Int64Value example2;
   example2.set_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
-  internal::MessageWrapper value2(&example2, nullptr);
+  MessageWrapper value(&example, nullptr);
+  MessageWrapper value2(&example2, nullptr);
 
   EXPECT_FALSE(accessor.IsEqualTo(value, value2));
   EXPECT_FALSE(accessor.IsEqualTo(value2, value));
@@ -359,10 +359,10 @@ TEST_P(ProtoMessageTypeAccessorTest, IsEqualToNonMessageInequal) {
   TestMessage example2;
   example2.mutable_int64_wrapper_value()->set_value(10);
 
-  internal::MessageWrapper value(&example, nullptr);
+  MessageWrapper value(&example, nullptr);
   // Upcast to message lite to prevent unwrapping to message.
-  internal::MessageWrapper value2(
-      static_cast<const google::protobuf::MessageLite*>(&example2), nullptr);
+  MessageWrapper value2(static_cast<const google::protobuf::MessageLite*>(&example2),
+                        nullptr);
 
   EXPECT_FALSE(accessor.IsEqualTo(value, value2));
   EXPECT_FALSE(accessor.IsEqualTo(value2, value));

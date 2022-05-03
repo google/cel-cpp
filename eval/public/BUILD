@@ -19,11 +19,34 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE"])
 
 cc_library(
+    name = "message_wrapper",
+    hdrs = [
+        "message_wrapper.h",
+    ],
+    deps = ["@com_google_protobuf//:protobuf"],
+)
+
+cc_test(
+    name = "message_wrapper_test",
+    srcs = [
+        "message_wrapper_test.cc",
+    ],
+    deps = [
+        ":message_wrapper",
+        "//eval/public/structs:trivial_legacy_type_info",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "cel_value_internal",
     hdrs = [
         "cel_value_internal.h",
     ],
     deps = [
+        ":message_wrapper",
         "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/numeric:bits",
@@ -42,6 +65,7 @@ cc_library(
     ],
     deps = [
         ":cel_value_internal",
+        ":message_wrapper",
         "//base:memory_manager",
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
@@ -267,7 +291,7 @@ cc_library(
         ":cel_number",
         ":cel_options",
         ":cel_value",
-        ":cel_value_internal",
+        ":message_wrapper",
         "//eval/eval:mutable_list_impl",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
@@ -299,8 +323,8 @@ cc_test(
         ":cel_function_registry",
         ":cel_options",
         ":cel_value",
-        ":cel_value_internal",
         ":comparison_functions",
+        ":message_wrapper",
         ":set_util",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",

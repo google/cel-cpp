@@ -17,7 +17,7 @@
 
 #include <string>
 
-#include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
 
 namespace google::api::expr::runtime {
 
@@ -40,13 +40,13 @@ class LegacyTypeInfoApis {
 
   // Return a debug representation of the wrapped message.
   virtual std::string DebugString(
-      const internal::MessageWrapper& wrapped_message) const = 0;
+      const MessageWrapper& wrapped_message) const = 0;
 
   // Return a const-reference to the typename for the wrapped message's type.
   // The CEL interpreter assumes that the typename is owned externally and will
   // outlive any CelValues created by the interpreter.
   virtual const std::string& GetTypename(
-      const internal::MessageWrapper& wrapped_message) const = 0;
+      const MessageWrapper& wrapped_message) const = 0;
 
   // Return a pointer to the wrapped message's access api implementation.
   //
@@ -57,7 +57,7 @@ class LegacyTypeInfoApis {
   // access, the interpreter will treat this the same as accessing a field that
   // is not defined for the type.
   virtual const LegacyTypeAccessApis* GetAccessApis(
-      const internal::MessageWrapper& wrapped_message) const = 0;
+      const MessageWrapper& wrapped_message) const = 0;
 };
 
 }  // namespace google::api::expr::runtime

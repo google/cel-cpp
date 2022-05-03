@@ -17,7 +17,7 @@
 
 #include <string>
 
-#include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "internal/no_destructor.h"
 
@@ -27,19 +27,17 @@ namespace google::api::expr::runtime {
 // operations need to be supported.
 class TrivialTypeInfo : public LegacyTypeInfoApis {
  public:
-  const std::string& GetTypename(
-      const internal::MessageWrapper& wrapper) const override {
+  const std::string& GetTypename(const MessageWrapper& wrapper) const override {
     static cel::internal::NoDestructor<std::string> kTypename("opaque type");
     return *kTypename;
   }
 
-  std::string DebugString(
-      const internal::MessageWrapper& wrapper) const override {
+  std::string DebugString(const MessageWrapper& wrapper) const override {
     return "opaque";
   }
 
   const LegacyTypeAccessApis* GetAccessApis(
-      const internal::MessageWrapper& wrapper) const override {
+      const MessageWrapper& wrapper) const override {
     // Accessors unsupported -- caller should treat this as an opaque type (no
     // fields defined, field access always results in a CEL error).
     return nullptr;

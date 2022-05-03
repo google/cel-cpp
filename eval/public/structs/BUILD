@@ -28,7 +28,7 @@ cc_library(
         ":cel_proto_wrap_util",
         ":proto_message_type_adapter",
         "//eval/public:cel_value",
-        "//eval/public:cel_value_internal",
+        "//eval/public:message_wrapper",
         "//internal:proto_time_encoding",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
@@ -77,11 +77,10 @@ cc_test(
     ],
     deps = [
         ":cel_proto_wrap_util",
-        ":legacy_type_info_apis",
         ":protobuf_value_factory",
         ":trivial_legacy_type_info",
         "//eval/public:cel_value",
-        "//eval/public:cel_value_internal",
+        "//eval/public:message_wrapper",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/testutil:test_message_cc_proto",
@@ -236,7 +235,7 @@ cc_library(
         "//base:memory_manager",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
-        "//eval/public:cel_value_internal",
+        "//eval/public:message_wrapper",
         "//eval/public/containers:internal_field_backed_list_impl",
         "//eval/public/containers:internal_field_backed_map_impl",
         "//extensions/protobuf:memory_manager",
@@ -258,7 +257,7 @@ cc_test(
         ":legacy_type_info_apis",
         ":proto_message_type_adapter",
         "//eval/public:cel_value",
-        "//eval/public:cel_value_internal",
+        "//eval/public:message_wrapper",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
         "//eval/public/containers:field_access",
@@ -305,7 +304,7 @@ cc_test(
 cc_library(
     name = "legacy_type_info_apis",
     hdrs = ["legacy_type_info_apis.h"],
-    deps = ["//eval/public:cel_value_internal"],
+    deps = ["//eval/public:message_wrapper"],
 )
 
 cc_library(
@@ -314,7 +313,7 @@ cc_library(
     hdrs = ["trivial_legacy_type_info.h"],
     deps = [
         ":legacy_type_info_apis",
-        "//eval/public:cel_value_internal",
+        "//eval/public:message_wrapper",
         "//internal:no_destructor",
     ],
 )
@@ -324,7 +323,7 @@ cc_test(
     srcs = ["trivial_legacy_type_info_test.cc"],
     deps = [
         ":trivial_legacy_type_info",
-        "//eval/public:cel_value_internal",
+        "//eval/public:message_wrapper",
         "//internal:testing",
     ],
 )

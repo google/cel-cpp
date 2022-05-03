@@ -14,7 +14,7 @@
 
 #include "eval/public/structs/trivial_legacy_type_info.h"
 
-#include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -22,7 +22,7 @@ namespace {
 
 TEST(TrivialTypeInfo, GetTypename) {
   TrivialTypeInfo info;
-  internal::MessageWrapper wrapper;
+  MessageWrapper wrapper;
 
   EXPECT_EQ(info.GetTypename(wrapper), "opaque type");
   EXPECT_EQ(TrivialTypeInfo::GetInstance()->GetTypename(wrapper),
@@ -31,7 +31,7 @@ TEST(TrivialTypeInfo, GetTypename) {
 
 TEST(TrivialTypeInfo, DebugString) {
   TrivialTypeInfo info;
-  internal::MessageWrapper wrapper;
+  MessageWrapper wrapper;
 
   EXPECT_EQ(info.DebugString(wrapper), "opaque");
   EXPECT_EQ(TrivialTypeInfo::GetInstance()->DebugString(wrapper), "opaque");
@@ -39,7 +39,7 @@ TEST(TrivialTypeInfo, DebugString) {
 
 TEST(TrivialTypeInfo, GetAccessApis) {
   TrivialTypeInfo info;
-  internal::MessageWrapper wrapper;
+  MessageWrapper wrapper;
 
   EXPECT_EQ(info.GetAccessApis(wrapper), nullptr);
   EXPECT_EQ(TrivialTypeInfo::GetInstance()->GetAccessApis(wrapper), nullptr);

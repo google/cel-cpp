@@ -44,10 +44,10 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/cel_value_internal.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_backed_list_impl.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/set_util.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
@@ -413,7 +413,7 @@ TEST(CelValueEqualImplTest, ProtoEqualityDifferingTypenameInequal) {
 
   CelValue lhs = CelProtoWrapper::CreateMessage(&example, &arena);
   CelValue rhs = CelValue::CreateMessageWrapper(
-      internal::MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+      MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
 
   EXPECT_THAT(CelValueEqualImpl(lhs, rhs), Optional(false));
 }
@@ -430,9 +430,9 @@ TEST(CelValueEqualImplTest, ProtoEqualityNoAccessorInequal) {
                                                   &example));
 
   CelValue lhs = CelValue::CreateMessageWrapper(
-      internal::MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+      MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
   CelValue rhs = CelValue::CreateMessageWrapper(
-      internal::MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+      MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
 
   EXPECT_THAT(CelValueEqualImpl(lhs, rhs), Optional(false));
 }

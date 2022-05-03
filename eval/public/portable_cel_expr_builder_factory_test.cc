@@ -271,14 +271,13 @@ class DemoTypeInfo : public LegacyTypeInfoApis {
  public:
   explicit DemoTypeInfo(const DemoTypeProvider* owning_provider)
       : owning_provider_(*owning_provider) {}
-  std::string DebugString(
-      const internal::MessageWrapper& wrapped_message) const override;
+  std::string DebugString(const MessageWrapper& wrapped_message) const override;
 
   const std::string& GetTypename(
-      const internal::MessageWrapper& wrapped_message) const override;
+      const MessageWrapper& wrapped_message) const override;
 
   const LegacyTypeAccessApis* GetAccessApis(
-      const internal::MessageWrapper& wrapped_message) const override;
+      const MessageWrapper& wrapped_message) const override;
 
  private:
   const DemoTypeProvider& owning_provider_;
@@ -354,17 +353,17 @@ class DemoTypeProvider : public LegacyTypeProvider {
 };
 
 std::string DemoTypeInfo::DebugString(
-    const internal::MessageWrapper& wrapped_message) const {
+    const MessageWrapper& wrapped_message) const {
   return wrapped_message.message_ptr()->GetTypeName();
 }
 
 const std::string& DemoTypeInfo::GetTypename(
-    const internal::MessageWrapper& wrapped_message) const {
+    const MessageWrapper& wrapped_message) const {
   return owning_provider_.GetStableType(wrapped_message.message_ptr());
 }
 
 const LegacyTypeAccessApis* DemoTypeInfo::GetAccessApis(
-    const internal::MessageWrapper& wrapped_message) const {
+    const MessageWrapper& wrapped_message) const {
   auto adapter = owning_provider_.ProvideLegacyType(
       wrapped_message.message_ptr()->GetTypeName());
   if (adapter.has_value()) {
