@@ -30,6 +30,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/time/time.h"
+#include "base/internal/memory_manager_testing.h"
 #include "base/memory_manager.h"
 #include "base/type.h"
 #include "base/type_factory.h"
@@ -40,6 +41,7 @@
 #include "internal/time.h"
 
 namespace cel {
+
 namespace {
 
 using testing::Eq;
@@ -467,6 +469,45 @@ Transient<T> Must(absl::StatusOr<Transient<T>> status_or_handle) {
 template <class T>
 constexpr void IS_INITIALIZED(T&) {}
 
+template <typename... Types>
+class BaseValueTest
+    : public testing::TestWithParam<
+          std::tuple<base_internal::MemoryManagerTestMode, Types...>> {
+  using Base = testing::TestWithParam<
+      std::tuple<base_internal::MemoryManagerTestMode, Types...>>;
+
+ protected:
+  void SetUp() override {
+    if (std::get<0>(Base::GetParam()) ==
+        base_internal::MemoryManagerTestMode::kArena) {
+      memory_manager_ = ArenaMemoryManager::Default();
+    }
+  }
+
+  void TearDown() override {
+    if (std::get<0>(Base::GetParam()) ==
+        base_internal::MemoryManagerTestMode::kArena) {
+      memory_manager_.reset();
+    }
+  }
+
+  MemoryManager& memory_manager() const {
+    switch (std::get<0>(Base::GetParam())) {
+      case base_internal::MemoryManagerTestMode::kGlobal:
+        return MemoryManager::Global();
+      case base_internal::MemoryManagerTestMode::kArena:
+        return *memory_manager_;
+    }
+  }
+
+  const auto& test_case() const { return std::get<1>(Base::GetParam()); }
+
+ private:
+  std::unique_ptr<ArenaMemoryManager> memory_manager_;
+};
+
+using ValueTest = BaseValueTest<>;
+
 TEST(Value, HandleSize) {
   // Advisory test to ensure we attempt to keep the size of Value handles under
   // 32 bytes. As of the time of writing they are 24 bytes.
@@ -503,8 +544,8 @@ TEST(Value, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_swappable_v<Persistent<const Value>>);
 }
 
-TEST(Value, DefaultConstructor) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(ValueTest, DefaultConstructor) {
+  ValueFactory value_factory(memory_manager());
   Transient<const Value> value;
   EXPECT_EQ(value, value_factory.GetNullValue());
 }
@@ -516,144 +557,148 @@ struct ConstructionAssignmentTestCase final {
 };
 
 using ConstructionAssignmentTest =
-    testing::TestWithParam<ConstructionAssignmentTestCase>;
+    BaseValueTest<ConstructionAssignmentTestCase>;
 
 TEST_P(ConstructionAssignmentTest, CopyConstructor) {
-  const auto& test_case = GetParam();
-  TypeFactory type_factory(MemoryManager::Global());
-  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(memory_manager());
+  ValueFactory value_factory(memory_manager());
   Persistent<const Value> from(
-      test_case.default_value(type_factory, value_factory));
+      test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to(from);
   IS_INITIALIZED(to);
-  EXPECT_EQ(to, test_case.default_value(type_factory, value_factory));
+  EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
 }
 
 TEST_P(ConstructionAssignmentTest, MoveConstructor) {
-  const auto& test_case = GetParam();
-  TypeFactory type_factory(MemoryManager::Global());
-  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(memory_manager());
+  ValueFactory value_factory(memory_manager());
   Persistent<const Value> from(
-      test_case.default_value(type_factory, value_factory));
+      test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to(std::move(from));
   IS_INITIALIZED(from);
   EXPECT_EQ(from, value_factory.GetNullValue());
-  EXPECT_EQ(to, test_case.default_value(type_factory, value_factory));
+  EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
 }
 
 TEST_P(ConstructionAssignmentTest, CopyAssignment) {
-  const auto& test_case = GetParam();
-  TypeFactory type_factory(MemoryManager::Global());
-  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(memory_manager());
+  ValueFactory value_factory(memory_manager());
   Persistent<const Value> from(
-      test_case.default_value(type_factory, value_factory));
+      test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to;
   to = from;
   EXPECT_EQ(to, from);
 }
 
 TEST_P(ConstructionAssignmentTest, MoveAssignment) {
-  const auto& test_case = GetParam();
-  TypeFactory type_factory(MemoryManager::Global());
-  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(memory_manager());
+  ValueFactory value_factory(memory_manager());
   Persistent<const Value> from(
-      test_case.default_value(type_factory, value_factory));
+      test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to;
   to = std::move(from);
   IS_INITIALIZED(from);
   EXPECT_EQ(from, value_factory.GetNullValue());
-  EXPECT_EQ(to, test_case.default_value(type_factory, value_factory));
+  EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
 }
 
 INSTANTIATE_TEST_SUITE_P(
     ConstructionAssignmentTest, ConstructionAssignmentTest,
-    testing::ValuesIn<ConstructionAssignmentTestCase>({
-        {"Null",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return value_factory.GetNullValue();
-         }},
-        {"Bool",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return value_factory.CreateBoolValue(false);
-         }},
-        {"Int",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return value_factory.CreateIntValue(0);
-         }},
-        {"Uint",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return value_factory.CreateUintValue(0);
-         }},
-        {"Double",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return value_factory.CreateDoubleValue(0.0);
-         }},
-        {"Duration",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
-         }},
-        {"Timestamp",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
-         }},
-        {"Error",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return value_factory.CreateErrorValue(absl::CancelledError());
-         }},
-        {"Bytes",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateBytesValue(""));
-         }},
-        {"String",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateStringValue(""));
-         }},
-        {"Enum",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(
-               EnumValue::New(Must(type_factory.CreateEnumType<TestEnumType>()),
-                              value_factory, EnumType::ConstantId("VALUE1")));
-         }},
-        {"Struct",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(StructValue::New(
-               Must(type_factory.CreateStructType<TestStructType>()),
-               value_factory));
-         }},
-        {"List",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateListValue<TestListValue>(
-               Must(type_factory.CreateListType(type_factory.GetIntType())),
-               std::vector<int64_t>{}));
-         }},
-        {"Map",
-         [](TypeFactory& type_factory,
-            ValueFactory& value_factory) -> Persistent<const Value> {
-           return Must(value_factory.CreateMapValue<TestMapValue>(
-               Must(type_factory.CreateMapType(type_factory.GetStringType(),
-                                               type_factory.GetIntType())),
-               std::map<std::string, int64_t>{}));
-         }},
-    }),
-    [](const testing::TestParamInfo<ConstructionAssignmentTestCase>& info) {
-      return info.param.name;
+    testing::Combine(
+        base_internal::MemoryManagerTestModeAll(),
+        testing::ValuesIn<ConstructionAssignmentTestCase>({
+            {"Null",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.GetNullValue();
+             }},
+            {"Bool",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateBoolValue(false);
+             }},
+            {"Int",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateIntValue(0);
+             }},
+            {"Uint",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateUintValue(0);
+             }},
+            {"Double",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateDoubleValue(0.0);
+             }},
+            {"Duration",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(
+                   value_factory.CreateDurationValue(absl::ZeroDuration()));
+             }},
+            {"Timestamp",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(
+                   value_factory.CreateTimestampValue(absl::UnixEpoch()));
+             }},
+            {"Error",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateErrorValue(absl::CancelledError());
+             }},
+            {"Bytes",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(value_factory.CreateBytesValue(""));
+             }},
+            {"String",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(value_factory.CreateStringValue(""));
+             }},
+            {"Enum",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(EnumValue::New(
+                   Must(type_factory.CreateEnumType<TestEnumType>()),
+                   value_factory, EnumType::ConstantId("VALUE1")));
+             }},
+            {"Struct",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(StructValue::New(
+                   Must(type_factory.CreateStructType<TestStructType>()),
+                   value_factory));
+             }},
+            {"List",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(value_factory.CreateListValue<TestListValue>(
+                   Must(type_factory.CreateListType(type_factory.GetIntType())),
+                   std::vector<int64_t>{}));
+             }},
+            {"Map",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return Must(value_factory.CreateMapValue<TestMapValue>(
+                   Must(type_factory.CreateMapType(type_factory.GetStringType(),
+                                                   type_factory.GetIntType())),
+                   std::map<std::string, int64_t>{}));
+             }},
+        })),
+    [](const testing::TestParamInfo<
+        std::tuple<base_internal::MemoryManagerTestMode,
+                   ConstructionAssignmentTestCase>>& info) {
+      return absl::StrCat(
+          base_internal::MemoryManagerTestModeToString(std::get<0>(info.param)),
+          "_", std::get<1>(info.param).name);
     });
 
-TEST(Value, Swap) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(ValueTest, Swap) {
+  ValueFactory value_factory(memory_manager());
   Persistent<const Value> lhs = value_factory.CreateIntValue(0);
   Persistent<const Value> rhs = value_factory.CreateUintValue(0);
   std::swap(lhs, rhs);
@@ -661,19 +706,21 @@ TEST(Value, Swap) {
   EXPECT_EQ(rhs, value_factory.CreateIntValue(0));
 }
 
-TEST(NullValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+using DebugStringTest = ValueTest;
+
+TEST_P(DebugStringTest, NullValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(value_factory.GetNullValue()->DebugString(), "null");
 }
 
-TEST(BoolValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, BoolValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(value_factory.CreateBoolValue(false)->DebugString(), "false");
   EXPECT_EQ(value_factory.CreateBoolValue(true)->DebugString(), "true");
 }
 
-TEST(IntValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, IntValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(value_factory.CreateIntValue(-1)->DebugString(), "-1");
   EXPECT_EQ(value_factory.CreateIntValue(0)->DebugString(), "0");
   EXPECT_EQ(value_factory.CreateIntValue(1)->DebugString(), "1");
@@ -685,8 +732,8 @@ TEST(IntValue, DebugString) {
             "9223372036854775807");
 }
 
-TEST(UintValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, UintValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(value_factory.CreateUintValue(0)->DebugString(), "0u");
   EXPECT_EQ(value_factory.CreateUintValue(1)->DebugString(), "1u");
   EXPECT_EQ(value_factory.CreateUintValue(std::numeric_limits<uint64_t>::max())
@@ -694,8 +741,8 @@ TEST(UintValue, DebugString) {
             "18446744073709551615u");
 }
 
-TEST(DoubleValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, DoubleValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(value_factory.CreateDoubleValue(-1.0)->DebugString(), "-1.0");
   EXPECT_EQ(value_factory.CreateDoubleValue(0.0)->DebugString(), "0.0");
   EXPECT_EQ(value_factory.CreateDoubleValue(1.0)->DebugString(), "1.0");
@@ -727,25 +774,29 @@ TEST(DoubleValue, DebugString) {
       "-infinity");
 }
 
-TEST(DurationValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, DurationValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(DurationValue::Zero(value_factory)->DebugString(),
             internal::FormatDuration(absl::ZeroDuration()).value());
 }
 
-TEST(TimestampValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, TimestampValue) {
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(TimestampValue::UnixEpoch(value_factory)->DebugString(),
             internal::FormatTimestamp(absl::UnixEpoch()).value());
 }
+
+INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
 
 // The below tests could be made parameterized but doing so requires the
 // extension for struct member initiation by name for it to be worth it. That
 // feature is not available in C++17.
 
-TEST(Value, Error) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Error) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto error_value = value_factory.CreateErrorValue(absl::CancelledError());
   EXPECT_TRUE(error_value.Is<ErrorValue>());
   EXPECT_FALSE(error_value.Is<NullValue>());
@@ -755,9 +806,9 @@ TEST(Value, Error) {
   EXPECT_EQ(error_value->value(), absl::CancelledError());
 }
 
-TEST(Value, Bool) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Bool) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto false_value = BoolValue::False(value_factory);
   EXPECT_TRUE(false_value.Is<BoolValue>());
   EXPECT_FALSE(false_value.Is<NullValue>());
@@ -780,9 +831,9 @@ TEST(Value, Bool) {
   EXPECT_NE(true_value, false_value);
 }
 
-TEST(Value, Int) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Int) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = value_factory.CreateIntValue(0);
   EXPECT_TRUE(zero_value.Is<IntValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -805,9 +856,9 @@ TEST(Value, Int) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, Uint) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Uint) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = value_factory.CreateUintValue(0);
   EXPECT_TRUE(zero_value.Is<UintValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -830,9 +881,9 @@ TEST(Value, Uint) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, Double) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Double) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = value_factory.CreateDoubleValue(0.0);
   EXPECT_TRUE(zero_value.Is<DoubleValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -855,9 +906,9 @@ TEST(Value, Double) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, Duration) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Duration) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value =
       Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
   EXPECT_TRUE(zero_value.Is<DurationValue>());
@@ -885,9 +936,9 @@ TEST(Value, Duration) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
-TEST(Value, Timestamp) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Timestamp) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
   EXPECT_TRUE(zero_value.Is<TimestampValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -914,9 +965,9 @@ TEST(Value, Timestamp) {
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
-TEST(Value, BytesFromString) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, BytesFromString) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateBytesValue(std::string("0")));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -939,9 +990,9 @@ TEST(Value, BytesFromString) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, BytesFromStringView) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, BytesFromStringView) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value =
       Must(value_factory.CreateBytesValue(absl::string_view("0")));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
@@ -967,9 +1018,9 @@ TEST(Value, BytesFromStringView) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, BytesFromCord) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, BytesFromCord) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateBytesValue(absl::Cord("0")));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -992,9 +1043,9 @@ TEST(Value, BytesFromCord) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, BytesFromLiteral) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, BytesFromLiteral) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateBytesValue("0"));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1017,9 +1068,9 @@ TEST(Value, BytesFromLiteral) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, BytesFromExternal) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, BytesFromExternal) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateBytesValue("0", []() {}));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1042,9 +1093,9 @@ TEST(Value, BytesFromExternal) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, StringFromString) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, StringFromString) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateStringValue(std::string("0")));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1068,9 +1119,9 @@ TEST(Value, StringFromString) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, StringFromStringView) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, StringFromStringView) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value =
       Must(value_factory.CreateStringValue(absl::string_view("0")));
   EXPECT_TRUE(zero_value.Is<StringValue>());
@@ -1097,9 +1148,9 @@ TEST(Value, StringFromStringView) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, StringFromCord) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, StringFromCord) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateStringValue(absl::Cord("0")));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1122,9 +1173,9 @@ TEST(Value, StringFromCord) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, StringFromLiteral) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, StringFromLiteral) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateStringValue("0"));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1147,9 +1198,9 @@ TEST(Value, StringFromLiteral) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(Value, StringFromExternal) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, StringFromExternal) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   auto zero_value = Must(value_factory.CreateStringValue("0", []() {}));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1192,122 +1243,125 @@ struct BytesConcatTestCase final {
   std::string rhs;
 };
 
-using BytesConcatTest = testing::TestWithParam<BytesConcatTestCase>;
+using BytesConcatTest = BaseValueTest<BytesConcatTestCase>;
 
 TEST_P(BytesConcatTest, Concat) {
-  const BytesConcatTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
+  ValueFactory value_factory(memory_manager());
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeStringBytes(value_factory, test_case.lhs),
-                              MakeStringBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                              MakeStringBytes(value_factory, test_case().lhs),
+                              MakeStringBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeStringBytes(value_factory, test_case.lhs),
-                              MakeCordBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                              MakeStringBytes(value_factory, test_case().lhs),
+                              MakeCordBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(
+               value_factory, MakeStringBytes(value_factory, test_case().lhs),
+               MakeExternalBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeStringBytes(value_factory, test_case.lhs),
-                              MakeExternalBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                              MakeCordBytes(value_factory, test_case().lhs),
+                              MakeStringBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeCordBytes(value_factory, test_case.lhs),
-                              MakeStringBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                              MakeCordBytes(value_factory, test_case().lhs),
+                              MakeCordBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(BytesValue::Concat(
+               value_factory, MakeCordBytes(value_factory, test_case().lhs),
+               MakeExternalBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeCordBytes(value_factory, test_case.lhs),
-                              MakeCordBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                              MakeExternalBytes(value_factory, test_case().lhs),
+                              MakeStringBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeCordBytes(value_factory, test_case.lhs),
-                              MakeExternalBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                              MakeExternalBytes(value_factory, test_case().lhs),
+                              MakeCordBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
-      Must(BytesValue::Concat(value_factory,
-                              MakeExternalBytes(value_factory, test_case.lhs),
-                              MakeStringBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(
-      Must(BytesValue::Concat(value_factory,
-                              MakeExternalBytes(value_factory, test_case.lhs),
-                              MakeCordBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(
-      Must(BytesValue::Concat(value_factory,
-                              MakeExternalBytes(value_factory, test_case.lhs),
-                              MakeExternalBytes(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+      Must(BytesValue::Concat(
+               value_factory, MakeExternalBytes(value_factory, test_case().lhs),
+               MakeExternalBytes(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesConcatTest, BytesConcatTest,
-                         testing::ValuesIn<BytesConcatTestCase>({
-                             {"", ""},
-                             {"", std::string("\0", 1)},
-                             {std::string("\0", 1), ""},
-                             {std::string("\0", 1), std::string("\0", 1)},
-                             {"", "foo"},
-                             {"foo", ""},
-                             {"foo", "foo"},
-                             {"bar", "foo"},
-                             {"foo", "bar"},
-                             {"bar", "bar"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesConcatTest, BytesConcatTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesConcatTestCase>({
+                         {"", ""},
+                         {"", std::string("\0", 1)},
+                         {std::string("\0", 1), ""},
+                         {std::string("\0", 1), std::string("\0", 1)},
+                         {"", "foo"},
+                         {"foo", ""},
+                         {"foo", "foo"},
+                         {"bar", "foo"},
+                         {"foo", "bar"},
+                         {"bar", "bar"},
+                     })));
 
 struct BytesSizeTestCase final {
   std::string data;
   size_t size;
 };
 
-using BytesSizeTest = testing::TestWithParam<BytesSizeTestCase>;
+using BytesSizeTest = BaseValueTest<BytesSizeTestCase>;
 
 TEST_P(BytesSizeTest, Size) {
-  const BytesSizeTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->size(),
-            test_case.size);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->size(),
-            test_case.size);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->size(),
-            test_case.size);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->size(),
+            test_case().size);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->size(),
+            test_case().size);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->size(),
+            test_case().size);
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesSizeTest, BytesSizeTest,
-                         testing::ValuesIn<BytesSizeTestCase>({
-                             {"", 0},
-                             {"1", 1},
-                             {"foo", 3},
-                             {"\xef\xbf\xbd", 3},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesSizeTest, BytesSizeTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesSizeTestCase>({
+                         {"", 0},
+                         {"1", 1},
+                         {"foo", 3},
+                         {"\xef\xbf\xbd", 3},
+                     })));
 
 struct BytesEmptyTestCase final {
   std::string data;
   bool empty;
 };
 
-using BytesEmptyTest = testing::TestWithParam<BytesEmptyTestCase>;
+using BytesEmptyTest = BaseValueTest<BytesEmptyTestCase>;
 
 TEST_P(BytesEmptyTest, Empty) {
-  const BytesEmptyTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->empty(),
-            test_case.empty);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->empty(),
-            test_case.empty);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->empty(),
-            test_case.empty);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->empty(),
+            test_case().empty);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->empty(),
+            test_case().empty);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->empty(),
+            test_case().empty);
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesEmptyTest, BytesEmptyTest,
-                         testing::ValuesIn<BytesEmptyTestCase>({
-                             {"", true},
-                             {std::string("\0", 1), false},
-                             {"1", false},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesEmptyTest, BytesEmptyTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesEmptyTestCase>({
+                         {"", true},
+                         {std::string("\0", 1), false},
+                         {"1", false},
+                     })));
 
 struct BytesEqualsTestCase final {
   std::string lhs;
@@ -1315,53 +1369,54 @@ struct BytesEqualsTestCase final {
   bool equals;
 };
 
-using BytesEqualsTest = testing::TestWithParam<BytesEqualsTestCase>;
+using BytesEqualsTest = BaseValueTest<BytesEqualsTestCase>;
 
 TEST_P(BytesEqualsTest, Equals) {
-  const BytesEqualsTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.lhs)
-                ->Equals(MakeStringBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.lhs)
-                ->Equals(MakeCordBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.lhs)
-                ->Equals(MakeExternalBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.lhs)
-                ->Equals(MakeStringBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.lhs)
-                ->Equals(MakeCordBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.lhs)
-                ->Equals(MakeExternalBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.lhs)
-                ->Equals(MakeStringBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.lhs)
-                ->Equals(MakeCordBytes(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.lhs)
-                ->Equals(MakeExternalBytes(value_factory, test_case.rhs)),
-            test_case.equals);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
+                ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
+                ->Equals(MakeCordBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
+                ->Equals(MakeExternalBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().lhs)
+                ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().lhs)
+                ->Equals(MakeCordBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().lhs)
+                ->Equals(MakeExternalBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().lhs)
+                ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().lhs)
+                ->Equals(MakeCordBytes(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().lhs)
+                ->Equals(MakeExternalBytes(value_factory, test_case().rhs)),
+            test_case().equals);
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesEqualsTest, BytesEqualsTest,
-                         testing::ValuesIn<BytesEqualsTestCase>({
-                             {"", "", true},
-                             {"", std::string("\0", 1), false},
-                             {std::string("\0", 1), "", false},
-                             {std::string("\0", 1), std::string("\0", 1), true},
-                             {"", "foo", false},
-                             {"foo", "", false},
-                             {"foo", "foo", true},
-                             {"bar", "foo", false},
-                             {"foo", "bar", false},
-                             {"bar", "bar", true},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesEqualsTest, BytesEqualsTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesEqualsTestCase>({
+                         {"", "", true},
+                         {"", std::string("\0", 1), false},
+                         {std::string("\0", 1), "", false},
+                         {std::string("\0", 1), std::string("\0", 1), true},
+                         {"", "foo", false},
+                         {"foo", "", false},
+                         {"foo", "foo", true},
+                         {"bar", "foo", false},
+                         {"foo", "bar", false},
+                         {"bar", "bar", true},
+                     })));
 
 struct BytesCompareTestCase final {
   std::string lhs;
@@ -1369,139 +1424,145 @@ struct BytesCompareTestCase final {
   int compare;
 };
 
-using BytesCompareTest = testing::TestWithParam<BytesCompareTestCase>;
+using BytesCompareTest = BaseValueTest<BytesCompareTestCase>;
 
 int NormalizeCompareResult(int compare) { return std::clamp(compare, -1, 1); }
 
 TEST_P(BytesCompareTest, Equals) {
-  const BytesCompareTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeStringBytes(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeStringBytes(value_factory, test_case().lhs)
+                    ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
+            test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeCordBytes(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeStringBytes(value_factory, test_case().lhs)
+                    ->Compare(MakeCordBytes(value_factory, test_case().rhs))),
+            test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeStringBytes(value_factory, test_case().lhs)
+              ->Compare(MakeExternalBytes(value_factory, test_case().rhs))),
+      test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeExternalBytes(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeCordBytes(value_factory, test_case().lhs)
+                    ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
+            test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeStringBytes(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeCordBytes(value_factory, test_case().lhs)
+                    ->Compare(MakeCordBytes(value_factory, test_case().rhs))),
+            test_case().compare);
+  EXPECT_EQ(NormalizeCompareResult(MakeCordBytes(value_factory, test_case().lhs)
+                                       ->Compare(MakeExternalBytes(
+                                           value_factory, test_case().rhs))),
+            test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeCordBytes(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeExternalBytes(value_factory, test_case().lhs)
+                    ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
+            test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeExternalBytes(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeStringBytes(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeCordBytes(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalBytes(value_factory, test_case.lhs)
-                    ->Compare(MakeExternalBytes(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeExternalBytes(value_factory, test_case().lhs)
+                    ->Compare(MakeCordBytes(value_factory, test_case().rhs))),
+            test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeExternalBytes(value_factory, test_case().lhs)
+              ->Compare(MakeExternalBytes(value_factory, test_case().rhs))),
+      test_case().compare);
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesCompareTest, BytesCompareTest,
-                         testing::ValuesIn<BytesCompareTestCase>({
-                             {"", "", 0},
-                             {"", std::string("\0", 1), -1},
-                             {std::string("\0", 1), "", 1},
-                             {std::string("\0", 1), std::string("\0", 1), 0},
-                             {"", "foo", -1},
-                             {"foo", "", 1},
-                             {"foo", "foo", 0},
-                             {"bar", "foo", -1},
-                             {"foo", "bar", 1},
-                             {"bar", "bar", 0},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesCompareTest, BytesCompareTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesCompareTestCase>({
+                         {"", "", 0},
+                         {"", std::string("\0", 1), -1},
+                         {std::string("\0", 1), "", 1},
+                         {std::string("\0", 1), std::string("\0", 1), 0},
+                         {"", "foo", -1},
+                         {"foo", "", 1},
+                         {"foo", "foo", 0},
+                         {"bar", "foo", -1},
+                         {"foo", "bar", 1},
+                         {"bar", "bar", 0},
+                     })));
 
 struct BytesDebugStringTestCase final {
   std::string data;
 };
 
-using BytesDebugStringTest = testing::TestWithParam<BytesDebugStringTestCase>;
+using BytesDebugStringTest = BaseValueTest<BytesDebugStringTestCase>;
 
 TEST_P(BytesDebugStringTest, ToCord) {
-  const BytesDebugStringTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->DebugString(),
-            internal::FormatBytesLiteral(test_case.data));
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->DebugString(),
-            internal::FormatBytesLiteral(test_case.data));
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->DebugString(),
-            internal::FormatBytesLiteral(test_case.data));
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->DebugString(),
+            internal::FormatBytesLiteral(test_case().data));
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->DebugString(),
+            internal::FormatBytesLiteral(test_case().data));
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->DebugString(),
+            internal::FormatBytesLiteral(test_case().data));
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesDebugStringTest, BytesDebugStringTest,
-                         testing::ValuesIn<BytesDebugStringTestCase>({
-                             {""},
-                             {"1"},
-                             {"foo"},
-                             {"\xef\xbf\xbd"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesDebugStringTest, BytesDebugStringTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesDebugStringTestCase>({
+                         {""},
+                         {"1"},
+                         {"foo"},
+                         {"\xef\xbf\xbd"},
+                     })));
 
 struct BytesToStringTestCase final {
   std::string data;
 };
 
-using BytesToStringTest = testing::TestWithParam<BytesToStringTestCase>;
+using BytesToStringTest = BaseValueTest<BytesToStringTestCase>;
 
 TEST_P(BytesToStringTest, ToString) {
-  const BytesToStringTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->ToString(),
-            test_case.data);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->ToString(),
-            test_case.data);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->ToString(),
-            test_case.data);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->ToString(),
+            test_case().data);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->ToString(),
+            test_case().data);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->ToString(),
+            test_case().data);
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesToStringTest, BytesToStringTest,
-                         testing::ValuesIn<BytesToStringTestCase>({
-                             {""},
-                             {"1"},
-                             {"foo"},
-                             {"\xef\xbf\xbd"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesToStringTest, BytesToStringTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesToStringTestCase>({
+                         {""},
+                         {"1"},
+                         {"foo"},
+                         {"\xef\xbf\xbd"},
+                     })));
 
 struct BytesToCordTestCase final {
   std::string data;
 };
 
-using BytesToCordTest = testing::TestWithParam<BytesToCordTestCase>;
+using BytesToCordTest = BaseValueTest<BytesToCordTestCase>;
 
 TEST_P(BytesToCordTest, ToCord) {
-  const BytesToCordTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringBytes(value_factory, test_case.data)->ToCord(),
-            test_case.data);
-  EXPECT_EQ(MakeCordBytes(value_factory, test_case.data)->ToCord(),
-            test_case.data);
-  EXPECT_EQ(MakeExternalBytes(value_factory, test_case.data)->ToCord(),
-            test_case.data);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->ToCord(),
+            test_case().data);
+  EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->ToCord(),
+            test_case().data);
+  EXPECT_EQ(MakeExternalBytes(value_factory, test_case().data)->ToCord(),
+            test_case().data);
 }
 
-INSTANTIATE_TEST_SUITE_P(BytesToCordTest, BytesToCordTest,
-                         testing::ValuesIn<BytesToCordTestCase>({
-                             {""},
-                             {"1"},
-                             {"foo"},
-                             {"\xef\xbf\xbd"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    BytesToCordTest, BytesToCordTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<BytesToCordTestCase>({
+                         {""},
+                         {"1"},
+                         {"foo"},
+                         {"\xef\xbf\xbd"},
+                     })));
 
 Persistent<const StringValue> MakeStringString(ValueFactory& value_factory,
                                                absl::string_view value) {
@@ -1523,122 +1584,125 @@ struct StringConcatTestCase final {
   std::string rhs;
 };
 
-using StringConcatTest = testing::TestWithParam<StringConcatTestCase>;
+using StringConcatTest = BaseValueTest<StringConcatTestCase>;
 
 TEST_P(StringConcatTest, Concat) {
-  const StringConcatTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_TRUE(
-      Must(StringValue::Concat(value_factory,
-                               MakeStringString(value_factory, test_case.lhs),
-                               MakeStringString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(value_factory,
-                               MakeStringString(value_factory, test_case.lhs),
-                               MakeCordString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+  ValueFactory value_factory(memory_manager());
   EXPECT_TRUE(
       Must(StringValue::Concat(
-               value_factory, MakeStringString(value_factory, test_case.lhs),
-               MakeExternalString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+               value_factory, MakeStringString(value_factory, test_case().lhs),
+               MakeStringString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(StringValue::Concat(value_factory,
-                               MakeCordString(value_factory, test_case.lhs),
-                               MakeStringString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(value_factory,
-                               MakeCordString(value_factory, test_case.lhs),
-                               MakeCordString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+                               MakeStringString(value_factory, test_case().lhs),
+                               MakeCordString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(StringValue::Concat(
-               value_factory, MakeCordString(value_factory, test_case.lhs),
-               MakeExternalString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(value_factory,
-                               MakeExternalString(value_factory, test_case.lhs),
-                               MakeStringString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(value_factory,
-                               MakeExternalString(value_factory, test_case.lhs),
-                               MakeCordString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+               value_factory, MakeStringString(value_factory, test_case().lhs),
+               MakeExternalString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(StringValue::Concat(
-               value_factory, MakeExternalString(value_factory, test_case.lhs),
-               MakeExternalString(value_factory, test_case.rhs)))
-          ->Equals(test_case.lhs + test_case.rhs));
+               value_factory, MakeCordString(value_factory, test_case().lhs),
+               MakeStringString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(value_factory,
+                               MakeCordString(value_factory, test_case().lhs),
+                               MakeCordString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, MakeCordString(value_factory, test_case().lhs),
+               MakeExternalString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(Must(StringValue::Concat(
+                       value_factory,
+                       MakeExternalString(value_factory, test_case().lhs),
+                       MakeStringString(value_factory, test_case().rhs)))
+                  ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(Must(StringValue::Concat(
+                       value_factory,
+                       MakeExternalString(value_factory, test_case().lhs),
+                       MakeCordString(value_factory, test_case().rhs)))
+                  ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(Must(StringValue::Concat(
+                       value_factory,
+                       MakeExternalString(value_factory, test_case().lhs),
+                       MakeExternalString(value_factory, test_case().rhs)))
+                  ->Equals(test_case().lhs + test_case().rhs));
 }
 
-INSTANTIATE_TEST_SUITE_P(StringConcatTest, StringConcatTest,
-                         testing::ValuesIn<StringConcatTestCase>({
-                             {"", ""},
-                             {"", std::string("\0", 1)},
-                             {std::string("\0", 1), ""},
-                             {std::string("\0", 1), std::string("\0", 1)},
-                             {"", "foo"},
-                             {"foo", ""},
-                             {"foo", "foo"},
-                             {"bar", "foo"},
-                             {"foo", "bar"},
-                             {"bar", "bar"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringConcatTest, StringConcatTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringConcatTestCase>({
+                         {"", ""},
+                         {"", std::string("\0", 1)},
+                         {std::string("\0", 1), ""},
+                         {std::string("\0", 1), std::string("\0", 1)},
+                         {"", "foo"},
+                         {"foo", ""},
+                         {"foo", "foo"},
+                         {"bar", "foo"},
+                         {"foo", "bar"},
+                         {"bar", "bar"},
+                     })));
 
 struct StringSizeTestCase final {
   std::string data;
   size_t size;
 };
 
-using StringSizeTest = testing::TestWithParam<StringSizeTestCase>;
+using StringSizeTest = BaseValueTest<StringSizeTestCase>;
 
 TEST_P(StringSizeTest, Size) {
-  const StringSizeTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->size(),
-            test_case.size);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->size(),
-            test_case.size);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->size(),
-            test_case.size);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->size(),
+            test_case().size);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->size(),
+            test_case().size);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->size(),
+            test_case().size);
 }
 
-INSTANTIATE_TEST_SUITE_P(StringSizeTest, StringSizeTest,
-                         testing::ValuesIn<StringSizeTestCase>({
-                             {"", 0},
-                             {"1", 1},
-                             {"foo", 3},
-                             {"\xef\xbf\xbd", 1},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringSizeTest, StringSizeTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringSizeTestCase>({
+                         {"", 0},
+                         {"1", 1},
+                         {"foo", 3},
+                         {"\xef\xbf\xbd", 1},
+                     })));
 
 struct StringEmptyTestCase final {
   std::string data;
   bool empty;
 };
 
-using StringEmptyTest = testing::TestWithParam<StringEmptyTestCase>;
+using StringEmptyTest = BaseValueTest<StringEmptyTestCase>;
 
 TEST_P(StringEmptyTest, Empty) {
-  const StringEmptyTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->empty(),
-            test_case.empty);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->empty(),
-            test_case.empty);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->empty(),
-            test_case.empty);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->empty(),
+            test_case().empty);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->empty(),
+            test_case().empty);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->empty(),
+            test_case().empty);
 }
 
-INSTANTIATE_TEST_SUITE_P(StringEmptyTest, StringEmptyTest,
-                         testing::ValuesIn<StringEmptyTestCase>({
-                             {"", true},
-                             {std::string("\0", 1), false},
-                             {"1", false},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringEmptyTest, StringEmptyTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringEmptyTestCase>({
+                         {"", true},
+                         {std::string("\0", 1), false},
+                         {"1", false},
+                     })));
 
 struct StringEqualsTestCase final {
   std::string lhs;
@@ -1646,53 +1710,54 @@ struct StringEqualsTestCase final {
   bool equals;
 };
 
-using StringEqualsTest = testing::TestWithParam<StringEqualsTestCase>;
+using StringEqualsTest = BaseValueTest<StringEqualsTestCase>;
 
 TEST_P(StringEqualsTest, Equals) {
-  const StringEqualsTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringString(value_factory, test_case.lhs)
-                ->Equals(MakeStringString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeStringString(value_factory, test_case.lhs)
-                ->Equals(MakeCordString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeStringString(value_factory, test_case.lhs)
-                ->Equals(MakeExternalString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.lhs)
-                ->Equals(MakeStringString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.lhs)
-                ->Equals(MakeCordString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.lhs)
-                ->Equals(MakeExternalString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.lhs)
-                ->Equals(MakeStringString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.lhs)
-                ->Equals(MakeCordString(value_factory, test_case.rhs)),
-            test_case.equals);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.lhs)
-                ->Equals(MakeExternalString(value_factory, test_case.rhs)),
-            test_case.equals);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
+                ->Equals(MakeStringString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
+                ->Equals(MakeCordString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
+                ->Equals(MakeExternalString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().lhs)
+                ->Equals(MakeStringString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().lhs)
+                ->Equals(MakeCordString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().lhs)
+                ->Equals(MakeExternalString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().lhs)
+                ->Equals(MakeStringString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().lhs)
+                ->Equals(MakeCordString(value_factory, test_case().rhs)),
+            test_case().equals);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().lhs)
+                ->Equals(MakeExternalString(value_factory, test_case().rhs)),
+            test_case().equals);
 }
 
-INSTANTIATE_TEST_SUITE_P(StringEqualsTest, StringEqualsTest,
-                         testing::ValuesIn<StringEqualsTestCase>({
-                             {"", "", true},
-                             {"", std::string("\0", 1), false},
-                             {std::string("\0", 1), "", false},
-                             {std::string("\0", 1), std::string("\0", 1), true},
-                             {"", "foo", false},
-                             {"foo", "", false},
-                             {"foo", "foo", true},
-                             {"bar", "foo", false},
-                             {"foo", "bar", false},
-                             {"bar", "bar", true},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringEqualsTest, StringEqualsTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringEqualsTestCase>({
+                         {"", "", true},
+                         {"", std::string("\0", 1), false},
+                         {std::string("\0", 1), "", false},
+                         {std::string("\0", 1), std::string("\0", 1), true},
+                         {"", "foo", false},
+                         {"foo", "", false},
+                         {"foo", "foo", true},
+                         {"bar", "foo", false},
+                         {"foo", "bar", false},
+                         {"bar", "bar", true},
+                     })));
 
 struct StringCompareTestCase final {
   std::string lhs;
@@ -1700,143 +1765,151 @@ struct StringCompareTestCase final {
   int compare;
 };
 
-using StringCompareTest = testing::TestWithParam<StringCompareTestCase>;
+using StringCompareTest = BaseValueTest<StringCompareTestCase>;
 
 TEST_P(StringCompareTest, Equals) {
-  const StringCompareTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeStringString(value_factory, test_case.lhs)
-                    ->Compare(MakeStringString(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeStringString(value_factory, test_case.lhs)
-                    ->Compare(MakeCordString(value_factory, test_case.rhs))),
-            test_case.compare);
+  ValueFactory value_factory(memory_manager());
   EXPECT_EQ(
       NormalizeCompareResult(
-          MakeStringString(value_factory, test_case.lhs)
-              ->Compare(MakeExternalString(value_factory, test_case.rhs))),
-      test_case.compare);
+          MakeStringString(value_factory, test_case().lhs)
+              ->Compare(MakeStringString(value_factory, test_case().rhs))),
+      test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeCordString(value_factory, test_case.lhs)
-                    ->Compare(MakeStringString(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeCordString(value_factory, test_case.lhs)
-                    ->Compare(MakeCordString(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(MakeCordString(value_factory, test_case.lhs)
-                                       ->Compare(MakeExternalString(
-                                           value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalString(value_factory, test_case.lhs)
-                    ->Compare(MakeStringString(value_factory, test_case.rhs))),
-            test_case.compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalString(value_factory, test_case.lhs)
-                    ->Compare(MakeCordString(value_factory, test_case.rhs))),
-            test_case.compare);
+                MakeStringString(value_factory, test_case().lhs)
+                    ->Compare(MakeCordString(value_factory, test_case().rhs))),
+            test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
-          MakeExternalString(value_factory, test_case.lhs)
-              ->Compare(MakeExternalString(value_factory, test_case.rhs))),
-      test_case.compare);
+          MakeStringString(value_factory, test_case().lhs)
+              ->Compare(MakeExternalString(value_factory, test_case().rhs))),
+      test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeCordString(value_factory, test_case().lhs)
+              ->Compare(MakeStringString(value_factory, test_case().rhs))),
+      test_case().compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeCordString(value_factory, test_case().lhs)
+                    ->Compare(MakeCordString(value_factory, test_case().rhs))),
+            test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeCordString(value_factory, test_case().lhs)
+              ->Compare(MakeExternalString(value_factory, test_case().rhs))),
+      test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeExternalString(value_factory, test_case().lhs)
+              ->Compare(MakeStringString(value_factory, test_case().rhs))),
+      test_case().compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeExternalString(value_factory, test_case().lhs)
+                    ->Compare(MakeCordString(value_factory, test_case().rhs))),
+            test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeExternalString(value_factory, test_case().lhs)
+              ->Compare(MakeExternalString(value_factory, test_case().rhs))),
+      test_case().compare);
 }
 
-INSTANTIATE_TEST_SUITE_P(StringCompareTest, StringCompareTest,
-                         testing::ValuesIn<StringCompareTestCase>({
-                             {"", "", 0},
-                             {"", std::string("\0", 1), -1},
-                             {std::string("\0", 1), "", 1},
-                             {std::string("\0", 1), std::string("\0", 1), 0},
-                             {"", "foo", -1},
-                             {"foo", "", 1},
-                             {"foo", "foo", 0},
-                             {"bar", "foo", -1},
-                             {"foo", "bar", 1},
-                             {"bar", "bar", 0},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringCompareTest, StringCompareTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringCompareTestCase>({
+                         {"", "", 0},
+                         {"", std::string("\0", 1), -1},
+                         {std::string("\0", 1), "", 1},
+                         {std::string("\0", 1), std::string("\0", 1), 0},
+                         {"", "foo", -1},
+                         {"foo", "", 1},
+                         {"foo", "foo", 0},
+                         {"bar", "foo", -1},
+                         {"foo", "bar", 1},
+                         {"bar", "bar", 0},
+                     })));
 
 struct StringDebugStringTestCase final {
   std::string data;
 };
 
-using StringDebugStringTest = testing::TestWithParam<StringDebugStringTestCase>;
+using StringDebugStringTest = BaseValueTest<StringDebugStringTestCase>;
 
 TEST_P(StringDebugStringTest, ToCord) {
-  const StringDebugStringTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->DebugString(),
-            internal::FormatStringLiteral(test_case.data));
-  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->DebugString(),
-            internal::FormatStringLiteral(test_case.data));
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->DebugString(),
-            internal::FormatStringLiteral(test_case.data));
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->DebugString(),
+            internal::FormatStringLiteral(test_case().data));
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->DebugString(),
+            internal::FormatStringLiteral(test_case().data));
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->DebugString(),
+            internal::FormatStringLiteral(test_case().data));
 }
 
-INSTANTIATE_TEST_SUITE_P(StringDebugStringTest, StringDebugStringTest,
-                         testing::ValuesIn<StringDebugStringTestCase>({
-                             {""},
-                             {"1"},
-                             {"foo"},
-                             {"\xef\xbf\xbd"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringDebugStringTest, StringDebugStringTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringDebugStringTestCase>({
+                         {""},
+                         {"1"},
+                         {"foo"},
+                         {"\xef\xbf\xbd"},
+                     })));
 
 struct StringToStringTestCase final {
   std::string data;
 };
 
-using StringToStringTest = testing::TestWithParam<StringToStringTestCase>;
+using StringToStringTest = BaseValueTest<StringToStringTestCase>;
 
 TEST_P(StringToStringTest, ToString) {
-  const StringToStringTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->ToString(),
-            test_case.data);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->ToString(),
-            test_case.data);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->ToString(),
-            test_case.data);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->ToString(),
+            test_case().data);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->ToString(),
+            test_case().data);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->ToString(),
+            test_case().data);
 }
 
-INSTANTIATE_TEST_SUITE_P(StringToStringTest, StringToStringTest,
-                         testing::ValuesIn<StringToStringTestCase>({
-                             {""},
-                             {"1"},
-                             {"foo"},
-                             {"\xef\xbf\xbd"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringToStringTest, StringToStringTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringToStringTestCase>({
+                         {""},
+                         {"1"},
+                         {"foo"},
+                         {"\xef\xbf\xbd"},
+                     })));
 
 struct StringToCordTestCase final {
   std::string data;
 };
 
-using StringToCordTest = testing::TestWithParam<StringToCordTestCase>;
+using StringToCordTest = BaseValueTest<StringToCordTestCase>;
 
 TEST_P(StringToCordTest, ToCord) {
-  const StringToCordTestCase& test_case = GetParam();
-  ValueFactory value_factory(MemoryManager::Global());
-  EXPECT_EQ(MakeStringString(value_factory, test_case.data)->ToCord(),
-            test_case.data);
-  EXPECT_EQ(MakeCordString(value_factory, test_case.data)->ToCord(),
-            test_case.data);
-  EXPECT_EQ(MakeExternalString(value_factory, test_case.data)->ToCord(),
-            test_case.data);
+  ValueFactory value_factory(memory_manager());
+  EXPECT_EQ(MakeStringString(value_factory, test_case().data)->ToCord(),
+            test_case().data);
+  EXPECT_EQ(MakeCordString(value_factory, test_case().data)->ToCord(),
+            test_case().data);
+  EXPECT_EQ(MakeExternalString(value_factory, test_case().data)->ToCord(),
+            test_case().data);
 }
 
-INSTANTIATE_TEST_SUITE_P(StringToCordTest, StringToCordTest,
-                         testing::ValuesIn<StringToCordTestCase>({
-                             {""},
-                             {"1"},
-                             {"foo"},
-                             {"\xef\xbf\xbd"},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    StringToCordTest, StringToCordTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringToCordTestCase>({
+                         {""},
+                         {"1"},
+                         {"foo"},
+                         {"\xef\xbf\xbd"},
+                     })));
 
-TEST(Value, Enum) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ValueTest, Enum) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(
@@ -1869,9 +1942,11 @@ TEST(Value, Enum) {
   EXPECT_NE(two_value, one_value);
 }
 
-TEST(EnumType, NewInstance) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+using EnumTypeTest = ValueTest;
+
+TEST_P(EnumTypeTest, NewInstance) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(
@@ -1896,9 +1971,13 @@ TEST(EnumType, NewInstance) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(Value, Struct) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
+
+TEST_P(ValueTest, Struct) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto zero_value,
@@ -1935,9 +2014,11 @@ TEST(Value, Struct) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(StructValue, SetField) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+using StructValueTest = ValueTest;
+
+TEST_P(StructValueTest, SetField) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto struct_value,
@@ -2012,9 +2093,9 @@ TEST(StructValue, SetField) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(StructValue, GetField) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(StructValueTest, GetField) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto struct_value,
@@ -2046,9 +2127,9 @@ TEST(StructValue, GetField) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(StructValue, HasField) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(StructValueTest, HasField) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto struct_value,
@@ -2075,9 +2156,13 @@ TEST(StructValue, HasField) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(Value, List) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(StructValueTest, StructValueTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
+
+TEST_P(ValueTest, List) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto zero_value,
@@ -2108,9 +2193,11 @@ TEST(Value, List) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(ListValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+using ListValueTest = ValueTest;
+
+TEST_P(ListValueTest, DebugString) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto list_value,
@@ -2123,9 +2210,9 @@ TEST(ListValue, DebugString) {
   EXPECT_EQ(list_value->DebugString(), "[0, 1, 2, 3, 4, 5]");
 }
 
-TEST(ListValue, Get) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(ListValueTest, Get) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto list_value,
@@ -2149,9 +2236,13 @@ TEST(ListValue, Get) {
               StatusIs(absl::StatusCode::kOutOfRange));
 }
 
-TEST(Value, Map) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(ListValueTest, ListValueTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
+
+TEST_P(ValueTest, Map) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetIntType()));
@@ -2186,9 +2277,11 @@ TEST(Value, Map) {
   EXPECT_NE(one_value, zero_value);
 }
 
-TEST(MapValue, DebugString) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+using MapValueTest = ValueTest;
+
+TEST_P(MapValueTest, DebugString) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetIntType()));
@@ -2203,9 +2296,9 @@ TEST(MapValue, DebugString) {
   EXPECT_EQ(map_value->DebugString(), "{\"bar\": 2, \"baz\": 3, \"foo\": 1}");
 }
 
-TEST(MapValue, GetAndHas) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(MapValueTest, GetAndHas) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetIntType()));
@@ -2245,9 +2338,13 @@ TEST(MapValue, GetAndHas) {
               IsOkAndHolds(false));
 }
 
-TEST(Value, SupportsAbslHash) {
-  ValueFactory value_factory(MemoryManager::Global());
-  TypeFactory type_factory(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(MapValueTest, MapValueTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
+
+TEST_P(ValueTest, SupportsAbslHash) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
@@ -2294,6 +2391,10 @@ TEST(Value, SupportsAbslHash) {
       Persistent<const Value>(map_value),
   }));
 }
+
+INSTANTIATE_TEST_SUITE_P(ValueTest, ValueTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeTupleName);
 
 }  // namespace
 }  // namespace cel

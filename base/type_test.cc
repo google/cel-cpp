@@ -21,6 +21,7 @@
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
 #include "base/handle.h"
+#include "base/internal/memory_manager_testing.h"
 #include "base/memory_manager.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -145,6 +146,34 @@ Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
 template <class T>
 constexpr void IS_INITIALIZED(T&) {}
 
+class TypeTest
+    : public testing::TestWithParam<base_internal::MemoryManagerTestMode> {
+ protected:
+  void SetUp() override {
+    if (GetParam() == base_internal::MemoryManagerTestMode::kArena) {
+      memory_manager_ = ArenaMemoryManager::Default();
+    }
+  }
+
+  void TearDown() override {
+    if (GetParam() == base_internal::MemoryManagerTestMode::kArena) {
+      memory_manager_.reset();
+    }
+  }
+
+  MemoryManager& memory_manager() const {
+    switch (GetParam()) {
+      case base_internal::MemoryManagerTestMode::kGlobal:
+        return MemoryManager::Global();
+      case base_internal::MemoryManagerTestMode::kArena:
+        return *memory_manager_;
+    }
+  }
+
+ private:
+  std::unique_ptr<ArenaMemoryManager> memory_manager_;
+};
+
 TEST(Type, TransientHandleTypeTraits) {
   EXPECT_TRUE(std::is_default_constructible_v<Transient<Type>>);
   EXPECT_TRUE(std::is_copy_constructible_v<Transient<Type>>);
@@ -175,14 +204,14 @@ TEST(Type, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_swappable_v<Persistent<const Type>>);
 }
 
-TEST(Type, CopyConstructor) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, CopyConstructor) {
+  TypeFactory type_factory(memory_manager());
   Transient<const Type> type(type_factory.GetIntType());
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
-TEST(Type, MoveConstructor) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, MoveConstructor) {
+  TypeFactory type_factory(memory_manager());
   Transient<const Type> from(type_factory.GetIntType());
   Transient<const Type> to(std::move(from));
   IS_INITIALIZED(from);
@@ -190,15 +219,15 @@ TEST(Type, MoveConstructor) {
   EXPECT_EQ(to, type_factory.GetIntType());
 }
 
-TEST(Type, CopyAssignment) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, CopyAssignment) {
+  TypeFactory type_factory(memory_manager());
   Transient<const Type> type(type_factory.GetNullType());
   type = type_factory.GetIntType();
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
-TEST(Type, MoveAssignment) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, MoveAssignment) {
+  TypeFactory type_factory(memory_manager());
   Transient<const Type> from(type_factory.GetIntType());
   Transient<const Type> to(type_factory.GetNullType());
   to = std::move(from);
@@ -207,8 +236,8 @@ TEST(Type, MoveAssignment) {
   EXPECT_EQ(to, type_factory.GetIntType());
 }
 
-TEST(Type, Swap) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Swap) {
+  TypeFactory type_factory(memory_manager());
   Transient<const Type> lhs = type_factory.GetIntType();
   Transient<const Type> rhs = type_factory.GetUintType();
   std::swap(lhs, rhs);
@@ -220,8 +249,8 @@ TEST(Type, Swap) {
 // extension for struct member initiation by name for it to be worth it. That
 // feature is not available in C++17.
 
-TEST(Type, Null) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Null) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetNullType()->kind(), Kind::kNullType);
   EXPECT_EQ(type_factory.GetNullType()->name(), "null_type");
   EXPECT_THAT(type_factory.GetNullType()->parameters(), SizeIs(0));
@@ -242,8 +271,8 @@ TEST(Type, Null) {
   EXPECT_FALSE(type_factory.GetNullType().Is<MapType>());
 }
 
-TEST(Type, Error) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Error) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetErrorType()->kind(), Kind::kError);
   EXPECT_EQ(type_factory.GetErrorType()->name(), "*error*");
   EXPECT_THAT(type_factory.GetErrorType()->parameters(), SizeIs(0));
@@ -264,8 +293,8 @@ TEST(Type, Error) {
   EXPECT_FALSE(type_factory.GetErrorType().Is<MapType>());
 }
 
-TEST(Type, Dyn) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Dyn) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDynType()->kind(), Kind::kDyn);
   EXPECT_EQ(type_factory.GetDynType()->name(), "dyn");
   EXPECT_THAT(type_factory.GetDynType()->parameters(), SizeIs(0));
@@ -286,8 +315,8 @@ TEST(Type, Dyn) {
   EXPECT_FALSE(type_factory.GetDynType().Is<MapType>());
 }
 
-TEST(Type, Any) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Any) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetAnyType()->kind(), Kind::kAny);
   EXPECT_EQ(type_factory.GetAnyType()->name(), "google.protobuf.Any");
   EXPECT_THAT(type_factory.GetAnyType()->parameters(), SizeIs(0));
@@ -308,8 +337,8 @@ TEST(Type, Any) {
   EXPECT_FALSE(type_factory.GetAnyType().Is<MapType>());
 }
 
-TEST(Type, Bool) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Bool) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolType()->kind(), Kind::kBool);
   EXPECT_EQ(type_factory.GetBoolType()->name(), "bool");
   EXPECT_THAT(type_factory.GetBoolType()->parameters(), SizeIs(0));
@@ -330,8 +359,8 @@ TEST(Type, Bool) {
   EXPECT_FALSE(type_factory.GetBoolType().Is<MapType>());
 }
 
-TEST(Type, Int) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Int) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntType()->kind(), Kind::kInt);
   EXPECT_EQ(type_factory.GetIntType()->name(), "int");
   EXPECT_THAT(type_factory.GetIntType()->parameters(), SizeIs(0));
@@ -352,8 +381,8 @@ TEST(Type, Int) {
   EXPECT_FALSE(type_factory.GetIntType().Is<MapType>());
 }
 
-TEST(Type, Uint) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Uint) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintType()->kind(), Kind::kUint);
   EXPECT_EQ(type_factory.GetUintType()->name(), "uint");
   EXPECT_THAT(type_factory.GetUintType()->parameters(), SizeIs(0));
@@ -374,8 +403,8 @@ TEST(Type, Uint) {
   EXPECT_FALSE(type_factory.GetUintType().Is<MapType>());
 }
 
-TEST(Type, Double) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Double) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleType()->kind(), Kind::kDouble);
   EXPECT_EQ(type_factory.GetDoubleType()->name(), "double");
   EXPECT_THAT(type_factory.GetDoubleType()->parameters(), SizeIs(0));
@@ -396,8 +425,8 @@ TEST(Type, Double) {
   EXPECT_FALSE(type_factory.GetDoubleType().Is<MapType>());
 }
 
-TEST(Type, String) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, String) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringType()->kind(), Kind::kString);
   EXPECT_EQ(type_factory.GetStringType()->name(), "string");
   EXPECT_THAT(type_factory.GetStringType()->parameters(), SizeIs(0));
@@ -418,8 +447,8 @@ TEST(Type, String) {
   EXPECT_FALSE(type_factory.GetStringType().Is<MapType>());
 }
 
-TEST(Type, Bytes) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Bytes) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesType()->kind(), Kind::kBytes);
   EXPECT_EQ(type_factory.GetBytesType()->name(), "bytes");
   EXPECT_THAT(type_factory.GetBytesType()->parameters(), SizeIs(0));
@@ -440,8 +469,8 @@ TEST(Type, Bytes) {
   EXPECT_FALSE(type_factory.GetBytesType().Is<MapType>());
 }
 
-TEST(Type, Duration) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Duration) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDurationType()->kind(), Kind::kDuration);
   EXPECT_EQ(type_factory.GetDurationType()->name(), "google.protobuf.Duration");
   EXPECT_THAT(type_factory.GetDurationType()->parameters(), SizeIs(0));
@@ -462,8 +491,8 @@ TEST(Type, Duration) {
   EXPECT_FALSE(type_factory.GetDurationType().Is<MapType>());
 }
 
-TEST(Type, Timestamp) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Timestamp) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTimestampType()->kind(), Kind::kTimestamp);
   EXPECT_EQ(type_factory.GetTimestampType()->name(),
             "google.protobuf.Timestamp");
@@ -485,8 +514,8 @@ TEST(Type, Timestamp) {
   EXPECT_FALSE(type_factory.GetTimestampType().Is<MapType>());
 }
 
-TEST(Type, Enum) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Enum) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(enum_type->kind(), Kind::kEnum);
@@ -510,8 +539,8 @@ TEST(Type, Enum) {
   EXPECT_FALSE(enum_type.Is<MapType>());
 }
 
-TEST(Type, Struct) {
-  TypeManager type_manager(MemoryManager::Global());
+TEST_P(TypeTest, Struct) {
+  TypeManager type_manager(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_manager.CreateStructType<TestStructType>());
   EXPECT_EQ(enum_type->kind(), Kind::kStruct);
@@ -535,8 +564,8 @@ TEST(Type, Struct) {
   EXPECT_FALSE(enum_type.Is<MapType>());
 }
 
-TEST(Type, List) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, List) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetBoolType()));
   EXPECT_EQ(list_type,
@@ -562,8 +591,8 @@ TEST(Type, List) {
   EXPECT_FALSE(list_type.Is<MapType>());
 }
 
-TEST(Type, Map) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(TypeTest, Map) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetBoolType()));
@@ -595,8 +624,10 @@ TEST(Type, Map) {
   EXPECT_TRUE(map_type.Is<MapType>());
 }
 
-TEST(EnumType, FindConstant) {
-  TypeFactory type_factory(MemoryManager::Global());
+using EnumTypeTest = TypeTest;
+
+TEST_P(EnumTypeTest, FindConstant) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
 
@@ -626,8 +657,14 @@ TEST(EnumType, FindConstant) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(StructType, FindField) {
-  TypeManager type_manager(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
+class StructTypeTest : public TypeTest {};
+
+TEST_P(StructTypeTest, FindField) {
+  TypeManager type_manager(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_manager.CreateStructType<TestStructType>());
 
@@ -690,99 +727,109 @@ TEST(StructType, FindField) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(NullType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(StructTypeTest, StructTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
+class DebugStringTest : public TypeTest {};
+
+TEST_P(DebugStringTest, NullType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetNullType()->DebugString(), "null_type");
 }
 
-TEST(ErrorType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, ErrorType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetErrorType()->DebugString(), "*error*");
 }
 
-TEST(DynType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, DynType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDynType()->DebugString(), "dyn");
 }
 
-TEST(AnyType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, AnyType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetAnyType()->DebugString(), "google.protobuf.Any");
 }
 
-TEST(BoolType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, BoolType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolType()->DebugString(), "bool");
 }
 
-TEST(IntType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, IntType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntType()->DebugString(), "int");
 }
 
-TEST(UintType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, UintType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintType()->DebugString(), "uint");
 }
 
-TEST(DoubleType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, DoubleType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleType()->DebugString(), "double");
 }
 
-TEST(StringType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, StringType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringType()->DebugString(), "string");
 }
 
-TEST(BytesType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, BytesType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesType()->DebugString(), "bytes");
 }
 
-TEST(DurationType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, DurationType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDurationType()->DebugString(),
             "google.protobuf.Duration");
 }
 
-TEST(TimestampType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, TimestampType) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTimestampType()->DebugString(),
             "google.protobuf.Timestamp");
 }
 
-TEST(EnumType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, EnumType) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(enum_type->DebugString(), "test_enum.TestEnum");
 }
 
-TEST(StructType, DebugString) {
-  TypeManager type_manager(MemoryManager::Global());
+TEST_P(DebugStringTest, StructType) {
+  TypeManager type_manager(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_manager.CreateStructType<TestStructType>());
   EXPECT_EQ(struct_type->DebugString(), "test_struct.TestStruct");
 }
 
-TEST(ListType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, ListType) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetBoolType()));
   EXPECT_EQ(list_type->DebugString(), "list(bool)");
 }
 
-TEST(MapType, DebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
+TEST_P(DebugStringTest, MapType) {
+  TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetBoolType()));
   EXPECT_EQ(map_type->DebugString(), "map(string, bool)");
 }
 
-TEST(Type, SupportsAbslHash) {
-  TypeFactory type_factory(MemoryManager::Global());
+INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
+TEST_P(TypeTest, SupportsAbslHash) {
+  TypeFactory type_factory(memory_manager());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
       Persistent<const Type>(type_factory.GetNullType()),
       Persistent<const Type>(type_factory.GetErrorType()),
@@ -805,6 +852,10 @@ TEST(Type, SupportsAbslHash) {
           type_factory.GetStringType(), type_factory.GetBoolType()))),
   }));
 }
+
+INSTANTIATE_TEST_SUITE_P(TypeTest, TypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
 
 }  // namespace
 }  // namespace cel

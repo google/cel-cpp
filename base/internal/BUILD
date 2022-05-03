@@ -39,6 +39,16 @@ cc_library(
 )
 
 cc_library(
+    name = "memory_manager_testing",
+    testonly = True,
+    srcs = ["memory_manager_testing.cc"],
+    hdrs = ["memory_manager_testing.h"],
+    deps = [
+        "//internal:testing",
+    ],
+)
+
+cc_library(
     name = "operators",
     hdrs = ["operators.h"],
     deps = [
