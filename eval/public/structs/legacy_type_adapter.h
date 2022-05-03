@@ -39,26 +39,23 @@ class LegacyTypeMutationApis {
 
   // Create a new empty instance of the type.
   // May return a status if the type is not possible to create.
-  virtual absl::StatusOr<CelValue::MessageWrapper> NewInstance(
+  virtual absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
       cel::MemoryManager& memory_manager) const = 0;
 
   // Normalize special types to a native CEL value after building.
-  // The default implementation is a no-op.
   // The interpreter guarantees that instance is uniquely owned by the
   // interpreter, and can be safely mutated.
   virtual absl::StatusOr<CelValue> AdaptFromWellKnownType(
       cel::MemoryManager& memory_manager,
-      CelValue::MessageWrapper instance) const {
-    return CelValue::CreateMessageWrapper(instance);
-  }
+      CelValue::MessageWrapper::Builder instance) const = 0;
 
   // Set field on instance to value.
   // The interpreter guarantees that instance is uniquely owned by the
   // interpreter, and can be safely mutated.
-  virtual absl::Status SetField(absl::string_view field_name,
-                                const CelValue& value,
-                                cel::MemoryManager& memory_manager,
-                                CelValue::MessageWrapper& instance) const = 0;
+  virtual absl::Status SetField(
+      absl::string_view field_name, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const = 0;
 };
 
 // Interface for access apis.

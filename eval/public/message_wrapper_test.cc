@@ -18,6 +18,7 @@
 #include "google/protobuf/message_lite.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/casts.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -42,6 +43,35 @@ TEST(MessageWrapper, WrapsMessage) {
   EXPECT_EQ(wrapped_message.message_ptr(),
             static_cast<const google::protobuf::MessageLite*>(&test_message));
   ASSERT_EQ(wrapped_message.HasFullProto(), is_full_proto_runtime);
+}
+
+TEST(MessageWrapperBuilder, Builder) {
+  TestMessage test_message;
+
+  MessageWrapper::Builder builder(&test_message);
+  constexpr bool is_full_proto_runtime =
+      std::is_base_of_v<google::protobuf::Message, TestMessage>;
+
+  ASSERT_EQ(builder.HasFullProto(), is_full_proto_runtime);
+
+  ASSERT_EQ(builder.message_ptr(),
+            static_cast<google::protobuf::MessageLite*>(&test_message));
+
+  auto mutable_message =
+      cel::internal::down_cast<TestMessage*>(builder.message_ptr());
+  mutable_message->set_int64_value(20);
+  mutable_message->set_double_value(12.3);
+
+  MessageWrapper wrapped_message =
+      builder.Build(TrivialTypeInfo::GetInstance());
+
+  ASSERT_EQ(wrapped_message.message_ptr(),
+            static_cast<const google::protobuf::MessageLite*>(&test_message));
+  ASSERT_EQ(wrapped_message.HasFullProto(), is_full_proto_runtime);
+  EXPECT_EQ(wrapped_message.message_ptr(),
+            static_cast<const google::protobuf::MessageLite*>(&test_message));
+  EXPECT_EQ(test_message.int64_value(), 20);
+  EXPECT_EQ(test_message.double_value(), 12.3);
 }
 
 TEST(MessageWrapper, DefaultNull) {

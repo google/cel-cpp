@@ -25,26 +25,6 @@
 
 namespace google::api::expr::runtime {
 namespace {
-using testing::EqualsProto;
-
-class TestMutationApiImpl : public LegacyTypeMutationApis {
- public:
-  TestMutationApiImpl() {}
-  bool DefinesField(absl::string_view field_name) const override {
-    return false;
-  }
-
-  absl::StatusOr<CelValue::MessageWrapper> NewInstance(
-      cel::MemoryManager& memory_manager) const override {
-    return absl::UnimplementedError("Not implemented");
-  }
-
-  absl::Status SetField(absl::string_view field_name, const CelValue& value,
-                        cel::MemoryManager& memory_manager,
-                        CelValue::MessageWrapper& instance) const override {
-    return absl::UnimplementedError("Not implemented");
-  }
-};
 
 class TestAccessApiImpl : public LegacyTypeAccessApis {
  public:
@@ -62,21 +42,6 @@ class TestAccessApiImpl : public LegacyTypeAccessApis {
     return absl::UnimplementedError("Not implemented");
   }
 };
-
-TEST(LegacyTypeAdapterMutationApis, DefaultNoopAdapt) {
-  TestMessage message;
-  MessageWrapper wrapper(&message, TrivialTypeInfo::GetInstance());
-  google::protobuf::Arena arena;
-  cel::extensions::ProtoMemoryManager manager(&arena);
-
-  TestMutationApiImpl impl;
-
-  ASSERT_OK_AND_ASSIGN(CelValue v,
-                       impl.AdaptFromWellKnownType(manager, wrapper));
-
-  EXPECT_THAT(v,
-              test::IsCelMessage(EqualsProto(TestMessage::default_instance())));
-}
 
 TEST(LegacyTypeAdapterAccessApis, DefaultAlwaysInequal) {
   TestMessage message;

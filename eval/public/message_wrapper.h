@@ -29,6 +29,34 @@ class LegacyTypeInfoApis;
 // Provides operations for checking if down-casting to Message is safe.
 class MessageWrapper {
  public:
+  // Simple builder class.
+  //
+  // Wraps a tagged mutable message lite ptr.
+  class Builder {
+   public:
+    explicit Builder(google::protobuf::MessageLite* message)
+        : message_ptr_(reinterpret_cast<uintptr_t>(message)) {
+      ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+    }
+    explicit Builder(google::protobuf::Message* message)
+        : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask) {
+      ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+    }
+
+    google::protobuf::MessageLite* message_ptr() const {
+      return reinterpret_cast<google::protobuf::MessageLite*>(message_ptr_ & kPtrMask);
+    }
+
+    bool HasFullProto() const { return (message_ptr_ & kTagMask) == kTagMask; }
+
+    MessageWrapper Build(const LegacyTypeInfoApis* type_info) {
+      return MessageWrapper(message_ptr_, type_info);
+    }
+
+   private:
+    uintptr_t message_ptr_;
+  };
+
   static_assert(alignof(google::protobuf::MessageLite) >= 2,
                 "Assume that valid MessageLite ptrs have a free low-order bit");
   MessageWrapper() : message_ptr_(0), legacy_type_info_(nullptr) {}

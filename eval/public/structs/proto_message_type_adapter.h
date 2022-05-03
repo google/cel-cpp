@@ -36,19 +36,19 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
 
   ~ProtoMessageTypeAdapter() override = default;
 
-  absl::StatusOr<CelValue::MessageWrapper> NewInstance(
+  absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
       cel::MemoryManager& memory_manager) const override;
 
   bool DefinesField(absl::string_view field_name) const override;
 
-  absl::Status SetField(absl::string_view field_name, const CelValue& value,
-
-                        cel::MemoryManager& memory_manager,
-                        CelValue::MessageWrapper& instance) const override;
+  absl::Status SetField(
+      absl::string_view field_name, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const override;
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
       cel::MemoryManager& memory_manager,
-      CelValue::MessageWrapper instance) const override;
+      CelValue::MessageWrapper::Builder instance) const override;
 
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,

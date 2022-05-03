@@ -35,6 +35,7 @@ cc_test(
         ":message_wrapper",
         "//eval/public/structs:trivial_legacy_type_info",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:casts",
         "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],

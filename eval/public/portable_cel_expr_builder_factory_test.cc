@@ -46,17 +46,14 @@ namespace {
 using ::google::protobuf::Int64Value;
 
 // Helpers for c++ / proto to cel value conversions.
-std::optional<CelValue> Unwrap(const CelValue::MessageWrapper& wrapper) {
-  if (wrapper.message_ptr()->GetTypeName() == "google.protobuf.Duration") {
+std::optional<CelValue> Unwrap(const google::protobuf::MessageLite* wrapper) {
+  if (wrapper->GetTypeName() == "google.protobuf.Duration") {
     const auto* duration =
-        cel::internal::down_cast<const google::protobuf::Duration*>(
-            wrapper.message_ptr());
+        cel::internal::down_cast<const google::protobuf::Duration*>(wrapper);
     return CelValue::CreateDuration(cel::internal::DecodeDuration(*duration));
-  } else if (wrapper.message_ptr()->GetTypeName() ==
-             "google.protobuf.Timestamp") {
+  } else if (wrapper->GetTypeName() == "google.protobuf.Timestamp") {
     const auto* timestamp =
-        cel::internal::down_cast<const google::protobuf::Timestamp*>(
-            wrapper.message_ptr());
+        cel::internal::down_cast<const google::protobuf::Timestamp*>(wrapper);
     return CelValue::CreateTimestamp(cel::internal::DecodeTime(*timestamp));
   }
   return std::nullopt;
@@ -246,21 +243,21 @@ class DemoTimestamp : public LegacyTypeMutationApis {
     return field_name == "seconds" || field_name == "nanos";
   }
 
-  absl::StatusOr<CelValue::MessageWrapper> NewInstance(
+  absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
       cel::MemoryManager& memory_manager) const override;
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
       cel::MemoryManager& memory_manager,
-      CelValue::MessageWrapper instance) const override;
+      CelValue::MessageWrapper::Builder instance) const override;
 
-  absl::Status SetField(absl::string_view field_name, const CelValue& value,
-                        cel::MemoryManager& memory_manager,
-                        CelValue::MessageWrapper& instance) const override;
+  absl::Status SetField(
+      absl::string_view field_name, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const override;
 
  private:
-  absl::Status Validate(const CelValue::MessageWrapper& wrapped_message) const {
-    if (wrapped_message.message_ptr()->GetTypeName() !=
-        "google.protobuf.Timestamp") {
+  absl::Status Validate(const google::protobuf::MessageLite* wrapped_message) const {
+    if (wrapped_message->GetTypeName() != "google.protobuf.Timestamp") {
       return absl::InvalidArgumentError("not a timestamp");
     }
     return absl::OkStatus();
@@ -292,16 +289,17 @@ class DemoTestMessage : public LegacyTypeMutationApis,
     return fields_.contains(field_name);
   }
 
-  absl::StatusOr<CelValue::MessageWrapper> NewInstance(
+  absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
       cel::MemoryManager& memory_manager) const override;
 
   absl::StatusOr<CelValue> AdaptFromWellKnownType(
       cel::MemoryManager& memory_manager,
-      CelValue::MessageWrapper instance) const override;
+      CelValue::MessageWrapper::Builder instance) const override;
 
-  absl::Status SetField(absl::string_view field_name, const CelValue& value,
-                        cel::MemoryManager& memory_manager,
-                        CelValue::MessageWrapper& instance) const override;
+  absl::Status SetField(
+      absl::string_view field_name, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const override;
 
   absl::StatusOr<bool> HasField(
       absl::string_view field_name,
@@ -372,26 +370,26 @@ const LegacyTypeAccessApis* DemoTypeInfo::GetAccessApis(
   return nullptr;  // not implemented yet.
 }
 
-absl::StatusOr<CelValue::MessageWrapper> DemoTimestamp::NewInstance(
+absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTimestamp::NewInstance(
     cel::MemoryManager& memory_manager) const {
   auto ts = memory_manager.New<google::protobuf::Timestamp>();
-  return CelValue::MessageWrapper(ts.release(), nullptr);
+  return CelValue::MessageWrapper::Builder(ts.release());
 }
 absl::StatusOr<CelValue> DemoTimestamp::AdaptFromWellKnownType(
     cel::MemoryManager& memory_manager,
-    CelValue::MessageWrapper instance) const {
-  return *Unwrap(instance);
+    CelValue::MessageWrapper::Builder instance) const {
+  auto value = Unwrap(instance.message_ptr());
+  ABSL_ASSERT(value.has_value());
+  return *value;
 }
 
-absl::Status DemoTimestamp::SetField(absl::string_view field_name,
-                                     const CelValue& value,
-                                     cel::MemoryManager& memory_manager,
-                                     CelValue::MessageWrapper& instance) const {
-  ABSL_ASSERT(Validate(instance).ok());
-  const auto* const_ts =
-      cel::internal::down_cast<const google::protobuf::Timestamp*>(
-          instance.message_ptr());
-  auto* mutable_ts = const_cast<google::protobuf::Timestamp*>(const_ts);
+absl::Status DemoTimestamp::SetField(
+    absl::string_view field_name, const CelValue& value,
+    cel::MemoryManager& memory_manager,
+    CelValue::MessageWrapper::Builder& instance) const {
+  ABSL_ASSERT(Validate(instance.message_ptr()).ok());
+  auto* mutable_ts = cel::internal::down_cast<google::protobuf::Timestamp*>(
+      instance.message_ptr());
   if (field_name == "seconds" && value.IsInt64()) {
     mutable_ts->set_seconds(value.Int64OrDie());
   } else if (field_name == "nanos" && value.IsInt64()) {
@@ -423,31 +421,30 @@ DemoTestMessage::DemoTestMessage(const DemoTypeProvider* owning_provider)
           &TestMessage::set_allocated_int64_wrapper_value);
 }
 
-absl::StatusOr<CelValue::MessageWrapper> DemoTestMessage::NewInstance(
+absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTestMessage::NewInstance(
     cel::MemoryManager& memory_manager) const {
   auto ts = memory_manager.New<TestMessage>();
-  return CelValue::MessageWrapper(ts.release(),
-                                  owning_provider_.GetTypeInfoInstance());
+  return CelValue::MessageWrapper::Builder(ts.release());
 }
 
 absl::Status DemoTestMessage::SetField(
     absl::string_view field_name, const CelValue& value,
     cel::MemoryManager& memory_manager,
-    CelValue::MessageWrapper& instance) const {
+    CelValue::MessageWrapper::Builder& instance) const {
   auto iter = fields_.find(field_name);
   if (iter == fields_.end()) {
     return absl::UnknownError("no such field");
   }
-  auto* test_msg =
-      cel::internal::down_cast<const TestMessage*>(instance.message_ptr());
-  auto* mutable_test_msg = const_cast<TestMessage*>(test_msg);
+  auto* mutable_test_msg =
+      cel::internal::down_cast<TestMessage*>(instance.message_ptr());
   return iter->second->Set(mutable_test_msg, value);
 }
 
 absl::StatusOr<CelValue> DemoTestMessage::AdaptFromWellKnownType(
     cel::MemoryManager& memory_manager,
-    CelValue::MessageWrapper instance) const {
-  return CelValue::CreateMessageWrapper(instance);
+    CelValue::MessageWrapper::Builder instance) const {
+  return CelValue::CreateMessageWrapper(
+      instance.Build(owning_provider_.GetTypeInfoInstance()));
 }
 
 absl::StatusOr<bool> DemoTestMessage::HasField(

@@ -437,7 +437,7 @@ TEST(ProtoMessageTypeAdapter, NewInstance) {
       google::protobuf::MessageFactory::generated_factory());
   ProtoMemoryManager manager(&arena);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper result,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder result,
                        adapter.NewInstance(manager));
   EXPECT_THAT(result.message_ptr(),
               EqualsProto(TestMessage::default_instance()));
@@ -485,7 +485,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldSingular) {
       google::protobuf::MessageFactory::generated_factory());
   ProtoMemoryManager manager(&arena);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper value,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder value,
                        adapter.NewInstance(manager));
 
   ASSERT_OK(adapter.SetField("int64_value", CelValue::CreateInt64(10), manager,
@@ -513,7 +513,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldMap) {
 
   CelValue value_to_set = CelValue::CreateMap(&builder);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper instance,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
 
   ASSERT_OK(
@@ -536,7 +536,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldRepeated) {
   ContainerBackedListImpl list(
       {CelValue::CreateInt64(1), CelValue::CreateInt64(2)});
   CelValue value_to_set = CelValue::CreateList(&list);
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper instance,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
 
   ASSERT_OK(adapter.SetField("int64_list", value_to_set, manager, instance));
@@ -555,7 +555,7 @@ TEST(ProtoMessageTypeAdapter, SetFieldNotAField) {
       google::protobuf::MessageFactory::generated_factory());
   ProtoMemoryManager manager(&arena);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper instance,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
 
   ASSERT_THAT(adapter.SetField("not_a_field", CelValue::CreateInt64(10),
@@ -584,7 +584,7 @@ TEST(ProtoMesssageTypeAdapter, SetFieldWrongType) {
 
   CelValue int_value = CelValue::CreateInt64(42);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper instance,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
 
   EXPECT_THAT(adapter.SetField("int64_value", map_value, manager, instance),
@@ -613,8 +613,8 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNotAMessage) {
   ProtoMemoryManager manager(&arena);
 
   CelValue int_value = CelValue::CreateInt64(42);
-  CelValue::MessageWrapper instance(
-      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
+  CelValue::MessageWrapper::Builder instance(
+      static_cast<google::protobuf::MessageLite*>(nullptr));
 
   EXPECT_THAT(adapter.SetField("int64_value", int_value, manager, instance),
               StatusIs(absl::StatusCode::kInternal));
@@ -629,8 +629,8 @@ TEST(ProtoMesssageTypeAdapter, SetFieldNullMessage) {
   ProtoMemoryManager manager(&arena);
 
   CelValue int_value = CelValue::CreateInt64(42);
-  CelValue::MessageWrapper instance(
-      static_cast<const google::protobuf::Message*>(nullptr), nullptr);
+  CelValue::MessageWrapper::Builder instance(
+      static_cast<google::protobuf::Message*>(nullptr));
 
   EXPECT_THAT(adapter.SetField("int64_value", int_value, manager, instance),
               StatusIs(absl::StatusCode::kInternal));
@@ -644,7 +644,7 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownType) {
       google::protobuf::MessageFactory::generated_factory());
   ProtoMemoryManager manager(&arena);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper instance,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
   ASSERT_OK(
       adapter.SetField("value", CelValue::CreateInt64(42), manager, instance));
@@ -663,7 +663,7 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeUnspecial) {
       google::protobuf::MessageFactory::generated_factory());
   ProtoMemoryManager manager(&arena);
 
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper instance,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
                        adapter.NewInstance(manager));
 
   ASSERT_OK(adapter.SetField("int64_value", CelValue::CreateInt64(42), manager,
@@ -683,8 +683,8 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeNotAMessageError) {
       google::protobuf::MessageFactory::generated_factory());
   ProtoMemoryManager manager(&arena);
 
-  CelValue::MessageWrapper instance(
-      static_cast<const google::protobuf::MessageLite*>(nullptr), nullptr);
+  CelValue::MessageWrapper::Builder instance(
+      static_cast<google::protobuf::MessageLite*>(nullptr));
 
   // Interpreter guaranteed to call this with a message type, otherwise,
   // something has broken.

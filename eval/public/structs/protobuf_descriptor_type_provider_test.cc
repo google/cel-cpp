@@ -35,7 +35,7 @@ TEST(ProtobufDescriptorProvider, Basic) {
   ASSERT_TRUE(type_adapter->mutation_apis() != nullptr);
 
   ASSERT_TRUE(type_adapter->mutation_apis()->DefinesField("value"));
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper value,
+  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder value,
                        type_adapter->mutation_apis()->NewInstance(manager));
 
   ASSERT_OK(type_adapter->mutation_apis()->SetField(

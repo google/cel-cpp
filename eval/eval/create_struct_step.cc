@@ -71,7 +71,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
     }
   }
 
-  CEL_ASSIGN_OR_RETURN(CelValue::MessageWrapper instance,
+  CEL_ASSIGN_OR_RETURN(MessageWrapper::Builder instance,
                        type_adapter_->NewInstance(frame->memory_manager()));
 
   int index = 0;
