@@ -36,7 +36,6 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   }
   auto builder = std::make_unique<FlatExprBuilder>();
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
-  // LINT.IfChange
   builder->set_shortcircuiting(options.short_circuiting);
   builder->set_constant_folding(options.constant_folding,
                                 options.constant_arena);
@@ -72,7 +71,6 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
 
   builder->set_enable_missing_attribute_errors(
       options.enable_missing_attribute_errors);
-  // LINT.ThenChange(//depot/google3/eval/public/cel_expr_builder_factory.cc)
 
   return builder;
 }

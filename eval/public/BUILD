@@ -487,6 +487,7 @@ cc_library(
     deps = [
         ":cel_expression",
         ":cel_options",
+        ":portable_cel_expr_builder_factory",
         "//eval/compiler:flat_expr_builder",
         "//eval/public/structs:proto_message_type_adapter",
         "//eval/public/structs:protobuf_descriptor_type_provider",

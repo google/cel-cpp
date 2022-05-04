@@ -26,7 +26,12 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-// Factory creates CelExpressionBuilder implementation for public use.
+// Factory for initializing a CelExpressionBuilder implementation for public
+// use.
+//
+// This version does not include any message type information, instead deferring
+// to the type_provider argument. type_provider is guaranteed to be the first
+// type provider in the type registry.
 std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     std::unique_ptr<LegacyTypeProvider> type_provider,
     const InterpreterOptions& options = InterpreterOptions());
