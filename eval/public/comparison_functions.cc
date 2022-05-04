@@ -32,12 +32,12 @@
 #include "absl/types/optional.h"
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_builtins.h"
-#include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
+#include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "internal/casts.h"
@@ -177,14 +177,12 @@ bool CrossNumericGreaterOrEqualTo(Arena* arena, T t, U u) {
   return CelNumber(t) >= CelNumber(u);
 }
 
-bool MessageNullEqual(Arena* arena, const google::protobuf::Message* t1,
-                      CelValue::NullType) {
+bool MessageNullEqual(Arena* arena, MessageWrapper t1, CelValue::NullType) {
   // messages should never be null.
   return false;
 }
 
-bool MessageNullInequal(Arena* arena, const google::protobuf::Message* t1,
-                        CelValue::NullType) {
+bool MessageNullInequal(Arena* arena, MessageWrapper t1, CelValue::NullType) {
   // messages should never be null.
   return true;
 }
@@ -380,13 +378,13 @@ template <class Type>
 absl::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
   // Inequality
   absl::Status status =
-      FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
+      PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
           builtin::kInequal, false, WrapComparison<Type>(&Inequal<Type>),
           registry);
   if (!status.ok()) return status;
 
   // Equality
-  status = FunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
+  status = PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
       builtin::kEqual, false, WrapComparison<Type>(&Equal<Type>), registry);
   return status;
 }
@@ -395,11 +393,11 @@ template <typename T, typename U>
 absl::Status RegisterSymmetricFunction(
     absl::string_view name, std::function<bool(google::protobuf::Arena*, T, U)> fn,
     CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
       name, false, fn, registry)));
 
   // the symmetric version
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, U, T>::CreateAndRegister(
+  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, U, T>::CreateAndRegister(
       name, false,
       [fn](google::protobuf::Arena* arena, U u, T t) { return fn(arena, t, u); },
       registry)));
@@ -411,20 +409,25 @@ template <class Type>
 absl::Status RegisterOrderingFunctionsForType(CelFunctionRegistry* registry) {
   // Less than
   // Extra paranthesis needed for Macros with multiple template arguments.
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, Type, Type>::CreateAndRegister(
-      builtin::kLess, false, LessThan<Type>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
+          builtin::kLess, false, LessThan<Type>, registry)));
 
   // Less than or Equal
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, Type, Type>::CreateAndRegister(
-      builtin::kLessOrEqual, false, LessThanOrEqual<Type>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
+          builtin::kLessOrEqual, false, LessThanOrEqual<Type>, registry)));
 
   // Greater than
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, Type, Type>::CreateAndRegister(
-      builtin::kGreater, false, GreaterThan<Type>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
+          builtin::kGreater, false, GreaterThan<Type>, registry)));
 
   // Greater than or Equal
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, Type, Type>::CreateAndRegister(
-      builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>, registry)));
+  CEL_RETURN_IF_ERROR(
+      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
+          builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>,
+          registry)));
 
   return absl::OkStatus();
 }
@@ -479,17 +482,17 @@ absl::Status RegisterHomogenousComparisonFunctions(
 absl::Status RegisterNullMessageEqualityFunctions(
     CelFunctionRegistry* registry) {
   CEL_RETURN_IF_ERROR(
-      (RegisterSymmetricFunction<const google::protobuf::Message*, CelValue::NullType>(
+      (RegisterSymmetricFunction<MessageWrapper, CelValue::NullType>(
           builtin::kEqual, MessageNullEqual, registry)));
   CEL_RETURN_IF_ERROR(
-      (RegisterSymmetricFunction<const google::protobuf::Message*, CelValue::NullType>(
+      (RegisterSymmetricFunction<MessageWrapper, CelValue::NullType>(
           builtin::kInequal, MessageNullInequal, registry)));
 
   return absl::OkStatus();
 }
 
-// Wrapper around CelValueEqualImpl to work with the FunctionAdapter template.
-// Implements CEL ==,
+// Wrapper around CelValueEqualImpl to work with the PortableFunctionAdapter
+// template. Implements CEL ==,
 CelValue GeneralizedEqual(Arena* arena, CelValue t1, CelValue t2) {
   std::optional<bool> result = CelValueEqualImpl(t1, t2);
   if (result.has_value()) {
@@ -500,8 +503,8 @@ CelValue GeneralizedEqual(Arena* arena, CelValue t1, CelValue t2) {
   return CreateNoMatchingOverloadError(arena, builtin::kEqual);
 }
 
-// Wrapper around CelValueEqualImpl to work with the FunctionAdapter template.
-// Implements CEL !=.
+// Wrapper around CelValueEqualImpl to work with the PortableFunctionAdapter
+// template. Implements CEL !=.
 CelValue GeneralizedInequal(Arena* arena, CelValue t1, CelValue t2) {
   std::optional<bool> result = CelValueEqualImpl(t1, t2);
   if (result.has_value()) {
@@ -512,16 +515,16 @@ CelValue GeneralizedInequal(Arena* arena, CelValue t1, CelValue t2) {
 
 template <typename T, typename U>
 absl::Status RegisterCrossNumericComparisons(CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
       builtin::kLess, /*receiver_style=*/false, &CrossNumericLessThan<T, U>,
       registry)));
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
       builtin::kGreater, /*receiver_style=*/false,
       &CrossNumericGreaterThan<T, U>, registry)));
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
       builtin::kGreaterOrEqual, /*receiver_style=*/false,
       &CrossNumericGreaterOrEqualTo<T, U>, registry)));
-  CEL_RETURN_IF_ERROR((FunctionAdapter<bool, T, U>::CreateAndRegister(
+  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
       builtin::kLessOrEqual, /*receiver_style=*/false,
       &CrossNumericLessOrEqualTo<T, U>, registry)));
   return absl::OkStatus();
@@ -530,11 +533,11 @@ absl::Status RegisterCrossNumericComparisons(CelFunctionRegistry* registry) {
 absl::Status RegisterHeterogeneousComparisonFunctions(
     CelFunctionRegistry* registry) {
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<CelValue, CelValue, CelValue>::CreateAndRegister(
+      (PortableFunctionAdapter<CelValue, CelValue, CelValue>::CreateAndRegister(
           builtin::kEqual, /*receiver_style=*/false, &GeneralizedEqual,
           registry)));
   CEL_RETURN_IF_ERROR(
-      (FunctionAdapter<CelValue, CelValue, CelValue>::CreateAndRegister(
+      (PortableFunctionAdapter<CelValue, CelValue, CelValue>::CreateAndRegister(
           builtin::kInequal, /*receiver_style=*/false, &GeneralizedInequal,
           registry)));
 

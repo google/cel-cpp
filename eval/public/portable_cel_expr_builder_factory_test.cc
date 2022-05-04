@@ -22,13 +22,10 @@
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/dynamic_message.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/optional.h"
 #include "eval/public/activation.h"
+#include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"
@@ -488,8 +485,7 @@ TEST(PortableCelExprBuilderFactoryTest, CreateSuccess) {
   ASSERT_OK_AND_ASSIGN(
       ParsedExpr expr,
       parser::Parse("google.protobuf.Timestamp{seconds: 3000, nanos: 20}"));
-  // TODO(issues/5): make builtin functions portable
-  // ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
 
   ASSERT_OK_AND_ASSIGN(
       auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
@@ -513,6 +509,7 @@ TEST(PortableCelExprBuilderFactoryTest, CreateCustomMessage) {
       ParsedExpr expr,
       parser::Parse("google.api.expr.runtime.TestMessage{int64_value: 20, "
                     "double_value: 3.5}.double_value"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), opts));
 
   ASSERT_OK_AND_ASSIGN(
       auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
@@ -538,6 +535,7 @@ TEST(PortableCelExprBuilderFactoryTest, ActivationAndCreate) {
       ParsedExpr expr,
       parser::Parse("TestMessage{int64_value: 20, bool_value: "
                     "false}.bool_value || my_var.bool_value ? 1 : 2"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), opts));
 
   ASSERT_OK_AND_ASSIGN(
       auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
@@ -554,6 +552,7 @@ TEST(PortableCelExprBuilderFactoryTest, ActivationAndCreate) {
 TEST(PortableCelExprBuilderFactoryTest, WrapperTypes) {
   google::protobuf::Arena arena;
   InterpreterOptions opts;
+  opts.enable_heterogeneous_equality = true;
   Activation activation;
   auto provider = std::make_unique<DemoTypeProvider>();
   const auto* provider_view = provider.get();
@@ -561,8 +560,9 @@ TEST(PortableCelExprBuilderFactoryTest, WrapperTypes) {
       CreatePortableExprBuilder(std::move(provider), opts);
   builder->set_container("google.api.expr.runtime");
   ASSERT_OK_AND_ASSIGN(ParsedExpr null_expr,
-                       parser::Parse("my_var.int64_wrapper_value"));
-
+                       parser::Parse("my_var.int64_wrapper_value != null ? "
+                                     "my_var.int64_wrapper_value > 29 : null"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), opts));
   TestMessage my_var;
   my_var.set_bool_value(true);
   activation.InsertValue("my_var", provider_view->WrapValue(&my_var));
@@ -577,9 +577,40 @@ TEST(PortableCelExprBuilderFactoryTest, WrapperTypes) {
   my_var.mutable_int64_wrapper_value()->set_value(30);
 
   ASSERT_OK_AND_ASSIGN(result, plan->Evaluate(activation, &arena));
-  int64_t result_int64;
-  ASSERT_TRUE(result.GetValue(&result_int64)) << result.DebugString();
-  EXPECT_EQ(result_int64, 30);
+  bool result_bool;
+  ASSERT_TRUE(result.GetValue(&result_bool)) << result.DebugString();
+  EXPECT_TRUE(result_bool);
+}
+
+TEST(PortableCelExprBuilderFactoryTest, SimpleBuiltinFunctions) {
+  google::protobuf::Arena arena;
+  InterpreterOptions opts;
+  opts.enable_heterogeneous_equality = true;
+  Activation activation;
+  auto provider = std::make_unique<DemoTypeProvider>();
+  std::unique_ptr<CelExpressionBuilder> builder =
+      CreatePortableExprBuilder(std::move(provider), opts);
+  builder->set_container("google.api.expr.runtime");
+
+  // Fairly complicated but silly expression to cover a mix of builtins
+  // (comparisons, arithmetic, datetime).
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr ternary_expr,
+      parser::Parse(
+          "TestMessage{int64_value: 2}.int64_value + 1 < "
+          "  TestMessage{double_value: 3.5}.double_value - 0.1 ? "
+          "    (google.protobuf.Timestamp{seconds: 300} - timestamp(240) "
+          "      >= duration('1m')  ? 'yes' : 'no') :"
+          "    null"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), opts));
+
+  ASSERT_OK_AND_ASSIGN(auto plan,
+                       builder->CreateExpression(&ternary_expr.expr(),
+                                                 &ternary_expr.source_info()));
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsString()) << result.DebugString();
+  EXPECT_EQ(result.StringOrDie().value(), "yes");
 }
 
 }  // namespace

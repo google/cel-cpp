@@ -285,12 +285,12 @@ cc_library(
     deps = [
         ":cel_builtins",
         ":cel_function",
-        ":cel_function_adapter",
         ":cel_function_registry",
         ":cel_number",
         ":cel_options",
         ":cel_value",
         ":comparison_functions",
+        ":portable_cel_function_adapter",
         "//eval/eval:mutable_list_impl",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:casts",
@@ -318,12 +318,12 @@ cc_library(
     ],
     deps = [
         ":cel_builtins",
-        ":cel_function_adapter",
         ":cel_function_registry",
         ":cel_number",
         ":cel_options",
         ":cel_value",
         ":message_wrapper",
+        ":portable_cel_function_adapter",
         "//eval/eval:mutable_list_impl",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
@@ -336,7 +336,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
     ],
 )
@@ -1002,6 +1001,7 @@ cc_test(
     srcs = ["portable_cel_expr_builder_factory_test.cc"],
     deps = [
         ":activation",
+        ":builtin_func_registrar",
         ":cel_options",
         ":cel_value",
         ":portable_cel_expr_builder_factory",

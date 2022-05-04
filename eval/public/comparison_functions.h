@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_COMPARISON_FUNCTIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_COMPARISON_FUNCTIONS_H_
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
@@ -27,7 +26,7 @@ namespace google::api::expr::runtime {
 //
 // Returns nullopt if the comparison is undefined between differently typed
 // values.
-absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2);
+std::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2);
 
 // Register built in comparison functions (==, !=, <, <=, >, >=).
 //
