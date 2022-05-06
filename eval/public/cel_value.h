@@ -649,13 +649,6 @@ CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
 // into.
 bool IsUnknownFunctionResult(const CelValue& value);
 
-ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
-CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
-                                 absl::string_view unknown_path);
-
-ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
-bool IsUnknownValueError(const CelValue& value);
-
 }  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_H_
