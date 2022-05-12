@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <string>
+#include <variant>
 
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
@@ -45,6 +45,13 @@ class CelAttributeStringPrinter {
   explicit CelAttributeStringPrinter(std::string* output, CelValue::Type type)
       : output_(*output), type_(type) {}
 
+  absl::Status operator()(const CelValue::Type& ignored) const {
+    // Attributes are represented as a variant, with illegal attribute
+    // qualifiers represented with their type as the first alternative.
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unsupported attribute qualifier ", CelValue::TypeName(type_)));
+  }
+
   absl::Status operator()(int64_t index) {
     absl::StrAppend(&output_, "[", index, "]");
     return absl::OkStatus();
@@ -60,17 +67,9 @@ class CelAttributeStringPrinter {
     return absl::OkStatus();
   }
 
-  absl::Status operator()(const CelValue::StringHolder& field) {
-    absl::StrAppend(&output_, ".", field.value());
+  absl::Status operator()(const std::string& field) {
+    absl::StrAppend(&output_, ".", field);
     return absl::OkStatus();
-  }
-
-  template <typename T>
-  absl::Status operator()(const T&) {
-    // Attributes are represented as generic CelValues, but remaining kinds are
-    // not legal attribute qualifiers.
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Unsupported attribute qualifier ", CelValue::TypeName(type_)));
   }
 
  private:
@@ -78,59 +77,92 @@ class CelAttributeStringPrinter {
   CelValue::Type type_;
 };
 
-// Helper class, used to implement CelAttributeQualifier::operator==.
-class EqualVisitor {
- public:
-  template <class T>
-  class NestedEqualVisitor {
-   public:
-    explicit NestedEqualVisitor(const T& arg) : arg_(arg) {}
+struct CelAttributeQualifierTypeVisitor final {
+  CelValue::Type operator()(const CelValue::Type& type) const { return type; }
 
-    template <class U>
-    bool operator()(const U&) const {
-      return false;
-    }
-
-    bool operator()(const T& other) const { return other == arg_; }
-
-   private:
-    const T& arg_;
-  };
-  // Message wrapper is unsupported. Add specialization to make visitor
-  // compile.
-  template <>
-  class NestedEqualVisitor<CelValue::MessageWrapper> {
-   public:
-    explicit NestedEqualVisitor<CelValue::MessageWrapper>(
-        const CelValue::MessageWrapper&) {}
-    template <class U>
-    bool operator()(const U&) const {
-      return false;
-    }
-  };
-
-  explicit EqualVisitor(const CelValue& other) : other_(other) {}
-
-  template <class Type>
-  bool operator()(const Type& arg) {
-    return other_.template InternalVisit<bool>(NestedEqualVisitor<Type>(arg));
+  CelValue::Type operator()(int64_t ignored) const {
+    static_cast<void>(ignored);
+    return CelValue::Type::kInt64;
   }
 
- private:
-  const CelValue& other_;
+  CelValue::Type operator()(uint64_t ignored) const {
+    static_cast<void>(ignored);
+    return CelValue::Type::kUint64;
+  }
+
+  CelValue::Type operator()(const std::string& ignored) const {
+    static_cast<void>(ignored);
+    return CelValue::Type::kString;
+  }
+
+  CelValue::Type operator()(bool ignored) const {
+    static_cast<void>(ignored);
+    return CelValue::Type::kBool;
+  }
+};
+
+struct CelAttributeQualifierIsMatchVisitor final {
+  const CelValue& value;
+
+  bool operator()(const CelValue::Type& ignored) const {
+    static_cast<void>(ignored);
+    return false;
+  }
+
+  bool operator()(int64_t other) const {
+    int64_t value_value;
+    return value.GetValue(&value_value) && value_value == other;
+  }
+
+  bool operator()(uint64_t other) const {
+    uint64_t value_value;
+    return value.GetValue(&value_value) && value_value == other;
+  }
+
+  bool operator()(const std::string& other) const {
+    CelValue::StringHolder value_value;
+    return value.GetValue(&value_value) && value_value.value() == other;
+  }
+
+  bool operator()(bool other) const {
+    bool value_value;
+    return value.GetValue(&value_value) && value_value == other;
+  }
 };
 
 }  // namespace
 
+CelValue::Type CelAttributeQualifier::type() const {
+  return std::visit(CelAttributeQualifierTypeVisitor{}, value_);
+}
+
+CelAttributeQualifier CelAttributeQualifier::Create(CelValue value) {
+  switch (value.type()) {
+    case CelValue::Type::kInt64:
+      return CelAttributeQualifier(std::in_place_type<int64_t>,
+                                   value.Int64OrDie());
+    case CelValue::Type::kUint64:
+      return CelAttributeQualifier(std::in_place_type<uint64_t>,
+                                   value.Uint64OrDie());
+    case CelValue::Type::kString:
+      return CelAttributeQualifier(std::in_place_type<std::string>,
+                                   std::string(value.StringOrDie().value()));
+    case CelValue::Type::kBool:
+      return CelAttributeQualifier(std::in_place_type<bool>, value.BoolOrDie());
+    default:
+      return CelAttributeQualifier();
+  }
+}
+
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
-    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
-                                        CelAttributeQualifierPattern>>
+    std::initializer_list<std::variant<absl::string_view, int64_t, uint64_t, bool,
+                                       CelAttributeQualifierPattern>>
         path_spec) {
   std::vector<CelAttributeQualifierPattern> path;
   path.reserve(path_spec.size());
   for (const auto& spec_elem : path_spec) {
-    path.emplace_back(absl::visit(QualifierVisitor(), spec_elem));
+    path.emplace_back(std::visit(QualifierVisitor(), spec_elem));
   }
   return CelAttributePattern(std::string(variable), std::move(path));
 }
@@ -167,15 +199,24 @@ const absl::StatusOr<std::string> CelAttribute::AsString() const {
   std::string result = variable_.ident_expr().name();
 
   for (const auto& qualifier : qualifier_path_) {
-    CEL_RETURN_IF_ERROR(qualifier.Visit<absl::Status>(
-        CelAttributeStringPrinter(&result, qualifier.type())));
+    CEL_RETURN_IF_ERROR(
+        std::visit(CelAttributeStringPrinter(&result, qualifier.type()),
+                   qualifier.value_));
   }
 
   return result;
 }
 
 bool CelAttributeQualifier::IsMatch(const CelValue& cel_value) const {
-  return value_.template InternalVisit<bool>(EqualVisitor(cel_value));
+  return std::visit(CelAttributeQualifierIsMatchVisitor{cel_value}, value_);
+}
+
+bool CelAttributeQualifier::IsMatch(const CelAttributeQualifier& other) const {
+  if (std::holds_alternative<CelValue::Type>(value_) ||
+      std::holds_alternative<CelValue::Type>(other.value_)) {
+    return false;
+  }
+  return value_ == other.value_;
 }
 
 }  // namespace google::api::expr::runtime

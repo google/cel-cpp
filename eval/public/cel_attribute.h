@@ -6,6 +6,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <initializer_list>
+#include <optional>
+#include <string>
+#include <utility>
+#include <variant>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
@@ -27,56 +31,69 @@ namespace google::api::expr::runtime {
 class CelAttributeQualifier {
  public:
   // Factory method.
-  static CelAttributeQualifier Create(CelValue value) {
-    return CelAttributeQualifier(value);
-  }
+  static CelAttributeQualifier Create(CelValue value);
 
-  CelValue::Type type() const { return value_.type(); }
+  CelAttributeQualifier(const CelAttributeQualifier&) = default;
+  CelAttributeQualifier(CelAttributeQualifier&&) = default;
+
+  CelAttributeQualifier& operator=(const CelAttributeQualifier&) = default;
+  CelAttributeQualifier& operator=(CelAttributeQualifier&&) = default;
+
+  CelValue::Type type() const;
 
   // Family of Get... methods. Return values if requested type matches the
   // stored one.
-  absl::optional<int64_t> GetInt64Key() const {
-    return (value_.IsInt64()) ? absl::optional<int64_t>(value_.Int64OrDie())
-                              : absl::nullopt;
+  std::optional<int64_t> GetInt64Key() const {
+    return std::holds_alternative<int64_t>(value_)
+               ? std::optional<int64_t>(std::get<1>(value_))
+               : std::nullopt;
   }
 
-  absl::optional<uint64_t> GetUint64Key() const {
-    return (value_.IsUint64()) ? absl::optional<uint64_t>(value_.Uint64OrDie())
-                               : absl::nullopt;
+  std::optional<uint64_t> GetUint64Key() const {
+    return std::holds_alternative<uint64_t>(value_)
+               ? std::optional<uint64_t>(std::get<2>(value_))
+               : std::nullopt;
   }
 
-  absl::optional<absl::string_view> GetStringKey() const {
-    return (value_.IsString())
-               ? absl::optional<absl::string_view>(value_.StringOrDie().value())
-               : absl::nullopt;
+  std::optional<absl::string_view> GetStringKey() const {
+    return std::holds_alternative<std::string>(value_)
+               ? std::optional<absl::string_view>(std::get<3>(value_))
+               : std::nullopt;
   }
 
-  absl::optional<bool> GetBoolKey() const {
-    return (value_.IsBool()) ? absl::optional<bool>(value_.BoolOrDie())
-                             : absl::nullopt;
+  std::optional<bool> GetBoolKey() const {
+    return std::holds_alternative<bool>(value_)
+               ? std::optional<bool>(std::get<4>(value_))
+               : std::nullopt;
   }
 
   bool operator==(const CelAttributeQualifier& other) const {
-    return IsMatch(other.value_);
+    return IsMatch(other);
   }
 
   bool IsMatch(const CelValue& cel_value) const;
 
   bool IsMatch(absl::string_view other_key) const {
-    absl::optional<absl::string_view> key = GetStringKey();
+    std::optional<absl::string_view> key = GetStringKey();
     return (key.has_value() && key.value() == other_key);
   }
 
  private:
   friend class CelAttribute;
-  explicit CelAttributeQualifier(CelValue value) : value_(value) {}
 
-  template <typename T, typename Op>
-  T Visit(Op&& operation) const {
-    return value_.InternalVisit<T>(operation);
-  }
+  CelAttributeQualifier() = default;
 
-  CelValue value_;
+  template <typename T>
+  CelAttributeQualifier(std::in_place_type_t<T> in_place_type, T&& value)
+      : value_(in_place_type, std::forward<T>(value)) {}
+
+  bool IsMatch(const CelAttributeQualifier& other) const;
+
+  // The previous implementation of CelAttribute preserved all CelValue
+  // instances, regardless of whether they are supported in this context or not.
+  // We represented unsupported types by using the first alternative and thus
+  // preserve backwards compatibility with the result of `type()` above.
+  std::variant<CelValue::Type, int64_t, uint64_t, std::string, bool> value_;
 };
 
 // CelAttributeQualifierPattern matches a segment in
@@ -85,11 +102,11 @@ class CelAttributeQualifier {
 class CelAttributeQualifierPattern {
  private:
   // Qualifier value. If not set, treated as wildcard.
-  absl::optional<CelAttributeQualifier> value_;
+  std::optional<CelAttributeQualifier> value_;
 
   explicit CelAttributeQualifierPattern(
-      absl::optional<CelAttributeQualifier> value)
-      : value_(value) {}
+      std::optional<CelAttributeQualifier> value)
+      : value_(std::move(value)) {}
 
  public:
   // Factory method.
@@ -98,7 +115,7 @@ class CelAttributeQualifierPattern {
   }
 
   static CelAttributeQualifierPattern CreateWildcard() {
-    return CelAttributeQualifierPattern(absl::nullopt);
+    return CelAttributeQualifierPattern(std::nullopt);
   }
 
   bool IsWildcard() const { return !value_.has_value(); }
@@ -211,8 +228,8 @@ class CelAttributePattern {
 // must outlive the returned pattern.
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
-    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
-                                        CelAttributeQualifierPattern>>
+    std::initializer_list<std::variant<absl::string_view, int64_t, uint64_t, bool,
+                                       CelAttributeQualifierPattern>>
         path_spec = {});
 
 }  // namespace google::api::expr::runtime

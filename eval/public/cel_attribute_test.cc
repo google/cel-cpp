@@ -361,6 +361,10 @@ TEST(CelAttribute, InvalidQualifiers) {
                          CelAttributeQualifier::Create(
                              CelProtoWrapper::CreateMessage(&expr, &arena)),
                      });
+  CelAttribute attr3(
+      expr, {
+                CelAttributeQualifier::Create(CelValue::CreateBool(false)),
+            });
 
   // Implementation detail: Messages as attribute qualifiers are unsupported,
   // so the implementation treats them inequal to any other. This is included
@@ -368,6 +372,10 @@ TEST(CelAttribute, InvalidQualifiers) {
   EXPECT_FALSE(attr1 == attr2);
   EXPECT_FALSE(attr2 == attr1);
   EXPECT_FALSE(attr2 == attr2);
+  EXPECT_FALSE(attr1 == attr3);
+  EXPECT_FALSE(attr3 == attr1);
+  EXPECT_FALSE(attr2 == attr3);
+  EXPECT_FALSE(attr3 == attr2);
 
   // If the attribute includes an unsupported qualifier, return invalid argument
   // error.
