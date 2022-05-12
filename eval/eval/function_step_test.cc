@@ -598,16 +598,6 @@ INSTANTIATE_TEST_SUITE_P(
                     UnknownProcessingOptions::kAttributeAndFunction),
     &TestNameFn);
 
-MATCHER_P2(IsAdd, a, b, "") {
-  const UnknownFunctionResult* result = arg;
-  return result->arguments().size() == 2 &&
-         result->arguments().at(0).IsInt64() &&
-         result->arguments().at(1).IsInt64() &&
-         result->arguments().at(0).Int64OrDie() == a &&
-         result->arguments().at(1).Int64OrDie() == b &&
-         result->descriptor().name() == "_+_";
-}
-
 TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   ExecutionPath path;
   CelFunctionRegistry registry;
@@ -641,11 +631,6 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet());
-  // Arguments captured.
-  EXPECT_THAT(value.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
-              ElementsAre(IsAdd(2, 3)));
 }
 
 TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
@@ -691,11 +676,6 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet());
-  // Arguments captured.
-  EXPECT_THAT(value.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
-              ElementsAre(IsAdd(2, 3)));
 }
 
 TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
@@ -741,11 +721,6 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsUnknownSet()) << *(value.ErrorOrDie());
-  // Arguments captured.
-  EXPECT_THAT(value.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
-              UnorderedElementsAre(IsAdd(2, 3), IsAdd(3, 2)));
 }
 
 TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {

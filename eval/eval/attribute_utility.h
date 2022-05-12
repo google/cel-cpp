@@ -79,11 +79,9 @@ class AttributeUtility {
   const UnknownSet* CreateUnknownSet(const CelFunctionDescriptor& fn_descriptor,
                                      int64_t expr_id,
                                      absl::Span<const CelValue> args) const {
-    auto* fn = memory_manager_
-                   .New<UnknownFunctionResult>(
-                       fn_descriptor, expr_id,
-                       std::vector<CelValue>(args.begin(), args.end()))
-                   .release();
+    auto* fn =
+        memory_manager_.New<UnknownFunctionResult>(fn_descriptor, expr_id)
+            .release();
     return memory_manager_.New<UnknownSet>(UnknownFunctionResultSet(fn))
         .release();
   }
