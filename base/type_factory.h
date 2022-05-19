@@ -96,6 +96,8 @@ class TypeFactory {
       const Persistent<const Type>& key,
       const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  Persistent<const TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
  private:
   template <typename T>
   static Persistent<const T> WrapSingletonType() {

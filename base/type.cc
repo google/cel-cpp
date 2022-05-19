@@ -49,6 +49,7 @@ CEL_INTERNAL_TYPE_IMPL(EnumType);
 CEL_INTERNAL_TYPE_IMPL(StructType);
 CEL_INTERNAL_TYPE_IMPL(ListType);
 CEL_INTERNAL_TYPE_IMPL(MapType);
+CEL_INTERNAL_TYPE_IMPL(TypeType);
 #undef CEL_INTERNAL_TYPE_IMPL
 
 absl::Span<const Transient<const Type>> Type::parameters() const { return {}; }
@@ -196,6 +197,11 @@ void MapType::HashValue(absl::HashState state) const {
   // We specifically hash the element first and then call the parent method to
   // avoid hash suffix/prefix collisions.
   Type::HashValue(absl::HashState::combine(std::move(state), key(), value()));
+}
+
+const TypeType& TypeType::Get() {
+  static const internal::NoDestructor<TypeType> instance;
+  return *instance;
 }
 
 }  // namespace cel

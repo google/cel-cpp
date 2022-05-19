@@ -50,6 +50,7 @@ class TimestampType;
 class EnumType;
 class ListType;
 class MapType;
+class TypeType;
 class TypeFactory;
 class TypeProvider;
 class TypeManager;
@@ -66,6 +67,7 @@ class DurationValue;
 class TimestampValue;
 class EnumValue;
 class StructValue;
+class TypeValue;
 class ValueFactory;
 class TypedEnumValueFactory;
 class TypedStructValueFactory;
@@ -107,6 +109,7 @@ class Type : public base_internal::Resource {
   friend class StructType;
   friend class ListType;
   friend class MapType;
+  friend class TypeType;
   friend class base_internal::TypeHandleBase;
 
   Type() = default;
@@ -713,6 +716,32 @@ class MapType : public Type {
 
   // Called by base_internal::TypeHandleBase.
   void HashValue(absl::HashState state) const final;
+};
+
+// TypeType represents the type of a type.
+class TypeType final : public Type {
+ public:
+  Kind kind() const override { return Kind::kType; }
+
+  absl::string_view name() const override { return "type"; }
+
+ private:
+  friend class TypeValue;
+  friend class TypeFactory;
+  template <typename T>
+  friend class internal::NoDestructor;
+  friend class base_internal::TypeHandleBase;
+
+  // Called by base_internal::TypeHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Type& type) { return type.kind() == Kind::kType; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const TypeType& Get();
+
+  TypeType() = default;
+
+  TypeType(const TypeType&) = delete;
+  TypeType(TypeType&&) = delete;
 };
 
 }  // namespace cel

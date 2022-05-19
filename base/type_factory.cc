@@ -116,6 +116,10 @@ Persistent<const TimestampType> TypeFactory::GetTimestampType() {
   return WrapSingletonType<TimestampType>();
 }
 
+Persistent<const TypeType> TypeFactory::GetTypeType() {
+  return WrapSingletonType<TypeType>();
+}
+
 absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
     const Persistent<const Type>& element) {
   absl::MutexLock lock(&list_types_mutex_);

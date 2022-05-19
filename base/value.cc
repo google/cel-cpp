@@ -65,6 +65,8 @@ CEL_INTERNAL_VALUE_IMPL(TimestampValue);
 CEL_INTERNAL_VALUE_IMPL(EnumValue);
 CEL_INTERNAL_VALUE_IMPL(StructValue);
 CEL_INTERNAL_VALUE_IMPL(ListValue);
+CEL_INTERNAL_VALUE_IMPL(MapValue);
+CEL_INTERNAL_VALUE_IMPL(TypeValue);
 #undef CEL_INTERNAL_VALUE_IMPL
 
 namespace {
@@ -874,6 +876,30 @@ absl::StatusOr<Persistent<const Value>> StructValue::GetField(
 
 absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
   return absl::visit(HasFieldVisitor{*this}, field.data_);
+}
+
+Transient<const Type> TypeValue::type() const {
+  return TransientHandleFactory<const Type>::MakeUnmanaged<const TypeType>(
+      TypeType::Get());
+}
+
+std::string TypeValue::DebugString() const { return value()->DebugString(); }
+
+void TypeValue::CopyTo(Value& address) const {
+  CEL_COPY_TO_IMPL(TypeValue, *this, address);
+}
+
+void TypeValue::MoveTo(Value& address) {
+  CEL_MOVE_TO_IMPL(TypeValue, *this, address);
+}
+
+bool TypeValue::Equals(const Value& other) const {
+  return kind() == other.kind() &&
+         value() == internal::down_cast<const TypeValue&>(other).value();
+}
+
+void TypeValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), value());
 }
 
 namespace base_internal {

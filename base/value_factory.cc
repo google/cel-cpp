@@ -137,6 +137,11 @@ ValueFactory::CreateTimestampValue(absl::Time value) {
       value);
 }
 
+Persistent<const TypeValue> ValueFactory::CreateTypeValue(
+    const Persistent<const Type>& value) {
+  return PersistentHandleFactory<const TypeValue>::Make<TypeValue>(value);
+}
+
 Persistent<const BytesValue> ValueFactory::GetEmptyBytesValue() {
   return PersistentHandleFactory<const BytesValue>::Make<
       InlinedStringViewBytesValue>(absl::string_view());

@@ -55,6 +55,7 @@ class EnumValue;
 class StructValue;
 class ListValue;
 class MapValue;
+class TypeValue;
 class ValueFactory;
 
 namespace internal {
@@ -91,6 +92,7 @@ class Value : public base_internal::Resource {
   friend class StructValue;
   friend class ListValue;
   friend class MapValue;
+  friend class TypeValue;
   friend class base_internal::ValueHandleBase;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
@@ -888,6 +890,43 @@ class MapValue : public Value {
 // CEL_IMPLEMENT_MAP_VALUE(MyMapValue);
 #define CEL_IMPLEMENT_MAP_VALUE(map_value) \
   CEL_INTERNAL_IMPLEMENT_VALUE(Map, map_value)
+
+// TypeValue represents an instance of cel::Type.
+class TypeValue final : public Value, base_internal::ResourceInlined {
+ public:
+  Transient<const Type> type() const override;
+
+  Kind kind() const override { return Kind::kType; }
+
+  std::string DebugString() const override;
+
+  Transient<const Type> value() const { return value_; }
+
+ private:
+  template <base_internal::HandleType H>
+  friend class base_internal::ValueHandle;
+  friend class base_internal::ValueHandleBase;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+  static bool Is(const Value& value) { return value.kind() == Kind::kType; }
+
+  // Called by `base_internal::ValueHandle` to construct value inline.
+  explicit TypeValue(Persistent<const Type> type) : value_(std::move(type)) {}
+
+  TypeValue() = delete;
+
+  TypeValue(const TypeValue&) = default;
+  TypeValue(TypeValue&&) = default;
+
+  // See comments for respective member functions on `Value`.
+  void CopyTo(Value& address) const override;
+  void MoveTo(Value& address) override;
+  bool Equals(const Value& other) const override;
+  void HashValue(absl::HashState state) const override;
+
+  Persistent<const Type> value_;
+};
 
 }  // namespace cel
 

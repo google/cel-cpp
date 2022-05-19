@@ -174,6 +174,9 @@ class ValueFactory final {
                                 std::forward<Args>(args)...);
   }
 
+  Persistent<const TypeValue> CreateTypeValue(
+      const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
  private:
   friend class BytesValue;
   friend class StringValue;

@@ -688,6 +688,11 @@ INSTANTIATE_TEST_SUITE_P(
                                                    type_factory.GetIntType())),
                    std::map<std::string, int64_t>{}));
              }},
+            {"Type",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateTypeValue(type_factory.GetNullType());
+             }},
         })),
     [](const testing::TestParamInfo<
         std::tuple<base_internal::MemoryManagerTestMode,
@@ -1221,6 +1226,33 @@ TEST_P(ValueTest, StringFromExternal) {
 
   EXPECT_NE(zero_value, one_value);
   EXPECT_NE(one_value, zero_value);
+}
+
+TEST_P(ValueTest, Type) {
+  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  auto null_value = value_factory.CreateTypeValue(type_factory.GetNullType());
+  EXPECT_TRUE(null_value.Is<TypeValue>());
+  EXPECT_FALSE(null_value.Is<NullValue>());
+  EXPECT_EQ(null_value, null_value);
+  EXPECT_EQ(null_value,
+            value_factory.CreateTypeValue(type_factory.GetNullType()));
+  EXPECT_EQ(null_value->kind(), Kind::kType);
+  EXPECT_EQ(null_value->type(), type_factory.GetTypeType());
+  EXPECT_EQ(null_value->value(), type_factory.GetNullType());
+
+  auto int_value = value_factory.CreateTypeValue(type_factory.GetIntType());
+  EXPECT_TRUE(int_value.Is<TypeValue>());
+  EXPECT_FALSE(int_value.Is<NullValue>());
+  EXPECT_EQ(int_value, int_value);
+  EXPECT_EQ(int_value,
+            value_factory.CreateTypeValue(type_factory.GetIntType()));
+  EXPECT_EQ(int_value->kind(), Kind::kType);
+  EXPECT_EQ(int_value->type(), type_factory.GetTypeType());
+  EXPECT_EQ(int_value->value(), type_factory.GetIntType());
+
+  EXPECT_NE(null_value, int_value);
+  EXPECT_NE(int_value, null_value);
 }
 
 Persistent<const BytesValue> MakeStringBytes(ValueFactory& value_factory,
@@ -2389,6 +2421,8 @@ TEST_P(ValueTest, SupportsAbslHash) {
       Persistent<const Value>(struct_value),
       Persistent<const Value>(list_value),
       Persistent<const Value>(map_value),
+      Persistent<const Value>(
+          value_factory.CreateTypeValue(type_factory.GetNullType())),
   }));
 }
 
