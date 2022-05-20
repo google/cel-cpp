@@ -15,7 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_
 
+#include <string>
+
+#include "absl/base/thread_annotations.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "base/type_factory.h"
+#include "base/type_provider.h"
 #include "base/type_registry.h"
 
 namespace cel {
@@ -25,9 +32,20 @@ namespace cel {
 // and registering type implementations.
 //
 // TODO(issues/5): more comments after solidifying role
-class TypeManager : public TypeFactory, public TypeRegistry {
+class TypeManager final : public TypeFactory, public TypeRegistry {
  public:
   using TypeFactory::TypeFactory;
+
+  absl::StatusOr<Persistent<const Type>> ProvideType(absl::string_view name);
+
+  absl::StatusOr<Persistent<const Type>> ProvideType(
+      TypeFactory& type_factory, absl::string_view name) const override;
+
+ private:
+  mutable absl::Mutex mutex_;
+  // std::string as the key because we also cache types which do not exist.
+  mutable absl::flat_hash_map<std::string, Persistent<const Type>> types_
+      ABSL_GUARDED_BY(mutex_);
 };
 
 }  // namespace cel

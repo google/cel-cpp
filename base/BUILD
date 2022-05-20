@@ -104,6 +104,8 @@ cc_library(
     srcs = [
         "type.cc",
         "type_factory.cc",
+        "type_manager.cc",
+        "type_provider.cc",
     ],
     hdrs = [
         "type.h",
@@ -120,6 +122,7 @@ cc_library(
         "//internal:casts",
         "//internal:no_destructor",
         "//internal:rtti",
+        "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/hash",

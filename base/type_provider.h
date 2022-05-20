@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_PROVIDER_H_
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -37,6 +38,9 @@ class TypeFactory;
 // implementations.
 class TypeProvider {
  public:
+  // Returns a TypeProvider which provides all of CEL's builtin types.
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const TypeProvider& Builtin();
+
   virtual ~TypeProvider() = default;
 
   // Return a persistent handle to a Type for the fully qualified type name, if
