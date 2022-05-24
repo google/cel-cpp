@@ -142,6 +142,12 @@ Persistent<const TypeValue> ValueFactory::CreateTypeValue(
   return PersistentHandleFactory<const TypeValue>::Make<TypeValue>(value);
 }
 
+absl::StatusOr<Persistent<const BytesValue>>
+ValueFactory::CreateBytesValueFromView(absl::string_view value) {
+  return PersistentHandleFactory<const BytesValue>::Make<
+      InlinedStringViewBytesValue>(value);
+}
+
 Persistent<const BytesValue> ValueFactory::GetEmptyBytesValue() {
   return PersistentHandleFactory<const BytesValue>::Make<
       InlinedStringViewBytesValue>(absl::string_view());
@@ -171,6 +177,12 @@ absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
     base_internal::ExternalData value) {
   return PersistentHandleFactory<const StringValue>::Make<
       ExternalDataStringValue>(memory_manager(), std::move(value));
+}
+
+absl::StatusOr<Persistent<const StringValue>>
+ValueFactory::CreateStringValueFromView(absl::string_view value) {
+  return PersistentHandleFactory<const StringValue>::Make<
+      InlinedStringViewStringValue>(value);
 }
 
 }  // namespace cel

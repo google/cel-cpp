@@ -33,6 +33,13 @@
 
 namespace cel {
 
+namespace interop_internal {
+absl::StatusOr<Persistent<const StringValue>> CreateStringValueFromView(
+    cel::ValueFactory& value_factory, absl::string_view input);
+absl::StatusOr<Persistent<const BytesValue>> CreateBytesValueFromView(
+    cel::ValueFactory& value_factory, absl::string_view input);
+}  // namespace interop_internal
+
 class ValueFactory final {
  private:
   template <typename T, typename U, typename V>
@@ -180,6 +187,12 @@ class ValueFactory final {
  private:
   friend class BytesValue;
   friend class StringValue;
+  friend absl::StatusOr<Persistent<const StringValue>>
+  interop_internal::CreateStringValueFromView(cel::ValueFactory& value_factory,
+                                              absl::string_view input);
+  friend absl::StatusOr<Persistent<const BytesValue>>
+  interop_internal::CreateBytesValueFromView(cel::ValueFactory& value_factory,
+                                             absl::string_view input);
 
   MemoryManager& memory_manager() const { return memory_manager_; }
 
@@ -189,6 +202,9 @@ class ValueFactory final {
   absl::StatusOr<Persistent<const BytesValue>> CreateBytesValue(
       base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Persistent<const BytesValue>> CreateBytesValueFromView(
+      absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   Persistent<const StringValue> GetEmptyStringValue()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -197,6 +213,9 @@ class ValueFactory final {
 
   absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
       base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<Persistent<const StringValue>> CreateStringValueFromView(
+      absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager_;
 };

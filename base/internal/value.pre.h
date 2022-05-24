@@ -18,9 +18,13 @@
 #define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_VALUE_PRE_H_
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <utility>
 
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "internal/rtti.h"
 
@@ -172,6 +176,11 @@ struct ExternalData final {
   size_t size;
   std::unique_ptr<ExternalDataReleaser> releaser;
 };
+
+using StringValueRep =
+    absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
+using BytesValueRep =
+    absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
 
 }  // namespace base_internal
 

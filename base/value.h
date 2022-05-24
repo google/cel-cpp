@@ -63,6 +63,13 @@ template <typename T>
 class NoDestructor;
 }
 
+namespace interop_internal {
+base_internal::StringValueRep GetStringValueRep(
+    const Transient<const StringValue>& value);
+base_internal::BytesValueRep GetBytesValueRep(
+    const Transient<const BytesValue>& value);
+}  // namespace interop_internal
+
 // A representation of a CEL value that enables reflection and introspection of
 // values.
 class Value : public base_internal::Resource {
@@ -357,8 +364,7 @@ class DoubleValue final : public Value, public base_internal::ResourceInlined {
 
 class BytesValue : public Value {
  protected:
-  using Rep = absl::variant<absl::string_view,
-                            std::reference_wrapper<const absl::Cord>>;
+  using Rep = base_internal::BytesValueRep;
 
  public:
   static Persistent<const BytesValue> Empty(ValueFactory& value_factory);
@@ -403,6 +409,8 @@ class BytesValue : public Value {
   friend class base_internal::InlinedStringViewBytesValue;
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
+  friend base_internal::BytesValueRep interop_internal::GetBytesValueRep(
+      const Transient<const BytesValue>& value);
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
@@ -428,8 +436,7 @@ class BytesValue : public Value {
 
 class StringValue : public Value {
  protected:
-  using Rep = absl::variant<absl::string_view,
-                            std::reference_wrapper<const absl::Cord>>;
+  using Rep = base_internal::StringValueRep;
 
  public:
   static Persistent<const StringValue> Empty(ValueFactory& value_factory);
@@ -471,6 +478,8 @@ class StringValue : public Value {
   friend class base_internal::InlinedStringViewStringValue;
   friend class base_internal::StringStringValue;
   friend class base_internal::ExternalDataStringValue;
+  friend base_internal::StringValueRep interop_internal::GetStringValueRep(
+      const Transient<const StringValue>& value);
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
