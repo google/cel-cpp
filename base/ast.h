@@ -74,6 +74,7 @@ class Ident {
 // A field selection expression. e.g. `request.auth`.
 class Select {
  public:
+  Select() {}
   Select(std::unique_ptr<Expr> operand, std::string field,
          bool test_only = false)
       : operand_(std::move(operand)),
@@ -91,7 +92,9 @@ class Select {
   const Expr* operand() const { return operand_.get(); }
 
   Expr& mutable_operand() {
-    ABSL_ASSERT(operand_ != nullptr);
+    if (operand_ == nullptr) {
+      operand_ = std::make_unique<Expr>();
+    }
     return *operand_;
   }
 
@@ -122,6 +125,7 @@ class Select {
 // (-- TODO(issues/5): Convert built-in globals to instance methods --)
 class Call {
  public:
+  Call() {}
   Call(std::unique_ptr<Expr> target, std::string function,
        std::vector<Expr> args)
       : target_(std::move(target)),
@@ -137,7 +141,9 @@ class Call {
   const Expr* target() const { return target_.get(); }
 
   Expr& mutable_target() {
-    ABSL_ASSERT(target_ != nullptr);
+    if (target_ == nullptr) {
+      target_ = std::make_unique<Expr>();
+    }
     return *target_;
   }
 
@@ -194,6 +200,7 @@ class CreateStruct {
   // Represents an entry.
   class Entry {
    public:
+    Entry() {}
     Entry(int64_t id,
           absl::variant<std::string, std::unique_ptr<Expr>> key_kind,
           std::unique_ptr<Expr> value)
@@ -221,7 +228,9 @@ class CreateStruct {
     const Expr* value() const { return value_.get(); }
 
     Expr& mutable_value() {
-      ABSL_ASSERT(value_ != nullptr);
+      if (value_ == nullptr) {
+        value_ = std::make_unique<Expr>();
+      }
       return *value_;
     }
 
@@ -347,7 +356,9 @@ class Comprehension {
   const Expr* iter_range() const { return iter_range_.get(); }
 
   Expr& mutable_iter_range() {
-    ABSL_ASSERT(iter_range_ != nullptr);
+    if (iter_range_ == nullptr) {
+      iter_range_ = std::make_unique<Expr>();
+    }
     return *iter_range_;
   }
 
@@ -356,28 +367,36 @@ class Comprehension {
   const Expr* accu_init() const { return accu_init_.get(); }
 
   Expr& mutable_accu_init() {
-    ABSL_ASSERT(accu_init_ != nullptr);
+    if (accu_init_ == nullptr) {
+      accu_init_ = std::make_unique<Expr>();
+    }
     return *accu_init_;
   }
 
   const Expr* loop_condition() const { return loop_condition_.get(); }
 
   Expr& mutable_loop_condition() {
-    ABSL_ASSERT(loop_condition_ != nullptr);
+    if (loop_condition_ == nullptr) {
+      loop_condition_ = std::make_unique<Expr>();
+    }
     return *loop_condition_;
   }
 
   const Expr* loop_step() const { return loop_step_.get(); }
 
   Expr& mutable_loop_step() {
-    ABSL_ASSERT(loop_step_ != nullptr);
+    if (loop_step_ == nullptr) {
+      loop_step_ = std::make_unique<Expr>();
+    }
     return *loop_step_;
   }
 
   const Expr* result() const { return result_.get(); }
 
   Expr& mutable_result() {
-    ABSL_ASSERT(result_ != nullptr);
+    if (result_ == nullptr) {
+      result_ = std::make_unique<Expr>();
+    }
     return *result_;
   }
 
@@ -631,6 +650,8 @@ class Type;
 
 // List type with typed elements, e.g. `list<example.proto.MyMessage>`.
 class ListType {
+ public:
+  ListType() {}
   explicit ListType(std::unique_ptr<Type> elem_type)
       : elem_type_(std::move(elem_type)) {}
 
@@ -641,7 +662,9 @@ class ListType {
   const Type* elem_type() const { return elem_type_.get(); }
 
   Type& mutable_elem_type() {
-    ABSL_ASSERT(elem_type_ != nullptr);
+    if (elem_type_ == nullptr) {
+      elem_type_ = std::make_unique<Type>();
+    }
     return *elem_type_;
   }
 
@@ -652,6 +675,7 @@ class ListType {
 // Map type with parameterized key and value types, e.g. `map<string, int>`.
 class MapType {
  public:
+  MapType() {}
   MapType(std::unique_ptr<Type> key_type, std::unique_ptr<Type> value_type)
       : key_type_(std::move(key_type)), value_type_(std::move(value_type)) {}
 
@@ -668,12 +692,16 @@ class MapType {
   const Type* value_type() const { return value_type_.get(); }
 
   Type& mutable_key_type() {
-    ABSL_ASSERT(key_type_ != nullptr);
+    if (key_type_ == nullptr) {
+      key_type_ = std::make_unique<Type>();
+    }
     return *key_type_;
   }
 
   Type& mutable_value_type() {
-    ABSL_ASSERT(value_type_ != nullptr);
+    if (value_type_ == nullptr) {
+      value_type_ = std::make_unique<Type>();
+    }
     return *value_type_;
   }
 
@@ -693,6 +721,7 @@ class MapType {
 // --)
 class FunctionType {
  public:
+  FunctionType() {}
   FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types)
       : result_type_(std::move(result_type)),
         arg_types_(std::move(arg_types)) {}
@@ -708,7 +737,9 @@ class FunctionType {
   const Type* result_type() const { return result_type_.get(); }
 
   Type& mutable_result_type() {
-    ABSL_ASSERT(result_type_.get() != nullptr);
+    if (result_type_ == nullptr) {
+      result_type_ = std::make_unique<Type>();
+    }
     return *result_type_;
   }
 
@@ -819,6 +850,7 @@ using TypeKind =
 // TODO(issues/5): align with value.proto
 class Type {
  public:
+  Type() {}
   explicit Type(TypeKind type_kind) : type_kind_(std::move(type_kind)) {}
 
   Type(Type&& rhs) = default;

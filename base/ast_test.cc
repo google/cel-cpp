@@ -48,6 +48,13 @@ TEST(AstTest, ExprConstructionSelect) {
   ASSERT_EQ(select.field(), "field");
 }
 
+TEST(AstTest, SelectMutableOperand) {
+  Select select;
+  select.mutable_operand().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(absl::holds_alternative<Ident>(select.operand()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(select.operand()->expr_kind()).name(), "var");
+}
+
 TEST(AstTest, ExprConstructionCall) {
   Expr expr(1, Call(std::make_unique<Expr>(2, Ident("var")), "function", {}));
   ASSERT_TRUE(absl::holds_alternative<Call>(expr.expr_kind()));
@@ -56,6 +63,13 @@ TEST(AstTest, ExprConstructionCall) {
   ASSERT_EQ(absl::get<Ident>(call.target()->expr_kind()).name(), "var");
   ASSERT_EQ(call.function(), "function");
   ASSERT_TRUE(call.args().empty());
+}
+
+TEST(AstTest, CallMutableTarget) {
+  Call call;
+  call.mutable_target().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(absl::holds_alternative<Ident>(call.target()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(call.target()->expr_kind()).name(), "var");
 }
 
 TEST(AstTest, ExprConstructionCreateList) {
@@ -96,6 +110,13 @@ TEST(AstTest, ExprConstructionCreateStruct) {
   ASSERT_EQ(absl::get<Ident>(entries[2].value()->expr_kind()).name(), "value3");
 }
 
+TEST(AstTest, CreateStructEntryMutableValue) {
+  CreateStruct::Entry entry;
+  entry.mutable_value().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(absl::holds_alternative<Ident>(entry.value()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(entry.value()->expr_kind()).name(), "var");
+}
+
 TEST(AstTest, ExprConstructionComprehension) {
   Comprehension comprehension;
   comprehension.set_iter_var("iter_var");
@@ -120,6 +141,36 @@ TEST(AstTest, ExprConstructionComprehension) {
             "step");
   ASSERT_EQ(absl::get<Ident>(created_expr.result()->expr_kind()).name(),
             "result");
+}
+
+TEST(AstTest, ComprehensionMutableConstruction) {
+  Comprehension comprehension;
+  comprehension.mutable_iter_range().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(
+      absl::holds_alternative<Ident>(comprehension.iter_range()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.iter_range()->expr_kind()).name(),
+            "var");
+  comprehension.mutable_accu_init().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(
+      absl::holds_alternative<Ident>(comprehension.accu_init()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.accu_init()->expr_kind()).name(),
+            "var");
+  comprehension.mutable_loop_condition().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(absl::holds_alternative<Ident>(
+      comprehension.loop_condition()->expr_kind()));
+  ASSERT_EQ(
+      absl::get<Ident>(comprehension.loop_condition()->expr_kind()).name(),
+      "var");
+  comprehension.mutable_loop_step().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(
+      absl::holds_alternative<Ident>(comprehension.loop_step()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.loop_step()->expr_kind()).name(),
+            "var");
+  comprehension.mutable_result().set_expr_kind(Ident("var"));
+  ASSERT_TRUE(
+      absl::holds_alternative<Ident>(comprehension.result()->expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.result()->expr_kind()).name(),
+            "var");
 }
 
 TEST(AstTest, ExprMoveTest) {
@@ -148,6 +199,30 @@ TEST(AstTest, ParsedExpr) {
   EXPECT_THAT(
       parsed_expr.source_info().positions(),
       testing::UnorderedElementsAre(testing::Pair(1, 1), testing::Pair(2, 2)));
+}
+
+TEST(AstTest, ListTypeMutableConstruction) {
+  ListType type;
+  type.mutable_elem_type() = Type(PrimitiveType::kBool);
+  EXPECT_EQ(absl::get<PrimitiveType>(type.elem_type()->type_kind()),
+            PrimitiveType::kBool);
+}
+
+TEST(AstTest, MapTypeMutableConstruction) {
+  MapType type;
+  type.mutable_key_type() = Type(PrimitiveType::kBool);
+  type.mutable_value_type() = Type(PrimitiveType::kBool);
+  EXPECT_EQ(absl::get<PrimitiveType>(type.key_type()->type_kind()),
+            PrimitiveType::kBool);
+  EXPECT_EQ(absl::get<PrimitiveType>(type.value_type()->type_kind()),
+            PrimitiveType::kBool);
+}
+
+TEST(AstTest, FunctionTypeMutableConstruction) {
+  FunctionType type;
+  type.mutable_result_type() = Type(PrimitiveType::kBool);
+  EXPECT_EQ(absl::get<PrimitiveType>(type.result_type()->type_kind()),
+            PrimitiveType::kBool);
 }
 
 TEST(AstTest, CheckedExpr) {
