@@ -23,20 +23,12 @@
 
 namespace cel {
 
-absl::StatusOr<Persistent<const Type>> TypeManager::ProvideType(
+absl::StatusOr<Persistent<const Type>> TypeManager::ResolveType(
     absl::string_view name) {
-  // The const_cast is safe because TypeFactory can never call back into
-  // TypeRegistry or TypeManager methods we expose or override in TypeManager.
-  // Thus for state defined by TypeManager, we are effectively const.
-  return ProvideType(const_cast<TypeManager&>(*this), name);
-}
-
-absl::StatusOr<Persistent<const Type>> TypeManager::ProvideType(
-    TypeFactory& type_factory, absl::string_view name) const {
   {
     // Check for builtin types first.
     CEL_ASSIGN_OR_RETURN(
-        auto type, TypeProvider::Builtin().ProvideType(type_factory, name));
+        auto type, TypeProvider::Builtin().ProvideType(type_factory(), name));
     if (type) {
       return type;
     }
@@ -47,7 +39,7 @@ absl::StatusOr<Persistent<const Type>> TypeManager::ProvideType(
   if (existing == types_.end()) {
     // Delegate to TypeRegistry implementation.
     CEL_ASSIGN_OR_RETURN(auto type,
-                         TypeRegistry::ProvideType(type_factory, name));
+                         type_provider().ProvideType(type_factory(), name));
     ABSL_ASSERT(!type || type->name() == name);
     existing = types_.insert({std::string(name), std::move(type)}).first;
   }

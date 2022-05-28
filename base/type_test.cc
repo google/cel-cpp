@@ -105,13 +105,14 @@ class TestStructType final : public StructType {
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const override {
     if (name == "bool_field") {
-      return Field("bool_field", 0, type_manager.GetBoolType());
+      return Field("bool_field", 0, type_manager.type_factory().GetBoolType());
     } else if (name == "int_field") {
-      return Field("int_field", 1, type_manager.GetIntType());
+      return Field("int_field", 1, type_manager.type_factory().GetIntType());
     } else if (name == "uint_field") {
-      return Field("uint_field", 2, type_manager.GetUintType());
+      return Field("uint_field", 2, type_manager.type_factory().GetUintType());
     } else if (name == "double_field") {
-      return Field("double_field", 3, type_manager.GetDoubleType());
+      return Field("double_field", 3,
+                   type_manager.type_factory().GetDoubleType());
     }
     return absl::NotFoundError("");
   }
@@ -120,13 +121,16 @@ class TestStructType final : public StructType {
                                           int64_t number) const override {
     switch (number) {
       case 0:
-        return Field("bool_field", 0, type_manager.GetBoolType());
+        return Field("bool_field", 0,
+                     type_manager.type_factory().GetBoolType());
       case 1:
-        return Field("int_field", 1, type_manager.GetIntType());
+        return Field("int_field", 1, type_manager.type_factory().GetIntType());
       case 2:
-        return Field("uint_field", 2, type_manager.GetUintType());
+        return Field("uint_field", 2,
+                     type_manager.type_factory().GetUintType());
       case 3:
-        return Field("double_field", 3, type_manager.GetDoubleType());
+        return Field("double_field", 3,
+                     type_manager.type_factory().GetDoubleType());
       default:
         return absl::NotFoundError("");
     }
@@ -553,9 +557,11 @@ TEST_P(TypeTest, Enum) {
 }
 
 TEST_P(TypeTest, Struct) {
-  TypeManager type_manager(memory_manager());
-  ASSERT_OK_AND_ASSIGN(auto struct_type,
-                       type_manager.CreateStructType<TestStructType>());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ASSERT_OK_AND_ASSIGN(
+      auto struct_type,
+      type_manager.type_factory().CreateStructType<TestStructType>());
   EXPECT_EQ(struct_type->kind(), Kind::kStruct);
   EXPECT_EQ(struct_type->name(), "test_struct.TestStruct");
   EXPECT_THAT(struct_type->parameters(), SizeIs(0));
@@ -703,61 +709,63 @@ INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
 class StructTypeTest : public TypeTest {};
 
 TEST_P(StructTypeTest, FindField) {
-  TypeManager type_manager(memory_manager());
-  ASSERT_OK_AND_ASSIGN(auto struct_type,
-                       type_manager.CreateStructType<TestStructType>());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ASSERT_OK_AND_ASSIGN(
+      auto struct_type,
+      type_manager.type_factory().CreateStructType<TestStructType>());
 
   ASSERT_OK_AND_ASSIGN(
       auto field1,
       struct_type->FindField(type_manager, StructType::FieldId("bool_field")));
   EXPECT_EQ(field1.name, "bool_field");
   EXPECT_EQ(field1.number, 0);
-  EXPECT_EQ(field1.type, type_manager.GetBoolType());
+  EXPECT_EQ(field1.type, type_manager.type_factory().GetBoolType());
 
   ASSERT_OK_AND_ASSIGN(
       field1, struct_type->FindField(type_manager, StructType::FieldId(0)));
   EXPECT_EQ(field1.name, "bool_field");
   EXPECT_EQ(field1.number, 0);
-  EXPECT_EQ(field1.type, type_manager.GetBoolType());
+  EXPECT_EQ(field1.type, type_manager.type_factory().GetBoolType());
 
   ASSERT_OK_AND_ASSIGN(
       auto field2,
       struct_type->FindField(type_manager, StructType::FieldId("int_field")));
   EXPECT_EQ(field2.name, "int_field");
   EXPECT_EQ(field2.number, 1);
-  EXPECT_EQ(field2.type, type_manager.GetIntType());
+  EXPECT_EQ(field2.type, type_manager.type_factory().GetIntType());
 
   ASSERT_OK_AND_ASSIGN(
       field2, struct_type->FindField(type_manager, StructType::FieldId(1)));
   EXPECT_EQ(field2.name, "int_field");
   EXPECT_EQ(field2.number, 1);
-  EXPECT_EQ(field2.type, type_manager.GetIntType());
+  EXPECT_EQ(field2.type, type_manager.type_factory().GetIntType());
 
   ASSERT_OK_AND_ASSIGN(
       auto field3,
       struct_type->FindField(type_manager, StructType::FieldId("uint_field")));
   EXPECT_EQ(field3.name, "uint_field");
   EXPECT_EQ(field3.number, 2);
-  EXPECT_EQ(field3.type, type_manager.GetUintType());
+  EXPECT_EQ(field3.type, type_manager.type_factory().GetUintType());
 
   ASSERT_OK_AND_ASSIGN(
       field3, struct_type->FindField(type_manager, StructType::FieldId(2)));
   EXPECT_EQ(field3.name, "uint_field");
   EXPECT_EQ(field3.number, 2);
-  EXPECT_EQ(field3.type, type_manager.GetUintType());
+  EXPECT_EQ(field3.type, type_manager.type_factory().GetUintType());
 
   ASSERT_OK_AND_ASSIGN(
       auto field4, struct_type->FindField(type_manager,
                                           StructType::FieldId("double_field")));
   EXPECT_EQ(field4.name, "double_field");
   EXPECT_EQ(field4.number, 3);
-  EXPECT_EQ(field4.type, type_manager.GetDoubleType());
+  EXPECT_EQ(field4.type, type_manager.type_factory().GetDoubleType());
 
   ASSERT_OK_AND_ASSIGN(
       field4, struct_type->FindField(type_manager, StructType::FieldId(3)));
   EXPECT_EQ(field4.name, "double_field");
   EXPECT_EQ(field4.number, 3);
-  EXPECT_EQ(field4.type, type_manager.GetDoubleType());
+  EXPECT_EQ(field4.type, type_manager.type_factory().GetDoubleType());
 
   EXPECT_THAT(struct_type->FindField(type_manager,
                                      StructType::FieldId("missing_field")),
@@ -842,9 +850,11 @@ TEST_P(DebugStringTest, EnumType) {
 }
 
 TEST_P(DebugStringTest, StructType) {
-  TypeManager type_manager(memory_manager());
-  ASSERT_OK_AND_ASSIGN(auto struct_type,
-                       type_manager.CreateStructType<TestStructType>());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ASSERT_OK_AND_ASSIGN(
+      auto struct_type,
+      type_manager.type_factory().CreateStructType<TestStructType>());
   EXPECT_EQ(struct_type->DebugString(), "test_struct.TestStruct");
 }
 

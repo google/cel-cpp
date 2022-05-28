@@ -24,13 +24,17 @@ namespace {
 using cel::internal::StatusIs;
 
 TEST(ValueFactory, CreateErrorValueReplacesOk) {
-  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_THAT(value_factory.CreateErrorValue(absl::OkStatus())->value(),
               StatusIs(absl::StatusCode::kUnknown));
 }
 
 TEST(ValueFactory, CreateStringValueIllegalByteSequence) {
-  ValueFactory value_factory(MemoryManager::Global());
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_THAT(value_factory.CreateStringValue("\xff"),
               StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(value_factory.CreateStringValue(absl::Cord("\xff")),

@@ -38,8 +38,9 @@ class TypeFactory;
 // implementations.
 class TypeProvider {
  public:
-  // Returns a TypeProvider which provides all of CEL's builtin types.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const TypeProvider& Builtin();
+  // Returns a TypeProvider which provides all of CEL's builtin types. It is
+  // thread safe.
+  ABSL_ATTRIBUTE_PURE_FUNCTION static TypeProvider& Builtin();
 
   virtual ~TypeProvider() = default;
 

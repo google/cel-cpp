@@ -33,7 +33,7 @@ namespace cel {
 //
 // While TypeFactory is not final and has a virtual destructor, inheriting it is
 // forbidden outside of the CEL codebase.
-class TypeFactory {
+class TypeFactory final {
  private:
   template <typename T, typename U, typename V>
   using EnableIfBaseOfT =
@@ -43,8 +43,6 @@ class TypeFactory {
   explicit TypeFactory(
       MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : memory_manager_(memory_manager) {}
-
-  virtual ~TypeFactory() = default;
 
   TypeFactory(const TypeFactory&) = delete;
   TypeFactory& operator=(const TypeFactory&) = delete;
@@ -98,6 +96,8 @@ class TypeFactory {
 
   Persistent<const TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  MemoryManager& memory_manager() const { return memory_manager_; }
+
  private:
   template <typename T>
   static Persistent<const T> WrapSingletonType() {
@@ -108,8 +108,6 @@ class TypeFactory {
         base_internal::TransientHandleFactory<const T>::template MakeUnmanaged<
             const T>(T::Get()));
   }
-
-  MemoryManager& memory_manager() const { return memory_manager_; }
 
   MemoryManager& memory_manager_;
 

@@ -318,13 +318,14 @@ class TestStructType final : public StructType {
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const override {
     if (name == "bool_field") {
-      return Field("bool_field", 0, type_manager.GetBoolType());
+      return Field("bool_field", 0, type_manager.type_factory().GetBoolType());
     } else if (name == "int_field") {
-      return Field("int_field", 1, type_manager.GetIntType());
+      return Field("int_field", 1, type_manager.type_factory().GetIntType());
     } else if (name == "uint_field") {
-      return Field("uint_field", 2, type_manager.GetUintType());
+      return Field("uint_field", 2, type_manager.type_factory().GetUintType());
     } else if (name == "double_field") {
-      return Field("double_field", 3, type_manager.GetDoubleType());
+      return Field("double_field", 3,
+                   type_manager.type_factory().GetDoubleType());
     }
     return absl::NotFoundError("");
   }
@@ -333,13 +334,16 @@ class TestStructType final : public StructType {
                                           int64_t number) const override {
     switch (number) {
       case 0:
-        return Field("bool_field", 0, type_manager.GetBoolType());
+        return Field("bool_field", 0,
+                     type_manager.type_factory().GetBoolType());
       case 1:
-        return Field("int_field", 1, type_manager.GetIntType());
+        return Field("int_field", 1, type_manager.type_factory().GetIntType());
       case 2:
-        return Field("uint_field", 2, type_manager.GetUintType());
+        return Field("uint_field", 2,
+                     type_manager.type_factory().GetUintType());
       case 3:
-        return Field("double_field", 3, type_manager.GetDoubleType());
+        return Field("double_field", 3,
+                     type_manager.type_factory().GetDoubleType());
       default:
         return absl::NotFoundError("");
     }
@@ -545,7 +549,9 @@ TEST(Value, PersistentHandleTypeTraits) {
 }
 
 TEST_P(ValueTest, DefaultConstructor) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   Transient<const Value> value;
   EXPECT_EQ(value, value_factory.GetNullValue());
 }
@@ -561,7 +567,8 @@ using ConstructionAssignmentTest =
 
 TEST_P(ConstructionAssignmentTest, CopyConstructor) {
   TypeFactory type_factory(memory_manager());
-  ValueFactory value_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   Persistent<const Value> from(
       test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to(from);
@@ -571,7 +578,8 @@ TEST_P(ConstructionAssignmentTest, CopyConstructor) {
 
 TEST_P(ConstructionAssignmentTest, MoveConstructor) {
   TypeFactory type_factory(memory_manager());
-  ValueFactory value_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   Persistent<const Value> from(
       test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to(std::move(from));
@@ -582,7 +590,8 @@ TEST_P(ConstructionAssignmentTest, MoveConstructor) {
 
 TEST_P(ConstructionAssignmentTest, CopyAssignment) {
   TypeFactory type_factory(memory_manager());
-  ValueFactory value_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   Persistent<const Value> from(
       test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to;
@@ -592,7 +601,8 @@ TEST_P(ConstructionAssignmentTest, CopyAssignment) {
 
 TEST_P(ConstructionAssignmentTest, MoveAssignment) {
   TypeFactory type_factory(memory_manager());
-  ValueFactory value_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   Persistent<const Value> from(
       test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to;
@@ -703,7 +713,9 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 TEST_P(ValueTest, Swap) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   Persistent<const Value> lhs = value_factory.CreateIntValue(0);
   Persistent<const Value> rhs = value_factory.CreateUintValue(0);
   std::swap(lhs, rhs);
@@ -714,18 +726,24 @@ TEST_P(ValueTest, Swap) {
 using DebugStringTest = ValueTest;
 
 TEST_P(DebugStringTest, NullValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(value_factory.GetNullValue()->DebugString(), "null");
 }
 
 TEST_P(DebugStringTest, BoolValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(value_factory.CreateBoolValue(false)->DebugString(), "false");
   EXPECT_EQ(value_factory.CreateBoolValue(true)->DebugString(), "true");
 }
 
 TEST_P(DebugStringTest, IntValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(value_factory.CreateIntValue(-1)->DebugString(), "-1");
   EXPECT_EQ(value_factory.CreateIntValue(0)->DebugString(), "0");
   EXPECT_EQ(value_factory.CreateIntValue(1)->DebugString(), "1");
@@ -738,7 +756,9 @@ TEST_P(DebugStringTest, IntValue) {
 }
 
 TEST_P(DebugStringTest, UintValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(value_factory.CreateUintValue(0)->DebugString(), "0u");
   EXPECT_EQ(value_factory.CreateUintValue(1)->DebugString(), "1u");
   EXPECT_EQ(value_factory.CreateUintValue(std::numeric_limits<uint64_t>::max())
@@ -747,7 +767,9 @@ TEST_P(DebugStringTest, UintValue) {
 }
 
 TEST_P(DebugStringTest, DoubleValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(value_factory.CreateDoubleValue(-1.0)->DebugString(), "-1.0");
   EXPECT_EQ(value_factory.CreateDoubleValue(0.0)->DebugString(), "0.0");
   EXPECT_EQ(value_factory.CreateDoubleValue(1.0)->DebugString(), "1.0");
@@ -780,13 +802,17 @@ TEST_P(DebugStringTest, DoubleValue) {
 }
 
 TEST_P(DebugStringTest, DurationValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(DurationValue::Zero(value_factory)->DebugString(),
             internal::FormatDuration(absl::ZeroDuration()).value());
 }
 
 TEST_P(DebugStringTest, TimestampValue) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(TimestampValue::UnixEpoch(value_factory)->DebugString(),
             internal::FormatTimestamp(absl::UnixEpoch()).value());
 }
@@ -800,8 +826,9 @@ INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
 // feature is not available in C++17.
 
 TEST_P(ValueTest, Error) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto error_value = value_factory.CreateErrorValue(absl::CancelledError());
   EXPECT_TRUE(error_value.Is<ErrorValue>());
   EXPECT_FALSE(error_value.Is<NullValue>());
@@ -812,8 +839,9 @@ TEST_P(ValueTest, Error) {
 }
 
 TEST_P(ValueTest, Bool) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto false_value = BoolValue::False(value_factory);
   EXPECT_TRUE(false_value.Is<BoolValue>());
   EXPECT_FALSE(false_value.Is<NullValue>());
@@ -837,8 +865,9 @@ TEST_P(ValueTest, Bool) {
 }
 
 TEST_P(ValueTest, Int) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateIntValue(0);
   EXPECT_TRUE(zero_value.Is<IntValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -862,8 +891,9 @@ TEST_P(ValueTest, Int) {
 }
 
 TEST_P(ValueTest, Uint) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateUintValue(0);
   EXPECT_TRUE(zero_value.Is<UintValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -887,8 +917,9 @@ TEST_P(ValueTest, Uint) {
 }
 
 TEST_P(ValueTest, Double) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateDoubleValue(0.0);
   EXPECT_TRUE(zero_value.Is<DoubleValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -912,8 +943,9 @@ TEST_P(ValueTest, Double) {
 }
 
 TEST_P(ValueTest, Duration) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value =
       Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
   EXPECT_TRUE(zero_value.Is<DurationValue>());
@@ -942,8 +974,9 @@ TEST_P(ValueTest, Duration) {
 }
 
 TEST_P(ValueTest, Timestamp) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
   EXPECT_TRUE(zero_value.Is<TimestampValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -971,8 +1004,9 @@ TEST_P(ValueTest, Timestamp) {
 }
 
 TEST_P(ValueTest, BytesFromString) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue(std::string("0")));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -996,8 +1030,9 @@ TEST_P(ValueTest, BytesFromString) {
 }
 
 TEST_P(ValueTest, BytesFromStringView) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value =
       Must(value_factory.CreateBytesValue(absl::string_view("0")));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
@@ -1024,8 +1059,9 @@ TEST_P(ValueTest, BytesFromStringView) {
 }
 
 TEST_P(ValueTest, BytesFromCord) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue(absl::Cord("0")));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1049,8 +1085,9 @@ TEST_P(ValueTest, BytesFromCord) {
 }
 
 TEST_P(ValueTest, BytesFromLiteral) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue("0"));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1074,8 +1111,9 @@ TEST_P(ValueTest, BytesFromLiteral) {
 }
 
 TEST_P(ValueTest, BytesFromExternal) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue("0", []() {}));
   EXPECT_TRUE(zero_value.Is<BytesValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1099,8 +1137,9 @@ TEST_P(ValueTest, BytesFromExternal) {
 }
 
 TEST_P(ValueTest, StringFromString) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue(std::string("0")));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1125,8 +1164,9 @@ TEST_P(ValueTest, StringFromString) {
 }
 
 TEST_P(ValueTest, StringFromStringView) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value =
       Must(value_factory.CreateStringValue(absl::string_view("0")));
   EXPECT_TRUE(zero_value.Is<StringValue>());
@@ -1154,8 +1194,9 @@ TEST_P(ValueTest, StringFromStringView) {
 }
 
 TEST_P(ValueTest, StringFromCord) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue(absl::Cord("0")));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1179,8 +1220,9 @@ TEST_P(ValueTest, StringFromCord) {
 }
 
 TEST_P(ValueTest, StringFromLiteral) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue("0"));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1204,8 +1246,9 @@ TEST_P(ValueTest, StringFromLiteral) {
 }
 
 TEST_P(ValueTest, StringFromExternal) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue("0", []() {}));
   EXPECT_TRUE(zero_value.Is<StringValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
@@ -1229,8 +1272,9 @@ TEST_P(ValueTest, StringFromExternal) {
 }
 
 TEST_P(ValueTest, Type) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   auto null_value = value_factory.CreateTypeValue(type_factory.GetNullType());
   EXPECT_TRUE(null_value.Is<TypeValue>());
   EXPECT_FALSE(null_value.Is<NullValue>());
@@ -1278,7 +1322,9 @@ struct BytesConcatTestCase final {
 using BytesConcatTest = BaseValueTest<BytesConcatTestCase>;
 
 TEST_P(BytesConcatTest, Concat) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
                               MakeStringBytes(value_factory, test_case().lhs),
@@ -1350,7 +1396,9 @@ struct BytesSizeTestCase final {
 using BytesSizeTest = BaseValueTest<BytesSizeTestCase>;
 
 TEST_P(BytesSizeTest, Size) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->size(),
             test_case().size);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->size(),
@@ -1377,7 +1425,9 @@ struct BytesEmptyTestCase final {
 using BytesEmptyTest = BaseValueTest<BytesEmptyTestCase>;
 
 TEST_P(BytesEmptyTest, Empty) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->empty(),
             test_case().empty);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->empty(),
@@ -1404,7 +1454,9 @@ struct BytesEqualsTestCase final {
 using BytesEqualsTest = BaseValueTest<BytesEqualsTestCase>;
 
 TEST_P(BytesEqualsTest, Equals) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
                 ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
             test_case().equals);
@@ -1461,7 +1513,9 @@ using BytesCompareTest = BaseValueTest<BytesCompareTestCase>;
 int NormalizeCompareResult(int compare) { return std::clamp(compare, -1, 1); }
 
 TEST_P(BytesCompareTest, Equals) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(NormalizeCompareResult(
                 MakeStringBytes(value_factory, test_case().lhs)
                     ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
@@ -1525,7 +1579,9 @@ struct BytesDebugStringTestCase final {
 using BytesDebugStringTest = BaseValueTest<BytesDebugStringTestCase>;
 
 TEST_P(BytesDebugStringTest, ToCord) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->DebugString(),
             internal::FormatBytesLiteral(test_case().data));
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->DebugString(),
@@ -1551,7 +1607,9 @@ struct BytesToStringTestCase final {
 using BytesToStringTest = BaseValueTest<BytesToStringTestCase>;
 
 TEST_P(BytesToStringTest, ToString) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->ToString(),
             test_case().data);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->ToString(),
@@ -1577,7 +1635,9 @@ struct BytesToCordTestCase final {
 using BytesToCordTest = BaseValueTest<BytesToCordTestCase>;
 
 TEST_P(BytesToCordTest, ToCord) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().data)->ToCord(),
             test_case().data);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().data)->ToCord(),
@@ -1619,7 +1679,9 @@ struct StringConcatTestCase final {
 using StringConcatTest = BaseValueTest<StringConcatTestCase>;
 
 TEST_P(StringConcatTest, Concat) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_TRUE(
       Must(StringValue::Concat(
                value_factory, MakeStringString(value_factory, test_case().lhs),
@@ -1691,7 +1753,9 @@ struct StringSizeTestCase final {
 using StringSizeTest = BaseValueTest<StringSizeTestCase>;
 
 TEST_P(StringSizeTest, Size) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().data)->size(),
             test_case().size);
   EXPECT_EQ(MakeCordString(value_factory, test_case().data)->size(),
@@ -1718,7 +1782,9 @@ struct StringEmptyTestCase final {
 using StringEmptyTest = BaseValueTest<StringEmptyTestCase>;
 
 TEST_P(StringEmptyTest, Empty) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().data)->empty(),
             test_case().empty);
   EXPECT_EQ(MakeCordString(value_factory, test_case().data)->empty(),
@@ -1745,7 +1811,9 @@ struct StringEqualsTestCase final {
 using StringEqualsTest = BaseValueTest<StringEqualsTestCase>;
 
 TEST_P(StringEqualsTest, Equals) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
                 ->Equals(MakeStringString(value_factory, test_case().rhs)),
             test_case().equals);
@@ -1800,7 +1868,9 @@ struct StringCompareTestCase final {
 using StringCompareTest = BaseValueTest<StringCompareTestCase>;
 
 TEST_P(StringCompareTest, Equals) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeStringString(value_factory, test_case().lhs)
@@ -1868,7 +1938,9 @@ struct StringDebugStringTestCase final {
 using StringDebugStringTest = BaseValueTest<StringDebugStringTestCase>;
 
 TEST_P(StringDebugStringTest, ToCord) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().data)->DebugString(),
             internal::FormatStringLiteral(test_case().data));
   EXPECT_EQ(MakeCordString(value_factory, test_case().data)->DebugString(),
@@ -1894,7 +1966,9 @@ struct StringToStringTestCase final {
 using StringToStringTest = BaseValueTest<StringToStringTestCase>;
 
 TEST_P(StringToStringTest, ToString) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().data)->ToString(),
             test_case().data);
   EXPECT_EQ(MakeCordString(value_factory, test_case().data)->ToString(),
@@ -1920,7 +1994,9 @@ struct StringToCordTestCase final {
 using StringToCordTest = BaseValueTest<StringToCordTestCase>;
 
 TEST_P(StringToCordTest, ToCord) {
-  ValueFactory value_factory(memory_manager());
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().data)->ToCord(),
             test_case().data);
   EXPECT_EQ(MakeCordString(value_factory, test_case().data)->ToCord(),
@@ -1940,8 +2016,9 @@ INSTANTIATE_TEST_SUITE_P(
                      })));
 
 TEST_P(ValueTest, Enum) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(
@@ -1977,8 +2054,9 @@ TEST_P(ValueTest, Enum) {
 using EnumTypeTest = ValueTest;
 
 TEST_P(EnumTypeTest, NewInstance) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(
@@ -2008,8 +2086,9 @@ INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
                          base_internal::MemoryManagerTestModeTupleName);
 
 TEST_P(ValueTest, Struct) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto zero_value,
@@ -2049,8 +2128,9 @@ TEST_P(ValueTest, Struct) {
 using StructValueTest = ValueTest;
 
 TEST_P(StructValueTest, SetField) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto struct_value,
@@ -2126,8 +2206,9 @@ TEST_P(StructValueTest, SetField) {
 }
 
 TEST_P(StructValueTest, GetField) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto struct_value,
@@ -2160,8 +2241,9 @@ TEST_P(StructValueTest, GetField) {
 }
 
 TEST_P(StructValueTest, HasField) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
   ASSERT_OK_AND_ASSIGN(auto struct_value,
@@ -2193,8 +2275,9 @@ INSTANTIATE_TEST_SUITE_P(StructValueTest, StructValueTest,
                          base_internal::MemoryManagerTestModeTupleName);
 
 TEST_P(ValueTest, List) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto zero_value,
@@ -2228,8 +2311,9 @@ TEST_P(ValueTest, List) {
 using ListValueTest = ValueTest;
 
 TEST_P(ListValueTest, DebugString) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto list_value,
@@ -2243,8 +2327,9 @@ TEST_P(ListValueTest, DebugString) {
 }
 
 TEST_P(ListValueTest, Get) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto list_value,
@@ -2273,8 +2358,9 @@ INSTANTIATE_TEST_SUITE_P(ListValueTest, ListValueTest,
                          base_internal::MemoryManagerTestModeTupleName);
 
 TEST_P(ValueTest, Map) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetIntType()));
@@ -2312,8 +2398,9 @@ TEST_P(ValueTest, Map) {
 using MapValueTest = ValueTest;
 
 TEST_P(MapValueTest, DebugString) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetIntType()));
@@ -2329,8 +2416,9 @@ TEST_P(MapValueTest, DebugString) {
 }
 
 TEST_P(MapValueTest, GetAndHas) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetIntType()));
@@ -2375,8 +2463,9 @@ INSTANTIATE_TEST_SUITE_P(MapValueTest, MapValueTest,
                          base_internal::MemoryManagerTestModeTupleName);
 
 TEST_P(ValueTest, SupportsAbslHash) {
-  ValueFactory value_factory(memory_manager());
   TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(auto struct_type,

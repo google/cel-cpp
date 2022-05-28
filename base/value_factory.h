@@ -29,6 +29,7 @@
 #include "absl/time/time.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
+#include "base/type_manager.h"
 #include "base/value.h"
 
 namespace cel {
@@ -47,12 +48,17 @@ class ValueFactory final {
       std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
 
  public:
-  explicit ValueFactory(
-      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : memory_manager_(memory_manager) {}
+  explicit ValueFactory(TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : type_manager_(type_manager) {}
 
   ValueFactory(const ValueFactory&) = delete;
   ValueFactory& operator=(const ValueFactory&) = delete;
+
+  TypeFactory& type_factory() const { return type_manager().type_factory(); }
+
+  TypeProvider& type_provider() const { return type_manager().type_provider(); }
+
+  TypeManager& type_manager() const { return type_manager_; }
 
   Persistent<const NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -184,6 +190,10 @@ class ValueFactory final {
   Persistent<const TypeValue> CreateTypeValue(
       const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  MemoryManager& memory_manager() const {
+    return type_manager().memory_manager();
+  }
+
  private:
   friend class BytesValue;
   friend class StringValue;
@@ -193,8 +203,6 @@ class ValueFactory final {
   friend absl::StatusOr<Persistent<const BytesValue>>
   interop_internal::CreateBytesValueFromView(cel::ValueFactory& value_factory,
                                              absl::string_view input);
-
-  MemoryManager& memory_manager() const { return memory_manager_; }
 
   Persistent<const BytesValue> GetEmptyBytesValue()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -217,7 +225,7 @@ class ValueFactory final {
   absl::StatusOr<Persistent<const StringValue>> CreateStringValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  MemoryManager& memory_manager_;
+  TypeManager& type_manager_;
 };
 
 // TypedEnumValueFactory creates EnumValue scoped to a specific EnumType. Used

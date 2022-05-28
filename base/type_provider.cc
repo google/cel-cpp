@@ -139,8 +139,8 @@ class BuiltinTypeProvider final : public TypeProvider {
 
 }  // namespace
 
-const TypeProvider& TypeProvider::Builtin() {
-  static const internal::NoDestructor<BuiltinTypeProvider> instance;
+TypeProvider& TypeProvider::Builtin() {
+  static internal::NoDestructor<BuiltinTypeProvider> instance;
   return *instance;
 }
 

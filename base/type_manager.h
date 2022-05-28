@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -32,16 +33,26 @@ namespace cel {
 // and registering type implementations.
 //
 // TODO(issues/5): more comments after solidifying role
-class TypeManager final : public TypeFactory, public TypeRegistry {
+class TypeManager final {
  public:
-  using TypeFactory::TypeFactory;
+  TypeManager(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
+              TypeProvider& type_provider ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      : type_factory_(type_factory), type_provider_(type_provider) {}
 
-  absl::StatusOr<Persistent<const Type>> ProvideType(absl::string_view name);
+  MemoryManager& memory_manager() const {
+    return type_factory().memory_manager();
+  }
 
-  absl::StatusOr<Persistent<const Type>> ProvideType(
-      TypeFactory& type_factory, absl::string_view name) const override;
+  TypeFactory& type_factory() const { return type_factory_; }
+
+  TypeProvider& type_provider() const { return type_provider_; }
+
+  absl::StatusOr<Persistent<const Type>> ResolveType(absl::string_view name);
 
  private:
+  TypeFactory& type_factory_;
+  TypeProvider& type_provider_;
+
   mutable absl::Mutex mutex_;
   // std::string as the key because we also cache types which do not exist.
   mutable absl::flat_hash_map<std::string, Persistent<const Type>> types_
