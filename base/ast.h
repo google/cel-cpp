@@ -200,30 +200,22 @@ class CreateStruct {
   // Represents an entry.
   class Entry {
    public:
+    using KeyKind = absl::variant<std::string, std::unique_ptr<Expr>>;
     Entry() {}
-    Entry(int64_t id,
-          absl::variant<std::string, std::unique_ptr<Expr>> key_kind,
-          std::unique_ptr<Expr> value)
+    Entry(int64_t id, KeyKind key_kind, std::unique_ptr<Expr> value)
         : id_(id), key_kind_(std::move(key_kind)), value_(std::move(value)) {}
 
     void set_id(int64_t id) { id_ = id; }
 
-    void set_key_kind(
-        absl::variant<std::string, std::unique_ptr<Expr>> key_kind) {
-      key_kind_ = std::move(key_kind);
-    }
+    void set_key_kind(KeyKind key_kind) { key_kind_ = std::move(key_kind); }
 
     void set_value(std::unique_ptr<Expr> value) { value_ = std::move(value); }
 
     int64_t id() const { return id_; }
 
-    const absl::variant<std::string, std::unique_ptr<Expr>>& key_kind() const {
-      return key_kind_;
-    }
+    const KeyKind& key_kind() const { return key_kind_; }
 
-    absl::variant<std::string, std::unique_ptr<Expr>>& mutable_key_kind() {
-      return key_kind_;
-    }
+    KeyKind& mutable_key_kind() { return key_kind_; }
 
     const Expr* value() const { return value_.get(); }
 
@@ -240,7 +232,7 @@ class CreateStruct {
     // information and other attributes to the node.
     int64_t id_;
     // The `Entry` key kinds.
-    absl::variant<std::string, std::unique_ptr<Expr>> key_kind_;
+    KeyKind key_kind_;
     // Required. The value assigned to the key.
     std::unique_ptr<Expr> value_;
   };
@@ -759,6 +751,7 @@ class FunctionType {
 //
 // TODO(issues/5): decide on final naming for this.
 class AbstractType {
+ public:
   AbstractType(std::string name, std::vector<Type> parameter_types)
       : name_(std::move(name)), parameter_types_(std::move(parameter_types)) {}
 
@@ -791,7 +784,7 @@ class PrimitiveTypeWrapper {
 
   const PrimitiveType& type() const { return type_; }
 
-  PrimitiveType& type() { return type_; }
+  PrimitiveType& mutable_type() { return type_; }
 
  private:
   PrimitiveType type_;
@@ -807,7 +800,7 @@ class MessageType {
 
   void set_type(std::string type) { type_ = std::move(type); }
 
-  const std::string& type() { return type_; }
+  const std::string& type() const { return type_; }
 
  private:
   std::string type_;
@@ -824,7 +817,7 @@ class ParamType {
 
   void set_type(std::string type) { type_ = std::move(type); }
 
-  const std::string& type() { return type_; }
+  const std::string& type() const { return type_; }
 
  private:
   std::string type_;
