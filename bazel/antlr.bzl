@@ -16,25 +16,18 @@
 Generate C++ parser and lexer from a grammar file.
 """
 
-load("@rules_antlr//antlr:antlr4.bzl", "antlr")
-
-def antlr_cc_library(name, src, package = None, listener = False, visitor = True):
+def antlr_cc_library(name, src, package):
     """Creates a C++ lexer and parser from a source grammar.
 
     Args:
       name: Base name for the lexer and the parser rules.
       src: source ANTLR grammar file
       package: The namespace for the generated code
-      listener: generate ANTLR listener (default: False)
-      visitor: generate ANTLR visitor (default: True)
     """
     generated = name + "_grammar"
-    antlr(
+    antlr_library(
         name = generated,
-        srcs = [src],
-        language = "Cpp",
-        listener = listener,
-        visitor = visitor,
+        src = src,
         package = package,
     )
     native.cc_library(
@@ -46,3 +39,63 @@ def antlr_cc_library(name, src, package = None, listener = False, visitor = True
         ],
         linkstatic = 1,
     )
+
+def _antlr_library(ctx):
+    output = ctx.actions.declare_directory(ctx.attr.name)
+
+    antlr_args = ctx.actions.args()
+    antlr_args.add("-Dlanguage=Cpp")
+    antlr_args.add("-no-listener")
+    antlr_args.add("-visitor")
+    antlr_args.add("-o", output.path)
+    antlr_args.add("-package", ctx.attr.package)
+    antlr_args.add(ctx.file.src)
+
+    basename = ctx.file.src.basename[:-3]
+    suffixes = ["Lexer", "Parser", "BaseVisitor", "Visitor"]
+
+    ctx.actions.run(
+        arguments = [antlr_args],
+        inputs = [ctx.file.src],
+        outputs = [output],
+        executable = ctx.executable._tool,
+        progress_message = "Processing ANTLR grammar",
+    )
+
+    files = []
+    for suffix in suffixes:
+        header = ctx.actions.declare_file(basename + suffix + ".h")
+        source = ctx.actions.declare_file(basename + suffix + ".cpp")
+        generated = output.path + "/" + ctx.file.src.short_path[:-3] + suffix
+
+        ctx.actions.run_shell(
+            mnemonic = "CopyHeader" + suffix,
+            inputs = [output],
+            outputs = [header],
+            command = 'cp "{generated}" "{out}"'.format(generated = generated + ".h", out = header.path),
+        )
+        ctx.actions.run_shell(
+            mnemonic = "CopySource" + suffix,
+            inputs = [output],
+            outputs = [source],
+            command = 'cp "{generated}" "{out}"'.format(generated = generated + ".cpp", out = source.path),
+        )
+
+        files.append(header)
+        files.append(source)
+
+    compilation_context = cc_common.create_compilation_context(headers = depset(files))
+    return [DefaultInfo(files = depset(files)), CcInfo(compilation_context = compilation_context)]
+
+antlr_library = rule(
+    implementation = _antlr_library,
+    attrs = {
+        "src": attr.label(allow_single_file = [".g4"], mandatory = True),
+        "package": attr.string(),
+        "_tool": attr.label(
+            executable = True,
+            cfg = "host",
+            default = Label("//bazel:antlr4_tool"),
+        ),
+    },
+)

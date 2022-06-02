@@ -2,7 +2,7 @@
 Main dependencies of cel-cpp.
 """
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 
 def base_deps():
     """Base evaluator and test dependencies."""
@@ -69,15 +69,9 @@ def base_deps():
 
 def parser_deps():
     """ANTLR dependency for the parser."""
-    http_archive(
-        name = "rules_antlr",
-        sha256 = "26e6a83c665cf6c1093b628b3a749071322f0f70305d12ede30909695ed85591",
-        strip_prefix = "rules_antlr-0.5.0",
-        urls = ["https://github.com/marcohu/rules_antlr/archive/0.5.0.tar.gz"],
-    )
+    # Apr 15, 2022
+    ANTLR4_VERSION = "4.10.1"
 
-    ANTLR4_RUNTIME_GIT_SHA = "70b2edcf98eb612a92d3dbaedb2ce0b69533b0cb"  # Dec 7, 2021
-    ANTLR4_RUNTIME_SHA = "fae73909f95e1320701e29ac03bab9233293fb5b90d3ce857279f1b46b614c83"
     http_archive(
         name = "antlr4_runtimes",
         build_file_content = """
@@ -89,9 +83,14 @@ cc_library(
     includes = ["runtime/Cpp/runtime/src"],
 )
   """,
-        sha256 = ANTLR4_RUNTIME_SHA,
-        strip_prefix = "antlr4-" + ANTLR4_RUNTIME_GIT_SHA,
-        urls = ["https://github.com/antlr/antlr4/archive/" + ANTLR4_RUNTIME_GIT_SHA + ".tar.gz"],
+        sha256 = "a320568b738e42735946bebc5d9d333170e14a251c5734e8b852ad1502efa8a2",
+        strip_prefix = "antlr4-" + ANTLR4_VERSION,
+        urls = ["https://github.com/antlr/antlr4/archive/v" + ANTLR4_VERSION + ".tar.gz"],
+    )
+    http_jar(
+        name = "antlr4_jar",
+        urls = ["https://www.antlr.org/download/antlr-" + ANTLR4_VERSION + "-complete.jar"],
+        sha256 = "41949d41f20d31d5b8277187735dd755108df52b38db6c865108d3382040f918",
     )
 
 def flatbuffers_deps():
