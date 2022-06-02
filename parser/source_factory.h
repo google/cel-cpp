@@ -24,7 +24,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "antlr4-runtime.h"
-#include "parser/internal/cel_grammar.inc/cel_parser_internal/CelParser.h"
+#include "parser/internal/CelParser.h"
 
 namespace google::api::expr::parser {
 
