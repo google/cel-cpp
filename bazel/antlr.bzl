@@ -51,7 +51,9 @@ def _antlr_library(ctx):
     antlr_args.add("-package", ctx.attr.package)
     antlr_args.add(ctx.file.src)
 
+    # Strip ".g4" extension.
     basename = ctx.file.src.basename[:-3]
+
     suffixes = ["Lexer", "Parser", "BaseVisitor", "Visitor"]
 
     ctx.actions.run(
@@ -66,7 +68,7 @@ def _antlr_library(ctx):
     for suffix in suffixes:
         header = ctx.actions.declare_file(basename + suffix + ".h")
         source = ctx.actions.declare_file(basename + suffix + ".cpp")
-        generated = output.path + "/" + ctx.file.src.short_path[:-3] + suffix
+        generated = output.path + "/" + ctx.file.src.path[:-3] + suffix
 
         ctx.actions.run_shell(
             mnemonic = "CopyHeader" + suffix,
