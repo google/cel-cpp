@@ -39,13 +39,12 @@ using base_internal::InlinedStringViewStringValue;
 using base_internal::PersistentHandleFactory;
 using base_internal::StringBytesValue;
 using base_internal::StringStringValue;
-using base_internal::TransientHandleFactory;
 
 }  // namespace
 
 Persistent<const NullValue> ValueFactory::GetNullValue() {
   return Persistent<const NullValue>(
-      TransientHandleFactory<const NullValue>::MakeUnmanaged<const NullValue>(
+      PersistentHandleFactory<const NullValue>::MakeUnmanaged<const NullValue>(
           NullValue::Get()));
 }
 

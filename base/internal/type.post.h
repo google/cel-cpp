@@ -133,34 +133,6 @@ class TypeHandleBase {
   uintptr_t rep_ = kTypeHandleUnmanaged;
 };
 
-// All methods are called by `Transient`.
-template <>
-class TypeHandle<HandleType::kTransient> final : public TypeHandleBase {
- public:
-  constexpr TypeHandle() = default;
-
-  constexpr TypeHandle(const TransientTypeHandle& other) = default;
-
-  constexpr TypeHandle(TransientTypeHandle&& other) = default;
-
-  template <typename T, typename F>
-  TypeHandle(UnmanagedResource<T>, F& from) {
-    uintptr_t rep = reinterpret_cast<uintptr_t>(
-        static_cast<const Type*>(static_cast<const T*>(std::addressof(from))));
-    ABSL_ASSERT(absl::countr_zero(rep) >=
-                2);  // Verify the lower 2 bits are available.
-    rep_ = rep | kTypeHandleUnmanaged;
-  }
-
-  explicit TypeHandle(const PersistentTypeHandle& other);
-
-  TypeHandle& operator=(const TransientTypeHandle& other) = default;
-
-  TypeHandle& operator=(TransientTypeHandle&& other) = default;
-
-  TypeHandle& operator=(const PersistentTypeHandle& other);
-};
-
 // All methods are called by `Persistent`.
 template <>
 class TypeHandle<HandleType::kPersistent> final : public TypeHandleBase {
@@ -173,8 +145,6 @@ class TypeHandle<HandleType::kPersistent> final : public TypeHandleBase {
     rep_ = other.rep_;
     other.rep_ = kTypeHandleUnmanaged;
   }
-
-  explicit TypeHandle(const TransientTypeHandle& other) { rep_ = other.Ref(); }
 
   template <typename T, typename F>
   TypeHandle(UnmanagedResource<T>, F& from) : TypeHandleBase(kHandleInPlace) {
@@ -208,37 +178,7 @@ class TypeHandle<HandleType::kPersistent> final : public TypeHandleBase {
     other.rep_ = kTypeHandleUnmanaged;
     return *this;
   }
-
-  TypeHandle& operator=(const TransientTypeHandle& other) {
-    Unref();
-    rep_ = other.Ref();
-    return *this;
-  }
 };
-
-inline TypeHandle<HandleType::kTransient>::TypeHandle(
-    const PersistentTypeHandle& other) {
-  rep_ = other.rep_;
-}
-
-inline TypeHandle<HandleType::kTransient>& TypeHandle<
-    HandleType::kTransient>::operator=(const PersistentTypeHandle& other) {
-  rep_ = other.rep_;
-  return *this;
-}
-
-// Specialization for Type providing the implementation to `Transient`.
-template <>
-struct HandleTraits<HandleType::kTransient, Type> {
-  using handle_type = TypeHandle<HandleType::kTransient>;
-};
-
-// Partial specialization for `Transient` for all classes derived from Type.
-template <typename T>
-struct HandleTraits<
-    HandleType::kTransient, T,
-    std::enable_if_t<(std::is_base_of_v<Type, T> && !std::is_same_v<Type, T>)>>
-    final : public HandleTraits<HandleType::kTransient, Type> {};
 
 // Specialization for Type providing the implementation to `Persistent`.
 template <>
@@ -256,8 +196,6 @@ struct HandleTraits<
 }  // namespace base_internal
 
 #define CEL_INTERNAL_TYPE_DECL(name)           \
-  extern template class Transient<name>;       \
-  extern template class Transient<const name>; \
   extern template class Persistent<name>;      \
   extern template class Persistent<const name>
 CEL_INTERNAL_TYPE_DECL(Type);

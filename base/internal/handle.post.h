@@ -26,22 +26,6 @@
 namespace cel::base_internal {
 
 template <typename T>
-struct HandleFactory<HandleType::kTransient, T> {
-  template <typename F, typename... Args>
-  static Transient<T> MakeInlined(Args&&... args) {
-    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
-    return Transient<T>(kHandleInPlace, kInlinedResource<F>,
-                        std::forward<Args>(args)...);
-  }
-
-  template <typename F>
-  static Transient<T> MakeUnmanaged(F& from) {
-    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
-    return Transient<T>(kHandleInPlace, kUnmanagedResource<F>, from);
-  }
-};
-
-template <typename T>
 struct HandleFactory<HandleType::kPersistent, T> {
   // Constructs a persistent handle whose underlying object is stored in the
   // handle itself.
@@ -105,22 +89,13 @@ struct HandleFactory<HandleType::kPersistent, T> {
                      : Persistent<T>(kHandleInPlace, kManagedResource<F>,
                                      *ManagedMemoryRelease(managed_memory));
   }
+
+  template <typename F>
+  static Persistent<T> MakeUnmanaged(F& from) {
+    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
+    return Persistent<T>(kHandleInPlace, kUnmanagedResource<F>, from);
+  }
 };
-
-template <typename T>
-bool IsManagedHandle(const Transient<T>& handle) {
-  return handle.impl_.IsManaged();
-}
-
-template <typename T>
-bool IsUnmanagedHandle(const Transient<T>& handle) {
-  return handle.impl_.IsUnmanaged();
-}
-
-template <typename T>
-bool IsInlinedHandle(const Transient<T>& handle) {
-  return handle.impl_.IsInlined();
-}
 
 template <typename T>
 bool IsManagedHandle(const Persistent<T>& handle) {
@@ -135,15 +110,6 @@ bool IsUnmanagedHandle(const Persistent<T>& handle) {
 template <typename T>
 bool IsInlinedHandle(const Persistent<T>& handle) {
   return handle.impl_.IsInlined();
-}
-
-template <typename T>
-MemoryManager& GetMemoryManager(const Transient<T>& handle) {
-  ABSL_ASSERT(IsManagedHandle(handle));
-  auto [size, align] =
-      static_cast<const Resource*>(handle.operator->())->SizeAndAlignment();
-  return GetMemoryManager(static_cast<const void*>(handle.operator->()), size,
-                          align);
 }
 
 template <typename T>

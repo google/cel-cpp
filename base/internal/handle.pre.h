@@ -29,8 +29,6 @@ class Type;
 class Value;
 
 template <typename T>
-class Transient;
-template <typename T>
 class Persistent;
 
 class MemoryManager;
@@ -42,8 +40,7 @@ class ValueHandleBase;
 
 // Enumeration of different types of handles.
 enum class HandleType {
-  kTransient = 0,
-  kPersistent,
+  kPersistent = 0,
 };
 
 template <HandleType H, typename T, typename = void>
@@ -51,16 +48,12 @@ struct HandleTraits;
 
 // Convenient aliases.
 template <typename T>
-using TransientHandleTraits = HandleTraits<HandleType::kTransient, T>;
-template <typename T>
 using PersistentHandleTraits = HandleTraits<HandleType::kPersistent, T>;
 
 template <HandleType H, typename T>
 struct HandleFactory;
 
 // Convenient aliases.
-template <typename T>
-using TransientHandleFactory = HandleFactory<HandleType::kTransient, T>;
 template <typename T>
 using PersistentHandleFactory = HandleFactory<HandleType::kPersistent, T>;
 
@@ -74,8 +67,6 @@ inline constexpr HandleInPlace kHandleInPlace{};
 
 // If IsManagedHandle returns true, get a reference to the memory manager that
 // is managing it.
-template <typename T>
-MemoryManager& GetMemoryManager(const Transient<T>& handle);
 template <typename T>
 MemoryManager& GetMemoryManager(const Persistent<T>& handle);
 
@@ -94,8 +85,6 @@ class Resource {
   friend class ValueHandleBase;
   template <HandleType H, typename T>
   friend struct HandleFactory;
-  template <typename T>
-  friend MemoryManager& GetMemoryManager(const Transient<T>& handle);
   template <typename T>
   friend MemoryManager& GetMemoryManager(const Persistent<T>& handle);
 
@@ -169,13 +158,6 @@ struct HandlePolicy {
                  !std::is_same_v<ResourceInlined, std::remove_const_t<T>>),
                 "Handles do not support this type");
 };
-
-template <typename T>
-bool IsManagedHandle(const Transient<T>& handle);
-template <typename T>
-bool IsUnmanagedHandle(const Transient<T>& handle);
-template <typename T>
-bool IsInlinedHandle(const Transient<T>& handle);
 
 template <typename T>
 bool IsManagedHandle(const Persistent<T>& handle);

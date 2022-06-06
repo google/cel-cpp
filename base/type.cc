@@ -28,8 +28,6 @@
 namespace cel {
 
 #define CEL_INTERNAL_TYPE_IMPL(name)    \
-  template class Transient<name>;       \
-  template class Transient<const name>; \
   template class Persistent<name>;      \
   template class Persistent<const name>
 CEL_INTERNAL_TYPE_IMPL(Type);
@@ -51,8 +49,6 @@ CEL_INTERNAL_TYPE_IMPL(ListType);
 CEL_INTERNAL_TYPE_IMPL(MapType);
 CEL_INTERNAL_TYPE_IMPL(TypeType);
 #undef CEL_INTERNAL_TYPE_IMPL
-
-absl::Span<const Transient<const Type>> Type::parameters() const { return {}; }
 
 std::string Type::DebugString() const { return std::string(name()); }
 

@@ -42,7 +42,6 @@ template <HandleType H>
 class ValueHandle;
 
 // Convenient aliases.
-using TransientValueHandle = ValueHandle<HandleType::kTransient>;
 using PersistentValueHandle = ValueHandle<HandleType::kPersistent>;
 
 // As all objects should be aligned to at least 4 bytes, we can use the lower

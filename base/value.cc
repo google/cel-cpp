@@ -47,8 +47,6 @@
 namespace cel {
 
 #define CEL_INTERNAL_VALUE_IMPL(name)   \
-  template class Transient<name>;       \
-  template class Transient<const name>; \
   template class Persistent<name>;      \
   template class Persistent<const name>
 CEL_INTERNAL_VALUE_IMPL(Value);
@@ -71,7 +69,7 @@ CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
 namespace {
 
-using base_internal::TransientHandleFactory;
+using base_internal::PersistentHandleFactory;
 
 // Both are equivalent to std::construct_at implementation from C++20.
 #define CEL_COPY_TO_IMPL(type, src, dest) \
@@ -98,8 +96,8 @@ Persistent<const NullValue> NullValue::Get(ValueFactory& value_factory) {
   return value_factory.GetNullValue();
 }
 
-Transient<const Type> NullValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const NullType>(
+Persistent<const Type> NullValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const NullType>(
       NullType::Get());
 }
 
@@ -161,8 +159,8 @@ void StatusHashValue(absl::HashState state, const absl::Status& status) {
 
 }  // namespace
 
-Transient<const Type> ErrorValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const ErrorType>(
+Persistent<const Type> ErrorValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const ErrorType>(
       ErrorType::Get());
 }
 
@@ -193,8 +191,8 @@ Persistent<const BoolValue> BoolValue::True(ValueFactory& value_factory) {
   return value_factory.CreateBoolValue(true);
 }
 
-Transient<const Type> BoolValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const BoolType>(
+Persistent<const Type> BoolValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const BoolType>(
       BoolType::Get());
 }
 
@@ -219,8 +217,8 @@ void BoolValue::HashValue(absl::HashState state) const {
   absl::HashState::combine(std::move(state), type(), value());
 }
 
-Transient<const Type> IntValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const IntType>(
+Persistent<const Type> IntValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const IntType>(
       IntType::Get());
 }
 
@@ -243,8 +241,8 @@ void IntValue::HashValue(absl::HashState state) const {
   absl::HashState::combine(std::move(state), type(), value());
 }
 
-Transient<const Type> UintValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const UintType>(
+Persistent<const Type> UintValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const UintType>(
       UintType::Get());
 }
 
@@ -286,8 +284,8 @@ Persistent<const DoubleValue> DoubleValue::NegativeInfinity(
       -std::numeric_limits<double>::infinity());
 }
 
-Transient<const Type> DoubleValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const DoubleType>(
+Persistent<const Type> DoubleValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const DoubleType>(
       DoubleType::Get());
 }
 
@@ -341,8 +339,8 @@ Persistent<const DurationValue> DurationValue::Zero(
   return value_factory.CreateDurationValue(absl::ZeroDuration()).value();
 }
 
-Transient<const Type> DurationValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const DurationType>(
+Persistent<const Type> DurationValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const DurationType>(
       DurationType::Get());
 }
 
@@ -373,9 +371,9 @@ Persistent<const TimestampValue> TimestampValue::UnixEpoch(
   return value_factory.CreateTimestampValue(absl::UnixEpoch()).value();
 }
 
-Transient<const Type> TimestampValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const TimestampType>(
-      TimestampType::Get());
+Persistent<const Type> TimestampValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<
+      const TimestampType>(TimestampType::Get());
 }
 
 std::string TimestampValue::DebugString() const {
@@ -589,7 +587,7 @@ class HashValueVisitor final {
 
 template <typename T>
 bool CanPerformZeroCopy(MemoryManager& memory_manager,
-                        const Transient<T>& handle) {
+                        const Persistent<T>& handle) {
   return base_internal::IsManagedHandle(handle) &&
          std::addressof(memory_manager) ==
              std::addressof(base_internal::GetMemoryManager(handle));
@@ -602,8 +600,8 @@ Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
 }
 
 absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
-    ValueFactory& value_factory, const Transient<const BytesValue>& lhs,
-    const Transient<const BytesValue>& rhs) {
+    ValueFactory& value_factory, const Persistent<const BytesValue>& lhs,
+    const Persistent<const BytesValue>& rhs) {
   absl::Cord cord;
   // We can only use the potential zero-copy path if the memory managers are
   // the same. Otherwise we need to escape the original memory manager scope.
@@ -616,8 +614,8 @@ absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
   return value_factory.CreateBytesValue(std::move(cord));
 }
 
-Transient<const Type> BytesValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const BytesType>(
+Persistent<const Type> BytesValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const BytesType>(
       BytesType::Get());
 }
 
@@ -635,7 +633,7 @@ bool BytesValue::Equals(const absl::Cord& bytes) const {
   return absl::visit(EqualsVisitor<absl::Cord>(bytes), rep());
 }
 
-bool BytesValue::Equals(const Transient<const BytesValue>& bytes) const {
+bool BytesValue::Equals(const Persistent<const BytesValue>& bytes) const {
   return absl::visit(EqualsVisitor<BytesValue>(*this), bytes->rep());
 }
 
@@ -647,7 +645,7 @@ int BytesValue::Compare(const absl::Cord& bytes) const {
   return absl::visit(CompareVisitor<absl::Cord>(bytes), rep());
 }
 
-int BytesValue::Compare(const Transient<const BytesValue>& bytes) const {
+int BytesValue::Compare(const Persistent<const BytesValue>& bytes) const {
   return absl::visit(CompareVisitor<BytesValue>(*this), bytes->rep());
 }
 
@@ -676,8 +674,8 @@ Persistent<const StringValue> StringValue::Empty(ValueFactory& value_factory) {
 }
 
 absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
-    ValueFactory& value_factory, const Transient<const StringValue>& lhs,
-    const Transient<const StringValue>& rhs) {
+    ValueFactory& value_factory, const Persistent<const StringValue>& lhs,
+    const Persistent<const StringValue>& rhs) {
   absl::Cord cord;
   // We can only use the potential zero-copy path if the memory managers are
   // the same. Otherwise we need to escape the original memory manager scope.
@@ -698,8 +696,8 @@ absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
   return value_factory.CreateStringValue(std::move(cord), size);
 }
 
-Transient<const Type> StringValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const StringType>(
+Persistent<const Type> StringValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const StringType>(
       StringType::Get());
 }
 
@@ -726,7 +724,7 @@ bool StringValue::Equals(const absl::Cord& string) const {
   return absl::visit(EqualsVisitor<absl::Cord>(string), rep());
 }
 
-bool StringValue::Equals(const Transient<const StringValue>& string) const {
+bool StringValue::Equals(const Persistent<const StringValue>& string) const {
   return absl::visit(EqualsVisitor<StringValue>(*this), string->rep());
 }
 
@@ -738,7 +736,7 @@ int StringValue::Compare(const absl::Cord& string) const {
   return absl::visit(CompareVisitor<absl::Cord>(string), rep());
 }
 
-int StringValue::Compare(const Transient<const StringValue>& string) const {
+int StringValue::Compare(const Persistent<const StringValue>& string) const {
   return absl::visit(CompareVisitor<StringValue>(*this), string->rep());
 }
 
@@ -870,8 +868,8 @@ absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
   return absl::visit(HasFieldVisitor{*this}, field.data_);
 }
 
-Transient<const Type> TypeValue::type() const {
-  return TransientHandleFactory<const Type>::MakeUnmanaged<const TypeType>(
+Persistent<const Type> TypeValue::type() const {
+  return PersistentHandleFactory<const Type>::MakeUnmanaged<const TypeType>(
       TypeType::Get());
 }
 

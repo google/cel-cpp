@@ -365,8 +365,8 @@ class TestListValue final : public ListValue {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Transient<const Value>> Get(ValueFactory& value_factory,
-                                             size_t index) const override {
+  absl::StatusOr<Persistent<const Value>> Get(ValueFactory& value_factory,
+                                              size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
@@ -408,9 +408,9 @@ class TestMapValue final : public MapValue {
 
   size_t size() const override { return entries_.size(); }
 
-  absl::StatusOr<Transient<const Value>> Get(
+  absl::StatusOr<Persistent<const Value>> Get(
       ValueFactory& value_factory,
-      const Transient<const Value>& key) const override {
+      const Persistent<const Value>& key) const override {
     if (!key.Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -421,7 +421,7 @@ class TestMapValue final : public MapValue {
     return value_factory.CreateIntValue(entry->second);
   }
 
-  absl::StatusOr<bool> Has(const Transient<const Value>& key) const override {
+  absl::StatusOr<bool> Has(const Persistent<const Value>& key) const override {
     if (!key.Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -462,11 +462,6 @@ CEL_IMPLEMENT_MAP_VALUE(TestMapValue);
 
 template <typename T>
 Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
-  return std::move(status_or_handle).value();
-}
-
-template <typename T>
-Transient<T> Must(absl::StatusOr<Transient<T>> status_or_handle) {
   return std::move(status_or_handle).value();
 }
 
@@ -518,21 +513,6 @@ TEST(Value, HandleSize) {
   EXPECT_LE(sizeof(base_internal::ValueHandleData), 32);
 }
 
-TEST(Value, TransientHandleTypeTraits) {
-  EXPECT_TRUE(std::is_default_constructible_v<Transient<Value>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Transient<Value>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Transient<Value>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Transient<Value>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Transient<Value>>);
-  EXPECT_TRUE(std::is_swappable_v<Transient<Value>>);
-  EXPECT_TRUE(std::is_default_constructible_v<Transient<const Value>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Transient<const Value>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Transient<const Value>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Transient<const Value>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Transient<const Value>>);
-  EXPECT_TRUE(std::is_swappable_v<Transient<const Value>>);
-}
-
 TEST(Value, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_default_constructible_v<Persistent<Value>>);
   EXPECT_TRUE(std::is_copy_constructible_v<Persistent<Value>>);
@@ -552,7 +532,7 @@ TEST_P(ValueTest, DefaultConstructor) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Transient<const Value> value;
+  Persistent<const Value> value;
   EXPECT_EQ(value, value_factory.GetNullValue());
 }
 

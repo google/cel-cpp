@@ -442,76 +442,6 @@ class ValueHandleBase {
   ValueHandleData data_;
 };
 
-// All methods are called by `Transient`. Unlike `Persistent`, reference
-// counting is not performed as `Transient` is a non-owning handle.
-template <>
-class ValueHandle<HandleType::kTransient> final : public ValueHandleBase {
- private:
-  using Base = ValueHandleBase;
-
- public:
-  ValueHandle() = default;
-
-  template <typename T, typename... Args>
-  explicit ValueHandle(InlinedResource<T>, Args&&... args)
-      : ValueHandleBase(kHandleInPlace) {
-    static_assert(sizeof(T) <= sizeof(data_.padding),
-                  "T cannot be inlined in Handle");
-    static_assert(alignof(T) <= alignof(data_.padding),
-                  "T cannot be inlined in Handle");
-    // Same as std::construct_at from C++20.
-    ::new (const_cast<void*>(static_cast<const volatile void*>(&data_.padding)))
-        T(std::forward<Args>(args)...);
-    ABSL_ASSERT(absl::countr_zero(vptr()) >=
-                2);  // Verify the lower 2 bits are available.
-  }
-
-  template <typename T, typename F>
-  ValueHandle(UnmanagedResource<T>, F& from) : ValueHandleBase(kHandleInPlace) {
-    uintptr_t vptr = reinterpret_cast<uintptr_t>(
-        static_cast<const Value*>(static_cast<const T*>(std::addressof(from))));
-    ABSL_ASSERT(absl::countr_zero(vptr) >=
-                2);  // Verify the lower 2 bits are available.
-    data_.vptr = reinterpret_cast<void*>(vptr | kValueHandleUnmanaged);
-  }
-
-  ValueHandle(const TransientValueHandle& other) : ValueHandle() {
-    Base::Copy(other, *this);
-  }
-
-  ValueHandle(TransientValueHandle&& other) : ValueHandle() {
-    Base::Move(other, *this);
-  }
-
-  explicit ValueHandle(const PersistentValueHandle& other);
-
-  ~ValueHandle() {
-    if (not_empty_and_inlined()) {
-      DestructInlined(*this);
-    }
-  }
-
-  ValueHandle& operator=(const TransientValueHandle& other) {
-    if (not_empty_and_inlined()) {
-      DestructInlined(*this);
-    }
-    Base::Copy(other, *this);
-    return *this;
-  }
-
-  ValueHandle& operator=(TransientValueHandle&& other) {
-    if (not_empty_and_inlined()) {
-      DestructInlined(*this);
-    } else {
-      Reset();
-    }
-    Base::Move(other, *this);
-    return *this;
-  }
-
-  ValueHandle& operator=(const PersistentValueHandle& other);
-};
-
 // All methods are called by `Persistent`.
 template <>
 class ValueHandle<HandleType::kPersistent> final : public ValueHandleBase {
@@ -563,13 +493,6 @@ class ValueHandle<HandleType::kPersistent> final : public ValueHandleBase {
     Base::Move(other, *this);
   }
 
-  explicit ValueHandle(const TransientValueHandle& other) {
-    Base::Copy(other, *this);
-    if (reffed()) {
-      Ref();
-    }
-  }
-
   ~ValueHandle() {
     if (not_empty_and_inlined()) {
       DestructInlined(*this);
@@ -601,49 +524,7 @@ class ValueHandle<HandleType::kPersistent> final : public ValueHandleBase {
     Base::Move(other, *this);
     return *this;
   }
-
-  ValueHandle& operator=(const TransientValueHandle& other) {
-    if (not_empty_and_inlined()) {
-      DestructInlined(*this);
-    } else if (reffed()) {
-      Unref();
-    }
-    Base::Copy(other, *this);
-    if (reffed()) {
-      Ref();
-    }
-    return *this;
-  }
 };
-
-inline ValueHandle<HandleType::kTransient>::ValueHandle(
-    const PersistentValueHandle& other)
-    : ValueHandle() {
-  Base::Copy(other, *this);
-}
-
-inline ValueHandle<HandleType::kTransient>& ValueHandle<
-    HandleType::kTransient>::operator=(const PersistentValueHandle& other) {
-  if (not_empty_and_inlined()) {
-    DestructInlined(*this);
-  }
-  Base::Copy(other, *this);
-  return *this;
-}
-
-// Specialization for Value providing the implementation to `Transient`.
-template <>
-struct HandleTraits<HandleType::kTransient, Value> {
-  using handle_type = ValueHandle<HandleType::kTransient>;
-};
-
-// Partial specialization for `Transient` for all classes derived from Value.
-template <typename T>
-struct HandleTraits<HandleType::kTransient, T,
-                    std::enable_if_t<(std::is_base_of_v<Value, T> &&
-                                      !std::is_same_v<Value, T>)>>
-    final : public HandleTraits<HandleType::kTransient, Value> {};
-
 // Specialization for Value providing the implementation to `Persistent`.
 template <>
 struct HandleTraits<HandleType::kPersistent, Value> {
@@ -660,8 +541,6 @@ struct HandleTraits<HandleType::kPersistent, T,
 }  // namespace base_internal
 
 #define CEL_INTERNAL_VALUE_DECL(name)          \
-  extern template class Transient<name>;       \
-  extern template class Transient<const name>; \
   extern template class Persistent<name>;      \
   extern template class Persistent<const name>
 CEL_INTERNAL_VALUE_DECL(Value);

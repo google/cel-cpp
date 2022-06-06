@@ -27,7 +27,6 @@ namespace cel {
 namespace {
 
 using base_internal::PersistentHandleFactory;
-using base_internal::TransientHandleFactory;
 
 }  // namespace
 
@@ -38,7 +37,7 @@ class ListTypeImpl final : public ListType {
   explicit ListTypeImpl(Persistent<const Type> element)
       : element_(std::move(element)) {}
 
-  Transient<const Type> element() const override { return element_; }
+  Persistent<const Type> element() const override { return element_; }
 
  private:
   std::pair<size_t, size_t> SizeAndAlignment() const override {
@@ -53,9 +52,9 @@ class MapTypeImpl final : public MapType {
   MapTypeImpl(Persistent<const Type> key, Persistent<const Type> value)
       : key_(std::move(key)), value_(std::move(value)) {}
 
-  Transient<const Type> key() const override { return key_; }
+  Persistent<const Type> key() const override { return key_; }
 
-  Transient<const Type> value() const override { return value_; }
+  Persistent<const Type> value() const override { return value_; }
 
  private:
   std::pair<size_t, size_t> SizeAndAlignment() const override {

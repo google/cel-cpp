@@ -65,9 +65,9 @@ class NoDestructor;
 
 namespace interop_internal {
 base_internal::StringValueRep GetStringValueRep(
-    const Transient<const StringValue>& value);
+    const Persistent<const StringValue>& value);
 base_internal::BytesValueRep GetBytesValueRep(
-    const Transient<const BytesValue>& value);
+    const Persistent<const BytesValue>& value);
 }  // namespace interop_internal
 
 // A representation of a CEL value that enables reflection and introspection of
@@ -75,7 +75,7 @@ base_internal::BytesValueRep GetBytesValueRep(
 class Value : public base_internal::Resource {
  public:
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
-  virtual Transient<const Type> type() const = 0;
+  virtual Persistent<const Type> type() const = 0;
 
   // Returns the kind of the value. This is equivalent to `type().kind()` but
   // faster in many scenarios. As such it should be preffered when only the kind
@@ -141,7 +141,7 @@ class NullValue final : public Value, public base_internal::ResourceInlined {
  public:
   static Persistent<const NullValue> Get(ValueFactory& value_factory);
 
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kNullType; }
 
@@ -175,7 +175,7 @@ class NullValue final : public Value, public base_internal::ResourceInlined {
 
 class ErrorValue final : public Value, public base_internal::ResourceInlined {
  public:
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kError; }
 
@@ -215,7 +215,7 @@ class BoolValue final : public Value, public base_internal::ResourceInlined {
 
   static Persistent<const BoolValue> True(ValueFactory& value_factory);
 
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kBool; }
 
@@ -251,7 +251,7 @@ class BoolValue final : public Value, public base_internal::ResourceInlined {
 
 class IntValue final : public Value, public base_internal::ResourceInlined {
  public:
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kInt; }
 
@@ -287,7 +287,7 @@ class IntValue final : public Value, public base_internal::ResourceInlined {
 
 class UintValue final : public Value, public base_internal::ResourceInlined {
  public:
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kUint; }
 
@@ -331,7 +331,7 @@ class DoubleValue final : public Value, public base_internal::ResourceInlined {
   static Persistent<const DoubleValue> NegativeInfinity(
       ValueFactory& value_factory);
 
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kDouble; }
 
@@ -376,10 +376,10 @@ class BytesValue : public Value {
   // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
   // the input ByteValue.
   static absl::StatusOr<Persistent<const BytesValue>> Concat(
-      ValueFactory& value_factory, const Transient<const BytesValue>& lhs,
-      const Transient<const BytesValue>& rhs);
+      ValueFactory& value_factory, const Persistent<const BytesValue>& lhs,
+      const Persistent<const BytesValue>& rhs);
 
-  Transient<const Type> type() const final;
+  Persistent<const Type> type() const final;
 
   Kind kind() const final { return Kind::kBytes; }
 
@@ -391,11 +391,11 @@ class BytesValue : public Value {
 
   bool Equals(absl::string_view bytes) const;
   bool Equals(const absl::Cord& bytes) const;
-  bool Equals(const Transient<const BytesValue>& bytes) const;
+  bool Equals(const Persistent<const BytesValue>& bytes) const;
 
   int Compare(absl::string_view bytes) const;
   int Compare(const absl::Cord& bytes) const;
-  int Compare(const Transient<const BytesValue>& bytes) const;
+  int Compare(const Persistent<const BytesValue>& bytes) const;
 
   std::string ToString() const;
 
@@ -413,7 +413,7 @@ class BytesValue : public Value {
   friend class base_internal::StringBytesValue;
   friend class base_internal::ExternalDataBytesValue;
   friend base_internal::BytesValueRep interop_internal::GetBytesValueRep(
-      const Transient<const BytesValue>& value);
+      const Persistent<const BytesValue>& value);
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
@@ -445,10 +445,10 @@ class StringValue : public Value {
   static Persistent<const StringValue> Empty(ValueFactory& value_factory);
 
   static absl::StatusOr<Persistent<const StringValue>> Concat(
-      ValueFactory& value_factory, const Transient<const StringValue>& lhs,
-      const Transient<const StringValue>& rhs);
+      ValueFactory& value_factory, const Persistent<const StringValue>& lhs,
+      const Persistent<const StringValue>& rhs);
 
-  Transient<const Type> type() const final;
+  Persistent<const Type> type() const final;
 
   Kind kind() const final { return Kind::kString; }
 
@@ -460,11 +460,11 @@ class StringValue : public Value {
 
   bool Equals(absl::string_view string) const;
   bool Equals(const absl::Cord& string) const;
-  bool Equals(const Transient<const StringValue>& string) const;
+  bool Equals(const Persistent<const StringValue>& string) const;
 
   int Compare(absl::string_view string) const;
   int Compare(const absl::Cord& string) const;
-  int Compare(const Transient<const StringValue>& string) const;
+  int Compare(const Persistent<const StringValue>& string) const;
 
   std::string ToString() const;
 
@@ -482,7 +482,7 @@ class StringValue : public Value {
   friend class base_internal::StringStringValue;
   friend class base_internal::ExternalDataStringValue;
   friend base_internal::StringValueRep interop_internal::GetStringValueRep(
-      const Transient<const StringValue>& value);
+      const Persistent<const StringValue>& value);
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
@@ -520,7 +520,7 @@ class DurationValue final : public Value,
  public:
   static Persistent<const DurationValue> Zero(ValueFactory& value_factory);
 
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kDuration; }
 
@@ -560,7 +560,7 @@ class TimestampValue final : public Value,
   static Persistent<const TimestampValue> UnixEpoch(
       ValueFactory& value_factory);
 
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kTimestamp; }
 
@@ -603,7 +603,7 @@ class EnumValue : public Value {
       const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
       EnumType::ConstantId id);
 
-  Transient<const Type> type() const final { return type_; }
+  Persistent<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kEnum; }
 
@@ -674,7 +674,7 @@ class StructValue : public Value {
       const Persistent<const StructType>& struct_type,
       ValueFactory& value_factory);
 
-  Transient<const Type> type() const final { return type_; }
+  Persistent<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kStruct; }
 
@@ -767,7 +767,7 @@ class ListValue : public Value {
  public:
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  Transient<const Type> type() const final { return type_; }
+  Persistent<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kList; }
 
@@ -775,7 +775,7 @@ class ListValue : public Value {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Transient<const Value>> Get(
+  virtual absl::StatusOr<Persistent<const Value>> Get(
       ValueFactory& value_factory, size_t index) const = 0;
 
  protected:
@@ -837,7 +837,7 @@ class ListValue : public Value {
 // MapValue represents an instance of cel::MapType.
 class MapValue : public Value {
  public:
-  Transient<const Type> type() const final { return type_; }
+  Persistent<const Type> type() const final { return type_; }
 
   Kind kind() const final { return Kind::kMap; }
 
@@ -845,10 +845,12 @@ class MapValue : public Value {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Transient<const Value>> Get(
-      ValueFactory& value_factory, const Transient<const Value>& key) const = 0;
+  virtual absl::StatusOr<Persistent<const Value>> Get(
+      ValueFactory& value_factory,
+      const Persistent<const Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(const Transient<const Value>& key) const = 0;
+  virtual absl::StatusOr<bool> Has(
+      const Persistent<const Value>& key) const = 0;
 
  protected:
   explicit MapValue(const Persistent<const MapType>& type) : type_(type) {}
@@ -906,13 +908,13 @@ class MapValue : public Value {
 // TypeValue represents an instance of cel::Type.
 class TypeValue final : public Value, base_internal::ResourceInlined {
  public:
-  Transient<const Type> type() const override;
+  Persistent<const Type> type() const override;
 
   Kind kind() const override { return Kind::kType; }
 
   std::string DebugString() const override;
 
-  Transient<const Type> value() const { return value_; }
+  Persistent<const Type> value() const { return value_; }
 
  private:
   template <base_internal::HandleType H>

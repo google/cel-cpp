@@ -87,9 +87,6 @@ class Type : public base_internal::Resource {
   // Returns the type name, i.e. "list".
   virtual absl::string_view name() const = 0;
 
-  // Returns the type parameters of the type, i.e. key and value type of map.
-  virtual absl::Span<const Transient<const Type>> parameters() const;
-
   virtual std::string DebugString() const;
 
   // Called by base_internal::TypeHandleBase.
@@ -465,10 +462,6 @@ class EnumType : public Type {
 
   Kind kind() const final { return Kind::kEnum; }
 
-  absl::Span<const Transient<const Type>> parameters() const final {
-    return Type::parameters();
-  }
-
   // Find the constant definition for the given identifier.
   absl::StatusOr<Constant> FindConstant(ConstantId id) const;
 
@@ -570,10 +563,6 @@ class StructType : public Type {
 
   Kind kind() const final { return Kind::kStruct; }
 
-  absl::Span<const Transient<const Type>> parameters() const final {
-    return Type::parameters();
-  }
-
   // Find the field definition for the given identifier.
   absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
 
@@ -653,7 +642,7 @@ class ListType : public Type {
   std::string DebugString() const final;
 
   // Returns the type of the elements in the list.
-  virtual Transient<const Type> element() const = 0;
+  virtual Persistent<const Type> element() const = 0;
 
  private:
   friend class TypeFactory;
@@ -693,10 +682,10 @@ class MapType : public Type {
   std::string DebugString() const final;
 
   // Returns the type of the keys in the map.
-  virtual Transient<const Type> key() const = 0;
+  virtual Persistent<const Type> key() const = 0;
 
   // Returns the type of the values in the map.
-  virtual Transient<const Type> value() const = 0;
+  virtual Persistent<const Type> value() const = 0;
 
  private:
   friend class TypeFactory;

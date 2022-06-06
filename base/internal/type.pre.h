@@ -34,7 +34,6 @@ template <HandleType H>
 class TypeHandle;
 
 // Convenient aliases.
-using TransientTypeHandle = TypeHandle<HandleType::kTransient>;
 using PersistentTypeHandle = TypeHandle<HandleType::kPersistent>;
 
 // As all objects should be aligned to at least 4 bytes, we can use the lower

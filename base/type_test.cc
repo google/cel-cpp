@@ -178,21 +178,6 @@ class TypeTest
   std::unique_ptr<ArenaMemoryManager> memory_manager_;
 };
 
-TEST(Type, TransientHandleTypeTraits) {
-  EXPECT_TRUE(std::is_default_constructible_v<Transient<Type>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Transient<Type>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Transient<Type>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Transient<Type>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Transient<Type>>);
-  EXPECT_TRUE(std::is_swappable_v<Transient<Type>>);
-  EXPECT_TRUE(std::is_default_constructible_v<Transient<const Type>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Transient<const Type>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Transient<const Type>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Transient<const Type>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Transient<const Type>>);
-  EXPECT_TRUE(std::is_swappable_v<Transient<const Type>>);
-}
-
 TEST(Type, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_default_constructible_v<Persistent<Type>>);
   EXPECT_TRUE(std::is_copy_constructible_v<Persistent<Type>>);
@@ -210,40 +195,40 @@ TEST(Type, PersistentHandleTypeTraits) {
 
 TEST_P(TypeTest, CopyConstructor) {
   TypeFactory type_factory(memory_manager());
-  Transient<const Type> type(type_factory.GetIntType());
+  Persistent<const Type> type(type_factory.GetIntType());
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, MoveConstructor) {
   TypeFactory type_factory(memory_manager());
-  Transient<const Type> from(type_factory.GetIntType());
-  Transient<const Type> to(std::move(from));
+  Persistent<const Type> from(type_factory.GetIntType());
+  Persistent<const Type> to(std::move(from));
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, type_factory.GetIntType());
+  EXPECT_EQ(from, type_factory.GetNullType());
   EXPECT_EQ(to, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, CopyAssignment) {
   TypeFactory type_factory(memory_manager());
-  Transient<const Type> type(type_factory.GetNullType());
+  Persistent<const Type> type(type_factory.GetNullType());
   type = type_factory.GetIntType();
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, MoveAssignment) {
   TypeFactory type_factory(memory_manager());
-  Transient<const Type> from(type_factory.GetIntType());
-  Transient<const Type> to(type_factory.GetNullType());
+  Persistent<const Type> from(type_factory.GetIntType());
+  Persistent<const Type> to(type_factory.GetNullType());
   to = std::move(from);
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, type_factory.GetIntType());
+  EXPECT_EQ(from, type_factory.GetNullType());
   EXPECT_EQ(to, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, Swap) {
   TypeFactory type_factory(memory_manager());
-  Transient<const Type> lhs = type_factory.GetIntType();
-  Transient<const Type> rhs = type_factory.GetUintType();
+  Persistent<const Type> lhs = type_factory.GetIntType();
+  Persistent<const Type> rhs = type_factory.GetUintType();
   std::swap(lhs, rhs);
   EXPECT_EQ(lhs, type_factory.GetUintType());
   EXPECT_EQ(rhs, type_factory.GetIntType());
@@ -257,7 +242,6 @@ TEST_P(TypeTest, Null) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetNullType()->kind(), Kind::kNullType);
   EXPECT_EQ(type_factory.GetNullType()->name(), "null_type");
-  EXPECT_THAT(type_factory.GetNullType()->parameters(), SizeIs(0));
   EXPECT_TRUE(type_factory.GetNullType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<AnyType>());
@@ -280,7 +264,6 @@ TEST_P(TypeTest, Error) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetErrorType()->kind(), Kind::kError);
   EXPECT_EQ(type_factory.GetErrorType()->name(), "*error*");
-  EXPECT_THAT(type_factory.GetErrorType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetErrorType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<AnyType>());
@@ -303,7 +286,6 @@ TEST_P(TypeTest, Dyn) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDynType()->kind(), Kind::kDyn);
   EXPECT_EQ(type_factory.GetDynType()->name(), "dyn");
-  EXPECT_THAT(type_factory.GetDynType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetDynType().Is<NullType>());
   EXPECT_TRUE(type_factory.GetDynType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<AnyType>());
@@ -326,7 +308,6 @@ TEST_P(TypeTest, Any) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetAnyType()->kind(), Kind::kAny);
   EXPECT_EQ(type_factory.GetAnyType()->name(), "google.protobuf.Any");
-  EXPECT_THAT(type_factory.GetAnyType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetAnyType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<DynType>());
   EXPECT_TRUE(type_factory.GetAnyType().Is<AnyType>());
@@ -349,7 +330,6 @@ TEST_P(TypeTest, Bool) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolType()->kind(), Kind::kBool);
   EXPECT_EQ(type_factory.GetBoolType()->name(), "bool");
-  EXPECT_THAT(type_factory.GetBoolType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetBoolType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<AnyType>());
@@ -372,7 +352,6 @@ TEST_P(TypeTest, Int) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntType()->kind(), Kind::kInt);
   EXPECT_EQ(type_factory.GetIntType()->name(), "int");
-  EXPECT_THAT(type_factory.GetIntType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetIntType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<AnyType>());
@@ -395,7 +374,6 @@ TEST_P(TypeTest, Uint) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintType()->kind(), Kind::kUint);
   EXPECT_EQ(type_factory.GetUintType()->name(), "uint");
-  EXPECT_THAT(type_factory.GetUintType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetUintType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<AnyType>());
@@ -418,7 +396,6 @@ TEST_P(TypeTest, Double) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleType()->kind(), Kind::kDouble);
   EXPECT_EQ(type_factory.GetDoubleType()->name(), "double");
-  EXPECT_THAT(type_factory.GetDoubleType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetDoubleType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<AnyType>());
@@ -441,7 +418,6 @@ TEST_P(TypeTest, String) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringType()->kind(), Kind::kString);
   EXPECT_EQ(type_factory.GetStringType()->name(), "string");
-  EXPECT_THAT(type_factory.GetStringType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetStringType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<AnyType>());
@@ -464,7 +440,6 @@ TEST_P(TypeTest, Bytes) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesType()->kind(), Kind::kBytes);
   EXPECT_EQ(type_factory.GetBytesType()->name(), "bytes");
-  EXPECT_THAT(type_factory.GetBytesType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetBytesType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<AnyType>());
@@ -487,7 +462,6 @@ TEST_P(TypeTest, Duration) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDurationType()->kind(), Kind::kDuration);
   EXPECT_EQ(type_factory.GetDurationType()->name(), "google.protobuf.Duration");
-  EXPECT_THAT(type_factory.GetDurationType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetDurationType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<AnyType>());
@@ -511,7 +485,6 @@ TEST_P(TypeTest, Timestamp) {
   EXPECT_EQ(type_factory.GetTimestampType()->kind(), Kind::kTimestamp);
   EXPECT_EQ(type_factory.GetTimestampType()->name(),
             "google.protobuf.Timestamp");
-  EXPECT_THAT(type_factory.GetTimestampType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetTimestampType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<AnyType>());
@@ -536,7 +509,6 @@ TEST_P(TypeTest, Enum) {
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(enum_type->kind(), Kind::kEnum);
   EXPECT_EQ(enum_type->name(), "test_enum.TestEnum");
-  EXPECT_THAT(enum_type->parameters(), SizeIs(0));
   EXPECT_FALSE(enum_type.Is<NullType>());
   EXPECT_FALSE(enum_type.Is<DynType>());
   EXPECT_FALSE(enum_type.Is<AnyType>());
@@ -564,7 +536,6 @@ TEST_P(TypeTest, Struct) {
       type_manager.type_factory().CreateStructType<TestStructType>());
   EXPECT_EQ(struct_type->kind(), Kind::kStruct);
   EXPECT_EQ(struct_type->name(), "test_struct.TestStruct");
-  EXPECT_THAT(struct_type->parameters(), SizeIs(0));
   EXPECT_FALSE(struct_type.Is<NullType>());
   EXPECT_FALSE(struct_type.Is<DynType>());
   EXPECT_FALSE(struct_type.Is<AnyType>());
@@ -593,7 +564,6 @@ TEST_P(TypeTest, List) {
   EXPECT_EQ(list_type->kind(), Kind::kList);
   EXPECT_EQ(list_type->name(), "list");
   EXPECT_EQ(list_type->element(), type_factory.GetBoolType());
-  EXPECT_THAT(list_type->parameters(), SizeIs(0));
   EXPECT_FALSE(list_type.Is<NullType>());
   EXPECT_FALSE(list_type.Is<DynType>());
   EXPECT_FALSE(list_type.Is<AnyType>());
@@ -627,7 +597,6 @@ TEST_P(TypeTest, Map) {
   EXPECT_EQ(map_type->name(), "map");
   EXPECT_EQ(map_type->key(), type_factory.GetStringType());
   EXPECT_EQ(map_type->value(), type_factory.GetBoolType());
-  EXPECT_THAT(map_type->parameters(), SizeIs(0));
   EXPECT_FALSE(map_type.Is<NullType>());
   EXPECT_FALSE(map_type.Is<DynType>());
   EXPECT_FALSE(map_type.Is<AnyType>());
@@ -650,7 +619,6 @@ TEST_P(TypeTest, TypeType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTypeType()->kind(), Kind::kType);
   EXPECT_EQ(type_factory.GetTypeType()->name(), "type");
-  EXPECT_THAT(type_factory.GetTypeType()->parameters(), SizeIs(0));
   EXPECT_FALSE(type_factory.GetTypeType().Is<NullType>());
   EXPECT_FALSE(type_factory.GetTypeType().Is<DynType>());
   EXPECT_FALSE(type_factory.GetTypeType().Is<AnyType>());

@@ -105,7 +105,7 @@ class TypeFactory final {
     // arena allocated. The only way to do this is through
     // TransientHandleFactory.
     return Persistent<const T>(
-        base_internal::TransientHandleFactory<const T>::template MakeUnmanaged<
+        base_internal::PersistentHandleFactory<const T>::template MakeUnmanaged<
             const T>(T::Get()));
   }
 
