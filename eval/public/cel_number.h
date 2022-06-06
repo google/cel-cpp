@@ -45,6 +45,8 @@ constexpr double kMaxDoubleRepresentableAsInt =
 constexpr double kMaxDoubleRepresentableAsUint =
     static_cast<double>(kUint64Max - RoundingError<uint64_t>());
 
+#define CEL_ABSL_VISIT_CONSTEXPR
+
 namespace internal {
 
 using NumberVariant = absl::variant<double, uint64_t, int64_t>;
@@ -169,15 +171,15 @@ struct IntCompareVisitor {
 struct CompareVisitor {
   explicit constexpr CompareVisitor(NumberVariant rhs) : rhs(rhs) {}
 
-  constexpr ComparisonResult operator()(double v) {
+  CEL_ABSL_VISIT_CONSTEXPR ComparisonResult operator()(double v) {
     return absl::visit(DoubleCompareVisitor(v), rhs);
   }
 
-  constexpr ComparisonResult operator()(uint64_t v) {
+  CEL_ABSL_VISIT_CONSTEXPR ComparisonResult operator()(uint64_t v) {
     return absl::visit(UintCompareVisitor(v), rhs);
   }
 
-  constexpr ComparisonResult operator()(int64_t v) {
+  CEL_ABSL_VISIT_CONSTEXPR ComparisonResult operator()(int64_t v) {
     return absl::visit(IntCompareVisitor(v), rhs);
   }
   NumberVariant rhs;
@@ -233,66 +235,67 @@ class CelNumber {
   constexpr explicit CelNumber(uint64_t uint_value) : value_(uint_value) {}
 
   // Return a double representation of the value.
-  constexpr double AsDouble() const {
+  CEL_ABSL_VISIT_CONSTEXPR double AsDouble() const {
     return absl::visit(internal::ConversionVisitor<double>(), value_);
   }
 
   // Return signed int64_t representation for the value.
   // Caller must guarantee the underlying value is representatble as an
   // int.
-  constexpr int64_t AsInt() const {
+  CEL_ABSL_VISIT_CONSTEXPR int64_t AsInt() const {
     return absl::visit(internal::ConversionVisitor<int64_t>(), value_);
   }
 
   // Return unsigned int64_t representation for the value.
   // Caller must guarantee the underlying value is representable as an
   // uint.
-  constexpr uint64_t AsUint() const {
+  CEL_ABSL_VISIT_CONSTEXPR uint64_t AsUint() const {
     return absl::visit(internal::ConversionVisitor<uint64_t>(), value_);
   }
 
   // For key lookups, check if the conversion to signed int is lossless.
-  constexpr bool LosslessConvertibleToInt() const {
+  CEL_ABSL_VISIT_CONSTEXPR bool LosslessConvertibleToInt() const {
     return absl::visit(internal::LosslessConvertibleToIntVisitor(), value_);
   }
 
   // For key lookups, check if the conversion to unsigned int is lossless.
-  constexpr bool LosslessConvertibleToUint() const {
+  CEL_ABSL_VISIT_CONSTEXPR bool LosslessConvertibleToUint() const {
     return absl::visit(internal::LosslessConvertibleToUintVisitor(), value_);
   }
 
-  constexpr bool operator<(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR bool operator<(CelNumber other) const {
     return Compare(other) == internal::ComparisonResult::kLesser;
   }
 
-  constexpr bool operator<=(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR bool operator<=(CelNumber other) const {
     internal::ComparisonResult cmp = Compare(other);
     return cmp != internal::ComparisonResult::kGreater &&
            cmp != internal::ComparisonResult::kNanInequal;
   }
 
-  constexpr bool operator>(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR bool operator>(CelNumber other) const {
     return Compare(other) == internal::ComparisonResult::kGreater;
   }
 
-  constexpr bool operator>=(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR bool operator>=(CelNumber other) const {
     internal::ComparisonResult cmp = Compare(other);
     return cmp != internal::ComparisonResult::kLesser &&
            cmp != internal::ComparisonResult::kNanInequal;
   }
 
-  constexpr bool operator==(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR bool operator==(CelNumber other) const {
     return Compare(other) == internal::ComparisonResult::kEqual;
   }
 
-  constexpr bool operator!=(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR bool operator!=(CelNumber other) const {
     return Compare(other) != internal::ComparisonResult::kEqual;
   }
 
  private:
   internal::NumberVariant value_;
 
-  constexpr internal::ComparisonResult Compare(CelNumber other) const {
+  CEL_ABSL_VISIT_CONSTEXPR internal::ComparisonResult Compare(
+      CelNumber other) const {
     return absl::visit(internal::CompareVisitor(other.value_), value_);
   }
 };

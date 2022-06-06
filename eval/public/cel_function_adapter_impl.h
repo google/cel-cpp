@@ -35,20 +35,19 @@ namespace internal {
 struct TypeCodeMatcher {
   template <typename T>
   constexpr std::optional<CelValue::Type> type_code() {
-    int index = CelValue::IndexOf<T>::value;
-    if (index < 0) return {};
-    CelValue::Type arg_type = static_cast<CelValue::Type>(index);
-    if (arg_type >= CelValue::Type::kAny) {
-      return {};
+    if constexpr (std::is_same_v<T, CelValue>) {
+      // A bit of a trick - to pass Any kind of value, we use generic CelValue
+      // parameters.
+      return CelValue::Type::kAny;
+    } else {
+      int index = CelValue::IndexOf<T>::value;
+      if (index < 0) return {};
+      CelValue::Type arg_type = static_cast<CelValue::Type>(index);
+      if (arg_type >= CelValue::Type::kAny) {
+        return {};
+      }
+      return arg_type;
     }
-    return arg_type;
-  }
-
-  // A bit of a trick - to pass Any kind of value, we use generic CelValue
-  // parameters.
-  template <>
-  constexpr std::optional<CelValue::Type> type_code<CelValue>() {
-    return CelValue::Type::kAny;
   }
 };
 
@@ -82,14 +81,12 @@ struct ValueConverterBase {
   // Value to native uwraps a CelValue to a native type.
   template <typename T>
   bool ValueToNative(CelValue value, T* result) {
-    return value.GetValue(result);
-  }
-
-  // Specialization for CelValue (any typed)
-  template <>
-  bool ValueToNative(CelValue value, CelValue* result) {
-    *result = std::move(value);
-    return true;
+    if constexpr (std::is_same_v<T, CelValue>) {
+      *result = std::move(value);
+      return true;
+    } else {
+      return value.GetValue(result);
+    }
   }
 
   // Native to value wraps a native return type to a CelValue.

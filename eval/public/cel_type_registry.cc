@@ -55,11 +55,10 @@ struct EnumAdderT {
   void AddEnum(DescriptorSet&) {}
 
   template <typename EnumT>
-  void AddEnum(EnumMap&) {}
-
-  template <>
-  void AddEnum<google::protobuf::NullValue>(EnumMap& map) {
-    map["google.protobuf.NullValue"] = {{"NULL_VALUE", 0}};
+  void AddEnum(EnumMap& map) {
+    if constexpr (std::is_same_v<EnumT, google::protobuf::NullValue>) {
+      map["google.protobuf.NullValue"] = {{"NULL_VALUE", 0}};
+    }
   }
 };
 

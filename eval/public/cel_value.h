@@ -116,7 +116,8 @@ class CelValue {
   // absl::variant.
   using NullType = absl::monostate;
 
-  using MessageWrapper = MessageWrapper;
+  // GCC: fully qualified to avoid change of meaning error.
+  using MessageWrapper = google::api::expr::runtime::MessageWrapper;
 
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type

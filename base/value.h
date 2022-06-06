@@ -150,6 +150,10 @@ class NullValue final : public Value, public base_internal::ResourceInlined {
   // Note GCC does not consider a friend member as a member of a friend.
   ABSL_ATTRIBUTE_PURE_FUNCTION static const NullValue& Get();
 
+  bool Equals(const Value& other) const override;
+
+  void HashValue(absl::HashState state) const override;
+
  private:
   friend class ValueFactory;
   template <typename T>
@@ -169,8 +173,6 @@ class NullValue final : public Value, public base_internal::ResourceInlined {
   // See comments for respective member functions on `Value`.
   void CopyTo(Value& address) const override;
   void MoveTo(Value& address) override;
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
 };
 
 class ErrorValue final : public Value, public base_internal::ResourceInlined {

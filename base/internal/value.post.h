@@ -311,17 +311,13 @@ class ValueHandleBase {
   Value* operator->() const { return std::addressof(get()); }
 
   // Called by internal accessors `base_internal::IsXHandle`.
-  constexpr bool IsManaged() const {
-    return (vptr() & kValueHandleManaged) != 0;
-  }
+  bool IsManaged() const { return (vptr() & kValueHandleManaged) != 0; }
 
   // Called by internal accessors `base_internal::IsXHandle`.
-  constexpr bool IsUnmanaged() const {
-    return (vptr() & kValueHandleUnmanaged) != 0;
-  }
+  bool IsUnmanaged() const { return (vptr() & kValueHandleUnmanaged) != 0; }
 
   // Called by internal accessors `base_internal::IsXHandle`.
-  constexpr bool IsInlined() const { return (vptr() & kValueHandleBits) == 0; }
+  bool IsInlined() const { return (vptr() & kValueHandleBits) == 0; }
 
   // Called by `Transient` and `Persistent` to implement the same function.
   template <typename T>

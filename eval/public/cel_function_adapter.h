@@ -19,12 +19,11 @@ namespace internal {
 struct ProtoAdapterTypeCodeMatcher {
   template <typename T>
   constexpr std::optional<CelValue::Type> type_code() {
-    return internal::TypeCodeMatcher().type_code<T>();
-  }
-
-  template <>
-  constexpr std::optional<CelValue::Type> type_code<const google::protobuf::Message*>() {
-    return CelValue::Type::kMessage;
+    if constexpr (std::is_same_v<T, const google::protobuf::Message*>) {
+      return CelValue::Type::kMessage;
+    } else {
+      return internal::TypeCodeMatcher().type_code<T>();
+    }
   }
 };
 
