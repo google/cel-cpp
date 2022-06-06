@@ -133,7 +133,7 @@ struct InterpreterOptions {
   bool enable_null_to_message_coercion = true;
 
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
-  bool enable_heterogeneous_equality = false;
+  bool enable_heterogeneous_equality = true;
 
   // Enables unwrapping proto wrapper types to null if unset. e.g. if an
   // expression access a field of type google.protobuf.Int64Value that is unset,
