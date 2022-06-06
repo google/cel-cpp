@@ -30,6 +30,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 #include "internal/time.h"
+#include "testutil/util.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 
 namespace google::api::expr::runtime::internal {
@@ -41,9 +42,9 @@ using ::cel::internal::MaxTimestamp;
 using ::google::api::expr::test::v1::proto3::TestAllTypes;
 using ::google::protobuf::Arena;
 using ::google::protobuf::FieldDescriptor;
-using testing::EqualsProto;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
+using testutil::EqualsProto;
 
 TEST(FieldAccessTest, SetDuration) {
   Arena arena;

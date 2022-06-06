@@ -17,6 +17,8 @@
 
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
+#include "absl/base/macros.h"
+#include "absl/numeric/bits.h"
 
 namespace google::api::expr::runtime {
 

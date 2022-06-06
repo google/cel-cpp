@@ -28,6 +28,7 @@ namespace {
 using ::google::api::expr::v1alpha1::Constant;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::Reference;
+using ::google::api::expr::v1alpha1::SourceInfo;
 
 // Determines if function is implemented with custom evaluation step instead of
 // registered.

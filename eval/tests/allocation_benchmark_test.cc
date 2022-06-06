@@ -42,6 +42,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::parser::Parse;
 using testing::HasSubstr;
 using cel::internal::StatusIs;

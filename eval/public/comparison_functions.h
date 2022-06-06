@@ -26,7 +26,7 @@ namespace google::api::expr::runtime {
 //
 // Returns nullopt if the comparison is undefined between differently typed
 // values.
-std::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2);
+absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2);
 
 // Register built in comparison functions (==, !=, <, <=, >, >=).
 //

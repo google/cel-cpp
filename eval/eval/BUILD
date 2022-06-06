@@ -606,7 +606,6 @@ cc_library(
     hdrs = ["attribute_utility.h"],
     deps = [
         ":attribute_trail",
-        "//base:logging",
         "//base:memory_manager",
         "//eval/public:cel_attribute",
         "//eval/public:cel_function",

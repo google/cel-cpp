@@ -63,6 +63,10 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::google::api::expr::v1alpha1::CheckedExpr;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::google::api::expr::v1alpha1::SourceInfo;
 using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
@@ -75,7 +79,7 @@ template <class MessageClass>
 absl::Status ReadBinaryProtoFromDisk(absl::string_view file_name,
                                      MessageClass& message) {
   std::ifstream file;
-  file.open(file_name, std::fstream::in);
+  file.open(std::string(file_name), std::fstream::in);
   if (!file.is_open()) {
     return absl::NotFoundError(absl::StrFormat("Failed to open file '%s': %s",
                                                file_name, strerror(errno)));
@@ -1890,9 +1894,8 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
 
 std::pair<google::protobuf::Message*, const google::protobuf::Reflection*> CreateTestMessage(
     const google::protobuf::DescriptorPool& descriptor_pool,
-    google::protobuf::MessageFactory& message_factory, absl::string_view message_type) {
-  const google::protobuf::Descriptor* desc =
-      descriptor_pool.FindMessageTypeByName(message_type);
+    google::protobuf::MessageFactory& message_factory, absl::string_view name) {
+  const google::protobuf::Descriptor* desc = descriptor_pool.FindMessageTypeByName(name.data());
   const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
   google::protobuf::Message* message = message_prototype->New();
   const google::protobuf::Reflection* refl = message->GetReflection();

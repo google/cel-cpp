@@ -8,7 +8,8 @@
 
 namespace google::api::expr::runtime {
 
-AttributeTrail::AttributeTrail(Expr root, cel::MemoryManager& manager) {
+AttributeTrail::AttributeTrail(google::api::expr::v1alpha1::Expr root,
+                               cel::MemoryManager& manager) {
   attribute_ = manager
                    .New<CelAttribute>(std::move(root),
                                       std::vector<CelAttributeQualifier>())

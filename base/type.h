@@ -92,6 +92,14 @@ class Type : public base_internal::Resource {
 
   virtual std::string DebugString() const;
 
+  // Called by base_internal::TypeHandleBase.
+  // Note GCC does not consider a friend member as a member of a friend.
+  virtual bool Equals(const Type& other) const;
+
+  // Called by base_internal::TypeHandleBase.
+  // Note GCC does not consider a friend member as a member of a friend.
+  virtual void HashValue(absl::HashState state) const;
+
  private:
   friend class NullType;
   friend class ErrorType;
@@ -126,12 +134,6 @@ class Type : public base_internal::Resource {
 
   using base_internal::Resource::Ref;
   using base_internal::Resource::Unref;
-
-  // Called by base_internal::TypeHandleBase.
-  virtual bool Equals(const Type& other) const;
-
-  // Called by base_internal::TypeHandleBase.
-  virtual void HashValue(absl::HashState state) const;
 };
 
 class NullType final : public Type {
@@ -139,6 +141,9 @@ class NullType final : public Type {
   Kind kind() const override { return Kind::kNullType; }
 
   absl::string_view name() const override { return "null_type"; }
+
+  // Note GCC does not consider a friend member as a member of a friend.
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullType& Get();
 
  private:
   friend class NullValue;
@@ -150,8 +155,6 @@ class NullType final : public Type {
   // Called by base_internal::TypeHandleBase to implement Is for Transient and
   // Persistent.
   static bool Is(const Type& type) { return type.kind() == Kind::kNullType; }
-
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullType& Get();
 
   NullType() = default;
 

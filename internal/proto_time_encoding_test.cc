@@ -18,11 +18,12 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/time/time.h"
 #include "internal/testing.h"
+#include "testutil/util.h"
 
 namespace cel::internal {
 namespace {
 
-using testing::EqualsProto;
+using ::google::api::expr::testutil::EqualsProto;
 
 TEST(EncodeDuration, Basic) {
   google::protobuf::Duration proto_duration;

@@ -84,6 +84,14 @@ class Value : public base_internal::Resource {
 
   virtual std::string DebugString() const = 0;
 
+  // Called by base_internal::ValueHandleBase.
+  // Note GCC does not consider a friend member as a member of a friend.
+  virtual bool Equals(const Value& other) const = 0;
+
+  // Called by base_internal::ValueHandleBase.
+  // Note GCC does not consider a friend member as a member of a friend.
+  virtual void HashValue(absl::HashState state) const = 0;
+
  private:
   friend class NullValue;
   friend class ErrorValue;
@@ -127,12 +135,6 @@ class Value : public base_internal::Resource {
 
   // Called by base_internal::ValueHandleBase for inlined values.
   virtual void MoveTo(Value& address);
-
-  // Called by base_internal::ValueHandleBase.
-  virtual bool Equals(const Value& other) const = 0;
-
-  // Called by base_internal::ValueHandleBase.
-  virtual void HashValue(absl::HashState state) const = 0;
 };
 
 class NullValue final : public Value, public base_internal::ResourceInlined {
@@ -145,6 +147,9 @@ class NullValue final : public Value, public base_internal::ResourceInlined {
 
   std::string DebugString() const override;
 
+  // Note GCC does not consider a friend member as a member of a friend.
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullValue& Get();
+
  private:
   friend class ValueFactory;
   template <typename T>
@@ -156,8 +161,6 @@ class NullValue final : public Value, public base_internal::ResourceInlined {
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
   static bool Is(const Value& value) { return value.kind() == Kind::kNullType; }
-
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullValue& Get();
 
   NullValue() = default;
   NullValue(const NullValue&) = default;

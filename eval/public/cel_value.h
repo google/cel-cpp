@@ -389,21 +389,6 @@ class CelValue {
     return this->template InternalVisit<bool>(AssignerOp<Arg>(value));
   }
 
-  // Specialization for MessageWrapper to support legacy behavior while
-  // migrating off hard dependency on google::protobuf::Message.
-  // TODO(issues/5): Move to CelProtoWrapper.
-  template <>
-  bool GetValue(const google::protobuf::Message** value) const {
-    auto* held_value = value_.get<MessageWrapper>();
-    if (held_value == nullptr || !held_value->HasFullProto()) {
-      return false;
-    }
-
-    *value = cel::internal::down_cast<const google::protobuf::Message*>(
-        held_value->message_ptr());
-    return true;
-  }
-
   // Provides type names for internal logging.
   static std::string TypeName(Type value_type);
 
@@ -420,7 +405,7 @@ class CelValue {
  private:
   ValueHolder value_;
 
-  template <typename T>
+  template <typename T, class = void>
   struct AssignerOp {
     explicit AssignerOp(T* val) : value(val) {}
 
@@ -435,6 +420,32 @@ class CelValue {
     }
 
     T* value;
+  };
+
+  // Specialization for MessageWrapper to support legacy behavior while
+  // migrating off hard dependency on google::protobuf::Message.
+  // TODO(issues/5): Move to CelProtoWrapper.
+  template <typename T>
+  struct AssignerOp<
+      T, std::enable_if_t<std::is_same_v<T, const google::protobuf::Message*>>> {
+    explicit AssignerOp(const google::protobuf::Message** val) : value(val) {}
+
+    template <typename U>
+    bool operator()(const U&) {
+      return false;
+    }
+
+    bool operator()(const MessageWrapper& held_value) {
+      if (!held_value.HasFullProto()) {
+        return false;
+      }
+
+      *value = cel::internal::down_cast<const google::protobuf::Message*>(
+          held_value.message_ptr());
+      return true;
+    }
+
+    const google::protobuf::Message** value;
   };
 
   struct NullCheckOp {

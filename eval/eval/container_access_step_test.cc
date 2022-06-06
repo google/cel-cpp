@@ -33,6 +33,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Struct;
 using testing::_;

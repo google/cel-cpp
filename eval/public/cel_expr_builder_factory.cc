@@ -44,7 +44,8 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
     return nullptr;
   }
   if (auto s = ValidateStandardMessageTypes(*descriptor_pool); !s.ok()) {
-    GOOGLE_LOG(WARNING) << "Failed to validate standard message types: " << s;
+    GOOGLE_LOG(WARNING) << "Failed to validate standard message types: "
+                 << s.ToString();  // NOLINT: OSS compatibility
     return nullptr;
   }
 

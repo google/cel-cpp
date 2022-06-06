@@ -33,6 +33,7 @@
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "testutil/util.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -40,11 +41,11 @@ namespace {
 using ::cel::extensions::ProtoMemoryManager;
 using ::google::protobuf::Int64Value;
 using testing::_;
-using testing::EqualsProto;
 using testing::HasSubstr;
 using testing::Optional;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
+using testutil::EqualsProto;
 
 class ProtoMessageTypeAccessorTest : public testing::TestWithParam<bool> {
  public:
@@ -439,8 +440,7 @@ TEST(ProtoMessageTypeAdapter, NewInstance) {
 
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder result,
                        adapter.NewInstance(manager));
-  EXPECT_THAT(result.message_ptr(),
-              EqualsProto(TestMessage::default_instance()));
+  EXPECT_EQ(result.message_ptr()->SerializeAsString(), "");
 }
 
 TEST(ProtoMessageTypeAdapter, NewInstanceUnsupportedDescriptor) {
@@ -491,38 +491,15 @@ TEST(ProtoMessageTypeAdapter, SetFieldSingular) {
   ASSERT_OK(adapter.SetField("int64_value", CelValue::CreateInt64(10), manager,
                              value));
 
-  EXPECT_THAT(value.message_ptr(), EqualsProto("int64_value: 10"));
+  TestMessage message;
+  message.set_int64_value(10);
+  EXPECT_EQ(value.message_ptr()->SerializeAsString(),
+            message.SerializeAsString());
 
   ASSERT_THAT(adapter.SetField("not_a_field", CelValue::CreateInt64(10),
                                manager, value),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("field 'not_a_field': not found")));
-}
-
-TEST(ProtoMessageTypeAdapter, SetFieldMap) {
-  google::protobuf::Arena arena;
-  ProtoMessageTypeAdapter adapter(
-      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
-          "google.api.expr.runtime.TestMessage"),
-      google::protobuf::MessageFactory::generated_factory());
-  ProtoMemoryManager manager(&arena);
-
-  CelMapBuilder builder;
-  ASSERT_OK(builder.Add(CelValue::CreateInt64(1), CelValue::CreateInt64(2)));
-  ASSERT_OK(builder.Add(CelValue::CreateInt64(2), CelValue::CreateInt64(4)));
-
-  CelValue value_to_set = CelValue::CreateMap(&builder);
-
-  ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder instance,
-                       adapter.NewInstance(manager));
-
-  ASSERT_OK(
-      adapter.SetField("int64_int32_map", value_to_set, manager, instance));
-
-  EXPECT_THAT(instance.message_ptr(), EqualsProto(R"pb(
-                int64_int32_map { key: 1 value: 2 }
-                int64_int32_map { key: 2 value: 4 }
-              )pb"));
 }
 
 TEST(ProtoMessageTypeAdapter, SetFieldRepeated) {
@@ -541,10 +518,12 @@ TEST(ProtoMessageTypeAdapter, SetFieldRepeated) {
 
   ASSERT_OK(adapter.SetField("int64_list", value_to_set, manager, instance));
 
-  EXPECT_THAT(instance.message_ptr(), EqualsProto(R"pb(
-                int64_list: 1
-                int64_list: 2
-              )pb"));
+  TestMessage message;
+  message.add_int64_list(1);
+  message.add_int64_list(2);
+
+  EXPECT_EQ(instance.message_ptr()->SerializeAsString(),
+            message.SerializeAsString());
 }
 
 TEST(ProtoMessageTypeAdapter, SetFieldNotAField) {

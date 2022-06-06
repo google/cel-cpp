@@ -40,10 +40,11 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::protobuf::Int64Value;
 
 // Helpers for c++ / proto to cel value conversions.
-std::optional<CelValue> Unwrap(const google::protobuf::MessageLite* wrapper) {
+absl::optional<CelValue> Unwrap(const google::protobuf::MessageLite* wrapper) {
   if (wrapper->GetTypeName() == "google.protobuf.Duration") {
     const auto* duration =
         cel::internal::down_cast<const google::protobuf::Duration*>(wrapper);
@@ -53,32 +54,32 @@ std::optional<CelValue> Unwrap(const google::protobuf::MessageLite* wrapper) {
         cel::internal::down_cast<const google::protobuf::Timestamp*>(wrapper);
     return CelValue::CreateTimestamp(cel::internal::DecodeTime(*timestamp));
   }
-  return std::nullopt;
+  return absl::nullopt;
 }
 
 struct NativeToCelValue {
   template <typename T>
-  std::optional<CelValue> Convert(T arg) const {
-    return std::nullopt;
+  absl::optional<CelValue> Convert(T arg) const {
+    return absl::nullopt;
   }
 
-  std::optional<CelValue> Convert(int64_t v) const {
+  absl::optional<CelValue> Convert(int64_t v) const {
     return CelValue::CreateInt64(v);
   }
 
-  std::optional<CelValue> Convert(const std::string& str) const {
+  absl::optional<CelValue> Convert(const std::string& str) const {
     return CelValue::CreateString(&str);
   }
 
-  std::optional<CelValue> Convert(double v) const {
+  absl::optional<CelValue> Convert(double v) const {
     return CelValue::CreateDouble(v);
   }
 
-  std::optional<CelValue> Convert(bool v) const {
+  absl::optional<CelValue> Convert(bool v) const {
     return CelValue::CreateBool(v);
   }
 
-  std::optional<CelValue> Convert(const Int64Value& v) const {
+  absl::optional<CelValue> Convert(const Int64Value& v) const {
     return CelValue::CreateInt64(v.value());
   }
 };
@@ -318,14 +319,14 @@ class DemoTypeProvider : public LegacyTypeProvider {
   DemoTypeProvider() : timestamp_type_(), test_message_(this), info_(this) {}
   const LegacyTypeInfoApis* GetTypeInfoInstance() const { return &info_; }
 
-  std::optional<LegacyTypeAdapter> ProvideLegacyType(
+  absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override {
     if (name == "google.protobuf.Timestamp") {
       return LegacyTypeAdapter(nullptr, &timestamp_type_);
     } else if (name == "google.api.expr.runtime.TestMessage") {
       return LegacyTypeAdapter(&test_message_, &test_message_);
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
   const std::string& GetStableType(

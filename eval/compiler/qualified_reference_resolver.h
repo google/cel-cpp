@@ -25,8 +25,8 @@ namespace google::api::expr::runtime {
 // points to an expr node that isn't a reference).
 absl::StatusOr<bool> ResolveReferences(
     const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
-    const Resolver& resolver, const SourceInfo* source_info,
-    BuilderWarnings& warnings, Expr* expr);
+    const Resolver& resolver, const google::api::expr::v1alpha1::SourceInfo* source_info,
+    BuilderWarnings& warnings, google::api::expr::v1alpha1::Expr* expr);
 
 }  // namespace google::api::expr::runtime
 

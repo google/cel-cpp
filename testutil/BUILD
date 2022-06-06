@@ -36,6 +36,7 @@ cc_library(
     ],
     deps = [
         "//internal:testing",
+        "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],
 )

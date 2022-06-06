@@ -92,8 +92,9 @@ absl::optional<CelValue> CheckForMarkedAttributes(const AttributeTrail& trail,
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
-    GOOGLE_LOG(ERROR) << "Invalid attribute pattern matched select path: "
-               << attribute_string.status();
+    GOOGLE_LOG(ERROR)
+        << "Invalid attribute pattern matched select path: "
+        << attribute_string.status().ToString();  // NOLINT: OSS compatibility
     return CreateErrorValue(frame->memory_manager(), attribute_string.status());
   }
 

@@ -23,7 +23,11 @@ cc_library(
     hdrs = [
         "message_wrapper.h",
     ],
-    deps = ["@com_google_protobuf//:protobuf"],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_test(

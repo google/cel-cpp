@@ -179,6 +179,7 @@ cc_test(
     deps = [
         ":proto_time_encoding",
         ":testing",
+        "//testutil:util",
         "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],

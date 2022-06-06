@@ -29,7 +29,7 @@ class AttributeTrail {
  public:
   AttributeTrail() : attribute_(nullptr) {}
 
-  AttributeTrail(Expr root, cel::MemoryManager& manager);
+  AttributeTrail(google::api::expr::v1alpha1::Expr root, cel::MemoryManager& manager);
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(CelAttributeQualifier qualifier,

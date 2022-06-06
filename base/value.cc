@@ -407,10 +407,6 @@ struct BytesValueDebugStringVisitor final {
   }
 
   std::string operator()(const absl::Cord& value) const {
-    absl::string_view flat;
-    if (value.GetFlat(&flat)) {
-      return internal::FormatBytesLiteral(flat);
-    }
     return internal::FormatBytesLiteral(static_cast<std::string>(value));
   }
 };
@@ -421,10 +417,6 @@ struct StringValueDebugStringVisitor final {
   }
 
   std::string operator()(const absl::Cord& value) const {
-    absl::string_view flat;
-    if (value.GetFlat(&flat)) {
-      return internal::FormatStringLiteral(flat);
-    }
     return internal::FormatStringLiteral(static_cast<std::string>(value));
   }
 };

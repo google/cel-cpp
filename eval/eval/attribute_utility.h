@@ -3,7 +3,6 @@
 
 #include <vector>
 
-#include "base/logging.h"
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"

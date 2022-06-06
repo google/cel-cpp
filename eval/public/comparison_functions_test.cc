@@ -660,7 +660,7 @@ TEST_P(ComparisonFunctionTest, SmokeTest) {
   if (absl::holds_alternative<bool>(test_case.result)) {
     EXPECT_THAT(result, test::IsCelBool(absl::get<bool>(test_case.result)));
   } else {
-    switch (std::get<ComparisonTestCase::ErrorKind>(test_case.result)) {
+    switch (absl::get<ComparisonTestCase::ErrorKind>(test_case.result)) {
       case ComparisonTestCase::ErrorKind::kMissingOverload:
         EXPECT_THAT(result, test::IsCelError(
                                 StatusIs(absl::StatusCode::kUnknown,
