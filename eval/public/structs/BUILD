@@ -192,7 +192,7 @@ cc_library(
     hdrs = ["legacy_type_provider.h"],
     deps = [
         ":legacy_type_adapter",
-        "//base:type",
+        "//base:type_provider",
         "@com_google_absl//absl/types:optional",
     ],
 )

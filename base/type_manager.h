@@ -20,11 +20,11 @@
 #include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
+#include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
-#include "base/type_registry.h"
 
 namespace cel {
 
