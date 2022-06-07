@@ -32,6 +32,15 @@ enum class UnknownProcessingOptions {
   kAttributeAndFunction
 };
 
+// Options for handling unset wrapper types on field access.
+enum class ProtoWrapperTypeOptions {
+  // Default: legacy behavior following proto semantics (unset behaves as though
+  // it is set to default value).
+  kUnsetProtoDefault,
+  // CEL spec behavior, unset wrapper is treated as a null value when accessed.
+  kUnsetNull,
+};
+
 // Interpreter options for controlling evaluation and builtin functions.
 struct InterpreterOptions {
   // Level of unknown support enabled.
@@ -124,13 +133,20 @@ struct InterpreterOptions {
   bool enable_null_to_message_coercion = true;
 
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
-  bool enable_heterogeneous_equality = false;
+  bool enable_heterogeneous_equality = true;
 
   // Enables unwrapping proto wrapper types to null if unset. e.g. if an
   // expression access a field of type google.protobuf.Int64Value that is unset,
   // that will result in a Null cel value, as opposed to returning the
   // cel representation of the proto defined default int64_t: 0.
   bool enable_empty_wrapper_null_unboxing = false;
+
+  // Enables expression rewrites to disambiguate namespace qualified identifiers
+  // from container access for variables and receiver-style calls for functions.
+  //
+  // Note: This makes an implicit copy of the input expression for lifetime
+  // safety.
+  bool enable_qualified_identifier_rewrites = false;
 };
 
 }  // namespace google::api::expr::runtime

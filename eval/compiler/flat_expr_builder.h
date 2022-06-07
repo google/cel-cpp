@@ -28,21 +28,7 @@ namespace google::api::expr::runtime {
 // Builds instances of CelExpressionFlatImpl.
 class FlatExprBuilder : public CelExpressionBuilder {
  public:
-  FlatExprBuilder()
-      : enable_unknowns_(false),
-        enable_unknown_function_results_(false),
-        enable_missing_attribute_errors_(false),
-        shortcircuiting_(true),
-        constant_folding_(false),
-        constant_arena_(nullptr),
-        enable_comprehension_(true),
-        comprehension_max_iterations_(0),
-        fail_on_warnings_(true),
-        enable_qualified_type_identifiers_(false),
-        enable_comprehension_list_append_(false),
-        enable_comprehension_vulnerability_check_(false),
-        enable_null_coercion_(true),
-        enable_wrapper_type_null_unboxing_(false) {}
+  FlatExprBuilder() : CelExpressionBuilder() {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
   void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
@@ -134,6 +120,24 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_wrapper_type_null_unboxing_ = enabled;
   }
 
+  // If enable_heterogeneous_equality is enabled, the evaluator will use
+  // hetergeneous equality semantics. This includes the == operator and numeric
+  // index lookups in containers.
+  void set_enable_heterogeneous_equality(bool enabled) {
+    enable_heterogeneous_equality_ = enabled;
+  }
+
+  // If enable_qualified_identifier_rewrites is true, the evaluator will attempt
+  // to disambiguate namespace qualified identifiers.
+  //
+  // For functions, this will attempt to determine whether a function call is a
+  // receiver call or a namespace qualified function.
+  void set_enable_qualified_identifier_rewrites(
+      bool enable_qualified_identifier_rewrites) {
+    enable_qualified_identifier_rewrites_ =
+        enable_qualified_identifier_rewrites;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -157,21 +161,23 @@ class FlatExprBuilder : public CelExpressionBuilder {
       std::vector<absl::Status>* warnings) const;
 
  private:
-  bool enable_unknowns_;
-  bool enable_unknown_function_results_;
-  bool enable_missing_attribute_errors_;
-  bool shortcircuiting_;
+  bool enable_unknowns_ = false;
+  bool enable_unknown_function_results_ = false;
+  bool enable_missing_attribute_errors_ = false;
+  bool shortcircuiting_ = true;
 
-  bool constant_folding_;
-  google::protobuf::Arena* constant_arena_;
-  bool enable_comprehension_;
-  int comprehension_max_iterations_;
-  bool fail_on_warnings_;
-  bool enable_qualified_type_identifiers_;
-  bool enable_comprehension_list_append_;
-  bool enable_comprehension_vulnerability_check_;
-  bool enable_null_coercion_;
-  bool enable_wrapper_type_null_unboxing_;
+  bool constant_folding_ = false;
+  google::protobuf::Arena* constant_arena_ = nullptr;
+  bool enable_comprehension_ = true;
+  int comprehension_max_iterations_ = 0;
+  bool fail_on_warnings_ = true;
+  bool enable_qualified_type_identifiers_ = false;
+  bool enable_comprehension_list_append_ = false;
+  bool enable_comprehension_vulnerability_check_ = false;
+  bool enable_null_coercion_ = true;
+  bool enable_wrapper_type_null_unboxing_ = false;
+  bool enable_heterogeneous_equality_ = false;
+  bool enable_qualified_identifier_rewrites_ = false;
 };
 
 }  // namespace google::api::expr::runtime

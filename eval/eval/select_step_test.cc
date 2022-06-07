@@ -5,13 +5,20 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "eval/eval/ident_step.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
+#include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
@@ -23,8 +30,10 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
+using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
+using testing::Return;
 using cel::internal::StatusIs;
 
 using testutil::EqualsProto;
@@ -32,6 +41,30 @@ using testutil::EqualsProto;
 struct RunExpressionOptions {
   bool enable_unknowns = false;
   bool enable_wrapper_type_null_unboxing = false;
+};
+
+// Simple implementation LegacyTypeAccessApis / LegacyTypeInfoApis that allows
+// mocking for getters/setters.
+class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
+ public:
+  MOCK_METHOD(absl::StatusOr<bool>, HasField,
+              (absl::string_view field_name,
+               const CelValue::MessageWrapper& value),
+              (const override));
+  MOCK_METHOD(absl::StatusOr<CelValue>, GetField,
+              (absl::string_view field_name,
+               const CelValue::MessageWrapper& instance,
+               ProtoWrapperTypeOptions unboxing_option,
+               cel::MemoryManager& memory_manager),
+              (const override));
+  MOCK_METHOD((const std::string&), GetTypename,
+              (const CelValue::MessageWrapper& instance), (const override));
+  MOCK_METHOD(std::string, DebugString,
+              (const CelValue::MessageWrapper& instance), (const override));
+  const LegacyTypeAccessApis* GetAccessApis(
+      const CelValue::MessageWrapper& instance) const override {
+    return this;
+  }
 };
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
@@ -58,7 +91,8 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
+                                 &TestTypeRegistry(), 0, {},
                                  options.enable_unknowns);
   Activation activation;
   activation.InsertValue("target", target);
@@ -204,7 +238,8 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-  CelExpressionFlatImpl cel_expr(&select_expr, std::move(path), 0, {}, false);
+  CelExpressionFlatImpl cel_expr(&select_expr, std::move(path),
+                                 &TestTypeRegistry(), 0, {}, false);
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -414,6 +449,98 @@ TEST_P(SelectStepTest, SimpleMessageTest) {
   EXPECT_THAT(*message2, EqualsProto(*result.MessageOrDie()));
 }
 
+TEST_P(SelectStepTest, NullMessageAccessor) {
+  TestMessage message;
+  TestMessage* message2 = message.mutable_message_value();
+  message2->set_int32_value(1);
+  message2->set_string_value("test");
+  google::protobuf::Arena arena;
+  RunExpressionOptions options;
+  options.enable_unknowns = GetParam();
+  CelValue value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(&message, TrivialTypeInfo::GetInstance()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(value, "message_value",
+                                     /*test=*/false, &arena,
+                                     /*unknown_path=*/"", options));
+
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(), StatusIs(absl::StatusCode::kNotFound));
+
+  // same for has
+  ASSERT_OK_AND_ASSIGN(result, RunExpression(value, "message_value",
+                                             /*test=*/true, &arena,
+                                             /*unknown_path=*/"", options));
+
+  ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(), StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST_P(SelectStepTest, CustomAccessor) {
+  TestMessage message;
+  TestMessage* message2 = message.mutable_message_value();
+  message2->set_int32_value(1);
+  message2->set_string_value("test");
+  google::protobuf::Arena arena;
+  RunExpressionOptions options;
+  options.enable_unknowns = GetParam();
+  testing::NiceMock<MockAccessor> accessor;
+  CelValue value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(&message, &accessor));
+
+  ON_CALL(accessor, GetField(_, _, _, _))
+      .WillByDefault(Return(CelValue::CreateInt64(2)));
+  ON_CALL(accessor, HasField(_, _)).WillByDefault(Return(false));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(value, "message_value",
+                                     /*test=*/false, &arena,
+                                     /*unknown_path=*/"", options));
+
+  EXPECT_THAT(result, test::IsCelInt64(2));
+
+  // testonly select (has)
+  ASSERT_OK_AND_ASSIGN(result, RunExpression(value, "message_value",
+                                             /*test=*/true, &arena,
+                                             /*unknown_path=*/"", options));
+
+  EXPECT_THAT(result, test::IsCelBool(false));
+}
+
+TEST_P(SelectStepTest, CustomAccessorErrorHandling) {
+  TestMessage message;
+  TestMessage* message2 = message.mutable_message_value();
+  message2->set_int32_value(1);
+  message2->set_string_value("test");
+  google::protobuf::Arena arena;
+  RunExpressionOptions options;
+  options.enable_unknowns = GetParam();
+  testing::NiceMock<MockAccessor> accessor;
+  CelValue value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(&message, &accessor));
+
+  ON_CALL(accessor, GetField(_, _, _, _))
+      .WillByDefault(Return(absl::InternalError("bad data")));
+  ON_CALL(accessor, HasField(_, _))
+      .WillByDefault(Return(absl::NotFoundError("not found")));
+
+  // For get field, implementation may return an error-type cel value or a
+  // status (e.g. broken assumption using a core type).
+  ASSERT_THAT(RunExpression(value, "message_value",
+                            /*test=*/false, &arena,
+                            /*unknown_path=*/"", options),
+              StatusIs(absl::StatusCode::kInternal));
+
+  // testonly select (has) errors are coerced to CelError.
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(value, "message_value",
+                                     /*test=*/true, &arena,
+                                     /*unknown_path=*/"", options));
+
+  EXPECT_THAT(result, test::IsCelError(StatusIs(absl::StatusCode::kNotFound)));
+}
+
 TEST_P(SelectStepTest, SimpleEnumTest) {
   TestMessage message;
   message.set_enum_value(TestMessage::TEST_ENUM_1);
@@ -508,8 +635,8 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
 
   google::protobuf::Arena arena;
   bool enable_unknowns = GetParam();
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
-                                 enable_unknowns);
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
+                                 &TestTypeRegistry(), 0, {}, enable_unknowns);
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -542,7 +669,8 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {},
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
+                                 &TestTypeRegistry(), 0, {},
                                  /*enable_unknowns=*/false);
   Activation activation;
   activation.InsertValue("message",
@@ -583,8 +711,8 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {}, false,
-                                 false,
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
+                                 &TestTypeRegistry(), 0, {}, false, false,
                                  /*enable_missing_attribute_errors=*/true);
   Activation activation;
   activation.InsertValue("message",
@@ -631,7 +759,8 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   path.push_back(*std::move(step0_status));
   path.push_back(*std::move(step1_status));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path), 0, {}, true);
+  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
+                                 &TestTypeRegistry(), 0, {}, true);
 
   {
     std::vector<CelAttributePattern> unknown_patterns;

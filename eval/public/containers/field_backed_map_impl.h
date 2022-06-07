@@ -5,60 +5,31 @@
 #include "google/protobuf/message.h"
 #include "absl/status/statusor.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/internal_field_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 // CelMap implementation that uses "map" message field
 // as backing storage.
-class FieldBackedMapImpl : public CelMap {
+//
+// Trivial subclass of internal implementation to avoid API changes for clients
+// that use this directly.
+class FieldBackedMapImpl : public internal::FieldBackedMapImpl {
  public:
   // message contains the "map" field. Object stores the pointer
   // to the message, thus it is expected that message outlives the
   // object.
   // descriptor FieldDescriptor for the field
+  // arena is used for incidental allocations from unpacking the field.
   FieldBackedMapImpl(const google::protobuf::Message* message,
                      const google::protobuf::FieldDescriptor* descriptor,
-                     google::protobuf::Arena* arena);
-
-  // Map size.
-  int size() const override;
-
-  // Map element access operator.
-  absl::optional<CelValue> operator[](CelValue key) const override;
-
-  // Presence test function.
-  absl::StatusOr<bool> Has(const CelValue& key) const override;
-
-  const CelList* ListKeys() const override;
-
- protected:
-  // These methods are exposed as protected methods for testing purposes since
-  // whether one or the other is used depends on build time flags, but each
-  // should be tested accordingly.
-
-  absl::StatusOr<bool> LookupMapValue(
-      const CelValue& key, google::protobuf::MapValueConstRef* value_ref) const;
-
-  absl::StatusOr<bool> LegacyHasMapValue(const CelValue& key) const;
-
-  absl::optional<CelValue> LegacyLookupMapValue(const CelValue& key) const;
-
- private:
-  const google::protobuf::Message* message_;
-  const google::protobuf::FieldDescriptor* descriptor_;
-  const google::protobuf::FieldDescriptor* key_desc_;
-  const google::protobuf::FieldDescriptor* value_desc_;
-  const google::protobuf::Reflection* reflection_;
-  google::protobuf::Arena* arena_;
-  std::unique_ptr<CelList> key_list_;
+                     google::protobuf::Arena* arena)
+      : internal::FieldBackedMapImpl(
+            message, descriptor, &CelProtoWrapper::InternalWrapMessage, arena) {
+  }
 };
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CONTAINERS_FIELD_BACKED_MAP_IMPL_H_

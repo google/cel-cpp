@@ -1,14 +1,15 @@
 #include "eval/public/testing/matchers.h"
 
+#include <utility>
+
+#include "google/protobuf/message.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/set_util.h"
+#include "internal/casts.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime {
 
 void PrintTo(const CelValue& value, std::ostream* os) {
   *os << value.DebugString();
@@ -17,6 +18,7 @@ void PrintTo(const CelValue& value, std::ostream* os) {
 namespace test {
 namespace {
 
+using testing::_;
 using testing::MatcherInterface;
 using testing::MatchResultListener;
 
@@ -42,7 +44,7 @@ template <typename UnderlyingType>
 class CelValueMatcherImpl : public testing::MatcherInterface<const CelValue&> {
  public:
   explicit CelValueMatcherImpl(testing::Matcher<UnderlyingType> m)
-      : underlying_type_matcher_(m) {}
+      : underlying_type_matcher_(std::move(m)) {}
   bool MatchAndExplain(const CelValue& v,
                        testing::MatchResultListener* listener) const override {
     UnderlyingType arg;
@@ -60,26 +62,56 @@ class CelValueMatcherImpl : public testing::MatcherInterface<const CelValue&> {
   const testing::Matcher<UnderlyingType> underlying_type_matcher_;
 };
 
+// Template specialization for google::protobuf::Message.
+template <>
+class CelValueMatcherImpl<const google::protobuf::Message*>
+    : public testing::MatcherInterface<const CelValue&> {
+ public:
+  explicit CelValueMatcherImpl(testing::Matcher<const google::protobuf::Message*> m)
+      : underlying_type_matcher_(std::move(m)) {}
+  bool MatchAndExplain(const CelValue& v,
+                       testing::MatchResultListener* listener) const override {
+    CelValue::MessageWrapper arg;
+    return v.GetValue(&arg) && arg.HasFullProto() &&
+           underlying_type_matcher_.Matches(
+               cel::internal::down_cast<const google::protobuf::Message*>(
+                   arg.message_ptr()));
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    *os << absl::StrCat("type is ",
+                        CelValue::TypeName(CelValue::Type::kMessage), " and ");
+    underlying_type_matcher_.DescribeTo(os);
+  }
+
+ private:
+  const testing::Matcher<const google::protobuf::Message*> underlying_type_matcher_;
+};
+
 }  // namespace
 
 CelValueMatcher EqualsCelValue(const CelValue& v) {
   return CelValueMatcher(new CelValueEqualImpl(v));
 }
 
+CelValueMatcher IsCelNull() {
+  return CelValueMatcher(new CelValueMatcherImpl<CelValue::NullType>(_));
+}
+
 CelValueMatcher IsCelBool(testing::Matcher<bool> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<bool>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<bool>(std::move(m)));
 }
 
 CelValueMatcher IsCelInt64(testing::Matcher<int64_t> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<int64_t>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<int64_t>(std::move(m)));
 }
 
 CelValueMatcher IsCelUint64(testing::Matcher<uint64_t> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<uint64_t>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<uint64_t>(std::move(m)));
 }
 
 CelValueMatcher IsCelDouble(testing::Matcher<double> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<double>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<double>(std::move(m)));
 }
 
 CelValueMatcher IsCelString(testing::Matcher<absl::string_view> m) {
@@ -93,15 +125,16 @@ CelValueMatcher IsCelBytes(testing::Matcher<absl::string_view> m) {
 }
 
 CelValueMatcher IsCelMessage(testing::Matcher<const google::protobuf::Message*> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<const google::protobuf::Message*>(m));
+  return CelValueMatcher(
+      new CelValueMatcherImpl<const google::protobuf::Message*>(std::move(m)));
 }
 
 CelValueMatcher IsCelDuration(testing::Matcher<absl::Duration> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<absl::Duration>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<absl::Duration>(std::move(m)));
 }
 
 CelValueMatcher IsCelTimestamp(testing::Matcher<absl::Time> m) {
-  return CelValueMatcher(new CelValueMatcherImpl<absl::Time>(m));
+  return CelValueMatcher(new CelValueMatcherImpl<absl::Time>(std::move(m)));
 }
 
 CelValueMatcher IsCelError(testing::Matcher<absl::Status> m) {
@@ -111,7 +144,4 @@ CelValueMatcher IsCelError(testing::Matcher<absl::Status> m) {
 }
 
 }  // namespace test
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime

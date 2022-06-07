@@ -6,6 +6,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "gmock/gmock.h"
+#include "absl/strings/string_view.h"
 
 namespace google {
 namespace api {
@@ -32,7 +33,7 @@ T CreateProto(const std::string& textual_proto);
  */
 class ProtoStringMatcher {
  public:
-  explicit inline ProtoStringMatcher(const std::string& expected)
+  explicit inline ProtoStringMatcher(absl::string_view expected)
       : expected_(expected) {}
 
   explicit inline ProtoStringMatcher(const google::protobuf::Message& expected)
@@ -57,7 +58,7 @@ class ProtoStringMatcher {
 
 // Polymorphic matcher to compare any two protos.
 inline ::testing::PolymorphicMatcher<ProtoStringMatcher> EqualsProto(
-    const std::string& x) {
+    absl::string_view x) {
   return ::testing::MakePolymorphicMatcher(ProtoStringMatcher(x));
 }
 

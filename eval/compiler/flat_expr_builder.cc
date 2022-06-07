@@ -19,11 +19,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <stack>
 #include <string>
 #include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
-#include "stack"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -560,16 +560,18 @@ class FlatExprVisitor : public AstVisitor {
     // If the message name is not empty, then the message name must be resolved
     // within the container, and if a descriptor is found, then a proto message
     // creation step will be created.
-    auto message_desc = resolver_.FindDescriptor(message_name, expr->id());
-    if (ValidateOrError(message_desc != nullptr,
-                        "Invalid message creation: missing descriptor for '",
+    auto type_adapter = resolver_.FindTypeAdapter(message_name, expr->id());
+    if (ValidateOrError(type_adapter.has_value() &&
+                            type_adapter->mutation_apis() != nullptr,
+                        "Invalid struct creation: missing type info for '",
                         message_name, "'")) {
       for (const auto& entry : struct_expr->entries()) {
         ValidateOrError(entry.has_field_key(),
-                        "Message entry missing field name");
-        ValidateOrError(entry.has_value(), "Message entry missing value");
+                        "Struct entry missing field name");
+        ValidateOrError(entry.has_value(), "Struct entry missing value");
       }
-      AddStep(CreateCreateStructStep(struct_expr, message_desc, expr->id()));
+      AddStep(CreateCreateStructStep(struct_expr, type_adapter->mutation_apis(),
+                                     expr->id()));
     }
   }
 
@@ -1014,19 +1016,23 @@ FlatExprBuilder::CreateExpressionImpl(
 
   const Expr* effective_expr = expr;
   // transformed expression preserving expression IDs
+  bool rewrites_enabled = enable_qualified_identifier_rewrites_ ||
+                          (reference_map != nullptr && !reference_map->empty());
   std::unique_ptr<Expr> rewrite_buffer = nullptr;
+
   // TODO(issues/98): A type checker may perform these rewrites, but there
   // currently isn't a signal to expose that in an expression. If that becomes
   // available, we can skip the reference resolve step here if it's already
   // done.
-  if (reference_map != nullptr && !reference_map->empty()) {
-    absl::StatusOr<absl::optional<Expr>> rewritten = ResolveReferences(
-        *effective_expr, *reference_map, resolver, &warnings_builder);
+  if (rewrites_enabled) {
+    rewrite_buffer = std::make_unique<Expr>(*expr);
+    absl::StatusOr<bool> rewritten =
+        ResolveReferences(reference_map, resolver, source_info,
+                          warnings_builder, rewrite_buffer.get());
     if (!rewritten.ok()) {
       return rewritten.status();
     }
-    if (rewritten->has_value()) {
-      rewrite_buffer = std::make_unique<Expr>((*std::move(rewritten)).value());
+    if (*rewritten) {
       effective_expr = rewrite_buffer.get();
     }
     // TODO(issues/99): we could setup a check step here that confirms all of
@@ -1056,10 +1062,11 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::unique_ptr<CelExpression> expression_impl =
       absl::make_unique<CelExpressionFlatImpl>(
-          expr, std::move(execution_path), comprehension_max_iterations_,
-          std::move(iter_variable_names), enable_unknowns_,
-          enable_unknown_function_results_, enable_missing_attribute_errors_,
-          enable_null_coercion_, std::move(rewrite_buffer));
+          expr, std::move(execution_path), GetTypeRegistry(),
+          comprehension_max_iterations_, std::move(iter_variable_names),
+          enable_unknowns_, enable_unknown_function_results_,
+          enable_missing_attribute_errors_, enable_null_coercion_,
+          enable_heterogeneous_equality_, std::move(rewrite_buffer));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

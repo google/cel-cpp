@@ -17,7 +17,16 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_VALUE_INTERNAL_H_
 
+#include <cstdint>
+#include <utility>
+
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
+#include "absl/base/macros.h"
+#include "absl/numeric/bits.h"
 #include "absl/types/variant.h"
+#include "eval/public/message_wrapper.h"
+#include "internal/casts.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -73,6 +82,25 @@ class ValueHolder {
 
  private:
   absl::variant<Args...> value_;
+};
+
+// Adapter for visitor clients that depend on google::protobuf::Message as a variant type.
+template <typename Op, typename T>
+struct MessageVisitAdapter {
+  explicit MessageVisitAdapter(Op&& op) : op(std::forward<Op>(op)) {}
+
+  template <typename ArgT>
+  T operator()(const ArgT& arg) {
+    return op(arg);
+  }
+
+  T operator()(const MessageWrapper& wrapper) {
+    ABSL_ASSERT(wrapper.HasFullProto());
+    return op(cel::internal::down_cast<const google::protobuf::Message*>(
+        wrapper.message_ptr()));
+  }
+
+  Op op;
 };
 
 }  // namespace google::api::expr::runtime::internal

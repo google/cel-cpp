@@ -4,8 +4,10 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
@@ -28,7 +30,8 @@ absl::StatusOr<CelValue> RunShadowableExpression(const std::string& identifier,
   path.push_back(std::move(step));
 
   google::api::expr::v1alpha1::Expr dummy_expr;
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), 0, {});
+  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
+                             0, {});
   return impl.Evaluate(activation, arena);
 }
 

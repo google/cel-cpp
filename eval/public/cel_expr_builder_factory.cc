@@ -16,48 +16,43 @@
 
 #include "eval/public/cel_expr_builder_factory.h"
 
+#include <memory>
+#include <string>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/portable_cel_expr_builder_factory.h"
+#include "eval/public/structs/proto_message_type_adapter.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
+#include "internal/proto_util.h"
 
 namespace google::api::expr::runtime {
 
-std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
-    const InterpreterOptions& options) {
-  auto builder = absl::make_unique<FlatExprBuilder>();
-  builder->set_shortcircuiting(options.short_circuiting);
-  builder->set_constant_folding(options.constant_folding,
-                                options.constant_arena);
-  builder->set_enable_comprehension(options.enable_comprehension);
-  builder->set_enable_comprehension_list_append(
-      options.enable_comprehension_list_append);
-  builder->set_comprehension_max_iterations(
-      options.comprehension_max_iterations);
-  builder->set_fail_on_warnings(options.fail_on_warnings);
-  builder->set_enable_qualified_type_identifiers(
-      options.enable_qualified_type_identifiers);
-  builder->set_enable_comprehension_vulnerability_check(
-      options.enable_comprehension_vulnerability_check);
-  builder->set_enable_null_coercion(options.enable_null_to_message_coercion);
-  builder->set_enable_wrapper_type_null_unboxing(
-      options.enable_empty_wrapper_null_unboxing);
+namespace {
+using ::google::api::expr::internal::ValidateStandardMessageTypes;
+}  // namespace
 
-  switch (options.unknown_processing) {
-    case UnknownProcessingOptions::kAttributeAndFunction:
-      builder->set_enable_unknown_function_results(true);
-      builder->set_enable_unknowns(true);
-      break;
-    case UnknownProcessingOptions::kAttributeOnly:
-      builder->set_enable_unknowns(true);
-      break;
-    case UnknownProcessingOptions::kDisabled:
-      break;
+std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
+    const google::protobuf::DescriptorPool* descriptor_pool,
+    google::protobuf::MessageFactory* message_factory,
+    const InterpreterOptions& options) {
+  if (descriptor_pool == nullptr) {
+    GOOGLE_LOG(ERROR) << "Cannot pass nullptr as descriptor pool to "
+                  "CreateCelExpressionBuilder";
+    return nullptr;
+  }
+  if (auto s = ValidateStandardMessageTypes(*descriptor_pool); !s.ok()) {
+    GOOGLE_LOG(WARNING) << "Failed to validate standard message types: "
+                 << s.ToString();  // NOLINT: OSS compatibility
+    return nullptr;
   }
 
-  builder->set_enable_missing_attribute_errors(
-      options.enable_missing_attribute_errors);
-
+  auto builder =
+      CreatePortableExprBuilder(std::make_unique<ProtobufDescriptorProvider>(
+                                    descriptor_pool, message_factory),
+                                options);
   return builder;
 }
 

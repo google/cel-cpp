@@ -6,7 +6,7 @@
 #include "google/protobuf/util/time_util.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime {
 
@@ -73,7 +73,7 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
     case CelValue::Type::kDuration: {
       Duration duration;
       auto status =
-          expr::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
+          cel::internal::EncodeDuration(in_value.DurationOrDie(), &duration);
       if (!status.ok()) {
         return status;
       }
@@ -83,7 +83,7 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
     case CelValue::Type::kTimestamp: {
       Timestamp timestamp;
       auto status =
-          expr::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
+          cel::internal::EncodeTime(in_value.TimestampOrDie(), &timestamp);
       if (!status.ok()) {
         return status;
       }

@@ -1,4 +1,5 @@
 build --cxxopt=-std=c++17
+build --cxxopt=-fsized-deallocation
 
 # Enable matchers in googletest
 build --define absl=1

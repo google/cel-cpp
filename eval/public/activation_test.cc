@@ -7,6 +7,7 @@
 #include "eval/eval/ident_step.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
@@ -18,7 +19,8 @@ namespace runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
+using ::cel::extensions::ProtoMemoryManager;
+using ::google::api::expr::v1alpha1::Expr;
 using ::google::protobuf::Arena;
 using testing::ElementsAre;
 using testing::Eq;
@@ -204,6 +206,7 @@ TEST(ActivationTest, CheckValueProducerClear) {
 TEST(ActivationTest, ErrorPathTest) {
   Activation activation;
   Arena arena;
+  ProtoMemoryManager manager(&arena);
 
   Expr expr;
   auto* select_expr = expr.mutable_select_expr();
@@ -216,9 +219,9 @@ TEST(ActivationTest, ErrorPathTest) {
       "destination",
       {CelAttributeQualifierPattern::Create(CelValue::CreateStringView("ip"))});
 
-  AttributeTrail trail(*ident_expr, &arena);
+  AttributeTrail trail(*ident_expr, manager);
   trail = trail.Step(
-      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), &arena);
+      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), manager);
 
   ASSERT_EQ(destination_ip_pattern.IsMatch(*trail.attribute()),
             CelAttributePattern::MatchType::FULL);

@@ -4,15 +4,20 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/ident_step.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/proto_message_type_adapter.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -26,7 +31,6 @@ using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
 
 using testing::Eq;
-using testing::HasSubstr;
 using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
@@ -44,6 +48,10 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
                                        bool enable_unknowns) {
   ExecutionPath path;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
 
   Expr expr0;
   Expr expr1;
@@ -58,18 +66,19 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   auto entry = create_struct->add_entries();
   entry->set_field_key(field.data());
 
-  auto desc = type_registry.FindDescriptor(create_struct->message_name());
-  if (desc == nullptr) {
+  auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
+  if (!adapter.has_value() || adapter->mutation_apis() == nullptr) {
     return absl::Status(absl::StatusCode::kFailedPrecondition,
                         "missing proto message type");
   }
-  CEL_ASSIGN_OR_RETURN(auto step1,
-                       CreateCreateStructStep(create_struct, desc, expr1.id()));
+  CEL_ASSIGN_OR_RETURN(
+      auto step1, CreateCreateStructStep(create_struct,
+                                         adapter->mutation_apis(), expr1.id()));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), &type_registry, 0, {},
                                  enable_unknowns);
   Activation activation;
   activation.InsertValue("message", value);
@@ -157,8 +166,8 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
                        CreateCreateStructStep(create_struct, expr1.id()));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {},
-                                 enable_unknowns);
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), &TestTypeRegistry(),
+                                 0, {}, enable_unknowns);
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -167,19 +176,24 @@ class CreateCreateStructStepTest : public testing::TestWithParam<bool> {};
 TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   ExecutionPath path;
   CelTypeRegistry type_registry;
-
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Expr expr1;
 
   auto create_struct = expr1.mutable_struct_expr();
   create_struct->set_message_name("google.api.expr.runtime.TestMessage");
-  auto desc = type_registry.FindDescriptor(create_struct->message_name());
-  ASSERT_TRUE(desc != nullptr);
+  auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
+  ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
-  ASSERT_OK_AND_ASSIGN(auto step,
-                       CreateCreateStructStep(create_struct, desc, expr1.id()));
+  ASSERT_OK_AND_ASSIGN(
+      auto step, CreateCreateStructStep(create_struct, adapter->mutation_apis(),
+                                        expr1.id()));
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), 0, {}, GetParam());
+  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), &type_registry, 0, {},
+                                 GetParam());
   Activation activation;
 
   google::protobuf::Arena arena;
@@ -195,6 +209,10 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
 TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
   ExecutionPath path;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Expr expr1;
 
   auto create_struct = expr1.mutable_struct_expr();
@@ -203,10 +221,12 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
   entry->set_field_key("bad_field");
   auto value = entry->mutable_value();
   value->mutable_const_expr()->set_bool_value(true);
-  auto desc = type_registry.FindDescriptor(create_struct->message_name());
-  ASSERT_TRUE(desc != nullptr);
+  auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
+  ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
-  EXPECT_THAT(CreateCreateStructStep(create_struct, desc, expr1.id()).status(),
+  EXPECT_THAT(CreateCreateStructStep(create_struct, adapter->mutation_apis(),
+                                     expr1.id())
+                  .status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        testing::HasSubstr("'bad_field'")));
 }

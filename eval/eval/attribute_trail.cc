@@ -3,20 +3,30 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
+AttributeTrail::AttributeTrail(google::api::expr::v1alpha1::Expr root,
+                               cel::MemoryManager& manager) {
+  attribute_ = manager
+                   .New<CelAttribute>(std::move(root),
+                                      std::vector<CelAttributeQualifier>())
+                   .release();
+}
+
 // Creates AttributeTrail with attribute path incremented by "qualifier".
 AttributeTrail AttributeTrail::Step(CelAttributeQualifier qualifier,
-                                    google::protobuf::Arena* arena) const {
+                                    cel::MemoryManager& manager) const {
   // Cannot continue void trail
   if (empty()) return AttributeTrail();
 
   std::vector<CelAttributeQualifier> qualifiers = attribute_->qualifier_path();
   qualifiers.push_back(qualifier);
-  return AttributeTrail(google::protobuf::Arena::Create<CelAttribute>(
-      arena, attribute_->variable(), std::move(qualifiers)));
+  auto attribute =
+      manager.New<CelAttribute>(attribute_->variable(), std::move(qualifiers));
+  return AttributeTrail(attribute.release());
 }
 
 }  // namespace google::api::expr::runtime

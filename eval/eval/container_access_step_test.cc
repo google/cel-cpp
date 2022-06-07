@@ -1,29 +1,43 @@
 #include "eval/eval/container_access_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "eval/eval/ident_step.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
+#include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_expr_builder_factory.h"
+#include "eval/public/cel_expression.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/testing/matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "parser/parser.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Struct;
+using testing::_;
+using testing::AllOf;
 using testing::HasSubstr;
 using cel::internal::StatusIs;
 
@@ -54,7 +68,8 @@ CelValue EvaluateAttributeHelper(
       std::move(CreateIdentStep(&key_expr->ident_expr(), 2).value()));
   path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
 
-  CelExpressionFlatImpl cel_expr(&expr, std::move(path), 0, {}, enable_unknown);
+  CelExpressionFlatImpl cel_expr(&expr, std::move(path), &TestTypeRegistry(), 0,
+                                 {}, enable_unknown);
   Activation activation;
 
   activation.InsertValue("container", container);
@@ -188,6 +203,10 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
       CelValue::CreateString(&kKey1), std::get<0>(param), std::get<1>(param));
 
   ASSERT_TRUE(result.IsError());
+  EXPECT_THAT(*result.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kNotFound,
+                       AllOf(HasSubstr("Key not found in map : "),
+                             HasSubstr("testkey1"))));
 }
 
 TEST_F(ContainerAccessStepTest, TestInvalidReceiverCreateContainerAccessStep) {
@@ -314,7 +333,266 @@ TEST_F(ContainerAccessStepTest, TestInvalidContainerType) {
 
 INSTANTIATE_TEST_SUITE_P(CombinedContainerTest,
                          ContainerAccessStepUniformityTest,
-                         testing::Combine(testing::Bool(), testing::Bool()));
+                         testing::Combine(/*receiver_style*/ testing::Bool(),
+                                          /*unknown_enabled*/ testing::Bool()));
+
+class ContainerAccessHeterogeneousLookupsTest : public testing::Test {
+ public:
+  ContainerAccessHeterogeneousLookupsTest() {
+    options_.enable_heterogeneous_equality = true;
+    builder_ = CreateCelExpressionBuilder(options_);
+  }
+
+ protected:
+  InterpreterOptions options_;
+  std::unique_ptr<CelExpressionBuilder> builder_;
+  google::protobuf::Arena arena_;
+  Activation activation_;
+};
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, DoubleMapKeyInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2}[1.0]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelInt64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, DoubleMapKeyNotAnInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2}[1.1]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, DoubleMapKeyUint) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u}[1.0]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelUint64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, DoubleListIndex) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[1, 2, 3][1.0]"));
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelInt64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, DoubleListIndexNotAnInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[1, 2, 3][1.1]"));
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+// treat uint as uint before trying coercion to signed int.
+TEST_F(ContainerAccessHeterogeneousLookupsTest, UintKeyAsUint) {
+  // TODO(issues/5): Map creation should error here instead of permitting
+  // mixed key types with equivalent values.
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u, 1: 2}[1u]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelUint64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, UintKeyAsInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2}[1u]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelInt64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, IntKeyAsUint) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u}[1]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelUint64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, UintListIndex) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[1, 2, 3][2u]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelInt64(3));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsTest, StringKeyUnaffected) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2, '1': 3}['1']"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelInt64(3));
+}
+
+class ContainerAccessHeterogeneousLookupsDisabledTest : public testing::Test {
+ public:
+  ContainerAccessHeterogeneousLookupsDisabledTest() {
+    options_.enable_heterogeneous_equality = false;
+    builder_ = CreateCelExpressionBuilder(options_);
+  }
+
+ protected:
+  InterpreterOptions options_;
+  std::unique_ptr<CelExpressionBuilder> builder_;
+  google::protobuf::Arena arena_;
+  Activation activation_;
+};
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, DoubleMapKeyInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2}[1.0]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, DoubleMapKeyNotAnInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2}[1.1]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, DoubleMapKeyUint) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u}[1.0]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, DoubleListIndex) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[1, 2, 3][1.0]"));
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest,
+       DoubleListIndexNotAnInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[1, 2, 3][1.1]"));
+
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, UintKeyAsUint) {
+  // TODO(issues/5): Map creation should error here instead of permitting
+  // mixed key types with equivalent values.
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u, 1: 2}[1u]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelUint64(2));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, UintKeyAsInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2}[1u]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, IntKeyAsUint) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u}[1]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, UintListIndex) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("[1, 2, 3][2u]"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelError(_));
+}
+
+TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, StringKeyUnaffected) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1: 2, '1': 3}['1']"));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       cel_expr->Evaluate(activation_, &arena_));
+
+  EXPECT_THAT(result, test::IsCelInt64(3));
+}
 
 }  // namespace
 

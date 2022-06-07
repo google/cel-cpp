@@ -31,16 +31,6 @@ class BaseActivation {
   virtual absl::optional<CelValue> FindValue(absl::string_view,
                                              google::protobuf::Arena*) const = 0;
 
-  ABSL_DEPRECATED(
-      "No longer supported in the activation. See "
-      "google::api::expr::runtime::AttributeUtility.")
-  virtual bool IsPathUnknown(absl::string_view) const { return false; }
-
-  ABSL_DEPRECATED("Use missing_attribute_patterns() instead.")
-  virtual const google::protobuf::FieldMask& unknown_paths() const {
-    return google::protobuf::FieldMask::default_instance();
-  }
-
   // Return the collection of attribute patterns that determine missing
   // attributes.
   virtual const std::vector<CelAttributePattern>& missing_attribute_patterns()

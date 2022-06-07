@@ -14,15 +14,19 @@
 
 namespace google::api::expr::runtime {
 
-// A transformation over input expression that produces a new expression with
-// subexpressions replaced by appropriate expressions referring to the
-// fully-qualified entity name or constant expressions in case of enums.
-// Returns modified expr if updates found.
-// Otherwise, returns nullopt.
-absl::StatusOr<absl::optional<google::api::expr::v1alpha1::Expr>> ResolveReferences(
-    const google::api::expr::v1alpha1::Expr& expr,
-    const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>& reference_map,
-    const Resolver& resolver, BuilderWarnings* warnings);
+// Resolves possibly qualified names in the provided expression, updating
+// subexpressions with to use the fully qualified name, or a constant
+// expressions in the case of enums.
+//
+// Returns true if updates were applied.
+//
+// Will warn or return a non-ok status if references can't be resolved (no
+// function overload could match a call) or are inconsistnet (reference map
+// points to an expr node that isn't a reference).
+absl::StatusOr<bool> ResolveReferences(
+    const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
+    const Resolver& resolver, const google::api::expr::v1alpha1::SourceInfo* source_info,
+    BuilderWarnings& warnings, google::api::expr::v1alpha1::Expr* expr);
 
 }  // namespace google::api::expr::runtime
 

@@ -3,8 +3,9 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "eval/public/cel_value.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime {
 
@@ -16,14 +17,18 @@ class CelProtoWrapper {
   static CelValue CreateMessage(const google::protobuf::Message* value,
                                 google::protobuf::Arena* arena);
 
+  // Internal utility for creating a CelValue wrapping a user defined type.
+  // Assumes that the message has been properly unpacked.
+  static CelValue InternalWrapMessage(const google::protobuf::Message* message);
+
   // CreateDuration creates CelValue from a non-null protobuf duration value.
   static CelValue CreateDuration(const google::protobuf::Duration* value) {
-    return CelValue(expr::internal::DecodeDuration(*value));
+    return CelValue(cel::internal::DecodeDuration(*value));
   }
 
   // CreateTimestamp creates CelValue from a non-null protobuf timestamp value.
   static CelValue CreateTimestamp(const google::protobuf::Timestamp* value) {
-    return CelValue(expr::internal::DecodeTime(*value));
+    return CelValue(cel::internal::DecodeTime(*value));
   }
 
   // MaybeWrapValue attempts to wrap the input value in a proto message with
@@ -35,9 +40,9 @@ class CelProtoWrapper {
   // message to native CelValue representation during a protobuf field read.
   // Just as CreateMessage should only be used when reading protobuf values,
   // MaybeWrapValue should only be used when assigning protobuf fields.
-  static absl::optional<CelValue> MaybeWrapValue(absl::string_view type_name,
-                                                 const CelValue& value,
-                                                 google::protobuf::Arena* arena);
+  static absl::optional<CelValue> MaybeWrapValue(
+      const google::protobuf::Descriptor* descriptor, const CelValue& value,
+      google::protobuf::Arena* arena);
 };
 
 }  // namespace google::api::expr::runtime

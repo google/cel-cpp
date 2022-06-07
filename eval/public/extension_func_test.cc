@@ -79,7 +79,7 @@ class ExtensionTest : public ::testing::Test {
   }
 
   // Helper method to test timestamp() function
-  void PerformTimestampConversion(Arena* arena, std::string ts_str,
+  void PerformTimestampConversion(Arena* arena, const std::string& ts_str,
                                   CelValue* result) {
     auto functions =
         registry_.FindOverloads("timestamp", false, {CelValue::Type::kString});
@@ -240,7 +240,7 @@ class ExtensionTest : public ::testing::Test {
   }
 
   // Helper method to test duration() function
-  void PerformDurationConversion(Arena* arena, std::string ts_str,
+  void PerformDurationConversion(Arena* arena, const std::string& ts_str,
                                  CelValue* result) {
     auto functions =
         registry_.FindOverloads("duration", false, {CelValue::Type::kString});

@@ -3,10 +3,15 @@
 #include <memory>
 #include <string>
 
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 #include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "eval/public/cel_value.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -93,14 +98,19 @@ TEST(ResolverTest, TestFindConstantUnqualifiedType) {
 }
 
 TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
+  google::protobuf::LinkMessageReflection<TestMessage>();
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("cel", &func_registry, &type_registry);
 
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
-  EXPECT_TRUE(type_value.has_value());
-  EXPECT_TRUE(type_value->IsCelType());
+  ASSERT_TRUE(type_value.has_value());
+  ASSERT_TRUE(type_value->IsCelType());
   EXPECT_THAT(type_value->CelTypeOrDie().value(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
@@ -108,40 +118,58 @@ TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
 TEST(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("", &func_registry, &type_registry, false);
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
   EXPECT_FALSE(type_value.has_value());
 }
 
-TEST(ResolverTest, TestFindDescriptorBySimpleName) {
+TEST(ResolverTest, FindTypeAdapterBySimpleName) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
   Resolver resolver("google.api.expr.runtime", &func_registry, &type_registry);
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
 
-  auto desc_value = resolver.FindDescriptor("TestMessage", -1);
-  EXPECT_TRUE(desc_value != nullptr);
-  EXPECT_THAT(desc_value, Eq(TestMessage::GetDescriptor()));
+  absl::optional<LegacyTypeAdapter> adapter =
+      resolver.FindTypeAdapter("TestMessage", -1);
+  EXPECT_TRUE(adapter.has_value());
+  EXPECT_THAT(adapter->mutation_apis(), testing::NotNull());
 }
 
-TEST(ResolverTest, TestFindDescriptorByQualifiedName) {
+TEST(ResolverTest, FindTypeAdapterByQualifiedName) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("google.api.expr.runtime", &func_registry, &type_registry);
 
-  auto desc_value =
-      resolver.FindDescriptor(".google.api.expr.runtime.TestMessage", -1);
-  EXPECT_TRUE(desc_value != nullptr);
-  EXPECT_THAT(desc_value, Eq(TestMessage::GetDescriptor()));
+  absl::optional<LegacyTypeAdapter> adapter =
+      resolver.FindTypeAdapter(".google.api.expr.runtime.TestMessage", -1);
+  EXPECT_TRUE(adapter.has_value());
+  EXPECT_THAT(adapter->mutation_apis(), testing::NotNull());
 }
 
 TEST(ResolverTest, TestFindDescriptorNotFound) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
+  type_registry.RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
   Resolver resolver("google.api.expr.runtime", &func_registry, &type_registry);
 
-  auto desc_value = resolver.FindDescriptor("UndefinedMessage", -1);
-  EXPECT_TRUE(desc_value == nullptr);
+  absl::optional<LegacyTypeAdapter> adapter =
+      resolver.FindTypeAdapter("UndefinedMessage", -1);
+  EXPECT_FALSE(adapter.has_value());
 }
 
 TEST(ResolverTest, TestFindOverloads) {

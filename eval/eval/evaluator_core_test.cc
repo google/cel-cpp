@@ -4,17 +4,21 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
+using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using testing::_;
@@ -66,7 +70,12 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false, false, true);
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
+                       /*enable_unknowns=*/false,
+                       /*enable_unknown_funcion_results=*/false,
+                       /*enable_missing_attribute_errors=*/false,
+                       /*enable_null_coercion=*/true,
+                       /*enable_heterogeneous_numeric_lookups=*/true);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -82,18 +91,24 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
 
   Activation activation;
   google::protobuf::Arena arena;
+  ProtoMemoryManager manager(&arena);
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation, 0, &state, false, false, false, true);
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
+                       /*enable_unknowns=*/false,
+                       /*enable_unknown_funcion_results=*/false,
+                       /*enable_missing_attribute_errors=*/false,
+                       /*enable_null_coercion=*/true,
+                       /*enable_heterogeneous_numeric_lookups=*/true);
 
   CelValue original = CelValue::CreateInt64(test_value);
   Expr ident;
   ident.mutable_ident_expr()->set_name("var");
 
   AttributeTrail original_trail =
-      AttributeTrail(ident, &arena)
+      AttributeTrail(ident, manager)
           .Step(CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                &arena);
+                manager);
   CelValue result;
   const AttributeTrail* trail;
 
@@ -149,7 +164,8 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
 
   auto dummy_expr = absl::make_unique<Expr>();
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {});
+  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                             &TestTypeRegistry(), 0, {});
 
   Activation activation;
   google::protobuf::Arena arena;

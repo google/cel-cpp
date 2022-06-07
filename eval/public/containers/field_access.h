@@ -1,18 +1,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_FIELD_ACCESS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_FIELD_ACCESS_H_
 
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
-
-// Options for handling unset wrapper types.
-enum class ProtoWrapperTypeOptions {
-  // Default: legacy behavior following proto semantics (unset behaves as though
-  // it is set to default value).
-  kUnsetProtoDefault,
-  // CEL spec behavior, unset wrapper is treated as a null value when accessed.
-  kUnsetNull,
-};
 
 // Creates CelValue from singular message field.
 // Returns status of the operation.

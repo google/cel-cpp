@@ -49,8 +49,8 @@ def base_deps():
         sha256 = RE2_SHA256,
     )
 
-    PROTOBUF_VERSION = "3.19.2"
-    PROTOBUF_SHA = "4dd35e788944b7686aac898f77df4e9a54da0ca694b8801bd6b2a9ffc1b3085e"
+    PROTOBUF_VERSION = "3.21.1"
+    PROTOBUF_SHA = "a295dd3b9551d3e2749a9969583dea110c6cdcc39d02088f7c7bb1100077e081"
     http_archive(
         name = "com_google_protobuf",
         sha256 = PROTOBUF_SHA,
@@ -58,8 +58,8 @@ def base_deps():
         urls = ["https://github.com/protocolbuffers/protobuf/archive/v" + PROTOBUF_VERSION + ".tar.gz"],
     )
 
-    GOOGLEAPIS_GIT_SHA = "77066268d1fd5d72278afc2aef1ebc1d2112cca6"  # Oct 01, 2021
-    GOOGLEAPIS_SHA = "dca75efd11a6295618dba919ad52fe551ba8bb85778d331a38c2bca282234296"
+    GOOGLEAPIS_GIT_SHA = "f19049fdd8dfc8b6eba387f4ef6d1d8b4d0103e7"  # May 31, 2022
+    GOOGLEAPIS_SHA = "cbda1073fe2eb3b7a5a41fd940a592cfe1861895580c13bf25066896f9e9bede"
     http_archive(
         name = "com_google_googleapis",
         sha256 = GOOGLEAPIS_SHA,
@@ -69,6 +69,7 @@ def base_deps():
 
 def parser_deps():
     """ANTLR dependency for the parser."""
+
     # Apr 15, 2022
     ANTLR4_VERSION = "4.10.1"
 
@@ -123,10 +124,10 @@ def cel_spec_deps():
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "c9ae91b24fdaf869d7c59a9f64863249a6a2905e"  # 9/22/2021
+    CEL_SPEC_GIT_SHA = "6040c0a6df9601751e628405706bac18948b8eb3"  # 3/31/2022
     http_archive(
         name = "com_google_cel_spec",
-        sha256 = "a911c4a5c5cea1c29dc57463cfea5614025654e6bb67a6aeebc57af3d132c8e4",
+        sha256 = "6b4ca28de8d8a3038a96c393774c2ab65abd6a57cb50295dddea406b2eeafc9e",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )

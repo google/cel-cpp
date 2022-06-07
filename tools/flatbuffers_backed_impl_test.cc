@@ -14,8 +14,6 @@ namespace runtime {
 
 namespace {
 
-using google::protobuf::Arena;
-
 constexpr char kReflectionBufferPath[] =
     "tools/testdata/"
     "flatbuffers.bfbs";

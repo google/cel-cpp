@@ -1,6 +1,21 @@
-#include "eval/public/containers/field_backed_map_impl.h"
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "eval/public/containers/internal_field_backed_map_impl.h"
 
 #include <limits>
+#include <utility>
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
@@ -9,13 +24,12 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/field_access.h"
+#include "eval/public/structs/field_access_impl.h"
+#include "eval/public/structs/protobuf_value_factory.h"
 
 #ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 
-namespace google {
-namespace protobuf {
-namespace expr {
+namespace google::protobuf::expr {
 
 // CelMapReflectionFriend provides access to Reflection's private methods. The
 // class is a friend of google::protobuf::Reflection. We do not add FieldBackedMapImpl as
@@ -32,19 +46,13 @@ class CelMapReflectionFriend {
   }
 };
 
-}  // namespace expr
-}  // namespace protobuf
-}  // namespace google
+}  // namespace google::protobuf::expr
 
 #endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
+namespace google::api::expr::runtime::internal {
 
 namespace {
-using google::protobuf::Arena;
 using google::protobuf::Descriptor;
 using google::protobuf::FieldDescriptor;
 using google::protobuf::MapValueConstRef;
@@ -61,10 +69,12 @@ class KeyList : public CelList {
   // message contains the "repeated" field
   // descriptor FieldDescriptor for the field
   KeyList(const google::protobuf::Message* message,
-          const google::protobuf::FieldDescriptor* descriptor, google::protobuf::Arena* arena)
+          const google::protobuf::FieldDescriptor* descriptor,
+          const ProtobufValueFactory& factory, google::protobuf::Arena* arena)
       : message_(message),
         descriptor_(descriptor),
         reflection_(message_->GetReflection()),
+        factory_(factory),
         arena_(arena) {}
 
   // List size.
@@ -74,7 +84,6 @@ class KeyList : public CelList {
 
   // List element access operator.
   CelValue operator[](int index) const override {
-    CelValue key = CelValue::CreateNull();
     const Message* entry =
         &reflection_->GetRepeatedMessage(*message_, descriptor_, index);
 
@@ -87,17 +96,20 @@ class KeyList : public CelList {
     const FieldDescriptor* key_desc =
         entry_descriptor->FindFieldByNumber(kKeyTag);
 
-    auto status = CreateValueFromSingleField(entry, key_desc, arena_, &key);
-    if (!status.ok()) {
-      return CreateErrorValue(arena_, status);
+    absl::StatusOr<CelValue> key_value = CreateValueFromSingleField(
+        entry, key_desc, ProtoWrapperTypeOptions::kUnsetProtoDefault, factory_,
+        arena_);
+    if (!key_value.ok()) {
+      return CreateErrorValue(arena_, key_value.status());
     }
-    return key;
+    return *key_value;
   }
 
  private:
   const google::protobuf::Message* message_;
   const google::protobuf::FieldDescriptor* descriptor_;
   const google::protobuf::Reflection* reflection_;
+  const ProtobufValueFactory& factory_;
   google::protobuf::Arena* arena_;
 };
 
@@ -129,14 +141,16 @@ absl::Status InvalidMapKeyType(absl::string_view key_type) {
 
 FieldBackedMapImpl::FieldBackedMapImpl(
     const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* descriptor,
-    google::protobuf::Arena* arena)
+    ProtobufValueFactory factory, google::protobuf::Arena* arena)
     : message_(message),
       descriptor_(descriptor),
       key_desc_(descriptor_->message_type()->FindFieldByNumber(kKeyTag)),
       value_desc_(descriptor_->message_type()->FindFieldByNumber(kValueTag)),
       reflection_(message_->GetReflection()),
+      factory_(std::move(factory)),
       arena_(arena),
-      key_list_(absl::make_unique<KeyList>(message, descriptor, arena)) {}
+      key_list_(
+          absl::make_unique<KeyList>(message, descriptor, factory_, arena)) {}
 
 int FieldBackedMapImpl::size() const {
   return reflection_->FieldSize(*message_, descriptor_);
@@ -169,13 +183,12 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
   // Get value descriptor treating it as a repeated field.
   // All values in protobuf map have the same type.
   // The map is not empty, because LookupMapValue returned true.
-  CelValue result = CelValue::CreateNull();
-  const auto& status = CreateValueFromMapValue(message_, value_desc_,
-                                               &value_ref, arena_, &result);
-  if (!status.ok()) {
-    return CreateErrorValue(arena_, status);
+  absl::StatusOr<CelValue> result = CreateValueFromMapValue(
+      message_, value_desc_, &value_ref, factory_, arena_);
+  if (!result.ok()) {
+    return CreateErrorValue(arena_, result.status());
   }
-  return result;
+  return *result;
 
 #else  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
   // Default proto implementation, does not use fast-path key lookup.
@@ -263,7 +276,6 @@ absl::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
                             InvalidMapKeyType(key_desc_->cpp_type_name()));
   }
 
-  CelValue proto_key = CelValue::CreateNull();
   int map_size = size();
   for (int i = 0; i < map_size; i++) {
     const Message* entry =
@@ -271,29 +283,30 @@ absl::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
     if (entry == nullptr) continue;
 
     // Key Tag == 1
-    auto status =
-        CreateValueFromSingleField(entry, key_desc_, arena_, &proto_key);
-    if (!status.ok()) {
-      return CreateErrorValue(arena_, status);
+    absl::StatusOr<CelValue> key_value = CreateValueFromSingleField(
+        entry, key_desc_, ProtoWrapperTypeOptions::kUnsetProtoDefault, factory_,
+        arena_);
+    if (!key_value.ok()) {
+      return CreateErrorValue(arena_, key_value.status());
     }
 
     bool match = false;
     switch (key_desc_->cpp_type()) {
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
-        match = key.BoolOrDie() == proto_key.BoolOrDie();
+        match = key.BoolOrDie() == key_value->BoolOrDie();
         break;
       case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
         // fall through
       case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
-        match = key.Int64OrDie() == proto_key.Int64OrDie();
+        match = key.Int64OrDie() == key_value->Int64OrDie();
         break;
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
         // fall through
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
-        match = key.Uint64OrDie() == proto_key.Uint64OrDie();
+        match = key.Uint64OrDie() == key_value->Uint64OrDie();
         break;
       case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-        match = key.StringOrDie() == proto_key.StringOrDie();
+        match = key.StringOrDie() == key_value->StringOrDie();
         break;
       default:
         // this would normally indicate a bad key type, which should not be
@@ -302,19 +315,16 @@ absl::optional<CelValue> FieldBackedMapImpl::LegacyLookupMapValue(
     }
 
     if (match) {
-      CelValue result = CelValue::CreateNull();
-      auto status =
-          CreateValueFromSingleField(entry, value_desc_, arena_, &result);
-      if (!status.ok()) {
-        return CreateErrorValue(arena_, status);
+      absl::StatusOr<CelValue> value_cel_value = CreateValueFromSingleField(
+          entry, value_desc_, ProtoWrapperTypeOptions::kUnsetProtoDefault,
+          factory_, arena_);
+      if (!value_cel_value.ok()) {
+        return CreateErrorValue(arena_, value_cel_value.status());
       }
-      return result;
+      return *value_cel_value;
     }
   }
   return {};
 }
 
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime::internal

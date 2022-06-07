@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/struct.pb.h"
+#include "google/rpc/context/attribute_context.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/base/attributes.h"
 #include "absl/container/btree_map.h"
@@ -31,8 +33,9 @@ namespace runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::SourceInfo;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::SourceInfo;
+using ::google::rpc::context::AttributeContext;
 
 // Benchmark test
 // Evaluates cel expression:
@@ -575,6 +578,116 @@ void BM_ReadProtoMap(benchmark::State& state) {
 }
 
 BENCHMARK(BM_ReadProtoMap);
+
+void BM_NestedProtoFieldRead(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+      !request.a.b.c.d.e
+   )cel"));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
+
+  RequestContext request;
+  request.mutable_a()->mutable_b()->mutable_c()->mutable_d()->set_e(false);
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_NestedProtoFieldRead);
+
+void BM_NestedProtoFieldReadDefaults(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+      !request.a.b.c.d.e
+   )cel"));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
+
+  RequestContext request;
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_NestedProtoFieldReadDefaults);
+
+void BM_ProtoStructAccess(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+      has(request.auth.claims.iss) && request.auth.claims.iss == 'accounts.google.com'
+   )cel"));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
+
+  AttributeContext::Request request;
+  auto* auth = request.mutable_auth();
+  (*auth->mutable_claims()->mutable_fields())["iss"].set_string_value(
+      "accounts.google.com");
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_ProtoStructAccess);
+
+void BM_ProtoListAccess(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
+      "//.../accessLevels/MY_LEVEL_4" in request.auth.access_levels
+   )cel"));
+  auto builder = CreateCelExpressionBuilder();
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder->CreateExpression(&parsed_expr.expr(), nullptr));
+
+  AttributeContext::Request request;
+  auto* auth = request.mutable_auth();
+  auth->add_access_levels("//.../accessLevels/MY_LEVEL_0");
+  auth->add_access_levels("//.../accessLevels/MY_LEVEL_1");
+  auth->add_access_levels("//.../accessLevels/MY_LEVEL_2");
+  auth->add_access_levels("//.../accessLevels/MY_LEVEL_3");
+  auth->add_access_levels("//.../accessLevels/MY_LEVEL_4");
+  activation.InsertValue("request",
+                         CelProtoWrapper::CreateMessage(&request, &arena));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsBool());
+    ASSERT_TRUE(result.BoolOrDie());
+  }
+}
+
+BENCHMARK(BM_ProtoListAccess);
 
 // This expression has no equivalent CEL expression.
 // Sum a square with a nested comprehension

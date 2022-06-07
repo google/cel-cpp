@@ -47,8 +47,10 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/containers/field_backed_list_impl.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/set_util.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/testutil/test_message.pb.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
@@ -59,6 +61,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using google::api::expr::v1alpha1::ParsedExpr;
+using testing::_;
 using testing::Combine;
 using testing::HasSubstr;
 using testing::Optional;
@@ -77,7 +80,7 @@ MATCHER_P2(DefinesHomogenousOverload, name, argument_type,
 }
 
 struct ComparisonTestCase {
-  enum class ErrorKind { kMissingOverload };
+  enum class ErrorKind { kMissingOverload, kMissingIdentifier };
   absl::string_view expr;
   absl::variant<bool, ErrorKind> result;
   CelValue lhs = CelValue::CreateNull();
@@ -205,12 +208,11 @@ TEST_P(CelValueEqualImplTypesTest, Basic) {
     } else {
       EXPECT_THAT(result, Optional(false));
     }
-  } else if (lhs().type() == rhs().type()) {
-    EXPECT_THAT(result, Optional(should_be_equal()));
-  } else if (IsNumeric(lhs().type()) && IsNumeric(rhs().type())) {
+  } else if (lhs().type() == rhs().type() ||
+             (IsNumeric(lhs().type()) && IsNumeric(rhs().type()))) {
     EXPECT_THAT(result, Optional(should_be_equal()));
   } else {
-    EXPECT_EQ(result, absl::nullopt);
+    EXPECT_THAT(result, Optional(false));
   }
 }
 
@@ -302,13 +304,13 @@ TEST(CelValueEqualImplTest, LossyNumericEquality) {
   EXPECT_TRUE(*result);
 }
 
-TEST(CelValueEqualImplTest, ListMixedTypesEqualityNotDefined) {
+TEST(CelValueEqualImplTest, ListMixedTypesInequal) {
   ContainerBackedListImpl lhs({CelValue::CreateInt64(1)});
   ContainerBackedListImpl rhs({CelValue::CreateStringView("abc")});
 
-  EXPECT_EQ(
+  EXPECT_THAT(
       CelValueEqualImpl(CelValue::CreateList(&lhs), CelValue::CreateList(&rhs)),
-      absl::nullopt);
+      Optional(false));
 }
 
 TEST(CelValueEqualImplTest, NestedList) {
@@ -322,7 +324,7 @@ TEST(CelValueEqualImplTest, NestedList) {
       Optional(false));
 }
 
-TEST(CelValueEqualImplTest, MapMixedValueTypesEqualityNotDefined) {
+TEST(CelValueEqualImplTest, MapMixedValueTypesInequal) {
   std::vector<std::pair<CelValue, CelValue>> lhs_data{
       {CelValue::CreateInt64(1), CelValue::CreateStringView("abc")}};
   std::vector<std::pair<CelValue, CelValue>> rhs_data{
@@ -333,9 +335,25 @@ TEST(CelValueEqualImplTest, MapMixedValueTypesEqualityNotDefined) {
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelMap> rhs,
                        CreateContainerBackedMap(absl::MakeSpan(rhs_data)));
 
-  EXPECT_EQ(CelValueEqualImpl(CelValue::CreateMap(lhs.get()),
-                              CelValue::CreateMap(rhs.get())),
-            absl::nullopt);
+  EXPECT_THAT(CelValueEqualImpl(CelValue::CreateMap(lhs.get()),
+                                CelValue::CreateMap(rhs.get())),
+              Optional(false));
+}
+
+TEST(CelValueEqualImplTest, MapMixedKeyTypesEqual) {
+  std::vector<std::pair<CelValue, CelValue>> lhs_data{
+      {CelValue::CreateUint64(1), CelValue::CreateStringView("abc")}};
+  std::vector<std::pair<CelValue, CelValue>> rhs_data{
+      {CelValue::CreateInt64(1), CelValue::CreateStringView("abc")}};
+
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelMap> lhs,
+                       CreateContainerBackedMap(absl::MakeSpan(lhs_data)));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelMap> rhs,
+                       CreateContainerBackedMap(absl::MakeSpan(rhs_data)));
+
+  EXPECT_THAT(CelValueEqualImpl(CelValue::CreateMap(lhs.get()),
+                                CelValue::CreateMap(rhs.get())),
+              Optional(true));
 }
 
 TEST(CelValueEqualImplTest, MapMixedKeyTypesInequal) {
@@ -379,6 +397,44 @@ TEST(CelValueEqualImplTest, NestedMaps) {
   EXPECT_THAT(CelValueEqualImpl(CelValue::CreateMap(lhs.get()),
                                 CelValue::CreateMap(rhs.get())),
               Optional(false));
+}
+
+TEST(CelValueEqualImplTest, ProtoEqualityDifferingTypenameInequal) {
+  // If message wrappers report a different typename, treat as inequal without
+  // calling into the provided equal implementation.
+  google::protobuf::Arena arena;
+  TestMessage example;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
+    int32_value: 1
+    uint32_value: 2
+    string_value: "test"
+  )",
+                                                  &example));
+
+  CelValue lhs = CelProtoWrapper::CreateMessage(&example, &arena);
+  CelValue rhs = CelValue::CreateMessageWrapper(
+      MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+
+  EXPECT_THAT(CelValueEqualImpl(lhs, rhs), Optional(false));
+}
+
+TEST(CelValueEqualImplTest, ProtoEqualityNoAccessorInequal) {
+  // If message wrappers report no access apis, then treat as inequal.
+  google::protobuf::Arena arena;
+  TestMessage example;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(R"(
+    int32_value: 1
+    uint32_value: 2
+    string_value: "test"
+  )",
+                                                  &example));
+
+  CelValue lhs = CelValue::CreateMessageWrapper(
+      MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+  CelValue rhs = CelValue::CreateMessageWrapper(
+      MessageWrapper(&example, TrivialTypeInfo::GetInstance()));
+
+  EXPECT_THAT(CelValueEqualImpl(lhs, rhs), Optional(false));
 }
 
 TEST(CelValueEqualImplTest, ProtoEqualityAny) {
@@ -604,9 +660,21 @@ TEST_P(ComparisonFunctionTest, SmokeTest) {
   if (absl::holds_alternative<bool>(test_case.result)) {
     EXPECT_THAT(result, test::IsCelBool(absl::get<bool>(test_case.result)));
   } else {
-    EXPECT_THAT(result,
-                test::IsCelError(StatusIs(absl::StatusCode::kUnknown,
-                                          HasSubstr("No matching overloads"))));
+    switch (absl::get<ComparisonTestCase::ErrorKind>(test_case.result)) {
+      case ComparisonTestCase::ErrorKind::kMissingOverload:
+        EXPECT_THAT(result, test::IsCelError(
+                                StatusIs(absl::StatusCode::kUnknown,
+                                         HasSubstr("No matching overloads"))));
+        break;
+      case ComparisonTestCase::ErrorKind::kMissingIdentifier:
+        EXPECT_THAT(result, test::IsCelError(
+                                StatusIs(absl::StatusCode::kUnknown,
+                                         HasSubstr("found in Activation"))));
+        break;
+      default:
+        EXPECT_THAT(result, test::IsCelError(_));
+        break;
+    }
   }
 }
 
@@ -769,9 +837,12 @@ INSTANTIATE_TEST_SUITE_P(
                  {"lhs == rhs", true,
                   CelValue::CreateTimestamp(absl::FromUnixSeconds(20)),
                   CelValue::CreateTimestamp(absl::FromUnixSeconds(20))},
-                 // Maps may have errors as values. These don't propagate from
-                 // deep comparisons at the moment, they just return no
-                 // overload.
+                 // This should fail before getting to the equal operator.
+                 {"no_such_identifier == 1",
+                  ComparisonTestCase::ErrorKind::kMissingIdentifier},
+                 // TODO(issues/5): The C++ evaluator allows creating maps
+                 // with error values. Propagate an error instead of a false
+                 // result.
                  {"{1: no_such_identifier} == {1: 1}",
                   ComparisonTestCase::ErrorKind::kMissingOverload}}),
             // heterogeneous equality enabled
@@ -794,9 +865,12 @@ INSTANTIATE_TEST_SUITE_P(
                  {"lhs != rhs", true,
                   CelValue::CreateTimestamp(absl::FromUnixSeconds(20)),
                   CelValue::CreateTimestamp(absl::FromUnixSeconds(30))},
-                 // Maps may have errors as values. These don't propagate from
-                 // deep comparisons at the moment, they just return no
-                 // overload.
+                 // This should fail before getting to the equal operator.
+                 {"no_such_identifier != 1",
+                  ComparisonTestCase::ErrorKind::kMissingIdentifier},
+                 // TODO(issues/5): The C++ evaluator allows creating maps
+                 // with error values. Propagate an error instead of a false
+                 // result.
                  {"{1: no_such_identifier} != {1: 1}",
                   ComparisonTestCase::ErrorKind::kMissingOverload}}),
             // heterogeneous equality enabled

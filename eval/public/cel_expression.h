@@ -27,7 +27,7 @@ namespace google::api::expr::runtime {
 using CelEvaluationListener = std::function<absl::Status(
     int64_t expr_id, const CelValue&, google::protobuf::Arena*)>;
 
-// An opaque state used for evaluation of a cell expression.
+// An opaque state used for evaluation of a CEL expression.
 class CelEvaluationState {
  public:
   virtual ~CelEvaluationState() = default;

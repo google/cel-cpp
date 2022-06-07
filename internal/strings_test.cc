@@ -26,7 +26,6 @@
 namespace cel::internal {
 namespace {
 
-using cel::internal::IsOk;
 using cel::internal::StatusIs;
 
 constexpr char kUnicodeNotAllowedInBytes1[] =

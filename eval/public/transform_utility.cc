@@ -13,7 +13,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "internal/proto_util.h"
+#include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
 
 
@@ -47,7 +47,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
     case CelValue::Type::kDuration: {
       google::protobuf::Duration duration;
       auto status =
-          expr::internal::EncodeDuration(value.DurationOrDie(), &duration);
+          cel::internal::EncodeDuration(value.DurationOrDie(), &duration);
       if (!status.ok()) {
         return status;
       }
@@ -57,7 +57,7 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
     case CelValue::Type::kTimestamp: {
       google::protobuf::Timestamp timestamp;
       auto status =
-          expr::internal::EncodeTime(value.TimestampOrDie(), &timestamp);
+          cel::internal::EncodeTime(value.TimestampOrDie(), &timestamp);
       if (!status.ok()) {
         return status;
       }

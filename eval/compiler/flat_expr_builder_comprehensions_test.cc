@@ -115,7 +115,8 @@ TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid comprehension")));
+                       testing::AnyOf(HasSubstr("Invalid comprehension"),
+                                      HasSubstr("Invalid empty expression"))));
 }
 
 TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithConcatVulernability) {

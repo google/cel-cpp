@@ -16,28 +16,41 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <fstream>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/field_mask.pb.h"
+#include "google/protobuf/descriptor.pb.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -50,16 +63,36 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::CheckedExpr;
-using google::api::expr::v1alpha1::Expr;
-using google::api::expr::v1alpha1::ParsedExpr;
-using google::api::expr::v1alpha1::SourceInfo;
-
-using google::protobuf::FieldMask;
+using ::google::api::expr::v1alpha1::CheckedExpr;
+using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
+using ::google::api::expr::v1alpha1::SourceInfo;
 using testing::Eq;
 using testing::HasSubstr;
-using cel::internal::IsOk;
 using cel::internal::StatusIs;
+
+inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =
+    "eval/testutil/"
+    "simple_test_message_proto-descriptor-set.proto.bin";
+
+template <class MessageClass>
+absl::Status ReadBinaryProtoFromDisk(absl::string_view file_name,
+                                     MessageClass& message) {
+  std::ifstream file;
+  file.open(std::string(file_name), std::fstream::in);
+  if (!file.is_open()) {
+    return absl::NotFoundError(absl::StrFormat("Failed to open file '%s': %s",
+                                               file_name, strerror(errno)));
+  }
+
+  if (!message.ParseFromIstream(&file)) {
+    return absl::InvalidArgumentError(
+        absl::StrFormat("Failed to parse proto of type '%s' from file '%s'",
+                        message.GetTypeName(), file_name));
+  }
+
+  return absl::OkStatus();
+}
 
 class ConcatFunction : public CelFunction {
  public:
@@ -181,6 +214,10 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   Expr expr;
   SourceInfo source_info;
   FlatExprBuilder builder;
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
 
   // Don't set either the field or the value for the message creation step.
   auto* create_message = expr.mutable_struct_expr();
@@ -188,13 +225,13 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   auto* entry = create_message->add_entries();
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Message entry missing field name")));
+                       HasSubstr("Struct entry missing field name")));
 
   // Set the entry field, but not the value.
   entry->set_field_key("bool_value");
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Message entry missing value")));
+                       HasSubstr("Struct entry missing value")));
 }
 
 TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {
@@ -594,6 +631,192 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
   EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("container: 'bad.'")));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupport) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "ext.XOr", /*receiver_style=*/false,
+      [](google::protobuf::Arena*, bool a, bool b) { return a != b; },
+      builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("a", CelValue::CreateBool(false));
+  act1.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+
+  Activation act2;
+  act2.InsertValue("a", CelValue::CreateBool(true));
+  act2.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(result, cel_expr->Evaluate(act2, &arena));
+  EXPECT_THAT(result, test::IsCelBool(false));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportWithContainer) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("XOr(a, b)"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("ext");
+  using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "ext.XOr", /*receiver_style=*/false,
+      [](google::protobuf::Arena*, bool a, bool b) { return a != b; },
+      builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("a", CelValue::CreateBool(false));
+  act1.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+
+  Activation act2;
+  act2.InsertValue("a", CelValue::CreateBool(true));
+  act2.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(result, cel_expr->Evaluate(act2, &arena));
+  EXPECT_THAT(result, test::IsCelBool(false));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrder) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.b.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return true; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return false; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return false; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest,
+     ParsedNamespacedFunctionResolutionOrderParentContainer) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return true; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return false; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return false; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest,
+     ParsedNamespacedFunctionResolutionOrderExplicitGlobal) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(".c.d.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return false; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return true; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return false; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrderReceiverCall) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("e.Get()"));
+  FlatExprBuilder builder;
+  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.set_container("a.b");
+  using FunctionAdapterT = FunctionAdapter<bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "a.c.d.Get", /*receiver_style=*/false,
+      [](google::protobuf::Arena*) { return false; }, builder.GetRegistry()));
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "c.d.Get", /*receiver_style=*/false, [](google::protobuf::Arena*) { return false; },
+      builder.GetRegistry()));
+  ASSERT_OK((FunctionAdapter<bool, bool>::CreateAndRegister(
+      "Get",
+      /*receiver_style=*/true, [](google::protobuf::Arena*, bool) { return true; },
+      builder.GetRegistry())));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(
+                                          &expr.expr(), &expr.source_info()));
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("e", CelValue::CreateBool(false));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelBool(true));
+}
+
+TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportDisabled) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
+  FlatExprBuilder builder;
+  builder.set_fail_on_warnings(false);
+  std::vector<absl::Status> build_warnings;
+  builder.set_container("ext");
+  using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
+
+  ASSERT_OK(FunctionAdapterT::CreateAndRegister(
+      "ext.XOr", /*receiver_style=*/false,
+      [](google::protobuf::Arena*, bool a, bool b) { return a != b; },
+      builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_expr, builder.CreateExpression(&expr.expr(), &expr.source_info(),
+                                              &build_warnings));
+  google::protobuf::Arena arena;
+  Activation act1;
+  act1.InsertValue("a", CelValue::CreateBool(false));
+  act1.InsertValue("b", CelValue::CreateBool(true));
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(act1, &arena));
+  EXPECT_THAT(result, test::IsCelError(StatusIs(absl::StatusCode::kUnknown,
+                                                HasSubstr("ext"))));
 }
 
 TEST(FlatExprBuilderTest, BasicCheckedExprSupport) {
@@ -1042,7 +1265,7 @@ TEST(FlatExprBuilderTest, ComprehensionWorksForNonContainer) {
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie()->message(),
-              Eq("No matching overloads found <iter_range>"));
+              Eq("No matching overloads found : <iter_range>"));
 }
 
 TEST(FlatExprBuilderTest, ComprehensionBudget) {
@@ -1545,6 +1768,242 @@ TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
 
   EXPECT_THAT(result, test::IsCelInt64(0));
 }
+
+TEST(FlatExprBuilderTest, HeterogeneousEqualityEnabled) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("{1: 2, 2u: 3}[1.0]"));
+  FlatExprBuilder builder;
+  builder.set_enable_heterogeneous_equality(true);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result, test::IsCelInt64(2));
+}
+
+TEST(FlatExprBuilderTest, HeterogeneousEqualityDisabled) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("{1: 2, 2u: 3}[1.0]"));
+  FlatExprBuilder builder;
+  builder.set_enable_heterogeneous_equality(false);
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result,
+              test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
+                                        HasSubstr("Invalid map key type"))));
+}
+
+TEST(FlatExprBuilderTest, CustomDescriptorPoolForCreateStruct) {
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr parsed_expr,
+      parser::Parse("google.api.expr.runtime.SimpleTestMessage{}"));
+
+  // This time, the message is unknown. We only have the proto as data, we did
+  // not link the generated message, so it's not included in the generated pool.
+  FlatExprBuilder builder;
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+
+  EXPECT_THAT(
+      builder.CreateExpression(&parsed_expr.expr(), &parsed_expr.source_info()),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+
+  // Now we create a custom DescriptorPool to which we add SimpleTestMessage
+  google::protobuf::DescriptorPool desc_pool;
+  google::protobuf::FileDescriptorSet filedesc_set;
+
+  ASSERT_OK(ReadBinaryProtoFromDisk(kSimpleTestMessageDescriptorSetFile,
+                                    filedesc_set));
+  ASSERT_EQ(filedesc_set.file_size(), 1);
+  desc_pool.BuildFile(filedesc_set.file(0));
+
+  google::protobuf::DynamicMessageFactory message_factory(&desc_pool);
+
+  // This time, the message is *known*. We are using a custom descriptor pool
+  // that has been primed with the relevant message.
+  FlatExprBuilder builder2;
+  builder2.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(&desc_pool,
+                                                   &message_factory));
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder2.CreateExpression(&parsed_expr.expr(),
+                                                 &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsMessage());
+  EXPECT_EQ(result.MessageOrDie()->GetTypeName(),
+            "google.api.expr.runtime.SimpleTestMessage");
+}
+
+TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("message.int64_value"));
+
+  google::protobuf::DescriptorPool desc_pool;
+  google::protobuf::FileDescriptorSet filedesc_set;
+
+  ASSERT_OK(ReadBinaryProtoFromDisk(kSimpleTestMessageDescriptorSetFile,
+                                    filedesc_set));
+  ASSERT_EQ(filedesc_set.file_size(), 1);
+  desc_pool.BuildFile(filedesc_set.file(0));
+
+  google::protobuf::DynamicMessageFactory message_factory(&desc_pool);
+
+  const google::protobuf::Descriptor* desc = desc_pool.FindMessageTypeByName(
+      "google.api.expr.runtime.SimpleTestMessage");
+  const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
+  google::protobuf::Message* message = message_prototype->New();
+  const google::protobuf::Reflection* refl = message->GetReflection();
+  const google::protobuf::FieldDescriptor* field = desc->FindFieldByName("int64_value");
+  refl->SetInt64(message, field, 123);
+
+  // The since this is access only, the evaluator will work with message duck
+  // typing.
+  FlatExprBuilder builder;
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  EXPECT_THAT(result, test::IsCelInt64(123));
+
+  delete message;
+}
+
+std::pair<google::protobuf::Message*, const google::protobuf::Reflection*> CreateTestMessage(
+    const google::protobuf::DescriptorPool& descriptor_pool,
+    google::protobuf::MessageFactory& message_factory, absl::string_view name) {
+  const google::protobuf::Descriptor* desc = descriptor_pool.FindMessageTypeByName(name.data());
+  const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
+  google::protobuf::Message* message = message_prototype->New();
+  const google::protobuf::Reflection* refl = message->GetReflection();
+  return std::make_pair(message, refl);
+}
+
+struct CustomDescriptorPoolTestParam final {
+  using SetterFunction =
+      std::function<void(google::protobuf::Message*, const google::protobuf::Reflection*,
+                         const google::protobuf::FieldDescriptor*)>;
+  std::string message_type;
+  std::string field_name;
+  SetterFunction setter;
+  test::CelValueMatcher matcher;
+};
+
+class CustomDescriptorPoolTest
+    : public ::testing::TestWithParam<CustomDescriptorPoolTestParam> {};
+
+// This test in particular checks for conversion errors in cel_proto_wrapper.cc.
+TEST_P(CustomDescriptorPoolTest, TestType) {
+  const CustomDescriptorPoolTestParam& p = GetParam();
+
+  google::protobuf::DescriptorPool descriptor_pool;
+  google::protobuf::Arena arena;
+
+  // Setup descriptor pool and builder
+  ASSERT_OK(AddStandardMessageTypesToDescriptorPool(descriptor_pool));
+  google::protobuf::DynamicMessageFactory message_factory(&descriptor_pool);
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse("m"));
+  FlatExprBuilder builder;
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(&descriptor_pool,
+                                                   &message_factory));
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+
+  // Create test subject, invoke custom setter for message
+  auto [message, reflection] =
+      CreateTestMessage(descriptor_pool, message_factory, p.message_type);
+  const google::protobuf::FieldDescriptor* field =
+      message->GetDescriptor()->FindFieldByName(p.field_name);
+
+  p.setter(message, reflection, field);
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<CelExpression> expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  // Evaluate expression, verify expectation with custom matcher
+  Activation activation;
+  activation.InsertValue("m", CelProtoWrapper::CreateMessage(message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  EXPECT_THAT(result, p.matcher);
+
+  delete message;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ValueTypes, CustomDescriptorPoolTest,
+    ::testing::ValuesIn(std::vector<CustomDescriptorPoolTestParam>{
+        {"google.protobuf.Duration", "seconds",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetInt64(message, field, 10);
+         },
+         test::IsCelDuration(absl::Seconds(10))},
+        {"google.protobuf.DoubleValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetDouble(message, field, 1.2);
+         },
+         test::IsCelDouble(1.2)},
+        {"google.protobuf.Int64Value", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetInt64(message, field, -23);
+         },
+         test::IsCelInt64(-23)},
+        {"google.protobuf.UInt64Value", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetUInt64(message, field, 42);
+         },
+         test::IsCelUint64(42)},
+        {"google.protobuf.BoolValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetBool(message, field, true);
+         },
+         test::IsCelBool(true)},
+        {"google.protobuf.StringValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetString(message, field, "foo");
+         },
+         test::IsCelString("foo")},
+        {"google.protobuf.BytesValue", "value",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetString(message, field, "bar");
+         },
+         test::IsCelBytes("bar")},
+        {"google.protobuf.Timestamp", "seconds",
+         [](google::protobuf::Message* message, const google::protobuf::Reflection* reflection,
+            const google::protobuf::FieldDescriptor* field) {
+           reflection->SetInt64(message, field, 20);
+         },
+         test::IsCelTimestamp(absl::FromUnixSeconds(20))}}));
 
 }  // namespace
 

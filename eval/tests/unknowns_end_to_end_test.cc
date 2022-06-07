@@ -161,11 +161,9 @@ class UnknownsTest : public testing::Test {
   google::api::expr::v1alpha1::Expr expr_;
 };
 
-MATCHER_P2(FunctionCallIs, fn_name, fn_arg, "") {
+MATCHER_P(FunctionCallIs, fn_name, "") {
   const UnknownFunctionResult* result = arg;
-  return result->arguments().size() == 1 && result->arguments()[0].IsString() &&
-         result->arguments()[0].StringOrDie().value() == fn_arg &&
-         result->descriptor().name() == fn_name;
+  return result->descriptor().name() == fn_name;
 }
 
 MATCHER_P(AttributeIs, attr, "") {
@@ -280,7 +278,7 @@ TEST_F(UnknownsTest, UnknownFunctions) {
   EXPECT_THAT(response.UnknownSetOrDie()
                   ->unknown_function_results()
                   .unknown_function_results(),
-              ElementsAre(FunctionCallIs("F1", "arg1")));
+              ElementsAre(FunctionCallIs("F1")));
 }
 
 TEST_F(UnknownsTest, UnknownsMerge) {
@@ -305,7 +303,7 @@ TEST_F(UnknownsTest, UnknownsMerge) {
   EXPECT_THAT(response.UnknownSetOrDie()
                   ->unknown_function_results()
                   .unknown_function_results(),
-              ElementsAre(FunctionCallIs("F1", "arg1")));
+              ElementsAre(FunctionCallIs("F1")));
   EXPECT_THAT(response.UnknownSetOrDie()->unknown_attributes().attributes(),
               ElementsAre(AttributeIs("var2")));
 }
@@ -457,7 +455,7 @@ TEST_F(UnknownsCompTest, UnknownsMerge) {
   EXPECT_THAT(response.UnknownSetOrDie()
                   ->unknown_function_results()
                   .unknown_function_results(),
-              testing::SizeIs(10));
+              testing::SizeIs(1));
 }
 
 constexpr char kListCompCondExpr[] = R"pb(

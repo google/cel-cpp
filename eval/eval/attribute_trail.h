@@ -2,11 +2,13 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_ATTRIBUTE_TRAIL_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
+#include "base/memory_manager.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
@@ -26,26 +28,25 @@ namespace google::api::expr::runtime {
 class AttributeTrail {
  public:
   AttributeTrail() : attribute_(nullptr) {}
-  AttributeTrail(google::api::expr::v1alpha1::Expr root, google::protobuf::Arena* arena)
-      : AttributeTrail(google::protobuf::Arena::Create<CelAttribute>(
-            arena, std::move(root), std::vector<CelAttributeQualifier>())) {}
+
+  AttributeTrail(google::api::expr::v1alpha1::Expr root, cel::MemoryManager& manager);
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(CelAttributeQualifier qualifier,
-                      google::protobuf::Arena* arena) const;
+                      cel::MemoryManager& manager) const;
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(const std::string* qualifier,
-                      google::protobuf::Arena* arena) const {
+                      cel::MemoryManager& manager) const {
     return Step(
         CelAttributeQualifier::Create(CelValue::CreateString(qualifier)),
-        arena);
+        manager);
   }
 
   // Returns CelAttribute that corresponds to content of AttributeTrail.
   const CelAttribute* attribute() const { return attribute_; }
 
-  bool empty() const { return !attribute_; }
+  bool empty() const { return attribute_ == nullptr; }
 
  private:
   explicit AttributeTrail(const CelAttribute* attribute)

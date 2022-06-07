@@ -2,23 +2,23 @@
 
 #include "absl/status/status.h"
 #include "absl/time/time.h"
+#include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
 
-namespace google {
-namespace api {
-namespace expr {
-namespace runtime {
-namespace test {
+namespace google::api::expr::runtime::test {
 namespace {
 
+using testing::Contains;
 using testing::DoubleEq;
 using testing::DoubleNear;
+using testing::ElementsAre;
 using testing::Gt;
 using testing::Lt;
 using testing::Not;
+using testing::UnorderedElementsAre;
 using testutil::EqualsProto;
 
 TEST(IsCelValue, EqualitySmoketest) {
@@ -60,6 +60,9 @@ TEST(IsCelValue, EqualitySmoketest) {
 }
 
 TEST(PrimitiveMatchers, Smoketest) {
+  EXPECT_THAT(CelValue::CreateNull(), IsCelNull());
+  EXPECT_THAT(CelValue::CreateBool(false), Not(IsCelNull()));
+
   EXPECT_THAT(CelValue::CreateBool(true), IsCelBool(true));
   EXPECT_THAT(CelValue::CreateBool(false), IsCelBool(Not(true)));
 
@@ -117,9 +120,36 @@ TEST(SpecialMatchers, SmokeTest) {
   EXPECT_THAT(message, IsCelMessage(EqualsProto(proto_message)));
 }
 
+TEST(ListMatchers, NotList) {
+  EXPECT_THAT(CelValue::CreateInt64(1),
+              Not(IsCelList(Contains(IsCelInt64(1)))));
+}
+
+TEST(ListMatchers, All) {
+  ContainerBackedListImpl list({
+      CelValue::CreateInt64(1),
+      CelValue::CreateInt64(2),
+      CelValue::CreateInt64(3),
+      CelValue::CreateInt64(4),
+  });
+  CelValue cel_list = CelValue::CreateList(&list);
+  EXPECT_THAT(cel_list, IsCelList(Contains(IsCelInt64(3))));
+  EXPECT_THAT(cel_list, IsCelList(Not(Contains(IsCelInt64(0)))));
+
+  EXPECT_THAT(cel_list, IsCelList(ElementsAre(IsCelInt64(1), IsCelInt64(2),
+                                              IsCelInt64(3), IsCelInt64(4))));
+  EXPECT_THAT(cel_list,
+              IsCelList(Not(ElementsAre(IsCelInt64(2), IsCelInt64(1),
+                                        IsCelInt64(3), IsCelInt64(4)))));
+
+  EXPECT_THAT(cel_list,
+              IsCelList(UnorderedElementsAre(IsCelInt64(2), IsCelInt64(1),
+                                             IsCelInt64(4), IsCelInt64(3))));
+  EXPECT_THAT(
+      cel_list,
+      IsCelList(Not(UnorderedElementsAre(IsCelInt64(2), IsCelInt64(1),
+                                         IsCelInt64(4), IsCelInt64(0)))));
+}
+
 }  // namespace
-}  // namespace test
-}  // namespace runtime
-}  // namespace expr
-}  // namespace api
-}  // namespace google
+}  // namespace google::api::expr::runtime::test

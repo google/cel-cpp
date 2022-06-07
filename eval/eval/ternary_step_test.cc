@@ -3,7 +3,9 @@
 #include <string>
 #include <utility>
 
+#include "google/protobuf/descriptor.h"
 #include "eval/eval/ident_step.h"
+#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -53,8 +55,8 @@ class LogicStepTest : public testing::TestWithParam<bool> {
 
     auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
 
-    CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path), 0, {},
-                               enable_unknown);
+    CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
+                               &TestTypeRegistry(), 0, {}, enable_unknown);
 
     Activation activation;
     std::string value("test");

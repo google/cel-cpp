@@ -6,10 +6,13 @@
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/memory_manager.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
+#include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
 
 namespace google::api::expr::runtime {
@@ -18,15 +21,21 @@ namespace google::api::expr::runtime {
 // helpers for merging unknown sets from arguments on the stack and for
 // identifying unknown/missing attributes based on the patterns for a given
 // Evaluation.
+// Neither moveable nor copyable.
 class AttributeUtility {
  public:
   AttributeUtility(
       const std::vector<CelAttributePattern>* unknown_patterns,
       const std::vector<CelAttributePattern>* missing_attribute_patterns,
-      google::protobuf::Arena* arena)
+      cel::MemoryManager& manager)
       : unknown_patterns_(unknown_patterns),
         missing_attribute_patterns_(missing_attribute_patterns),
-        arena_(arena) {}
+        memory_manager_(manager) {}
+
+  AttributeUtility(const AttributeUtility&) = delete;
+  AttributeUtility& operator=(const AttributeUtility&) = delete;
+  AttributeUtility(AttributeUtility&&) = delete;
+  AttributeUtility& operator=(AttributeUtility&&) = delete;
 
   // Checks whether particular corresponds to any patterns that define missing
   // attribute.
@@ -59,10 +68,27 @@ class AttributeUtility {
                                   const UnknownSet* initial_set,
                                   bool use_partial) const;
 
+  // Create an initial UnknownSet from a single attribute.
+  const UnknownSet* CreateUnknownSet(const CelAttribute* attr) const {
+    return memory_manager_.New<UnknownSet>(UnknownAttributeSet({attr}))
+        .release();
+  }
+
+  // Create an initial UnknownSet from a single missing function call.
+  const UnknownSet* CreateUnknownSet(const CelFunctionDescriptor& fn_descriptor,
+                                     int64_t expr_id,
+                                     absl::Span<const CelValue> args) const {
+    auto* fn =
+        memory_manager_.New<UnknownFunctionResult>(fn_descriptor, expr_id)
+            .release();
+    return memory_manager_.New<UnknownSet>(UnknownFunctionResultSet(fn))
+        .release();
+  }
+
  private:
   const std::vector<CelAttributePattern>* unknown_patterns_;
   const std::vector<CelAttributePattern>* missing_attribute_patterns_;
-  google::protobuf::Arena* arena_;
+  cel::MemoryManager& memory_manager_;
 };
 
 }  // namespace google::api::expr::runtime

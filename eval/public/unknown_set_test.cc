@@ -19,9 +19,8 @@ using testing::UnorderedElementsAre;
 
 UnknownFunctionResultSet MakeFunctionResult(Arena* arena, int64_t id) {
   CelFunctionDescriptor desc("OneInt", false, {CelValue::Type::kInt64});
-  std::vector<CelValue> call_args{CelValue::CreateInt64(id)};
-  const auto* function_result = Arena::Create<UnknownFunctionResult>(
-      arena, desc, /*expr_id=*/0, call_args);
+  const auto* function_result =
+      Arena::Create<UnknownFunctionResult>(arena, desc, /*expr_id=*/0);
   return UnknownFunctionResultSet(function_result);
 }
 
@@ -48,17 +47,6 @@ MATCHER_P(UnknownAttributeIs, id, "") {
   return maybe_qualifier.value() == id;
 }
 
-MATCHER_P(UnknownFunctionResultIs, id, "") {
-  const UnknownFunctionResult* result = arg;
-  if (result->arguments().size() != 1) {
-    return false;
-  }
-  if (!result->arguments()[0].IsInt64()) {
-    return false;
-  }
-  return result->arguments()[0].Int64OrDie() == id;
-}
-
 TEST(UnknownSet, AttributesMerge) {
   Arena arena;
   UnknownSet a(MakeAttribute(&arena, 1));
@@ -73,23 +61,6 @@ TEST(UnknownSet, AttributesMerge) {
   EXPECT_THAT(
       e.unknown_attributes().attributes(),
       UnorderedElementsAre(UnknownAttributeIs(1), UnknownAttributeIs(2)));
-}
-
-TEST(UnknownSet, FunctionsMerge) {
-  Arena arena;
-
-  UnknownSet a(MakeFunctionResult(&arena, 1));
-  UnknownSet b(MakeFunctionResult(&arena, 2));
-  UnknownSet c(MakeFunctionResult(&arena, 2));
-  UnknownSet d(a, b);
-  UnknownSet e(c, d);
-
-  EXPECT_THAT(d.unknown_function_results().unknown_function_results(),
-              UnorderedElementsAre(UnknownFunctionResultIs(1),
-                                   UnknownFunctionResultIs(2)));
-  EXPECT_THAT(e.unknown_function_results().unknown_function_results(),
-              UnorderedElementsAre(UnknownFunctionResultIs(1),
-                                   UnknownFunctionResultIs(2)));
 }
 
 TEST(UnknownSet, DefaultEmpty) {
@@ -110,15 +81,9 @@ TEST(UnknownSet, MixedMerges) {
 
   EXPECT_THAT(d.unknown_attributes().attributes(),
               UnorderedElementsAre(UnknownAttributeIs(1)));
-  EXPECT_THAT(d.unknown_function_results().unknown_function_results(),
-              UnorderedElementsAre(UnknownFunctionResultIs(1),
-                                   UnknownFunctionResultIs(2)));
   EXPECT_THAT(
       e.unknown_attributes().attributes(),
       UnorderedElementsAre(UnknownAttributeIs(1), UnknownAttributeIs(2)));
-  EXPECT_THAT(e.unknown_function_results().unknown_function_results(),
-              UnorderedElementsAre(UnknownFunctionResultIs(1),
-                                   UnknownFunctionResultIs(2)));
 }
 
 }  // namespace

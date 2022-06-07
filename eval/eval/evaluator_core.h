@@ -14,20 +14,26 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
+#include "google/protobuf/descriptor.h"
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/memory_manager.h"
+#include "eval/compiler/resolver.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
+#include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
+#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 
@@ -92,13 +98,18 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   std::set<std::string>& iter_variable_names() { return iter_variable_names_; }
 
-  google::protobuf::Arena* arena() { return arena_; }
+  google::protobuf::Arena* arena() { return memory_manager_.arena(); }
+
+  cel::MemoryManager& memory_manager() { return memory_manager_; }
 
  private:
   EvaluatorStack value_stack_;
   std::set<std::string> iter_variable_names_;
   std::vector<IterFrame> iter_stack_;
-  google::protobuf::Arena* arena_;
+  // TODO(issues/5): State owns a ProtoMemoryManager to adapt from the client
+  // provided arena. In the future, clients will have to maintain the particular
+  // manager they want to use for evaluation.
+  cel::extensions::ProtoMemoryManager memory_manager_;
 };
 
 // ExecutionFrame provides context for expression evaluation.
@@ -110,20 +121,25 @@ class ExecutionFrame {
   // arena serves as allocation manager during the expression evaluation.
 
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
-                 int max_iterations, CelExpressionFlatEvaluationState* state,
-                 bool enable_unknowns, bool enable_unknown_function_results,
+                 const CelTypeRegistry* type_registry, int max_iterations,
+                 CelExpressionFlatEvaluationState* state, bool enable_unknowns,
+                 bool enable_unknown_function_results,
                  bool enable_missing_attribute_errors,
-                 bool enable_null_coercion)
+                 bool enable_null_coercion,
+                 bool enable_heterogeneous_numeric_lookups)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
+        type_registry_(*type_registry),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
         enable_null_coercion_(enable_null_coercion),
+        enable_heterogeneous_numeric_lookups_(
+            enable_heterogeneous_numeric_lookups),
         attribute_utility_(&activation.unknown_attribute_patterns(),
                            &activation.missing_attribute_patterns(),
-                           state->arena()),
+                           state->memory_manager()),
         max_iterations_(max_iterations),
         iterations_(0),
         state_(state) {}
@@ -155,7 +171,14 @@ class ExecutionFrame {
 
   bool enable_null_coercion() const { return enable_null_coercion_; }
 
-  google::protobuf::Arena* arena() { return state_->arena(); }
+  bool enable_heterogeneous_numeric_lookups() const {
+    return enable_heterogeneous_numeric_lookups_;
+  }
+
+  cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
+
+  const CelTypeRegistry& type_registry() { return type_registry_; }
+
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
   }
@@ -215,10 +238,12 @@ class ExecutionFrame {
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath& execution_path_;
   const BaseActivation& activation_;
+  const CelTypeRegistry& type_registry_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
   bool enable_null_coercion_;
+  bool enable_heterogeneous_numeric_lookups_;
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
@@ -235,21 +260,26 @@ class CelExpressionFlatImpl : public CelExpression {
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
   CelExpressionFlatImpl(ABSL_ATTRIBUTE_UNUSED const Expr* root_expr,
-                        ExecutionPath path, int max_iterations,
+                        ExecutionPath path,
+                        const CelTypeRegistry* type_registry,
+                        int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
                         bool enable_unknown_function_results = false,
                         bool enable_missing_attribute_errors = false,
                         bool enable_null_coercion = true,
+                        bool enable_heterogeneous_equality = false,
                         std::unique_ptr<Expr> rewritten_expr = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
         path_(std::move(path)),
+        type_registry_(*type_registry),
         max_iterations_(max_iterations),
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
-        enable_null_coercion_(enable_null_coercion) {}
+        enable_null_coercion_(enable_null_coercion),
+        enable_heterogeneous_equality_(enable_heterogeneous_equality) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -282,12 +312,14 @@ class CelExpressionFlatImpl : public CelExpression {
   // Maintain lifecycle of a modified expression.
   std::unique_ptr<Expr> rewritten_expr_;
   const ExecutionPath path_;
+  const CelTypeRegistry& type_registry_;
   const int max_iterations_;
   const std::set<std::string> iter_variable_names_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
   bool enable_null_coercion_;
+  bool enable_heterogeneous_equality_;
 };
 
 }  // namespace google::api::expr::runtime

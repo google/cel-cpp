@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
@@ -10,18 +11,15 @@
 #include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/field_access.h"
-#include "eval/public/containers/field_backed_list_impl.h"
-#include "eval/public/containers/field_backed_map_impl.h"
+#include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
-
-using ::google::protobuf::Descriptor;
-using ::google::protobuf::FieldDescriptor;
-using ::google::protobuf::Reflection;
 
 // Common error for cases where evaluation attempts to perform select operations
 // on an unsupported type.
@@ -51,8 +49,8 @@ class SelectStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status CreateValueFromField(const google::protobuf::Message& msg,
-                                    google::protobuf::Arena* arena,
+  absl::Status CreateValueFromField(const CelValue::MessageWrapper& msg,
+                                    cel::MemoryManager& manager,
                                     CelValue* result) const;
 
   std::string field_;
@@ -61,98 +59,70 @@ class SelectStep : public ExpressionStepBase {
   ProtoWrapperTypeOptions unboxing_option_;
 };
 
-absl::Status SelectStep::CreateValueFromField(const google::protobuf::Message& msg,
-                                              google::protobuf::Arena* arena,
-                                              CelValue* result) const {
-  const Descriptor* desc = msg.GetDescriptor();
-  const FieldDescriptor* field_desc = desc->FindFieldByName(field_);
-
-  if (field_desc == nullptr) {
-    *result = CreateNoSuchFieldError(arena, field_);
+absl::Status SelectStep::CreateValueFromField(
+    const CelValue::MessageWrapper& msg, cel::MemoryManager& manager,
+    CelValue* result) const {
+  const LegacyTypeAccessApis* accessor =
+      msg.legacy_type_info()->GetAccessApis(msg);
+  if (accessor == nullptr) {
+    *result = CreateNoSuchFieldError(manager);
     return absl::OkStatus();
   }
-
-  if (field_desc->is_map()) {
-    CelMap* map = google::protobuf::Arena::Create<FieldBackedMapImpl>(arena, &msg,
-                                                            field_desc, arena);
-    *result = CelValue::CreateMap(map);
-    return absl::OkStatus();
-  }
-  if (field_desc->is_repeated()) {
-    CelList* list = google::protobuf::Arena::Create<FieldBackedListImpl>(
-        arena, &msg, field_desc, arena);
-    *result = CelValue::CreateList(list);
-    return absl::OkStatus();
-  }
-
-  return CreateValueFromSingleField(&msg, field_desc, unboxing_option_, arena,
-                                    result);
+  CEL_ASSIGN_OR_RETURN(
+      *result, accessor->GetField(field_, msg, unboxing_option_, manager));
+  return absl::OkStatus();
 }
 
-absl::optional<CelValue> CheckForMarkedAttributes(const ExecutionFrame& frame,
-                                                  const AttributeTrail& trail,
-                                                  google::protobuf::Arena* arena) {
-  if (frame.enable_unknowns() &&
-      frame.attribute_utility().CheckForUnknown(trail,
-                                                /*use_partial=*/false)) {
-    auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
-        arena, UnknownAttributeSet({trail.attribute()}));
-    return CelValue::CreateUnknownSet(unknown_set);
+absl::optional<CelValue> CheckForMarkedAttributes(const AttributeTrail& trail,
+                                                  ExecutionFrame* frame) {
+  if (frame->enable_unknowns() &&
+      frame->attribute_utility().CheckForUnknown(trail,
+                                                 /*use_partial=*/false)) {
+    auto unknown_set = frame->memory_manager().New<UnknownSet>(
+        UnknownAttributeSet({trail.attribute()}));
+    return CelValue::CreateUnknownSet(unknown_set.release());
   }
 
-  if (frame.enable_missing_attribute_errors() &&
-      frame.attribute_utility().CheckForMissingAttribute(trail)) {
+  if (frame->enable_missing_attribute_errors() &&
+      frame->attribute_utility().CheckForMissingAttribute(trail)) {
     auto attribute_string = trail.attribute()->AsString();
     if (attribute_string.ok()) {
-      return CreateMissingAttributeError(arena, *attribute_string);
+      return CreateMissingAttributeError(frame->memory_manager(),
+                                         *attribute_string);
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
-    GOOGLE_LOG(ERROR) << "Invalid attribute pattern matched select path: "
-               << attribute_string.status().ToString();
-    return CelValue::CreateError(
-        google::protobuf::Arena::Create<CelError>(arena, attribute_string.status()));
+    GOOGLE_LOG(ERROR)
+        << "Invalid attribute pattern matched select path: "
+        << attribute_string.status().ToString();  // NOLINT: OSS compatibility
+    return CreateErrorValue(frame->memory_manager(), attribute_string.status());
   }
 
   return absl::nullopt;
 }
 
-CelValue TestOnlySelect(const google::protobuf::Message& msg, const std::string& field,
-                        google::protobuf::Arena* arena) {
-  const Reflection* reflection = msg.GetReflection();
-  const Descriptor* desc = msg.GetDescriptor();
-  const FieldDescriptor* field_desc = desc->FindFieldByName(field);
-
-  if (field_desc == nullptr) {
-    return CreateNoSuchFieldError(arena, field);
+CelValue TestOnlySelect(const CelValue::MessageWrapper& msg,
+                        const std::string& field, cel::MemoryManager& manager) {
+  const LegacyTypeAccessApis* accessor =
+      msg.legacy_type_info()->GetAccessApis(msg);
+  if (accessor == nullptr) {
+    return CreateNoSuchFieldError(manager);
   }
-
-  if (field_desc->is_map()) {
-    // When the map field appears in a has(msg.map_field) expression, the map
-    // is considered 'present' when it is non-empty. Since maps are repeated
-    // fields they don't participate with standard proto presence testing since
-    // the repeated field is always at least empty.
-
-    return CelValue::CreateBool(reflection->FieldSize(msg, field_desc) != 0);
-  }
-
-  if (field_desc->is_repeated()) {
-    // When the list field appears in a has(msg.list_field) expression, the list
-    // is considered 'present' when it is non-empty.
-    return CelValue::CreateBool(reflection->FieldSize(msg, field_desc) != 0);
-  }
-
   // Standard proto presence test for non-repeated fields.
-  return CelValue::CreateBool(reflection->HasField(msg, field_desc));
+  absl::StatusOr<bool> result = accessor->HasField(field, msg);
+  if (!result.ok()) {
+    return CreateErrorValue(manager, std::move(result).status());
+  }
+  return CelValue::CreateBool(*result);
 }
 
 CelValue TestOnlySelect(const CelMap& map, const std::string& field_name,
-                        google::protobuf::Arena* arena) {
+                        cel::MemoryManager& manager) {
   // Field presence only supports string keys containing valid identifier
   // characters.
   auto presence = map.Has(CelValue::CreateStringView(field_name));
   if (!presence.ok()) {
-    return CreateErrorValue(arena, presence.status());
+    return CreateErrorValue(manager, presence.status());
   }
 
   return CelValue::CreateBool(*presence);
@@ -177,11 +147,12 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   // Handle unknown resolution.
   if (frame->enable_unknowns() || frame->enable_missing_attribute_errors()) {
-    result_trail = trail.Step(&field_, frame->arena());
+    result_trail = trail.Step(&field_, frame->memory_manager());
   }
 
   if (arg.IsNull()) {
-    CelValue error_value = CreateErrorValue(frame->arena(), "Message is NULL");
+    CelValue error_value =
+        CreateErrorValue(frame->memory_manager(), "Message is NULL");
     frame->value_stack().PopAndPush(error_value, result_trail);
     return absl::OkStatus();
   }
@@ -191,7 +162,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   absl::optional<CelValue> marked_attribute_check =
-      CheckForMarkedAttributes(*frame, result_trail, frame->arena());
+      CheckForMarkedAttributes(result_trail, frame);
   if (marked_attribute_check.has_value()) {
     frame->value_stack().PopAndPush(marked_attribute_check.value(),
                                     result_trail);
@@ -203,15 +174,18 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     case CelValue::Type::kMap: {
       if (arg.MapOrDie() == nullptr) {
         frame->value_stack().PopAndPush(
-            CreateErrorValue(frame->arena(), "Map is NULL"), result_trail);
+            CreateErrorValue(frame->memory_manager(), "Map is NULL"),
+            result_trail);
         return absl::OkStatus();
       }
       break;
     }
     case CelValue::Type::kMessage: {
-      if (arg.MessageOrDie() == nullptr) {
+      if (CelValue::MessageWrapper w;
+          arg.GetValue(&w) && w.message_ptr() == nullptr) {
         frame->value_stack().PopAndPush(
-            CreateErrorValue(frame->arena(), "Message is NULL"), result_trail);
+            CreateErrorValue(frame->memory_manager(), "Message is NULL"),
+            result_trail);
         return absl::OkStatus();
       }
       break;
@@ -225,11 +199,11 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   if (test_field_presence_) {
     if (arg.IsMap()) {
       frame->value_stack().PopAndPush(
-          TestOnlySelect(*arg.MapOrDie(), field_, frame->arena()));
+          TestOnlySelect(*arg.MapOrDie(), field_, frame->memory_manager()));
       return absl::OkStatus();
-    } else if (arg.IsMessage()) {
+    } else if (CelValue::MessageWrapper message; arg.GetValue(&message)) {
       frame->value_stack().PopAndPush(
-          TestOnlySelect(*arg.MessageOrDie(), field_, frame->arena()));
+          TestOnlySelect(message, field_, frame->memory_manager()));
       return absl::OkStatus();
     }
   }
@@ -238,10 +212,12 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   // Select steps can be applied to either maps or messages
   switch (arg.type()) {
     case CelValue::Type::kMessage: {
-      // not null.
-      const google::protobuf::Message* msg = arg.MessageOrDie();
+      CelValue::MessageWrapper wrapper;
+      bool success = arg.GetValue(&wrapper);
+      ABSL_ASSERT(success);
 
-      CEL_RETURN_IF_ERROR(CreateValueFromField(*msg, frame->arena(), &result));
+      CEL_RETURN_IF_ERROR(
+          CreateValueFromField(wrapper, frame->memory_manager(), &result));
       frame->value_stack().PopAndPush(result, result_trail);
 
       return absl::OkStatus();
@@ -257,7 +233,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       if (lookup_result.has_value()) {
         result = *lookup_result;
       } else {
-        result = CreateNoSuchKeyError(frame->arena(), field_);
+        result = CreateNoSuchKeyError(frame->memory_manager(), field_);
       }
       frame->value_stack().PopAndPush(result, result_trail);
       return absl::OkStatus();

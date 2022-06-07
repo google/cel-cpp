@@ -18,7 +18,6 @@ Generate C++ parser and lexer from a grammar file.
 
 def antlr_cc_library(name, src, package):
     """Creates a C++ lexer and parser from a source grammar.
-
     Args:
       name: Base name for the lexer and the parser rules.
       src: source ANTLR grammar file
@@ -96,7 +95,7 @@ antlr_library = rule(
         "package": attr.string(),
         "_tool": attr.label(
             executable = True,
-            cfg = "host",
+            cfg = "host",  # buildifier: disable=attr-cfg
             default = Label("//bazel:antlr4_tool"),
         ),
     },

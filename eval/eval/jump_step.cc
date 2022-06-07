@@ -82,8 +82,8 @@ class BoolCheckJumpStep : public JumpStepBase {
     }
 
     if (!value.IsBool()) {
-      CelValue error_value =
-          CreateNoMatchingOverloadError(frame->arena(), "<jump_condition>");
+      CelValue error_value = CreateNoMatchingOverloadError(
+          frame->memory_manager(), "<jump_condition>");
       frame->value_stack().PopAndPush(error_value);
       return Jump(frame);
     }

@@ -167,6 +167,87 @@ void AddFatalFailure(const char* file, int line, absl::string_view expression,
 // Returns a gMock matcher that matches a Status or StatusOr<> which is OK.
 inline IsOkMatcher IsOk() { return IsOkMatcher(); }
 
+// Implements a gMock matcher that checks that an asylo::StaturOr<T> or
+// absl::StatusOr<T> has an OK status and that the contained T value matches
+// another matcher.
+template <typename StatusOrT>
+class IsOkAndHoldsMatcher
+    : public ::testing::MatcherInterface<const StatusOrT &> {
+  using ValueType = typename StatusOrT::value_type;
+
+ public:
+  template <typename MatcherT>
+  explicit IsOkAndHoldsMatcher(MatcherT &&value_matcher)
+      : value_matcher_(
+            ::testing::SafeMatcherCast<const ValueType &>(value_matcher)) {}
+
+  // From testing::MatcherInterface.
+  void DescribeTo(std::ostream *os) const override {
+    *os << "is OK and contains a value that ";
+    value_matcher_.DescribeTo(os);
+  }
+
+  // From testing::MatcherInterface.
+  void DescribeNegationTo(std::ostream *os) const override {
+    *os << "is not OK or contains a value that ";
+    value_matcher_.DescribeNegationTo(os);
+  }
+
+  // From testing::MatcherInterface.
+  bool MatchAndExplain(
+      const StatusOrT &status_or,
+      ::testing::MatchResultListener *listener) const override {
+    if (!status_or.ok()) {
+      *listener << "which is not OK";
+      return false;
+    }
+
+    ::testing::StringMatchResultListener value_listener;
+    bool is_a_match =
+        value_matcher_.MatchAndExplain(*status_or, &value_listener);
+    std::string value_explanation = value_listener.str();
+    if (!value_explanation.empty()) {
+      *listener << absl::StrCat("which contains a value ", value_explanation);
+    }
+
+    return is_a_match;
+  }
+
+ private:
+  const ::testing::Matcher<const ValueType &> value_matcher_;
+};
+
+// A polymorphic IsOkAndHolds() matcher.
+//
+// IsOkAndHolds() returns a matcher that can be used to process an IsOkAndHolds
+// expectation. However, the value type T is not provided when IsOkAndHolds() is
+// invoked. The value type is only inferable when the gtest framework invokes
+// the matcher with a value. Consequently, the IsOkAndHolds() function must
+// return an object that is implicitly convertible to a matcher for StatusOr<T>.
+// gtest refers to such an object as a polymorphic matcher, since it can be used
+// to match with more than one type of value.
+template <typename ValueMatcherT>
+class IsOkAndHoldsGenerator {
+ public:
+  explicit IsOkAndHoldsGenerator(ValueMatcherT value_matcher)
+      : value_matcher_(std::move(value_matcher)) {}
+
+  template <typename T>
+  operator ::testing::Matcher<const absl::StatusOr<T> &>() const {
+    return ::testing::MakeMatcher(
+        new IsOkAndHoldsMatcher<absl::StatusOr<T>>(value_matcher_));
+  }
+
+ private:
+  const ValueMatcherT value_matcher_;
+};
+
+template <typename ValueMatcherT>
+IsOkAndHoldsGenerator<ValueMatcherT> IsOkAndHolds(
+    ValueMatcherT value_matcher) {
+  return IsOkAndHoldsGenerator<ValueMatcherT>(value_matcher);
+}
+
 }  // namespace cel::internal
 
 #endif  // THIRD_PARTY_CEL_CPP_INTERNAL_TESTING_H_

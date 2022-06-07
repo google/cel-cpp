@@ -50,23 +50,6 @@ bool UnknownFunctionResultLessThan(const UnknownFunctionResult& lhs,
     return false;
   }
 
-  if (lhs.arguments().size() < rhs.arguments().size()) {
-    return true;
-  }
-
-  if (lhs.arguments().size() > rhs.arguments().size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < lhs.arguments().size(); i++) {
-    if (CelValueLessThan(lhs.arguments()[i], rhs.arguments()[i])) {
-      return true;
-    }
-    if (CelValueLessThan(rhs.arguments()[i], lhs.arguments()[i])) {
-      return false;
-    }
-  }
-
   // equal
   return false;
 }

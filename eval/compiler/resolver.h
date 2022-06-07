@@ -47,6 +47,11 @@ class Resolver {
   const google::protobuf::Descriptor* FindDescriptor(absl::string_view name,
                                            int64_t expr_id) const;
 
+  // FindTypeAdapter returns the adapter for the given type name if one exists,
+  // following resolution rules for the expression container.
+  absl::optional<LegacyTypeAdapter> FindTypeAdapter(absl::string_view name,
+                                                    int64_t expr_id) const;
+
   // FindLazyOverloads returns the set, possibly empty, of lazy overloads
   // matching the given function signature.
   std::vector<const CelFunctionProvider*> FindLazyOverloads(

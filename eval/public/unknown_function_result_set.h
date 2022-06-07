@@ -17,9 +17,8 @@ namespace runtime {
 // allows for lazy evaluation of expensive functions.
 class UnknownFunctionResult {
  public:
-  UnknownFunctionResult(const CelFunctionDescriptor& descriptor, int64_t expr_id,
-                        const std::vector<CelValue>& arguments)
-      : descriptor_(descriptor), expr_id_(expr_id), arguments_(arguments) {}
+  UnknownFunctionResult(const CelFunctionDescriptor& descriptor, int64_t expr_id)
+      : descriptor_(descriptor), expr_id_(expr_id) {}
 
   // The descriptor of the called function that return Unknown.
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }
@@ -29,18 +28,16 @@ class UnknownFunctionResult {
   // they will be treated as the same unknown function result.
   int64_t call_expr_id() const { return expr_id_; }
 
-  // The arguments of the function call that generated the unknown.
-  const std::vector<CelValue>& arguments() const { return arguments_; }
-
   // Equality operator provided for testing. Compatible with set less-than
   // comparator.
   // Compares descriptor then arguments elementwise.
   bool IsEqualTo(const UnknownFunctionResult& other) const;
 
+  // TODO(issues/5): re-implement argument capture
+
  private:
   CelFunctionDescriptor descriptor_;
   int64_t expr_id_;
-  std::vector<CelValue> arguments_;
 };
 
 // Comparator for set semantics.

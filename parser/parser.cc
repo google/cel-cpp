@@ -57,7 +57,6 @@ namespace {
 using ::antlr4::CharStream;
 using ::antlr4::CommonTokenStream;
 using ::antlr4::DefaultErrorStrategy;
-using ::antlr4::IntStream;
 using ::antlr4::ParseCancellationException;
 using ::antlr4::Parser;
 using ::antlr4::ParserRuleContext;

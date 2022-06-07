@@ -6,7 +6,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/structs/cel_proto_wrapper.h"
+#include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime {
 
@@ -58,10 +58,12 @@ absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
       value = CelValue::CreateBytes(&const_expr->bytes_value());
       break;
     case Constant::kDurationValue:
-      value = CelProtoWrapper::CreateDuration(&const_expr->duration_value());
+      value = CelValue::CreateDuration(
+          cel::internal::DecodeDuration(const_expr->duration_value()));
       break;
     case Constant::kTimestampValue:
-      value = CelProtoWrapper::CreateTimestamp(&const_expr->timestamp_value());
+      value = CelValue::CreateTimestamp(
+          cel::internal::DecodeTime(const_expr->timestamp_value()));
       break;
     default:
       // constant with no kind specified
@@ -73,13 +75,13 @@ absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     CelValue value, int64_t expr_id, bool comes_from_ast) {
-  return absl::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
+  return std::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
 }
 
 // Factory method for Constant(Enum value) - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     const google::protobuf::EnumValueDescriptor* value_descriptor, int64_t expr_id) {
-  return absl::make_unique<ConstValueStep>(
+  return std::make_unique<ConstValueStep>(
       CelValue::CreateInt64(value_descriptor->number()), expr_id, false);
 }
 

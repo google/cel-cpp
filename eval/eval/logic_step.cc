@@ -77,7 +77,7 @@ class LogicalOpStep : public ExpressionStepBase {
 
     // Fallback.
     *result = CreateNoMatchingOverloadError(
-        frame->arena(),
+        frame->memory_manager(),
         (op_type_ == OpType::OR) ? builtin::kOr : builtin::kAnd);
     return absl::OkStatus();
   }

@@ -3,10 +3,13 @@
 namespace google::api::expr::runtime {
 
 absl::Status BuilderWarnings::AddWarning(const absl::Status& warning) {
+  // Track errors
+  warnings_.push_back(warning);
+
   if (fail_immediately_) {
     return warning;
   }
-  warnings_.push_back(warning);
+
   return absl::OkStatus();
 }
 

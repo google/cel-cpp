@@ -13,6 +13,7 @@ cc_library(
         "//eval/public:cel_value",
         "//eval/public:set_util",
         "//eval/public:unknown_set",
+        "//internal:casts",
         "//internal:testing",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
@@ -25,6 +26,7 @@ cc_test(
     srcs = ["matchers_test.cc"],
     deps = [
         ":matchers",
+        "//eval/public/containers:container_backed_list_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "//eval/testutil:test_message_cc_proto",
         "//internal:testing",

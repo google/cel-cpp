@@ -32,7 +32,10 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/memory_manager.h"
 #include "eval/public/cel_value_internal.h"
+#include "eval/public/message_wrapper.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
 
@@ -44,6 +47,7 @@ using CelError = absl::Status;
 class CelList;
 class CelMap;
 class UnknownSet;
+class LegacyTypeAdapter;
 
 class CelValue {
  public:
@@ -112,13 +116,16 @@ class CelValue {
   // absl::variant.
   using NullType = absl::monostate;
 
+  // GCC: fully qualified to avoid change of meaning error.
+  using MessageWrapper = google::api::expr::runtime::MessageWrapper;
+
  private:
   // CelError MUST BE the last in the declaration - it is a ceiling for Type
   // enum
   using ValueHolder = internal::ValueHolder<
       NullType, bool, int64_t, uint64_t, double, StringHolder, BytesHolder,
-      const google::protobuf::Message*, absl::Duration, absl::Time, const CelList*,
-      const CelMap*, const UnknownSet*, CelTypeHolder, const CelError*>;
+      MessageWrapper, absl::Duration, absl::Time, const CelList*, const CelMap*,
+      const UnknownSet*, CelTypeHolder, const CelError*>;
 
  public:
   // Metafunction providing positions corresponding to specific
@@ -137,7 +144,7 @@ class CelValue {
     kDouble = IndexOf<double>::value,
     kString = IndexOf<StringHolder>::value,
     kBytes = IndexOf<BytesHolder>::value,
-    kMessage = IndexOf<const google::protobuf::Message*>::value,
+    kMessage = IndexOf<MessageWrapper>::value,
     kDuration = IndexOf<absl::Duration>::value,
     kTimestamp = IndexOf<absl::Time>::value,
     kList = IndexOf<const CelList*>::value,
@@ -280,7 +287,10 @@ class CelValue {
   // Returns stored const Message* value.
   // Fails if stored value type is not const Message*.
   const google::protobuf::Message* MessageOrDie() const {
-    return GetValueOrDie<const google::protobuf::Message*>(Type::kMessage);
+    MessageWrapper wrapped = GetValueOrDie<MessageWrapper>(Type::kMessage);
+    ABSL_ASSERT(wrapped.HasFullProto());
+    return cel::internal::down_cast<const google::protobuf::Message*>(
+        wrapped.message_ptr());
   }
 
   // Returns stored duration value.
@@ -339,7 +349,7 @@ class CelValue {
 
   bool IsBytes() const { return value_.is<BytesHolder>(); }
 
-  bool IsMessage() const { return value_.is<const google::protobuf::Message*>(); }
+  bool IsMessage() const { return value_.is<MessageWrapper>(); }
 
   bool IsDuration() const { return value_.is<absl::Duration>(); }
 
@@ -357,25 +367,46 @@ class CelValue {
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
+  // Note: this depends on the internals of CelValue, so use with caution.
+  template <class ReturnType, class Op>
+  ReturnType InternalVisit(Op&& op) const {
+    return value_.template Visit<ReturnType>(std::forward<Op>(op));
+  }
+
+  // Invokes op() with the active value, and returns the result.
+  // All overloads of op() must have the same return type.
+  // TODO(issues/5): Move to CelProtoWrapper to retain the assumed
+  // google::protobuf::Message variant version behavior for client code.
   template <class ReturnType, class Op>
   ReturnType Visit(Op&& op) const {
-    return value_.template Visit<ReturnType>(op);
+    return value_.template Visit<ReturnType>(
+        internal::MessageVisitAdapter<Op, ReturnType>(std::forward<Op>(op)));
   }
 
   // Template-style getter.
   // Returns true, if assignment successful
   template <typename Arg>
   bool GetValue(Arg* value) const {
-    return this->template Visit<bool>(AssignerOp<Arg>(value));
+    return this->template InternalVisit<bool>(AssignerOp<Arg>(value));
   }
 
   // Provides type names for internal logging.
   static std::string TypeName(Type value_type);
 
+  // Factory for message wrapper. This should only be used by internal
+  // libraries.
+  // TODO(issues/5): exposed for testing while wiring adapter APIs. Should
+  // make private visibility after refactors are done.
+  static CelValue CreateMessageWrapper(MessageWrapper value) {
+    CheckNullPointer(value.message_ptr(), Type::kMessage);
+    CheckNullPointer(value.legacy_type_info(), Type::kMessage);
+    return CelValue(value);
+  }
+
  private:
   ValueHolder value_;
 
-  template <typename T>
+  template <typename T, class = void>
   struct AssignerOp {
     explicit AssignerOp(T* val) : value(val) {}
 
@@ -392,6 +423,32 @@ class CelValue {
     T* value;
   };
 
+  // Specialization for MessageWrapper to support legacy behavior while
+  // migrating off hard dependency on google::protobuf::Message.
+  // TODO(issues/5): Move to CelProtoWrapper.
+  template <typename T>
+  struct AssignerOp<
+      T, std::enable_if_t<std::is_same_v<T, const google::protobuf::Message*>>> {
+    explicit AssignerOp(const google::protobuf::Message** val) : value(val) {}
+
+    template <typename U>
+    bool operator()(const U&) {
+      return false;
+    }
+
+    bool operator()(const MessageWrapper& held_value) {
+      if (!held_value.HasFullProto()) {
+        return false;
+      }
+
+      *value = cel::internal::down_cast<const google::protobuf::Message*>(
+          held_value.message_ptr());
+      return true;
+    }
+
+    const google::protobuf::Message** value;
+  };
+
   struct NullCheckOp {
     template <typename T>
     bool operator()(const T&) const {
@@ -399,7 +456,11 @@ class CelValue {
     }
 
     bool operator()(NullType) const { return true; }
-    bool operator()(const google::protobuf::Message* arg) const { return arg == nullptr; }
+    // Note: this is not typically possible, but is supported for allowing
+    // function resolution for null ptrs as Messages.
+    bool operator()(const MessageWrapper& arg) const {
+      return arg.message_ptr() == nullptr;
+    }
   };
 
   // Constructs CelValue wrapping value supplied as argument.
@@ -407,17 +468,11 @@ class CelValue {
   template <class T>
   explicit CelValue(T value) : value_(value) {}
 
-  // Overloads for creating Message types. This should only be used by
-  // internal libraries.
-  static CelValue CreateMessage(const google::protobuf::Message* value) {
-    CheckNullPointer(value, Type::kMessage);
-    return CelValue(value);
-  }
-
   // This is provided for backwards compatibility with resolving null to message
   // overloads.
   static CelValue CreateNullMessage() {
-    return CelValue(static_cast<const google::protobuf::Message*>(nullptr));
+    return CelValue(
+        MessageWrapper(static_cast<const google::protobuf::Message*>(nullptr), nullptr));
   }
 
   // Crashes with a null pointer error.
@@ -451,7 +506,9 @@ class CelValue {
   }
 
   friend class CelProtoWrapper;
+  friend class ProtoMessageTypeAdapter;
   friend class EvaluatorStack;
+  friend class TestOnly_FactoryAccessor;
 };
 
 static_assert(absl::is_trivially_destructible<CelValue>::value,
@@ -529,12 +586,20 @@ class CelMap {
 // Utility method that generates CelValue containing CelError.
 // message an error message
 // error_code error code
-// position location of the error source in CEL expression string the Expr was
-// parsed from. -1, if the position can not be determined.
+CelValue CreateErrorValue(
+    cel::MemoryManager& manager ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    absl::string_view message,
+    absl::StatusCode error_code = absl::StatusCode::kUnknown);
 CelValue CreateErrorValue(
     google::protobuf::Arena* arena, absl::string_view message,
-    absl::StatusCode error_code = absl::StatusCode::kUnknown,
-    int position = -1);
+    absl::StatusCode error_code = absl::StatusCode::kUnknown);
+
+// Utility method for generating a CelValue from an absl::Status.
+inline CelValue CreateErrorValue(cel::MemoryManager& manager
+                                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                 const absl::Status& status) {
+  return CreateErrorValue(manager, status.message(), status.code());
+}
 
 // Utility method for generating a CelValue from an absl::Status.
 inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
@@ -542,28 +607,39 @@ inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
   return CreateErrorValue(arena, status.message(), status.code());
 }
 
-CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena);
+// Create an error for failed overload resolution, optionally including the name
+// of the function.
+CelValue CreateNoMatchingOverloadError(cel::MemoryManager& manager
+                                           ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                       absl::string_view fn = "");
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
-                                       absl::string_view fn);
+                                       absl::string_view fn = "");
 bool CheckNoMatchingOverloadError(CelValue value);
 
+CelValue CreateNoSuchFieldError(cel::MemoryManager& manager
+                                    ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                absl::string_view field = "");
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena,
                                 absl::string_view field = "");
 
+CelValue CreateNoSuchKeyError(cel::MemoryManager& manager
+                                  ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                              absl::string_view key);
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key);
+
 bool CheckNoSuchKeyError(CelValue value);
-
-ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
-CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
-                                 absl::string_view unknown_path);
-
-ABSL_DEPRECATED("This type of error is no longer used by the evaluator.")
-bool IsUnknownValueError(const CelValue& value);
 
 // Returns an error indicating that evaluation has accessed an attribute whose
 // value is undefined. For example, this may represent a field in a proto
 // message bound to the activation whose value can't be determined by the
 // hosting application.
+CelValue CreateMissingAttributeError(cel::MemoryManager& manager
+                                         ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                     absl::string_view missing_attribute_path);
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
                                      absl::string_view missing_attribute_path);
 
@@ -572,6 +648,10 @@ bool IsMissingAttributeError(const CelValue& value);
 // Returns error indicating the result of the function is unknown. This is used
 // as a signal to create an unknown set if unknown function handling is opted
 // into.
+CelValue CreateUnknownFunctionResultError(cel::MemoryManager& manager
+                                              ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                                          absl::string_view help_message);
+ABSL_DEPRECATED("Prefer using the generic MemoryManager overload")
 CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
                                           absl::string_view help_message);
 

@@ -123,9 +123,10 @@ class BuiltinsTest : public ::testing::Test {
   // Helper method. Looks up in registry and tests for no matching equality
   // overload.
   void TestNoMatchingEqualOverload(const CelValue& ref, const CelValue& other) {
+    options_.enable_heterogeneous_equality = false;
     CelValue eq_value;
     ASSERT_NO_FATAL_FAILURE(
-        PerformRun(builtin::kEqual, {}, {ref, other}, &eq_value));
+        PerformRun(builtin::kEqual, {}, {ref, other}, &eq_value, options_));
     ASSERT_TRUE(eq_value.IsError())
         << " for " << CelValue::TypeName(ref.type()) << " and "
         << CelValue::TypeName(other.type());
@@ -133,7 +134,7 @@ class BuiltinsTest : public ::testing::Test {
 
     CelValue ineq_value;
     ASSERT_NO_FATAL_FAILURE(
-        PerformRun(builtin::kInequal, {}, {ref, other}, &ineq_value));
+        PerformRun(builtin::kInequal, {}, {ref, other}, &ineq_value, options_));
     ASSERT_TRUE(ineq_value.IsError())
         << " for " << CelValue::TypeName(ref.type()) << " and "
         << CelValue::TypeName(other.type());
@@ -384,11 +385,11 @@ class BuiltinsTest : public ::testing::Test {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kIn, {},
                                        {value, CelValue::CreateMap(cel_map)},
-                                       &result_value));
+                                       &result_value, options_));
 
     ASSERT_EQ(result_value.IsBool(), true);
     ASSERT_EQ(result_value.BoolOrDie(), result)
-        << " for " << CelValue::TypeName(value.type());
+        << " for " << value.DebugString();
   }
 
   void TestInDeprecatedMap(const CelMap* cel_map, const CelValue& value,
@@ -396,7 +397,7 @@ class BuiltinsTest : public ::testing::Test {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kInDeprecated, {},
                                        {value, CelValue::CreateMap(cel_map)},
-                                       &result_value));
+                                       &result_value, options_));
 
     ASSERT_EQ(result_value.IsBool(), true);
     ASSERT_EQ(result_value.BoolOrDie(), result)
@@ -408,7 +409,7 @@ class BuiltinsTest : public ::testing::Test {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(builtin::kInFunction, {},
                                        {value, CelValue::CreateMap(cel_map)},
-                                       &result_value));
+                                       &result_value, options_));
 
     ASSERT_EQ(result_value.IsBool(), true);
     ASSERT_EQ(result_value.BoolOrDie(), result)
@@ -1575,6 +1576,17 @@ TEST_F(BuiltinsTest, TestMapInError) {
       CelValue::CreateStringView("hello"),
       CelValue::CreateUint64(2),
   };
+
+  options_.enable_heterogeneous_equality = true;
+  for (auto key : kValues) {
+    CelValue result_value;
+    ASSERT_NO_FATAL_FAILURE(PerformRun(
+        builtin::kIn, {}, {key, CelValue::CreateMap(&cel_map)}, &result_value));
+    EXPECT_TRUE(result_value.IsBool());
+    EXPECT_FALSE(result_value.BoolOrDie());
+  }
+
+  options_.enable_heterogeneous_equality = false;
   for (auto key : kValues) {
     CelValue result_value;
     ASSERT_NO_FATAL_FAILURE(PerformRun(
@@ -1606,9 +1618,21 @@ TEST_F(BuiltinsTest, TestInt64MapIn) {
     data[value] = CelValue::CreateInt64(value * value);
   }
   FakeInt64Map cel_map(data);
+  options_.enable_heterogeneous_equality = false;
   TestInMap(&cel_map, CelValue::CreateInt64(-4), true);
   TestInMap(&cel_map, CelValue::CreateInt64(4), false);
   TestInMap(&cel_map, CelValue::CreateUint64(3), false);
+  TestInMap(&cel_map, CelValue::CreateUint64(4), false);
+
+  options_.enable_heterogeneous_equality = true;
+  TestInMap(&cel_map, CelValue::CreateUint64(3), true);
+  TestInMap(&cel_map, CelValue::CreateUint64(4), false);
+  TestInMap(&cel_map, CelValue::CreateDouble(NAN), false);
+  TestInMap(&cel_map, CelValue::CreateDouble(-4.0), true);
+  TestInMap(&cel_map, CelValue::CreateDouble(-4.1), false);
+  TestInMap(&cel_map,
+            CelValue::CreateDouble(std::numeric_limits<uint64_t>::max()),
+            false);
 }
 
 TEST_F(BuiltinsTest, TestUint64MapIn) {
@@ -1618,9 +1642,17 @@ TEST_F(BuiltinsTest, TestUint64MapIn) {
     data[value] = CelValue::CreateUint64(value * value);
   }
   FakeUint64Map cel_map(data);
+  options_.enable_heterogeneous_equality = false;
   TestInMap(&cel_map, CelValue::CreateUint64(4), true);
   TestInMap(&cel_map, CelValue::CreateUint64(44), false);
   TestInMap(&cel_map, CelValue::CreateInt64(4), false);
+
+  options_.enable_heterogeneous_equality = true;
+  TestInMap(&cel_map, CelValue::CreateInt64(-1), false);
+  TestInMap(&cel_map, CelValue::CreateInt64(4), true);
+  TestInMap(&cel_map, CelValue::CreateDouble(4.0), true);
+  TestInMap(&cel_map, CelValue::CreateDouble(-4.0), false);
+  TestInMap(&cel_map, CelValue::CreateDouble(7.0), false);
 }
 
 TEST_F(BuiltinsTest, TestStringMapIn) {
