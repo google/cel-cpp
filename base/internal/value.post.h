@@ -27,8 +27,6 @@
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
-#include "absl/numeric/bits.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
 #include "internal/casts.h"
@@ -36,224 +34,6 @@
 namespace cel {
 
 namespace base_internal {
-
-inline internal::TypeInfo GetEnumValueTypeId(const EnumValue& enum_value) {
-  return enum_value.TypeId();
-}
-
-inline internal::TypeInfo GetStructValueTypeId(
-    const StructValue& struct_value) {
-  return struct_value.TypeId();
-}
-
-inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
-  return list_value.TypeId();
-}
-
-inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
-  return map_value.TypeId();
-}
-
-// Implementation of BytesValue that is stored inlined within a handle. Since
-// absl::Cord is reference counted itself, this is more efficient than storing
-// this on the heap.
-class InlinedCordBytesValue final : public BytesValue, public ResourceInlined {
- private:
-  template <HandleType H>
-  friend class ValueHandle;
-
-  explicit InlinedCordBytesValue(absl::Cord value) : value_(std::move(value)) {}
-
-  InlinedCordBytesValue() = delete;
-
-  InlinedCordBytesValue(const InlinedCordBytesValue&) = default;
-  InlinedCordBytesValue(InlinedCordBytesValue&&) = default;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  absl::Cord value_;
-};
-
-// Implementation of BytesValue that is stored inlined within a handle. This
-// class is inheritently unsafe and care should be taken when using it.
-// Typically this should only be used for empty strings or data that is static
-// and lives for the duration of a program.
-class InlinedStringViewBytesValue final : public BytesValue,
-                                          public ResourceInlined {
- private:
-  template <HandleType H>
-  friend class ValueHandle;
-
-  explicit InlinedStringViewBytesValue(absl::string_view value)
-      : value_(value) {}
-
-  InlinedStringViewBytesValue() = delete;
-
-  InlinedStringViewBytesValue(const InlinedStringViewBytesValue&) = default;
-  InlinedStringViewBytesValue(InlinedStringViewBytesValue&&) = default;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  absl::string_view value_;
-};
-
-// Implementation of BytesValue that uses std::string and is allocated on the
-// heap, potentially reference counted.
-class StringBytesValue final : public BytesValue {
- private:
-  friend class cel::MemoryManager;
-
-  explicit StringBytesValue(std::string value) : value_(std::move(value)) {}
-
-  StringBytesValue() = delete;
-  StringBytesValue(const StringBytesValue&) = delete;
-  StringBytesValue(StringBytesValue&&) = delete;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  std::string value_;
-};
-
-// Implementation of BytesValue that wraps a contiguous array of bytes and calls
-// the releaser when it is no longer needed. It is stored on the heap and
-// potentially reference counted.
-class ExternalDataBytesValue final : public BytesValue {
- private:
-  friend class cel::MemoryManager;
-
-  explicit ExternalDataBytesValue(ExternalData value)
-      : value_(std::move(value)) {}
-
-  ExternalDataBytesValue() = delete;
-  ExternalDataBytesValue(const ExternalDataBytesValue&) = delete;
-  ExternalDataBytesValue(ExternalDataBytesValue&&) = delete;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  ExternalData value_;
-};
-
-// Implementation of StringValue that is stored inlined within a handle. Since
-// absl::Cord is reference counted itself, this is more efficient then storing
-// this on the heap.
-class InlinedCordStringValue final : public StringValue,
-                                     public ResourceInlined {
- private:
-  template <HandleType H>
-  friend class ValueHandle;
-
-  explicit InlinedCordStringValue(absl::Cord value)
-      : InlinedCordStringValue(0, std::move(value)) {}
-
-  InlinedCordStringValue(size_t size, absl::Cord value)
-      : StringValue(size), value_(std::move(value)) {}
-
-  InlinedCordStringValue() = delete;
-
-  InlinedCordStringValue(const InlinedCordStringValue&) = default;
-  InlinedCordStringValue(InlinedCordStringValue&&) = default;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  absl::Cord value_;
-};
-
-// Implementation of StringValue that is stored inlined within a handle. This
-// class is inheritently unsafe and care should be taken when using it.
-// Typically this should only be used for empty strings or data that is static
-// and lives for the duration of a program.
-class InlinedStringViewStringValue final : public StringValue,
-                                           public ResourceInlined {
- private:
-  template <HandleType H>
-  friend class ValueHandle;
-
-  explicit InlinedStringViewStringValue(absl::string_view value)
-      : InlinedStringViewStringValue(0, value) {}
-
-  InlinedStringViewStringValue(size_t size, absl::string_view value)
-      : StringValue(size), value_(value) {}
-
-  InlinedStringViewStringValue() = delete;
-
-  InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
-  InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  absl::string_view value_;
-};
-
-// Implementation of StringValue that uses std::string and is allocated on the
-// heap, potentially reference counted.
-class StringStringValue final : public StringValue {
- private:
-  friend class cel::MemoryManager;
-
-  explicit StringStringValue(std::string value)
-      : StringStringValue(0, std::move(value)) {}
-
-  StringStringValue(size_t size, std::string value)
-      : StringValue(size), value_(std::move(value)) {}
-
-  StringStringValue() = delete;
-  StringStringValue(const StringStringValue&) = delete;
-  StringStringValue(StringStringValue&&) = delete;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  std::string value_;
-};
-
-// Implementation of StringValue that wraps a contiguous array of bytes and
-// calls the releaser when it is no longer needed. It is stored on the heap and
-// potentially reference counted.
-class ExternalDataStringValue final : public StringValue {
- private:
-  friend class cel::MemoryManager;
-
-  explicit ExternalDataStringValue(ExternalData value)
-      : ExternalDataStringValue(0, std::move(value)) {}
-
-  ExternalDataStringValue(size_t size, ExternalData value)
-      : StringValue(size), value_(std::move(value)) {}
-
-  ExternalDataStringValue() = delete;
-  ExternalDataStringValue(const ExternalDataStringValue&) = delete;
-  ExternalDataStringValue(ExternalDataStringValue&&) = delete;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  ExternalData value_;
-};
 
 struct ABSL_ATTRIBUTE_UNUSED CheckVptrOffsetBase {
   virtual ~CheckVptrOffsetBase() = default;
@@ -282,12 +62,7 @@ union ValueHandleData final {
   // bits to differentiate between an inlined value (both 0), a heap allocated
   // reference counted value, or a arena allocated value.
   void* vptr;
-  std::aligned_union_t<sizeof(void*), NullValue, ErrorValue, BoolValue,
-                       IntValue, UintValue, DoubleValue, InlinedCordBytesValue,
-                       InlinedStringViewBytesValue, InlinedCordStringValue,
-                       InlinedStringViewStringValue, DurationValue,
-                       TimestampValue>
-      padding;
+  alignas(std::max_align_t) char padding[32];
 };
 
 // Base implementation of persistent and transient handles for values. This
@@ -333,12 +108,12 @@ class ValueHandleBase {
   // Called by `Transient` and `Persistent` to implement the same operator.
   friend bool operator==(const ValueHandleBase& lhs,
                          const ValueHandleBase& rhs) {
-    const Value& lhs_value = ABSL_PREDICT_TRUE(static_cast<bool>(lhs))
-                                 ? lhs.get()
-                                 : static_cast<const Value&>(NullValue::Get());
-    const Value& rhs_value = ABSL_PREDICT_TRUE(static_cast<bool>(rhs))
-                                 ? rhs.get()
-                                 : static_cast<const Value&>(NullValue::Get());
+    if (static_cast<bool>(lhs) != static_cast<bool>(rhs) ||
+        !static_cast<bool>(lhs)) {
+      return false;
+    }
+    const Value& lhs_value = lhs.get();
+    const Value& rhs_value = rhs.get();
     return lhs_value.Equals(rhs_value);
   }
 
@@ -359,8 +134,6 @@ class ValueHandleBase {
   friend H AbslHashValue(H state, const ValueHandleBase& handle) {
     if (ABSL_PREDICT_TRUE(static_cast<bool>(handle))) {
       handle.get().HashValue(absl::HashState::Create(&state));
-    } else {
-      NullValue::Get().HashValue(absl::HashState::Create(&state));
     }
     return state;
   }
@@ -535,27 +308,6 @@ struct HandleTraits<HandleType::kPersistent, T,
     final : public HandleTraits<HandleType::kPersistent, Value> {};
 
 }  // namespace base_internal
-
-#define CEL_INTERNAL_VALUE_DECL(name)          \
-  extern template class Persistent<name>;      \
-  extern template class Persistent<const name>
-CEL_INTERNAL_VALUE_DECL(Value);
-CEL_INTERNAL_VALUE_DECL(NullValue);
-CEL_INTERNAL_VALUE_DECL(ErrorValue);
-CEL_INTERNAL_VALUE_DECL(BoolValue);
-CEL_INTERNAL_VALUE_DECL(IntValue);
-CEL_INTERNAL_VALUE_DECL(UintValue);
-CEL_INTERNAL_VALUE_DECL(DoubleValue);
-CEL_INTERNAL_VALUE_DECL(BytesValue);
-CEL_INTERNAL_VALUE_DECL(StringValue);
-CEL_INTERNAL_VALUE_DECL(DurationValue);
-CEL_INTERNAL_VALUE_DECL(TimestampValue);
-CEL_INTERNAL_VALUE_DECL(EnumValue);
-CEL_INTERNAL_VALUE_DECL(StructValue);
-CEL_INTERNAL_VALUE_DECL(ListValue);
-CEL_INTERNAL_VALUE_DECL(MapValue);
-CEL_INTERNAL_VALUE_DECL(TypeValue);
-#undef CEL_INTERNAL_VALUE_DECL
 
 }  // namespace cel
 

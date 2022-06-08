@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/value.h"
+#include "base/values/enum_value.h"
 
-#include <cstddef>
+#include <string>
 #include <utility>
+
+#include "internal/casts.h"
 
 namespace cel {
 
-std::pair<size_t, size_t> Value::SizeAndAlignment() const {
-  // Currently most implementations of Value are not reference counted, so those
-  // that are override this and those that do not inherit this. Using 0 here
-  // will trigger runtime asserts in case of undefined behavior.
-  return std::pair<size_t, size_t>(0, 0);
+bool EnumValue::Equals(const Value& other) const {
+  return kind() == other.kind() && type() == other.type() &&
+         number() == internal::down_cast<const EnumValue&>(other).number();
 }
 
-void Value::CopyTo(Value& address) const {}
-
-void Value::MoveTo(Value& address) {}
+void EnumValue::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), type(), number());
+}
 
 }  // namespace cel

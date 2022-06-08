@@ -26,6 +26,8 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
+#include "base/values/enum_value.h"
+#include "base/values/struct_value.h"
 #include "internal/testing.h"
 
 namespace cel {

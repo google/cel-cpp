@@ -31,6 +31,21 @@
 #include "base/memory_manager.h"
 #include "base/type_manager.h"
 #include "base/value.h"
+#include "base/values/bool_value.h"
+#include "base/values/bytes_value.h"
+#include "base/values/double_value.h"
+#include "base/values/duration_value.h"
+#include "base/values/enum_value.h"
+#include "base/values/error_value.h"
+#include "base/values/int_value.h"
+#include "base/values/list_value.h"
+#include "base/values/map_value.h"
+#include "base/values/null_value.h"
+#include "base/values/string_value.h"
+#include "base/values/struct_value.h"
+#include "base/values/timestamp_value.h"
+#include "base/values/type_value.h"
+#include "base/values/uint_value.h"
 
 namespace cel {
 
