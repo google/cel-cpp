@@ -27,7 +27,6 @@ TEST(Kind, ToString) {
   EXPECT_EQ(KindToString(Kind::kDyn), "dyn");
   EXPECT_EQ(KindToString(Kind::kAny), "any");
   EXPECT_EQ(KindToString(Kind::kType), "type");
-  EXPECT_EQ(KindToString(Kind::kTypeParam), "type_param");
   EXPECT_EQ(KindToString(Kind::kBool), "bool");
   EXPECT_EQ(KindToString(Kind::kInt), "int");
   EXPECT_EQ(KindToString(Kind::kUint), "uint");
@@ -40,7 +39,6 @@ TEST(Kind, ToString) {
   EXPECT_EQ(KindToString(Kind::kList), "list");
   EXPECT_EQ(KindToString(Kind::kMap), "map");
   EXPECT_EQ(KindToString(Kind::kStruct), "struct");
-  EXPECT_EQ(KindToString(Kind::kOpaque), "opaque");
   EXPECT_EQ(KindToString(static_cast<Kind>(std::numeric_limits<int>::max())),
             "*error*");
 }

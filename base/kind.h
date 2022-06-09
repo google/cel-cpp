@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 #define THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 
+#include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 
 namespace cel {
@@ -25,7 +26,6 @@ enum class Kind {
   kDyn,
   kAny,
   kType,
-  kTypeParam,
   kBool,
   kInt,
   kUint,
@@ -38,10 +38,9 @@ enum class Kind {
   kList,
   kMap,
   kStruct,
-  kOpaque,
 };
 
-absl::string_view KindToString(Kind kind);
+ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);
 
 }  // namespace cel
 

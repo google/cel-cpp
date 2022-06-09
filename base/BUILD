@@ -34,6 +34,7 @@ cc_library(
     srcs = ["kind.cc"],
     hdrs = ["kind.h"],
     deps = [
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
     ],
 )
