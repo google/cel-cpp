@@ -86,7 +86,7 @@ absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
                                   absl::string_view field_name) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const Reflection* reflection = message->GetReflection();
-  const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name.data());
+  const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
 
   if (field_desc == nullptr) {
     return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
@@ -118,7 +118,7 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
                                       ProtoWrapperTypeOptions unboxing_option,
                                       cel::MemoryManager& memory_manager) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
-  const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name.data());
+  const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
 
   if (field_desc == nullptr) {
     return CreateNoSuchFieldError(memory_manager, field_name);
@@ -249,7 +249,7 @@ ProtoMessageTypeAdapter::NewInstance(cel::MemoryManager& memory_manager) const {
 }
 
 bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {
-  return descriptor_->FindFieldByName(field_name.data()) != nullptr;
+  return descriptor_->FindFieldByName(std::string(field_name)) != nullptr;
 }
 
 absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
@@ -282,7 +282,7 @@ absl::Status ProtoMessageTypeAdapter::SetField(
                        UnwrapMessage(instance, "SetField"));
 
   const google::protobuf::FieldDescriptor* field_descriptor =
-      descriptor_->FindFieldByName(field_name.data());
+      descriptor_->FindFieldByName(std::string(field_name));
   CEL_RETURN_IF_ERROR(
       ValidateSetFieldOp(field_descriptor != nullptr, field_name, "not found"));
 

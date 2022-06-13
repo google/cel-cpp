@@ -184,14 +184,14 @@ class SingleFieldTest : public testing::TestWithParam<AccessFieldTestParam> {
 TEST_P(SingleFieldTest, Getter) {
   TestAllTypes test_message;
   ASSERT_TRUE(
-      google::protobuf::TextFormat::ParseFromString(message_textproto().data(), &test_message));
+      google::protobuf::TextFormat::ParseFromString(std::string(message_textproto()), &test_message));
   google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(
       CelValue accessed_value,
       CreateValueFromSingleField(
           &test_message,
-          test_message.GetDescriptor()->FindFieldByName(field_name().data()),
+          test_message.GetDescriptor()->FindFieldByName(std::string(field_name())),
           ProtoWrapperTypeOptions::kUnsetProtoDefault,
           &CelProtoWrapper::InternalWrapMessage, &arena));
 
@@ -204,7 +204,7 @@ TEST_P(SingleFieldTest, Setter) {
   google::protobuf::Arena arena;
 
   ASSERT_OK(SetValueToSingleField(
-      to_set, test_message.GetDescriptor()->FindFieldByName(field_name().data()),
+      to_set, test_message.GetDescriptor()->FindFieldByName(std::string(field_name())),
       &test_message, &arena));
 
   EXPECT_THAT(test_message, EqualsProto(message_textproto()));
@@ -361,14 +361,14 @@ class RepeatedFieldTest : public testing::TestWithParam<AccessFieldTestParam> {
 TEST_P(RepeatedFieldTest, GetFirstElem) {
   TestAllTypes test_message;
   ASSERT_TRUE(
-      google::protobuf::TextFormat::ParseFromString(message_textproto().data(), &test_message));
+      google::protobuf::TextFormat::ParseFromString(std::string(message_textproto()), &test_message));
   google::protobuf::Arena arena;
 
   ASSERT_OK_AND_ASSIGN(
       CelValue accessed_value,
       CreateValueFromRepeatedField(
           &test_message,
-          test_message.GetDescriptor()->FindFieldByName(field_name().data()), 0,
+          test_message.GetDescriptor()->FindFieldByName(std::string(field_name())), 0,
           &CelProtoWrapper::InternalWrapMessage, &arena));
 
   EXPECT_THAT(accessed_value, test::EqualsCelValue(cel_value()));
@@ -380,7 +380,7 @@ TEST_P(RepeatedFieldTest, AppendElem) {
   google::protobuf::Arena arena;
 
   ASSERT_OK(AddValueToRepeatedField(
-      to_add, test_message.GetDescriptor()->FindFieldByName(field_name().data()),
+      to_add, test_message.GetDescriptor()->FindFieldByName(std::string(field_name())),
       &test_message, &arena));
 
   EXPECT_THAT(test_message, EqualsProto(message_textproto()));

@@ -56,7 +56,7 @@ class ConstFunction : public CelFunction {
 
   static Expr::Call MakeCall(absl::string_view name) {
     Expr::Call call;
-    call.set_function(name.data());
+    call.set_function(std::string(name));
     call.clear_target();
     return call;
   }
