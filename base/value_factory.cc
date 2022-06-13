@@ -40,7 +40,19 @@ using base_internal::PersistentHandleFactory;
 using base_internal::StringBytesValue;
 using base_internal::StringStringValue;
 
+template <typename T>
+bool CanPerformZeroCopy(MemoryManager& memory_manager,
+                        const Persistent<T>& handle) {
+  return base_internal::IsManagedHandle(handle) &&
+         std::addressof(memory_manager) ==
+             std::addressof(base_internal::GetMemoryManager(handle));
+}
+
 }  // namespace
+
+Persistent<const NullValue> NullValue::Get(ValueFactory& value_factory) {
+  return value_factory.GetNullValue();
+}
 
 Persistent<const NullValue> ValueFactory::GetNullValue() {
   return Persistent<const NullValue>(
@@ -57,6 +69,135 @@ Persistent<const ErrorValue> ValueFactory::CreateErrorValue(
   }
   return PersistentHandleFactory<const ErrorValue>::Make<ErrorValue>(
       std::move(status));
+}
+
+Persistent<const BoolValue> BoolValue::False(ValueFactory& value_factory) {
+  return value_factory.CreateBoolValue(false);
+}
+
+Persistent<const BoolValue> BoolValue::True(ValueFactory& value_factory) {
+  return value_factory.CreateBoolValue(true);
+}
+
+Persistent<const DoubleValue> DoubleValue::NaN(ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(
+      std::numeric_limits<double>::quiet_NaN());
+}
+
+Persistent<const DoubleValue> DoubleValue::PositiveInfinity(
+    ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(
+      std::numeric_limits<double>::infinity());
+}
+
+Persistent<const DoubleValue> DoubleValue::NegativeInfinity(
+    ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(
+      -std::numeric_limits<double>::infinity());
+}
+
+Persistent<const DurationValue> DurationValue::Zero(
+    ValueFactory& value_factory) {
+  // Should never fail, tests assert this.
+  return value_factory.CreateDurationValue(absl::ZeroDuration()).value();
+}
+
+Persistent<const TimestampValue> TimestampValue::UnixEpoch(
+    ValueFactory& value_factory) {
+  // Should never fail, tests assert this.
+  return value_factory.CreateTimestampValue(absl::UnixEpoch()).value();
+}
+
+Persistent<const StringValue> StringValue::Empty(ValueFactory& value_factory) {
+  return value_factory.GetStringValue();
+}
+
+absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
+    ValueFactory& value_factory, const Persistent<const StringValue>& lhs,
+    const Persistent<const StringValue>& rhs) {
+  absl::Cord cord;
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      lhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), lhs)));
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      rhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), rhs)));
+  size_t size = 0;
+  size_t lhs_size = lhs->size_.load(std::memory_order_relaxed);
+  if (lhs_size != 0 && !lhs->empty()) {
+    size_t rhs_size = rhs->size_.load(std::memory_order_relaxed);
+    if (rhs_size != 0 && !rhs->empty()) {
+      size = lhs_size + rhs_size;
+    }
+  }
+  return value_factory.CreateStringValue(std::move(cord), size);
+}
+
+Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
+  return value_factory.GetBytesValue();
+}
+
+absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
+    ValueFactory& value_factory, const Persistent<const BytesValue>& lhs,
+    const Persistent<const BytesValue>& rhs) {
+  absl::Cord cord;
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      lhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), lhs)));
+  // We can only use the potential zero-copy path if the memory managers are
+  // the same. Otherwise we need to escape the original memory manager scope.
+  cord.Append(
+      rhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), rhs)));
+  return value_factory.CreateBytesValue(std::move(cord));
+}
+
+struct EnumType::NewInstanceVisitor final {
+  const Persistent<const EnumType>& enum_type;
+  ValueFactory& value_factory;
+
+  absl::StatusOr<Persistent<const EnumValue>> operator()(
+      absl::string_view name) const {
+    TypedEnumValueFactory factory(value_factory, enum_type);
+    return enum_type->NewInstanceByName(factory, name);
+  }
+
+  absl::StatusOr<Persistent<const EnumValue>> operator()(int64_t number) const {
+    TypedEnumValueFactory factory(value_factory, enum_type);
+    return enum_type->NewInstanceByNumber(factory, number);
+  }
+};
+
+absl::StatusOr<Persistent<const EnumValue>> EnumValue::New(
+    const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
+    EnumType::ConstantId id) {
+  CEL_ASSIGN_OR_RETURN(
+      auto enum_value,
+      absl::visit(EnumType::NewInstanceVisitor{enum_type, value_factory},
+                  id.data_));
+  if (!enum_value->type_) {
+    // In case somebody is caching, we avoid setting the type_ if it has already
+    // been set, to avoid a race condition where one CPU sees a half written
+    // pointer.
+    const_cast<EnumValue&>(*enum_value).type_ = enum_type;
+  }
+  return enum_value;
+}
+
+absl::StatusOr<Persistent<StructValue>> StructValue::New(
+    const Persistent<const StructType>& struct_type,
+    ValueFactory& value_factory) {
+  TypedStructValueFactory factory(value_factory, struct_type);
+  CEL_ASSIGN_OR_RETURN(auto struct_value, struct_type->NewInstance(factory));
+  if (!struct_value->type_) {
+    // In case somebody is caching, we avoid setting the type_ if it has already
+    // been set, to avoid a race condition where one CPU sees a half written
+    // pointer.
+    const_cast<StructValue&>(*struct_value).type_ = struct_type;
+  }
+  return struct_value;
 }
 
 Persistent<const BoolValue> ValueFactory::CreateBoolValue(bool value) {

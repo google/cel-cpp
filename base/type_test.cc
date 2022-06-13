@@ -26,6 +26,8 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
+#include "base/values/enum_value.h"
+#include "base/values/struct_value.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -204,7 +206,7 @@ TEST_P(TypeTest, MoveConstructor) {
   Persistent<const Type> from(type_factory.GetIntType());
   Persistent<const Type> to(std::move(from));
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, type_factory.GetNullType());
+  EXPECT_FALSE(from);
   EXPECT_EQ(to, type_factory.GetIntType());
 }
 
@@ -221,7 +223,7 @@ TEST_P(TypeTest, MoveAssignment) {
   Persistent<const Type> to(type_factory.GetNullType());
   to = std::move(from);
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, type_factory.GetNullType());
+  EXPECT_FALSE(from);
   EXPECT_EQ(to, type_factory.GetIntType());
 }
 

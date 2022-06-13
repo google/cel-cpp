@@ -185,6 +185,22 @@ using BytesValueRep =
 
 }  // namespace cel
 
+#define CEL_INTERNAL_VALUE_DECL(name)     \
+  extern template class Persistent<name>; \
+  extern template class Persistent<const name>
+
+#define CEL_INTERNAL_VALUE_IMPL(name) \
+  template class Persistent<name>;    \
+  template class Persistent<const name>
+
+// Both are equivalent to std::construct_at implementation from C++20.
+#define CEL_INTERNAL_VALUE_COPY_TO(type, src, dest) \
+  ::new (const_cast<void*>(                         \
+      static_cast<const volatile void*>(std::addressof(dest)))) type(src)
+#define CEL_INTERNAL_VALUE_MOVE_TO(type, src, dest)           \
+  ::new (const_cast<void*>(static_cast<const volatile void*>( \
+      std::addressof(dest)))) type(std::move(src))
+
 #define CEL_INTERNAL_DECLARE_VALUE(base, derived)                              \
  private:                                                                      \
   friend class ::cel::base_internal::ValueHandleBase;                          \

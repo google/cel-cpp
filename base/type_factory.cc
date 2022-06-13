@@ -20,7 +20,6 @@
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "base/handle.h"
-#include "base/type.h"
 
 namespace cel {
 

@@ -34,6 +34,7 @@ cc_library(
     srcs = ["kind.cc"],
     hdrs = ["kind.h"],
     deps = [
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -103,35 +104,76 @@ cc_library(
     name = "type",
     srcs = [
         "type.cc",
-        "type_factory.cc",
-        "type_manager.cc",
-        "type_provider.cc",
-    ],
+    ] + glob(["types/*.cc"]),
     hdrs = [
         "type.h",
-        "type_factory.h",
-        "type_manager.h",
-        "type_provider.h",
-        "type_registry.h",
-    ],
+    ] + glob(["types/*.h"]),
     deps = [
         ":handle",
         ":kind",
         ":memory_manager",
         "//base/internal:type",
-        "//internal:casts",
         "//internal:no_destructor",
         "//internal:rtti",
+        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_library(
+    name = "type_manager",
+    srcs = ["type_manager.cc"],
+    hdrs = ["type_manager.h"],
+    deps = [
+        ":type",
+        ":type_factory",
+        ":type_provider",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_library(
+    name = "type_provider",
+    srcs = ["type_provider.cc"],
+    hdrs = ["type_provider.h"],
+    deps = [
+        ":handle",
+        ":type",
+        ":type_factory",
+        "//internal:no_destructor",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "type_registry",
+    hdrs = ["type_registry.h"],
+    deps = [":type_provider"],
+)
+
+cc_library(
+    name = "type_factory",
+    srcs = ["type_factory.cc"],
+    hdrs = ["type_factory.h"],
+    deps = [
+        ":handle",
+        ":memory_manager",
+        ":type",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/synchronization",
-        "@com_google_absl//absl/types:span",
-        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -145,6 +187,8 @@ cc_test(
         ":handle",
         ":memory_manager",
         ":type",
+        ":type_factory",
+        ":type_manager",
         ":value",
         "//base/internal:memory_manager_testing",
         "//internal:testing",
@@ -158,12 +202,10 @@ cc_library(
     name = "value",
     srcs = [
         "value.cc",
-        "value_factory.cc",
-    ],
+    ] + glob(["values/*.cc"]),
     hdrs = [
         "value.h",
-        "value_factory.h",
-    ],
+    ] + glob(["values/*.h"]),
     deps = [
         ":handle",
         ":kind",
@@ -173,14 +215,10 @@ cc_library(
         "//internal:casts",
         "//internal:no_destructor",
         "//internal:rtti",
-        "//internal:status_macros",
         "//internal:strings",
         "//internal:time",
         "//internal:utf8",
-        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -189,6 +227,27 @@ cc_library(
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_library(
+    name = "value_factory",
+    srcs = ["value_factory.cc"],
+    hdrs = ["value_factory.h"],
+    deps = [
+        ":handle",
+        ":memory_manager",
+        ":type_manager",
+        ":value",
+        "//internal:status_macros",
+        "//internal:time",
+        "//internal:utf8",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -201,7 +260,10 @@ cc_test(
     deps = [
         ":memory_manager",
         ":type",
+        ":type_factory",
+        ":type_manager",
         ":value",
+        ":value_factory",
         "//base/internal:memory_manager_testing",
         "//internal:strings",
         "//internal:testing",

@@ -26,8 +26,6 @@ absl::string_view KindToString(Kind kind) {
       return "any";
     case Kind::kType:
       return "type";
-    case Kind::kTypeParam:
-      return "type_param";
     case Kind::kBool:
       return "bool";
     case Kind::kInt:
@@ -52,8 +50,6 @@ absl::string_view KindToString(Kind kind) {
       return "map";
     case Kind::kStruct:
       return "struct";
-    case Kind::kOpaque:
-      return "opaque";
     default:
       return "*error*";
   }

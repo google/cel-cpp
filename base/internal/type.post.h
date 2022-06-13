@@ -33,14 +33,6 @@ namespace cel {
 
 namespace base_internal {
 
-inline internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type) {
-  return enum_type.TypeId();
-}
-
-inline internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type) {
-  return struct_type.TypeId();
-}
-
 // Base implementation of persistent and transient handles for types. This
 // contains implementation details shared among both, but is never used
 // directly. The derived classes are responsible for defining appropriate
@@ -85,12 +77,12 @@ class TypeHandleBase {
 
   // Called by `Transient` and `Persistent` to implement the same operator.
   friend bool operator==(const TypeHandleBase& lhs, const TypeHandleBase& rhs) {
-    const Type& lhs_type = ABSL_PREDICT_TRUE(static_cast<bool>(lhs))
-                               ? lhs.get()
-                               : static_cast<const Type&>(NullType::Get());
-    const Type& rhs_type = ABSL_PREDICT_TRUE(static_cast<bool>(rhs))
-                               ? rhs.get()
-                               : static_cast<const Type&>(NullType::Get());
+    if (static_cast<bool>(lhs) != static_cast<bool>(rhs) ||
+        !static_cast<bool>(lhs)) {
+      return false;
+    }
+    const Type& lhs_type = lhs.get();
+    const Type& rhs_type = rhs.get();
     return lhs_type.Equals(rhs_type);
   }
 
@@ -103,8 +95,6 @@ class TypeHandleBase {
   friend H AbslHashValue(H state, const TypeHandleBase& handle) {
     if (ABSL_PREDICT_TRUE(static_cast<bool>(handle))) {
       handle.get().HashValue(absl::HashState::Create(&state));
-    } else {
-      NullType::Get().HashValue(absl::HashState::Create(&state));
     }
     return state;
   }
@@ -194,29 +184,6 @@ struct HandleTraits<
     final : public HandleTraits<HandleType::kPersistent, Type> {};
 
 }  // namespace base_internal
-
-#define CEL_INTERNAL_TYPE_DECL(name)           \
-  extern template class Persistent<name>;      \
-  extern template class Persistent<const name>
-CEL_INTERNAL_TYPE_DECL(Type);
-CEL_INTERNAL_TYPE_DECL(NullType);
-CEL_INTERNAL_TYPE_DECL(ErrorType);
-CEL_INTERNAL_TYPE_DECL(DynType);
-CEL_INTERNAL_TYPE_DECL(AnyType);
-CEL_INTERNAL_TYPE_DECL(BoolType);
-CEL_INTERNAL_TYPE_DECL(IntType);
-CEL_INTERNAL_TYPE_DECL(UintType);
-CEL_INTERNAL_TYPE_DECL(DoubleType);
-CEL_INTERNAL_TYPE_DECL(BytesType);
-CEL_INTERNAL_TYPE_DECL(StringType);
-CEL_INTERNAL_TYPE_DECL(DurationType);
-CEL_INTERNAL_TYPE_DECL(TimestampType);
-CEL_INTERNAL_TYPE_DECL(EnumType);
-CEL_INTERNAL_TYPE_DECL(StructType);
-CEL_INTERNAL_TYPE_DECL(ListType);
-CEL_INTERNAL_TYPE_DECL(MapType);
-CEL_INTERNAL_TYPE_DECL(TypeType);
-#undef CEL_INTERNAL_TYPE_DECL
 
 }  // namespace cel
 

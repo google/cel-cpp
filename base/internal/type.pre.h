@@ -55,6 +55,14 @@ internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
 
 }  // namespace cel
 
+#define CEL_INTERNAL_TYPE_DECL(name)      \
+  extern template class Persistent<name>; \
+  extern template class Persistent<const name>
+
+#define CEL_INTERNAL_TYPE_IMPL(name) \
+  template class Persistent<name>;   \
+  template class Persistent<const name>
+
 #define CEL_INTERNAL_DECLARE_TYPE(base, derived)                               \
  private:                                                                      \
   friend class ::cel::base_internal::TypeHandleBase;                           \

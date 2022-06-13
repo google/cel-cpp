@@ -533,7 +533,7 @@ TEST_P(ValueTest, DefaultConstructor) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   Persistent<const Value> value;
-  EXPECT_EQ(value, value_factory.GetNullValue());
+  EXPECT_FALSE(value);
 }
 
 struct ConstructionAssignmentTestCase final {
@@ -564,7 +564,7 @@ TEST_P(ConstructionAssignmentTest, MoveConstructor) {
       test_case().default_value(type_factory, value_factory));
   Persistent<const Value> to(std::move(from));
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, value_factory.GetNullValue());
+  EXPECT_FALSE(from);
   EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
 }
 
@@ -588,7 +588,7 @@ TEST_P(ConstructionAssignmentTest, MoveAssignment) {
   Persistent<const Value> to;
   to = std::move(from);
   IS_INITIALIZED(from);
-  EXPECT_EQ(from, value_factory.GetNullValue());
+  EXPECT_FALSE(from);
   EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
 }
 
