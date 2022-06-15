@@ -44,8 +44,8 @@ TEST(AstUtilityTest, IdentToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<Ident>(native_expr->expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_expr->expr_kind()).name(), "name");
+  ASSERT_TRUE(native_expr->has_ident_expr());
+  EXPECT_EQ(native_expr->ident_expr().name(), "name");
 }
 
 TEST(AstUtilityTest, SelectToNative) {
@@ -62,12 +62,10 @@ TEST(AstUtilityTest, SelectToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<Select>(native_expr->expr_kind()));
-  auto& native_select = absl::get<Select>(native_expr->expr_kind());
-  ASSERT_TRUE(
-      absl::holds_alternative<Ident>(native_select.operand()->expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_select.operand()->expr_kind()).name(),
-            "name");
+  ASSERT_TRUE(native_expr->has_select_expr());
+  auto& native_select = native_expr->select_expr();
+  ASSERT_TRUE(native_select.operand().has_ident_expr());
+  EXPECT_EQ(native_select.operand().ident_expr().name(), "name");
   EXPECT_EQ(native_select.field(), "field");
   EXPECT_TRUE(native_select.test_only());
 }
@@ -87,18 +85,17 @@ TEST(AstUtilityTest, CallToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<Call>(native_expr->expr_kind()));
-  auto& native_call = absl::get<Call>(native_expr->expr_kind());
-  ASSERT_TRUE(
-      absl::holds_alternative<Ident>(native_call.target()->expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_call.target()->expr_kind()).name(), "name");
+  ASSERT_TRUE(native_expr->has_call_expr());
+  auto& native_call = native_expr->call_expr();
+  ASSERT_TRUE(native_call.target().has_ident_expr());
+  EXPECT_EQ(native_call.target().ident_expr().name(), "name");
   EXPECT_EQ(native_call.function(), "function");
   auto& native_arg1 = native_call.args()[0];
-  ASSERT_TRUE(absl::holds_alternative<Ident>(native_arg1.expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_arg1.expr_kind()).name(), "arg1");
+  ASSERT_TRUE(native_arg1.has_ident_expr());
+  EXPECT_EQ(native_arg1.ident_expr().name(), "arg1");
   auto& native_arg2 = native_call.args()[1];
-  ASSERT_TRUE(absl::holds_alternative<Ident>(native_arg2.expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_arg2.expr_kind()).name(), "arg2");
+  ASSERT_TRUE(native_arg2.has_ident_expr());
+  ASSERT_EQ(native_arg2.ident_expr().name(), "arg2");
 }
 
 TEST(AstUtilityTest, CreateListToNative) {
@@ -114,14 +111,14 @@ TEST(AstUtilityTest, CreateListToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<CreateList>(native_expr->expr_kind()));
-  auto& native_create_list = absl::get<CreateList>(native_expr->expr_kind());
+  ASSERT_TRUE(native_expr->has_list_expr());
+  auto& native_create_list = native_expr->list_expr();
   auto& native_elem1 = native_create_list.elements()[0];
-  ASSERT_TRUE(absl::holds_alternative<Ident>(native_elem1.expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_elem1.expr_kind()).name(), "elem1");
+  ASSERT_TRUE(native_elem1.has_ident_expr());
+  ASSERT_EQ(native_elem1.ident_expr().name(), "elem1");
   auto& native_elem2 = native_create_list.elements()[1];
-  ASSERT_TRUE(absl::holds_alternative<Ident>(native_elem2.expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_elem2.expr_kind()).name(), "elem2");
+  ASSERT_TRUE(native_elem2.has_ident_expr());
+  ASSERT_EQ(native_elem2.ident_expr().name(), "elem2");
 }
 
 TEST(AstUtilityTest, CreateStructToNative) {
@@ -145,29 +142,20 @@ TEST(AstUtilityTest, CreateStructToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<CreateStruct>(native_expr->expr_kind()));
-  auto& native_struct = absl::get<CreateStruct>(native_expr->expr_kind());
+  ASSERT_TRUE(native_expr->has_struct_expr());
+  auto& native_struct = native_expr->struct_expr();
   auto& native_entry1 = native_struct.entries()[0];
   EXPECT_EQ(native_entry1.id(), 1);
-  ASSERT_TRUE(absl::holds_alternative<std::string>(native_entry1.key_kind()));
-  ASSERT_EQ(absl::get<std::string>(native_entry1.key_kind()), "key1");
-  ASSERT_TRUE(
-      absl::holds_alternative<Ident>(native_entry1.value()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_entry1.value()->expr_kind()).name(),
-            "value1");
+  ASSERT_TRUE(native_entry1.has_field_key());
+  ASSERT_EQ(native_entry1.field_key(), "key1");
+  ASSERT_TRUE(native_entry1.value().has_ident_expr());
+  ASSERT_EQ(native_entry1.value().ident_expr().name(), "value1");
   auto& native_entry2 = native_struct.entries()[1];
   EXPECT_EQ(native_entry2.id(), 2);
-  ASSERT_TRUE(
-      absl::holds_alternative<std::unique_ptr<Expr>>(native_entry2.key_kind()));
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      absl::get<std::unique_ptr<Expr>>(native_entry2.key_kind())->expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(
-                absl::get<std::unique_ptr<Expr>>(native_entry2.key_kind())
-                    ->expr_kind())
-                .name(),
-            "key2");
-  ASSERT_EQ(absl::get<Ident>(native_entry2.value()->expr_kind()).name(),
-            "value2");
+  ASSERT_TRUE(native_entry2.has_map_key());
+  ASSERT_TRUE(native_entry2.map_key().has_ident_expr());
+  EXPECT_EQ(native_entry2.map_key().ident_expr().name(), "key2");
+  ASSERT_EQ(native_entry2.value().ident_expr().name(), "value2");
 }
 
 TEST(AstUtilityTest, CreateStructError) {
@@ -210,35 +198,22 @@ TEST(AstUtilityTest, ComprehensionToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<Comprehension>(native_expr->expr_kind()));
-  auto& native_comprehension =
-      absl::get<Comprehension>(native_expr->expr_kind());
+  ASSERT_TRUE(native_expr->has_comprehension_expr());
+  auto& native_comprehension = native_expr->comprehension_expr();
   EXPECT_EQ(native_comprehension.iter_var(), "iter_var");
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_comprehension.iter_range()->expr_kind()));
-  EXPECT_EQ(
-      absl::get<Ident>(native_comprehension.iter_range()->expr_kind()).name(),
-      "iter_range");
+  ASSERT_TRUE(native_comprehension.iter_range().has_ident_expr());
+  EXPECT_EQ(native_comprehension.iter_range().ident_expr().name(),
+            "iter_range");
   EXPECT_EQ(native_comprehension.accu_var(), "accu_var");
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_comprehension.accu_init()->expr_kind()));
-  EXPECT_EQ(
-      absl::get<Ident>(native_comprehension.accu_init()->expr_kind()).name(),
-      "accu_init");
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_comprehension.loop_condition()->expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_comprehension.loop_condition()->expr_kind())
-                .name(),
+  ASSERT_TRUE(native_comprehension.accu_init().has_ident_expr());
+  EXPECT_EQ(native_comprehension.accu_init().ident_expr().name(), "accu_init");
+  ASSERT_TRUE(native_comprehension.loop_condition().has_ident_expr());
+  EXPECT_EQ(native_comprehension.loop_condition().ident_expr().name(),
             "loop_condition");
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_comprehension.loop_step()->expr_kind()));
-  EXPECT_EQ(
-      absl::get<Ident>(native_comprehension.loop_step()->expr_kind()).name(),
-      "loop_step");
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_comprehension.result()->expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_comprehension.result()->expr_kind()).name(),
-            "result");
+  ASSERT_TRUE(native_comprehension.loop_step().has_ident_expr());
+  EXPECT_EQ(native_comprehension.loop_step().ident_expr().name(), "loop_step");
+  ASSERT_TRUE(native_comprehension.result().has_ident_expr());
+  EXPECT_EQ(native_comprehension.result().ident_expr().name(), "result");
 }
 
 TEST(AstUtilityTest, ConstantToNative) {
@@ -248,10 +223,10 @@ TEST(AstUtilityTest, ConstantToNative) {
 
   auto native_expr = ToNative(expr);
 
-  ASSERT_TRUE(absl::holds_alternative<Constant>(native_expr->expr_kind()));
-  auto& native_constant = absl::get<Constant>(native_expr->expr_kind());
-  ASSERT_TRUE(absl::holds_alternative<NullValue>(native_constant));
-  EXPECT_EQ(absl::get<NullValue>(native_constant), NullValue::kNullValue);
+  ASSERT_TRUE(native_expr->has_const_expr());
+  auto& native_constant = native_expr->const_expr();
+  ASSERT_TRUE(native_constant.has_null_value());
+  EXPECT_EQ(native_constant.null_value(), NullValue::kNullValue);
 }
 
 TEST(AstUtilityTest, ConstantBoolTrueToNative) {
@@ -260,8 +235,8 @@ TEST(AstUtilityTest, ConstantBoolTrueToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<bool>(*native_constant));
-  EXPECT_TRUE(absl::get<bool>(*native_constant));
+  ASSERT_TRUE(native_constant->has_bool_value());
+  EXPECT_TRUE(native_constant->bool_value());
 }
 
 TEST(AstUtilityTest, ConstantBoolFalseToNative) {
@@ -270,8 +245,8 @@ TEST(AstUtilityTest, ConstantBoolFalseToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<bool>(*native_constant));
-  EXPECT_FALSE(absl::get<bool>(*native_constant));
+  ASSERT_TRUE(native_constant->has_bool_value());
+  EXPECT_FALSE(native_constant->bool_value());
 }
 
 TEST(AstUtilityTest, ConstantInt64ToNative) {
@@ -280,9 +255,9 @@ TEST(AstUtilityTest, ConstantInt64ToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<int64_t>(*native_constant));
-  ASSERT_FALSE(absl::holds_alternative<uint64_t>(*native_constant));
-  EXPECT_EQ(absl::get<int64_t>(*native_constant), -23);
+  ASSERT_TRUE(native_constant->has_int64_value());
+  ASSERT_FALSE(native_constant->has_uint64_value());
+  EXPECT_EQ(native_constant->int64_value(), -23);
 }
 
 TEST(AstUtilityTest, ConstantUint64ToNative) {
@@ -291,9 +266,9 @@ TEST(AstUtilityTest, ConstantUint64ToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<uint64_t>(*native_constant));
-  ASSERT_FALSE(absl::holds_alternative<int64_t>(*native_constant));
-  EXPECT_EQ(absl::get<uint64_t>(*native_constant), 23);
+  ASSERT_TRUE(native_constant->has_uint64_value());
+  ASSERT_FALSE(native_constant->has_int64_value());
+  EXPECT_EQ(native_constant->uint64_value(), 23);
 }
 
 TEST(AstUtilityTest, ConstantDoubleToNative) {
@@ -302,8 +277,8 @@ TEST(AstUtilityTest, ConstantDoubleToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<double>(*native_constant));
-  EXPECT_EQ(absl::get<double>(*native_constant), 12.34);
+  ASSERT_TRUE(native_constant->has_double_value());
+  EXPECT_EQ(native_constant->double_value(), 12.34);
 }
 
 TEST(AstUtilityTest, ConstantStringToNative) {
@@ -312,8 +287,8 @@ TEST(AstUtilityTest, ConstantStringToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<std::string>(*native_constant));
-  EXPECT_EQ(absl::get<std::string>(*native_constant), "string");
+  ASSERT_TRUE(native_constant->has_string_value());
+  EXPECT_EQ(native_constant->string_value(), "string");
 }
 
 TEST(AstUtilityTest, ConstantBytesToNative) {
@@ -322,8 +297,8 @@ TEST(AstUtilityTest, ConstantBytesToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<std::string>(*native_constant));
-  EXPECT_EQ(absl::get<std::string>(*native_constant), "bytes");
+  ASSERT_TRUE(native_constant->has_string_value());
+  EXPECT_EQ(native_constant->string_value(), "bytes");
 }
 
 TEST(AstUtilityTest, ConstantDurationToNative) {
@@ -333,8 +308,8 @@ TEST(AstUtilityTest, ConstantDurationToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<absl::Duration>(*native_constant));
-  EXPECT_EQ(absl::get<absl::Duration>(*native_constant),
+  ASSERT_TRUE(native_constant->has_duration_value());
+  EXPECT_EQ(native_constant->duration_value(),
             absl::Seconds(123) + absl::Nanoseconds(456));
 }
 
@@ -345,8 +320,8 @@ TEST(AstUtilityTest, ConstantTimestampToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(absl::holds_alternative<absl::Time>(*native_constant));
-  EXPECT_EQ(absl::get<absl::Time>(*native_constant),
+  ASSERT_TRUE(native_constant->has_time_value());
+  EXPECT_EQ(native_constant->time_value(),
             absl::FromUnixSeconds(123) + absl::Nanoseconds(456));
 }
 
@@ -395,12 +370,9 @@ TEST(AstUtilityTest, SourceInfoToNative) {
   EXPECT_EQ(native_source_info->line_offsets(), std::vector<int32_t>({1, 2}));
   EXPECT_EQ(native_source_info->positions().at(1), 2);
   EXPECT_EQ(native_source_info->positions().at(3), 4);
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_source_info->macro_calls().at(1).expr_kind()));
-  ASSERT_EQ(
-      absl::get<Ident>(native_source_info->macro_calls().at(1).expr_kind())
-          .name(),
-      "name");
+  ASSERT_TRUE(native_source_info->macro_calls().at(1).has_ident_expr());
+  ASSERT_EQ(native_source_info->macro_calls().at(1).ident_expr().name(),
+            "name");
 }
 
 TEST(AstUtilityTest, ParsedExprToNative) {
@@ -425,21 +397,16 @@ TEST(AstUtilityTest, ParsedExprToNative) {
 
   auto native_parsed_expr = ToNative(parsed_expr);
 
-  ASSERT_TRUE(
-      absl::holds_alternative<Ident>(native_parsed_expr->expr().expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_parsed_expr->expr().expr_kind()).name(),
-            "name");
+  ASSERT_TRUE(native_parsed_expr->expr().has_ident_expr());
+  ASSERT_EQ(native_parsed_expr->expr().ident_expr().name(), "name");
   auto& native_source_info = native_parsed_expr->source_info();
   EXPECT_EQ(native_source_info.syntax_version(), "version");
   EXPECT_EQ(native_source_info.location(), "location");
   EXPECT_EQ(native_source_info.line_offsets(), std::vector<int32_t>({1, 2}));
   EXPECT_EQ(native_source_info.positions().at(1), 2);
   EXPECT_EQ(native_source_info.positions().at(3), 4);
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_source_info.macro_calls().at(1).expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_source_info.macro_calls().at(1).expr_kind())
-                .name(),
-            "name");
+  ASSERT_TRUE(native_source_info.macro_calls().at(1).has_ident_expr());
+  ASSERT_EQ(native_source_info.macro_calls().at(1).ident_expr().name(), "name");
 }
 
 TEST(AstUtilityTest, PrimitiveTypeUnspecifiedToNative) {
@@ -448,9 +415,8 @@ TEST(AstUtilityTest, PrimitiveTypeUnspecifiedToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kPrimitiveTypeUnspecified);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kPrimitiveTypeUnspecified);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeBoolToNative) {
@@ -459,9 +425,8 @@ TEST(AstUtilityTest, PrimitiveTypeBoolToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kBool);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kBool);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeInt64ToNative) {
@@ -470,9 +435,8 @@ TEST(AstUtilityTest, PrimitiveTypeInt64ToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kInt64);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kInt64);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeUint64ToNative) {
@@ -481,9 +445,8 @@ TEST(AstUtilityTest, PrimitiveTypeUint64ToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kUint64);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kUint64);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeDoubleToNative) {
@@ -492,9 +455,8 @@ TEST(AstUtilityTest, PrimitiveTypeDoubleToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kDouble);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kDouble);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeStringToNative) {
@@ -503,9 +465,8 @@ TEST(AstUtilityTest, PrimitiveTypeStringToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kString);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kString);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeBytesToNative) {
@@ -514,9 +475,8 @@ TEST(AstUtilityTest, PrimitiveTypeBytesToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_type->type_kind()),
-            PrimitiveType::kBytes);
+  ASSERT_TRUE(native_type->has_primitive());
+  EXPECT_EQ(native_type->primitive(), PrimitiveType::kBytes);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeError) {
@@ -537,8 +497,8 @@ TEST(AstUtilityTest, WellKnownTypeUnspecifiedToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<WellKnownType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<WellKnownType>(native_type->type_kind()),
+  ASSERT_TRUE(native_type->has_well_known());
+  EXPECT_EQ(native_type->well_known(),
             WellKnownType::kWellKnownTypeUnspecified);
 }
 
@@ -548,9 +508,8 @@ TEST(AstUtilityTest, WellKnownTypeAnyToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<WellKnownType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<WellKnownType>(native_type->type_kind()),
-            WellKnownType::kAny);
+  ASSERT_TRUE(native_type->has_well_known());
+  EXPECT_EQ(native_type->well_known(), WellKnownType::kAny);
 }
 
 TEST(AstUtilityTest, WellKnownTypeTimestampToNative) {
@@ -559,9 +518,8 @@ TEST(AstUtilityTest, WellKnownTypeTimestampToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<WellKnownType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<WellKnownType>(native_type->type_kind()),
-            WellKnownType::kTimestamp);
+  ASSERT_TRUE(native_type->has_well_known());
+  EXPECT_EQ(native_type->well_known(), WellKnownType::kTimestamp);
 }
 
 TEST(AstUtilityTest, WellKnownTypeDuraionToNative) {
@@ -570,9 +528,8 @@ TEST(AstUtilityTest, WellKnownTypeDuraionToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<WellKnownType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<WellKnownType>(native_type->type_kind()),
-            WellKnownType::kDuration);
+  ASSERT_TRUE(native_type->has_well_known());
+  EXPECT_EQ(native_type->well_known(), WellKnownType::kDuration);
 }
 
 TEST(AstUtilityTest, WellKnownTypeError) {
@@ -594,12 +551,10 @@ TEST(AstUtilityTest, ListTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<ListType>(native_type->type_kind()));
-  auto& native_list_type = absl::get<ListType>(native_type->type_kind());
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_list_type.elem_type()->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_list_type.elem_type()->type_kind()),
-            PrimitiveType::kBool);
+  ASSERT_TRUE(native_type->has_list_type());
+  auto& native_list_type = native_type->list_type();
+  ASSERT_TRUE(native_list_type.elem_type().has_primitive());
+  EXPECT_EQ(native_list_type.elem_type().primitive(), PrimitiveType::kBool);
 }
 
 TEST(AstUtilityTest, MapTypeToNative) {
@@ -615,16 +570,12 @@ TEST(AstUtilityTest, MapTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<MapType>(native_type->type_kind()));
-  auto& native_map_type = absl::get<MapType>(native_type->type_kind());
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_map_type.key_type()->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_map_type.key_type()->type_kind()),
-            PrimitiveType::kBool);
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_map_type.value_type()->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(native_map_type.value_type()->type_kind()),
-            PrimitiveType::kDouble);
+  ASSERT_TRUE(native_type->has_map_type());
+  auto& native_map_type = native_type->map_type();
+  ASSERT_TRUE(native_map_type.key_type().has_primitive());
+  EXPECT_EQ(native_map_type.key_type().primitive(), PrimitiveType::kBool);
+  ASSERT_TRUE(native_map_type.value_type().has_primitive());
+  EXPECT_EQ(native_map_type.value_type().primitive(), PrimitiveType::kDouble);
 }
 
 TEST(AstUtilityTest, FunctionTypeToNative) {
@@ -641,23 +592,16 @@ TEST(AstUtilityTest, FunctionTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<FunctionType>(native_type->type_kind()));
-  auto& native_function_type =
-      absl::get<FunctionType>(native_type->type_kind());
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_function_type.result_type()->type_kind()));
-  EXPECT_EQ(
-      absl::get<PrimitiveType>(native_function_type.result_type()->type_kind()),
-      PrimitiveType::kBool);
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_function_type.arg_types().at(0).type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(
-                native_function_type.arg_types().at(0).type_kind()),
+  ASSERT_TRUE(native_type->has_function());
+  auto& native_function_type = native_type->function();
+  ASSERT_TRUE(native_function_type.result_type().has_primitive());
+  EXPECT_EQ(native_function_type.result_type().primitive(),
+            PrimitiveType::kBool);
+  ASSERT_TRUE(native_function_type.arg_types().at(0).has_primitive());
+  EXPECT_EQ(native_function_type.arg_types().at(0).primitive(),
             PrimitiveType::kDouble);
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_function_type.arg_types().at(1).type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(
-                native_function_type.arg_types().at(1).type_kind()),
+  ASSERT_TRUE(native_function_type.arg_types().at(1).has_primitive());
+  EXPECT_EQ(native_function_type.arg_types().at(1).primitive(),
             PrimitiveType::kString);
 }
 
@@ -675,19 +619,14 @@ TEST(AstUtilityTest, AbstractTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<AbstractType>(native_type->type_kind()));
-  auto& native_abstract_type =
-      absl::get<AbstractType>(native_type->type_kind());
+  ASSERT_TRUE(native_type->has_abstract_type());
+  auto& native_abstract_type = native_type->abstract_type();
   EXPECT_EQ(native_abstract_type.name(), "name");
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_abstract_type.parameter_types().at(0).type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(
-                native_abstract_type.parameter_types().at(0).type_kind()),
+  ASSERT_TRUE(native_abstract_type.parameter_types().at(0).has_primitive());
+  EXPECT_EQ(native_abstract_type.parameter_types().at(0).primitive(),
             PrimitiveType::kDouble);
-  ASSERT_TRUE(absl::holds_alternative<PrimitiveType>(
-      native_abstract_type.parameter_types().at(1).type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveType>(
-                native_abstract_type.parameter_types().at(1).type_kind()),
+  ASSERT_TRUE(native_abstract_type.parameter_types().at(1).has_primitive());
+  EXPECT_EQ(native_abstract_type.parameter_types().at(1).primitive(),
             PrimitiveType::kString);
 }
 
@@ -697,7 +636,7 @@ TEST(AstUtilityTest, DynamicTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<DynamicType>(native_type->type_kind()));
+  ASSERT_TRUE(native_type->has_dyn());
 }
 
 TEST(AstUtilityTest, NullTypeToNative) {
@@ -706,9 +645,8 @@ TEST(AstUtilityTest, NullTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<NullValue>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<NullValue>(native_type->type_kind()),
-            NullValue::kNullValue);
+  ASSERT_TRUE(native_type->has_null());
+  EXPECT_EQ(native_type->null(), NullValue::kNullValue);
 }
 
 TEST(AstUtilityTest, PrimitiveTypeWrapperToNative) {
@@ -717,10 +655,8 @@ TEST(AstUtilityTest, PrimitiveTypeWrapperToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(
-      absl::holds_alternative<PrimitiveTypeWrapper>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<PrimitiveTypeWrapper>(native_type->type_kind()).type(),
-            PrimitiveType::kBool);
+  ASSERT_TRUE(native_type->has_wrapper());
+  EXPECT_EQ(native_type->wrapper(), PrimitiveType::kBool);
 }
 
 TEST(AstUtilityTest, MessageTypeToNative) {
@@ -729,8 +665,8 @@ TEST(AstUtilityTest, MessageTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<MessageType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<MessageType>(native_type->type_kind()).type(), "message");
+  ASSERT_TRUE(native_type->has_message_type());
+  EXPECT_EQ(native_type->message_type().type(), "message");
 }
 
 TEST(AstUtilityTest, ParamTypeToNative) {
@@ -739,8 +675,8 @@ TEST(AstUtilityTest, ParamTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(absl::holds_alternative<ParamType>(native_type->type_kind()));
-  EXPECT_EQ(absl::get<ParamType>(native_type->type_kind()).type(), "param");
+  ASSERT_TRUE(native_type->has_type_param());
+  EXPECT_EQ(native_type->type_param().type(), "param");
 }
 
 TEST(AstUtilityTest, NestedTypeToNative) {
@@ -749,10 +685,8 @@ TEST(AstUtilityTest, NestedTypeToNative) {
 
   auto native_type = ToNative(type);
 
-  ASSERT_TRUE(
-      absl::holds_alternative<std::unique_ptr<Type>>(native_type->type_kind()));
-  EXPECT_TRUE(absl::holds_alternative<DynamicType>(
-      absl::get<std::unique_ptr<Type>>(native_type->type_kind())->type_kind()));
+  ASSERT_TRUE(native_type->has_type());
+  EXPECT_TRUE(native_type->type().has_dyn());
 }
 
 TEST(AstUtilityTest, TypeError) {
@@ -780,7 +714,7 @@ TEST(AstUtilityTest, ReferenceToNative) {
   EXPECT_EQ(native_reference->name(), "name");
   EXPECT_EQ(native_reference->overload_id(),
             std::vector<std::string>({"id1", "id2"}));
-  EXPECT_TRUE(absl::get<bool>(native_reference->value()));
+  EXPECT_TRUE(native_reference->value().bool_value());
 }
 
 TEST(AstUtilityTest, CheckedExprToNative) {
@@ -822,24 +756,18 @@ TEST(AstUtilityTest, CheckedExprToNative) {
   EXPECT_EQ(native_checked_expr->reference_map().at(1).name(), "name");
   EXPECT_EQ(native_checked_expr->reference_map().at(1).overload_id(),
             std::vector<std::string>({"id1", "id2"}));
-  EXPECT_TRUE(
-      absl::get<bool>(native_checked_expr->reference_map().at(1).value()));
+  EXPECT_TRUE(native_checked_expr->reference_map().at(1).value().bool_value());
   auto& native_source_info = native_checked_expr->source_info();
   EXPECT_EQ(native_source_info.syntax_version(), "version");
   EXPECT_EQ(native_source_info.location(), "location");
   EXPECT_EQ(native_source_info.line_offsets(), std::vector<int32_t>({1, 2}));
   EXPECT_EQ(native_source_info.positions().at(1), 2);
   EXPECT_EQ(native_source_info.positions().at(3), 4);
-  ASSERT_TRUE(absl::holds_alternative<Ident>(
-      native_source_info.macro_calls().at(1).expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(native_source_info.macro_calls().at(1).expr_kind())
-                .name(),
-            "name");
+  ASSERT_TRUE(native_source_info.macro_calls().at(1).has_ident_expr());
+  ASSERT_EQ(native_source_info.macro_calls().at(1).ident_expr().name(), "name");
   EXPECT_EQ(native_checked_expr->expr_version(), "version");
-  ASSERT_TRUE(
-      absl::holds_alternative<Ident>(native_checked_expr->expr().expr_kind()));
-  EXPECT_EQ(absl::get<Ident>(native_checked_expr->expr().expr_kind()).name(),
-            "expr");
+  ASSERT_TRUE(native_checked_expr->expr().has_ident_expr());
+  EXPECT_EQ(native_checked_expr->expr().ident_expr().name(), "expr");
 }
 
 }  // namespace

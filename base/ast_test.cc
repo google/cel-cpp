@@ -18,7 +18,6 @@
 #include <utility>
 
 #include "absl/memory/memory.h"
-#include "absl/types/variant.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -26,11 +25,23 @@ namespace ast {
 namespace internal {
 namespace {
 TEST(AstTest, ExprConstructionConstant) {
-  Expr expr(1, true);
+  Expr expr(1, Constant(true));
   ASSERT_TRUE(absl::holds_alternative<Constant>(expr.expr_kind()));
   const auto& constant = absl::get<Constant>(expr.expr_kind());
-  ASSERT_TRUE(absl::holds_alternative<bool>(constant));
-  ASSERT_TRUE(absl::get<bool>(constant));
+  ASSERT_TRUE(constant.has_bool_value());
+  ASSERT_TRUE(constant.bool_value());
+}
+
+TEST(AstTest, ConstantDefaults) {
+  Constant constant;
+  EXPECT_EQ(constant.null_value(), NullValue::kNullValue);
+  EXPECT_EQ(constant.bool_value(), false);
+  EXPECT_EQ(constant.int64_value(), 0);
+  EXPECT_EQ(constant.uint64_value(), 0);
+  EXPECT_EQ(constant.double_value(), 0);
+  EXPECT_TRUE(constant.string_value().empty());
+  EXPECT_EQ(constant.duration_value(), absl::Duration());
+  EXPECT_EQ(constant.time_value(), absl::UnixEpoch());
 }
 
 TEST(AstTest, ExprConstructionIdent) {
@@ -43,24 +54,41 @@ TEST(AstTest, ExprConstructionSelect) {
   Expr expr(1, Select(std::make_unique<Expr>(2, Ident("var")), "field"));
   ASSERT_TRUE(absl::holds_alternative<Select>(expr.expr_kind()));
   const auto& select = absl::get<Select>(expr.expr_kind());
-  ASSERT_TRUE(absl::holds_alternative<Ident>(select.operand()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(select.operand()->expr_kind()).name(), "var");
+  ASSERT_TRUE(absl::holds_alternative<Ident>(select.operand().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(select.operand().expr_kind()).name(), "var");
   ASSERT_EQ(select.field(), "field");
 }
 
 TEST(AstTest, SelectMutableOperand) {
   Select select;
   select.mutable_operand().set_expr_kind(Ident("var"));
-  ASSERT_TRUE(absl::holds_alternative<Ident>(select.operand()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(select.operand()->expr_kind()).name(), "var");
+  ASSERT_TRUE(absl::holds_alternative<Ident>(select.operand().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(select.operand().expr_kind()).name(), "var");
+}
+
+TEST(AstTest, SelectDefaultOperand) {
+  Select select;
+  EXPECT_EQ(select.operand(), Expr());
+}
+
+TEST(AstTest, SelectComparatorTestOnly) {
+  Select select;
+  select.set_test_only(true);
+  EXPECT_FALSE(select == Select());
+}
+
+TEST(AstTest, SelectComparatorField) {
+  Select select;
+  select.set_field("field");
+  EXPECT_FALSE(select == Select());
 }
 
 TEST(AstTest, ExprConstructionCall) {
   Expr expr(1, Call(std::make_unique<Expr>(2, Ident("var")), "function", {}));
   ASSERT_TRUE(absl::holds_alternative<Call>(expr.expr_kind()));
   const auto& call = absl::get<Call>(expr.expr_kind());
-  ASSERT_TRUE(absl::holds_alternative<Ident>(call.target()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(call.target()->expr_kind()).name(), "var");
+  ASSERT_TRUE(absl::holds_alternative<Ident>(call.target().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(call.target().expr_kind()).name(), "var");
   ASSERT_EQ(call.function(), "function");
   ASSERT_TRUE(call.args().empty());
 }
@@ -68,8 +96,28 @@ TEST(AstTest, ExprConstructionCall) {
 TEST(AstTest, CallMutableTarget) {
   Call call;
   call.mutable_target().set_expr_kind(Ident("var"));
-  ASSERT_TRUE(absl::holds_alternative<Ident>(call.target()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(call.target()->expr_kind()).name(), "var");
+  ASSERT_TRUE(absl::holds_alternative<Ident>(call.target().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(call.target().expr_kind()).name(), "var");
+}
+
+TEST(AstTest, CallDefaultTarget) { EXPECT_EQ(Call().target(), Expr()); }
+
+TEST(AstTest, CallComparatorTarget) {
+  Call call;
+  call.set_function("function");
+  EXPECT_FALSE(call == Call());
+}
+
+TEST(AstTest, CallComparatorArgs) {
+  Call call;
+  call.mutable_args().emplace_back(Expr());
+  EXPECT_FALSE(call == Call());
+}
+
+TEST(AstTest, CallComparatorFunction) {
+  Call call;
+  call.set_function("function");
+  EXPECT_FALSE(call == Call());
 }
 
 TEST(AstTest, ExprConstructionCreateList) {
@@ -99,22 +147,29 @@ TEST(AstTest, ExprConstructionCreateStruct) {
   ASSERT_TRUE(absl::holds_alternative<CreateStruct>(expr.expr_kind()));
   const auto& entries = absl::get<CreateStruct>(expr.expr_kind()).entries();
   ASSERT_EQ(absl::get<std::string>(entries[0].key_kind()), "key1");
-  ASSERT_EQ(absl::get<Ident>(entries[0].value()->expr_kind()).name(), "value1");
+  ASSERT_EQ(absl::get<Ident>(entries[0].value().expr_kind()).name(), "value1");
   ASSERT_EQ(absl::get<std::string>(entries[1].key_kind()), "key2");
-  ASSERT_EQ(absl::get<Ident>(entries[1].value()->expr_kind()).name(), "value2");
+  ASSERT_EQ(absl::get<Ident>(entries[1].value().expr_kind()).name(), "value2");
   ASSERT_EQ(
       absl::get<Ident>(
           absl::get<std::unique_ptr<Expr>>(entries[2].key_kind())->expr_kind())
           .name(),
       "key3");
-  ASSERT_EQ(absl::get<Ident>(entries[2].value()->expr_kind()).name(), "value3");
+  ASSERT_EQ(absl::get<Ident>(entries[2].value().expr_kind()).name(), "value3");
+}
+
+TEST(AstTest, ExprCreateStructEntryDefaults) {
+  CreateStruct::Entry entry;
+  EXPECT_TRUE(entry.field_key().empty());
+  EXPECT_EQ(entry.map_key(), Expr());
+  EXPECT_EQ(entry.value(), Expr());
 }
 
 TEST(AstTest, CreateStructEntryMutableValue) {
   CreateStruct::Entry entry;
   entry.mutable_value().set_expr_kind(Ident("var"));
-  ASSERT_TRUE(absl::holds_alternative<Ident>(entry.value()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(entry.value()->expr_kind()).name(), "var");
+  ASSERT_TRUE(absl::holds_alternative<Ident>(entry.value().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(entry.value().expr_kind()).name(), "var");
 }
 
 TEST(AstTest, ExprConstructionComprehension) {
@@ -130,16 +185,16 @@ TEST(AstTest, ExprConstructionComprehension) {
   ASSERT_TRUE(absl::holds_alternative<Comprehension>(expr.expr_kind()));
   auto& created_expr = absl::get<Comprehension>(expr.expr_kind());
   ASSERT_EQ(created_expr.iter_var(), "iter_var");
-  ASSERT_EQ(absl::get<Ident>(created_expr.iter_range()->expr_kind()).name(),
+  ASSERT_EQ(absl::get<Ident>(created_expr.iter_range().expr_kind()).name(),
             "range");
   ASSERT_EQ(created_expr.accu_var(), "accu_var");
-  ASSERT_EQ(absl::get<Ident>(created_expr.accu_init()->expr_kind()).name(),
+  ASSERT_EQ(absl::get<Ident>(created_expr.accu_init().expr_kind()).name(),
             "init");
-  ASSERT_EQ(absl::get<Ident>(created_expr.loop_condition()->expr_kind()).name(),
+  ASSERT_EQ(absl::get<Ident>(created_expr.loop_condition().expr_kind()).name(),
             "cond");
-  ASSERT_EQ(absl::get<Ident>(created_expr.loop_step()->expr_kind()).name(),
+  ASSERT_EQ(absl::get<Ident>(created_expr.loop_step().expr_kind()).name(),
             "step");
-  ASSERT_EQ(absl::get<Ident>(created_expr.result()->expr_kind()).name(),
+  ASSERT_EQ(absl::get<Ident>(created_expr.result().expr_kind()).name(),
             "result");
 }
 
@@ -147,30 +202,51 @@ TEST(AstTest, ComprehensionMutableConstruction) {
   Comprehension comprehension;
   comprehension.mutable_iter_range().set_expr_kind(Ident("var"));
   ASSERT_TRUE(
-      absl::holds_alternative<Ident>(comprehension.iter_range()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(comprehension.iter_range()->expr_kind()).name(),
+      absl::holds_alternative<Ident>(comprehension.iter_range().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.iter_range().expr_kind()).name(),
             "var");
   comprehension.mutable_accu_init().set_expr_kind(Ident("var"));
   ASSERT_TRUE(
-      absl::holds_alternative<Ident>(comprehension.accu_init()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(comprehension.accu_init()->expr_kind()).name(),
+      absl::holds_alternative<Ident>(comprehension.accu_init().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.accu_init().expr_kind()).name(),
             "var");
   comprehension.mutable_loop_condition().set_expr_kind(Ident("var"));
   ASSERT_TRUE(absl::holds_alternative<Ident>(
-      comprehension.loop_condition()->expr_kind()));
-  ASSERT_EQ(
-      absl::get<Ident>(comprehension.loop_condition()->expr_kind()).name(),
-      "var");
+      comprehension.loop_condition().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.loop_condition().expr_kind()).name(),
+            "var");
   comprehension.mutable_loop_step().set_expr_kind(Ident("var"));
   ASSERT_TRUE(
-      absl::holds_alternative<Ident>(comprehension.loop_step()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(comprehension.loop_step()->expr_kind()).name(),
+      absl::holds_alternative<Ident>(comprehension.loop_step().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.loop_step().expr_kind()).name(),
             "var");
   comprehension.mutable_result().set_expr_kind(Ident("var"));
   ASSERT_TRUE(
-      absl::holds_alternative<Ident>(comprehension.result()->expr_kind()));
-  ASSERT_EQ(absl::get<Ident>(comprehension.result()->expr_kind()).name(),
-            "var");
+      absl::holds_alternative<Ident>(comprehension.result().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(comprehension.result().expr_kind()).name(), "var");
+}
+
+TEST(AstTest, ComprehensionDefaults) {
+  Comprehension comprehension;
+  EXPECT_TRUE(comprehension.iter_var().empty());
+  EXPECT_EQ(comprehension.iter_range(), Expr());
+  EXPECT_TRUE(comprehension.accu_var().empty());
+  EXPECT_EQ(comprehension.accu_init(), Expr());
+  EXPECT_EQ(comprehension.loop_condition(), Expr());
+  EXPECT_EQ(comprehension.loop_step(), Expr());
+  EXPECT_EQ(comprehension.result(), Expr());
+}
+
+TEST(AstTest, ComprehenesionComparatorIterVar) {
+  Comprehension comprehension;
+  comprehension.set_iter_var("var");
+  EXPECT_FALSE(comprehension == Comprehension());
+}
+
+TEST(AstTest, ComprehenesionComparatorAccuVar) {
+  Comprehension comprehension;
+  comprehension.set_accu_var("var");
+  EXPECT_FALSE(comprehension == Comprehension());
 }
 
 TEST(AstTest, ExprMoveTest) {
@@ -180,6 +256,17 @@ TEST(AstTest, ExprMoveTest) {
   Expr new_expr = std::move(expr);
   ASSERT_TRUE(absl::holds_alternative<Ident>(new_expr.expr_kind()));
   ASSERT_EQ(absl::get<Ident>(new_expr.expr_kind()).name(), "var");
+}
+
+TEST(AstTest, ExprDefaults) {
+  Expr expr;
+  EXPECT_EQ(expr.const_expr(), Constant());
+  EXPECT_EQ(expr.ident_expr(), Ident());
+  EXPECT_EQ(expr.select_expr(), Select());
+  EXPECT_EQ(expr.call_expr(), Call());
+  EXPECT_EQ(expr.list_expr(), CreateList());
+  EXPECT_EQ(expr.struct_expr(), CreateStruct());
+  EXPECT_EQ(expr.comprehension_expr(), Comprehension());
 }
 
 TEST(AstTest, ParsedExpr) {
@@ -204,7 +291,7 @@ TEST(AstTest, ParsedExpr) {
 TEST(AstTest, ListTypeMutableConstruction) {
   ListType type;
   type.mutable_elem_type() = Type(PrimitiveType::kBool);
-  EXPECT_EQ(absl::get<PrimitiveType>(type.elem_type()->type_kind()),
+  EXPECT_EQ(absl::get<PrimitiveType>(type.elem_type().type_kind()),
             PrimitiveType::kBool);
 }
 
@@ -212,17 +299,35 @@ TEST(AstTest, MapTypeMutableConstruction) {
   MapType type;
   type.mutable_key_type() = Type(PrimitiveType::kBool);
   type.mutable_value_type() = Type(PrimitiveType::kBool);
-  EXPECT_EQ(absl::get<PrimitiveType>(type.key_type()->type_kind()),
+  EXPECT_EQ(absl::get<PrimitiveType>(type.key_type().type_kind()),
             PrimitiveType::kBool);
-  EXPECT_EQ(absl::get<PrimitiveType>(type.value_type()->type_kind()),
+  EXPECT_EQ(absl::get<PrimitiveType>(type.value_type().type_kind()),
             PrimitiveType::kBool);
+}
+
+TEST(AstTest, MapTypeComparatorKeyType) {
+  MapType type;
+  type.mutable_key_type() = Type(PrimitiveType::kBool);
+  EXPECT_FALSE(type == MapType());
+}
+
+TEST(AstTest, MapTypeComparatorValueType) {
+  MapType type;
+  type.mutable_value_type() = Type(PrimitiveType::kBool);
+  EXPECT_FALSE(type == MapType());
 }
 
 TEST(AstTest, FunctionTypeMutableConstruction) {
   FunctionType type;
   type.mutable_result_type() = Type(PrimitiveType::kBool);
-  EXPECT_EQ(absl::get<PrimitiveType>(type.result_type()->type_kind()),
+  EXPECT_EQ(absl::get<PrimitiveType>(type.result_type().type_kind()),
             PrimitiveType::kBool);
+}
+
+TEST(AstTest, FunctionTypeComparatorArgTypes) {
+  FunctionType type;
+  type.mutable_arg_types().emplace_back(Type());
+  EXPECT_FALSE(type == FunctionType());
 }
 
 TEST(AstTest, CheckedExpr) {
@@ -246,6 +351,38 @@ TEST(AstTest, CheckedExpr) {
       checked_expr.source_info().positions(),
       testing::UnorderedElementsAre(testing::Pair(1, 1), testing::Pair(2, 2)));
   EXPECT_EQ(checked_expr.expr_version(), "expr_version");
+}
+
+TEST(AstTest, ListTypeDefaults) { EXPECT_EQ(ListType().elem_type(), Type()); }
+
+TEST(AstTest, MapTypeDefaults) {
+  EXPECT_EQ(MapType().key_type(), Type());
+  EXPECT_EQ(MapType().value_type(), Type());
+}
+
+TEST(AstTest, FunctionTypeDefaults) {
+  EXPECT_EQ(FunctionType().result_type(), Type());
+}
+
+TEST(AstTest, TypeDefaults) {
+  EXPECT_EQ(Type().null(), NullValue::kNullValue);
+  EXPECT_EQ(Type().primitive(), PrimitiveType::kPrimitiveTypeUnspecified);
+  EXPECT_EQ(Type().wrapper(), PrimitiveType::kPrimitiveTypeUnspecified);
+  EXPECT_EQ(Type().well_known(), WellKnownType::kWellKnownTypeUnspecified);
+  EXPECT_EQ(Type().list_type(), ListType());
+  EXPECT_EQ(Type().map_type(), MapType());
+  EXPECT_EQ(Type().function(), FunctionType());
+  EXPECT_EQ(Type().message_type(), MessageType());
+  EXPECT_EQ(Type().type_param(), ParamType());
+  EXPECT_EQ(Type().type(), Type());
+  EXPECT_EQ(Type().error_type(), ErrorType());
+  EXPECT_EQ(Type().abstract_type(), AbstractType());
+}
+
+TEST(AstTest, TypeComparatorTest) {
+  Type type;
+  type.set_type_kind(std::make_unique<Type>(PrimitiveType::kBool));
+  EXPECT_FALSE(type.type() == Type());
 }
 
 }  // namespace

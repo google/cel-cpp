@@ -24,7 +24,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/base/macros.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
@@ -49,19 +48,143 @@ enum class NullValue { kNullValue = 0 };
 // message that can hold any constant object representation supplied or
 // produced at evaluation time.
 // --)
-using Constant = absl::variant<NullValue, bool, int64_t, uint64_t, double,
-                               std::string, absl::Duration, absl::Time>;
+using ConstantKind = absl::variant<NullValue, bool, int64_t, uint64_t, double,
+                                   std::string, absl::Duration, absl::Time>;
+
+class Constant {
+ public:
+  constexpr Constant() {}
+  explicit Constant(ConstantKind constant_kind)
+      : constant_kind_(std::move(constant_kind)) {}
+
+  void set_constant_kind(ConstantKind constant_kind) {
+    constant_kind_ = std::move(constant_kind);
+  }
+
+  const ConstantKind& constant_kind() const { return constant_kind_; }
+
+  ConstantKind& mutable_constant_kind() { return constant_kind_; }
+
+  bool has_null_value() const {
+    return absl::holds_alternative<NullValue>(constant_kind_);
+  }
+
+  NullValue null_value() const {
+    auto* value = absl::get_if<NullValue>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return NullValue::kNullValue;
+  }
+
+  bool has_bool_value() const {
+    return absl::holds_alternative<bool>(constant_kind_);
+  }
+
+  bool bool_value() const {
+    auto* value = absl::get_if<bool>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return false;
+  }
+
+  bool has_int64_value() const {
+    return absl::holds_alternative<int64_t>(constant_kind_);
+  }
+
+  int64_t int64_value() const {
+    auto* value = absl::get_if<int64_t>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return 0;
+  }
+
+  bool has_uint64_value() const {
+    return absl::holds_alternative<uint64_t>(constant_kind_);
+  }
+
+  uint64_t uint64_value() const {
+    auto* value = absl::get_if<uint64_t>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return 0;
+  }
+
+  bool has_double_value() const {
+    return absl::holds_alternative<double>(constant_kind_);
+  }
+
+  double double_value() const {
+    auto* value = absl::get_if<double>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return 0;
+  }
+
+  bool has_string_value() const {
+    return absl::holds_alternative<std::string>(constant_kind_);
+  }
+
+  const std::string& string_value() const {
+    auto* value = absl::get_if<std::string>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static std::string* default_string_value_ = new std::string("");
+    return *default_string_value_;
+  }
+
+  bool has_duration_value() const {
+    return absl::holds_alternative<absl::Duration>(constant_kind_);
+  }
+
+  const absl::Duration& duration_value() const {
+    auto* value = absl::get_if<absl::Duration>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static absl::Duration default_duration_;
+    return default_duration_;
+  }
+
+  bool has_time_value() const {
+    return absl::holds_alternative<absl::Time>(constant_kind_);
+  }
+
+  const absl::Time& time_value() const {
+    auto* value = absl::get_if<absl::Time>(&constant_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static absl::Time default_time_;
+    return default_time_;
+  }
+
+  bool operator==(const Constant& other) const {
+    return constant_kind_ == other.constant_kind_;
+  }
+
+ private:
+  ConstantKind constant_kind_;
+};
 
 class Expr;
 
 // An identifier expression. e.g. `request`.
 class Ident {
  public:
+  Ident() {}
   explicit Ident(std::string name) : name_(std::move(name)) {}
 
   void set_name(std::string name) { name_ = std::move(name); }
 
   const std::string& name() const { return name_; }
+
+  bool operator==(const Ident& other) const { return name_ == other.name_; }
 
  private:
   // Required. Holds a single, unqualified identifier, possibly preceded by a
@@ -89,7 +212,9 @@ class Select {
 
   void set_test_only(bool test_only) { test_only_ = test_only; }
 
-  const Expr* operand() const { return operand_.get(); }
+  bool has_operand() const { return operand_ != nullptr; }
+
+  const Expr& operand() const;
 
   Expr& mutable_operand() {
     if (operand_ == nullptr) {
@@ -101,6 +226,8 @@ class Select {
   const std::string& field() const { return field_; }
 
   bool test_only() const { return test_only_; }
+
+  bool operator==(const Select& other) const;
 
  private:
   // Required. The target of the selection expression.
@@ -116,7 +243,7 @@ class Select {
   // Whether the select is to be interpreted as a field presence test.
   //
   // This results from the macro `has(request.auth)`.
-  bool test_only_;
+  bool test_only_ = false;
 };
 
 // A call expression, including calls to predefined functions and operators.
@@ -138,7 +265,9 @@ class Call {
 
   void set_args(std::vector<Expr> args) { args_ = std::move(args); }
 
-  const Expr* target() const { return target_.get(); }
+  bool has_target() const { return target_ != nullptr; }
+
+  const Expr& target() const;
 
   Expr& mutable_target() {
     if (target_ == nullptr) {
@@ -152,6 +281,8 @@ class Call {
   const std::vector<Expr>& args() const { return args_; }
 
   std::vector<Expr>& mutable_args() { return args_; }
+
+  bool operator==(const Call& other) const;
 
  private:
   // The target of an method call-style expression. For example, `x` in
@@ -185,6 +316,10 @@ class CreateList {
 
   std::vector<Expr>& mutable_elements() { return elements_; }
 
+  bool operator==(const CreateList& other) const {
+    return elements_ == other.elements_;
+  }
+
  private:
   // The elements part of the list.
   std::vector<Expr> elements_;
@@ -217,7 +352,28 @@ class CreateStruct {
 
     KeyKind& mutable_key_kind() { return key_kind_; }
 
-    const Expr* value() const { return value_.get(); }
+    bool has_field_key() const {
+      return absl::holds_alternative<std::string>(key_kind_);
+    }
+
+    bool has_map_key() const {
+      return absl::holds_alternative<std::unique_ptr<Expr>>(key_kind_);
+    }
+
+    const std::string& field_key() const {
+      auto* value = absl::get_if<std::string>(&key_kind_);
+      if (value != nullptr) {
+        return *value;
+      }
+      static const std::string* default_field_key = new std::string;
+      return *default_field_key;
+    }
+
+    const Expr& map_key() const;
+
+    bool has_value() const { return value_ != nullptr; }
+
+    const Expr& value() const;
 
     Expr& mutable_value() {
       if (value_ == nullptr) {
@@ -225,6 +381,8 @@ class CreateStruct {
       }
       return *value_;
     }
+
+    bool operator==(const Entry& other) const;
 
    private:
     // Required. An id assigned to this node by the parser which is unique
@@ -252,6 +410,10 @@ class CreateStruct {
   const std::vector<Entry>& entries() const { return entries_; }
 
   std::vector<Entry>& mutable_entries() { return entries_; }
+
+  bool operator==(const CreateStruct& other) const {
+    return message_name_ == other.message_name_ && entries_ == other.entries_;
+  }
 
  private:
   // The type name of the message to be created, empty when creating map
@@ -321,6 +483,16 @@ class Comprehension {
         loop_step_(std::move(loop_step)),
         result_(std::move(result)) {}
 
+  bool has_iter_range() const { return iter_range_ != nullptr; }
+
+  bool has_accu_init() const { return accu_init_ != nullptr; }
+
+  bool has_loop_condition() const { return loop_condition_ != nullptr; }
+
+  bool has_loop_step() const { return loop_step_ != nullptr; }
+
+  bool has_result() const { return result_ != nullptr; }
+
   void set_iter_var(std::string iter_var) { iter_var_ = std::move(iter_var); }
 
   void set_iter_range(std::unique_ptr<Expr> iter_range) {
@@ -345,7 +517,7 @@ class Comprehension {
 
   const std::string& iter_var() const { return iter_var_; }
 
-  const Expr* iter_range() const { return iter_range_.get(); }
+  const Expr& iter_range() const;
 
   Expr& mutable_iter_range() {
     if (iter_range_ == nullptr) {
@@ -356,7 +528,7 @@ class Comprehension {
 
   const std::string& accu_var() const { return accu_var_; }
 
-  const Expr* accu_init() const { return accu_init_.get(); }
+  const Expr& accu_init() const;
 
   Expr& mutable_accu_init() {
     if (accu_init_ == nullptr) {
@@ -365,7 +537,7 @@ class Comprehension {
     return *accu_init_;
   }
 
-  const Expr* loop_condition() const { return loop_condition_.get(); }
+  const Expr& loop_condition() const;
 
   Expr& mutable_loop_condition() {
     if (loop_condition_ == nullptr) {
@@ -374,7 +546,7 @@ class Comprehension {
     return *loop_condition_;
   }
 
-  const Expr* loop_step() const { return loop_step_.get(); }
+  const Expr& loop_step() const;
 
   Expr& mutable_loop_step() {
     if (loop_step_ == nullptr) {
@@ -383,7 +555,7 @@ class Comprehension {
     return *loop_step_;
   }
 
-  const Expr* result() const { return result_.get(); }
+  const Expr& result() const;
 
   Expr& mutable_result() {
     if (result_ == nullptr) {
@@ -391,6 +563,8 @@ class Comprehension {
     }
     return *result_;
   }
+
+  bool operator==(const Comprehension& other) const;
 
  private:
   // The name of the iteration variable.
@@ -460,6 +634,101 @@ class Expr {
   const ExprKind& expr_kind() const { return expr_kind_; }
 
   ExprKind& mutable_expr_kind() { return expr_kind_; }
+
+  bool has_const_expr() const {
+    return absl::holds_alternative<Constant>(expr_kind_);
+  }
+
+  bool has_ident_expr() const {
+    return absl::holds_alternative<Ident>(expr_kind_);
+  }
+
+  bool has_select_expr() const {
+    return absl::holds_alternative<Select>(expr_kind_);
+  }
+
+  bool has_call_expr() const {
+    return absl::holds_alternative<Call>(expr_kind_);
+  }
+
+  bool has_list_expr() const {
+    return absl::holds_alternative<CreateList>(expr_kind_);
+  }
+
+  bool has_struct_expr() const {
+    return absl::holds_alternative<CreateStruct>(expr_kind_);
+  }
+
+  bool has_comprehension_expr() const {
+    return absl::holds_alternative<Comprehension>(expr_kind_);
+  }
+
+  const Constant& const_expr() const {
+    auto* value = absl::get_if<Constant>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const Constant* default_constant = new Constant;
+    return *default_constant;
+  }
+
+  const Ident& ident_expr() const {
+    auto* value = absl::get_if<Ident>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const Ident* default_ident = new Ident;
+    return *default_ident;
+  }
+
+  const Select& select_expr() const {
+    auto* value = absl::get_if<Select>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const Select* default_select = new Select;
+    return *default_select;
+  }
+
+  const Call& call_expr() const {
+    auto* value = absl::get_if<Call>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const Call* default_call = new Call;
+    return *default_call;
+  }
+
+  const CreateList& list_expr() const {
+    auto* value = absl::get_if<CreateList>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const CreateList* default_create_list = new CreateList;
+    return *default_create_list;
+  }
+
+  const CreateStruct& struct_expr() const {
+    auto* value = absl::get_if<CreateStruct>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const CreateStruct* default_create_struct = new CreateStruct;
+    return *default_create_struct;
+  }
+
+  const Comprehension& comprehension_expr() const {
+    auto* value = absl::get_if<Comprehension>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const Comprehension* default_comprehension = new Comprehension;
+    return *default_comprehension;
+  }
+
+  bool operator==(const Expr& other) const {
+    return id_ == other.id_ && expr_kind_ == other.expr_kind_;
+  }
 
  private:
   // Required. An id assigned to this node by the parser which is unique in a
@@ -651,7 +920,9 @@ class ListType {
     elem_type_ = std::move(elem_type);
   }
 
-  const Type* elem_type() const { return elem_type_.get(); }
+  bool has_elem_type() const { return elem_type_ != nullptr; }
+
+  const Type& elem_type() const;
 
   Type& mutable_elem_type() {
     if (elem_type_ == nullptr) {
@@ -659,6 +930,8 @@ class ListType {
     }
     return *elem_type_;
   }
+
+  bool operator==(const ListType& other) const;
 
  private:
   std::unique_ptr<Type> elem_type_;
@@ -679,9 +952,15 @@ class MapType {
     value_type_ = std::move(value_type);
   }
 
-  const Type* key_type() const { return key_type_.get(); }
+  bool has_key_type() const { return key_type_ != nullptr; }
 
-  const Type* value_type() const { return value_type_.get(); }
+  bool has_value_type() const { return value_type_ != nullptr; }
+
+  const Type& key_type() const;
+
+  const Type& value_type() const;
+
+  bool operator==(const MapType& other) const;
 
   Type& mutable_key_type() {
     if (key_type_ == nullptr) {
@@ -726,7 +1005,9 @@ class FunctionType {
     arg_types_ = std::move(arg_types);
   }
 
-  const Type* result_type() const { return result_type_.get(); }
+  bool has_result_type() const { return result_type_ != nullptr; }
+
+  const Type& result_type() const;
 
   Type& mutable_result_type() {
     if (result_type_ == nullptr) {
@@ -738,6 +1019,8 @@ class FunctionType {
   const std::vector<Type>& arg_types() const { return arg_types_; }
 
   std::vector<Type>& mutable_arg_types() { return arg_types_; }
+
+  bool operator==(const FunctionType& other) const;
 
  private:
   // Result type of the function.
@@ -752,6 +1035,7 @@ class FunctionType {
 // TODO(issues/5): decide on final naming for this.
 class AbstractType {
  public:
+  AbstractType() {}
   AbstractType(std::string name, std::vector<Type> parameter_types)
       : name_(std::move(name)), parameter_types_(std::move(parameter_types)) {}
 
@@ -766,6 +1050,10 @@ class AbstractType {
   const std::vector<Type>& parameter_types() const { return parameter_types_; }
 
   std::vector<Type>& mutable_parameter_types() { return parameter_types_; }
+
+  bool operator==(const AbstractType& other) const {
+    return name_ == other.name_ && parameter_types_ == other.parameter_types_;
+  }
 
  private:
   // The fully qualified name of this abstract type.
@@ -786,6 +1074,10 @@ class PrimitiveTypeWrapper {
 
   PrimitiveType& mutable_type() { return type_; }
 
+  bool operator==(const PrimitiveTypeWrapper& other) const {
+    return type_ == other.type_;
+  }
+
  private:
   PrimitiveType type_;
 };
@@ -796,11 +1088,16 @@ class PrimitiveTypeWrapper {
 // example, `google.plus.Profile`.
 class MessageType {
  public:
+  MessageType() {}
   explicit MessageType(std::string type) : type_(std::move(type)) {}
 
   void set_type(std::string type) { type_ = std::move(type); }
 
   const std::string& type() const { return type_; }
+
+  bool operator==(const MessageType& other) const {
+    return type_ == other.type_;
+  }
 
  private:
   std::string type_;
@@ -813,11 +1110,14 @@ class MessageType {
 // named `E`.
 class ParamType {
  public:
+  ParamType() {}
   explicit ParamType(std::string type) : type_(std::move(type)) {}
 
   void set_type(std::string type) { type_ = std::move(type); }
 
   const std::string& type() const { return type_; }
+
+  bool operator==(const ParamType& other) const { return type_ == other.type_; }
 
  private:
   std::string type_;
@@ -854,6 +1154,158 @@ class Type {
   const TypeKind& type_kind() const { return type_kind_; }
 
   TypeKind& mutable_type_kind() { return type_kind_; }
+
+  bool has_dyn() const {
+    return absl::holds_alternative<DynamicType>(type_kind_);
+  }
+
+  bool has_null() const {
+    return absl::holds_alternative<NullValue>(type_kind_);
+  }
+
+  bool has_primitive() const {
+    return absl::holds_alternative<PrimitiveType>(type_kind_);
+  }
+
+  bool has_wrapper() const {
+    return absl::holds_alternative<PrimitiveTypeWrapper>(type_kind_);
+  }
+
+  bool has_well_known() const {
+    return absl::holds_alternative<WellKnownType>(type_kind_);
+  }
+
+  bool has_list_type() const {
+    return absl::holds_alternative<ListType>(type_kind_);
+  }
+
+  bool has_map_type() const {
+    return absl::holds_alternative<MapType>(type_kind_);
+  }
+
+  bool has_function() const {
+    return absl::holds_alternative<FunctionType>(type_kind_);
+  }
+
+  bool has_message_type() const {
+    return absl::holds_alternative<MessageType>(type_kind_);
+  }
+
+  bool has_type_param() const {
+    return absl::holds_alternative<ParamType>(type_kind_);
+  }
+
+  bool has_type() const {
+    return absl::holds_alternative<std::unique_ptr<Type>>(type_kind_);
+  }
+
+  bool has_error() const {
+    return absl::holds_alternative<ErrorType>(type_kind_);
+  }
+
+  bool has_abstract_type() const {
+    return absl::holds_alternative<AbstractType>(type_kind_);
+  }
+
+  NullValue null() const {
+    auto* value = absl::get_if<NullValue>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return NullValue::kNullValue;
+  }
+
+  PrimitiveType primitive() const {
+    auto* value = absl::get_if<PrimitiveType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return PrimitiveType::kPrimitiveTypeUnspecified;
+  }
+
+  PrimitiveType wrapper() const {
+    auto* value = absl::get_if<PrimitiveTypeWrapper>(&type_kind_);
+    if (value != nullptr) {
+      return value->type();
+    }
+    return PrimitiveType::kPrimitiveTypeUnspecified;
+  }
+
+  WellKnownType well_known() const {
+    auto* value = absl::get_if<WellKnownType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return WellKnownType::kWellKnownTypeUnspecified;
+  }
+
+  const ListType& list_type() const {
+    auto* value = absl::get_if<ListType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const ListType* default_list_type = new ListType();
+    return *default_list_type;
+  }
+
+  const MapType& map_type() const {
+    auto* value = absl::get_if<MapType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const MapType* default_map_type = new MapType();
+    return *default_map_type;
+  }
+
+  const FunctionType& function() const {
+    auto* value = absl::get_if<FunctionType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const FunctionType* default_function_type = new FunctionType();
+    return *default_function_type;
+  }
+
+  const MessageType& message_type() const {
+    auto* value = absl::get_if<MessageType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const MessageType* default_message_type = new MessageType();
+    return *default_message_type;
+  }
+
+  const ParamType& type_param() const {
+    auto* value = absl::get_if<ParamType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const ParamType* default_param_type = new ParamType();
+    return *default_param_type;
+  }
+
+  const Type& type() const;
+
+  ErrorType error_type() const {
+    auto* value = absl::get_if<ErrorType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    return ErrorType::kErrorTypeValue;
+  }
+
+  const AbstractType& abstract_type() const {
+    auto* value = absl::get_if<AbstractType>(&type_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    static const AbstractType* default_abstract_type = new AbstractType();
+    return *default_abstract_type;
+  }
+
+  bool operator==(const Type& other) const {
+    return type_kind_ == other.type_kind_;
+  }
 
  private:
   TypeKind type_kind_;
