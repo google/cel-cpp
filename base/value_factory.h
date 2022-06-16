@@ -120,10 +120,8 @@ class ValueFactory final {
       std::forward<Releaser>(releaser)();
       return GetEmptyBytesValue();
     }
-    return CreateBytesValue(base_internal::ExternalData(
-        static_cast<const void*>(value.data()), value.size(),
-        std::make_unique<base_internal::ExternalDataReleaser>(
-            std::forward<Releaser>(releaser))));
+    return CreateBytesValue(
+        absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
   Persistent<const StringValue> GetStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -154,10 +152,8 @@ class ValueFactory final {
       std::forward<Releaser>(releaser)();
       return GetEmptyStringValue();
     }
-    return CreateStringValue(base_internal::ExternalData(
-        static_cast<const void*>(value.data()), value.size(),
-        std::make_unique<base_internal::ExternalDataReleaser>(
-            std::forward<Releaser>(releaser))));
+    return CreateStringValue(
+        absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
   absl::StatusOr<Persistent<const DurationValue>> CreateDurationValue(
@@ -166,13 +162,19 @@ class ValueFactory final {
   absl::StatusOr<Persistent<const TimestampValue>> CreateTimestampValue(
       absl::Time value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  template <typename T, typename... Args>
-  EnableIfBaseOfT<EnumValue, T, absl::StatusOr<Persistent<T>>> CreateEnumValue(
+  absl::StatusOr<Persistent<const EnumValue>> CreateEnumValue(
       const Persistent<const EnumType>& enum_type,
-      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::PersistentHandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), enum_type,
-                                std::forward<Args>(args)...);
+      int64_t number) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::PersistentHandleFactory<
+        const EnumValue>::template Make<EnumValue>(enum_type, number);
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_enum_v<T>,
+                   absl::StatusOr<Persistent<const EnumValue>>>
+  CreateEnumValue(const Persistent<const EnumType>& enum_type,
+                  T value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateEnumValue(enum_type, static_cast<int64_t>(value));
   }
 
   template <typename T, typename... Args>
@@ -222,20 +224,11 @@ class ValueFactory final {
   Persistent<const BytesValue> GetEmptyBytesValue()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<const BytesValue>> CreateBytesValue(
-      base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
   absl::StatusOr<Persistent<const BytesValue>> CreateBytesValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Persistent<const StringValue> GetEmptyStringValue()
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
-      absl::Cord value, size_t size) ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  absl::StatusOr<Persistent<const StringValue>> CreateStringValue(
-      base_internal::ExternalData value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<Persistent<const StringValue>> CreateStringValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -257,11 +250,16 @@ class TypedEnumValueFactory final {
       const Persistent<const EnumType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : value_factory_(value_factory), enum_type_(enum_type) {}
 
-  template <typename T, typename... Args>
-  EnableIfBaseOfT<EnumValue, T, absl::StatusOr<Persistent<T>>> CreateEnumValue(
-      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_factory_.CreateEnumValue<T>(enum_type_,
-                                             std::forward<Args>(args)...);
+  absl::StatusOr<Persistent<const EnumValue>> CreateEnumValue(int64_t number)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return value_factory_.CreateEnumValue(enum_type_, number);
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_enum_v<T>,
+                   absl::StatusOr<Persistent<const EnumValue>>>
+  CreateEnumValue(T value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateEnumValue(static_cast<int64_t>(value));
   }
 
  private:

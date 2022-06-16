@@ -17,17 +17,21 @@
 
 #include <string>
 
-#include "absl/hash/hash.h"
-#include "base/kind.h"
-#include "base/type.h"
+#include "base/types/double_type.h"
 #include "base/value.h"
 
 namespace cel {
 
-class ValueFactory;
+class DoubleValue final
+    : public base_internal::SimpleValue<DoubleType, double> {
+ private:
+  using Base = base_internal::SimpleValue<DoubleType, double>;
 
-class DoubleValue final : public Value, public base_internal::ResourceInlined {
  public:
+  using Base::kKind;
+
+  using Base::Is;
+
   static Persistent<const DoubleValue> NaN(ValueFactory& value_factory);
 
   static Persistent<const DoubleValue> PositiveInfinity(
@@ -36,39 +40,25 @@ class DoubleValue final : public Value, public base_internal::ResourceInlined {
   static Persistent<const DoubleValue> NegativeInfinity(
       ValueFactory& value_factory);
 
-  Persistent<const Type> type() const override;
+  using Base::kind;
 
-  Kind kind() const override { return Kind::kDouble; }
+  using Base::type;
 
-  std::string DebugString() const override;
+  std::string DebugString() const;
 
-  constexpr double value() const { return value_; }
+  using Base::HashValue;
+
+  using Base::Equals;
+
+  using Base::value;
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  using Base::Base;
 
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kDouble; }
-
-  // Called by `base_internal::ValueHandle` to construct value inline.
-  explicit DoubleValue(double value) : value_(value) {}
-
-  DoubleValue() = delete;
-
-  DoubleValue(const DoubleValue&) = default;
-  DoubleValue(DoubleValue&&) = default;
-
-  // See comments for respective member functions on `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
-
-  double value_;
+  CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(DoubleValue);
 };
+
+CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(DoubleValue);
 
 }  // namespace cel
 

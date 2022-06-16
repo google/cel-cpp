@@ -15,44 +15,15 @@
 #include "base/values/duration_value.h"
 
 #include <string>
-#include <utility>
 
-#include "base/types/duration_type.h"
-#include "internal/casts.h"
 #include "internal/time.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> DurationValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const DurationType>(
-      DurationType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(DurationValue);
 
 std::string DurationValue::DebugString() const {
   return internal::FormatDuration(value()).value();
-}
-
-void DurationValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(DurationValue, *this, address);
-}
-
-void DurationValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(DurationValue, *this, address);
-}
-
-bool DurationValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == internal::down_cast<const DurationValue&>(other).value();
-}
-
-void DurationValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
 }
 
 }  // namespace cel

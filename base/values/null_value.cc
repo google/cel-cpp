@@ -15,45 +15,11 @@
 #include "base/values/null_value.h"
 
 #include <string>
-#include <utility>
-
-#include "base/types/null_type.h"
-#include "internal/no_destructor.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> NullValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const NullType>(
-      NullType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(NullValue);
 
 std::string NullValue::DebugString() const { return "null"; }
-
-const NullValue& NullValue::Get() {
-  static const internal::NoDestructor<NullValue> instance;
-  return *instance;
-}
-
-void NullValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(NullValue, *this, address);
-}
-
-void NullValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(NullValue, *this, address);
-}
-
-bool NullValue::Equals(const Value& other) const {
-  return kind() == other.kind();
-}
-
-void NullValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), 0);
-}
 
 }  // namespace cel

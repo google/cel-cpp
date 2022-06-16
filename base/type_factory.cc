@@ -29,93 +29,50 @@ using base_internal::PersistentHandleFactory;
 
 }  // namespace
 
-namespace base_internal {
-
-class ListTypeImpl final : public ListType {
- public:
-  explicit ListTypeImpl(Persistent<const Type> element)
-      : element_(std::move(element)) {}
-
-  Persistent<const Type> element() const override { return element_; }
-
- private:
-  std::pair<size_t, size_t> SizeAndAlignment() const override {
-    return std::make_pair(sizeof(ListTypeImpl), alignof(ListTypeImpl));
-  }
-
-  Persistent<const Type> element_;
-};
-
-class MapTypeImpl final : public MapType {
- public:
-  MapTypeImpl(Persistent<const Type> key, Persistent<const Type> value)
-      : key_(std::move(key)), value_(std::move(value)) {}
-
-  Persistent<const Type> key() const override { return key_; }
-
-  Persistent<const Type> value() const override { return value_; }
-
- private:
-  std::pair<size_t, size_t> SizeAndAlignment() const override {
-    return std::make_pair(sizeof(MapTypeImpl), alignof(MapTypeImpl));
-  }
-
-  Persistent<const Type> key_;
-  Persistent<const Type> value_;
-};
-
-}  // namespace base_internal
-
 Persistent<const NullType> TypeFactory::GetNullType() {
-  return WrapSingletonType<NullType>();
+  return NullType::Get();
 }
 
 Persistent<const ErrorType> TypeFactory::GetErrorType() {
-  return WrapSingletonType<ErrorType>();
+  return ErrorType::Get();
 }
 
-Persistent<const DynType> TypeFactory::GetDynType() {
-  return WrapSingletonType<DynType>();
-}
+Persistent<const DynType> TypeFactory::GetDynType() { return DynType::Get(); }
 
-Persistent<const AnyType> TypeFactory::GetAnyType() {
-  return WrapSingletonType<AnyType>();
-}
+Persistent<const AnyType> TypeFactory::GetAnyType() { return AnyType::Get(); }
 
 Persistent<const BoolType> TypeFactory::GetBoolType() {
-  return WrapSingletonType<BoolType>();
+  return BoolType::Get();
 }
 
-Persistent<const IntType> TypeFactory::GetIntType() {
-  return WrapSingletonType<IntType>();
-}
+Persistent<const IntType> TypeFactory::GetIntType() { return IntType::Get(); }
 
 Persistent<const UintType> TypeFactory::GetUintType() {
-  return WrapSingletonType<UintType>();
+  return UintType::Get();
 }
 
 Persistent<const DoubleType> TypeFactory::GetDoubleType() {
-  return WrapSingletonType<DoubleType>();
+  return DoubleType::Get();
 }
 
 Persistent<const StringType> TypeFactory::GetStringType() {
-  return WrapSingletonType<StringType>();
+  return StringType::Get();
 }
 
 Persistent<const BytesType> TypeFactory::GetBytesType() {
-  return WrapSingletonType<BytesType>();
+  return BytesType::Get();
 }
 
 Persistent<const DurationType> TypeFactory::GetDurationType() {
-  return WrapSingletonType<DurationType>();
+  return DurationType::Get();
 }
 
 Persistent<const TimestampType> TypeFactory::GetTimestampType() {
-  return WrapSingletonType<TimestampType>();
+  return TimestampType::Get();
 }
 
 Persistent<const TypeType> TypeFactory::GetTypeType() {
-  return WrapSingletonType<TypeType>();
+  return TypeType::Get();
 }
 
 absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
@@ -125,8 +82,8 @@ absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
   if (existing != list_types_.end()) {
     return existing->second;
   }
-  auto list_type = PersistentHandleFactory<const ListType>::Make<
-      const base_internal::ListTypeImpl>(memory_manager(), element);
+  auto list_type = PersistentHandleFactory<const ListType>::Make<ListType>(
+      memory_manager(), element);
   if (ABSL_PREDICT_FALSE(!list_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
     // they can add details on the size and alignment more easily and
@@ -145,8 +102,8 @@ absl::StatusOr<Persistent<const MapType>> TypeFactory::CreateMapType(
   if (existing != map_types_.end()) {
     return existing->second;
   }
-  auto map_type = PersistentHandleFactory<const MapType>::Make<
-      const base_internal::MapTypeImpl>(memory_manager(), key, value);
+  auto map_type = PersistentHandleFactory<const MapType>::Make<MapType>(
+      memory_manager(), key, value);
   if (ABSL_PREDICT_FALSE(!map_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
     // they can add details on the size and alignment more easily and

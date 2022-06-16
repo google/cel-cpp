@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_ENUM_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_ENUM_TYPE_H_
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -23,18 +24,21 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "internal/rtti.h"
 
 namespace cel {
 
+class MemoryManager;
+class EnumValue;
 class TypedEnumValueFactory;
 class TypeManager;
 
 // EnumType represents an enumeration type. An enumeration is a set of constants
 // that can be looked up by name and/or number.
-class EnumType : public Type {
+class EnumType : public Type, public base_internal::HeapData {
  public:
   struct Constant;
 
@@ -58,13 +62,25 @@ class EnumType : public Type {
     absl::variant<absl::string_view, int64_t> data_;
   };
 
-  Kind kind() const final { return Kind::kEnum; }
+  static constexpr Kind kKind = Kind::kEnum;
+
+  static bool Is(const Type& type) { return type.kind() == kKind; }
+
+  Kind kind() const { return kKind; }
+
+  virtual absl::string_view name() const = 0;
+
+  std::string DebugString() const { return std::string(name()); }
+
+  virtual void HashValue(absl::HashState state) const;
+
+  virtual bool Equals(const Type& other) const;
 
   // Find the constant definition for the given identifier.
   absl::StatusOr<Constant> FindConstant(ConstantId id) const;
 
  protected:
-  EnumType() = default;
+  EnumType();
 
   // Construct a new instance of EnumValue with a type of this. Called by
   // EnumValue::New.
@@ -92,18 +108,13 @@ class EnumType : public Type {
 
   friend struct NewInstanceVisitor;
   friend struct FindConstantVisitor;
+  friend class MemoryManager;
   friend class EnumValue;
   friend class TypeFactory;
-  friend class base_internal::TypeHandleBase;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kEnum; }
+  friend class base_internal::PersistentTypeHandle;
 
   EnumType(const EnumType&) = delete;
   EnumType(EnumType&&) = delete;
-
-  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 
   // Called by CEL_IMPLEMENT_ENUM_TYPE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;

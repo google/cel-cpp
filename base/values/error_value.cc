@@ -14,17 +14,19 @@
 
 #include "base/values/error_value.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
-#include "base/types/error_type.h"
-#include "internal/casts.h"
+#include "absl/container/inlined_vector.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 
 namespace cel {
 
-namespace {
+CEL_INTERNAL_VALUE_IMPL(ErrorValue);
 
-using base_internal::PersistentHandleFactory;
+namespace {
 
 struct StatusPayload final {
   std::string key;
@@ -59,24 +61,11 @@ void StatusHashValue(absl::HashState state, const absl::Status& status) {
 
 }  // namespace
 
-Persistent<const Type> ErrorValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const ErrorType>(
-      ErrorType::Get());
-}
-
 std::string ErrorValue::DebugString() const { return value().ToString(); }
-
-void ErrorValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(ErrorValue, *this, address);
-}
-
-void ErrorValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(ErrorValue, *this, address);
-}
 
 bool ErrorValue::Equals(const Value& other) const {
   return kind() == other.kind() &&
-         value() == internal::down_cast<const ErrorValue&>(other).value();
+         value() == static_cast<const ErrorValue&>(other).value();
 }
 
 void ErrorValue::HashValue(absl::HashState state) const {

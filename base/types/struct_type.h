@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_STRUCT_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_STRUCT_TYPE_H_
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -29,12 +30,14 @@
 
 namespace cel {
 
+class MemoryManager;
+class StructValue;
 class TypedStructValueFactory;
 class TypeManager;
 
 // StructType represents an struct type. An struct is a set of fields
 // that can be looked up by name and/or number.
-class StructType : public Type {
+class StructType : public Type, public base_internal::HeapData {
  public:
   struct Field;
 
@@ -58,13 +61,25 @@ class StructType : public Type {
     absl::variant<absl::string_view, int64_t> data_;
   };
 
-  Kind kind() const final { return Kind::kStruct; }
+  static constexpr Kind kKind = Kind::kStruct;
+
+  static bool Is(const Type& type) { return type.kind() == kKind; }
+
+  Kind kind() const { return kKind; }
+
+  virtual absl::string_view name() const = 0;
+
+  std::string DebugString() const { return std::string(name()); }
+
+  virtual void HashValue(absl::HashState state) const;
+
+  virtual bool Equals(const Type& other) const;
 
   // Find the field definition for the given identifier.
   absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
 
  protected:
-  StructType() = default;
+  StructType();
 
   virtual absl::StatusOr<Persistent<StructValue>> NewInstance(
       TypedStructValueFactory& factory) const = 0;
@@ -83,18 +98,13 @@ class StructType : public Type {
   struct FindFieldVisitor;
 
   friend struct FindFieldVisitor;
+  friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::TypeHandleBase;
+  friend class base_internal::PersistentTypeHandle;
   friend class StructValue;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kStruct; }
 
   StructType(const StructType&) = delete;
   StructType(StructType&&) = delete;
-
-  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;

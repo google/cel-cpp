@@ -15,42 +15,39 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_UINT_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_UINT_TYPE_H_
 
-#include <cstddef>
-#include <string>
-#include <utility>
-
-#include "absl/strings/string_view.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
-class UintType final : public Type {
- public:
-  Kind kind() const override { return Kind::kUint; }
+class UintValue;
 
-  absl::string_view name() const override { return "uint"; }
+class UintType final : public base_internal::SimpleType<Kind::kUint> {
+ private:
+  using Base = base_internal::SimpleType<Kind::kUint>;
+
+ public:
+  using Base::kKind;
+
+  using Base::kName;
+
+  using Base::Is;
+
+  using Base::kind;
+
+  using Base::name;
+
+  using Base::DebugString;
+
+  using Base::HashValue;
+
+  using Base::Equals;
 
  private:
-  friend class UintValue;
-  friend class TypeFactory;
-  template <typename T>
-  friend class internal::NoDestructor;
-  friend class base_internal::TypeHandleBase;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kUint; }
-
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const UintType& Get();
-
-  UintType() = default;
-
-  UintType(const UintType&) = delete;
-  UintType(UintType&&) = delete;
+  CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(UintType, UintValue);
 };
 
-CEL_INTERNAL_TYPE_DECL(UintType);
+CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(UintType);
 
 }  // namespace cel
 

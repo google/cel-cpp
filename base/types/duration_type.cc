@@ -14,15 +14,28 @@
 
 #include "base/types/duration_type.h"
 
-#include "internal/no_destructor.h"
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(DurationType);
 
-const DurationType& DurationType::Get() {
-  static const internal::NoDestructor<DurationType> instance;
-  return *instance;
+namespace {
+
+ABSL_CONST_INIT absl::once_flag instance_once;
+alignas(Persistent<const DurationType>) char instance_storage[sizeof(
+    Persistent<const DurationType>)];
+
+}  // namespace
+
+const Persistent<const DurationType>& DurationType::Get() {
+  absl::call_once(instance_once, []() {
+    base_internal::PersistentHandleFactory<const DurationType>::MakeAt<
+        DurationType>(&instance_storage[0]);
+  });
+  return *reinterpret_cast<const Persistent<const DurationType>*>(
+      &instance_storage[0]);
 }
 
 }  // namespace cel

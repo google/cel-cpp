@@ -15,44 +15,39 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_TIMESTAMP_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_TIMESTAMP_TYPE_H_
 
-#include <cstddef>
-#include <string>
-#include <utility>
-
-#include "absl/strings/string_view.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
-class TimestampType final : public Type {
- public:
-  Kind kind() const override { return Kind::kTimestamp; }
+class TimestampValue;
 
-  absl::string_view name() const override {
-    return "google.protobuf.Timestamp";
-  }
+class TimestampType final : public base_internal::SimpleType<Kind::kTimestamp> {
+ private:
+  using Base = base_internal::SimpleType<Kind::kTimestamp>;
+
+ public:
+  using Base::kKind;
+
+  using Base::kName;
+
+  using Base::Is;
+
+  using Base::kind;
+
+  using Base::name;
+
+  using Base::DebugString;
+
+  using Base::HashValue;
+
+  using Base::Equals;
 
  private:
-  friend class TimestampValue;
-  friend class TypeFactory;
-  template <typename T>
-  friend class internal::NoDestructor;
-  friend class base_internal::TypeHandleBase;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kTimestamp; }
-
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const TimestampType& Get();
-
-  TimestampType() = default;
-
-  TimestampType(const TimestampType&) = delete;
-  TimestampType(TimestampType&&) = delete;
+  CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(TimestampType, TimestampValue);
 };
 
-CEL_INTERNAL_TYPE_DECL(TimestampType);
+CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(TimestampType);
 
 }  // namespace cel
 

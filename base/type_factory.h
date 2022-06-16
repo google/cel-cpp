@@ -115,16 +115,6 @@ class TypeFactory final {
   MemoryManager& memory_manager() const { return memory_manager_; }
 
  private:
-  template <typename T>
-  static Persistent<const T> WrapSingletonType() {
-    // This is not normal, but we treat the underlying object as having been
-    // arena allocated. The only way to do this is through
-    // TransientHandleFactory.
-    return Persistent<const T>(
-        base_internal::PersistentHandleFactory<const T>::template MakeUnmanaged<
-            const T>(T::Get()));
-  }
-
   MemoryManager& memory_manager_;
 
   absl::Mutex list_types_mutex_;

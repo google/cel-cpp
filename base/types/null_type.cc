@@ -14,15 +14,28 @@
 
 #include "base/types/null_type.h"
 
-#include "internal/no_destructor.h"
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(NullType);
 
-const NullType& NullType::Get() {
-  static const internal::NoDestructor<NullType> instance;
-  return *instance;
+namespace {
+
+ABSL_CONST_INIT absl::once_flag instance_once;
+alignas(Persistent<const NullType>) char instance_storage[sizeof(
+    Persistent<const NullType>)];
+
+}  // namespace
+
+const Persistent<const NullType>& NullType::Get() {
+  absl::call_once(instance_once, []() {
+    base_internal::PersistentHandleFactory<const NullType>::MakeAt<NullType>(
+        &instance_storage[0]);
+  });
+  return *reinterpret_cast<const Persistent<const NullType>*>(
+      &instance_storage[0]);
 }
 
 }  // namespace cel

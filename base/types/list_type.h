@@ -15,55 +15,54 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_LIST_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_LIST_TYPE_H_
 
+#include <atomic>
 #include <cstddef>
 #include <string>
 #include <utility>
 
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
+class MemoryManager;
+
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
-class ListType : public Type {
+class ListType final : public Type, public base_internal::HeapData {
   // I would have liked to make this class final, but we cannot instantiate
   // Persistent<const Type> or Transient<const Type> at this point. It must be
   // done after the post include below. Maybe we should separate out the post
   // includes on a per type basis so we can do that?
  public:
-  Kind kind() const final { return Kind::kList; }
+  static constexpr Kind kKind = Kind::kList;
 
-  absl::string_view name() const final { return "list"; }
+  static bool Is(const Type& type) { return type.kind() == kKind; }
 
-  std::string DebugString() const final;
+  Kind kind() const { return kKind; }
+
+  absl::string_view name() const { return KindToString(kind()); }
+
+  std::string DebugString() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Type& other) const;
 
   // Returns the type of the elements in the list.
-  virtual Persistent<const Type> element() const = 0;
+  const Persistent<const Type>& element() const { return element_; }
 
  private:
+  friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::TypeHandleBase;
-  friend class base_internal::ListTypeImpl;
+  friend class base_internal::PersistentTypeHandle;
 
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kList; }
+  explicit ListType(Persistent<const Type> element);
 
-  ListType() = default;
-
-  ListType(const ListType&) = delete;
-  ListType(ListType&&) = delete;
-
-  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
-
-  // Called by base_internal::TypeHandleBase.
-  bool Equals(const Type& other) const final;
-
-  // Called by base_internal::TypeHandleBase.
-  void HashValue(absl::HashState state) const final;
+  const Persistent<const Type> element_;
 };
 
 CEL_INTERNAL_TYPE_DECL(ListType);

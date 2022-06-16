@@ -15,42 +15,39 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_DURATION_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_DURATION_TYPE_H_
 
-#include <cstddef>
-#include <string>
-#include <utility>
-
-#include "absl/strings/string_view.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
-class DurationType final : public Type {
- public:
-  Kind kind() const override { return Kind::kDuration; }
+class DurationValue;
 
-  absl::string_view name() const override { return "google.protobuf.Duration"; }
+class DurationType final : public base_internal::SimpleType<Kind::kDuration> {
+ private:
+  using Base = base_internal::SimpleType<Kind::kDuration>;
+
+ public:
+  using Base::kKind;
+
+  using Base::kName;
+
+  using Base::Is;
+
+  using Base::kind;
+
+  using Base::name;
+
+  using Base::DebugString;
+
+  using Base::HashValue;
+
+  using Base::Equals;
 
  private:
-  friend class DurationValue;
-  friend class TypeFactory;
-  template <typename T>
-  friend class internal::NoDestructor;
-  friend class base_internal::TypeHandleBase;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kDuration; }
-
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const DurationType& Get();
-
-  DurationType() = default;
-
-  DurationType(const DurationType&) = delete;
-  DurationType(DurationType&&) = delete;
+  CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DurationType, DurationValue);
 };
 
-CEL_INTERNAL_TYPE_DECL(DurationType);
+CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(DurationType);
 
 }  // namespace cel
 

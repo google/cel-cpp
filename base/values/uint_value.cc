@@ -15,44 +15,15 @@
 #include "base/values/uint_value.h"
 
 #include <string>
-#include <utility>
 
 #include "absl/strings/str_cat.h"
-#include "base/types/uint_type.h"
-#include "internal/casts.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> UintValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const UintType>(
-      UintType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(UintValue);
 
 std::string UintValue::DebugString() const {
   return absl::StrCat(value(), "u");
-}
-
-void UintValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(UintValue, *this, address);
-}
-
-void UintValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(UintValue, *this, address);
-}
-
-bool UintValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == internal::down_cast<const UintValue&>(other).value();
-}
-
-void UintValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
 }
 
 }  // namespace cel

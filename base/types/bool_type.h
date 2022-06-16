@@ -15,42 +15,39 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_
 
-#include <cstddef>
-#include <string>
-#include <utility>
-
-#include "absl/strings/string_view.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
-class BoolType final : public Type {
- public:
-  Kind kind() const override { return Kind::kBool; }
+class BoolValue;
 
-  absl::string_view name() const override { return "bool"; }
+class BoolType final : public base_internal::SimpleType<Kind::kBool> {
+ private:
+  using Base = base_internal::SimpleType<Kind::kBool>;
+
+ public:
+  using Base::kKind;
+
+  using Base::kName;
+
+  using Base::Is;
+
+  using Base::kind;
+
+  using Base::name;
+
+  using Base::DebugString;
+
+  using Base::HashValue;
+
+  using Base::Equals;
 
  private:
-  friend class BoolValue;
-  friend class TypeFactory;
-  template <typename T>
-  friend class internal::NoDestructor;
-  friend class base_internal::TypeHandleBase;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kBool; }
-
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const BoolType& Get();
-
-  BoolType() = default;
-
-  BoolType(const BoolType&) = delete;
-  BoolType(BoolType&&) = delete;
+  CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(BoolType, BoolValue);
 };
 
-CEL_INTERNAL_TYPE_DECL(BoolType);
+CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(BoolType);
 
 }  // namespace cel
 

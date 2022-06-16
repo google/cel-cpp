@@ -16,25 +16,13 @@
 
 #include <cmath>
 #include <string>
-#include <utility>
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
-#include "base/types/double_type.h"
-#include "internal/casts.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> DoubleValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const DoubleType>(
-      DoubleType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(DoubleValue);
 
 std::string DoubleValue::DebugString() const {
   if (std::isfinite(value())) {
@@ -61,23 +49,6 @@ std::string DoubleValue::DebugString() const {
     return "-infinity";
   }
   return "+infinity";
-}
-
-void DoubleValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(DoubleValue, *this, address);
-}
-
-void DoubleValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(DoubleValue, *this, address);
-}
-
-bool DoubleValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == internal::down_cast<const DoubleValue&>(other).value();
-}
-
-void DoubleValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
 }
 
 }  // namespace cel

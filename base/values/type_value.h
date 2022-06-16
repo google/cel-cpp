@@ -15,52 +15,57 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_TYPE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_TYPE_VALUE_H_
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "absl/hash/hash.h"
 #include "base/kind.h"
 #include "base/type.h"
+#include "base/types/type_type.h"
 #include "base/value.h"
 
 namespace cel {
 
-// TypeValue represents an instance of cel::Type.
-class TypeValue final : public Value, base_internal::ResourceInlined {
+class TypeValue final : public Value, public base_internal::InlineData {
  public:
-  Persistent<const Type> type() const override;
+  static constexpr Kind kKind = TypeType::kKind;
 
-  Kind kind() const override { return Kind::kType; }
+  static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  std::string DebugString() const override;
+  constexpr Kind kind() const { return kKind; }
 
-  Persistent<const Type> value() const { return value_; }
+  const Persistent<const TypeType>& type() const { return TypeType::Get(); }
+
+  std::string DebugString() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Value& other) const;
+
+  constexpr const Persistent<const Type>& value() const { return value_; }
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  friend class PersistentValueHandle;
+  template <size_t Size, size_t Align>
+  friend class base_internal::AnyData;
 
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kType; }
+  static constexpr uintptr_t kVirtualPointer =
+      base_internal::kStoredInline |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  // Called by `base_internal::ValueHandle` to construct value inline.
-  explicit TypeValue(Persistent<const Type> type) : value_(std::move(type)) {}
-
-  TypeValue() = delete;
+  explicit TypeValue(Persistent<const Type> value) : value_(std::move(value)) {}
 
   TypeValue(const TypeValue&) = default;
   TypeValue(TypeValue&&) = default;
+  TypeValue& operator=(const TypeValue&) = default;
+  TypeValue& operator=(TypeValue&&) = default;
 
-  // See comments for respective member functions on `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
-
+  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   Persistent<const Type> value_;
 };
+
+CEL_INTERNAL_VALUE_DECL(TypeValue);
 
 }  // namespace cel
 

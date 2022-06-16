@@ -14,6 +14,10 @@
 
 #include "base/types/struct_type.h"
 
+#include <utility>
+
+#include "absl/base/macros.h"
+#include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
@@ -21,6 +25,13 @@
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(StructType);
+
+StructType::StructType() : base_internal::HeapData(kKind) {
+  // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
+  ABSL_ASSERT(
+      reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
+      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
 
 struct StructType::FindFieldVisitor final {
   const StructType& struct_type;
@@ -38,6 +49,16 @@ struct StructType::FindFieldVisitor final {
 absl::StatusOr<StructType::Field> StructType::FindField(
     TypeManager& type_manager, FieldId id) const {
   return absl::visit(FindFieldVisitor{*this, type_manager}, id.data_);
+}
+
+void StructType::HashValue(absl::HashState state) const {
+  absl::HashState::combine(std::move(state), kind(), name(), TypeId());
+}
+
+bool StructType::Equals(const Type& other) const {
+  return kind() == other.kind() &&
+         name() == static_cast<const StructType&>(other).name() &&
+         TypeId() == static_cast<const StructType&>(other).TypeId();
 }
 
 }  // namespace cel

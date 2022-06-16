@@ -23,9 +23,11 @@ cc_library(
     name = "handle",
     hdrs = ["handle.h"],
     deps = [
+        ":memory_manager",
+        "//base/internal:data",
         "//base/internal:handle",
-        "//internal:casts",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/utility",
     ],
 )
 
@@ -49,19 +51,25 @@ cc_test(
 )
 
 cc_library(
+    name = "managed_memory",
+    hdrs = ["managed_memory.h"],
+    deps = ["//base/internal:managed_memory"],
+)
+
+cc_library(
     name = "memory_manager",
     srcs = ["memory_manager.cc"],
     hdrs = ["memory_manager.h"],
     deps = [
+        ":managed_memory",
+        "//base/internal:data",
         "//base/internal:memory_manager",
         "//internal:no_destructor",
-        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:dynamic_annotations",
         "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/synchronization",
-        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -111,14 +119,17 @@ cc_library(
     deps = [
         ":handle",
         ":kind",
-        ":memory_manager",
+        "//base/internal:data",
         "//base/internal:type",
-        "//internal:no_destructor",
+        "//internal:casts",
         "//internal:rtti",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:variant",
+        "@com_google_absl//absl/utility",
     ],
 )
 
@@ -209,16 +220,16 @@ cc_library(
     deps = [
         ":handle",
         ":kind",
-        ":memory_manager",
         ":type",
+        "//base/internal:data",
         "//base/internal:value",
         "//internal:casts",
-        "//internal:no_destructor",
         "//internal:rtti",
         "//internal:strings",
         "//internal:time",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

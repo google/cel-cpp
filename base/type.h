@@ -15,130 +15,320 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_H_
 
+#include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "absl/utility/utility.h"
 #include "base/handle.h"
-#include "base/internal/type.pre.h"  // IWYU pragma: export
+#include "base/internal/data.h"
+#include "base/internal/type.h"  // IWYU pragma: export
 #include "base/kind.h"
-#include "base/memory_manager.h"
+#include "internal/casts.h"  // IWYU pragma: keep
 
 namespace cel {
 
-class Type;
-class NullType;
-class ErrorType;
-class DynType;
-class AnyType;
-class BoolType;
-class IntType;
-class UintType;
-class DoubleType;
-class StringType;
-class BytesType;
-class DurationType;
-class TimestampType;
 class EnumType;
+class StructType;
 class ListType;
 class MapType;
-class TypeType;
 class TypeFactory;
 class TypeProvider;
 class TypeManager;
 
-class NullValue;
-class ErrorValue;
-class BoolValue;
-class IntValue;
-class UintValue;
-class DoubleValue;
-class BytesValue;
-class StringValue;
-class DurationValue;
-class TimestampValue;
-class EnumValue;
-class StructValue;
-class TypeValue;
 class ValueFactory;
 class TypedEnumValueFactory;
 class TypedStructValueFactory;
 
-namespace internal {
-template <typename T>
-class NoDestructor;
-}
-
 // A representation of a CEL type that enables reflection, for static analysis,
 // and introspection, for program construction, of types.
-class Type : public base_internal::Resource {
+class Type : public base_internal::Data {
  public:
+  static bool Is(const Type& type ABSL_ATTRIBUTE_UNUSED) { return true; }
+
   // Returns the type kind.
-  virtual Kind kind() const = 0;
+  Kind kind() const { return base_internal::Metadata::For(this)->kind(); }
 
   // Returns the type name, i.e. "list".
-  virtual absl::string_view name() const = 0;
+  absl::string_view name() const;
 
-  virtual std::string DebugString() const;
+  std::string DebugString() const;
 
-  // Called by base_internal::TypeHandleBase.
-  // Note GCC does not consider a friend member as a member of a friend.
-  virtual bool Equals(const Type& other) const;
+  void HashValue(absl::HashState state) const;
 
-  // Called by base_internal::TypeHandleBase.
-  // Note GCC does not consider a friend member as a member of a friend.
-  virtual void HashValue(absl::HashState state) const;
+  bool Equals(const Type& other) const;
 
  private:
-  friend class NullType;
-  friend class ErrorType;
-  friend class DynType;
-  friend class AnyType;
-  friend class BoolType;
-  friend class IntType;
-  friend class UintType;
-  friend class DoubleType;
-  friend class StringType;
-  friend class BytesType;
-  friend class DurationType;
-  friend class TimestampType;
   friend class EnumType;
   friend class StructType;
   friend class ListType;
   friend class MapType;
-  friend class TypeType;
-  friend class base_internal::TypeHandleBase;
+  template <Kind K>
+  friend class base_internal::SimpleType;
 
   Type() = default;
   Type(const Type&) = default;
   Type(Type&&) = default;
-
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return true; }
-
-  // For non-inlined types that are reference counted, this is the result of
-  // `sizeof` and `alignof` for the most derived class.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-
-  using base_internal::Resource::Ref;
-  using base_internal::Resource::Unref;
+  Type& operator=(const Type&) = default;
+  Type& operator=(Type&&) = default;
 };
+
+template <typename H>
+H AbslHashValue(H state, const Type& type) {
+  type.HashValue(absl::HashState::Create(&state));
+  return state;
+}
+
+inline bool operator==(const Type& lhs, const Type& rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator!=(const Type& lhs, const Type& rhs) {
+  return !operator==(lhs, rhs);
+}
 
 }  // namespace cel
 
-// type.pre.h forward declares types so they can be friended above. The types
-// themselves need to be defined after everything else as they need to access or
-// derive from the above types. We do this in type.post.h to avoid mudying this
-// header and making it difficult to read.
-#include "base/internal/type.post.h"  // IWYU pragma: export
+// -----------------------------------------------------------------------------
+// Internal implementation details.
 
 namespace cel {
+
+namespace base_internal {
+
+class PersistentTypeHandle final {
+ public:
+  PersistentTypeHandle() = default;
+
+  template <typename T, typename... Args>
+  explicit PersistentTypeHandle(absl::in_place_type_t<T> in_place_type,
+                                Args&&... args) {
+    data_.ConstructInline<T>(std::forward<Args>(args)...);
+  }
+
+  explicit PersistentTypeHandle(const Type& type) { data_.ConstructHeap(type); }
+
+  PersistentTypeHandle(const PersistentTypeHandle& other) { CopyFrom(other); }
+
+  PersistentTypeHandle(PersistentTypeHandle&& other) { MoveFrom(other); }
+
+  ~PersistentTypeHandle() { Destruct(); }
+
+  PersistentTypeHandle& operator=(const PersistentTypeHandle& other) {
+    if (this != &other) {
+      CopyAssign(other);
+    }
+    return *this;
+  }
+
+  PersistentTypeHandle& operator=(PersistentTypeHandle&& other) {
+    if (this != &other) {
+      MoveAssign(other);
+    }
+    return *this;
+  }
+
+  Type* get() const { return static_cast<Type*>(data_.get()); }
+
+  explicit operator bool() const { return !data_.IsNull(); }
+
+  bool Equals(const PersistentTypeHandle& other) const;
+
+  void HashValue(absl::HashState state) const;
+
+ private:
+  void CopyFrom(const PersistentTypeHandle& other);
+
+  void MoveFrom(PersistentTypeHandle& other);
+
+  void CopyAssign(const PersistentTypeHandle& other);
+
+  void MoveAssign(PersistentTypeHandle& other);
+
+  void Ref() const { data_.Ref(); }
+
+  void Unref() const {
+    if (data_.Unref()) {
+      Delete();
+    }
+  }
+
+  void Destruct();
+
+  void Delete() const;
+
+  AnyType data_;
+};
+
+template <typename H>
+H AbslHashValue(H state, const PersistentTypeHandle& handle) {
+  handle.HashValue(absl::HashState::Create(&state));
+  return state;
+}
+
+inline bool operator==(const PersistentTypeHandle& lhs,
+                       const PersistentTypeHandle& rhs) {
+  return lhs.Equals(rhs);
+}
+
+inline bool operator!=(const PersistentTypeHandle& lhs,
+                       const PersistentTypeHandle& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+// Specialization for Type providing the implementation to `Persistent`.
+template <>
+struct HandleTraits<HandleType::kPersistent, Type> {
+  using handle_type = PersistentTypeHandle;
+};
+
+// Partial specialization for `Persistent` for all classes derived from Type.
+template <typename T>
+struct HandleTraits<
+    HandleType::kPersistent, T,
+    std::enable_if_t<(std::is_base_of_v<Type, T> && !std::is_same_v<Type, T>)>>
+    final : public HandleTraits<HandleType::kPersistent, Type> {};
+
+template <Kind K>
+struct SimpleTypeName;
+
+template <>
+struct SimpleTypeName<Kind::kNullType> {
+  static constexpr absl::string_view value = "null_type";
+};
+
+template <>
+struct SimpleTypeName<Kind::kError> {
+  static constexpr absl::string_view value = "*error*";
+};
+
+template <>
+struct SimpleTypeName<Kind::kDyn> {
+  static constexpr absl::string_view value = "dyn";
+};
+
+template <>
+struct SimpleTypeName<Kind::kAny> {
+  static constexpr absl::string_view value = "google.protobuf.Any";
+};
+
+template <>
+struct SimpleTypeName<Kind::kBool> {
+  static constexpr absl::string_view value = "bool";
+};
+
+template <>
+struct SimpleTypeName<Kind::kInt> {
+  static constexpr absl::string_view value = "int";
+};
+
+template <>
+struct SimpleTypeName<Kind::kUint> {
+  static constexpr absl::string_view value = "uint";
+};
+
+template <>
+struct SimpleTypeName<Kind::kDouble> {
+  static constexpr absl::string_view value = "double";
+};
+
+template <>
+struct SimpleTypeName<Kind::kBytes> {
+  static constexpr absl::string_view value = "bytes";
+};
+
+template <>
+struct SimpleTypeName<Kind::kString> {
+  static constexpr absl::string_view value = "string";
+};
+
+template <>
+struct SimpleTypeName<Kind::kDuration> {
+  static constexpr absl::string_view value = "google.protobuf.Duration";
+};
+
+template <>
+struct SimpleTypeName<Kind::kTimestamp> {
+  static constexpr absl::string_view value = "google.protobuf.Timestamp";
+};
+
+template <>
+struct SimpleTypeName<Kind::kType> {
+  static constexpr absl::string_view value = "type";
+};
+
+template <Kind K>
+class SimpleType : public Type, public InlineData {
+ public:
+  static constexpr Kind kKind = K;
+  static constexpr absl::string_view kName = SimpleTypeName<K>::value;
+
+  static bool Is(const Type& type) { return type.kind() == kKind; }
+
+  SimpleType() = default;
+  SimpleType(const SimpleType&) = default;
+  SimpleType(SimpleType&&) = default;
+  SimpleType& operator=(const SimpleType&) = default;
+  SimpleType& operator=(SimpleType&&) = default;
+
+  constexpr Kind kind() const { return kKind; }
+
+  constexpr absl::string_view name() const { return kName; }
+
+  std::string DebugString() const { return std::string(name()); }
+
+  void HashValue(absl::HashState state) const {
+    absl::HashState::combine(std::move(state), kind(), name());
+  }
+
+  bool Equals(const Type& other) const { return kind() == other.kind(); }
+
+ private:
+  friend class PersistentTypeHandle;
+
+  static constexpr uintptr_t kVirtualPointer =
+      kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << kKindShift);
+
+  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
+};
+
+}  // namespace base_internal
 
 CEL_INTERNAL_TYPE_DECL(Type);
 
 }  // namespace cel
+
+#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)         \
+ private:                                                                 \
+  friend class value_class;                                               \
+  friend class TypeFactory;                                               \
+  friend class base_internal::PersistentTypeHandle;                       \
+  template <typename T, typename U>                                       \
+  friend class base_internal::SimpleValue;                                \
+  template <size_t Size, size_t Align>                                    \
+  friend class base_internal::AnyData;                                    \
+                                                                          \
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const Persistent<const type_class>& \
+  Get();                                                                  \
+                                                                          \
+  type_class() = default;                                                 \
+  type_class(const type_class&) = default;                                \
+  type_class(type_class&&) = default;                                     \
+  type_class& operator=(const type_class&) = default;                     \
+  type_class& operator=(type_class&&) = default
+
+#define CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(type_class)        \
+  static_assert(std::is_trivially_copyable_v<type_class>,       \
+                #type_class " must be trivially copyable");     \
+  static_assert(std::is_trivially_destructible_v<type_class>,   \
+                #type_class " must be trivially destructible"); \
+                                                                \
+  CEL_INTERNAL_TYPE_DECL(type_class)
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPE_H_

@@ -14,15 +14,28 @@
 
 #include "base/types/bool_type.h"
 
-#include "internal/no_destructor.h"
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(BoolType);
 
-const BoolType& BoolType::Get() {
-  static const internal::NoDestructor<BoolType> instance;
-  return *instance;
+namespace {
+
+ABSL_CONST_INIT absl::once_flag instance_once;
+alignas(Persistent<const BoolType>) char instance_storage[sizeof(
+    Persistent<const BoolType>)];
+
+}  // namespace
+
+const Persistent<const BoolType>& BoolType::Get() {
+  absl::call_once(instance_once, []() {
+    base_internal::PersistentHandleFactory<const BoolType>::MakeAt<BoolType>(
+        &instance_storage[0]);
+  });
+  return *reinterpret_cast<const Persistent<const BoolType>*>(
+      &instance_storage[0]);
 }
 
 }  // namespace cel

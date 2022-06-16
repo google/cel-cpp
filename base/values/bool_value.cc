@@ -15,43 +15,13 @@
 #include "base/values/bool_value.h"
 
 #include <string>
-#include <utility>
-
-#include "base/types/bool_type.h"
-#include "internal/casts.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> BoolValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const BoolType>(
-      BoolType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(BoolValue);
 
 std::string BoolValue::DebugString() const {
   return value() ? "true" : "false";
-}
-
-void BoolValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(BoolValue, *this, address);
-}
-
-void BoolValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(BoolValue, *this, address);
-}
-
-bool BoolValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == internal::down_cast<const BoolValue&>(other).value();
-}
-
-void BoolValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
 }
 
 }  // namespace cel

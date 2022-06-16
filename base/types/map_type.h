@@ -15,60 +15,59 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 
+#include <atomic>
 #include <cstddef>
 #include <string>
 #include <utility>
 
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
+class MemoryManager;
 class TypeFactory;
 
 // MapType represents a map type. A map is container of key and value pairs
 // where each key appears at most once.
-class MapType : public Type {
+class MapType final : public Type, public base_internal::HeapData {
   // I would have liked to make this class final, but we cannot instantiate
   // Persistent<const Type> or Transient<const Type> at this point. It must be
   // done after the post include below. Maybe we should separate out the post
   // includes on a per type basis so we can do that?
  public:
-  Kind kind() const final { return Kind::kMap; }
+  static constexpr Kind kKind = Kind::kMap;
 
-  absl::string_view name() const final { return "map"; }
+  static bool Is(const Type& type) { return type.kind() == kKind; }
 
-  std::string DebugString() const final;
+  Kind kind() const { return kKind; }
+
+  absl::string_view name() const { return KindToString(kind()); }
+
+  std::string DebugString() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Type& other) const;
 
   // Returns the type of the keys in the map.
-  virtual Persistent<const Type> key() const = 0;
+  const Persistent<const Type>& key() const { return key_; }
 
   // Returns the type of the values in the map.
-  virtual Persistent<const Type> value() const = 0;
+  const Persistent<const Type>& value() const { return value_; }
 
  private:
+  friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::TypeHandleBase;
-  friend class base_internal::MapTypeImpl;
+  friend class base_internal::PersistentTypeHandle;
 
-  // Called by base_internal::TypeHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Type& type) { return type.kind() == Kind::kMap; }
+  explicit MapType(Persistent<const Type> key, Persistent<const Type> value);
 
-  MapType() = default;
-
-  MapType(const MapType&) = delete;
-  MapType(MapType&&) = delete;
-
-  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
-
-  // Called by base_internal::TypeHandleBase.
-  bool Equals(const Type& other) const final;
-
-  // Called by base_internal::TypeHandleBase.
-  void HashValue(absl::HashState state) const final;
+  const Persistent<const Type> key_;
+  const Persistent<const Type> value_;
 };
 
 CEL_INTERNAL_TYPE_DECL(MapType);
