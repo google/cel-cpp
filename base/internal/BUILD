@@ -21,6 +21,8 @@ cc_library(
     hdrs = ["data.h"],
     deps = [
         "//base:kind",
+        "//internal:assume_aligned",
+        "//internal:launder",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/numeric:bits",
     ],

@@ -34,6 +34,7 @@
 #include "base/values/timestamp_value.h"
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
+#include "internal/unreachable.h"
 
 namespace cel {
 
@@ -72,7 +73,7 @@ const Persistent<const Type>& Value::type() const {
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->type().As<const Type>();
     default:
-      ABSL_INTERNAL_UNREACHABLE;
+      internal::unreachable();
   }
 }
 
@@ -109,7 +110,7 @@ std::string Value::DebugString() const {
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->DebugString();
     default:
-      ABSL_INTERNAL_UNREACHABLE;
+      internal::unreachable();
   }
 }
 
@@ -148,7 +149,7 @@ void Value::HashValue(absl::HashState state) const {
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->HashValue(std::move(state));
     default:
-      ABSL_INTERNAL_UNREACHABLE;
+      internal::unreachable();
   }
 }
 
@@ -188,7 +189,7 @@ bool Value::Equals(const Value& other) const {
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->Equals(other);
     default:
-      ABSL_INTERNAL_UNREACHABLE;
+      internal::unreachable();
   }
 }
 
@@ -240,7 +241,7 @@ void PersistentValueHandle::CopyFrom(const PersistentValueHandle& other) {
             *static_cast<const EnumValue*>(other.data_.get()));
         break;
       default:
-        ABSL_INTERNAL_UNREACHABLE;
+        internal::unreachable();
     }
   } else {
     // We can simply just copy the bytes.
@@ -278,7 +279,7 @@ void PersistentValueHandle::MoveFrom(PersistentValueHandle& other) {
             std::move(*static_cast<const EnumValue*>(other.data_.get())));
         break;
       default:
-        ABSL_INTERNAL_UNREACHABLE;
+        internal::unreachable();
     }
     other.Destruct();
     other.data_.Clear();
@@ -323,7 +324,7 @@ void PersistentValueHandle::Destruct() {
             data_.Destruct<EnumValue>();
             break;
           default:
-            ABSL_INTERNAL_UNREACHABLE;
+            internal::unreachable();
         }
       }
       break;
@@ -353,7 +354,7 @@ void PersistentValueHandle::Delete() const {
       delete static_cast<StringBytesValue*>(static_cast<Value*>(data_.get()));
       break;
     default:
-      ABSL_INTERNAL_UNREACHABLE;
+      internal::unreachable();
   }
 }
 

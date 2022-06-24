@@ -19,12 +19,16 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <memory>
+#include <new>
 #include <type_traits>
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/numeric/bits.h"
 #include "base/kind.h"
+#include "internal/assume_aligned.h"
+#include "internal/launder.h"
 
 namespace cel::base_internal {
 
@@ -98,15 +102,32 @@ class Data {};
 //
 // For inline data, Kind is stored in the most significant byte of `metadata`.
 class InlineData /* : public Data */ {
-  // uintptr_t metadata
-
  public:
   static void* operator new(size_t) = delete;
   static void* operator new[](size_t) = delete;
 
   static void operator delete(void*) = delete;
   static void operator delete[](void*) = delete;
+
+  InlineData(const InlineData&) = default;
+  InlineData(InlineData&&) = default;
+
+  InlineData& operator=(const InlineData&) = default;
+  InlineData& operator=(InlineData&&) = default;
+
+ protected:
+  constexpr explicit InlineData(uintptr_t metadata) : metadata_(metadata) {}
+
+ private:
+  uintptr_t metadata_ ABSL_ATTRIBUTE_UNUSED = 0;
 };
+
+static_assert(std::is_trivially_copyable_v<InlineData>,
+              "InlineData must be trivially copyable");
+static_assert(std::is_trivially_destructible_v<InlineData>,
+              "InlineData must be trivially destructible");
+static_assert(sizeof(InlineData) == sizeof(uintptr_t),
+              "InlineData has unexpected padding");
 
 // Used purely for a static_assert.
 constexpr size_t HeapDataMetadataAndReferenceCountOffset();
@@ -120,9 +141,6 @@ constexpr size_t HeapDataMetadataAndReferenceCountOffset();
 // with twos complement integers, allows us to easily detect incorrect reference
 // counting as the reference count will be negative.
 class HeapData /* : public Data */ {
-  // uintptr_t vptr
-  // std::atomic<uintptr_t> metadata_and_reference_count
-
  public:
   HeapData(const HeapData&) = delete;
   HeapData(HeapData&&) = delete;
@@ -156,115 +174,118 @@ static_assert(sizeof(HeapData) == sizeof(uintptr_t) * 2,
 // Provides introspection for `Data`.
 class Metadata final {
  public:
-  ABSL_ATTRIBUTE_ALWAYS_INLINE static Metadata* For(Data* data) {
-    ABSL_ASSERT(data != nullptr);
-    return reinterpret_cast<Metadata*>(data);
-  }
-
-  ABSL_ATTRIBUTE_ALWAYS_INLINE static const Metadata* For(const Data* data) {
-    ABSL_ASSERT(data != nullptr);
-    return reinterpret_cast<const Metadata*>(data);
-  }
-
-  Kind kind() const {
-    ABSL_ASSERT(!IsNull());
-    return static_cast<Kind>(
-        ((IsStoredInline()
-              ? *reinterpret_cast<const uintptr_t*>(this)
-              : reference_count()->load(std::memory_order_relaxed)) >>
+  static Kind Kind(const Data& data) {
+    ABSL_ASSERT(!IsNull(data));
+    return static_cast<cel::Kind>(
+        ((IsStoredInline(data)
+              ? VirtualPointer(data)
+              : ReferenceCount(data).load(std::memory_order_relaxed)) >>
          kKindShift) &
         kKindMask);
   }
 
-  DataLocality locality() const {
+  static DataLocality Locality(const Data& data) {
     // We specifically do not use `IsArenaAllocated()` and
     // `IsReferenceCounted()` here due to performance reasons. This code is
     // called often in handle implementations.
-    return IsNull()           ? DataLocality::kNull
-           : IsStoredInline() ? DataLocality::kStoredInline
-           : ((reference_count()->load(std::memory_order_relaxed) &
+    return IsNull(data)           ? DataLocality::kNull
+           : IsStoredInline(data) ? DataLocality::kStoredInline
+           : ((ReferenceCount(data).load(std::memory_order_relaxed) &
                kArenaAllocated) != kArenaAllocated)
                ? DataLocality::kReferenceCounted
                : DataLocality::kArenaAllocated;
   }
 
-  ABSL_ATTRIBUTE_ALWAYS_INLINE bool IsNull() const {
-    return *reinterpret_cast<const uintptr_t*>(this) == 0;
+  static bool IsNull(const Data& data) { return VirtualPointer(data) == 0; }
+
+  static bool IsStoredInline(const Data& data) {
+    return (VirtualPointer(data) & kStoredInline) == kStoredInline;
   }
 
-  ABSL_ATTRIBUTE_ALWAYS_INLINE bool IsStoredInline() const {
-    return (*reinterpret_cast<const uintptr_t*>(this) & kStoredInline) ==
-           kStoredInline;
-  }
-
-  bool IsArenaAllocated() const {
-    return !IsNull() && !IsStoredInline() &&
+  static bool IsArenaAllocated(const Data& data) {
+    return !IsNull(data) && !IsStoredInline(data) &&
            // We use relaxed because the top 8 bits are never mutated during
            // reference counting and that is all we care about.
-           (reference_count()->load(std::memory_order_relaxed) &
+           (ReferenceCount(data).load(std::memory_order_relaxed) &
             kArenaAllocated) == kArenaAllocated;
   }
 
-  bool IsReferenceCounted() const {
-    return !IsNull() && !IsStoredInline() &&
+  static bool IsReferenceCounted(const Data& data) {
+    return !IsNull(data) && !IsStoredInline(data) &&
            // We use relaxed because the top 8 bits are never mutated during
            // reference counting and that is all we care about.
-           (reference_count()->load(std::memory_order_relaxed) &
+           (ReferenceCount(data).load(std::memory_order_relaxed) &
             kArenaAllocated) != kArenaAllocated;
   }
 
-  void Ref() const {
-    ABSL_ASSERT(IsReferenceCounted());
+  static void Ref(const Data& data) {
+    ABSL_ASSERT(IsReferenceCounted(data));
     const auto count =
-        (reference_count()->fetch_add(1, std::memory_order_relaxed)) &
+        (ReferenceCount(data).fetch_add(1, std::memory_order_relaxed)) &
         kReferenceCountMask;
     ABSL_ASSERT(count > 0 && count < kReferenceCountMax);
   }
 
-  bool Unref() const {
-    ABSL_ASSERT(IsReferenceCounted());
+  static bool Unref(const Data& data) {
+    ABSL_ASSERT(IsReferenceCounted(data));
     const auto count =
-        (reference_count()->fetch_sub(1, std::memory_order_seq_cst)) &
+        (ReferenceCount(data).fetch_sub(1, std::memory_order_seq_cst)) &
         kReferenceCountMask;
     ABSL_ASSERT(count > 0 && count < kReferenceCountMax);
     return count == 1;
   }
 
-  bool IsUnique() const {
-    ABSL_ASSERT(IsReferenceCounted());
-    return ((reference_count()->fetch_add(1, std::memory_order_acquire)) &
+  static bool IsUnique(const Data& data) {
+    ABSL_ASSERT(IsReferenceCounted(data));
+    return ((ReferenceCount(data).fetch_add(1, std::memory_order_acquire)) &
             kReferenceCountMask) == 1;
   }
 
-  bool IsTriviallyCopyable() const {
-    ABSL_ASSERT(IsStoredInline());
-    return (*reinterpret_cast<const uintptr_t*>(this) & kTriviallyCopyable) ==
-           kTriviallyCopyable;
+  static bool IsTriviallyCopyable(const Data& data) {
+    ABSL_ASSERT(IsStoredInline(data));
+    return (VirtualPointer(data) & kTriviallyCopyable) == kTriviallyCopyable;
   }
 
-  bool IsTriviallyDestructible() const {
-    ABSL_ASSERT(IsStoredInline());
-    return (*reinterpret_cast<const uintptr_t*>(this) &
-            kTriviallyDestructible) == kTriviallyDestructible;
-  }
-
-  // Used by `MemoryManager::New()`.
-  void SetArenaAllocated() {
-    reference_count()->fetch_or(kArenaAllocated, std::memory_order_relaxed);
+  static bool IsTriviallyDestructible(const Data& data) {
+    ABSL_ASSERT(IsStoredInline(data));
+    return (VirtualPointer(data) & kTriviallyDestructible) ==
+           kTriviallyDestructible;
   }
 
   // Used by `MemoryManager::New()`.
-  void SetReferenceCounted() {
-    reference_count()->fetch_or(kReferenceCounted, std::memory_order_relaxed);
+  static void SetArenaAllocated(const Data& data) {
+    ReferenceCount(data).fetch_or(kArenaAllocated, std::memory_order_relaxed);
+  }
+
+  // Used by `MemoryManager::New()`.
+  static void SetReferenceCounted(const Data& data) {
+    ReferenceCount(data).fetch_or(kReferenceCounted, std::memory_order_relaxed);
   }
 
  private:
-  std::atomic<uintptr_t>* reference_count() const {
-    return reinterpret_cast<std::atomic<uintptr_t>*>(
-        const_cast<uintptr_t*>(reinterpret_cast<const uintptr_t*>(this) + 1));
+  static uintptr_t VirtualPointer(const Data& data) {
+    // The vptr, or equivalent, is stored at offset 0. Inform the compiler that
+    // `data` is aligned to at least `uintptr_t`.
+    return *reinterpret_cast<const uintptr_t*>(
+        internal::assume_aligned<alignof(uintptr_t)>(&data));
+  }
+
+  static std::atomic<uintptr_t>& ReferenceCount(const Data& data) {
+    // For arena allocated and reference counted, the reference count
+    // immediately follows the vptr, or equivalent, at offset 0. So its offset
+    // is `sizeof(uintptr_t)`. Inform the compiler that `data` is aligned to at
+    // least `uintptr_t` and `std::atomic<uintptr_t>`.
+    return *reinterpret_cast<std::atomic<uintptr_t>*>(
+        internal::assume_aligned<alignof(std::atomic<uintptr_t>)>(
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&data) +
+                                 sizeof(uintptr_t))));
   }
 
   Metadata() = delete;
+  Metadata(const Metadata&) = delete;
+  Metadata(Metadata&&) = delete;
+  Metadata& operator=(const Metadata&) = delete;
+  Metadata& operator=(Metadata&&) = delete;
 };
 
 template <size_t Size, size_t Align>
@@ -272,7 +293,7 @@ union alignas(Align) AnyDataStorage final {
   AnyDataStorage() : pointer(0) {}
 
   uintptr_t pointer;
-  char buffer[Size];
+  uint8_t buffer[Size];
 };
 
 // Struct capable of storing data directly or a pointer to data. This is used by
@@ -287,80 +308,84 @@ struct AnyData {
   static_assert(Align >= alignof(uintptr_t),
                 "Align must be at least alignof(uintptr_t)");
 
-  using Storage = AnyDataStorage<Size, Align>;
+  static constexpr size_t kSize = Size;
+  static constexpr size_t kAlign = Align;
+
+  using Storage = AnyDataStorage<kSize, kAlign>;
 
   Kind kind() const {
     ABSL_ASSERT(!IsNull());
-    return Metadata::For(get())->kind();
+    return Metadata::Kind(*get());
   }
 
   DataLocality locality() const {
-    return storage.pointer == 0 ? DataLocality::kNull
-           : (storage.pointer & kStoredInline) == kStoredInline
+    return pointer() == 0 ? DataLocality::kNull
+           : (pointer() & kStoredInline) == kStoredInline
                ? DataLocality::kStoredInline
-           : (storage.pointer & kPointerArenaAllocated) ==
-                   kPointerArenaAllocated
+           : (pointer() & kPointerArenaAllocated) == kPointerArenaAllocated
                ? DataLocality::kArenaAllocated
                : DataLocality::kReferenceCounted;
   }
 
-  bool IsNull() const { return storage.pointer == 0; }
+  bool IsNull() const { return pointer() == 0; }
 
   bool IsStoredInline() const {
-    return (storage.pointer & kStoredInline) == kStoredInline;
+    return (pointer() & kStoredInline) == kStoredInline;
   }
 
   bool IsArenaAllocated() const {
-    return (storage.pointer & kPointerArenaAllocated) == kPointerArenaAllocated;
+    return (pointer() & kPointerArenaAllocated) == kPointerArenaAllocated;
   }
 
   bool IsReferenceCounted() const {
-    return storage.pointer != 0 &&
-           (storage.pointer & (kStoredInline | kPointerArenaAllocated)) == 0;
+    return pointer() != 0 &&
+           (pointer() & (kStoredInline | kPointerArenaAllocated)) == 0;
   }
 
   void Ref() const {
     ABSL_ASSERT(IsReferenceCounted());
-    Metadata::For(get())->Ref();
+    Metadata::Ref(*get());
   }
 
   bool Unref() const {
     ABSL_ASSERT(IsReferenceCounted());
-    return Metadata::For(get())->Unref();
+    return Metadata::Unref(*get());
   }
 
   bool IsUnique() const {
     ABSL_ASSERT(IsReferenceCounted());
-    return Metadata::For(get())->IsUnique();
+    return Metadata::IsUnique(*get());
   }
 
   bool IsTriviallyCopyable() const {
     ABSL_ASSERT(IsStoredInline());
-    return Metadata::For(get())->IsTriviallyCopyable();
+    return Metadata::IsTriviallyCopyable(*get());
   }
 
   bool IsTriviallyDestructible() const {
     ABSL_ASSERT(IsStoredInline());
-    return Metadata::For(get())->IsTriviallyDestructible();
+    return Metadata::IsTriviallyDestructible(*get());
   }
 
   // IMPORTANT: Do not use `Metadata::For(get())` unless you know what you are
   // doing, instead us the method of the same name in this class.
-  ABSL_ATTRIBUTE_ALWAYS_INLINE Data* get() const {
-    return (storage.pointer & kStoredInline) == kStoredInline
-               ? reinterpret_cast<Data*>(
-                     const_cast<uintptr_t*>(&storage.pointer))
-               : reinterpret_cast<Data*>(storage.pointer & kPointerMask);
+  Data* get() const {
+    // We launder to ensure the compiler does not make any assumptions about the
+    // content of storage in regards to const.
+    return internal::launder(
+        (pointer() & kStoredInline) == kStoredInline
+            ? reinterpret_cast<Data*>(const_cast<uint8_t*>(buffer()))
+            : reinterpret_cast<Data*>(pointer() & kPointerMask));
   }
 
   // Copy the bytes from other, similar to `std::memcpy`.
   void CopyFrom(const AnyData& other) {
-    std::memcpy(&storage.buffer[0], &other.storage.buffer[0], Size);
+    std::memcpy(buffer(), other.buffer(), kSize);
   }
 
   // Move the bytes from other, similar to `std::memcpy` and `std::memset`.
   void MoveFrom(AnyData& other) {
-    std::memcpy(&storage.buffer[0], &other.storage.buffer[0], Size);
+    CopyFrom(other);
     other.Clear();
   }
 
@@ -373,7 +398,7 @@ struct AnyData {
   void Clear() {
     // We only need to clear the first `sizeof(uintptr_t)` bytes as that is
     // consulted to determine locality.
-    storage.pointer = 0;
+    pointer() = 0;
   }
 
   // Counterpart to `Metadata::SetArenaAllocated()` and
@@ -382,16 +407,43 @@ struct AnyData {
     ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(&data)) >=
                 2);  // Assert pointer alignment results in at least the 2 least
                      // significant bits being unset.
-    storage.pointer =
-        reinterpret_cast<uintptr_t>(&data) |
-        (Metadata::For(&data)->IsArenaAllocated() ? kPointerArenaAllocated : 0);
+    pointer() = reinterpret_cast<uintptr_t>(&data) |
+                (Metadata::IsArenaAllocated(data) ? kPointerArenaAllocated : 0);
   }
 
   template <typename T, typename... Args>
   void ConstructInline(Args&&... args) {
-    ::new (&storage.buffer[0]) T(std::forward<Args>(args)...);
-    ABSL_ASSERT(absl::countr_zero(storage.pointer) ==
+    ::new (buffer()) T(std::forward<Args>(args)...);
+    ABSL_ASSERT(absl::countr_zero(pointer()) ==
                 0);  // Assert the least significant bit is set.
+  }
+
+  uint8_t* buffer() {
+    // We launder because `storage.pointer` is technically the active member by
+    // default and we want to ensure the compiler does not make any assumptions
+    // based on this.
+    return &internal::launder(&storage)->buffer[0];
+  }
+
+  const uint8_t* buffer() const {
+    // We launder because `storage.pointer` is technically the active member by
+    // default and we want to ensure the compiler does not make any assumptions
+    // based on this.
+    return &internal::launder(&storage)->buffer[0];
+  }
+
+  uintptr_t& pointer() {
+    // We launder because `storage.pointer` is technically the active member by
+    // default and we want to ensure the compiler does not make any assumptions
+    // based on this.
+    return internal::launder(&storage)->pointer;
+  }
+
+  const uintptr_t& pointer() const {
+    // We launder because `storage.pointer` is technically the active member by
+    // default and we want to ensure the compiler does not make any assumptions
+    // based on this.
+    return internal::launder(&storage)->pointer;
   }
 
   Storage storage;

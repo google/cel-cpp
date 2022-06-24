@@ -38,6 +38,7 @@
 #include "base/types/timestamp_type.h"
 #include "base/types/type_type.h"
 #include "base/types/uint_type.h"
+#include "internal/unreachable.h"
 
 namespace cel {
 
@@ -232,7 +233,7 @@ void PersistentTypeHandle::CopyFrom(const PersistentTypeHandle& other) {
                          !other.data_.IsTriviallyCopyable())) {
     // Type currently has only trivially copyable inline
     // representations.
-    ABSL_INTERNAL_UNREACHABLE;
+    internal::unreachable();
   } else {
     // We can simply just copy the bytes.
     data_.CopyFrom(other.data_);
@@ -249,7 +250,7 @@ void PersistentTypeHandle::MoveFrom(PersistentTypeHandle& other) {
                          !other.data_.IsTriviallyCopyable())) {
     // Type currently has only trivially copyable inline
     // representations.
-    ABSL_INTERNAL_UNREACHABLE;
+    internal::unreachable();
   } else {
     // We can simply just copy the bytes.
     data_.MoveFrom(other.data_);
@@ -276,7 +277,7 @@ void PersistentTypeHandle::Destruct() {
       if (ABSL_PREDICT_FALSE(!data_.IsTriviallyDestructible())) {
         // Type currently has only trivially destructible inline
         // representations.
-        ABSL_INTERNAL_UNREACHABLE;
+        internal::unreachable();
       }
       break;
     case DataLocality::kReferenceCounted:
@@ -302,7 +303,7 @@ void PersistentTypeHandle::Delete() const {
       delete static_cast<StructType*>(static_cast<Type*>(data_.get()));
       break;
     default:
-      ABSL_INTERNAL_UNREACHABLE;
+      internal::unreachable();
   }
 }
 

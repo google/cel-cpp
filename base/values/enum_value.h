@@ -64,14 +64,15 @@ class EnumValue final : public Value, public base_internal::InlineData {
   template <size_t Size, size_t Align>
   friend class base_internal::AnyData;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
   EnumValue(Persistent<const EnumType> type, int64_t number)
-      : type_(std::move(type)), number_(number) {}
+      : base_internal::InlineData(kMetadata),
+        type_(std::move(type)),
+        number_(number) {}
 
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   Persistent<const EnumType> type_;
   int64_t number_;
 };

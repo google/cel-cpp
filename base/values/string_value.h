@@ -111,19 +111,18 @@ class InlinedCordStringValue final : public StringValue,
   template <size_t Size, size_t Align>
   friend class AnyData;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
   explicit InlinedCordStringValue(absl::Cord value)
-      : value_(std::move(value)) {}
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   InlinedCordStringValue(const InlinedCordStringValue&) = default;
   InlinedCordStringValue(InlinedCordStringValue&&) = default;
   InlinedCordStringValue& operator=(const InlinedCordStringValue&) = default;
   InlinedCordStringValue& operator=(InlinedCordStringValue&&) = default;
 
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   absl::Cord value_;
 };
 
@@ -139,13 +138,13 @@ class InlinedStringViewStringValue final : public StringValue,
   template <size_t Size, size_t Align>
   friend class AnyData;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline | base_internal::kTriviallyCopyable |
       base_internal::kTriviallyDestructible |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
   explicit InlinedStringViewStringValue(absl::string_view value)
-      : value_(value) {}
+      : base_internal::InlineData(kMetadata), value_(value) {}
 
   InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
   InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
@@ -154,7 +153,6 @@ class InlinedStringViewStringValue final : public StringValue,
   InlinedStringViewStringValue& operator=(InlinedStringViewStringValue&&) =
       default;
 
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   absl::string_view value_;
 };
 

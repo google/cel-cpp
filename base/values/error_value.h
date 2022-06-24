@@ -51,18 +51,18 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   template <size_t Size, size_t Align>
   friend class base_internal::AnyData;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  explicit ErrorValue(absl::Status value) : value_(std::move(value)) {}
+  explicit ErrorValue(absl::Status value)
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   ErrorValue(const ErrorValue&) = default;
   ErrorValue(ErrorValue&&) = default;
   ErrorValue& operator=(const ErrorValue&) = default;
   ErrorValue& operator=(ErrorValue&&) = default;
 
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   absl::Status value_;
 };
 

@@ -56,7 +56,7 @@ class Value : public base_internal::Data {
   // Returns the kind of the value. This is equivalent to `type().kind()` but
   // faster in many scenarios. As such it should be preffered when only the kind
   // is required.
-  Kind kind() const { return base_internal::Metadata::For(this)->kind(); }
+  Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
   const Persistent<const Type>& type() const;
@@ -144,7 +144,7 @@ class PersistentValueHandle final {
     return *this;
   }
 
-  Value* get() const { return static_cast<Value*>(data_.get()); }
+  Value* get() const { return reinterpret_cast<Value*>(data_.get()); }
 
   explicit operator bool() const { return !data_.IsNull(); }
 
@@ -212,7 +212,7 @@ class SimpleValue : public Value, InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  explicit SimpleValue(U value) : value_(value) {}
+  explicit SimpleValue(U value) : InlineData(kMetadata), value_(value) {}
 
   SimpleValue(const SimpleValue&) = default;
   SimpleValue(SimpleValue&&) = default;
@@ -237,13 +237,12 @@ class SimpleValue : public Value, InlineData {
  private:
   friend class PersistentValueHandle;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       kStoredInline |
       (std::is_trivially_copyable_v<U> ? kTriviallyCopyable : 0) |
       (std::is_trivially_destructible_v<U> ? kTriviallyDestructible : 0) |
       (static_cast<uintptr_t>(kKind) << kKindShift);
 
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   U value_;
 };
 
@@ -254,7 +253,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  SimpleValue() {}
+  constexpr SimpleValue() : InlineData(kMetadata) {}
 
   SimpleValue(const SimpleValue&) = default;
   SimpleValue(SimpleValue&&) = default;
@@ -274,11 +273,9 @@ class SimpleValue<NullType, void> : public Value, InlineData {
  private:
   friend class PersistentValueHandle;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
       (static_cast<uintptr_t>(kKind) << kKindShift);
-
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
 };
 
 }  // namespace base_internal

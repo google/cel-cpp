@@ -207,11 +207,11 @@ std::string BytesValue::ToString() const {
 }
 
 absl::Cord BytesValue::ToCord() const {
-  switch (base_internal::Metadata::For(this)->locality()) {
+  switch (base_internal::Metadata::Locality(*this)) {
     case base_internal::DataLocality::kNull:
       return absl::Cord();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::For(this)->IsTriviallyCopyable()) {
+      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
         return absl::MakeCordFromExternal(
             static_cast<const base_internal::InlinedStringViewBytesValue*>(this)
                 ->value_,
@@ -221,11 +221,11 @@ absl::Cord BytesValue::ToCord() const {
             ->value_;
       }
     case base_internal::DataLocality::kReferenceCounted:
-      base_internal::Metadata::For(this)->Ref();
+      base_internal::Metadata::Ref(*this);
       return absl::MakeCordFromExternal(
           static_cast<const base_internal::StringBytesValue*>(this)->value_,
           [this]() {
-            if (base_internal::Metadata::For(this)->Unref()) {
+            if (base_internal::Metadata::Unref(*this)) {
               delete static_cast<const base_internal::StringBytesValue*>(this);
             }
           });
@@ -252,11 +252,11 @@ void BytesValue::HashValue(absl::HashState state) const {
 }
 
 base_internal::BytesValueRep BytesValue::rep() const {
-  switch (base_internal::Metadata::For(this)->locality()) {
+  switch (base_internal::Metadata::Locality(*this)) {
     case base_internal::DataLocality::kNull:
       return base_internal::BytesValueRep();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::For(this)->IsTriviallyCopyable()) {
+      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
         return base_internal::BytesValueRep(
             absl::in_place_type<absl::string_view>,
             static_cast<const base_internal::InlinedStringViewBytesValue*>(this)

@@ -48,7 +48,7 @@ class MemoryManager {
                   "T must only be stored inline");
     if (!allocation_only_) {
       T* pointer = new T(std::forward<Args>(args)...);
-      base_internal::Metadata::For(pointer)->SetReferenceCounted();
+      base_internal::Metadata::SetReferenceCounted(*pointer);
       return ManagedMemory<T>(pointer);
     }
     void* pointer = Allocate(sizeof(T), alignof(T));
@@ -57,8 +57,7 @@ class MemoryManager {
       OwnDestructor(pointer,
                     &base_internal::MemoryManagerDestructor<T>::Destruct);
     }
-    base_internal::Metadata::For(reinterpret_cast<T*>(pointer))
-        ->SetArenaAllocated();
+    base_internal::Metadata::SetArenaAllocated(*reinterpret_cast<T*>(pointer));
     return ManagedMemory<T>(reinterpret_cast<T*>(pointer));
   }
 

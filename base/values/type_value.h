@@ -50,18 +50,18 @@ class TypeValue final : public Value, public base_internal::InlineData {
   template <size_t Size, size_t Align>
   friend class base_internal::AnyData;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  explicit TypeValue(Persistent<const Type> value) : value_(std::move(value)) {}
+  explicit TypeValue(Persistent<const Type> value)
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   TypeValue(const TypeValue&) = default;
   TypeValue(TypeValue&&) = default;
   TypeValue& operator=(const TypeValue&) = default;
   TypeValue& operator=(TypeValue&&) = default;
 
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
   Persistent<const Type> value_;
 };
 

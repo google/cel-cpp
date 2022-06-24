@@ -150,19 +150,18 @@ class ManagedMemory<T, true> final {
     ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(pointer)) >= 2);
     pointer_ =
         reinterpret_cast<uintptr_t>(pointer) |
-        (Metadata::For(pointer)->IsArenaAllocated() ? kPointerArenaAllocated
-                                                    : 0);
+        (Metadata::IsArenaAllocated(*pointer) ? kPointerArenaAllocated : 0);
   }
 
   void Ref() const {
     if (pointer_ != 0 && (pointer_ & kPointerArenaAllocated) == 0) {
-      Metadata::For(this)->Ref();
+      Metadata::Ref(**this);
     }
   }
 
   void Unref() const {
     if (pointer_ != 0 && (pointer_ & kPointerArenaAllocated) == 0 &&
-        Metadata::For(get())->Unref()) {
+        Metadata::Unref(**this)) {
       delete static_cast<const HeapData*>(get());
     }
   }

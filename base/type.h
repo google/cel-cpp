@@ -52,7 +52,7 @@ class Type : public base_internal::Data {
   static bool Is(const Type& type ABSL_ATTRIBUTE_UNUSED) { return true; }
 
   // Returns the type kind.
-  Kind kind() const { return base_internal::Metadata::For(this)->kind(); }
+  Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
   // Returns the type name, i.e. "list".
   absl::string_view name() const;
@@ -133,7 +133,7 @@ class PersistentTypeHandle final {
     return *this;
   }
 
-  Type* get() const { return static_cast<Type*>(data_.get()); }
+  Type* get() const { return reinterpret_cast<Type*>(data_.get()); }
 
   explicit operator bool() const { return !data_.IsNull(); }
 
@@ -270,7 +270,8 @@ class SimpleType : public Type, public InlineData {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
-  SimpleType() = default;
+  constexpr SimpleType() : InlineData(kMetadata) {}
+
   SimpleType(const SimpleType&) = default;
   SimpleType(SimpleType&&) = default;
   SimpleType& operator=(const SimpleType&) = default;
@@ -291,11 +292,9 @@ class SimpleType : public Type, public InlineData {
  private:
   friend class PersistentTypeHandle;
 
-  static constexpr uintptr_t kVirtualPointer =
+  static constexpr uintptr_t kMetadata =
       kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
       (static_cast<uintptr_t>(kKind) << kKindShift);
-
-  uintptr_t vptr_ ABSL_ATTRIBUTE_UNUSED = kVirtualPointer;
 };
 
 }  // namespace base_internal
