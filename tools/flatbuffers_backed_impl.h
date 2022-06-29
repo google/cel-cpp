@@ -24,7 +24,7 @@ class FlatBuffersMapImpl : public CelMap {
 
   absl::optional<CelValue> operator[](CelValue cel_key) const override;
 
-  const CelList* ListKeys() const override { return &keys_; }
+  absl::StatusOr<const CelList*> ListKeys() const override { return &keys_; }
 
  private:
   struct FieldList : public CelList {

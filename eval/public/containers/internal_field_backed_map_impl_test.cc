@@ -274,7 +274,7 @@ TEST(FieldBackedMapImplTest, KeyListTest) {
 
   google::protobuf::Arena arena;
   auto cel_map = CreateMap(&message, "string_int32_map", &arena);
-  const CelList* key_list = cel_map->ListKeys();
+  const CelList* key_list = cel_map->ListKeys().value();
 
   EXPECT_EQ(key_list->size(), 100);
   for (int i = 0; i < key_list->size(); i++) {

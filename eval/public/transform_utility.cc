@@ -85,9 +85,9 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
     case CelValue::Type::kMap: {
       auto* map_value = result->mutable_map_value();
       auto& cel_map = *value.MapOrDie();
-      const auto& keys = *cel_map.ListKeys();
-      for (int i = 0; i < keys.size(); ++i) {
-        CelValue key = keys[i];
+      CEL_ASSIGN_OR_RETURN(const auto* keys, cel_map.ListKeys());
+      for (int i = 0; i < keys->size(); ++i) {
+        CelValue key = (*keys)[i];
         auto* entry = map_value->add_entries();
         CEL_RETURN_IF_ERROR(CelValueToValue(key, entry->mutable_key()));
         auto optional_value = cel_map[key];

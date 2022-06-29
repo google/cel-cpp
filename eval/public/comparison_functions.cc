@@ -243,7 +243,11 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
     return false;
   }
 
-  const CelList* keys = t1->ListKeys();
+  auto list_keys = t1->ListKeys();
+  if (!list_keys.ok()) {
+    return absl::nullopt;
+  }
+  const CelList* keys = *list_keys;
   for (int i = 0; i < keys->size(); i++) {
     CelValue key = (*keys)[i];
     CelValue v1 = (*t1)[key].value();

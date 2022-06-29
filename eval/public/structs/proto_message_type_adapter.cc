@@ -312,7 +312,7 @@ absl::Status ProtoMessageTypeAdapter::SetField(
         ValidateSetFieldOp(value_field_descriptor != nullptr, field_name,
                            "failed to find value field descriptor"));
 
-    const CelList* key_list = cel_map->ListKeys();
+    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys());
     for (int i = 0; i < key_list->size(); i++) {
       CelValue key = (*key_list)[i];
 

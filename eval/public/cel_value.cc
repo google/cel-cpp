@@ -97,7 +97,7 @@ struct DebugStringVisitor {
   }
 
   std::string operator()(const CelMap* arg) {
-    const CelList* keys = arg->ListKeys();
+    const CelList* keys = arg->ListKeys().value();
     std::vector<std::string> elements;
     elements.reserve(keys->size());
     for (int i = 0; i < keys->size(); i++) {

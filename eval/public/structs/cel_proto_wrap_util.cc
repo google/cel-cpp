@@ -133,7 +133,9 @@ class DynamicMap : public CelMap {
 
   int size() const override { return values_->fields_size(); }
 
-  const CelList* ListKeys() const override { return &key_list_; }
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return &key_list_;
+  }
 
  private:
   // List of keys in Struct.fields map.
@@ -549,7 +551,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Struct* json_
     return nullptr;
   }
   const CelMap& map = *value.MapOrDie();
-  const auto& keys = *map.ListKeys();
+  const auto& keys = *map.ListKeys().value();
   auto fields = json_struct->mutable_fields();
   for (int i = 0; i < keys.size(); i++) {
     auto k = keys[i];
