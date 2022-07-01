@@ -413,6 +413,11 @@ class TestMapValue final : public MapValue {
     return absl::StrCat("{", absl::StrJoin(parts, ", "), "}");
   }
 
+  absl::StatusOr<Persistent<const ListValue>> ListKeys(
+      ValueFactory& value_factory) const override {
+    return absl::UnimplementedError("MapValue::ListKeys is not implemented");
+  }
+
   const std::map<std::string, int64_t>& value() const { return entries_; }
 
  private:

@@ -33,6 +33,7 @@
 
 namespace cel {
 
+class ListValue;
 class ValueFactory;
 
 // MapValue represents an instance of cel::MapType.
@@ -62,6 +63,9 @@ class MapValue : public Value, public base_internal::HeapData {
 
   virtual absl::StatusOr<bool> Has(
       const Persistent<const Value>& key) const = 0;
+
+  virtual absl::StatusOr<Persistent<const ListValue>> ListKeys(
+      ValueFactory& value_factory) const = 0;
 
  protected:
   explicit MapValue(Persistent<const MapType> type);
