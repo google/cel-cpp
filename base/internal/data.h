@@ -174,7 +174,7 @@ static_assert(sizeof(HeapData) == sizeof(uintptr_t) * 2,
 // Provides introspection for `Data`.
 class Metadata final {
  public:
-  static Kind Kind(const Data& data) {
+  static ::cel::Kind Kind(const Data& data) {
     ABSL_ASSERT(!IsNull(data));
     return static_cast<cel::Kind>(
         ((IsStoredInline(data)
