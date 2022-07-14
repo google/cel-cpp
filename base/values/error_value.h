@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_ERROR_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_ERROR_VALUE_H_
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -22,45 +23,50 @@
 #include "absl/status/status.h"
 #include "base/kind.h"
 #include "base/type.h"
+#include "base/types/error_type.h"
 #include "base/value.h"
 
 namespace cel {
 
-class ErrorValue final : public Value, public base_internal::ResourceInlined {
+class ErrorValue final : public Value, public base_internal::InlineData {
  public:
-  Persistent<const Type> type() const override;
+  static constexpr Kind kKind = ErrorType::kKind;
 
-  Kind kind() const override { return Kind::kError; }
+  static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  std::string DebugString() const override;
+  constexpr Kind kind() const { return kKind; }
 
-  const absl::Status& value() const { return value_; }
+  const Persistent<const ErrorType>& type() const { return ErrorType::Get(); }
+
+  std::string DebugString() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Value& other) const;
+
+  constexpr const absl::Status& value() const { return value_; }
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  friend class PersistentValueHandle;
+  template <size_t Size, size_t Align>
+  friend class base_internal::AnyData;
 
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kError; }
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  // Called by `base_internal::ValueHandle` to construct value inline.
-  explicit ErrorValue(absl::Status value) : value_(std::move(value)) {}
-
-  ErrorValue() = delete;
+  explicit ErrorValue(absl::Status value)
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   ErrorValue(const ErrorValue&) = default;
   ErrorValue(ErrorValue&&) = default;
-
-  // See comments for respective member functions on `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
+  ErrorValue& operator=(const ErrorValue&) = default;
+  ErrorValue& operator=(ErrorValue&&) = default;
 
   absl::Status value_;
 };
+
+CEL_INTERNAL_VALUE_DECL(ErrorValue);
 
 }  // namespace cel
 

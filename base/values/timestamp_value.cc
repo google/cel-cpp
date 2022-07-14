@@ -15,44 +15,15 @@
 #include "base/values/timestamp_value.h"
 
 #include <string>
-#include <utility>
 
-#include "base/types/timestamp_type.h"
-#include "internal/casts.h"
 #include "internal/time.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> TimestampValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<
-      const TimestampType>(TimestampType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(TimestampValue);
 
 std::string TimestampValue::DebugString() const {
   return internal::FormatTimestamp(value()).value();
-}
-
-void TimestampValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(TimestampValue, *this, address);
-}
-
-void TimestampValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(TimestampValue, *this, address);
-}
-
-bool TimestampValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == internal::down_cast<const TimestampValue&>(other).value();
-}
-
-void TimestampValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
 }
 
 }  // namespace cel

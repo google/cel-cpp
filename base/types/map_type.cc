@@ -14,11 +14,25 @@
 
 #include "base/types/map_type.h"
 
+#include <string>
+#include <utility>
+
+#include "absl/base/macros.h"
 #include "absl/strings/str_cat.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(MapType);
+
+MapType::MapType(Persistent<const Type> key, Persistent<const Type> value)
+    : base_internal::HeapData(kKind),
+      key_(std::move(key)),
+      value_(std::move(value)) {
+  // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
+  ABSL_ASSERT(
+      reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
+      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
 
 std::string MapType::DebugString() const {
   return absl::StrCat(name(), "(", key()->DebugString(), ", ",
@@ -29,14 +43,14 @@ bool MapType::Equals(const Type& other) const {
   if (kind() != other.kind()) {
     return false;
   }
-  return key() == internal::down_cast<const MapType&>(other).key() &&
-         value() == internal::down_cast<const MapType&>(other).value();
+  return key() == static_cast<const MapType&>(other).key() &&
+         value() == static_cast<const MapType&>(other).value();
 }
 
 void MapType::HashValue(absl::HashState state) const {
   // We specifically hash the element first and then call the parent method to
   // avoid hash suffix/prefix collisions.
-  Type::HashValue(absl::HashState::combine(std::move(state), key(), value()));
+  absl::HashState::combine(std::move(state), key(), value(), kind(), name());
 }
 
 }  // namespace cel

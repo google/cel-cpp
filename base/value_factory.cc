@@ -30,8 +30,6 @@ namespace cel {
 
 namespace {
 
-using base_internal::ExternalDataBytesValue;
-using base_internal::ExternalDataStringValue;
 using base_internal::InlinedCordBytesValue;
 using base_internal::InlinedCordStringValue;
 using base_internal::InlinedStringViewBytesValue;
@@ -40,14 +38,6 @@ using base_internal::PersistentHandleFactory;
 using base_internal::StringBytesValue;
 using base_internal::StringStringValue;
 
-template <typename T>
-bool CanPerformZeroCopy(MemoryManager& memory_manager,
-                        const Persistent<T>& handle) {
-  return base_internal::IsManagedHandle(handle) &&
-         std::addressof(memory_manager) ==
-             std::addressof(base_internal::GetMemoryManager(handle));
-}
-
 }  // namespace
 
 Persistent<const NullValue> NullValue::Get(ValueFactory& value_factory) {
@@ -55,9 +45,7 @@ Persistent<const NullValue> NullValue::Get(ValueFactory& value_factory) {
 }
 
 Persistent<const NullValue> ValueFactory::GetNullValue() {
-  return Persistent<const NullValue>(
-      PersistentHandleFactory<const NullValue>::MakeUnmanaged<const NullValue>(
-          NullValue::Get()));
+  return PersistentHandleFactory<const NullValue>::Make<NullValue>();
 }
 
 Persistent<const ErrorValue> ValueFactory::CreateErrorValue(
@@ -113,26 +101,12 @@ Persistent<const StringValue> StringValue::Empty(ValueFactory& value_factory) {
 }
 
 absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
-    ValueFactory& value_factory, const Persistent<const StringValue>& lhs,
-    const Persistent<const StringValue>& rhs) {
+    ValueFactory& value_factory, const StringValue& lhs,
+    const StringValue& rhs) {
   absl::Cord cord;
-  // We can only use the potential zero-copy path if the memory managers are
-  // the same. Otherwise we need to escape the original memory manager scope.
-  cord.Append(
-      lhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), lhs)));
-  // We can only use the potential zero-copy path if the memory managers are
-  // the same. Otherwise we need to escape the original memory manager scope.
-  cord.Append(
-      rhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), rhs)));
-  size_t size = 0;
-  size_t lhs_size = lhs->size_.load(std::memory_order_relaxed);
-  if (lhs_size != 0 && !lhs->empty()) {
-    size_t rhs_size = rhs->size_.load(std::memory_order_relaxed);
-    if (rhs_size != 0 && !rhs->empty()) {
-      size = lhs_size + rhs_size;
-    }
-  }
-  return value_factory.CreateStringValue(std::move(cord), size);
+  cord.Append(lhs.ToCord());
+  cord.Append(rhs.ToCord());
+  return value_factory.CreateStringValue(std::move(cord));
 }
 
 Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
@@ -140,17 +114,10 @@ Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
 }
 
 absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
-    ValueFactory& value_factory, const Persistent<const BytesValue>& lhs,
-    const Persistent<const BytesValue>& rhs) {
+    ValueFactory& value_factory, const BytesValue& lhs, const BytesValue& rhs) {
   absl::Cord cord;
-  // We can only use the potential zero-copy path if the memory managers are
-  // the same. Otherwise we need to escape the original memory manager scope.
-  cord.Append(
-      lhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), lhs)));
-  // We can only use the potential zero-copy path if the memory managers are
-  // the same. Otherwise we need to escape the original memory manager scope.
-  cord.Append(
-      rhs->ToCord(CanPerformZeroCopy(value_factory.memory_manager(), rhs)));
+  cord.Append(lhs.ToCord());
+  cord.Append(rhs.ToCord());
   return value_factory.CreateBytesValue(std::move(cord));
 }
 
@@ -191,12 +158,6 @@ absl::StatusOr<Persistent<StructValue>> StructValue::New(
     ValueFactory& value_factory) {
   TypedStructValueFactory factory(value_factory, struct_type);
   CEL_ASSIGN_OR_RETURN(auto struct_value, struct_type->NewInstance(factory));
-  if (!struct_value->type_) {
-    // In case somebody is caching, we avoid setting the type_ if it has already
-    // been set, to avoid a race condition where one CPU sees a half written
-    // pointer.
-    const_cast<StructValue&>(*struct_value).type_ = struct_type;
-  }
   return struct_value;
 }
 
@@ -247,7 +208,7 @@ absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
         "Illegal byte sequence in UTF-8 encoded string");
   }
   return PersistentHandleFactory<const StringValue>::Make<StringStringValue>(
-      memory_manager(), count, std::move(value));
+      memory_manager(), std::move(value));
 }
 
 absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
@@ -260,7 +221,8 @@ absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
     return absl::InvalidArgumentError(
         "Illegal byte sequence in UTF-8 encoded string");
   }
-  return CreateStringValue(std::move(value), count);
+  return PersistentHandleFactory<const StringValue>::Make<
+      InlinedCordStringValue>(std::move(value));
 }
 
 absl::StatusOr<Persistent<const DurationValue>>
@@ -293,30 +255,9 @@ Persistent<const BytesValue> ValueFactory::GetEmptyBytesValue() {
       InlinedStringViewBytesValue>(absl::string_view());
 }
 
-absl::StatusOr<Persistent<const BytesValue>> ValueFactory::CreateBytesValue(
-    base_internal::ExternalData value) {
-  return PersistentHandleFactory<const BytesValue>::Make<
-      ExternalDataBytesValue>(memory_manager(), std::move(value));
-}
-
 Persistent<const StringValue> ValueFactory::GetEmptyStringValue() {
   return PersistentHandleFactory<const StringValue>::Make<
       InlinedStringViewStringValue>(absl::string_view());
-}
-
-absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
-    absl::Cord value, size_t size) {
-  if (value.empty()) {
-    return GetEmptyStringValue();
-  }
-  return PersistentHandleFactory<const StringValue>::Make<
-      InlinedCordStringValue>(size, std::move(value));
-}
-
-absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
-    base_internal::ExternalData value) {
-  return PersistentHandleFactory<const StringValue>::Make<
-      ExternalDataStringValue>(memory_manager(), std::move(value));
 }
 
 absl::StatusOr<Persistent<const StringValue>>

@@ -68,8 +68,8 @@ int ComparisonImpl(const CelMap* lhs, const CelMap* rhs) {
   lhs_keys.reserve(lhs->size());
   rhs_keys.reserve(lhs->size());
 
-  const CelList* lhs_key_view = lhs->ListKeys();
-  const CelList* rhs_key_view = rhs->ListKeys();
+  const CelList* lhs_key_view = lhs->ListKeys().value();
+  const CelList* rhs_key_view = rhs->ListKeys().value();
 
   for (int i = 0; i < lhs->size(); i++) {
     lhs_keys.push_back(lhs_key_view->operator[](i));

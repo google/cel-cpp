@@ -14,11 +14,23 @@
 
 #include "base/types/list_type.h"
 
+#include <string>
+#include <utility>
+
+#include "absl/base/macros.h"
 #include "absl/strings/str_cat.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(ListType);
+
+ListType::ListType(Persistent<const Type> element)
+    : base_internal::HeapData(kKind), element_(std::move(element)) {
+  // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
+  ABSL_ASSERT(
+      reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
+      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
 
 std::string ListType::DebugString() const {
   return absl::StrCat(name(), "(", element()->DebugString(), ")");
@@ -28,13 +40,13 @@ bool ListType::Equals(const Type& other) const {
   if (kind() != other.kind()) {
     return false;
   }
-  return element() == internal::down_cast<const ListType&>(other).element();
+  return element() == static_cast<const ListType&>(other).element();
 }
 
 void ListType::HashValue(absl::HashState state) const {
   // We specifically hash the element first and then call the parent method to
   // avoid hash suffix/prefix collisions.
-  Type::HashValue(absl::HashState::combine(std::move(state), element()));
+  absl::HashState::combine(std::move(state), element(), kind(), name());
 }
 
 }  // namespace cel

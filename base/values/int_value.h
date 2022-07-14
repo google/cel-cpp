@@ -18,50 +18,39 @@
 #include <cstdint>
 #include <string>
 
-#include "absl/hash/hash.h"
-#include "base/kind.h"
-#include "base/type.h"
+#include "base/types/int_type.h"
 #include "base/value.h"
 
 namespace cel {
 
-class IntValue;
+class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
+ private:
+  using Base = base_internal::SimpleValue<IntType, int64_t>;
 
-class IntValue final : public Value, public base_internal::ResourceInlined {
  public:
-  Persistent<const Type> type() const override;
+  using Base::kKind;
 
-  Kind kind() const override { return Kind::kInt; }
+  using Base::Is;
 
-  std::string DebugString() const override;
+  using Base::kind;
 
-  constexpr int64_t value() const { return value_; }
+  using Base::type;
+
+  std::string DebugString() const;
+
+  using Base::HashValue;
+
+  using Base::Equals;
+
+  using Base::value;
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  using Base::Base;
 
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kInt; }
-
-  // Called by `base_internal::ValueHandle` to construct value inline.
-  explicit IntValue(int64_t value) : value_(value) {}
-
-  IntValue() = delete;
-
-  IntValue(const IntValue&) = default;
-  IntValue(IntValue&&) = default;
-
-  // See comments for respective member functions on `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
-
-  int64_t value_;
+  CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(IntValue);
 };
+
+CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(IntValue);
 
 }  // namespace cel
 

@@ -23,6 +23,7 @@
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
@@ -34,13 +35,19 @@ namespace cel {
 class ValueFactory;
 
 // ListValue represents an instance of cel::ListType.
-class ListValue : public Value {
+class ListValue : public Value, public base_internal::HeapData {
  public:
+  static constexpr Kind kKind = ListType::kKind;
+
+  static bool Is(const Value& value) { return value.kind() == kKind; }
+
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  Persistent<const Type> type() const final { return type_; }
+  constexpr const Persistent<const ListType>& type() const { return type_; }
 
-  Kind kind() const final { return Kind::kList; }
+  constexpr Kind kind() const { return kKind; }
+
+  virtual std::string DebugString() const = 0;
 
   virtual size_t size() const = 0;
 
@@ -49,37 +56,25 @@ class ListValue : public Value {
   virtual absl::StatusOr<Persistent<const Value>> Get(
       ValueFactory& value_factory, size_t index) const = 0;
 
+  virtual bool Equals(const Value& other) const = 0;
+
+  virtual void HashValue(absl::HashState state) const = 0;
+
  protected:
-  explicit ListValue(const Persistent<const ListType>& type) : type_(type) {}
+  explicit ListValue(Persistent<const ListType> type);
 
  private:
   friend internal::TypeInfo base_internal::GetListValueTypeId(
       const ListValue& list_value);
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
-
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kList; }
-
-  ListValue(const ListValue&) = delete;
-  ListValue(ListValue&&) = delete;
-
-  // TODO(issues/5): I do not like this, we should have these two take a
-  // ValueFactory and return absl::StatusOr<bool> and absl::Status. We support
-  // lazily created values, so errors can occur during equality testing.
-  // Especially if there are different value implementations for the same type.
-  bool Equals(const Value& other) const override = 0;
-  void HashValue(absl::HashState state) const override = 0;
-
-  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
+  friend class base_internal::PersistentValueHandle;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
   const Persistent<const ListType> type_;
 };
+
+CEL_INTERNAL_VALUE_DECL(ListValue);
 
 // CEL_DECLARE_LIST_VALUE declares `list_value` as an list value. It must
 // be part of the class definition of `list_value`.

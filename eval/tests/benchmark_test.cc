@@ -294,7 +294,9 @@ class RequestMap : public CelMap {
     return {};
   }
   int size() const override { return 3; }
-  const CelList* ListKeys() const override { return nullptr; }
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return absl::UnimplementedError("CelMap::ListKeys is not implemented");
+  }
 };
 
 // Uses a lazily constructed map container for "ip", "path", and "token".

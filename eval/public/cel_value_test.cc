@@ -28,7 +28,9 @@ class DummyMap : public CelMap {
   absl::optional<CelValue> operator[](CelValue value) const override {
     return CelValue::CreateNull();
   }
-  const CelList* ListKeys() const override { return nullptr; }
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return absl::UnimplementedError("CelMap::ListKeys is not implemented");
+  }
 
   int size() const override { return 0; }
 };

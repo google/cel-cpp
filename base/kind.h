@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 #define THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 
+#include <cstdint>
+
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 
 namespace cel {
 
-enum class Kind {
+enum class Kind : uint8_t {
   kNullType = 0,
   kError,
   kDyn,
@@ -38,6 +40,9 @@ enum class Kind {
   kList,
   kMap,
   kStruct,
+
+  // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
+  // we can store `Kind` using 7 bits.
 };
 
 ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);

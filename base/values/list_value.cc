@@ -14,8 +14,20 @@
 
 #include "base/values/list_value.h"
 
+#include <utility>
+
+#include "absl/base/macros.h"
+
 namespace cel {
 
-//
+CEL_INTERNAL_VALUE_IMPL(ListValue);
+
+ListValue::ListValue(Persistent<const ListType> type)
+    : base_internal::HeapData(kKind), type_(std::move(type)) {
+  // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
+  ABSL_ASSERT(
+      reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
+      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
 
 }  // namespace cel

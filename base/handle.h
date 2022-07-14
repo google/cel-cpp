@@ -20,12 +20,12 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
-#include "base/internal/handle.pre.h"  // IWYU pragma: export
-#include "internal/casts.h"
+#include "absl/utility/utility.h"
+#include "base/internal/data.h"
+#include "base/internal/handle.h"  // IWYU pragma: export
+#include "base/memory_manager.h"
 
 namespace cel {
-
-class MemoryManager;
 
 template <typename T>
 class Persistent;
@@ -132,17 +132,17 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   // Is checks wether `T` is an instance of `F`.
   template <typename F>
   bool Is() const {
-    return impl_.template Is<F>();
+    return static_cast<bool>(*this) && F::Is(static_cast<const T&>(**this));
   }
 
   T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_ASSERT(static_cast<bool>(*this));
-    return internal::down_cast<T&>(*impl_);
+    return static_cast<T&>(*impl_.get());
   }
 
   T* operator->() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_ASSERT(static_cast<bool>(*this));
-    return internal::down_cast<T*>(impl_.operator->());
+    return static_cast<T*>(impl_.get());
   }
 
   // Tests whether the handle is not empty, returning false if it is empty.
@@ -152,8 +152,28 @@ class Persistent final : private base_internal::HandlePolicy<T> {
     std::swap(lhs.impl_, rhs.impl_);
   }
 
-  friend bool operator==(const Persistent<T>& lhs, const Persistent<T>& rhs) {
-    return lhs.impl_ == rhs.impl_;
+  bool operator==(const Persistent<T>& other) const {
+    return impl_ == other.impl_;
+  }
+
+  template <typename F>
+  std::enable_if_t<std::disjunction_v<std::is_convertible<F*, T*>,
+                                      std::is_convertible<T*, F*>>,
+                   bool>
+  operator==(const Persistent<F>& other) const {
+    return impl_ == other.impl_;
+  }
+
+  bool operator!=(const Persistent<T>& other) const {
+    return !operator==(other);
+  }
+
+  template <typename F>
+  std::enable_if_t<std::disjunction_v<std::is_convertible<F*, T*>,
+                                      std::is_convertible<T*, F*>>,
+                   bool>
+  operator!=(const Persistent<F>& other) const {
+    return !operator==(other);
   }
 
   template <typename H>
@@ -166,54 +186,67 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   friend class Persistent;
   template <base_internal::HandleType H, typename F>
   friend struct base_internal::HandleFactory;
-  template <typename F>
-  friend bool base_internal::IsManagedHandle(const Persistent<F>& handle);
-  template <typename F>
-  friend bool base_internal::IsUnmanagedHandle(const Persistent<F>& handle);
-  template <typename F>
-  friend bool base_internal::IsInlinedHandle(const Persistent<F>& handle);
-  template <typename F>
-  friend MemoryManager& base_internal::GetMemoryManager(
-      const Persistent<F>& handle);
 
   template <typename... Args>
-  explicit Persistent(base_internal::HandleInPlace, Args&&... args)
+  explicit Persistent(absl::in_place_t in_place, Args&&... args)
       : impl_(std::forward<Args>(args)...) {}
 
   Handle impl_;
 };
 
-template <typename L, typename R>
-std::enable_if_t<std::is_base_of_v<L, R>, bool> operator==(
-    const Persistent<L>& lhs, const Persistent<R>& rhs) {
-  return lhs == rhs.template As<L>();
-}
-
-template <typename L, typename R>
-std::enable_if_t<std::is_base_of_v<R, L>, bool> operator==(
-    const Persistent<L>& lhs, const Persistent<R>& rhs) {
-  return rhs == lhs.template As<R>();
-}
-
-template <typename T>
-bool operator!=(const Persistent<T>& lhs, const Persistent<T>& rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename L, typename R>
-std::enable_if_t<std::is_base_of_v<L, R>, bool> operator!=(
-    const Persistent<L>& lhs, const Persistent<R>& rhs) {
-  return !operator==(lhs, rhs);
-}
-
-template <typename L, typename R>
-std::enable_if_t<std::is_base_of_v<R, L>, bool> operator!=(
-    const Persistent<L>& lhs, const Persistent<R>& rhs) {
-  return !operator==(lhs, rhs);
-}
-
 }  // namespace cel
 
-#include "base/internal/handle.post.h"  // IWYU pragma: export
+// -----------------------------------------------------------------------------
+// Internal implementation details.
+
+namespace cel::base_internal {
+
+template <typename T>
+struct HandleFactory<HandleType::kPersistent, T> {
+  // Constructs a persistent handle whose underlying object is stored in the
+  // handle itself.
+  template <typename F, typename... Args>
+  static std::enable_if_t<std::is_base_of_v<InlineData, F>, Persistent<T>> Make(
+      Args&&... args) {
+    static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
+    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
+    return Persistent<T>(absl::in_place, absl::in_place_type<F>,
+                         std::forward<Args>(args)...);
+  }
+  // Constructs a persistent handle whose underlying object is stored in the
+  // handle itself.
+  template <typename F, typename... Args>
+  static std::enable_if_t<std::is_base_of_v<InlineData, F>, void> MakeAt(
+      void* address, Args&&... args) {
+    static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
+    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
+    ::new (address) Persistent<T>(absl::in_place, absl::in_place_type<F>,
+                                  std::forward<Args>(args)...);
+  }
+
+  // Constructs a persistent handle whose underlying object is heap allocated
+  // and potentially reference counted, depending on the memory manager
+  // implementation.
+  template <typename F, typename... Args>
+  static std::enable_if_t<std::is_base_of_v<HeapData, F>, Persistent<T>> Make(
+      MemoryManager& memory_manager, Args&&... args) {
+    static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
+    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
+#if defined(__cpp_lib_is_pointer_interconvertible) && \
+    __cpp_lib_is_pointer_interconvertible >= 201907L
+    // Only available in C++20.
+    static_assert(std::is_pointer_interconvertible_base_of_v<Data, F>,
+                  "F must be pointer interconvertible to Data");
+#endif
+    auto managed_memory = memory_manager.New<F>(std::forward<Args>(args)...);
+    if (ABSL_PREDICT_FALSE(managed_memory == nullptr)) {
+      return Persistent<T>();
+    }
+    return Persistent<T>(absl::in_place,
+                         *base_internal::ManagedMemoryRelease(managed_memory));
+  }
+};
+
+}  // namespace cel::base_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_

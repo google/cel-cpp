@@ -15,42 +15,13 @@
 #include "base/values/int_value.h"
 
 #include <string>
-#include <utility>
 
 #include "absl/strings/str_cat.h"
-#include "base/types/int_type.h"
-#include "internal/casts.h"
 
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> IntValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const IntType>(
-      IntType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(IntValue);
 
 std::string IntValue::DebugString() const { return absl::StrCat(value()); }
-
-void IntValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(IntValue, *this, address);
-}
-
-void IntValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(IntValue, *this, address);
-}
-
-bool IntValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == internal::down_cast<const IntValue&>(other).value();
-}
-
-void IntValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
-}
 
 }  // namespace cel

@@ -30,7 +30,9 @@ class CelMapBuilder : public CelMap {
     return values_map_.contains(cel_key);
   }
 
-  const CelList* ListKeys() const override { return &key_list_; }
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return &key_list_;
+  }
 
  private:
   // Custom CelList implementation for maintaining key list.

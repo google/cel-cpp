@@ -16,25 +16,44 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
+cc_library(
+    name = "data",
+    hdrs = ["data.h"],
+    deps = [
+        "//base:kind",
+        "//internal:assume_aligned",
+        "//internal:launder",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
 # These headers should only ever be used by ../handle.h. They are here to avoid putting
 # large amounts of implementation details in public headers.
 cc_library(
     name = "handle",
-    textual_hdrs = [
-        "handle.pre.h",
-        "handle.post.h",
-    ],
+    hdrs = ["handle.h"],
     deps = [
-        "//base:memory_manager",
+        ":data",
+    ],
+)
+
+cc_library(
+    name = "managed_memory",
+    srcs = ["managed_memory.cc"],
+    hdrs = ["managed_memory.h"],
+    deps = [
+        ":data",
+        "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
     ],
 )
 
 cc_library(
     name = "memory_manager",
-    textual_hdrs = [
-        "memory_manager.pre.h",
-        "memory_manager.post.h",
+    hdrs = [
+        "memory_manager.h",
     ],
 )
 
@@ -61,33 +80,31 @@ cc_library(
 cc_library(
     name = "type",
     textual_hdrs = [
-        "type.pre.h",
-        "type.post.h",
+        "type.h",
     ],
     deps = [
+        ":data",
         "//base:handle",
+        "//base:kind",
+        "//internal:casts",
         "//internal:rtti",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/hash",
-        "@com_google_absl//absl/numeric:bits",
     ],
 )
 
 cc_library(
     name = "value",
     textual_hdrs = [
-        "value.pre.h",
-        "value.post.h",
+        "value.h",
     ],
     deps = [
+        ":data",
         "//base:handle",
-        "//internal:casts",
+        "//base:type",
         "//internal:rtti",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/hash",
-        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
     ],
 )

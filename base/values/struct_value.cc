@@ -17,9 +17,20 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/macros.h"
 #include "base/types/struct_type.h"
 
 namespace cel {
+
+CEL_INTERNAL_VALUE_IMPL(StructValue);
+
+StructValue::StructValue(Persistent<const StructType> type)
+    : base_internal::HeapData(kKind), type_(std::move(type)) {
+  // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
+  ABSL_ASSERT(
+      reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
+      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
 
 struct StructValue::SetFieldVisitor final {
   StructValue& struct_value;

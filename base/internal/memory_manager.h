@@ -12,48 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// IWYU pragma: private, include "base/memory_manager.h"
-
 #ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
 
 #include <cstddef>
-#include <utility>
 
-namespace cel {
-
-template <typename T>
-class ManagedMemory;
-class MemoryManager;
-
-namespace base_internal {
+namespace cel::base_internal {
 
 size_t GetPageSize();
 
-class Resource;
-
 template <typename T>
-constexpr size_t GetManagedMemorySize(const ManagedMemory<T>& managed_memory);
-
-template <typename T>
-constexpr size_t GetManagedMemoryAlignment(
-    const ManagedMemory<T>& managed_memory);
-
-template <typename T>
-constexpr T* ManagedMemoryRelease(ManagedMemory<T>& managed_memory);
-
-MemoryManager& GetMemoryManager(const void* pointer, size_t size, size_t align);
-
-template <typename T>
-class MemoryManagerDestructor final {
- private:
-  friend class cel::MemoryManager;
-
-  static void Destruct(void* pointer) { reinterpret_cast<T*>(pointer)->~T(); }
+struct MemoryManagerDestructor final {
+  static void Destruct(void* pointer) { static_cast<T*>(pointer)->~T(); }
 };
 
-}  // namespace base_internal
-
-}  // namespace cel
+}  // namespace cel::base_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_

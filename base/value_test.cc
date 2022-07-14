@@ -53,40 +53,6 @@ enum class TestEnum {
   kValue2 = 2,
 };
 
-class TestEnumValue final : public EnumValue {
- public:
-  explicit TestEnumValue(const Persistent<const EnumType>& type,
-                         TestEnum test_enum)
-      : EnumValue(type), test_enum_(test_enum) {}
-
-  std::string DebugString() const override { return std::string(name()); }
-
-  absl::string_view name() const override {
-    switch (test_enum_) {
-      case TestEnum::kValue1:
-        return "VALUE1";
-      case TestEnum::kValue2:
-        return "VALUE2";
-    }
-  }
-
-  int64_t number() const override {
-    switch (test_enum_) {
-      case TestEnum::kValue1:
-        return 1;
-      case TestEnum::kValue2:
-        return 2;
-    }
-  }
-
- private:
-  CEL_DECLARE_ENUM_VALUE(TestEnumValue);
-
-  TestEnum test_enum_;
-};
-
-CEL_IMPLEMENT_ENUM_VALUE(TestEnumValue);
-
 class TestEnumType final : public EnumType {
  public:
   using EnumType::EnumType;
@@ -97,9 +63,9 @@ class TestEnumType final : public EnumType {
   absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
       TypedEnumValueFactory& factory, absl::string_view name) const override {
     if (name == "VALUE1") {
-      return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
+      return factory.CreateEnumValue(TestEnum::kValue1);
     } else if (name == "VALUE2") {
-      return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
+      return factory.CreateEnumValue(TestEnum::kValue2);
     }
     return absl::NotFoundError("");
   }
@@ -108,9 +74,9 @@ class TestEnumType final : public EnumType {
       TypedEnumValueFactory& factory, int64_t number) const override {
     switch (number) {
       case 1:
-        return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue1);
+        return factory.CreateEnumValue(TestEnum::kValue1);
       case 2:
-        return factory.CreateEnumValue<TestEnumValue>(TestEnum::kValue2);
+        return factory.CreateEnumValue(TestEnum::kValue2);
       default:
         return absl::NotFoundError("");
     }
@@ -122,7 +88,14 @@ class TestEnumType final : public EnumType {
   }
 
   absl::StatusOr<Constant> FindConstantByNumber(int64_t number) const override {
-    return absl::UnimplementedError("");
+    switch (number) {
+      case 1:
+        return Constant("VALUE1", 1);
+      case 2:
+        return Constant("VALUE2", 2);
+      default:
+        return absl::NotFoundError("");
+    }
   }
 
  private:
@@ -382,8 +355,7 @@ class TestListValue final : public ListValue {
  private:
   bool Equals(const Value& other) const override {
     return Is(other) &&
-           elements_ ==
-               internal::down_cast<const TestListValue&>(other).elements_;
+           elements_ == static_cast<const TestListValue&>(other).elements_;
   }
 
   void HashValue(absl::HashState state) const override {
@@ -441,12 +413,17 @@ class TestMapValue final : public MapValue {
     return absl::StrCat("{", absl::StrJoin(parts, ", "), "}");
   }
 
+  absl::StatusOr<Persistent<const ListValue>> ListKeys(
+      ValueFactory& value_factory) const override {
+    return absl::UnimplementedError("MapValue::ListKeys is not implemented");
+  }
+
   const std::map<std::string, int64_t>& value() const { return entries_; }
 
  private:
   bool Equals(const Value& other) const override {
     return Is(other) &&
-           entries_ == internal::down_cast<const TestMapValue&>(other).entries_;
+           entries_ == static_cast<const TestMapValue&>(other).entries_;
   }
 
   void HashValue(absl::HashState state) const override {
@@ -506,12 +483,6 @@ class BaseValueTest
 };
 
 using ValueTest = BaseValueTest<>;
-
-TEST(Value, HandleSize) {
-  // Advisory test to ensure we attempt to keep the size of Value handles under
-  // 32 bytes. As of the time of writing they are 24 bytes.
-  EXPECT_LE(sizeof(base_internal::ValueHandleData), 32);
-}
 
 TEST(Value, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_default_constructible_v<Persistent<Value>>);
@@ -1307,49 +1278,49 @@ TEST_P(BytesConcatTest, Concat) {
   ValueFactory value_factory(type_manager);
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeStringBytes(value_factory, test_case().lhs),
-                              MakeStringBytes(value_factory, test_case().rhs)))
+                              *MakeStringBytes(value_factory, test_case().lhs),
+                              *MakeStringBytes(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeStringBytes(value_factory, test_case().lhs),
-                              MakeCordBytes(value_factory, test_case().rhs)))
+                              *MakeStringBytes(value_factory, test_case().lhs),
+                              *MakeCordBytes(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(
-               value_factory, MakeStringBytes(value_factory, test_case().lhs),
-               MakeExternalBytes(value_factory, test_case().rhs)))
+               value_factory, *MakeStringBytes(value_factory, test_case().lhs),
+               *MakeExternalBytes(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeCordBytes(value_factory, test_case().lhs),
-                              MakeStringBytes(value_factory, test_case().rhs)))
+                              *MakeCordBytes(value_factory, test_case().lhs),
+                              *MakeStringBytes(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(value_factory,
-                              MakeCordBytes(value_factory, test_case().lhs),
-                              MakeCordBytes(value_factory, test_case().rhs)))
+                              *MakeCordBytes(value_factory, test_case().lhs),
+                              *MakeCordBytes(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(BytesValue::Concat(
-               value_factory, MakeCordBytes(value_factory, test_case().lhs),
-               MakeExternalBytes(value_factory, test_case().rhs)))
+               value_factory, *MakeCordBytes(value_factory, test_case().lhs),
+               *MakeExternalBytes(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
-  EXPECT_TRUE(
-      Must(BytesValue::Concat(value_factory,
-                              MakeExternalBytes(value_factory, test_case().lhs),
-                              MakeStringBytes(value_factory, test_case().rhs)))
-          ->Equals(test_case().lhs + test_case().rhs));
-  EXPECT_TRUE(
-      Must(BytesValue::Concat(value_factory,
-                              MakeExternalBytes(value_factory, test_case().lhs),
-                              MakeCordBytes(value_factory, test_case().rhs)))
-          ->Equals(test_case().lhs + test_case().rhs));
-  EXPECT_TRUE(
-      Must(BytesValue::Concat(
-               value_factory, MakeExternalBytes(value_factory, test_case().lhs),
-               MakeExternalBytes(value_factory, test_case().rhs)))
-          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(Must(BytesValue::Concat(
+                       value_factory,
+                       *MakeExternalBytes(value_factory, test_case().lhs),
+                       *MakeStringBytes(value_factory, test_case().rhs)))
+                  ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(Must(BytesValue::Concat(
+                       value_factory,
+                       *MakeExternalBytes(value_factory, test_case().lhs),
+                       *MakeCordBytes(value_factory, test_case().rhs)))
+                  ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(Must(BytesValue::Concat(
+                       value_factory,
+                       *MakeExternalBytes(value_factory, test_case().lhs),
+                       *MakeExternalBytes(value_factory, test_case().rhs)))
+                  ->Equals(test_case().lhs + test_case().rhs));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1438,31 +1409,31 @@ TEST_P(BytesEqualsTest, Equals) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
-                ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeStringBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
-                ->Equals(MakeCordBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeCordBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeStringBytes(value_factory, test_case().lhs)
-                ->Equals(MakeExternalBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeExternalBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().lhs)
-                ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeStringBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().lhs)
-                ->Equals(MakeCordBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeCordBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeCordBytes(value_factory, test_case().lhs)
-                ->Equals(MakeExternalBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeExternalBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeExternalBytes(value_factory, test_case().lhs)
-                ->Equals(MakeStringBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeStringBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeExternalBytes(value_factory, test_case().lhs)
-                ->Equals(MakeCordBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeCordBytes(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeExternalBytes(value_factory, test_case().lhs)
-                ->Equals(MakeExternalBytes(value_factory, test_case().rhs)),
+                ->Equals(*MakeExternalBytes(value_factory, test_case().rhs)),
             test_case().equals);
 }
 
@@ -1496,43 +1467,45 @@ TEST_P(BytesCompareTest, Equals) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeStringBytes(value_factory, test_case().lhs)
+              ->Compare(*MakeStringBytes(value_factory, test_case().rhs))),
+      test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
                 MakeStringBytes(value_factory, test_case().lhs)
-                    ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
-            test_case().compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeStringBytes(value_factory, test_case().lhs)
-                    ->Compare(MakeCordBytes(value_factory, test_case().rhs))),
+                    ->Compare(*MakeCordBytes(value_factory, test_case().rhs))),
             test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeStringBytes(value_factory, test_case().lhs)
-              ->Compare(MakeExternalBytes(value_factory, test_case().rhs))),
+              ->Compare(*MakeExternalBytes(value_factory, test_case().rhs))),
       test_case().compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(value_factory, test_case().lhs)
-                    ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
-            test_case().compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeCordBytes(value_factory, test_case().lhs)
-                    ->Compare(MakeCordBytes(value_factory, test_case().rhs))),
-            test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(MakeCordBytes(value_factory, test_case().lhs)
-                                       ->Compare(MakeExternalBytes(
+                                       ->Compare(*MakeStringBytes(
                                            value_factory, test_case().rhs))),
             test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalBytes(value_factory, test_case().lhs)
-                    ->Compare(MakeStringBytes(value_factory, test_case().rhs))),
+                MakeCordBytes(value_factory, test_case().lhs)
+                    ->Compare(*MakeCordBytes(value_factory, test_case().rhs))),
             test_case().compare);
-  EXPECT_EQ(NormalizeCompareResult(
-                MakeExternalBytes(value_factory, test_case().lhs)
-                    ->Compare(MakeCordBytes(value_factory, test_case().rhs))),
+  EXPECT_EQ(NormalizeCompareResult(MakeCordBytes(value_factory, test_case().lhs)
+                                       ->Compare(*MakeExternalBytes(
+                                           value_factory, test_case().rhs))),
             test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeExternalBytes(value_factory, test_case().lhs)
-              ->Compare(MakeExternalBytes(value_factory, test_case().rhs))),
+              ->Compare(*MakeStringBytes(value_factory, test_case().rhs))),
+      test_case().compare);
+  EXPECT_EQ(NormalizeCompareResult(
+                MakeExternalBytes(value_factory, test_case().lhs)
+                    ->Compare(*MakeCordBytes(value_factory, test_case().rhs))),
+            test_case().compare);
+  EXPECT_EQ(
+      NormalizeCompareResult(
+          MakeExternalBytes(value_factory, test_case().lhs)
+              ->Compare(*MakeExternalBytes(value_factory, test_case().rhs))),
       test_case().compare);
 }
 
@@ -1664,48 +1637,48 @@ TEST_P(StringConcatTest, Concat) {
   ValueFactory value_factory(type_manager);
   EXPECT_TRUE(
       Must(StringValue::Concat(
-               value_factory, MakeStringString(value_factory, test_case().lhs),
-               MakeStringString(value_factory, test_case().rhs)))
+               value_factory, *MakeStringString(value_factory, test_case().lhs),
+               *MakeStringString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, *MakeStringString(value_factory, test_case().lhs),
+               *MakeCordString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, *MakeStringString(value_factory, test_case().lhs),
+               *MakeExternalString(value_factory, test_case().rhs)))
+          ->Equals(test_case().lhs + test_case().rhs));
+  EXPECT_TRUE(
+      Must(StringValue::Concat(
+               value_factory, *MakeCordString(value_factory, test_case().lhs),
+               *MakeStringString(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(StringValue::Concat(value_factory,
-                               MakeStringString(value_factory, test_case().lhs),
-                               MakeCordString(value_factory, test_case().rhs)))
+                               *MakeCordString(value_factory, test_case().lhs),
+                               *MakeCordString(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(
       Must(StringValue::Concat(
-               value_factory, MakeStringString(value_factory, test_case().lhs),
-               MakeExternalString(value_factory, test_case().rhs)))
-          ->Equals(test_case().lhs + test_case().rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(
-               value_factory, MakeCordString(value_factory, test_case().lhs),
-               MakeStringString(value_factory, test_case().rhs)))
-          ->Equals(test_case().lhs + test_case().rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(value_factory,
-                               MakeCordString(value_factory, test_case().lhs),
-                               MakeCordString(value_factory, test_case().rhs)))
-          ->Equals(test_case().lhs + test_case().rhs));
-  EXPECT_TRUE(
-      Must(StringValue::Concat(
-               value_factory, MakeCordString(value_factory, test_case().lhs),
-               MakeExternalString(value_factory, test_case().rhs)))
+               value_factory, *MakeCordString(value_factory, test_case().lhs),
+               *MakeExternalString(value_factory, test_case().rhs)))
           ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(Must(StringValue::Concat(
                        value_factory,
-                       MakeExternalString(value_factory, test_case().lhs),
-                       MakeStringString(value_factory, test_case().rhs)))
+                       *MakeExternalString(value_factory, test_case().lhs),
+                       *MakeStringString(value_factory, test_case().rhs)))
                   ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(Must(StringValue::Concat(
                        value_factory,
-                       MakeExternalString(value_factory, test_case().lhs),
-                       MakeCordString(value_factory, test_case().rhs)))
+                       *MakeExternalString(value_factory, test_case().lhs),
+                       *MakeCordString(value_factory, test_case().rhs)))
                   ->Equals(test_case().lhs + test_case().rhs));
   EXPECT_TRUE(Must(StringValue::Concat(
                        value_factory,
-                       MakeExternalString(value_factory, test_case().lhs),
-                       MakeExternalString(value_factory, test_case().rhs)))
+                       *MakeExternalString(value_factory, test_case().lhs),
+                       *MakeExternalString(value_factory, test_case().rhs)))
                   ->Equals(test_case().lhs + test_case().rhs));
 }
 
@@ -1795,31 +1768,31 @@ TEST_P(StringEqualsTest, Equals) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
-                ->Equals(MakeStringString(value_factory, test_case().rhs)),
+                ->Equals(*MakeStringString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
-                ->Equals(MakeCordString(value_factory, test_case().rhs)),
+                ->Equals(*MakeCordString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeStringString(value_factory, test_case().lhs)
-                ->Equals(MakeExternalString(value_factory, test_case().rhs)),
+                ->Equals(*MakeExternalString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeCordString(value_factory, test_case().lhs)
-                ->Equals(MakeStringString(value_factory, test_case().rhs)),
+                ->Equals(*MakeStringString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeCordString(value_factory, test_case().lhs)
-                ->Equals(MakeCordString(value_factory, test_case().rhs)),
+                ->Equals(*MakeCordString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeCordString(value_factory, test_case().lhs)
-                ->Equals(MakeExternalString(value_factory, test_case().rhs)),
+                ->Equals(*MakeExternalString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeExternalString(value_factory, test_case().lhs)
-                ->Equals(MakeStringString(value_factory, test_case().rhs)),
+                ->Equals(*MakeStringString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeExternalString(value_factory, test_case().lhs)
-                ->Equals(MakeCordString(value_factory, test_case().rhs)),
+                ->Equals(*MakeCordString(value_factory, test_case().rhs)),
             test_case().equals);
   EXPECT_EQ(MakeExternalString(value_factory, test_case().lhs)
-                ->Equals(MakeExternalString(value_factory, test_case().rhs)),
+                ->Equals(*MakeExternalString(value_factory, test_case().rhs)),
             test_case().equals);
 }
 
@@ -1854,44 +1827,44 @@ TEST_P(StringCompareTest, Equals) {
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeStringString(value_factory, test_case().lhs)
-              ->Compare(MakeStringString(value_factory, test_case().rhs))),
+              ->Compare(*MakeStringString(value_factory, test_case().rhs))),
       test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
                 MakeStringString(value_factory, test_case().lhs)
-                    ->Compare(MakeCordString(value_factory, test_case().rhs))),
+                    ->Compare(*MakeCordString(value_factory, test_case().rhs))),
             test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeStringString(value_factory, test_case().lhs)
-              ->Compare(MakeExternalString(value_factory, test_case().rhs))),
+              ->Compare(*MakeExternalString(value_factory, test_case().rhs))),
       test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeCordString(value_factory, test_case().lhs)
-              ->Compare(MakeStringString(value_factory, test_case().rhs))),
+              ->Compare(*MakeStringString(value_factory, test_case().rhs))),
       test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
                 MakeCordString(value_factory, test_case().lhs)
-                    ->Compare(MakeCordString(value_factory, test_case().rhs))),
+                    ->Compare(*MakeCordString(value_factory, test_case().rhs))),
             test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeCordString(value_factory, test_case().lhs)
-              ->Compare(MakeExternalString(value_factory, test_case().rhs))),
+              ->Compare(*MakeExternalString(value_factory, test_case().rhs))),
       test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeExternalString(value_factory, test_case().lhs)
-              ->Compare(MakeStringString(value_factory, test_case().rhs))),
+              ->Compare(*MakeStringString(value_factory, test_case().rhs))),
       test_case().compare);
   EXPECT_EQ(NormalizeCompareResult(
                 MakeExternalString(value_factory, test_case().lhs)
-                    ->Compare(MakeCordString(value_factory, test_case().rhs))),
+                    ->Compare(*MakeCordString(value_factory, test_case().rhs))),
             test_case().compare);
   EXPECT_EQ(
       NormalizeCompareResult(
           MakeExternalString(value_factory, test_case().lhs)
-              ->Compare(MakeExternalString(value_factory, test_case().rhs))),
+              ->Compare(*MakeExternalString(value_factory, test_case().rhs))),
       test_case().compare);
 }
 
@@ -2005,7 +1978,6 @@ TEST_P(ValueTest, Enum) {
       auto one_value,
       EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
   EXPECT_TRUE(one_value.Is<EnumValue>());
-  EXPECT_TRUE(one_value.Is<TestEnumValue>());
   EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(EnumValue::New(enum_type, value_factory,
@@ -2019,7 +1991,6 @@ TEST_P(ValueTest, Enum) {
       auto two_value,
       EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE2")));
   EXPECT_TRUE(two_value.Is<EnumValue>());
-  EXPECT_TRUE(two_value.Is<TestEnumValue>());
   EXPECT_FALSE(two_value.Is<NullValue>());
   EXPECT_EQ(two_value, two_value);
   EXPECT_EQ(two_value->kind(), Kind::kEnum);

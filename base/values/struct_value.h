@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/macros.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -35,17 +34,27 @@ namespace cel {
 class ValueFactory;
 
 // StructValue represents an instance of cel::StructType.
-class StructValue : public Value {
+class StructValue : public Value, public base_internal::HeapData {
  public:
+  static constexpr Kind kKind = Kind::kStruct;
+
+  static bool Is(const Value& value) { return value.kind() == kKind; }
+
   using FieldId = StructType::FieldId;
 
   static absl::StatusOr<Persistent<StructValue>> New(
       const Persistent<const StructType>& struct_type,
       ValueFactory& value_factory);
 
-  Persistent<const Type> type() const final { return type_; }
+  constexpr Kind kind() const { return kKind; }
 
-  Kind kind() const final { return Kind::kStruct; }
+  constexpr const Persistent<const StructType>& type() const { return type_; }
+
+  virtual std::string DebugString() const = 0;
+
+  virtual void HashValue(absl::HashState state) const = 0;
+
+  virtual bool Equals(const Value& other) const = 0;
 
   absl::Status SetField(FieldId field, const Persistent<const Value>& value);
 
@@ -55,9 +64,7 @@ class StructValue : public Value {
   absl::StatusOr<bool> HasField(FieldId field) const;
 
  protected:
-  explicit StructValue(const Persistent<const StructType>& type) : type_(type) {
-    ABSL_ASSERT(type_);
-  }
+  explicit StructValue(Persistent<const StructType> type);
 
   virtual absl::Status SetFieldByName(absl::string_view name,
                                       const Persistent<const Value>& value) = 0;
@@ -85,27 +92,21 @@ class StructValue : public Value {
   friend struct HasFieldVisitor;
   friend internal::TypeInfo base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  friend class base_internal::PersistentValueHandle;
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kStruct; }
 
   StructValue(const StructValue&) = delete;
   StructValue(StructValue&&) = delete;
 
-  bool Equals(const Value& other) const override = 0;
-  void HashValue(absl::HashState state) const override = 0;
-
-  std::pair<size_t, size_t> SizeAndAlignment() const override = 0;
-
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  Persistent<const StructType> type_;
+  const Persistent<const StructType> type_;
 };
+
+CEL_INTERNAL_VALUE_DECL(StructValue);
 
 // CEL_DECLARE_STRUCT_VALUE declares `struct_value` as an struct value. It must
 // be part of the class definition of `struct_value`.

@@ -17,35 +17,15 @@
 #include <string>
 #include <utility>
 
-#include "base/types/type_type.h"
-#include "internal/casts.h"
-
 namespace cel {
 
-namespace {
-
-using base_internal::PersistentHandleFactory;
-
-}
-
-Persistent<const Type> TypeValue::type() const {
-  return PersistentHandleFactory<const Type>::MakeUnmanaged<const TypeType>(
-      TypeType::Get());
-}
+CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
 std::string TypeValue::DebugString() const { return value()->DebugString(); }
 
-void TypeValue::CopyTo(Value& address) const {
-  CEL_INTERNAL_VALUE_COPY_TO(TypeValue, *this, address);
-}
-
-void TypeValue::MoveTo(Value& address) {
-  CEL_INTERNAL_VALUE_MOVE_TO(TypeValue, *this, address);
-}
-
 bool TypeValue::Equals(const Value& other) const {
   return kind() == other.kind() &&
-         value() == internal::down_cast<const TypeValue&>(other).value();
+         value() == static_cast<const TypeValue&>(other).value();
 }
 
 void TypeValue::HashValue(absl::HashState state) const {

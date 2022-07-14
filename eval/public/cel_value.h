@@ -578,7 +578,7 @@ class CelMap {
 
   // Return list of keys. CelList is owned by Arena, so no
   // ownership is passed.
-  virtual const CelList* ListKeys() const = 0;
+  virtual absl::StatusOr<const CelList*> ListKeys() const = 0;
 
   virtual ~CelMap() {}
 };

@@ -14,15 +14,28 @@
 
 #include "base/types/int_type.h"
 
-#include "internal/no_destructor.h"
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(IntType);
 
-const IntType& IntType::Get() {
-  static const internal::NoDestructor<IntType> instance;
-  return *instance;
+namespace {
+
+ABSL_CONST_INIT absl::once_flag instance_once;
+alignas(Persistent<const IntType>) char instance_storage[sizeof(
+    Persistent<const IntType>)];
+
+}  // namespace
+
+const Persistent<const IntType>& IntType::Get() {
+  absl::call_once(instance_once, []() {
+    base_internal::PersistentHandleFactory<const IntType>::MakeAt<IntType>(
+        &instance_storage[0]);
+  });
+  return *reinterpret_cast<const Persistent<const IntType>*>(
+      &instance_storage[0]);
 }
 
 }  // namespace cel

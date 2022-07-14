@@ -17,57 +17,44 @@
 
 #include <string>
 
-#include "absl/hash/hash.h"
 #include "absl/time/time.h"
-#include "base/kind.h"
-#include "base/type.h"
+#include "base/types/timestamp_type.h"
 #include "base/value.h"
 
 namespace cel {
 
-class ValueFactory;
+class TimestampValue final
+    : public base_internal::SimpleValue<TimestampType, absl::Time> {
+ private:
+  using Base = base_internal::SimpleValue<TimestampType, absl::Time>;
 
-class TimestampValue final : public Value,
-                             public base_internal::ResourceInlined {
  public:
+  using Base::kKind;
+
+  using Base::Is;
+
   static Persistent<const TimestampValue> UnixEpoch(
       ValueFactory& value_factory);
 
-  Persistent<const Type> type() const override;
+  using Base::kind;
 
-  Kind kind() const override { return Kind::kTimestamp; }
+  using Base::type;
 
-  std::string DebugString() const override;
+  std::string DebugString() const;
 
-  constexpr absl::Time value() const { return value_; }
+  using Base::HashValue;
+
+  using Base::Equals;
+
+  using Base::value;
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  using Base::Base;
 
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) {
-    return value.kind() == Kind::kTimestamp;
-  }
-
-  // Called by `base_internal::ValueHandle` to construct value inline.
-  explicit TimestampValue(absl::Time value) : value_(value) {}
-
-  TimestampValue() = delete;
-
-  TimestampValue(const TimestampValue&) = default;
-  TimestampValue(TimestampValue&&) = default;
-
-  // See comments for respective member functions on `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
-
-  absl::Time value_;
+  CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(TimestampValue);
 };
+
+CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(TimestampValue);
 
 }  // namespace cel
 

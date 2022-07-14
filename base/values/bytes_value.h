@@ -15,41 +15,47 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_BYTES_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_BYTES_VALUE_H_
 
+#include <atomic>
 #include <cstddef>
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
+#include "base/types/bytes_type.h"
 #include "base/value.h"
 
 namespace cel {
 
+class MemoryManager;
 class ValueFactory;
 
 class BytesValue : public Value {
- protected:
-  using Rep = base_internal::BytesValueRep;
-
  public:
+  static constexpr Kind kKind = BytesType::kKind;
+
   static Persistent<const BytesValue> Empty(ValueFactory& value_factory);
 
   // Concat concatenates the contents of two ByteValue, returning a new
   // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
   // the input ByteValue.
   static absl::StatusOr<Persistent<const BytesValue>> Concat(
-      ValueFactory& value_factory, const Persistent<const BytesValue>& lhs,
-      const Persistent<const BytesValue>& rhs);
+      ValueFactory& value_factory, const BytesValue& lhs,
+      const BytesValue& rhs);
 
-  Persistent<const Type> type() const final;
+  static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  Kind kind() const final { return Kind::kBytes; }
+  constexpr Kind kind() const { return kKind; }
 
-  std::string DebugString() const final;
+  const Persistent<const BytesType>& type() const { return BytesType::Get(); }
+
+  std::string DebugString() const;
 
   size_t size() const;
 
@@ -57,74 +63,64 @@ class BytesValue : public Value {
 
   bool Equals(absl::string_view bytes) const;
   bool Equals(const absl::Cord& bytes) const;
-  bool Equals(const Persistent<const BytesValue>& bytes) const;
+  bool Equals(const BytesValue& bytes) const;
 
   int Compare(absl::string_view bytes) const;
   int Compare(const absl::Cord& bytes) const;
-  int Compare(const Persistent<const BytesValue>& bytes) const;
+  int Compare(const BytesValue& bytes) const;
 
   std::string ToString() const;
 
-  absl::Cord ToCord() const {
-    // Without the handle we cannot know if this is reference counted.
-    return ToCord(/*reference_counted=*/false);
-  }
+  absl::Cord ToCord() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Value& other) const;
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  friend class base_internal::PersistentValueHandle;
   friend class base_internal::InlinedCordBytesValue;
   friend class base_internal::InlinedStringViewBytesValue;
   friend class base_internal::StringBytesValue;
-  friend class base_internal::ExternalDataBytesValue;
   friend base_internal::BytesValueRep interop_internal::GetBytesValueRep(
       const Persistent<const BytesValue>& value);
-
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kBytes; }
 
   BytesValue() = default;
   BytesValue(const BytesValue&) = default;
   BytesValue(BytesValue&&) = default;
-
-  // Get the contents of this BytesValue as absl::Cord. When reference_counted
-  // is true, the implementation can potentially return an absl::Cord that wraps
-  // the contents instead of copying.
-  virtual absl::Cord ToCord(bool reference_counted) const = 0;
+  BytesValue& operator=(const BytesValue&) = default;
+  BytesValue& operator=(BytesValue&&) = default;
 
   // Get the contents of this BytesValue as either absl::string_view or const
   // absl::Cord&.
-  virtual Rep rep() const = 0;
-
-  // See comments for respective member functions on `Value`.
-  bool Equals(const Value& other) const final;
-  void HashValue(absl::HashState state) const final;
+  base_internal::BytesValueRep rep() const;
 };
+
+CEL_INTERNAL_VALUE_DECL(BytesValue);
 
 namespace base_internal {
 
 // Implementation of BytesValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
-class InlinedCordBytesValue final : public BytesValue, public ResourceInlined {
+class InlinedCordBytesValue final : public BytesValue,
+                                    public base_internal::InlineData {
  private:
-  template <HandleType H>
-  friend class ValueHandle;
+  friend class BytesValue;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
 
-  explicit InlinedCordBytesValue(absl::Cord value) : value_(std::move(value)) {}
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  InlinedCordBytesValue() = delete;
+  explicit InlinedCordBytesValue(absl::Cord value)
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   InlinedCordBytesValue(const InlinedCordBytesValue&) = default;
   InlinedCordBytesValue(InlinedCordBytesValue&&) = default;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
+  InlinedCordBytesValue& operator=(const InlinedCordBytesValue&) = default;
+  InlinedCordBytesValue& operator=(InlinedCordBytesValue&&) = default;
 
   absl::Cord value_;
 };
@@ -134,68 +130,41 @@ class InlinedCordBytesValue final : public BytesValue, public ResourceInlined {
 // Typically this should only be used for empty strings or data that is static
 // and lives for the duration of a program.
 class InlinedStringViewBytesValue final : public BytesValue,
-                                          public ResourceInlined {
+                                          public base_internal::InlineData {
  private:
-  template <HandleType H>
-  friend class ValueHandle;
+  friend class BytesValue;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
   explicit InlinedStringViewBytesValue(absl::string_view value)
-      : value_(value) {}
-
-  InlinedStringViewBytesValue() = delete;
+      : base_internal::InlineData(kMetadata), value_(value) {}
 
   InlinedStringViewBytesValue(const InlinedStringViewBytesValue&) = default;
   InlinedStringViewBytesValue(InlinedStringViewBytesValue&&) = default;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
+  InlinedStringViewBytesValue& operator=(const InlinedStringViewBytesValue&) =
+      default;
+  InlinedStringViewBytesValue& operator=(InlinedStringViewBytesValue&&) =
+      default;
 
   absl::string_view value_;
 };
 
 // Implementation of BytesValue that uses std::string and is allocated on the
 // heap, potentially reference counted.
-class StringBytesValue final : public BytesValue {
+class StringBytesValue final : public BytesValue,
+                               public base_internal::HeapData {
  private:
   friend class cel::MemoryManager;
+  friend class BytesValue;
 
-  explicit StringBytesValue(std::string value) : value_(std::move(value)) {}
-
-  StringBytesValue() = delete;
-  StringBytesValue(const StringBytesValue&) = delete;
-  StringBytesValue(StringBytesValue&&) = delete;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
+  explicit StringBytesValue(std::string value);
 
   std::string value_;
-};
-
-// Implementation of BytesValue that wraps a contiguous array of bytes and calls
-// the releaser when it is no longer needed. It is stored on the heap and
-// potentially reference counted.
-class ExternalDataBytesValue final : public BytesValue {
- private:
-  friend class cel::MemoryManager;
-
-  explicit ExternalDataBytesValue(ExternalData value)
-      : value_(std::move(value)) {}
-
-  ExternalDataBytesValue() = delete;
-  ExternalDataBytesValue(const ExternalDataBytesValue&) = delete;
-  ExternalDataBytesValue(ExternalDataBytesValue&&) = delete;
-
-  // See comments for respective member functions on `ByteValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  ExternalData value_;
 };
 
 }  // namespace base_internal

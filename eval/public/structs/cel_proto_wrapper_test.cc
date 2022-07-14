@@ -282,7 +282,7 @@ TEST_F(CelProtoWrapperTest, UnwrapValueStruct) {
   ASSERT_OK(missing_field_presence);
   EXPECT_FALSE(*missing_field_presence);
 
-  const CelList* key_list = cel_map->ListKeys();
+  const CelList* key_list = cel_map->ListKeys().value();
   ASSERT_EQ(key_list->size(), kFields.size());
 
   std::vector<std::string> result_keys;

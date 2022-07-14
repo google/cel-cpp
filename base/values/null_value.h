@@ -17,52 +17,37 @@
 
 #include <string>
 
-#include "absl/hash/hash.h"
-#include "base/kind.h"
-#include "base/type.h"
+#include "base/types/null_type.h"
 #include "base/value.h"
 
 namespace cel {
 
-class ValueFactory;
+class NullValue final : public base_internal::SimpleValue<NullType, void> {
+ private:
+  using Base = base_internal::SimpleValue<NullType, void>;
 
-class NullValue final : public Value, public base_internal::ResourceInlined {
  public:
+  using Base::kKind;
+
+  using Base::Is;
+
   static Persistent<const NullValue> Get(ValueFactory& value_factory);
 
-  Persistent<const Type> type() const override;
+  using Base::kind;
 
-  Kind kind() const override { return Kind::kNullType; }
+  using Base::type;
 
-  std::string DebugString() const override;
+  std::string DebugString() const;
 
-  // Note GCC does not consider a friend member as a member of a friend.
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const NullValue& Get();
+  using Base::HashValue;
 
-  bool Equals(const Value& other) const override;
-
-  void HashValue(absl::HashState state) const override;
+  using Base::Equals;
 
  private:
-  friend class ValueFactory;
-  template <typename T>
-  friend class internal::NoDestructor;
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
-
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kNullType; }
-
-  NullValue() = default;
-  NullValue(const NullValue&) = default;
-  NullValue(NullValue&&) = default;
-
-  // See comments for respective member functions on `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
+  CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(NullValue);
 };
+
+CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(NullValue);
 
 }  // namespace cel
 

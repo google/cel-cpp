@@ -68,7 +68,7 @@ class BuiltinsTest : public ::testing::Test {
     Expr expr;
     SourceInfo source_info;
     auto call = expr.mutable_call_expr();
-    call->set_function(operation.data());
+    call->set_function(std::string(operation));
 
     if (target.has_value()) {
       std::string param_name = "target";
@@ -1088,7 +1088,9 @@ class FakeErrorMap : public CelMap {
     return absl::nullopt;
   }
 
-  const CelList* ListKeys() const override { return nullptr; }
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return absl::UnimplementedError("CelMap::ListKeys is not implemented");
+  }
 };
 
 template <typename T>
@@ -1120,7 +1122,9 @@ class FakeMap : public CelMap {
     return it->second;
   }
 
-  const CelList* ListKeys() const override { return keys_.get(); }
+  absl::StatusOr<const CelList*> ListKeys() const override {
+    return keys_.get();
+  }
 
  private:
   std::map<T, CelValue> data_;

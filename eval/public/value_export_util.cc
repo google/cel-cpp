@@ -121,7 +121,7 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
     }
     case CelValue::Type::kMap: {
       const CelMap* cel_map = in_value.MapOrDie();
-      auto keys_list = cel_map->ListKeys();
+      CEL_ASSIGN_OR_RETURN(auto keys_list, cel_map->ListKeys());
       auto out_values = out_value->mutable_struct_value()->mutable_fields();
       for (int i = 0; i < keys_list->size(); i++) {
         std::string key;

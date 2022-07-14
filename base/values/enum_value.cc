@@ -17,13 +17,29 @@
 #include <string>
 #include <utility>
 
-#include "internal/casts.h"
-
 namespace cel {
+
+CEL_INTERNAL_VALUE_IMPL(EnumValue);
+
+absl::string_view EnumValue::name() const {
+  auto constant = type()->FindConstantByNumber(number());
+  if (!constant.ok()) {
+    return absl::string_view();
+  }
+  return constant->name;
+}
+
+std::string EnumValue::DebugString() const {
+  auto value = name();
+  if (value.empty()) {
+    return absl::StrCat(type()->name(), "(", number(), ")");
+  }
+  return absl::StrCat(type()->name(), ".", value);
+}
 
 bool EnumValue::Equals(const Value& other) const {
   return kind() == other.kind() && type() == other.type() &&
-         number() == internal::down_cast<const EnumValue&>(other).number();
+         number() == static_cast<const EnumValue&>(other).number();
 }
 
 void EnumValue::HashValue(absl::HashState state) const {

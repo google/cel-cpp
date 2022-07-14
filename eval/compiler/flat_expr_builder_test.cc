@@ -1895,7 +1895,7 @@ TEST(FlatExprBuilderTest, CustomDescriptorPoolForSelect) {
 std::pair<google::protobuf::Message*, const google::protobuf::Reflection*> CreateTestMessage(
     const google::protobuf::DescriptorPool& descriptor_pool,
     google::protobuf::MessageFactory& message_factory, absl::string_view name) {
-  const google::protobuf::Descriptor* desc = descriptor_pool.FindMessageTypeByName(name.data());
+  const google::protobuf::Descriptor* desc = descriptor_pool.FindMessageTypeByName(std::string(name));
   const google::protobuf::Message* message_prototype = message_factory.GetPrototype(desc);
   google::protobuf::Message* message = message_prototype->New();
   const google::protobuf::Reflection* refl = message->GetReflection();

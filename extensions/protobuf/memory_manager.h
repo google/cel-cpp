@@ -58,9 +58,7 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
   }
 
  private:
-  AllocationResult<void*> Allocate(size_t size, size_t align) override;
-
-  void Deallocate(void* pointer, size_t size, size_t align) override;
+  void* Allocate(size_t size, size_t align) override;
 
   void OwnDestructor(void* pointer, void (*destruct)(void*)) override;
 

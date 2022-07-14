@@ -130,7 +130,7 @@ class ObjectStringIndexedMapImpl : public CelMap {
     return absl::nullopt;
   }
 
-  const CelList* ListKeys() const override { return &keys_; }
+  absl::StatusOr<const CelList*> ListKeys() const override { return &keys_; }
 
  private:
   struct KeyList : public CelList {

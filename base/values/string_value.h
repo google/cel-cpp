@@ -15,38 +15,47 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 
+#include <atomic>
 #include <cstddef>
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
+#include "base/types/string_type.h"
 #include "base/value.h"
 
 namespace cel {
 
+class MemoryManager;
 class ValueFactory;
 
 class StringValue : public Value {
- protected:
-  using Rep = base_internal::StringValueRep;
-
  public:
+  static constexpr Kind kKind = StringType::kKind;
+
   static Persistent<const StringValue> Empty(ValueFactory& value_factory);
 
+  // Concat concatenates the contents of two ByteValue, returning a new
+  // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
+  // the input ByteValue.
   static absl::StatusOr<Persistent<const StringValue>> Concat(
-      ValueFactory& value_factory, const Persistent<const StringValue>& lhs,
-      const Persistent<const StringValue>& rhs);
+      ValueFactory& value_factory, const StringValue& lhs,
+      const StringValue& rhs);
 
-  Persistent<const Type> type() const final;
+  static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  Kind kind() const final { return Kind::kString; }
+  constexpr Kind kind() const { return kKind; }
 
-  std::string DebugString() const final;
+  const Persistent<const StringType>& type() const { return StringType::Get(); }
+
+  std::string DebugString() const;
 
   size_t size() const;
 
@@ -54,88 +63,65 @@ class StringValue : public Value {
 
   bool Equals(absl::string_view string) const;
   bool Equals(const absl::Cord& string) const;
-  bool Equals(const Persistent<const StringValue>& string) const;
+  bool Equals(const StringValue& string) const;
 
   int Compare(absl::string_view string) const;
   int Compare(const absl::Cord& string) const;
-  int Compare(const Persistent<const StringValue>& string) const;
+  int Compare(const StringValue& string) const;
 
   std::string ToString() const;
 
-  absl::Cord ToCord() const {
-    // Without the handle we cannot know if this is reference counted.
-    return ToCord(/*reference_counted=*/false);
-  }
+  absl::Cord ToCord() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Value& other) const;
 
  private:
-  template <base_internal::HandleType H>
-  friend class base_internal::ValueHandle;
-  friend class base_internal::ValueHandleBase;
+  friend class base_internal::PersistentValueHandle;
   friend class base_internal::InlinedCordStringValue;
   friend class base_internal::InlinedStringViewStringValue;
   friend class base_internal::StringStringValue;
-  friend class base_internal::ExternalDataStringValue;
   friend base_internal::StringValueRep interop_internal::GetStringValueRep(
       const Persistent<const StringValue>& value);
 
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-  static bool Is(const Value& value) { return value.kind() == Kind::kString; }
-
-  explicit StringValue(size_t size) : size_(size) {}
-
   StringValue() = default;
-
-  StringValue(const StringValue& other)
-      : StringValue(other.size_.load(std::memory_order_relaxed)) {}
-
-  StringValue(StringValue&& other)
-      : StringValue(other.size_.exchange(0, std::memory_order_relaxed)) {}
-
-  // Get the contents of this BytesValue as absl::Cord. When reference_counted
-  // is true, the implementation can potentially return an absl::Cord that wraps
-  // the contents instead of copying.
-  virtual absl::Cord ToCord(bool reference_counted) const = 0;
+  StringValue(const StringValue&) = default;
+  StringValue(StringValue&&) = default;
+  StringValue& operator=(const StringValue&) = default;
+  StringValue& operator=(StringValue&&) = default;
 
   // Get the contents of this StringValue as either absl::string_view or const
   // absl::Cord&.
-  virtual Rep rep() const = 0;
-
-  // See comments for respective member functions on `Value`.
-  bool Equals(const Value& other) const final;
-  void HashValue(absl::HashState state) const final;
-
-  // Lazily cached code point count.
-  mutable std::atomic<size_t> size_ = 0;
+  base_internal::StringValueRep rep() const;
 };
+
+CEL_INTERNAL_VALUE_DECL(StringValue);
 
 namespace base_internal {
 
 // Implementation of StringValue that is stored inlined within a handle. Since
-// absl::Cord is reference counted itself, this is more efficient then storing
+// absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
 class InlinedCordStringValue final : public StringValue,
-                                     public ResourceInlined {
+                                     public base_internal::InlineData {
  private:
-  template <HandleType H>
-  friend class ValueHandle;
+  friend class StringValue;
+  friend class ValueFactory;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
   explicit InlinedCordStringValue(absl::Cord value)
-      : InlinedCordStringValue(0, std::move(value)) {}
-
-  InlinedCordStringValue(size_t size, absl::Cord value)
-      : StringValue(size), value_(std::move(value)) {}
-
-  InlinedCordStringValue() = delete;
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   InlinedCordStringValue(const InlinedCordStringValue&) = default;
   InlinedCordStringValue(InlinedCordStringValue&&) = default;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
+  InlinedCordStringValue& operator=(const InlinedCordStringValue&) = default;
+  InlinedCordStringValue& operator=(InlinedCordStringValue&&) = default;
 
   absl::Cord value_;
 };
@@ -145,78 +131,43 @@ class InlinedCordStringValue final : public StringValue,
 // Typically this should only be used for empty strings or data that is static
 // and lives for the duration of a program.
 class InlinedStringViewStringValue final : public StringValue,
-                                           public ResourceInlined {
+                                           public base_internal::InlineData {
  private:
-  template <HandleType H>
-  friend class ValueHandle;
+  friend class StringValue;
+  friend class ValueFactory;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
   explicit InlinedStringViewStringValue(absl::string_view value)
-      : InlinedStringViewStringValue(0, value) {}
-
-  InlinedStringViewStringValue(size_t size, absl::string_view value)
-      : StringValue(size), value_(value) {}
-
-  InlinedStringViewStringValue() = delete;
+      : base_internal::InlineData(kMetadata), value_(value) {}
 
   InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
   InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  void CopyTo(Value& address) const override;
-  void MoveTo(Value& address) override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
+  InlinedStringViewStringValue& operator=(const InlinedStringViewStringValue&) =
+      default;
+  InlinedStringViewStringValue& operator=(InlinedStringViewStringValue&&) =
+      default;
 
   absl::string_view value_;
 };
 
 // Implementation of StringValue that uses std::string and is allocated on the
 // heap, potentially reference counted.
-class StringStringValue final : public StringValue {
+class StringStringValue final : public StringValue,
+                                public base_internal::HeapData {
  private:
   friend class cel::MemoryManager;
+  friend class StringValue;
+  friend class ValueFactory;
 
-  explicit StringStringValue(std::string value)
-      : StringStringValue(0, std::move(value)) {}
-
-  StringStringValue(size_t size, std::string value)
-      : StringValue(size), value_(std::move(value)) {}
-
-  StringStringValue() = delete;
-  StringStringValue(const StringStringValue&) = delete;
-  StringStringValue(StringStringValue&&) = delete;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
+  explicit StringStringValue(std::string value);
 
   std::string value_;
-};
-
-// Implementation of StringValue that wraps a contiguous array of bytes and
-// calls the releaser when it is no longer needed. It is stored on the heap and
-// potentially reference counted.
-class ExternalDataStringValue final : public StringValue {
- private:
-  friend class cel::MemoryManager;
-
-  explicit ExternalDataStringValue(ExternalData value)
-      : ExternalDataStringValue(0, std::move(value)) {}
-
-  ExternalDataStringValue(size_t size, ExternalData value)
-      : StringValue(size), value_(std::move(value)) {}
-
-  ExternalDataStringValue() = delete;
-  ExternalDataStringValue(const ExternalDataStringValue&) = delete;
-  ExternalDataStringValue(ExternalDataStringValue&&) = delete;
-
-  // See comments for respective member functions on `StringValue` and `Value`.
-  std::pair<size_t, size_t> SizeAndAlignment() const override;
-  absl::Cord ToCord(bool reference_counted) const override;
-  Rep rep() const override;
-
-  ExternalData value_;
 };
 
 }  // namespace base_internal

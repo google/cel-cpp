@@ -36,25 +36,26 @@ namespace cel::ast::internal {
 absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& constant) {
   switch (constant.constant_kind_case()) {
     case google::api::expr::v1alpha1::Constant::kNullValue:
-      return NullValue::kNullValue;
+      return Constant(NullValue::kNullValue);
     case google::api::expr::v1alpha1::Constant::kBoolValue:
-      return constant.bool_value();
+      return Constant(constant.bool_value());
     case google::api::expr::v1alpha1::Constant::kInt64Value:
-      return constant.int64_value();
+      return Constant(constant.int64_value());
     case google::api::expr::v1alpha1::Constant::kUint64Value:
-      return constant.uint64_value();
+      return Constant(constant.uint64_value());
     case google::api::expr::v1alpha1::Constant::kDoubleValue:
-      return constant.double_value();
+      return Constant(constant.double_value());
     case google::api::expr::v1alpha1::Constant::kStringValue:
-      return constant.string_value();
+      return Constant(constant.string_value());
     case google::api::expr::v1alpha1::Constant::kBytesValue:
-      return constant.bytes_value();
+      return Constant(constant.bytes_value());
     case google::api::expr::v1alpha1::Constant::kDurationValue:
-      return absl::Seconds(constant.duration_value().seconds()) +
-             absl::Nanoseconds(constant.duration_value().nanos());
+      return Constant(absl::Seconds(constant.duration_value().seconds()) +
+                      absl::Nanoseconds(constant.duration_value().nanos()));
     case google::api::expr::v1alpha1::Constant::kTimestampValue:
-      return absl::FromUnixSeconds(constant.timestamp_value().seconds()) +
-             absl::Nanoseconds(constant.timestamp_value().nanos());
+      return Constant(
+          absl::FromUnixSeconds(constant.timestamp_value().seconds()) +
+          absl::Nanoseconds(constant.timestamp_value().nanos()));
     default:
       return absl::InvalidArgumentError(
           "Illegal type supplied for google::api::expr::v1alpha1::Constant.");

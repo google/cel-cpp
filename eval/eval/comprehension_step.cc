@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -232,8 +233,11 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
   }
 
   const CelValue& map = frame->value_stack().Peek();
-  frame->value_stack().PopAndPush(
-      CelValue::CreateList(map.MapOrDie()->ListKeys()));
+  auto list_keys = map.MapOrDie()->ListKeys();
+  if (!list_keys.ok()) {
+    return std::move(list_keys).status();
+  }
+  frame->value_stack().PopAndPush(CelValue::CreateList(*list_keys));
   return absl::OkStatus();
 }
 

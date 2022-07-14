@@ -43,7 +43,7 @@ class FieldBackedMapImpl : public CelMap {
   // Presence test function.
   absl::StatusOr<bool> Has(const CelValue& key) const override;
 
-  const CelList* ListKeys() const override;
+  absl::StatusOr<const CelList*> ListKeys() const override;
 
  protected:
   // These methods are exposed as protected methods for testing purposes since

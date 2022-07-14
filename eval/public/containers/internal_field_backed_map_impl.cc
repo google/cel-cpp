@@ -156,7 +156,9 @@ int FieldBackedMapImpl::size() const {
   return reflection_->FieldSize(*message_, descriptor_);
 }
 
-const CelList* FieldBackedMapImpl::ListKeys() const { return key_list_.get(); }
+absl::StatusOr<const CelList*> FieldBackedMapImpl::ListKeys() const {
+  return key_list_.get();
+}
 
 absl::StatusOr<bool> FieldBackedMapImpl::Has(const CelValue& key) const {
 #ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND

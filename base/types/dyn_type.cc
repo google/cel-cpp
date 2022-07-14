@@ -14,15 +14,28 @@
 
 #include "base/types/dyn_type.h"
 
-#include "internal/no_destructor.h"
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(DynType);
 
-const DynType& DynType::Get() {
-  static const internal::NoDestructor<DynType> instance;
-  return *instance;
+namespace {
+
+ABSL_CONST_INIT absl::once_flag instance_once;
+alignas(Persistent<const DynType>) char instance_storage[sizeof(
+    Persistent<const DynType>)];
+
+}  // namespace
+
+const Persistent<const DynType>& DynType::Get() {
+  absl::call_once(instance_once, []() {
+    base_internal::PersistentHandleFactory<const DynType>::MakeAt<DynType>(
+        &instance_storage[0]);
+  });
+  return *reinterpret_cast<const Persistent<const DynType>*>(
+      &instance_storage[0]);
 }
 
 }  // namespace cel
