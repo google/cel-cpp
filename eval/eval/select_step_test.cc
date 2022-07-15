@@ -77,7 +77,7 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
   Expr dummy_expr;
 
   auto select = dummy_expr.mutable_select_expr();
-  select->set_field(std::string(field));
+  select->set_field(field.data(), field.size());
   select->set_test_only(test);
   Expr* expr0 = select->mutable_operand();
 

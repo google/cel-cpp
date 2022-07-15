@@ -24,8 +24,8 @@ AttributeTrail AttributeTrail::Step(CelAttributeQualifier qualifier,
 
   std::vector<CelAttributeQualifier> qualifiers = attribute_->qualifier_path();
   qualifiers.push_back(qualifier);
-  auto attribute =
-      manager.New<CelAttribute>(attribute_->variable(), std::move(qualifiers));
+  auto attribute = manager.New<CelAttribute>(
+      std::string(attribute_->variable_name()), std::move(qualifiers));
   return AttributeTrail(attribute.release());
 }
 

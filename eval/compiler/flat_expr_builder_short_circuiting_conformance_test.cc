@@ -252,8 +252,7 @@ TEST_P(ShortCircuitingTest, UnknownAnd) {
   const UnknownAttributeSet& attrs =
       result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs.attributes(), testing::SizeIs(1));
-  EXPECT_THAT(attrs.attributes()[0]->variable().ident_expr().name(),
-              testing::Eq("var1"));
+  EXPECT_THAT(attrs.attributes()[0]->variable_name(), testing::Eq("var1"));
 }
 
 TEST_P(ShortCircuitingTest, UnknownOr) {
@@ -285,8 +284,7 @@ TEST_P(ShortCircuitingTest, UnknownOr) {
   const UnknownAttributeSet& attrs =
       result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs.attributes(), testing::SizeIs(1));
-  EXPECT_THAT(attrs.attributes()[0]->variable().ident_expr().name(),
-              testing::Eq("var1"));
+  EXPECT_THAT(attrs.attributes()[0]->variable_name(), testing::Eq("var1"));
 }
 
 TEST_P(ShortCircuitingTest, BasicTernary) {
@@ -369,7 +367,7 @@ TEST_P(ShortCircuitingTest, TernaryUnknownCondHandling) {
   const auto& attrs =
       result.UnknownSetOrDie()->unknown_attributes().attributes();
   ASSERT_THAT(attrs, SizeIs(1));
-  EXPECT_THAT(attrs[0]->variable().ident_expr().name(), Eq("cond"));
+  EXPECT_THAT(attrs[0]->variable_name(), Eq("cond"));
 
   // Unknown branches are discarded if condition is unknown
   activation.set_unknown_attribute_patterns({CelAttributePattern("cond", {}),
@@ -382,7 +380,7 @@ TEST_P(ShortCircuitingTest, TernaryUnknownCondHandling) {
   const auto& attrs2 =
       result.UnknownSetOrDie()->unknown_attributes().attributes();
   ASSERT_THAT(attrs2, SizeIs(1));
-  EXPECT_THAT(attrs2[0]->variable().ident_expr().name(), Eq("cond"));
+  EXPECT_THAT(attrs2[0]->variable_name(), Eq("cond"));
 }
 
 TEST_P(ShortCircuitingTest, TernaryUnknownArgsHandling) {
@@ -418,7 +416,7 @@ TEST_P(ShortCircuitingTest, TernaryUnknownArgsHandling) {
   const auto& attrs3 =
       result.UnknownSetOrDie()->unknown_attributes().attributes();
   ASSERT_THAT(attrs3, SizeIs(1));
-  EXPECT_EQ(attrs3[0]->variable().ident_expr().name(), "arg2");
+  EXPECT_EQ(attrs3[0]->variable_name(), "arg2");
 }
 
 TEST_P(ShortCircuitingTest, TernaryUnknownAndErrorHandling) {
@@ -456,7 +454,7 @@ TEST_P(ShortCircuitingTest, TernaryUnknownAndErrorHandling) {
   const auto& attrs =
       result.UnknownSetOrDie()->unknown_attributes().attributes();
   ASSERT_THAT(attrs, SizeIs(1));
-  EXPECT_EQ(attrs[0]->variable().ident_expr().name(), "cond");
+  EXPECT_EQ(attrs[0]->variable_name(), "cond");
 }
 
 const char* TestName(testing::TestParamInfo<bool> info) {

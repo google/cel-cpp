@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
@@ -151,12 +152,18 @@ class CelAttributeQualifierPattern {
 // CelAttribute represents resolved attribute path.
 class CelAttribute {
  public:
-  CelAttribute(google::api::expr::v1alpha1::Expr variable,
+  CelAttribute(std::string variable_name,
                std::vector<CelAttributeQualifier> qualifier_path)
-      : variable_(std::move(variable)),
+      : variable_name_(std::move(variable_name)),
         qualifier_path_(std::move(qualifier_path)) {}
 
-  const google::api::expr::v1alpha1::Expr& variable() const { return variable_; }
+  CelAttribute(const google::api::expr::v1alpha1::Expr& variable,
+               std::vector<CelAttributeQualifier> qualifier_path)
+      : CelAttribute(variable.ident_expr().name(), std::move(qualifier_path)) {}
+
+  absl::string_view variable_name() const { return variable_name_; }
+
+  bool has_variable_name() const { return !variable_name_.empty(); }
 
   const std::vector<CelAttributeQualifier>& qualifier_path() const {
     return qualifier_path_;
@@ -167,7 +174,7 @@ class CelAttribute {
   const absl::StatusOr<std::string> AsString() const;
 
  private:
-  google::api::expr::v1alpha1::Expr variable_;
+  std::string variable_name_;
   std::vector<CelAttributeQualifier> qualifier_path_;
 };
 
@@ -200,7 +207,7 @@ class CelAttributePattern {
   // Distinguishes between no-match, partial match and full match cases.
   MatchType IsMatch(const CelAttribute& attribute) const {
     MatchType result = MatchType::NONE;
-    if (attribute.variable().ident_expr().name() != variable_) {
+    if (attribute.variable_name() != variable_) {
       return result;
     }
 

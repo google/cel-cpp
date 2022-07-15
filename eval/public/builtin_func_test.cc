@@ -68,7 +68,7 @@ class BuiltinsTest : public ::testing::Test {
     Expr expr;
     SourceInfo source_info;
     auto call = expr.mutable_call_expr();
-    call->set_function(std::string(operation));
+    call->set_function(operation.data(), operation.size());
 
     if (target.has_value()) {
       std::string param_name = "target";
