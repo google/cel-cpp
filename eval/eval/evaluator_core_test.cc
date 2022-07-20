@@ -132,8 +132,8 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   int64_t result_value;
   ASSERT_TRUE(result.GetValue(&result_value));
   EXPECT_EQ(test_value, result_value);
-  ASSERT_TRUE(trail->attribute()->variable().has_ident_expr());
-  ASSERT_EQ(trail->attribute()->variable().ident_expr().name(), "var");
+  ASSERT_TRUE(trail->attribute()->has_variable_name());
+  ASSERT_EQ(trail->attribute()->variable_name(), "var");
 
   // Test that it goes away properly
   ASSERT_OK(frame.ClearIterVar());

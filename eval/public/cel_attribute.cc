@@ -169,11 +169,7 @@ CelAttributePattern CreateCelAttributePattern(
 
 bool CelAttribute::operator==(const CelAttribute& other) const {
   // TODO(issues/41) we only support Ident-rooted attributes at the moment.
-  if (!variable().has_ident_expr() || !other.variable().has_ident_expr()) {
-    return false;
-  }
-
-  if (variable().ident_expr().name() != other.variable().ident_expr().name()) {
+  if (variable_name() != other.variable_name()) {
     return false;
   }
 
@@ -191,12 +187,12 @@ bool CelAttribute::operator==(const CelAttribute& other) const {
 }
 
 const absl::StatusOr<std::string> CelAttribute::AsString() const {
-  if (variable_.ident_expr().name().empty()) {
+  if (variable_name().empty()) {
     return absl::InvalidArgumentError(
         "Only ident rooted attributes are supported.");
   }
 
-  std::string result = variable_.ident_expr().name();
+  std::string result = std::string(variable_name());
 
   for (const auto& qualifier : qualifier_path_) {
     CEL_RETURN_IF_ERROR(

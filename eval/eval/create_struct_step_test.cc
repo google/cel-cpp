@@ -64,7 +64,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   create_struct->set_message_name("google.api.expr.runtime.TestMessage");
 
   auto entry = create_struct->add_entries();
-  entry->set_field_key(std::string(field));
+  entry->set_field_key(field.data(), field.size());
 
   auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
   if (!adapter.has_value() || adapter->mutation_apis() == nullptr) {

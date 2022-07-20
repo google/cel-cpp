@@ -432,6 +432,15 @@ cc_library(
 )
 
 cc_library(
+    name = "source_position_native",
+    srcs = ["source_position_native.cc"],
+    hdrs = ["source_position_native.h"],
+    deps = [
+        "//base:ast",
+    ],
+)
+
+cc_library(
     name = "ast_visitor",
     hdrs = [
         "ast_visitor.h",
@@ -454,6 +463,27 @@ cc_library(
 )
 
 cc_library(
+    name = "ast_visitor_native",
+    hdrs = [
+        "ast_visitor_native.h",
+    ],
+    deps = [
+        ":source_position_native",
+        "//base:ast",
+    ],
+)
+
+cc_library(
+    name = "ast_visitor_native_base",
+    hdrs = [
+        "ast_visitor_native_base.h",
+    ],
+    deps = [
+        ":ast_visitor_native",
+    ],
+)
+
+cc_library(
     name = "ast_traverse",
     srcs = [
         "ast_traverse.cc",
@@ -466,6 +496,22 @@ cc_library(
         ":source_position",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "ast_traverse_native",
+    srcs = [
+        "ast_traverse_native.cc",
+    ],
+    hdrs = [
+        "ast_traverse_native.h",
+    ],
+    deps = [
+        ":ast_visitor_native",
+        ":source_position_native",
+        "//base:ast",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -601,6 +647,18 @@ cc_test(
     deps = [
         ":ast_traverse",
         ":ast_visitor",
+        "//internal:testing",
+    ],
+)
+
+cc_test(
+    name = "ast_traverse_native_test",
+    srcs = [
+        "ast_traverse_native_test.cc",
+    ],
+    deps = [
+        ":ast_traverse_native",
+        ":ast_visitor_native",
         "//internal:testing",
     ],
 )
@@ -795,6 +853,18 @@ cc_test(
         ":source_position",
         "//internal:testing",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "source_position_native_test",
+    size = "small",
+    srcs = [
+        "source_position_native_test.cc",
+    ],
+    deps = [
+        ":source_position_native",
+        "//internal:testing",
     ],
 )
 

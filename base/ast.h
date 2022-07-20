@@ -371,6 +371,15 @@ class CreateStruct {
 
     const Expr& map_key() const;
 
+    Expr& mutable_map_key() {
+      auto* value = absl::get_if<std::unique_ptr<Expr>>(&key_kind_);
+      if (value != nullptr) {
+        if (*value != nullptr) return **value;
+      }
+      key_kind_.emplace<std::unique_ptr<Expr>>(std::make_unique<Expr>());
+      return *absl::get<std::unique_ptr<Expr>>(key_kind_);
+    }
+
     bool has_value() const { return value_ != nullptr; }
 
     const Expr& value() const;
@@ -410,6 +419,8 @@ class CreateStruct {
   const std::vector<Entry>& entries() const { return entries_; }
 
   std::vector<Entry>& mutable_entries() { return entries_; }
+
+  const std::string& message_name() const { return message_name_; }
 
   bool operator==(const CreateStruct& other) const {
     return message_name_ == other.message_name_ && entries_ == other.entries_;
@@ -672,6 +683,15 @@ class Expr {
     return *default_constant;
   }
 
+  Constant& mutable_const_expr() {
+    auto* value = absl::get_if<Constant>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<Constant>();
+    return absl::get<Constant>(expr_kind_);
+  }
+
   const Ident& ident_expr() const {
     auto* value = absl::get_if<Ident>(&expr_kind_);
     if (value != nullptr) {
@@ -679,6 +699,15 @@ class Expr {
     }
     static const Ident* default_ident = new Ident;
     return *default_ident;
+  }
+
+  Ident& mutable_ident_expr() {
+    auto* value = absl::get_if<Ident>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<Ident>();
+    return absl::get<Ident>(expr_kind_);
   }
 
   const Select& select_expr() const {
@@ -690,6 +719,15 @@ class Expr {
     return *default_select;
   }
 
+  Select& mutable_select_expr() {
+    auto* value = absl::get_if<Select>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<Select>();
+    return absl::get<Select>(expr_kind_);
+  }
+
   const Call& call_expr() const {
     auto* value = absl::get_if<Call>(&expr_kind_);
     if (value != nullptr) {
@@ -697,6 +735,15 @@ class Expr {
     }
     static const Call* default_call = new Call;
     return *default_call;
+  }
+
+  Call& mutable_call_expr() {
+    auto* value = absl::get_if<Call>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<Call>();
+    return absl::get<Call>(expr_kind_);
   }
 
   const CreateList& list_expr() const {
@@ -708,6 +755,15 @@ class Expr {
     return *default_create_list;
   }
 
+  CreateList& mutable_list_expr() {
+    auto* value = absl::get_if<CreateList>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<CreateList>();
+    return absl::get<CreateList>(expr_kind_);
+  }
+
   const CreateStruct& struct_expr() const {
     auto* value = absl::get_if<CreateStruct>(&expr_kind_);
     if (value != nullptr) {
@@ -717,6 +773,15 @@ class Expr {
     return *default_create_struct;
   }
 
+  CreateStruct& mutable_struct_expr() {
+    auto* value = absl::get_if<CreateStruct>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<CreateStruct>();
+    return absl::get<CreateStruct>(expr_kind_);
+  }
+
   const Comprehension& comprehension_expr() const {
     auto* value = absl::get_if<Comprehension>(&expr_kind_);
     if (value != nullptr) {
@@ -724,6 +789,15 @@ class Expr {
     }
     static const Comprehension* default_comprehension = new Comprehension;
     return *default_comprehension;
+  }
+
+  Comprehension& mutable_comprehension_expr() {
+    auto* value = absl::get_if<Comprehension>(&expr_kind_);
+    if (value != nullptr) {
+      return *value;
+    }
+    expr_kind_.emplace<Comprehension>();
+    return absl::get<Comprehension>(expr_kind_);
   }
 
   bool operator==(const Expr& other) const {

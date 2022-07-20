@@ -1706,12 +1706,9 @@ TEST(FlatExprBuilderTest, Ternary) {
     ASSERT_TRUE(result.IsUnknownSet());
     const UnknownSet* result_set = result.UnknownSetOrDie();
     EXPECT_THAT(result_set->unknown_attributes().attributes().size(), Eq(1));
-    EXPECT_THAT(result_set->unknown_attributes()
-                    .attributes()[0]
-                    ->variable()
-                    .ident_expr()
-                    .name(),
-                Eq("selector"));
+    EXPECT_THAT(
+        result_set->unknown_attributes().attributes()[0]->variable_name(),
+        Eq("selector"));
   }
 }
 

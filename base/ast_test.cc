@@ -172,6 +172,16 @@ TEST(AstTest, CreateStructEntryMutableValue) {
   ASSERT_EQ(absl::get<Ident>(entry.value().expr_kind()).name(), "var");
 }
 
+TEST(AstTest, CreateStructEntryMutableMapKey) {
+  CreateStruct::Entry entry;
+  entry.mutable_map_key().set_expr_kind(Ident("key"));
+  ASSERT_TRUE(absl::holds_alternative<Ident>(entry.map_key().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(entry.map_key().expr_kind()).name(), "key");
+  entry.mutable_map_key().set_expr_kind(Ident("new_key"));
+  ASSERT_TRUE(absl::holds_alternative<Ident>(entry.map_key().expr_kind()));
+  ASSERT_EQ(absl::get<Ident>(entry.map_key().expr_kind()).name(), "new_key");
+}
+
 TEST(AstTest, ExprConstructionComprehension) {
   Comprehension comprehension;
   comprehension.set_iter_var("iter_var");
@@ -383,6 +393,36 @@ TEST(AstTest, TypeComparatorTest) {
   Type type;
   type.set_type_kind(std::make_unique<Type>(PrimitiveType::kBool));
   EXPECT_FALSE(type.type() == Type());
+}
+
+TEST(AstTest, ExprMutableConstruction) {
+  Expr expr;
+  expr.mutable_const_expr().set_constant_kind(true);
+  ASSERT_TRUE(expr.has_const_expr());
+  EXPECT_TRUE(expr.const_expr().bool_value());
+  expr.mutable_ident_expr().set_name("expr");
+  ASSERT_TRUE(expr.has_ident_expr());
+  EXPECT_FALSE(expr.has_const_expr());
+  EXPECT_EQ(expr.ident_expr().name(), "expr");
+  expr.mutable_select_expr().set_field("field");
+  ASSERT_TRUE(expr.has_select_expr());
+  EXPECT_FALSE(expr.has_ident_expr());
+  EXPECT_EQ(expr.select_expr().field(), "field");
+  expr.mutable_call_expr().set_function("function");
+  ASSERT_TRUE(expr.has_call_expr());
+  EXPECT_FALSE(expr.has_select_expr());
+  EXPECT_EQ(expr.call_expr().function(), "function");
+  expr.mutable_list_expr();
+  EXPECT_TRUE(expr.has_list_expr());
+  EXPECT_FALSE(expr.has_call_expr());
+  expr.mutable_struct_expr().set_message_name("name");
+  ASSERT_TRUE(expr.has_struct_expr());
+  EXPECT_EQ(expr.struct_expr().message_name(), "name");
+  EXPECT_FALSE(expr.has_list_expr());
+  expr.mutable_comprehension_expr().set_accu_var("accu_var");
+  ASSERT_TRUE(expr.has_comprehension_expr());
+  EXPECT_FALSE(expr.has_list_expr());
+  EXPECT_EQ(expr.comprehension_expr().accu_var(), "accu_var");
 }
 
 }  // namespace

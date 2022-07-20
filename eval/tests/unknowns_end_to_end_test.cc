@@ -168,7 +168,7 @@ MATCHER_P(FunctionCallIs, fn_name, "") {
 
 MATCHER_P(AttributeIs, attr, "") {
   const CelAttribute* result = arg;
-  return result->variable().ident_expr().name() == attr;
+  return result->variable_name() == attr;
 }
 
 TEST_F(UnknownsTest, NoUnknowns) {

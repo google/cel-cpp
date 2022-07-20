@@ -145,7 +145,8 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
   auto ident_expr1 = expr1.mutable_ident_expr();
   ident_expr1->set_name("name1");
 
-  CelAttribute attr0(expr0, {}), attr1(expr1, {});
+  CelAttribute attr0(expr0.ident_expr().name(), {}),
+      attr1(expr1.ident_expr().name(), {});
   UnknownAttributeSet unknown_attr_set0({&attr0});
   UnknownAttributeSet unknown_attr_set1({&attr1});
   UnknownSet unknown_set0(unknown_attr_set0);
@@ -161,7 +162,7 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
   const auto& attrs =
       result.UnknownSetOrDie()->unknown_attributes().attributes();
   ASSERT_THAT(attrs, testing::SizeIs(1));
-  EXPECT_THAT(attrs[0]->variable().ident_expr().name(), Eq("name0"));
+  EXPECT_THAT(attrs[0]->variable_name(), Eq("name0"));
 }
 
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());

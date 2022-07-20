@@ -158,7 +158,7 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
       eval_result->UnknownSetOrDie()->unknown_attributes().attributes();
 
   EXPECT_THAT(attrs, SizeIs(1));
-  EXPECT_THAT(attrs.at(0)->variable().ident_expr().name(), Eq("var"));
+  EXPECT_THAT(attrs.at(0)->variable_name(), Eq("var"));
   EXPECT_THAT(attrs.at(0)->qualifier_path(), SizeIs(0));
 }
 
