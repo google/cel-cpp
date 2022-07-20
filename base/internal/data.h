@@ -162,15 +162,6 @@ class HeapData /* : public Data */ {
       0;
 };
 
-inline constexpr size_t HeapDataMetadataAndReferenceCountOffset() {
-  return offsetof(HeapData, metadata_and_reference_count_);
-}
-
-static_assert(HeapDataMetadataAndReferenceCountOffset() == sizeof(uintptr_t),
-              "Expected vptr to be at offset 0");
-static_assert(sizeof(HeapData) == sizeof(uintptr_t) * 2,
-              "Unexpected class size");
-
 // Provides introspection for `Data`.
 class Metadata final {
  public:
@@ -302,7 +293,8 @@ union alignas(Align) AnyDataStorage final {
 // dereference our stored pointers as it may have already been deleted. Thus we
 // need to know if it was arena allocated without dereferencing the pointer.
 template <size_t Size, size_t Align>
-struct AnyData {
+class AnyData {
+ public:
   static_assert(Size >= sizeof(uintptr_t),
                 "Size must be at least sizeof(uintptr_t)");
   static_assert(Align >= alignof(uintptr_t),

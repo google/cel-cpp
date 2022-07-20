@@ -188,7 +188,7 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   friend struct base_internal::HandleFactory;
 
   template <typename... Args>
-  explicit Persistent(absl::in_place_t in_place, Args&&... args)
+  explicit Persistent(absl::in_place_t, Args&&... args)
       : impl_(std::forward<Args>(args)...) {}
 
   Handle impl_;

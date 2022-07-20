@@ -49,7 +49,7 @@ class TypeProvider {
   //
   // An empty handle is returned if the provider cannot find the requested type.
   virtual absl::StatusOr<Persistent<const Type>> ProvideType(
-      TypeFactory& type_factory, absl::string_view name) const {
+      TypeFactory&, absl::string_view) const {
     return absl::UnimplementedError("ProvideType is not yet implemented");
   }
 };

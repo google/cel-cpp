@@ -106,8 +106,7 @@ class PersistentTypeHandle final {
   PersistentTypeHandle() = default;
 
   template <typename T, typename... Args>
-  explicit PersistentTypeHandle(absl::in_place_type_t<T> in_place_type,
-                                Args&&... args) {
+  explicit PersistentTypeHandle(absl::in_place_type_t<T>, Args&&... args) {
     data_.ConstructInline<T>(std::forward<Args>(args)...);
   }
 
