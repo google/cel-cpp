@@ -117,13 +117,13 @@ std::optional<ArenaBlock> ArenaBlockAllocate(size_t size,
   pointer = VirtualAlloc(hint, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
   if (ABSL_PREDICT_FALSE(pointer == nullptr)) {
     if (hint == nullptr) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     // Try again, without the hint.
     pointer =
         VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     if (pointer == nullptr) {
-      return absl::nullopt;
+      return std::nullopt;
     }
   }
 #endif
