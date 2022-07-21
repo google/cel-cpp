@@ -97,6 +97,9 @@ enum class DataLocality {
 // at least `sizeof(void*)`.
 class Data {};
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+
 // Empty base class indicating class must be stored directly in the handle and
 // not allocated separately on the heap.
 //
@@ -161,6 +164,8 @@ class HeapData /* : public Data */ {
   std::atomic<uintptr_t> metadata_and_reference_count_ ABSL_ATTRIBUTE_UNUSED =
       0;
 };
+
+#pragma GCC diagnostic pop
 
 // Provides introspection for `Data`.
 class Metadata final {
