@@ -61,9 +61,6 @@ struct InterpreterOptions {
   // resulting value is known from the left-hand side.
   bool short_circuiting = true;
 
-  // DEPRECATED. This option has no effect.
-  bool partial_string_match = true;
-
   // Enable constant folding during the expression creation. If enabled,
   // an arena must be provided for constant generation.
   // Note that expression tracing applies a modified expression if this option
