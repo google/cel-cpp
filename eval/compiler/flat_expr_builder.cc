@@ -802,6 +802,14 @@ const Expr* CurrentValueDummy() {
 // writers, only by macro authors. However, a hand-rolled AST makes it possible
 // to misuse the accumulation variable.
 //
+// Limitations:
+// - This check only covers standard operators and functions.
+//   Extension functions may cause the same issue if they allocate an amount of
+//   memory that is dependent on the size of the inputs.
+//
+// - This check is not exhaustive. There may be ways to construct an AST to
+//   trigger exponential memory growth not captured by this check.
+//
 // The algorithm for reference counting is as follows:
 //
 //  * Calls - If the call is a concatenation operator, sum the number of places
@@ -869,17 +877,30 @@ int ComprehensionAccumulationReferences(const Expr& expr,
       const auto& comprehension = expr.comprehension_expr();
       absl::string_view accu_var = comprehension.accu_var();
       absl::string_view iter_var = comprehension.iter_var();
-      // Tne accumulation or iteration variable shadows the var_name and so will
-      // not manipulate the target var_name in a nested comprhension scope.
-      if (accu_var == var_name || iter_var == var_name) {
-        return 0;
+
+      int result_references = 0;
+      int loop_step_references = 0;
+
+      // The accumulation or iteration variable shadows the var_name and so will
+      // not manipulate the target var_name in a nested comprehension scope.
+      if (accu_var != var_name && iter_var != var_name) {
+        loop_step_references = ComprehensionAccumulationReferences(
+            comprehension.loop_step(), var_name);
       }
+
+      // Accumulator variable (but not necessarily iter var) can shadow an
+      // outer accumulator variable in the result sub-expression.
+      if (accu_var != var_name) {
+        result_references = ComprehensionAccumulationReferences(
+            comprehension.result(), var_name);
+      }
+
       // Count the number of times the accumulator var_name within the loop_step
       // or the nested comprehension result.
-      const Expr& loop_step = comprehension.loop_step();
-      const Expr& result = comprehension.result();
-      return std::max(ComprehensionAccumulationReferences(loop_step, var_name),
-                      ComprehensionAccumulationReferences(result, var_name));
+      //
+      // This doesn't cover cases where the inner accumulator accumulates the
+      // outer accumulator then is returned in the inner comprehension result.
+      return std::max(loop_step_references, result_references);
     }
     case Expr::kListExpr: {
       // Count the number of times the accumulator var_name appears within a

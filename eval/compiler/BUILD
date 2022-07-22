@@ -104,6 +104,7 @@ cc_test(
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_set",
+        "//eval/public/containers:container_backed_list_impl",
         "//eval/public/testing:matchers",
         "//eval/testutil:test_message_cc_proto",
         "//internal:status_macros",

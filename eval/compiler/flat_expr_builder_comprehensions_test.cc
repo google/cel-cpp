@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+#include <utility>
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
+#include "google/protobuf/arena.h"
 #include "google/protobuf/text_format.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
@@ -28,6 +32,7 @@
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -368,6 +373,55 @@ TEST(FlatExprBuilderComprehensionsTest,
       )pb",
       &expr);
 
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
+}
+
+TEST(FlatExprBuilderComprehensionsTest,
+     ComprehensionWithNestedComprehensionLoopStepVulernabilityResult) {
+  CheckedExpr expr;
+  // The nested comprehension performs an unsafe concatenation on the parent
+  // accumulator.
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "outer_iter"
+            iter_range { ident_expr { name: "input_list" } }
+            accu_var: "outer_accu"
+            accu_init { ident_expr { name: "input_list" } }
+            loop_condition {
+              id: 3
+              const_expr { bool_value: true }
+            }
+            loop_step {
+              comprehension_expr {
+                # the iter_var shadows the outer accumulator on the loop step
+                # but not the result step.
+                iter_var: "outer_accu"
+                iter_range { list_expr {} }
+                accu_var: "inner_accu"
+                accu_init { list_expr {} }
+                loop_condition { const_expr { bool_value: true } }
+                loop_step { list_expr {} }
+                result {
+                  call_expr {
+                    function: "_+_"
+                    args { ident_expr { name: "outer_accu" } }
+                    args { ident_expr { name: "outer_accu" } }
+                  }
+                }
+              }
+            }
+            result { list_expr {} }
+          }
+        }
+      )pb",
+      &expr);
   FlatExprBuilder builder;
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
