@@ -169,7 +169,7 @@ class ConstantFoldingTransform {
               Transform(entry.map_key(), new_entry->mutable_map_key());
               break;
             default:
-              GOOGLE_LOG(ERROR) << "Unsupported Entry kind: " << entry.key_kind_case();
+              LOG(ERROR) << "Unsupported Entry kind: " << entry.key_kind_case();
               break;
           }
           Transform(entry.value(), new_entry->mutable_value());
@@ -192,7 +192,7 @@ class ConstantFoldingTransform {
         return false;
       }
       default:
-        GOOGLE_LOG(ERROR) << "Unsupported Expr kind: " << expr.expr_kind_case();
+        LOG(ERROR) << "Unsupported Expr kind: " << expr.expr_kind_case();
         return false;
     }
   }

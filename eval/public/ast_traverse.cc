@@ -184,7 +184,7 @@ struct PostVisitor {
                                         &position);
         break;
       default:
-        GOOGLE_LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
+        LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
     }
 
     visitor->PostVisitExpr(expr, &position);

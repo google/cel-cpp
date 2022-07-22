@@ -86,7 +86,7 @@ cc_library(
   """,
         sha256 = "a320568b738e42735946bebc5d9d333170e14a251c5734e8b852ad1502efa8a2",
         strip_prefix = "antlr4-" + ANTLR4_VERSION,
-        urls = ["https://github.com/antlr/antlr4/archive/" + ANTLR4_VERSION + ".tar.gz"],
+        urls = ["https://github.com/antlr/antlr4/archive/v" + ANTLR4_VERSION + ".tar.gz"],
     )
     http_jar(
         name = "antlr4_jar",

@@ -477,7 +477,7 @@ class CelValue {
 
   // Crashes with a null pointer error.
   static void CrashNullPointer(Type type) ABSL_ATTRIBUTE_COLD {
-    GOOGLE_LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
+    LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
   }
 
   // Null pointer checker for pointer-based types.
@@ -490,7 +490,7 @@ class CelValue {
   // Crashes with a type mismatch error.
   static void CrashTypeMismatch(Type requested_type,
                                 Type actual_type) ABSL_ATTRIBUTE_COLD {
-    GOOGLE_LOG(FATAL) << "Type mismatch"                             // Crash ok
+    LOG(FATAL) << "Type mismatch"                             // Crash ok
                << ": expected " << TypeName(requested_type)   // Crash ok
                << ", encountered " << TypeName(actual_type);  // Crash ok
   }

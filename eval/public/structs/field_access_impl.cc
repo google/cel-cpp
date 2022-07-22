@@ -586,7 +586,7 @@ class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
 
   bool SetMessage(const Message* value) const {
     if (!value) {
-      GOOGLE_LOG(ERROR) << "Message is NULL";
+      LOG(ERROR) << "Message is NULL";
       return true;
     }
 

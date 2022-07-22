@@ -42,7 +42,7 @@ class EvaluatorStack {
   // Please note that calls to Push may invalidate returned Span object.
   absl::Span<const CelValue> GetSpan(size_t size) const {
     if (!HasEnough(size)) {
-      GOOGLE_LOG(ERROR) << "Requested span size (" << size
+      LOG(ERROR) << "Requested span size (" << size
                  << ") exceeds current stack size: " << current_size_;
     }
     return absl::Span<const CelValue>(stack_.data() + current_size_ - size,
@@ -61,7 +61,7 @@ class EvaluatorStack {
   // Checking that stack is not empty is caller's responsibility.
   const CelValue& Peek() const {
     if (empty()) {
-      GOOGLE_LOG(ERROR) << "Peeking on empty EvaluatorStack";
+      LOG(ERROR) << "Peeking on empty EvaluatorStack";
     }
     return stack_[current_size_ - 1];
   }
@@ -70,7 +70,7 @@ class EvaluatorStack {
   // Checking that stack is not empty is caller's responsibility.
   const AttributeTrail& PeekAttribute() const {
     if (empty()) {
-      GOOGLE_LOG(ERROR) << "Peeking on empty EvaluatorStack";
+      LOG(ERROR) << "Peeking on empty EvaluatorStack";
     }
     return attribute_stack_[current_size_ - 1];
   }
@@ -79,7 +79,7 @@ class EvaluatorStack {
   // Checking that stack has enough elements is caller's responsibility.
   void Pop(size_t size) {
     if (!HasEnough(size)) {
-      GOOGLE_LOG(ERROR) << "Trying to pop more elements (" << size
+      LOG(ERROR) << "Trying to pop more elements (" << size
                  << ") than the current stack size: " << current_size_;
     }
     current_size_ -= size;
@@ -90,7 +90,7 @@ class EvaluatorStack {
 
   void Push(const CelValue& value, AttributeTrail attribute) {
     if (current_size_ >= stack_.size()) {
-      GOOGLE_LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
+      LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
     }
     stack_[current_size_] = value;
     attribute_stack_[current_size_] = attribute;
@@ -107,7 +107,7 @@ class EvaluatorStack {
   // Checking that stack is not empty is caller's responsibility.
   void PopAndPush(const CelValue& value, AttributeTrail attribute) {
     if (empty()) {
-      GOOGLE_LOG(ERROR) << "Cannot PopAndPush on empty stack.";
+      LOG(ERROR) << "Cannot PopAndPush on empty stack.";
     }
     stack_[current_size_ - 1] = value;
     attribute_stack_[current_size_ - 1] = attribute;
@@ -124,7 +124,7 @@ class EvaluatorStack {
   // Returns true if any values are successfully converted.
   bool CoerceNullValues(size_t size) {
     if (!HasEnough(size)) {
-      GOOGLE_LOG(ERROR) << "Trying to coerce more elements (" << size
+      LOG(ERROR) << "Trying to coerce more elements (" << size
                  << ") than the current stack size: " << current_size_;
     }
     bool updated = false;

@@ -23,13 +23,14 @@ namespace {
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::Reference;
 using ::google::api::expr::v1alpha1::SourceInfo;
+using ::google::api::expr::testutil::EqualsProto;
+using testing::Contains;
 using testing::ElementsAre;
 using testing::Eq;
 using testing::IsEmpty;
 using testing::UnorderedElementsAre;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
-using testutil::EqualsProto;
 
 // foo.bar.var1 && bar.foo.var2
 constexpr char kExpr[] = R"(
@@ -837,6 +838,49 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
                 })pb"));
 }
 
+TEST(ResolveReferences, ReferenceToId0Warns) {
+  // ID 0 is unsupported since it is not normally used by parsers and is
+  // ambiguous as an intentional ID or default for unset field.
+  Expr expr = ParseTestProto(R"pb(
+    id: 0
+    select_expr {
+      operand {
+        id: 1
+        ident_expr { name: "pkg" }
+      }
+      field: "var"
+    })pb");
+
+  SourceInfo source_info;
+
+  google::protobuf::Map<int64_t, Reference> reference_map;
+  CelFunctionRegistry func_registry;
+  ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
+  CelTypeRegistry type_registry;
+  Resolver registry("", &func_registry, &type_registry);
+  reference_map[0].set_name("pkg.var");
+  BuilderWarnings warnings;
+
+  auto result = ResolveReferences(&reference_map, registry, &source_info,
+                                  warnings, &expr);
+
+  ASSERT_THAT(result, IsOkAndHolds(false));
+  EXPECT_THAT(expr, EqualsProto(R"pb(
+                id: 0
+                select_expr {
+                  operand {
+                    id: 1
+                    ident_expr { name: "pkg" }
+                  }
+                  field: "var"
+                })pb"));
+
+  EXPECT_THAT(
+      warnings.warnings(),
+      Contains(StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          "reference map entries for expression id 0 are not supported")));
+}
 }  // namespace
 
 }  // namespace google::api::expr::runtime

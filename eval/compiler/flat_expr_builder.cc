@@ -193,7 +193,7 @@ class FlatExprVisitor : public AstVisitor {
         enable_wrapper_type_null_unboxing_(enable_wrapper_type_null_unboxing),
         builder_warnings_(warnings),
         iter_variable_names_(iter_variable_names) {
-    GOOGLE_CHECK(iter_variable_names_);
+    DCHECK(iter_variable_names_);
   }
 
   void PreVisitExpr(const Expr* expr, const SourcePosition*) override {

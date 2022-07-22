@@ -255,8 +255,16 @@ class ReferenceResolver : public AstRewriterBase {
     if (reference_map_ == nullptr) {
       return nullptr;
     }
+
     auto iter = reference_map_->find(expr_id);
     if (iter == reference_map_->end()) {
+      return nullptr;
+    }
+    if (expr_id == 0) {
+      warnings_
+          .AddWarning(absl::InvalidArgumentError(
+              "reference map entries for expression id 0 are not supported"))
+          .IgnoreError();
       return nullptr;
     }
     return &iter->second;

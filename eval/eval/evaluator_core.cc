@@ -40,7 +40,7 @@ const ExpressionStep* ExecutionFrame::Next() {
 
   if (pc_ < end_pos) return execution_path_[pc_++].get();
   if (pc_ > end_pos) {
-    GOOGLE_LOG(ERROR) << "Attempting to step beyond the end of execution path.";
+    LOG(ERROR) << "Attempting to step beyond the end of execution path.";
   }
   return nullptr;
 }
@@ -176,7 +176,7 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     }
 
     if (stack->empty()) {
-      GOOGLE_LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
+      LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
                     "Try to disable short-circuiting.";
       continue;
     }
