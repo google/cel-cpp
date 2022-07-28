@@ -45,6 +45,7 @@ class StructValue;
 class ListValue;
 class MapValue;
 class TypeValue;
+class UnknownValue;
 class ValueFactory;
 
 // A representation of a CEL value that enables reflection and introspection of
@@ -76,6 +77,7 @@ class Value : public base_internal::Data {
   friend class ListValue;
   friend class MapValue;
   friend class TypeValue;
+  friend class UnknownValue;
   friend class base_internal::PersistentValueHandle;
   template <typename T, typename U>
   friend class base_internal::SimpleValue;

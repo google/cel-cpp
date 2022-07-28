@@ -261,6 +261,11 @@ struct SimpleTypeName<Kind::kType> {
   static constexpr absl::string_view value = "type";
 };
 
+template <>
+struct SimpleTypeName<Kind::kUnknown> {
+  static constexpr absl::string_view value = "*unknown*";
+};
+
 template <Kind K>
 class SimpleType : public Type, public InlineData {
  public:

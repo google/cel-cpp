@@ -12,42 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_BASE_KIND_H_
-#define THIRD_PARTY_CEL_CPP_BASE_KIND_H_
-
-#include <cstdint>
+#include "base/types/unknown_type.h"
 
 #include "absl/base/attributes.h"
-#include "absl/strings/string_view.h"
+#include "absl/base/call_once.h"
 
 namespace cel {
 
-enum class Kind : uint8_t {
-  kNullType = 0,
-  kError,
-  kDyn,
-  kAny,
-  kType,
-  kBool,
-  kInt,
-  kUint,
-  kDouble,
-  kString,
-  kBytes,
-  kEnum,
-  kDuration,
-  kTimestamp,
-  kList,
-  kMap,
-  kStruct,
-  kUnknown,
+CEL_INTERNAL_TYPE_IMPL(UnknownType);
 
-  // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
-  // we can store `Kind` using 7 bits.
-};
+namespace {
 
-ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);
+ABSL_CONST_INIT absl::once_flag instance_once;
+alignas(Persistent<const UnknownType>) char instance_storage[sizeof(
+    Persistent<const UnknownType>)];
+
+}  // namespace
+
+const Persistent<const UnknownType>& UnknownType::Get() {
+  absl::call_once(instance_once, []() {
+    base_internal::PersistentHandleFactory<const UnknownType>::MakeAt<
+        UnknownType>(&instance_storage[0]);
+  });
+  return *reinterpret_cast<const Persistent<const UnknownType>*>(
+      &instance_storage[0]);
+}
 
 }  // namespace cel
-
-#endif  // THIRD_PARTY_CEL_CPP_BASE_KIND_H_

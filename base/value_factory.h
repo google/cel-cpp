@@ -46,6 +46,7 @@
 #include "base/values/timestamp_value.h"
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
+#include "base/values/unknown_value.h"
 
 namespace cel {
 
@@ -206,6 +207,9 @@ class ValueFactory final {
 
   Persistent<const TypeValue> CreateTypeValue(
       const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Persistent<const UnknownValue> CreateUnknownValue()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const {
     return type_manager().memory_manager();

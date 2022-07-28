@@ -34,6 +34,7 @@
 #include "base/values/timestamp_value.h"
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
+#include "base/values/unknown_value.h"
 #include "internal/unreachable.h"
 
 namespace cel {
@@ -72,6 +73,8 @@ const Persistent<const Type>& Value::type() const {
       return static_cast<const MapValue*>(this)->type().As<const Type>();
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->type().As<const Type>();
+    case Kind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->type().As<const Type>();
     default:
       internal::unreachable();
   }
@@ -109,6 +112,8 @@ std::string Value::DebugString() const {
       return static_cast<const MapValue*>(this)->DebugString();
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->DebugString();
+    case Kind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->DebugString();
     default:
       internal::unreachable();
   }
@@ -148,6 +153,9 @@ void Value::HashValue(absl::HashState state) const {
       return static_cast<const MapValue*>(this)->HashValue(std::move(state));
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->HashValue(std::move(state));
+    case Kind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->HashValue(
+          std::move(state));
     default:
       internal::unreachable();
   }
@@ -188,6 +196,8 @@ bool Value::Equals(const Value& other) const {
       return static_cast<const MapValue*>(this)->Equals(other);
     case Kind::kStruct:
       return static_cast<const StructValue*>(this)->Equals(other);
+    case Kind::kUnknown:
+      return static_cast<const UnknownValue*>(this)->Equals(other);
     default:
       internal::unreachable();
   }
@@ -352,6 +362,9 @@ void PersistentValueHandle::Delete() const {
       break;
     case Kind::kBytes:
       delete static_cast<StringBytesValue*>(static_cast<Value*>(data_.get()));
+      break;
+    case Kind::kUnknown:
+      delete static_cast<UnknownValue*>(static_cast<Value*>(data_.get()));
       break;
     default:
       internal::unreachable();

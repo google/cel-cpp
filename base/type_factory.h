@@ -41,6 +41,7 @@
 #include "base/types/timestamp_type.h"
 #include "base/types/type_type.h"
 #include "base/types/uint_type.h"
+#include "base/types/unknown_type.h"
 
 namespace cel {
 
@@ -111,6 +112,8 @@ class TypeFactory final {
       const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Persistent<const TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Persistent<const UnknownType> GetUnknownType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const { return memory_manager_; }
 

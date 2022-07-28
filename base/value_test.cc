@@ -19,9 +19,11 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
@@ -654,6 +656,11 @@ INSTANTIATE_TEST_SUITE_P(
                 ValueFactory& value_factory) -> Persistent<const Value> {
                return value_factory.CreateTypeValue(type_factory.GetNullType());
              }},
+            {"Unknown",
+             [](TypeFactory& type_factory,
+                ValueFactory& value_factory) -> Persistent<const Value> {
+               return value_factory.CreateUnknownValue();
+             }},
         })),
     [](const testing::TestParamInfo<
         std::tuple<base_internal::MemoryManagerTestMode,
@@ -1248,6 +1255,19 @@ TEST_P(ValueTest, Type) {
 
   EXPECT_NE(null_value, int_value);
   EXPECT_NE(int_value, null_value);
+}
+
+TEST_P(ValueTest, Unknown) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto zero_value = value_factory.CreateUnknownValue();
+  EXPECT_TRUE(zero_value.Is<UnknownValue>());
+  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_EQ(zero_value, zero_value);
+  EXPECT_EQ(zero_value, value_factory.CreateUnknownValue());
+  EXPECT_EQ(zero_value->kind(), Kind::kUnknown);
+  EXPECT_EQ(zero_value->type(), type_factory.GetUnknownType());
 }
 
 Persistent<const BytesValue> MakeStringBytes(ValueFactory& value_factory,
@@ -2463,6 +2483,7 @@ TEST_P(ValueTest, SupportsAbslHash) {
       Persistent<const Value>(map_value),
       Persistent<const Value>(
           value_factory.CreateTypeValue(type_factory.GetNullType())),
+      Persistent<const Value>(value_factory.CreateUnknownValue()),
   }));
 }
 
