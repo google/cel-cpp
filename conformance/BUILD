@@ -82,14 +82,17 @@ cc_binary(
             # TODO(issues/112): Unbound functions result in empty eval response.
             "--skip_test=basic/functions/unbound",
             "--skip_test=basic/functions/unbound_is_runtime_error",
-            # TODO(issues/116): Debug why dynamic/list/var fails to JSON parse correctly.
+            # TODO(issues/116): dynamic/list/var and dynamic/value_struct/var fail to JSON parse correctly.
             "--skip_test=dynamic/list/var",
+            "--skip_test=dynamic/value_struct/var",
             # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
             "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
             "--skip_test=namespace/qualified/self_eval_qualified_lookup",
             "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
             # TODO(issues/117): Integer overflow on enum assignments should error.
             "--skip_test=enums/legacy_proto2/select_big,select_neg",
+            # TODO(issues/5): JSON to Proto parser/unparser doesn't support unknown enum values.
+            "--skip_test=enums/legacy_proto2/assign_standalone_int_big,assign_standalone_int_neg",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
