@@ -1695,9 +1695,9 @@ TEST(FlatExprBuilderTest, Ternary) {
     value2.mutable_ident_expr()->set_name("value2");
     CelAttribute value2_attr(value2, {});
 
-    UnknownSet unknown_selector(UnknownAttributeSet({&selector_attr}));
-    UnknownSet unknown_value1(UnknownAttributeSet({&value1_attr}));
-    UnknownSet unknown_value2(UnknownAttributeSet({&value2_attr}));
+    UnknownSet unknown_selector(UnknownAttributeSet({selector_attr}));
+    UnknownSet unknown_value1(UnknownAttributeSet({value1_attr}));
+    UnknownSet unknown_value2(UnknownAttributeSet({value2_attr}));
     CelValue result;
     ASSERT_OK(RunTernaryExpression(
         CelValue::CreateUnknownSet(&unknown_selector),
@@ -1705,10 +1705,9 @@ TEST(FlatExprBuilderTest, Ternary) {
         CelValue::CreateUnknownSet(&unknown_value2), &arena, &result));
     ASSERT_TRUE(result.IsUnknownSet());
     const UnknownSet* result_set = result.UnknownSetOrDie();
-    EXPECT_THAT(result_set->unknown_attributes().attributes().size(), Eq(1));
-    EXPECT_THAT(
-        result_set->unknown_attributes().attributes()[0]->variable_name(),
-        Eq("selector"));
+    EXPECT_THAT(result_set->unknown_attributes().size(), Eq(1));
+    EXPECT_THAT(result_set->unknown_attributes().begin()->variable_name(),
+                Eq("selector"));
   }
 }
 

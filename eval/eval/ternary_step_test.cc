@@ -147,22 +147,21 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
 
   CelAttribute attr0(expr0.ident_expr().name(), {}),
       attr1(expr1.ident_expr().name(), {});
-  UnknownAttributeSet unknown_attr_set0({&attr0});
-  UnknownAttributeSet unknown_attr_set1({&attr1});
+  UnknownAttributeSet unknown_attr_set0({attr0});
+  UnknownAttributeSet unknown_attr_set1({attr1});
   UnknownSet unknown_set0(unknown_attr_set0);
   UnknownSet unknown_set1(unknown_attr_set1);
 
-  EXPECT_THAT(unknown_attr_set0.attributes().size(), Eq(1));
-  EXPECT_THAT(unknown_attr_set1.attributes().size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set0.size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set1.size(), Eq(1));
 
   ASSERT_OK(EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                           CelValue::CreateUnknownSet(&unknown_set1),
                           CelValue::CreateBool(false), &result, true));
   ASSERT_TRUE(result.IsUnknownSet());
-  const auto& attrs =
-      result.UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs = result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs, testing::SizeIs(1));
-  EXPECT_THAT(attrs[0]->variable_name(), Eq("name0"));
+  EXPECT_THAT(attrs.begin()->variable_name(), Eq("name0"));
 }
 
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());

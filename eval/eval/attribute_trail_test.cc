@@ -36,8 +36,7 @@ TEST(AttributeTrailTest, AttributeTrailStep) {
   root.mutable_ident_expr()->set_name("ident");
   AttributeTrail trail = AttributeTrail(root, manager).Step(&step, manager);
 
-  ASSERT_TRUE(trail.attribute() != nullptr);
-  ASSERT_EQ(*trail.attribute(),
+  ASSERT_EQ(trail.attribute(),
             CelAttribute(root, {CelAttributeQualifier::Create(step_value)}));
 }
 

@@ -37,26 +37,23 @@ CelFunctionDescriptor kTwoInt("TwoInt", false,
 
 CelFunctionDescriptor kOneInt("OneInt", false, {CelValue::Type::kInt64});
 
-// Helper to confirm the set comparator works.
-bool IsLessThan(const UnknownFunctionResult& lhs,
-                const UnknownFunctionResult& rhs) {
-  return UnknownFunctionComparator()(&lhs, &rhs);
-}
-
 TEST(UnknownFunctionResult, Equals) {
   UnknownFunctionResult call1(kTwoInt, /*expr_id=*/0);
 
   UnknownFunctionResult call2(kTwoInt, /*expr_id=*/0);
 
   EXPECT_TRUE(call1.IsEqualTo(call2));
-  EXPECT_FALSE(IsLessThan(call1, call2));
-  EXPECT_FALSE(IsLessThan(call2, call1));
 
   UnknownFunctionResult call3(kOneInt, /*expr_id=*/0);
 
   UnknownFunctionResult call4(kOneInt, /*expr_id=*/0);
 
   EXPECT_TRUE(call3.IsEqualTo(call4));
+
+  UnknownFunctionResultSet call_set({call1, call3});
+  EXPECT_EQ(call_set.size(), 2);
+  EXPECT_EQ(*call_set.begin(), call3);
+  EXPECT_EQ(*(++call_set.begin()), call1);
 }
 
 TEST(UnknownFunctionResult, InequalDescriptor) {
@@ -65,7 +62,6 @@ TEST(UnknownFunctionResult, InequalDescriptor) {
   UnknownFunctionResult call2(kOneInt, /*expr_id=*/0);
 
   EXPECT_FALSE(call1.IsEqualTo(call2));
-  EXPECT_TRUE(IsLessThan(call2, call1));
 
   CelFunctionDescriptor one_uint("OneInt", false, {CelValue::Type::kUint64});
 
@@ -74,7 +70,13 @@ TEST(UnknownFunctionResult, InequalDescriptor) {
   UnknownFunctionResult call4(one_uint, /*expr_id=*/0);
 
   EXPECT_FALSE(call3.IsEqualTo(call4));
-  EXPECT_TRUE(IsLessThan(call3, call4));
+
+  UnknownFunctionResultSet call_set({call1, call3, call4});
+  EXPECT_EQ(call_set.size(), 3);
+  auto it = call_set.begin();
+  EXPECT_EQ(*it++, call3);
+  EXPECT_EQ(*it++, call4);
+  EXPECT_EQ(*it++, call1);
 }
 
 }  // namespace

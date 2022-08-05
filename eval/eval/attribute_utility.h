@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 
+#include <utility>
 #include <vector>
 
 #include "google/protobuf/arena.h"
@@ -69,8 +70,9 @@ class AttributeUtility {
                                   bool use_partial) const;
 
   // Create an initial UnknownSet from a single attribute.
-  const UnknownSet* CreateUnknownSet(const CelAttribute* attr) const {
-    return memory_manager_.New<UnknownSet>(UnknownAttributeSet({attr}))
+  const UnknownSet* CreateUnknownSet(CelAttribute attr) const {
+    return memory_manager_
+        .New<UnknownSet>(UnknownAttributeSet({std::move(attr)}))
         .release();
   }
 
@@ -78,10 +80,9 @@ class AttributeUtility {
   const UnknownSet* CreateUnknownSet(const CelFunctionDescriptor& fn_descriptor,
                                      int64_t expr_id,
                                      absl::Span<const CelValue> args) const {
-    auto* fn =
-        memory_manager_.New<UnknownFunctionResult>(fn_descriptor, expr_id)
-            .release();
-    return memory_manager_.New<UnknownSet>(UnknownFunctionResultSet(fn))
+    return memory_manager_
+        .New<UnknownSet>(UnknownFunctionResultSet(
+            UnknownFunctionResult(fn_descriptor, expr_id)))
         .release();
   }
 

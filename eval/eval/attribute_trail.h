@@ -8,6 +8,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
+#include "absl/utility/utility.h"
 #include "base/memory_manager.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
@@ -27,9 +28,12 @@ namespace google::api::expr::runtime {
 // or supported.
 class AttributeTrail {
  public:
-  AttributeTrail() : attribute_(nullptr) {}
+  AttributeTrail() = default;
 
   AttributeTrail(google::api::expr::v1alpha1::Expr root, cel::MemoryManager& manager);
+
+  explicit AttributeTrail(std::string variable_name)
+      : attribute_(absl::in_place, std::move(variable_name)) {}
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(CelAttributeQualifier qualifier,
@@ -44,14 +48,14 @@ class AttributeTrail {
   }
 
   // Returns CelAttribute that corresponds to content of AttributeTrail.
-  const CelAttribute* attribute() const { return attribute_; }
+  const CelAttribute& attribute() const { return attribute_.value(); }
 
-  bool empty() const { return attribute_ == nullptr; }
+  bool empty() const { return !attribute_.has_value(); }
 
  private:
-  explicit AttributeTrail(const CelAttribute* attribute)
-      : attribute_(attribute) {}
-  const CelAttribute* attribute_;
+  explicit AttributeTrail(CelAttribute attribute)
+      : attribute_(std::move(attribute)) {}
+  absl::optional<CelAttribute> attribute_;
 };
 
 }  // namespace google::api::expr::runtime

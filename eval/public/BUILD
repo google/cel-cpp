@@ -123,13 +123,12 @@ cc_library(
 
 cc_library(
     name = "unknown_attribute_set",
-    srcs = [
-    ],
     hdrs = [
         "unknown_attribute_set.h",
     ],
     deps = [
         ":cel_attribute",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
@@ -907,9 +906,6 @@ cc_library(
     hdrs = ["unknown_function_result_set.h"],
     deps = [
         ":cel_function",
-        ":cel_options",
-        ":cel_value",
-        ":set_util",
         "@com_google_absl//absl/container:btree",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],

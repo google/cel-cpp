@@ -147,7 +147,7 @@ TEST_P(CreateListStepTest, CreateListWithErrorAndUnknown) {
   Expr expr0;
   expr0.mutable_ident_expr()->set_name("name0");
   CelAttribute attr0(expr0, {});
-  UnknownSet unknown_set0(UnknownAttributeSet({&attr0}));
+  UnknownSet unknown_set0(UnknownAttributeSet({attr0}));
   values.push_back(CelValue::CreateUnknownSet(&unknown_set0));
   CelError error = absl::InvalidArgumentError("bad arg");
   values.push_back(CelValue::CreateError(&error));
@@ -185,8 +185,8 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
   Expr expr1;
   expr1.mutable_ident_expr()->set_name("name1");
   CelAttribute attr1(expr1, {});
-  UnknownSet unknown_set0(UnknownAttributeSet({&attr0}));
-  UnknownSet unknown_set1(UnknownAttributeSet({&attr1}));
+  UnknownSet unknown_set0(UnknownAttributeSet({attr0}));
+  UnknownSet unknown_set1(UnknownAttributeSet({attr1}));
   for (size_t i = 0; i < 100; i++) {
     values.push_back(CelValue::CreateInt64(i));
   }
@@ -197,7 +197,7 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
                        RunExpressionWithCelValues(values, &arena, true));
   ASSERT_TRUE(result.IsUnknownSet());
   const UnknownSet* result_set = result.UnknownSetOrDie();
-  EXPECT_THAT(result_set->unknown_attributes().attributes().size(), Eq(2));
+  EXPECT_THAT(result_set->unknown_attributes().size(), Eq(2));
 }
 
 INSTANTIATE_TEST_SUITE_P(CombinedCreateListTest, CreateListStepTest,

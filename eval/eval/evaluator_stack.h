@@ -1,6 +1,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "absl/types/span.h"
@@ -82,7 +84,13 @@ class EvaluatorStack {
       LOG(ERROR) << "Trying to pop more elements (" << size
                  << ") than the current stack size: " << current_size_;
     }
-    current_size_ -= size;
+    while (size > 0) {
+      size_t position = current_size_ - 1;
+      stack_[position] = CelValue::CreateNull();
+      attribute_stack_[position] = AttributeTrail();
+      current_size_--;
+      size--;
+    }
   }
 
   // Put element on the top of the stack.
@@ -93,7 +101,7 @@ class EvaluatorStack {
       LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
     }
     stack_[current_size_] = value;
-    attribute_stack_[current_size_] = attribute;
+    attribute_stack_[current_size_] = std::move(attribute);
     current_size_++;
   }
 
@@ -110,7 +118,7 @@ class EvaluatorStack {
       LOG(ERROR) << "Cannot PopAndPush on empty stack.";
     }
     stack_[current_size_ - 1] = value;
-    attribute_stack_[current_size_ - 1] = attribute;
+    attribute_stack_[current_size_ - 1] = std::move(attribute);
   }
 
   // Preallocate stack.

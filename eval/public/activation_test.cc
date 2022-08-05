@@ -223,13 +223,13 @@ TEST(ActivationTest, ErrorPathTest) {
   trail = trail.Step(
       CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), manager);
 
-  ASSERT_EQ(destination_ip_pattern.IsMatch(*trail.attribute()),
+  ASSERT_EQ(destination_ip_pattern.IsMatch(trail.attribute()),
             CelAttributePattern::MatchType::FULL);
   EXPECT_TRUE(activation.missing_attribute_patterns().empty());
 
   activation.set_missing_attribute_patterns({destination_ip_pattern});
   EXPECT_EQ(
-      activation.missing_attribute_patterns()[0].IsMatch(*trail.attribute()),
+      activation.missing_attribute_patterns()[0].IsMatch(trail.attribute()),
       CelAttributePattern::MatchType::FULL);
 }
 

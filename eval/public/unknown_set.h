@@ -9,6 +9,8 @@ namespace api {
 namespace expr {
 namespace runtime {
 
+class AttributeUtility;
+
 // Class representing a collection of unknowns from a single evaluation pass of
 // a CEL expression.
 class UnknownSet {
@@ -39,7 +41,22 @@ class UnknownSet {
     return unknown_function_results_;
   }
 
+  bool operator==(const UnknownSet& other) const {
+    return this == &other ||
+           (unknown_attributes_ == other.unknown_attributes_ &&
+            unknown_function_results_ == other.unknown_function_results_);
+  }
+
+  bool operator!=(const UnknownSet& other) const { return !operator==(other); }
+
  private:
+  friend class AttributeUtility;
+
+  void Add(const UnknownSet& other) {
+    unknown_attributes_.Add(other.unknown_attributes_);
+    unknown_function_results_.Add(other.unknown_function_results_);
+  }
+
   UnknownAttributeSet unknown_attributes_;
   UnknownFunctionResultSet unknown_function_results_;
 };

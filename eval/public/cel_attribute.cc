@@ -130,7 +130,103 @@ struct CelAttributeQualifierIsMatchVisitor final {
   }
 };
 
+struct CelAttributeQualifierTypeComparator final {
+  const CelValue::Type lhs;
+
+  bool operator()(const CelValue::Type& rhs) const {
+    return static_cast<int>(lhs) < static_cast<int>(rhs);
+  }
+
+  bool operator()(int64_t) const { return false; }
+
+  bool operator()(uint64_t other) const { return false; }
+
+  bool operator()(const std::string&) const { return false; }
+
+  bool operator()(bool other) const { return false; }
+};
+
+struct CelAttributeQualifierIntComparator final {
+  const int64_t lhs;
+
+  bool operator()(const CelValue::Type&) const { return true; }
+
+  bool operator()(int64_t rhs) const { return lhs < rhs; }
+
+  bool operator()(uint64_t) const { return true; }
+
+  bool operator()(const std::string&) const { return true; }
+
+  bool operator()(bool) const { return false; }
+};
+
+struct CelAttributeQualifierUintComparator final {
+  const uint64_t lhs;
+
+  bool operator()(const CelValue::Type&) const { return true; }
+
+  bool operator()(int64_t) const { return false; }
+
+  bool operator()(uint64_t rhs) const { return lhs < rhs; }
+
+  bool operator()(const std::string&) const { return true; }
+
+  bool operator()(bool) const { return false; }
+};
+
+struct CelAttributeQualifierStringComparator final {
+  const std::string& lhs;
+
+  bool operator()(const CelValue::Type&) const { return true; }
+
+  bool operator()(int64_t) const { return false; }
+
+  bool operator()(uint64_t) const { return false; }
+
+  bool operator()(const std::string& rhs) const { return lhs < rhs; }
+
+  bool operator()(bool) const { return false; }
+};
+
+struct CelAttributeQualifierBoolComparator final {
+  const bool lhs;
+
+  bool operator()(const CelValue::Type&) const { return true; }
+
+  bool operator()(int64_t) const { return true; }
+
+  bool operator()(uint64_t) const { return true; }
+
+  bool operator()(const std::string&) const { return true; }
+
+  bool operator()(bool rhs) const { return lhs < rhs; }
+};
+
 }  // namespace
+
+struct CelAttributeQualifier::ComparatorVisitor final {
+  const CelAttributeQualifier::Variant& rhs;
+
+  bool operator()(const CelValue::Type& lhs) const {
+    return absl::visit(CelAttributeQualifierTypeComparator{lhs}, rhs);
+  }
+
+  bool operator()(int64_t lhs) const {
+    return absl::visit(CelAttributeQualifierIntComparator{lhs}, rhs);
+  }
+
+  bool operator()(uint64_t lhs) const {
+    return absl::visit(CelAttributeQualifierUintComparator{lhs}, rhs);
+  }
+
+  bool operator()(const std::string& lhs) const {
+    return absl::visit(CelAttributeQualifierStringComparator{lhs}, rhs);
+  }
+
+  bool operator()(bool lhs) const {
+    return absl::visit(CelAttributeQualifierBoolComparator{lhs}, rhs);
+  }
+};
 
 CelValue::Type CelAttributeQualifier::type() const {
   return std::visit(CelAttributeQualifierTypeVisitor{}, value_);
@@ -154,6 +250,14 @@ CelAttributeQualifier CelAttributeQualifier::Create(CelValue value) {
   }
 }
 
+bool CelAttributeQualifier::operator<(
+    const CelAttributeQualifier& other) const {
+  // The order is not publicly documented because it is subject to change.
+  // Currently we sort in the following order, with each type being sorted
+  // against itself: bool, int, uint, string, type.
+  return absl::visit(ComparatorVisitor{other.value_}, value_);
+}
+
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
     std::initializer_list<std::variant<absl::string_view, int64_t, uint64_t, bool,
@@ -168,6 +272,8 @@ CelAttributePattern CreateCelAttributePattern(
 }
 
 bool CelAttribute::operator==(const CelAttribute& other) const {
+  // We cannot check pointer equality as a short circuit because we have to
+  // treat all invalid CelAttributeQualifier as not equal to each other.
   // TODO(issues/41) we only support Ident-rooted attributes at the moment.
   if (variable_name() != other.variable_name()) {
     return false;
@@ -186,6 +292,37 @@ bool CelAttribute::operator==(const CelAttribute& other) const {
   return true;
 }
 
+bool CelAttribute::operator<(const CelAttribute& other) const {
+  if (impl_.get() == other.impl_.get()) {
+    return false;
+  }
+  auto lhs_begin = qualifier_path().begin();
+  auto lhs_end = qualifier_path().end();
+  auto rhs_begin = other.qualifier_path().begin();
+  auto rhs_end = other.qualifier_path().end();
+  while (lhs_begin != lhs_end && rhs_begin != rhs_end) {
+    if (*lhs_begin < *rhs_begin) {
+      return true;
+    }
+    if (!(*lhs_begin == *rhs_begin)) {
+      return false;
+    }
+    lhs_begin++;
+    rhs_begin++;
+  }
+  if (lhs_begin == lhs_end && rhs_begin == rhs_end) {
+    // Neither has any elements left, they are equal. Compare variable names.
+    return variable_name() < other.variable_name();
+  }
+  if (lhs_begin == lhs_end) {
+    // Left has no more elements. Right is greater.
+    return true;
+  }
+  // Right has no more elements. Left is greater.
+  ABSL_ASSERT(rhs_begin == rhs_end);
+  return false;
+}
+
 const absl::StatusOr<std::string> CelAttribute::AsString() const {
   if (variable_name().empty()) {
     return absl::InvalidArgumentError(
@@ -194,7 +331,7 @@ const absl::StatusOr<std::string> CelAttribute::AsString() const {
 
   std::string result = std::string(variable_name());
 
-  for (const auto& qualifier : qualifier_path_) {
+  for (const auto& qualifier : qualifier_path()) {
     CEL_RETURN_IF_ERROR(
         std::visit(CelAttributeStringPrinter(&result, qualifier.type()),
                    qualifier.value_));

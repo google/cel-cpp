@@ -217,22 +217,20 @@ TEST_F(LogicStepTest, TestAndLogicUnknownHandling) {
   ident_expr1->set_name("name1");
 
   CelAttribute attr0(expr0, {}), attr1(expr1, {});
-  UnknownAttributeSet unknown_attr_set0({&attr0});
-  UnknownAttributeSet unknown_attr_set1({&attr1});
+  UnknownAttributeSet unknown_attr_set0({attr0});
+  UnknownAttributeSet unknown_attr_set1({attr1});
   UnknownSet unknown_set0(unknown_attr_set0);
   UnknownSet unknown_set1(unknown_attr_set1);
 
-  EXPECT_THAT(unknown_attr_set0.attributes().size(), Eq(1));
-  EXPECT_THAT(unknown_attr_set1.attributes().size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set0.size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set1.size(), Eq(1));
 
   status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                          CelValue::CreateUnknownSet(&unknown_set1), false,
                          &result, true);
   ASSERT_OK(status);
   ASSERT_TRUE(result.IsUnknownSet());
-  ASSERT_THAT(
-      result.UnknownSetOrDie()->unknown_attributes().attributes().size(),
-      Eq(2));
+  ASSERT_THAT(result.UnknownSetOrDie()->unknown_attributes().size(), Eq(2));
 }
 
 TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
@@ -280,23 +278,21 @@ TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
   ident_expr1->set_name("name1");
 
   CelAttribute attr0(expr0, {}), attr1(expr1, {});
-  UnknownAttributeSet unknown_attr_set0({&attr0});
-  UnknownAttributeSet unknown_attr_set1({&attr1});
+  UnknownAttributeSet unknown_attr_set0({attr0});
+  UnknownAttributeSet unknown_attr_set1({attr1});
 
   UnknownSet unknown_set0(unknown_attr_set0);
   UnknownSet unknown_set1(unknown_attr_set1);
 
-  EXPECT_THAT(unknown_attr_set0.attributes().size(), Eq(1));
-  EXPECT_THAT(unknown_attr_set1.attributes().size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set0.size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set1.size(), Eq(1));
 
   status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                          CelValue::CreateUnknownSet(&unknown_set1), true,
                          &result, true);
   ASSERT_OK(status);
   ASSERT_TRUE(result.IsUnknownSet());
-  ASSERT_THAT(
-      result.UnknownSetOrDie()->unknown_attributes().attributes().size(),
-      Eq(2));
+  ASSERT_THAT(result.UnknownSetOrDie()->unknown_attributes().size(), Eq(2));
 }
 
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());

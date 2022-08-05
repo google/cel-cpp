@@ -130,11 +130,11 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 
   CelValue current_value = (*cel_list)[current_index];
   frame->value_stack().Push(CelValue::CreateInt64(current_index));
-  auto iter_trail = iter_range_attr.Step(
+  AttributeTrail iter_trail = iter_range_attr.Step(
       CelAttributeQualifier::Create(CelValue::CreateInt64(current_index)),
       frame->memory_manager());
   frame->value_stack().Push(current_value, iter_trail);
-  CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, iter_trail));
+  CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, std::move(iter_trail)));
   return absl::OkStatus();
 }
 

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <initializer_list>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -30,6 +31,12 @@ namespace google::api::expr::runtime {
 // attribute resolutuion path. A segment can be qualified by values of
 // following types: string/int64_t/uint64/bool.
 class CelAttributeQualifier {
+ private:
+  struct ComparatorVisitor;
+
+  using Variant =
+      std::variant<CelValue::Type, int64_t, uint64_t, std::string, bool>;
+
  public:
   // Factory method.
   static CelAttributeQualifier Create(CelValue value);
@@ -72,6 +79,8 @@ class CelAttributeQualifier {
     return IsMatch(other);
   }
 
+  bool operator<(const CelAttributeQualifier& other) const;
+
   bool IsMatch(const CelValue& cel_value) const;
 
   bool IsMatch(absl::string_view other_key) const {
@@ -81,6 +90,7 @@ class CelAttributeQualifier {
 
  private:
   friend class CelAttribute;
+  friend struct ComparatorVisitor;
 
   CelAttributeQualifier() = default;
 
@@ -94,7 +104,7 @@ class CelAttributeQualifier {
   // instances, regardless of whether they are supported in this context or not.
   // We represented unsupported types by using the first alternative and thus
   // preserve backwards compatibility with the result of `type()` above.
-  std::variant<CelValue::Type, int64_t, uint64_t, std::string, bool> value_;
+  Variant value_;
 };
 
 // CelAttributeQualifierPattern matches a segment in
@@ -152,30 +162,44 @@ class CelAttributeQualifierPattern {
 // CelAttribute represents resolved attribute path.
 class CelAttribute {
  public:
+  explicit CelAttribute(std::string variable_name)
+      : CelAttribute(std::move(variable_name), {}) {}
+
   CelAttribute(std::string variable_name,
                std::vector<CelAttributeQualifier> qualifier_path)
-      : variable_name_(std::move(variable_name)),
-        qualifier_path_(std::move(qualifier_path)) {}
+      : impl_(std::make_shared<Impl>(std::move(variable_name),
+                                     std::move(qualifier_path))) {}
 
   CelAttribute(const google::api::expr::v1alpha1::Expr& variable,
                std::vector<CelAttributeQualifier> qualifier_path)
       : CelAttribute(variable.ident_expr().name(), std::move(qualifier_path)) {}
 
-  absl::string_view variable_name() const { return variable_name_; }
+  absl::string_view variable_name() const { return impl_->variable_name; }
 
-  bool has_variable_name() const { return !variable_name_.empty(); }
+  bool has_variable_name() const { return !impl_->variable_name.empty(); }
 
   const std::vector<CelAttributeQualifier>& qualifier_path() const {
-    return qualifier_path_;
+    return impl_->qualifier_path;
   }
 
   bool operator==(const CelAttribute& other) const;
 
+  bool operator<(const CelAttribute& other) const;
+
   const absl::StatusOr<std::string> AsString() const;
 
  private:
-  std::string variable_name_;
-  std::vector<CelAttributeQualifier> qualifier_path_;
+  struct Impl final {
+    Impl(std::string variable_name,
+         std::vector<CelAttributeQualifier> qualifier_path)
+        : variable_name(std::move(variable_name)),
+          qualifier_path(std::move(qualifier_path)) {}
+
+    std::string variable_name;
+    std::vector<CelAttributeQualifier> qualifier_path;
+  };
+
+  std::shared_ptr<const Impl> impl_;
 };
 
 // CelAttributePattern is a fully-qualified absolute attribute path pattern.

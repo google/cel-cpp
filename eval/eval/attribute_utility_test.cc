@@ -85,9 +85,9 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
                            manager);
 
-  UnknownSet unknown_set0(UnknownAttributeSet({&attribute0}));
-  UnknownSet unknown_set1(UnknownAttributeSet({&attribute1}));
-  UnknownSet unknown_set2(UnknownAttributeSet({&attribute1, &attribute2}));
+  UnknownSet unknown_set0(UnknownAttributeSet({attribute0}));
+  UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
+  UnknownSet unknown_set2(UnknownAttributeSet({attribute1, attribute2}));
   std::vector<CelValue> values = {
       CelValue::CreateUnknownSet(&unknown_set0),
       CelValue::CreateUnknownSet(&unknown_set1),
@@ -97,16 +97,16 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
 
   const UnknownSet* unknown_set = utility.MergeUnknowns(values, nullptr);
   ASSERT_THAT(unknown_set, NotNull());
-  ASSERT_THAT(unknown_set->unknown_attributes().attributes(),
-              UnorderedPointwise(Eq(), std::vector<const CelAttribute*>{
-                                           &attribute0, &attribute1}));
+  ASSERT_THAT(unknown_set->unknown_attributes(),
+              UnorderedPointwise(
+                  Eq(), std::vector<CelAttribute>{attribute0, attribute1}));
 
   unknown_set = utility.MergeUnknowns(values, &unknown_set2);
   ASSERT_THAT(unknown_set, NotNull());
   ASSERT_THAT(
-      unknown_set->unknown_attributes().attributes(),
-      UnorderedPointwise(Eq(), std::vector<const CelAttribute*>{
-                                   &attribute0, &attribute1, &attribute2}));
+      unknown_set->unknown_attributes(),
+      UnorderedPointwise(
+          Eq(), std::vector<CelAttribute>{attribute0, attribute1, attribute2}));
 }
 
 TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
@@ -130,7 +130,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   AttributeTrail trail1(unknown_expr1, manager);
 
   CelAttribute attribute1(unknown_expr1, {});
-  UnknownSet unknown_set1(UnknownAttributeSet({&attribute1}));
+  UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
 
   AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
                            manager);
@@ -147,7 +147,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
 
   UnknownSet unknown_set(unknown_set1, unknown_attr_set);
 
-  ASSERT_THAT(unknown_set.unknown_attributes().attributes(), SizeIs(3));
+  ASSERT_THAT(unknown_set.unknown_attributes(), SizeIs(3));
 }
 
 TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
@@ -201,8 +201,7 @@ TEST(AttributeUtilityTest, CreateUnknownSet) {
   AttributeUtility utility(&empty_patterns, &empty_patterns, manager);
 
   const UnknownSet* set = utility.CreateUnknownSet(trail.attribute());
-  EXPECT_EQ(*set->unknown_attributes().attributes().at(0)->AsString(),
-            "destination.ip");
+  EXPECT_EQ(*set->unknown_attributes().begin()->AsString(), "destination.ip");
 }
 
 }  // namespace google::api::expr::runtime

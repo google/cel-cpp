@@ -73,7 +73,7 @@ std::vector<CelValue> CheckForPartialUnknowns(
   for (size_t i = 0; i < args.size(); i++) {
     auto attr_set = frame->attribute_utility().CheckForUnknowns(
         attrs.subspan(i, 1), /*use_partial=*/true);
-    if (!attr_set.attributes().empty()) {
+    if (!attr_set.empty()) {
       auto unknown_set = frame->memory_manager()
                              .New<UnknownSet>(std::move(attr_set))
                              .release();

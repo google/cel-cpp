@@ -154,12 +154,11 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
 
   ASSERT_OK(eval_result);
   ASSERT_TRUE(eval_result->IsUnknownSet());
-  const auto& attrs =
-      eval_result->UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs = eval_result->UnknownSetOrDie()->unknown_attributes();
 
   EXPECT_THAT(attrs, SizeIs(1));
-  EXPECT_THAT(attrs.at(0)->variable_name(), Eq("var"));
-  EXPECT_THAT(attrs.at(0)->qualifier_path(), SizeIs(0));
+  EXPECT_THAT(attrs.begin()->variable_name(), Eq("var"));
+  EXPECT_THAT(attrs.begin()->qualifier_path(), SizeIs(0));
 }
 
 TEST_F(ListKeysStepTest, ErrorPassedThrough) {
@@ -209,8 +208,7 @@ TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
 
   ASSERT_OK(eval_result);
   ASSERT_TRUE(eval_result->IsUnknownSet());
-  EXPECT_THAT(eval_result->UnknownSetOrDie()->unknown_attributes().attributes(),
-              SizeIs(1));
+  EXPECT_THAT(eval_result->UnknownSetOrDie()->unknown_attributes(), SizeIs(1));
 }
 
 }  // namespace
