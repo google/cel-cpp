@@ -45,6 +45,13 @@ enum class Kind /* : uint8_t */ {
   kEnum,
   kDyn,
 
+  // Legacy aliases, deprecated do not use.
+  kInt64 = kInt,
+  kUint64 = kUint,
+  kMessage = kStruct,
+  kUnknownSet = kUnknown,
+  kCelType = kType,
+
   // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
   // we can store `Kind` using 7 bits.
 };

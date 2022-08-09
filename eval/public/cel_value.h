@@ -32,6 +32,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/kind.h"
 #include "base/memory_manager.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/message_wrapper.h"
@@ -136,7 +137,10 @@ class CelValue {
   // Enum for types supported.
   // This is not recommended for use in exhaustive switches in client code.
   // Types may be updated over time.
-  enum class Type {
+  using Type = ::cel::Kind;
+
+  // Legacy enumeration that is here for testing purposes. Do not use.
+  enum class LegacyType {
     kNullType = IndexOf<NullType>::value,
     kBool = IndexOf<bool>::value,
     kInt64 = IndexOf<int64_t>::value,
@@ -160,7 +164,7 @@ class CelValue {
   CelValue() : CelValue(NullType()) {}
 
   // Returns Type that describes the type of value stored.
-  Type type() const { return Type(value_.index()); }
+  Type type() const { return static_cast<Type>(value_.index()); }
 
   // Returns debug string describing a value
   const std::string DebugString() const;
