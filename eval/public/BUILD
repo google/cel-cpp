@@ -587,6 +587,7 @@ cc_test(
         ":cel_value_internal",
         ":unknown_attribute_set",
         ":unknown_set",
+        "//base:kind",
         "//base:memory_manager",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:trivial_legacy_type_info",
