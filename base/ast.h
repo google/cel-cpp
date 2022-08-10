@@ -31,6 +31,13 @@ namespace cel::ast::internal {
 
 enum class NullValue { kNullValue = 0 };
 
+// A holder class to differentiate between CEL string and CEL bytes constants.
+struct Bytes {
+  std::string bytes;
+
+  bool operator==(const Bytes& other) const { return bytes == other.bytes; }
+};
+
 // Represents a primitive literal.
 //
 // This is similar as the primitives supported in the well-known type
@@ -48,8 +55,9 @@ enum class NullValue { kNullValue = 0 };
 // message that can hold any constant object representation supplied or
 // produced at evaluation time.
 // --)
-using ConstantKind = absl::variant<NullValue, bool, int64_t, uint64_t, double,
-                                   std::string, absl::Duration, absl::Time>;
+using ConstantKind =
+    absl::variant<NullValue, bool, int64_t, uint64_t, double, std::string,
+                  Bytes, absl::Duration, absl::Time>;
 
 class Constant {
  public:
@@ -77,6 +85,8 @@ class Constant {
     return NullValue::kNullValue;
   }
 
+  void set_null_value(NullValue null_value) { constant_kind_ = null_value; }
+
   bool has_bool_value() const {
     return absl::holds_alternative<bool>(constant_kind_);
   }
@@ -88,6 +98,8 @@ class Constant {
     }
     return false;
   }
+
+  void set_bool_value(bool bool_value) { constant_kind_ = bool_value; }
 
   bool has_int64_value() const {
     return absl::holds_alternative<int64_t>(constant_kind_);
@@ -101,6 +113,8 @@ class Constant {
     return 0;
   }
 
+  void set_int64_value(int64_t int64_value) { constant_kind_ = int64_value; }
+
   bool has_uint64_value() const {
     return absl::holds_alternative<uint64_t>(constant_kind_);
   }
@@ -111,6 +125,10 @@ class Constant {
       return *value;
     }
     return 0;
+  }
+
+  void set_uint64_value(uint64_t uint64_value) {
+    constant_kind_ = uint64_value;
   }
 
   bool has_double_value() const {
@@ -125,6 +143,8 @@ class Constant {
     return 0;
   }
 
+  void set_double_value(double double_value) { constant_kind_ = double_value; }
+
   bool has_string_value() const {
     return absl::holds_alternative<std::string>(constant_kind_);
   }
@@ -138,8 +158,29 @@ class Constant {
     return *default_string_value_;
   }
 
+  void set_string_value(std::string string_value) {
+    constant_kind_ = string_value;
+  }
+
+  const std::string& bytes_value() const {
+    auto* value = absl::get_if<Bytes>(&constant_kind_);
+    if (value != nullptr) {
+      return value->bytes;
+    }
+    static std::string* default_string_value_ = new std::string("");
+    return *default_string_value_;
+  }
+
+  void set_bytes_value(std::string bytes_value) {
+    constant_kind_ = Bytes{std::move(bytes_value)};
+  }
+
   bool has_duration_value() const {
     return absl::holds_alternative<absl::Duration>(constant_kind_);
+  }
+
+  void set_duration_value(absl::Duration duration_value) {
+    constant_kind_ = std::move(duration_value);
   }
 
   const absl::Duration& duration_value() const {
@@ -162,6 +203,10 @@ class Constant {
     }
     static absl::Time default_time_;
     return default_time_;
+  }
+
+  void set_time_value(absl::Time time_value) {
+    constant_kind_ = std::move(time_value);
   }
 
   bool operator==(const Constant& other) const {
@@ -367,6 +412,10 @@ class CreateStruct {
       }
       static const std::string* default_field_key = new std::string;
       return *default_field_key;
+    }
+
+    void set_field_key(std::string field_key) {
+      key_kind_ = std::move(field_key);
     }
 
     const Expr& map_key() const;

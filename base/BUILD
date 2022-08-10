@@ -311,8 +311,7 @@ cc_test(
     deps = [
         ":ast",
         "//internal:testing",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/types:variant",
+        "@com_google_absl//absl/time",
     ],
 )
 

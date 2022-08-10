@@ -17,7 +17,7 @@
 #include <memory>
 #include <utility>
 
-#include "absl/memory/memory.h"
+#include "absl/time/time.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -32,6 +32,63 @@ TEST(AstTest, ExprConstructionConstant) {
   ASSERT_TRUE(constant.bool_value());
 }
 
+TEST(AstTest, ConstantNullValueSetterGetterTest) {
+  Constant constant;
+  constant.set_null_value(NullValue::kNullValue);
+  EXPECT_EQ(constant.null_value(), NullValue::kNullValue);
+}
+
+TEST(AstTest, ConstantBoolValueSetterGetterTest) {
+  Constant constant;
+  constant.set_bool_value(true);
+  EXPECT_TRUE(constant.bool_value());
+  constant.set_bool_value(false);
+  EXPECT_FALSE(constant.bool_value());
+}
+
+TEST(AstTest, ConstantInt64ValueSetterGetterTest) {
+  Constant constant;
+  constant.set_int64_value(-1234);
+  EXPECT_EQ(constant.int64_value(), -1234);
+}
+
+TEST(AstTest, ConstantUint64ValueSetterGetterTest) {
+  Constant constant;
+  constant.set_uint64_value(1234);
+  EXPECT_EQ(constant.uint64_value(), 1234);
+}
+
+TEST(AstTest, ConstantDoubleValueSetterGetterTest) {
+  Constant constant;
+  constant.set_double_value(12.34);
+  EXPECT_EQ(constant.double_value(), 12.34);
+}
+
+TEST(AstTest, ConstantStringValueSetterGetterTest) {
+  Constant constant;
+  constant.set_string_value("test");
+  EXPECT_EQ(constant.string_value(), "test");
+}
+
+TEST(AstTest, ConstantBytesValueSetterGetterTest) {
+  Constant constant;
+  constant.set_string_value("test");
+  EXPECT_EQ(constant.string_value(), "test");
+}
+
+TEST(AstTest, ConstantDurationValueSetterGetterTest) {
+  Constant constant;
+  constant.set_duration_value(absl::Seconds(10));
+  EXPECT_EQ(constant.duration_value(), absl::Seconds(10));
+}
+
+TEST(AstTest, ConstantTimeValueSetterGetterTest) {
+  Constant constant;
+  auto time = absl::UnixEpoch() + absl::Seconds(10);
+  constant.set_time_value(time);
+  EXPECT_EQ(constant.time_value(), time);
+}
+
 TEST(AstTest, ConstantDefaults) {
   Constant constant;
   EXPECT_EQ(constant.null_value(), NullValue::kNullValue);
@@ -40,6 +97,7 @@ TEST(AstTest, ConstantDefaults) {
   EXPECT_EQ(constant.uint64_value(), 0);
   EXPECT_EQ(constant.double_value(), 0);
   EXPECT_TRUE(constant.string_value().empty());
+  EXPECT_TRUE(constant.bytes_value().empty());
   EXPECT_EQ(constant.duration_value(), absl::Duration());
   EXPECT_EQ(constant.time_value(), absl::UnixEpoch());
 }
@@ -180,6 +238,12 @@ TEST(AstTest, CreateStructEntryMutableMapKey) {
   entry.mutable_map_key().set_expr_kind(Ident("new_key"));
   ASSERT_TRUE(absl::holds_alternative<Ident>(entry.map_key().expr_kind()));
   ASSERT_EQ(absl::get<Ident>(entry.map_key().expr_kind()).name(), "new_key");
+}
+
+TEST(AstTest, CreateStructEntryFieldKeyGetterSetterTest) {
+  CreateStruct::Entry entry;
+  entry.set_field_key("key");
+  EXPECT_EQ(entry.field_key(), "key");
 }
 
 TEST(AstTest, ExprConstructionComprehension) {
