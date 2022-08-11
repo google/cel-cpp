@@ -4,13 +4,14 @@
 #include <cstdint>
 
 #include "absl/status/statusor.h"
+#include "base/ast.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
 absl::optional<CelValue> ConvertConstant(
-    const google::api::expr::v1alpha1::Constant* const_expr);
+    const cel::ast::internal::Constant& const_expr);
 
 // Factory method for Constant - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(

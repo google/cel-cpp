@@ -297,8 +297,8 @@ TEST(AstUtilityTest, ConstantBytesToNative) {
 
   auto native_constant = ToNative(constant);
 
-  ASSERT_TRUE(native_constant->has_string_value());
-  EXPECT_EQ(native_constant->string_value(), "bytes");
+  ASSERT_TRUE(native_constant->has_bytes_value());
+  EXPECT_EQ(native_constant->bytes_value(), "bytes");
 }
 
 TEST(AstUtilityTest, ConstantDurationToNative) {
@@ -331,19 +331,14 @@ TEST(AstUtilityTest, ConstantError) {
   EXPECT_EQ(native_constant.status().code(),
             absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_constant.status().message(),
-              ::testing::HasSubstr(
-                  "Illegal type supplied for google::api::expr::v1alpha1::Constant."));
+              ::testing::HasSubstr("Unsupported constant type"));
 }
 
-TEST(AstUtilityTest, ExprError) {
-  auto native_constant = ToNative(google::api::expr::v1alpha1::Expr());
+TEST(AstUtilityTest, ExprUnset) {
+  auto native_expr = ToNative(google::api::expr::v1alpha1::Expr());
 
-  EXPECT_EQ(native_constant.status().code(),
-            absl::StatusCode::kInvalidArgument);
-  EXPECT_THAT(
-      native_constant.status().message(),
-      ::testing::HasSubstr(
-          "Illegal type supplied for google::api::expr::v1alpha1::Expr::expr_kind."));
+  EXPECT_TRUE(
+      absl::holds_alternative<absl::monostate>(native_expr->expr_kind()));
 }
 
 TEST(AstUtilityTest, SourceInfoToNative) {

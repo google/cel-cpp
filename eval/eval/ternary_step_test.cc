@@ -16,28 +16,28 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-
-using google::protobuf::Arena;
+using ::cel::ast::internal::Expr;
+using ::google::protobuf::Arena;
 using testing::Eq;
+
 class LogicStepTest : public testing::TestWithParam<bool> {
  public:
   absl::Status EvaluateLogic(CelValue arg0, CelValue arg1, CelValue arg2,
                              CelValue* result, bool enable_unknown) {
     Expr expr0;
     expr0.set_id(1);
-    auto ident_expr0 = expr0.mutable_ident_expr();
-    ident_expr0->set_name("name0");
+    auto& ident_expr0 = expr0.mutable_ident_expr();
+    ident_expr0.set_name("name0");
 
     Expr expr1;
     expr1.set_id(2);
-    auto ident_expr1 = expr1.mutable_ident_expr();
-    ident_expr1->set_name("name1");
+    auto& ident_expr1 = expr1.mutable_ident_expr();
+    ident_expr1.set_name("name1");
 
     Expr expr2;
     expr2.set_id(3);
-    auto ident_expr2 = expr2.mutable_ident_expr();
-    ident_expr2->set_name("name2");
+    auto& ident_expr2 = expr2.mutable_ident_expr();
+    ident_expr2.set_name("name2");
 
     ExecutionPath path;
 
@@ -53,10 +53,8 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     CEL_ASSIGN_OR_RETURN(step, CreateTernaryStep(4));
     path.push_back(std::move(step));
 
-    auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
-
-    CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                               &TestTypeRegistry(), 0, {}, enable_unknown);
+    CelExpressionFlatImpl impl(nullptr, std::move(path), &TestTypeRegistry(), 0,
+                               {}, enable_unknown);
 
     Activation activation;
     std::string value("test");
@@ -138,12 +136,12 @@ TEST_F(LogicStepTest, TestUnknownHandling) {
   ASSERT_TRUE(result.IsUnknownSet());
 
   Expr expr0;
-  auto ident_expr0 = expr0.mutable_ident_expr();
-  ident_expr0->set_name("name0");
+  auto& ident_expr0 = expr0.mutable_ident_expr();
+  ident_expr0.set_name("name0");
 
   Expr expr1;
-  auto ident_expr1 = expr1.mutable_ident_expr();
-  ident_expr1->set_name("name1");
+  auto& ident_expr1 = expr1.mutable_ident_expr();
+  ident_expr1.set_name("name1");
 
   CelAttribute attr0(expr0.ident_expr().name(), {}),
       attr1(expr1.ident_expr().name(), {});

@@ -33,7 +33,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManager;
 
 // Only non-strict functions are allowed to consume errors and unknown sets.
 bool IsNonStrict(const CelFunction& function) {
@@ -302,22 +302,22 @@ absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
+    const cel::ast::internal::Call& call_expr, int64_t expr_id,
     std::vector<const CelFunctionProvider*>& lazy_overloads) {
-  bool receiver_style = call_expr->has_target();
-  size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
-  const std::string& name = call_expr->function();
+  bool receiver_style = call_expr.has_target();
+  size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
+  const std::string& name = call_expr.function();
   std::vector<CelValue::Type> args(num_args, CelValue::Type::kAny);
   return absl::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
                                              lazy_overloads, expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
+    const cel::ast::internal::Call& call_expr, int64_t expr_id,
     std::vector<const CelFunction*>& overloads) {
-  bool receiver_style = call_expr->has_target();
-  size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
-  const std::string& name = call_expr->function();
+  bool receiver_style = call_expr.has_target();
+  size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
+  const std::string& name = call_expr.function();
   return absl::make_unique<EagerFunctionStep>(overloads, name, num_args,
                                               expr_id);
 }

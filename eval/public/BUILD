@@ -511,6 +511,7 @@ cc_library(
         ":ast_visitor_native",
         ":source_position_native",
         "//base:ast",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:variant",
     ],
 )
@@ -695,6 +696,39 @@ cc_test(
         "//parser",
         "//testutil:util",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "ast_rewrite_native",
+    srcs = [
+        "ast_rewrite_native.cc",
+    ],
+    hdrs = [
+        "ast_rewrite_native.h",
+    ],
+    deps = [
+        ":ast_visitor_native",
+        ":source_position_native",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "ast_rewrite_native_test",
+    srcs = [
+        "ast_rewrite_native_test.cc",
+    ],
+    deps = [
+        ":ast_rewrite_native",
+        ":ast_visitor_native",
+        ":source_position_native",
+        "//base:ast_utility",
+        "//internal:testing",
+        "//parser",
+        "//testutil:util",
     ],
 )
 

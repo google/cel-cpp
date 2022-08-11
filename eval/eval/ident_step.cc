@@ -98,8 +98,8 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const google::api::expr::v1alpha1::Expr::Ident* ident_expr, int64_t expr_id) {
-  return absl::make_unique<IdentStep>(ident_expr->name(), expr_id);
+    const cel::ast::internal::Ident& ident_expr, int64_t expr_id) {
+  return absl::make_unique<IdentStep>(ident_expr.name(), expr_id);
 }
 
 }  // namespace google::api::expr::runtime

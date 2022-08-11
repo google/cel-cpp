@@ -73,7 +73,7 @@ static void BM_Eval(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_Eval)->Range(1, 32768);
+BENCHMARK(BM_Eval)->Range(1, 10000);
 
 absl::Status EmptyCallback(int64_t expr_id, const CelValue& value,
                            google::protobuf::Arena* arena) {
@@ -116,7 +116,9 @@ static void BM_Eval_Trace(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_Eval_Trace)->Range(1, 32768);
+// A number higher than 10k leads to a stack overflow due to the recursive
+// nature of the proto to native type conversion.
+BENCHMARK(BM_Eval_Trace)->Range(1, 10000);
 
 // Benchmark test
 // Evaluates cel expression:
@@ -154,7 +156,9 @@ static void BM_EvalString(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_EvalString)->Range(1, 32768);
+// A number higher than 10k leads to a stack overflow due to the recursive
+// nature of the proto to native type conversion.
+BENCHMARK(BM_EvalString)->Range(1, 10000);
 
 // Benchmark test
 // Traces cel expression with an empty callback:
@@ -192,7 +196,9 @@ static void BM_EvalString_Trace(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_EvalString_Trace)->Range(1, 32768);
+// A number higher than 10k leads to a stack overflow due to the recursive
+// nature of the proto to native type conversion.
+BENCHMARK(BM_EvalString_Trace)->Range(1, 10000);
 
 const char kIP[] = "10.0.1.2";
 const char kPath[] = "/admin/edit";

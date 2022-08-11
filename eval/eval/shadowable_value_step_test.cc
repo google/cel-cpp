@@ -29,7 +29,7 @@ absl::StatusOr<CelValue> RunShadowableExpression(const std::string& identifier,
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  google::api::expr::v1alpha1::Expr dummy_expr;
+  cel::ast::internal::Expr dummy_expr;
   CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
                              0, {});
   return impl.Evaluate(activation, arena);

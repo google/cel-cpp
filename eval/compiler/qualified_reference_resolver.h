@@ -3,11 +3,10 @@
 
 #include <cstdint>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/ast.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
 
@@ -23,9 +22,10 @@ namespace google::api::expr::runtime {
 // function overload could match a call) or are inconsistnet (reference map
 // points to an expr node that isn't a reference).
 absl::StatusOr<bool> ResolveReferences(
-    const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
-    const Resolver& resolver, const google::api::expr::v1alpha1::SourceInfo* source_info,
-    BuilderWarnings& warnings, google::api::expr::v1alpha1::Expr* expr);
+    const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
+        reference_map,
+    const Resolver& resolver, const cel::ast::internal::SourceInfo* source_info,
+    BuilderWarnings& warnings, cel::ast::internal::Expr* expr);
 
 }  // namespace google::api::expr::runtime
 

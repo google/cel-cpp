@@ -553,6 +553,11 @@ TEST(AstTest, ExprMutableConstruction) {
   EXPECT_EQ(expr.comprehension_expr().accu_var(), "accu_var");
 }
 
+TEST(AstTest, ReferenceConstantDefaultValue) {
+  Reference reference;
+  EXPECT_EQ(reference.value(), Constant());
+}
+
 }  // namespace
 }  // namespace internal
 }  // namespace ast

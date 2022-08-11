@@ -162,7 +162,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = absl::make_unique<cel::ast::internal::Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {});

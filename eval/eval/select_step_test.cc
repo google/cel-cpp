@@ -29,7 +29,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::ast::internal::Expr;
 using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
@@ -76,14 +76,14 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
   ExecutionPath path;
   Expr dummy_expr;
 
-  auto select = dummy_expr.mutable_select_expr();
-  select->set_field(field.data(), field.size());
-  select->set_test_only(test);
-  Expr* expr0 = select->mutable_operand();
+  auto& select = dummy_expr.mutable_select_expr();
+  select.set_field(std::string(field));
+  select.set_test_only(test);
+  Expr& expr0 = select.mutable_operand();
 
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("target");
-  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0->id()));
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("target");
+  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
   CEL_ASSIGN_OR_RETURN(
       auto step1, CreateSelectStep(select, dummy_expr.id(), unknown_path,
                                    options.enable_wrapper_type_null_unboxing));
@@ -214,20 +214,20 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
   google::protobuf::Arena arena;
 
   Expr select_expr;
-  auto select = select_expr.mutable_select_expr();
-  select->set_field("1");
-  select->set_test_only(true);
-  Expr* expr1 = select->mutable_operand();
-  auto select_map = expr1->mutable_select_expr();
-  select_map->set_field("int32_int32_map");
-  Expr* expr0 = select_map->mutable_operand();
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("target");
+  auto& select = select_expr.mutable_select_expr();
+  select.set_field("1");
+  select.set_test_only(true);
+  Expr& expr1 = select.mutable_operand();
+  auto& select_map = expr1.mutable_select_expr();
+  select_map.set_field("int32_int32_map");
+  Expr& expr0 = select_map.mutable_operand();
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("target");
 
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0->id()));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
-      CreateSelectStep(select_map, expr1->id(), "",
+      CreateSelectStep(select_map, expr1.id(), "",
                        /*enable_wrapper_type_null_unboxing=*/false));
   ASSERT_OK_AND_ASSIGN(
       auto step2,
@@ -615,14 +615,14 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
 
   Expr dummy_expr;
 
-  auto select = dummy_expr.mutable_select_expr();
-  select->set_field("position");
-  select->set_test_only(false);
-  Expr* expr0 = select->mutable_operand();
+  auto& select = dummy_expr.mutable_select_expr();
+  select.set_field("position");
+  select.set_test_only(false);
+  Expr& expr0 = select.mutable_operand();
 
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0->id()));
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("message");
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(), "",
@@ -653,14 +653,14 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
 
   Expr dummy_expr;
 
-  auto select = dummy_expr.mutable_select_expr();
-  select->set_field("bool_value");
-  select->set_test_only(false);
-  Expr* expr0 = select->mutable_operand();
+  auto& select = dummy_expr.mutable_select_expr();
+  select.set_field("bool_value");
+  select.set_test_only(false);
+  Expr& expr0 = select.mutable_operand();
 
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0->id()));
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("message");
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(), "message.bool_value",
@@ -695,14 +695,14 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
 
   Expr dummy_expr;
 
-  auto select = dummy_expr.mutable_select_expr();
-  select->set_field("bool_value");
-  select->set_test_only(false);
-  Expr* expr0 = select->mutable_operand();
+  auto& select = dummy_expr.mutable_select_expr();
+  select.set_field("bool_value");
+  select.set_test_only(false);
+  Expr& expr0 = select.mutable_operand();
 
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("message");
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0->id()));
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("message");
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(), "message.bool_value",
@@ -741,14 +741,14 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
 
   Expr dummy_expr;
 
-  auto select = dummy_expr.mutable_select_expr();
-  select->set_field("bool_value");
-  select->set_test_only(false);
-  Expr* expr0 = select->mutable_operand();
+  auto& select = dummy_expr.mutable_select_expr();
+  select.set_field("bool_value");
+  select.set_test_only(false);
+  Expr& expr0 = select.mutable_operand();
 
-  auto ident = expr0->mutable_ident_expr();
-  ident->set_name("message");
-  auto step0_status = CreateIdentStep(ident, expr0->id());
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("message");
+  auto step0_status = CreateIdentStep(ident, expr0.id());
   auto step1_status =
       CreateSelectStep(select, dummy_expr.id(), "message.bool_value",
                        /*enable_wrapper_type_null_unboxing=*/false);

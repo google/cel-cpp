@@ -8,9 +8,11 @@
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
+#include "base/ast.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/testing/matchers.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -19,39 +21,39 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::ast::internal::Constant;
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::NullValue;
+using ::google::protobuf::Arena;
 using testing::Eq;
 
-using ::google::api::expr::v1alpha1::Constant;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::protobuf::Duration;
-using ::google::protobuf::Timestamp;
-
-using google::protobuf::Arena;
-
 absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
-                                               const Constant* const_expr,
+                                               const Constant& const_expr,
                                                Arena* arena) {
   CEL_ASSIGN_OR_RETURN(
       auto step,
-      CreateConstValueStep(ConvertConstant(const_expr).value(), expr->id()));
+      CreateConstValueStep(
+          google::api::expr::runtime::ConvertConstant(const_expr).value(),
+          expr->id()));
 
-  ExecutionPath path;
+  google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
 
-  google::api::expr::v1alpha1::Expr dummy_expr;
+  Expr dummy_expr;
 
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {});
+  CelExpressionFlatImpl impl(&dummy_expr, std::move(path),
+                             &google::api::expr::runtime::TestTypeRegistry(), 0,
+                             {});
 
-  Activation activation;
+  google::api::expr::runtime::Activation activation;
 
   return impl.Evaluate(activation, arena);
 }
 
 TEST(ConstValueStepTest, TestEvaluationConstInt64) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_int64_value(1);
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_int64_value(1);
 
   google::protobuf::Arena arena;
 
@@ -67,8 +69,8 @@ TEST(ConstValueStepTest, TestEvaluationConstInt64) {
 
 TEST(ConstValueStepTest, TestEvaluationConstUint64) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_uint64_value(1);
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_uint64_value(1);
 
   google::protobuf::Arena arena;
 
@@ -84,8 +86,8 @@ TEST(ConstValueStepTest, TestEvaluationConstUint64) {
 
 TEST(ConstValueStepTest, TestEvaluationConstBool) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_bool_value(true);
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_bool_value(true);
 
   google::protobuf::Arena arena;
 
@@ -101,8 +103,8 @@ TEST(ConstValueStepTest, TestEvaluationConstBool) {
 
 TEST(ConstValueStepTest, TestEvaluationConstNull) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_null_value(google::protobuf::NullValue(0));
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_null_value(NullValue::kNullValue);
 
   google::protobuf::Arena arena;
 
@@ -117,8 +119,8 @@ TEST(ConstValueStepTest, TestEvaluationConstNull) {
 
 TEST(ConstValueStepTest, TestEvaluationConstString) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_string_value("test");
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_string_value("test");
 
   google::protobuf::Arena arena;
 
@@ -134,8 +136,8 @@ TEST(ConstValueStepTest, TestEvaluationConstString) {
 
 TEST(ConstValueStepTest, TestEvaluationConstDouble) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_double_value(1.0);
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_double_value(1.0);
 
   google::protobuf::Arena arena;
 
@@ -153,8 +155,8 @@ TEST(ConstValueStepTest, TestEvaluationConstDouble) {
 // For now, bytes are equivalent to string.
 TEST(ConstValueStepTest, TestEvaluationConstBytes) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  const_expr->set_bytes_value("test");
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_bytes_value("test");
 
   google::protobuf::Arena arena;
 
@@ -170,10 +172,8 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
 
 TEST(ConstValueStepTest, TestEvaluationConstDuration) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  Duration* duration = const_expr->mutable_duration_value();
-  duration->set_seconds(5);
-  duration->set_nanos(2000);
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_duration_value(absl::Seconds(5) + absl::Nanoseconds(2000));
 
   google::protobuf::Arena arena;
 
@@ -189,10 +189,9 @@ TEST(ConstValueStepTest, TestEvaluationConstDuration) {
 
 TEST(ConstValueStepTest, TestEvaluationConstTimestamp) {
   Expr expr;
-  auto const_expr = expr.mutable_const_expr();
-  Timestamp* timestamp_proto = const_expr->mutable_timestamp_value();
-  timestamp_proto->set_seconds(3600);
-  timestamp_proto->set_nanos(1000);
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_time_value(absl::FromUnixSeconds(3600) +
+                            absl::Nanoseconds(1000));
 
   google::protobuf::Arena arena;
 

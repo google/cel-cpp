@@ -29,6 +29,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
+#include "absl/types/variant.h"
 #include "base/ast.h"
 
 namespace cel::ast::internal {
@@ -48,7 +49,7 @@ absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& c
     case google::api::expr::v1alpha1::Constant::kStringValue:
       return Constant(constant.string_value());
     case google::api::expr::v1alpha1::Constant::kBytesValue:
-      return Constant(constant.bytes_value());
+      return Constant(Bytes{constant.bytes_value()});
     case google::api::expr::v1alpha1::Constant::kDurationValue:
       return Constant(absl::Seconds(constant.duration_value().seconds()) +
                       absl::Nanoseconds(constant.duration_value().nanos()));
@@ -57,8 +58,7 @@ absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& c
           absl::FromUnixSeconds(constant.timestamp_value().seconds()) +
           absl::Nanoseconds(constant.timestamp_value().nanos()));
     default:
-      return absl::InvalidArgumentError(
-          "Illegal type supplied for google::api::expr::v1alpha1::Constant.");
+      return absl::InvalidArgumentError("Unsupported constant type");
   }
 }
 
@@ -76,21 +76,24 @@ absl::StatusOr<Select> ToNative(const google::api::expr::v1alpha1::Expr::Select&
 }
 
 absl::StatusOr<Call> ToNative(const google::api::expr::v1alpha1::Expr::Call& call) {
-  std::vector<Expr> args;
-  args.reserve(call.args_size());
+  Call ret_val;
+  ret_val.mutable_args().reserve(call.args_size());
   for (const auto& arg : call.args()) {
     auto native_arg = ToNative(arg);
     if (!native_arg.ok()) {
       return native_arg.status();
     }
-    args.emplace_back(*(std::move(native_arg)));
+    ret_val.mutable_args().emplace_back(*(std::move(native_arg)));
   }
-  auto native_target = ToNative(call.target());
-  if (!native_target.ok()) {
-    return native_target.status();
+  ret_val.set_function(call.function());
+  if (call.has_target()) {
+    auto native_target = ToNative(call.target());
+    if (!native_target.ok()) {
+      return native_target.status();
+    }
+    ret_val.set_target(std::make_unique<Expr>(*(std::move(native_target))));
   }
-  return Call(std::make_unique<Expr>(*(std::move(native_target))),
-              call.function(), std::move(args));
+  return ret_val;
 }
 
 absl::StatusOr<CreateList> ToNative(
@@ -131,6 +134,10 @@ absl::StatusOr<CreateStruct::Entry> ToNative(
   if (!native_key.ok()) {
     return native_key.status();
   }
+  if (!entry.has_value()) {
+    return absl::InvalidArgumentError(
+        "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value");
+  }
   auto native_value = ToNative(entry.value());
   if (!native_value.ok()) {
     return native_value.status();
@@ -157,7 +164,29 @@ absl::StatusOr<CreateStruct> ToNative(
 absl::StatusOr<Comprehension> ToNative(
     const google::api::expr::v1alpha1::Expr::Comprehension& comprehension) {
   Comprehension ret_val;
+  // accu_var
+  if (comprehension.accu_var().empty()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'accu_var' must not be empty");
+  }
+  ret_val.set_accu_var(comprehension.accu_var());
+  // iter_var
+  if (comprehension.iter_var().empty()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'iter_var' must not be empty");
+  }
   ret_val.set_iter_var(comprehension.iter_var());
+  // accu_init
+  if (!comprehension.has_accu_init()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'accu_init' must be set");
+  }
+  auto native_accu_init = ToNative(comprehension.accu_init());
+  if (!native_accu_init.ok()) {
+    return native_accu_init.status();
+  }
+  ret_val.set_accu_init(std::make_unique<Expr>(*(std::move(native_accu_init))));
+  // iter_range optional
   if (comprehension.has_iter_range()) {
     auto native_iter_range = ToNative(comprehension.iter_range());
     if (!native_iter_range.ok()) {
@@ -166,38 +195,37 @@ absl::StatusOr<Comprehension> ToNative(
     ret_val.set_iter_range(
         std::make_unique<Expr>(*(std::move(native_iter_range))));
   }
-  ret_val.set_accu_var(comprehension.accu_var());
-  if (comprehension.has_accu_init()) {
-    auto native_accu_init = ToNative(comprehension.accu_init());
-    if (!native_accu_init.ok()) {
-      return native_accu_init.status();
-    }
-    ret_val.set_accu_init(
-        std::make_unique<Expr>(*(std::move(native_accu_init))));
+  // loop_condition
+  if (!comprehension.has_loop_condition()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'loop_condition' must be set");
   }
-  if (comprehension.has_loop_condition()) {
-    auto native_loop_condition = ToNative(comprehension.loop_condition());
-    if (!native_loop_condition.ok()) {
-      return native_loop_condition.status();
-    }
-    ret_val.set_loop_condition(
-        std::make_unique<Expr>(*(std::move(native_loop_condition))));
+  auto native_loop_condition = ToNative(comprehension.loop_condition());
+  if (!native_loop_condition.ok()) {
+    return native_loop_condition.status();
   }
-  if (comprehension.has_loop_step()) {
-    auto native_loop_step = ToNative(comprehension.loop_step());
-    if (!native_loop_step.ok()) {
-      return native_loop_step.status();
-    }
-    ret_val.set_loop_step(
-        std::make_unique<Expr>(*(std::move(native_loop_step))));
+  ret_val.set_loop_condition(
+      std::make_unique<Expr>(*(std::move(native_loop_condition))));
+  // loop_step
+  if (!comprehension.has_loop_step()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'loop_step' must be set");
   }
-  if (comprehension.has_result()) {
-    auto native_result = ToNative(comprehension.result());
-    if (!native_result.ok()) {
-      return native_result.status();
-    }
-    ret_val.set_result(std::make_unique<Expr>(*(std::move(native_result))));
+  auto native_loop_step = ToNative(comprehension.loop_step());
+  if (!native_loop_step.ok()) {
+    return native_loop_step.status();
   }
+  ret_val.set_loop_step(std::make_unique<Expr>(*(std::move(native_loop_step))));
+  // result
+  if (!comprehension.has_result()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'result' must be set");
+  }
+  auto native_result = ToNative(comprehension.result());
+  if (!native_result.ok()) {
+    return native_result.status();
+  }
+  ret_val.set_result(std::make_unique<Expr>(*(std::move(native_result))));
   return ret_val;
 }
 
@@ -248,8 +276,7 @@ absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr) {
       return Expr(expr.id(), *(std::move(native_comprehension)));
     }
     default:
-      return absl::InvalidArgumentError(
-          "Illegal type supplied for google::api::expr::v1alpha1::Expr::expr_kind.");
+      return Expr(expr.id(), absl::monostate());
   }
 }
 
@@ -459,17 +486,20 @@ absl::StatusOr<Type> ToNative(const google::api::expr::v1alpha1::Type& type) {
 
 absl::StatusOr<Reference> ToNative(
     const google::api::expr::v1alpha1::Reference& reference) {
-  std::vector<std::string> overload_id;
-  overload_id.reserve(reference.overload_id_size());
+  Reference ret_val;
+  ret_val.set_name(reference.name());
+  ret_val.mutable_overload_id().reserve(reference.overload_id_size());
   for (const auto& elem : reference.overload_id()) {
-    overload_id.emplace_back(elem);
+    ret_val.mutable_overload_id().emplace_back(elem);
   }
-  auto native_value = ToNative(reference.value());
-  if (!native_value.ok()) {
-    return native_value.status();
+  if (reference.has_value()) {
+    auto native_value = ToNative(reference.value());
+    if (!native_value.ok()) {
+      return native_value.status();
+    }
+    ret_val.set_value(*(std::move(native_value)));
   }
-  return Reference(reference.name(), std::move(overload_id),
-                   *(std::move(native_value)));
+  return ret_val;
 }
 
 absl::StatusOr<CheckedExpr> ToNative(

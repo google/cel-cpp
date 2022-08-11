@@ -25,6 +25,8 @@ namespace ast {
 namespace internal {
 
 // Conversion utility functions from proto types to native types
+// Note that these functions are recursive in nature leading to stack overflows
+// when converting pathologically large hand-rolled ASTs.
 absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& constant);
 absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr);
 absl::StatusOr<SourceInfo> ToNative(

@@ -247,10 +247,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id,
+    const cel::ast::internal::Select& select_expr, int64_t expr_id,
     absl::string_view select_path, bool enable_wrapper_type_null_unboxing) {
   return absl::make_unique<SelectStep>(
-      select_expr->field(), select_expr->test_only(), expr_id, select_path,
+      select_expr.field(), select_expr.test_only(), expr_id, select_path,
       enable_wrapper_type_null_unboxing);
 }
 

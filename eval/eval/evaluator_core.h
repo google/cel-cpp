@@ -22,6 +22,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/ast.h"
 #include "base/memory_manager.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/attribute_trail.h"
@@ -40,7 +41,7 @@ namespace google::api::expr::runtime {
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
 class ExecutionFrame;
 
-using Expr = google::api::expr::v1alpha1::Expr;
+using Expr = ::google::api::expr::v1alpha1::Expr;
 
 // Class Expression represents single execution step.
 class ExpressionStep {
@@ -259,17 +260,17 @@ class CelExpressionFlatImpl : public CelExpression {
   // flattened AST tree. Max iterations dictates the maximum number of
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
-  CelExpressionFlatImpl(ABSL_ATTRIBUTE_UNUSED const Expr* root_expr,
-                        ExecutionPath path,
-                        const CelTypeRegistry* type_registry,
-                        int max_iterations,
-                        std::set<std::string> iter_variable_names,
-                        bool enable_unknowns = false,
-                        bool enable_unknown_function_results = false,
-                        bool enable_missing_attribute_errors = false,
-                        bool enable_null_coercion = true,
-                        bool enable_heterogeneous_equality = false,
-                        std::unique_ptr<Expr> rewritten_expr = nullptr)
+  // TODO(issues/5): Remove unused parameter \a root_expr.
+  CelExpressionFlatImpl(
+      ABSL_ATTRIBUTE_UNUSED const cel::ast::internal::Expr* root_expr,
+      ExecutionPath path, const CelTypeRegistry* type_registry,
+      int max_iterations, std::set<std::string> iter_variable_names,
+      bool enable_unknowns = false,
+      bool enable_unknown_function_results = false,
+      bool enable_missing_attribute_errors = false,
+      bool enable_null_coercion = true,
+      bool enable_heterogeneous_equality = false,
+      std::unique_ptr<cel::ast::internal::Expr> rewritten_expr = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
         path_(std::move(path)),
         type_registry_(*type_registry),
@@ -310,7 +311,7 @@ class CelExpressionFlatImpl : public CelExpression {
 
  private:
   // Maintain lifecycle of a modified expression.
-  std::unique_ptr<Expr> rewritten_expr_;
+  std::unique_ptr<cel::ast::internal::Expr> rewritten_expr_;
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
   const int max_iterations_;

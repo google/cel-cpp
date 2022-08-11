@@ -15,14 +15,14 @@ namespace google::api::expr::runtime {
 // Factory method for Call-based execution step where the function will be
 // resolved at runtime (lazily) from an input Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call, int64_t expr_id,
+    const cel::ast::internal::Call& call, int64_t expr_id,
     std::vector<const CelFunctionProvider*>& lazy_overloads);
 
 // Factory method for Call-based execution step where the function has been
 // statically resolved from a set of eagerly functions configured in the
 // CelFunctionRegistry.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call, int64_t expr_id,
+    const cel::ast::internal::Call& call, int64_t expr_id,
     std::vector<const CelFunction*>& overloads);
 
 }  // namespace google::api::expr::runtime

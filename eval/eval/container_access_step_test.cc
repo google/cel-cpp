@@ -32,9 +32,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::SourceInfo;
 using ::google::api::expr::v1alpha1::ParsedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::protobuf::Struct;
 using testing::_;
 using testing::AllOf;
@@ -51,21 +51,21 @@ CelValue EvaluateAttributeHelper(
 
   Expr expr;
   SourceInfo source_info;
-  auto call = expr.mutable_call_expr();
+  auto& call = expr.mutable_call_expr();
 
-  call->set_function(builtin::kIndex);
+  call.set_function(builtin::kIndex);
 
-  Expr* container_expr =
-      (receiver_style) ? call->mutable_target() : call->add_args();
-  Expr* key_expr = call->add_args();
+  call.mutable_args().reserve(2);
+  Expr& container_expr = (receiver_style) ? call.mutable_target()
+                                          : call.mutable_args().emplace_back();
+  Expr& key_expr = call.mutable_args().emplace_back();
 
-  container_expr->mutable_ident_expr()->set_name("container");
-  key_expr->mutable_ident_expr()->set_name("key");
+  container_expr.mutable_ident_expr().set_name("container");
+  key_expr.mutable_ident_expr().set_name("key");
 
   path.push_back(
-      std::move(CreateIdentStep(&container_expr->ident_expr(), 1).value()));
-  path.push_back(
-      std::move(CreateIdentStep(&key_expr->ident_expr(), 2).value()));
+      std::move(CreateIdentStep(container_expr.ident_expr(), 1).value()));
+  path.push_back(std::move(CreateIdentStep(key_expr.ident_expr(), 2).value()));
   path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
 
   CelExpressionFlatImpl cel_expr(&expr, std::move(path), &TestTypeRegistry(), 0,
@@ -211,16 +211,17 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
 
 TEST_F(ContainerAccessStepTest, TestInvalidReceiverCreateContainerAccessStep) {
   Expr expr;
-  auto call = expr.mutable_call_expr();
-  call->set_function(builtin::kIndex);
-  Expr* container_expr = call->mutable_target();
-  container_expr->mutable_ident_expr()->set_name("container");
+  auto& call = expr.mutable_call_expr();
+  call.set_function(builtin::kIndex);
+  Expr& container_expr = call.mutable_target();
+  container_expr.mutable_ident_expr().set_name("container");
 
-  Expr* key_expr = call->add_args();
-  key_expr->mutable_ident_expr()->set_name("key");
+  call.mutable_args().reserve(2);
+  Expr& key_expr = call.mutable_args().emplace_back();
+  key_expr.mutable_ident_expr().set_name("key");
 
-  Expr* extra_arg = call->add_args();
-  extra_arg->mutable_const_expr()->set_bool_value(true);
+  Expr& extra_arg = call.mutable_args().emplace_back();
+  extra_arg.mutable_const_expr().set_bool_value(true);
   EXPECT_THAT(CreateContainerAccessStep(call, 0).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Invalid argument count")));
@@ -228,16 +229,17 @@ TEST_F(ContainerAccessStepTest, TestInvalidReceiverCreateContainerAccessStep) {
 
 TEST_F(ContainerAccessStepTest, TestInvalidGlobalCreateContainerAccessStep) {
   Expr expr;
-  auto call = expr.mutable_call_expr();
-  call->set_function(builtin::kIndex);
-  Expr* container_expr = call->add_args();
-  container_expr->mutable_ident_expr()->set_name("container");
+  auto& call = expr.mutable_call_expr();
+  call.set_function(builtin::kIndex);
+  call.mutable_args().reserve(3);
+  Expr& container_expr = call.mutable_args().emplace_back();
+  container_expr.mutable_ident_expr().set_name("container");
 
-  Expr* key_expr = call->add_args();
-  key_expr->mutable_ident_expr()->set_name("key");
+  Expr& key_expr = call.mutable_args().emplace_back();
+  key_expr.mutable_ident_expr().set_name("key");
 
-  Expr* extra_arg = call->add_args();
-  extra_arg->mutable_const_expr()->set_bool_value(true);
+  Expr& extra_arg = call.mutable_args().emplace_back();
+  extra_arg.mutable_const_expr().set_bool_value(true);
   EXPECT_THAT(CreateContainerAccessStep(call, 0).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Invalid argument count")));

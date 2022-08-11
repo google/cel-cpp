@@ -19,11 +19,10 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::ast::internal::Expr;
 using testing::Eq;
 using testing::Not;
 using cel::internal::IsOk;
-
-using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing Select step and runs it.
 absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
@@ -32,14 +31,14 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   ExecutionPath path;
   Expr dummy_expr;
 
-  auto create_list = dummy_expr.mutable_list_expr();
+  auto& create_list = dummy_expr.mutable_list_expr();
   for (auto value : values) {
-    auto expr0 = create_list->add_elements();
-    expr0->mutable_const_expr()->set_int64_value(value);
+    auto& expr0 = create_list.mutable_elements().emplace_back();
+    expr0.mutable_const_expr().set_int64_value(value);
     CEL_ASSIGN_OR_RETURN(
         auto const_step,
-        CreateConstValueStep(ConvertConstant(&expr0->const_expr()).value(),
-                             expr0->id()));
+        CreateConstValueStep(ConvertConstant(expr0.const_expr()).value(),
+                             expr0.id()));
     path.push_back(std::move(const_step));
   }
 
@@ -62,16 +61,16 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
   Expr dummy_expr;
 
   Activation activation;
-  auto create_list = dummy_expr.mutable_list_expr();
+  auto& create_list = dummy_expr.mutable_list_expr();
   int ind = 0;
   for (auto value : values) {
     std::string var_name = absl::StrCat("name_", ind++);
-    auto expr0 = create_list->add_elements();
-    expr0->set_id(ind);
-    expr0->mutable_ident_expr()->set_name(var_name);
+    auto& expr0 = create_list.mutable_elements().emplace_back();
+    expr0.set_id(ind);
+    expr0.mutable_ident_expr().set_name(var_name);
 
     CEL_ASSIGN_OR_RETURN(auto ident_step,
-                         CreateIdentStep(&expr0->ident_expr(), expr0->id()));
+                         CreateIdentStep(expr0.ident_expr(), expr0.id()));
     path.push_back(std::move(ident_step));
     activation.InsertValue(var_name, value);
   }
@@ -94,9 +93,9 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
   ExecutionPath path;
   Expr dummy_expr;
 
-  auto create_list = dummy_expr.mutable_list_expr();
-  auto expr0 = create_list->add_elements();
-  expr0->mutable_const_expr()->set_int64_value(1);
+  auto& create_list = dummy_expr.mutable_list_expr();
+  auto& expr0 = create_list.mutable_elements().emplace_back();
+  expr0.mutable_const_expr().set_int64_value(1);
 
   ASSERT_OK_AND_ASSIGN(auto step0,
                        CreateCreateListStep(create_list, dummy_expr.id()));
@@ -145,8 +144,8 @@ TEST_P(CreateListStepTest, CreateListWithErrorAndUnknown) {
   // list composition is: {unknown, error}
   std::vector<CelValue> values;
   Expr expr0;
-  expr0.mutable_ident_expr()->set_name("name0");
-  CelAttribute attr0(expr0, {});
+  expr0.mutable_ident_expr().set_name("name0");
+  CelAttribute attr0(expr0.ident_expr().name(), {});
   UnknownSet unknown_set0(UnknownAttributeSet({attr0}));
   values.push_back(CelValue::CreateUnknownSet(&unknown_set0));
   CelError error = absl::InvalidArgumentError("bad arg");
@@ -180,11 +179,11 @@ TEST(CreateListStepTest, CreateListHundredAnd2Unknowns) {
   std::vector<CelValue> values;
 
   Expr expr0;
-  expr0.mutable_ident_expr()->set_name("name0");
-  CelAttribute attr0(expr0, {});
+  expr0.mutable_ident_expr().set_name("name0");
+  CelAttribute attr0(expr0.ident_expr().name(), {});
   Expr expr1;
-  expr1.mutable_ident_expr()->set_name("name1");
-  CelAttribute attr1(expr1, {});
+  expr1.mutable_ident_expr().set_name("name1");
+  CelAttribute attr1(expr1.ident_expr().name(), {});
   UnknownSet unknown_set0(UnknownAttributeSet({attr0}));
   UnknownSet unknown_set1(UnknownAttributeSet({attr1}));
   for (size_t i = 0; i < 100; i++) {

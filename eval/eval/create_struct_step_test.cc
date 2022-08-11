@@ -27,18 +27,15 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::ast::internal::Expr;
 using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
-
 using testing::Eq;
 using testing::IsNull;
 using testing::Not;
 using testing::Pointwise;
 using cel::internal::StatusIs;
-
 using testutil::EqualsProto;
-
-using google::api::expr::v1alpha1::Expr;
 
 // Helper method. Creates simple pipeline containing CreateStruct step that
 // builds message and runs it.
@@ -56,17 +53,17 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   Expr expr0;
   Expr expr1;
 
-  auto ident = expr0.mutable_ident_expr();
-  ident->set_name("message");
+  auto& ident = expr0.mutable_ident_expr();
+  ident.set_name("message");
   CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
 
-  auto create_struct = expr1.mutable_struct_expr();
-  create_struct->set_message_name("google.api.expr.runtime.TestMessage");
+  auto& create_struct = expr1.mutable_struct_expr();
+  create_struct.set_message_name("google.api.expr.runtime.TestMessage");
 
-  auto entry = create_struct->add_entries();
-  entry->set_field_key(field.data(), field.size());
+  auto& entry = create_struct.mutable_entries().emplace_back();
+  entry.set_field_key(std::string(field));
 
-  auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
+  auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
   if (!adapter.has_value() || adapter->mutation_apis() == nullptr) {
     return absl::Status(absl::StatusCode::kFailedPrecondition,
                         "missing proto message type");
@@ -131,24 +128,23 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
   Expr expr1;
 
   std::vector<Expr> exprs;
+  exprs.reserve(values.size() * 2);
   int index = 0;
 
-  auto create_struct = expr1.mutable_struct_expr();
+  auto& create_struct = expr1.mutable_struct_expr();
   for (const auto& item : values) {
-    Expr expr;
     std::string key_name = absl::StrCat("key", index);
     std::string value_name = absl::StrCat("value", index);
 
-    auto key_ident = expr.mutable_ident_expr();
-    key_ident->set_name(key_name);
-    exprs.push_back(expr);
+    auto& key_expr = exprs.emplace_back();
+    auto& key_ident = key_expr.mutable_ident_expr();
+    key_ident.set_name(key_name);
     CEL_ASSIGN_OR_RETURN(auto step_key,
                          CreateIdentStep(key_ident, exprs.back().id()));
 
-    expr.Clear();
-    auto value_ident = expr.mutable_ident_expr();
-    value_ident->set_name(value_name);
-    exprs.push_back(expr);
+    auto& value_expr = exprs.emplace_back();
+    auto& value_ident = value_expr.mutable_ident_expr();
+    value_ident.set_name(value_name);
     CEL_ASSIGN_OR_RETURN(auto step_value,
                          CreateIdentStep(value_ident, exprs.back().id()));
 
@@ -158,7 +154,7 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     activation.InsertValue(key_name, item.first);
     activation.InsertValue(value_name, item.second);
 
-    create_struct->add_entries();
+    create_struct.mutable_entries().emplace_back();
     index++;
   }
 
@@ -182,9 +178,9 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
           google::protobuf::MessageFactory::generated_factory()));
   Expr expr1;
 
-  auto create_struct = expr1.mutable_struct_expr();
-  create_struct->set_message_name("google.api.expr.runtime.TestMessage");
-  auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
+  auto& create_struct = expr1.mutable_struct_expr();
+  create_struct.set_message_name("google.api.expr.runtime.TestMessage");
+  auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
   ASSERT_OK_AND_ASSIGN(
@@ -215,13 +211,13 @@ TEST_P(CreateCreateStructStepTest, TestMessageCreationBadField) {
           google::protobuf::MessageFactory::generated_factory()));
   Expr expr1;
 
-  auto create_struct = expr1.mutable_struct_expr();
-  create_struct->set_message_name("google.api.expr.runtime.TestMessage");
-  auto entry = create_struct->add_entries();
-  entry->set_field_key("bad_field");
-  auto value = entry->mutable_value();
-  value->mutable_const_expr()->set_bool_value(true);
-  auto adapter = type_registry.FindTypeAdapter(create_struct->message_name());
+  auto& create_struct = expr1.mutable_struct_expr();
+  create_struct.set_message_name("google.api.expr.runtime.TestMessage");
+  auto& entry = create_struct.mutable_entries().emplace_back();
+  entry.set_field_key("bad_field");
+  auto& value = entry.mutable_value();
+  value.mutable_const_expr().set_bool_value(true);
+  auto adapter = type_registry.FindTypeAdapter(create_struct.message_name());
   ASSERT_TRUE(adapter.has_value() && adapter->mutation_apis() != nullptr);
 
   EXPECT_THAT(CreateCreateStructStep(create_struct, adapter->mutation_apis(),

@@ -162,6 +162,10 @@ class Constant {
     constant_kind_ = string_value;
   }
 
+  bool has_bytes_value() const {
+    return absl::holds_alternative<Bytes>(constant_kind_);
+  }
+
   const std::string& bytes_value() const {
     auto* value = absl::get_if<Bytes>(&constant_kind_);
     if (value != nullptr) {
@@ -658,8 +662,12 @@ class Comprehension {
   std::unique_ptr<Expr> result_;
 };
 
-using ExprKind = absl::variant<Constant, Ident, Select, Call, CreateList,
-                               CreateStruct, Comprehension>;
+// Even though, the Expr proto does not allow for an unset, macro calls in the
+// way they are used today sometimes elide parts of the AST if its
+// unchanged/uninteresting.
+using ExprKind =
+    absl::variant<absl::monostate /* unset */, Constant, Ident, Select, Call,
+                  CreateList, CreateStruct, Comprehension>;
 
 // Analogous to google::api::expr::v1alpha1::Expr
 // An abstract representation of a common expression.
@@ -1439,6 +1447,8 @@ class Type {
 // Describes a resolved reference to a declaration.
 class Reference {
  public:
+  Reference() {}
+
   Reference(std::string name, std::vector<std::string> overload_id,
             Constant value)
       : name_(std::move(name)),
@@ -1457,11 +1467,24 @@ class Reference {
 
   const std::vector<std::string>& overload_id() const { return overload_id_; }
 
-  const Constant& value() const { return value_; }
+  const Constant& value() const {
+    if (value_.has_value()) {
+      return value_.value();
+    }
+    static const Constant* default_constant = new Constant;
+    return *default_constant;
+  }
 
   std::vector<std::string>& mutable_overload_id() { return overload_id_; }
 
-  Constant& mutable_value() { return value_; }
+  Constant& mutable_value() {
+    if (!value_.has_value()) {
+      value_.emplace();
+    }
+    return *value_;
+  }
+
+  bool has_value() const { return value_.has_value(); }
 
  private:
   // The fully qualified name of the declaration.
@@ -1477,7 +1500,7 @@ class Reference {
   std::vector<std::string> overload_id_;
   // For references to constants, this may contain the value of the
   // constant if known at compile time.
-  Constant value_;
+  absl::optional<Constant> value_;
 };
 
 // Analogous to google::api::expr::v1alpha1::CheckedExpr
