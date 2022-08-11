@@ -442,11 +442,13 @@ class CreateStruct {
 
     bool operator==(const Entry& other) const;
 
+    bool operator!=(const Entry& other) const { return !operator==(other); }
+
    private:
     // Required. An id assigned to this node by the parser which is unique
     // in a given expression tree. This is used to associate type
     // information and other attributes to the node.
-    int64_t id_;
+    int64_t id_ = 0;
     // The `Entry` key kinds.
     KeyKind key_kind_;
     // Required. The value assigned to the key.

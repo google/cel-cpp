@@ -246,6 +246,70 @@ TEST(AstTest, CreateStructEntryFieldKeyGetterSetterTest) {
   EXPECT_EQ(entry.field_key(), "key");
 }
 
+TEST(AstTest, CreateStructEntryComparatorMapKeySuccess) {
+  CreateStruct::Entry entry1;
+  entry1.mutable_map_key().set_expr_kind(Ident("key"));
+  CreateStruct::Entry entry2;
+  entry2.mutable_map_key().set_expr_kind(Ident("key"));
+  EXPECT_EQ(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorMapKeyFailure) {
+  CreateStruct::Entry entry1;
+  entry1.mutable_map_key().set_expr_kind(Ident("key"));
+  CreateStruct::Entry entry2;
+  entry2.mutable_map_key().set_expr_kind(Ident("other_key"));
+  EXPECT_NE(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorFieldKeySuccess) {
+  CreateStruct::Entry entry1;
+  entry1.set_field_key("key");
+  CreateStruct::Entry entry2;
+  entry2.set_field_key("key");
+  EXPECT_EQ(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorFieldKeyFailure) {
+  CreateStruct::Entry entry1;
+  entry1.set_field_key("key");
+  CreateStruct::Entry entry2;
+  entry2.set_field_key("other_key");
+  EXPECT_NE(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorFieldKeyDiffersFromMapKey) {
+  CreateStruct::Entry entry1;
+  entry1.set_field_key("");
+  CreateStruct::Entry entry2;
+  entry2.mutable_map_key();
+  EXPECT_NE(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorMapKeyDiffersFromFieldKey) {
+  CreateStruct::Entry entry1;
+  entry1.mutable_map_key();
+  CreateStruct::Entry entry2;
+  entry2.set_field_key("");
+  EXPECT_NE(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorValueSuccess) {
+  CreateStruct::Entry entry1;
+  entry1.mutable_value().set_expr_kind(Ident("key"));
+  CreateStruct::Entry entry2;
+  entry2.mutable_value().set_expr_kind(Ident("key"));
+  EXPECT_EQ(entry1, entry2);
+}
+
+TEST(AstTest, CreateStructEntryComparatorValueFailure) {
+  CreateStruct::Entry entry1;
+  entry1.mutable_value().set_expr_kind(Ident("key"));
+  CreateStruct::Entry entry2;
+  entry2.mutable_value().set_expr_kind(Ident("other_key"));
+  EXPECT_NE(entry1, entry2);
+}
+
 TEST(AstTest, ExprConstructionComprehension) {
   Comprehension comprehension;
   comprehension.set_iter_var("iter_var");
