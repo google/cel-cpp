@@ -301,18 +301,15 @@ class Select {
 // (-- TODO(issues/5): Convert built-in globals to instance methods --)
 class Call {
  public:
-  Call() {}
+  Call();
   Call(std::unique_ptr<Expr> target, std::string function,
-       std::vector<Expr> args)
-      : target_(std::move(target)),
-        function_(std::move(function)),
-        args_(std::move(args)) {}
+       std::vector<Expr> args);
 
   void set_target(std::unique_ptr<Expr> target) { target_ = std::move(target); }
 
   void set_function(std::string function) { function_ = std::move(function); }
 
-  void set_args(std::vector<Expr> args) { args_ = std::move(args); }
+  void set_args(std::vector<Expr> args);
 
   bool has_target() const { return target_ != nullptr; }
 
@@ -353,21 +350,16 @@ class Call {
 // --)
 class CreateList {
  public:
-  CreateList() {}
-  explicit CreateList(std::vector<Expr> elements)
-      : elements_(std::move(elements)) {}
+  CreateList();
+  explicit CreateList(std::vector<Expr> elements);
 
-  void set_elements(std::vector<Expr> elements) {
-    elements_ = std::move(elements);
-  }
+  void set_elements(std::vector<Expr> elements);
 
   const std::vector<Expr>& elements() const { return elements_; }
 
   std::vector<Expr>& mutable_elements() { return elements_; }
 
-  bool operator==(const CreateList& other) const {
-    return elements_ == other.elements_;
-  }
+  bool operator==(const CreateList& other) const;
 
  private:
   // The elements part of the list.
@@ -1125,18 +1117,14 @@ class MapType {
 // --)
 class FunctionType {
  public:
-  FunctionType() {}
-  FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types)
-      : result_type_(std::move(result_type)),
-        arg_types_(std::move(arg_types)) {}
+  FunctionType();
+  FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types);
 
   void set_result_type(std::unique_ptr<Type> result_type) {
     result_type_ = std::move(result_type);
   }
 
-  void set_arg_types(std::vector<Type> arg_types) {
-    arg_types_ = std::move(arg_types);
-  }
+  void set_arg_types(std::vector<Type> arg_types);
 
   bool has_result_type() const { return result_type_ != nullptr; }
 
@@ -1168,15 +1156,12 @@ class FunctionType {
 // TODO(issues/5): decide on final naming for this.
 class AbstractType {
  public:
-  AbstractType() {}
-  AbstractType(std::string name, std::vector<Type> parameter_types)
-      : name_(std::move(name)), parameter_types_(std::move(parameter_types)) {}
+  AbstractType();
+  AbstractType(std::string name, std::vector<Type> parameter_types);
 
   void set_name(std::string name) { name_ = std::move(name); }
 
-  void set_parameter_types(std::vector<Type> parameter_types) {
-    parameter_types_ = std::move(parameter_types);
-  }
+  void set_parameter_types(std::vector<Type> parameter_types);
 
   const std::string& name() const { return name_; }
 
@@ -1184,9 +1169,7 @@ class AbstractType {
 
   std::vector<Type>& mutable_parameter_types() { return parameter_types_; }
 
-  bool operator==(const AbstractType& other) const {
-    return name_ == other.name_ && parameter_types_ == other.parameter_types_;
-  }
+  bool operator==(const AbstractType& other) const;
 
  private:
   // The fully qualified name of this abstract type.
@@ -1602,6 +1585,58 @@ class CheckedExpr {
   // may have structural differences.
   Expr expr_;
 };
+
+////////////////////////////////////////////////////////////////////////
+// Implementation details
+////////////////////////////////////////////////////////////////////////
+
+inline Call::Call() {}
+
+inline Call::Call(std::unique_ptr<Expr> target, std::string function,
+                  std::vector<Expr> args)
+    : target_(std::move(target)),
+      function_(std::move(function)),
+      args_(std::move(args)) {}
+
+inline void Call::set_args(std::vector<Expr> args) { args_ = std::move(args); }
+
+inline CreateList::CreateList() {}
+
+inline CreateList::CreateList(std::vector<Expr> elements)
+    : elements_(std::move(elements)) {}
+
+inline void CreateList::set_elements(std::vector<Expr> elements) {
+  elements_ = std::move(elements);
+}
+
+inline bool CreateList::operator==(const CreateList& other) const {
+  return elements_ == other.elements_;
+}
+
+inline FunctionType::FunctionType() {}
+
+inline FunctionType::FunctionType(std::unique_ptr<Type> result_type,
+                                  std::vector<Type> arg_types)
+    : result_type_(std::move(result_type)), arg_types_(std::move(arg_types)) {}
+
+inline void FunctionType::set_arg_types(std::vector<Type> arg_types) {
+  arg_types_ = std::move(arg_types);
+}
+
+inline AbstractType::AbstractType() {}
+
+inline AbstractType::AbstractType(std::string name,
+                                  std::vector<Type> parameter_types)
+    : name_(std::move(name)), parameter_types_(std::move(parameter_types)) {}
+
+inline void AbstractType::set_parameter_types(
+    std::vector<Type> parameter_types) {
+  parameter_types_ = std::move(parameter_types);
+}
+
+inline bool AbstractType::operator==(const AbstractType& other) const {
+  return name_ == other.name_ && parameter_types_ == other.parameter_types_;
+}
 
 }  // namespace cel::ast::internal
 
