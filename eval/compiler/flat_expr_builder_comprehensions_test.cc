@@ -430,6 +430,50 @@ TEST(FlatExprBuilderComprehensionsTest,
                        HasSubstr("memory exhaustion vulnerability")));
 }
 
+TEST(FlatExprBuilderComprehensionsTest,
+     ComprehensionWithNestedComprehensionLoopStepIterRangeVulnerability) {
+  CheckedExpr expr;
+  // The nested comprehension unsafely modifies the parent accumulator
+  // (outer_accu) being used as a iterable range
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        expr {
+          comprehension_expr {
+            iter_var: "x"
+            iter_range { ident_expr { name: "input_list" } }
+            accu_var: "outer_accu"
+            accu_init { ident_expr { name: "input_list" } }
+            loop_condition { const_expr { bool_value: true } }
+            loop_step {
+              comprehension_expr {
+                iter_var: "y"
+                iter_range { ident_expr { name: "outer_accu" } }
+                accu_var: "inner_accu"
+                accu_init { ident_expr { name: "outer_accu" } }
+                loop_condition { const_expr { bool_value: true } }
+                loop_step {
+                  call_expr {
+                    function: "_+_"
+                    args { ident_expr { name: "inner_accu" } }
+                    args { const_expr { string_value: "12345" } }
+                  }
+                }
+                result { ident_expr { name: "inner_accu" } }
+              }
+            }
+            result { ident_expr { name: "outer_accu" } }
+          }
+        }
+      )pb",
+      &expr);
+  FlatExprBuilder builder;
+  builder.set_enable_comprehension_vulnerability_check(true);
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  EXPECT_THAT(builder.CreateExpression(&expr).status(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("memory exhaustion vulnerability")));
+}
+
 }  // namespace
 
 }  // namespace google::api::expr::runtime

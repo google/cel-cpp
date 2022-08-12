@@ -911,6 +911,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
           references +=
               ComprehensionAccumulationReferences(call.args()[i], var_name);
         }
+
         return references;
       }
       // Return whether the accumulator var_name is used as the operand in an
@@ -929,6 +930,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
 
       int result_references = 0;
       int loop_step_references = 0;
+      int sum_of_accumulator_references = 0;
 
       // The accumulation or iteration variable shadows the var_name and so will
       // not manipulate the target var_name in a nested comprehension scope.
@@ -944,12 +946,34 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
             comprehension.result(), var_name);
       }
 
+      // Count the raw number of times the accumulator variable was referenced.
+      // This is to account for cases where the outer accumulator is shadowed by
+      // the inner accumulator, while the inner accumulator is being used as the
+      // iterable range.
+      //
+      // An equivalent expression to this problem:
+      //
+      // outer_accu := outer_accu
+      // for y in outer_accu:
+      //     outer_accu += input
+      // return outer_accu
+
+      // If this is overly restrictive (Ex: when generalized reducers is
+      // implemented), we may need to revisit this solution
+
+      sum_of_accumulator_references = ComprehensionAccumulationReferences(
+          comprehension.accu_init(), var_name);
+
+      sum_of_accumulator_references += ComprehensionAccumulationReferences(
+          comprehension.iter_range(), var_name);
+
       // Count the number of times the accumulator var_name within the loop_step
       // or the nested comprehension result.
       //
       // This doesn't cover cases where the inner accumulator accumulates the
       // outer accumulator then is returned in the inner comprehension result.
-      return std::max(loop_step_references, result_references);
+      return std::max({loop_step_references, result_references,
+                       sum_of_accumulator_references});
     }
 
     int operator()(const cel::ast::internal::CreateList& list) {
