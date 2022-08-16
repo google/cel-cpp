@@ -20,6 +20,27 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "attributes",
+    srcs = [
+        "attribute.cc",
+    ],
+    hdrs = [
+        "attribute.h",
+        "attribute_set.h",
+    ],
+    deps = [
+        ":kind",
+        "//internal:status_macros",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_library(
     name = "handle",
     hdrs = ["handle.h"],
     deps = [
@@ -218,6 +239,8 @@ cc_library(
         "value.h",
     ] + glob(["values/*.h"]),
     deps = [
+        ":attributes",
+        ":functions",
         ":handle",
         ":kind",
         ":type",
@@ -332,6 +355,24 @@ cc_library(
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "functions",
+    srcs = [
+        "function.cc",
+        "function_result_set.cc",
+    ],
+    hdrs = [
+        "function.h",
+        "function_result.h",
+        "function_result_set.h",
+    ],
+    deps = [
+        ":kind",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

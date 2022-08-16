@@ -101,6 +101,7 @@ cc_library(
     deps = [
         ":cel_value",
         ":cel_value_internal",
+        "//base:attributes",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -127,11 +128,7 @@ cc_library(
     hdrs = [
         "unknown_attribute_set.h",
     ],
-    deps = [
-        ":cel_attribute",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
+    deps = ["//base:attributes"],
 )
 
 cc_library(
@@ -183,6 +180,7 @@ cc_library(
     ],
     deps = [
         ":cel_value",
+        "//base:functions",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
@@ -942,8 +940,7 @@ cc_library(
     hdrs = ["unknown_function_result_set.h"],
     deps = [
         ":cel_function",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "//base:functions",
     ],
 )
 
@@ -981,6 +978,7 @@ cc_test(
     srcs = ["unknown_set_test.cc"],
     deps = [
         ":cel_attribute",
+        ":cel_function",
         ":unknown_attribute_set",
         ":unknown_function_result_set",
         ":unknown_set",

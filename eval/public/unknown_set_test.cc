@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "internal/testing.h"

@@ -21,6 +21,7 @@
 #include "absl/strings/substitute.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/cel_value_internal.h"
 #include "internal/status_macros.h"
@@ -30,82 +31,10 @@ namespace google::api::expr::runtime {
 // CelAttributeQualifier represents a segment in
 // attribute resolutuion path. A segment can be qualified by values of
 // following types: string/int64_t/uint64/bool.
-class CelAttributeQualifier {
- private:
-  struct ComparatorVisitor;
+using CelAttributeQualifier = ::cel::AttributeQualifier;
 
-  using Variant =
-      std::variant<CelValue::Type, int64_t, uint64_t, std::string, bool>;
-
- public:
-  // Factory method.
-  static CelAttributeQualifier Create(CelValue value);
-
-  CelAttributeQualifier(const CelAttributeQualifier&) = default;
-  CelAttributeQualifier(CelAttributeQualifier&&) = default;
-
-  CelAttributeQualifier& operator=(const CelAttributeQualifier&) = default;
-  CelAttributeQualifier& operator=(CelAttributeQualifier&&) = default;
-
-  CelValue::Type type() const;
-
-  // Family of Get... methods. Return values if requested type matches the
-  // stored one.
-  std::optional<int64_t> GetInt64Key() const {
-    return std::holds_alternative<int64_t>(value_)
-               ? std::optional<int64_t>(std::get<1>(value_))
-               : std::nullopt;
-  }
-
-  std::optional<uint64_t> GetUint64Key() const {
-    return std::holds_alternative<uint64_t>(value_)
-               ? std::optional<uint64_t>(std::get<2>(value_))
-               : std::nullopt;
-  }
-
-  std::optional<absl::string_view> GetStringKey() const {
-    return std::holds_alternative<std::string>(value_)
-               ? std::optional<absl::string_view>(std::get<3>(value_))
-               : std::nullopt;
-  }
-
-  std::optional<bool> GetBoolKey() const {
-    return std::holds_alternative<bool>(value_)
-               ? std::optional<bool>(std::get<4>(value_))
-               : std::nullopt;
-  }
-
-  bool operator==(const CelAttributeQualifier& other) const {
-    return IsMatch(other);
-  }
-
-  bool operator<(const CelAttributeQualifier& other) const;
-
-  bool IsMatch(const CelValue& cel_value) const;
-
-  bool IsMatch(absl::string_view other_key) const {
-    std::optional<absl::string_view> key = GetStringKey();
-    return (key.has_value() && key.value() == other_key);
-  }
-
- private:
-  friend class CelAttribute;
-  friend struct ComparatorVisitor;
-
-  CelAttributeQualifier() = default;
-
-  template <typename T>
-  CelAttributeQualifier(std::in_place_type_t<T> in_place_type, T&& value)
-      : value_(in_place_type, std::forward<T>(value)) {}
-
-  bool IsMatch(const CelAttributeQualifier& other) const;
-
-  // The previous implementation of CelAttribute preserved all CelValue
-  // instances, regardless of whether they are supported in this context or not.
-  // We represented unsupported types by using the first alternative and thus
-  // preserve backwards compatibility with the result of `type()` above.
-  Variant value_;
-};
+// CelAttribute represents resolved attribute path.
+using CelAttribute = ::cel::Attribute;
 
 // CelAttributeQualifierPattern matches a segment in
 // attribute resolutuion path. CelAttributeQualifierPattern is capable of
@@ -157,49 +86,6 @@ class CelAttributeQualifierPattern {
     if (!value_.has_value()) return true;
     return value_->IsMatch(other_key);
   }
-};
-
-// CelAttribute represents resolved attribute path.
-class CelAttribute {
- public:
-  explicit CelAttribute(std::string variable_name)
-      : CelAttribute(std::move(variable_name), {}) {}
-
-  CelAttribute(std::string variable_name,
-               std::vector<CelAttributeQualifier> qualifier_path)
-      : impl_(std::make_shared<Impl>(std::move(variable_name),
-                                     std::move(qualifier_path))) {}
-
-  CelAttribute(const google::api::expr::v1alpha1::Expr& variable,
-               std::vector<CelAttributeQualifier> qualifier_path)
-      : CelAttribute(variable.ident_expr().name(), std::move(qualifier_path)) {}
-
-  absl::string_view variable_name() const { return impl_->variable_name; }
-
-  bool has_variable_name() const { return !impl_->variable_name.empty(); }
-
-  const std::vector<CelAttributeQualifier>& qualifier_path() const {
-    return impl_->qualifier_path;
-  }
-
-  bool operator==(const CelAttribute& other) const;
-
-  bool operator<(const CelAttribute& other) const;
-
-  const absl::StatusOr<std::string> AsString() const;
-
- private:
-  struct Impl final {
-    Impl(std::string variable_name,
-         std::vector<CelAttributeQualifier> qualifier_path)
-        : variable_name(std::move(variable_name)),
-          qualifier_path(std::move(qualifier_path)) {}
-
-    std::string variable_name;
-    std::vector<CelAttributeQualifier> qualifier_path;
-  };
-
-  std::shared_ptr<const Impl> impl_;
 };
 
 // CelAttributePattern is a fully-qualified absolute attribute path pattern.
