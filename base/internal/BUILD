@@ -92,6 +92,18 @@ cc_library(
 )
 
 cc_library(
+    name = "unknown_set",
+    srcs = ["unknown_set.cc"],
+    hdrs = ["unknown_set.h"],
+    deps = [
+        "//base:attributes",
+        "//base:functions",
+        "//internal:no_destructor",
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
+cc_library(
     name = "value",
     textual_hdrs = [
         "value.h",

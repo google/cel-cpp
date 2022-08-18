@@ -245,6 +245,7 @@ cc_library(
         ":kind",
         ":type",
         "//base/internal:data",
+        "//base/internal:unknown_set",
         "//base/internal:value",
         "//internal:casts",
         "//internal:rtti",

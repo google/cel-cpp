@@ -970,6 +970,7 @@ cc_library(
     deps = [
         ":unknown_attribute_set",
         ":unknown_function_result_set",
+        "//base/internal:unknown_set",
     ],
 )
 

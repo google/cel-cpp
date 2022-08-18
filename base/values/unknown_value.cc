@@ -14,6 +14,7 @@
 
 #include "base/values/unknown_value.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -23,7 +24,8 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(UnknownValue);
 
-UnknownValue::UnknownValue() : base_internal::HeapData(kKind) {
+UnknownValue::UnknownValue(std::shared_ptr<base_internal::UnknownSetImpl> impl)
+    : base_internal::HeapData(kKind), impl_(std::move(impl)) {
   // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==

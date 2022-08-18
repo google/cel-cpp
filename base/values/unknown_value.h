@@ -15,9 +15,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 
+#include <memory>
 #include <string>
 
 #include "absl/hash/hash.h"
+#include "base/attribute_set.h"
+#include "base/function_result_set.h"
+#include "base/internal/unknown_set.h"
 #include "base/types/unknown_type.h"
 #include "base/value.h"
 
@@ -41,11 +45,25 @@ class UnknownValue final : public Value, public base_internal::HeapData {
 
   bool Equals(const Value& other) const;
 
+  const AttributeSet& attribute_set() const {
+    return impl_ != nullptr ? impl_->attributes
+                            : base_internal::EmptyAttributeSet();
+  }
+
+  const FunctionResultSet& function_result_set() const {
+    return impl_ != nullptr ? impl_->function_results
+                            : base_internal::EmptyFunctionResultSet();
+  }
+
  private:
   friend class cel::MemoryManager;
   friend class ValueFactory;
 
-  UnknownValue();
+  UnknownValue() : UnknownValue(nullptr) {}
+
+  explicit UnknownValue(std::shared_ptr<base_internal::UnknownSetImpl> impl);
+
+  std::shared_ptr<base_internal::UnknownSetImpl> impl_;
 };
 
 CEL_INTERNAL_VALUE_DECL(UnknownValue);
