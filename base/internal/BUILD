@@ -110,6 +110,7 @@ cc_library(
     ],
     deps = [
         ":data",
+        ":unknown_set",
         "//base:handle",
         "//base:type",
         "//internal:rtti",

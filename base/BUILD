@@ -271,6 +271,8 @@ cc_library(
     srcs = ["value_factory.cc"],
     hdrs = ["value_factory.h"],
     deps = [
+        ":attributes",
+        ":functions",
         ":handle",
         ":memory_manager",
         ":type_manager",

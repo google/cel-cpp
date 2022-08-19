@@ -8,6 +8,20 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 
+namespace google::api::expr::runtime {
+class UnknownSet;
+}
+
+namespace cel::interop_internal {
+
+std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownSetImpl(
+    const google::api::expr::runtime::UnknownSet& unknown_set);
+
+void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,
+                       std::shared_ptr<base_internal::UnknownSetImpl> impl);
+
+}  // namespace cel::interop_internal
+
 namespace google {
 namespace api {
 namespace expr {
@@ -62,6 +76,11 @@ class UnknownSet {
 
  private:
   friend class AttributeUtility;
+  friend std::shared_ptr<::cel::base_internal::UnknownSetImpl>
+  cel::interop_internal::GetUnknownSetImpl(const UnknownSet& unknown_set);
+  friend void cel::interop_internal::SetUnknownSetImpl(
+      UnknownSet& unknown_set,
+      std::shared_ptr<::cel::base_internal::UnknownSetImpl> impl);
 
   explicit UnknownSet(std::shared_ptr<Impl> impl) : impl_(std::move(impl)) {}
 

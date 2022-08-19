@@ -245,9 +245,11 @@ Persistent<const TypeValue> ValueFactory::CreateTypeValue(
   return PersistentHandleFactory<const TypeValue>::Make<TypeValue>(value);
 }
 
-Persistent<const UnknownValue> ValueFactory::CreateUnknownValue() {
-  return PersistentHandleFactory<const UnknownValue>::Make<UnknownValue>(
-      memory_manager());
+Persistent<UnknownValue> ValueFactory::CreateUnknownValue(
+    AttributeSet attribute_set, FunctionResultSet function_result_set) {
+  return PersistentHandleFactory<UnknownValue>::Make<UnknownValue>(
+      memory_manager(), std::move(attribute_set),
+      std::move(function_result_set));
 }
 
 absl::StatusOr<Persistent<const BytesValue>>

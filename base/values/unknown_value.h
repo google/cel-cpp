@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/hash/hash.h"
 #include "base/attribute_set.h"
@@ -58,10 +59,21 @@ class UnknownValue final : public Value, public base_internal::HeapData {
  private:
   friend class cel::MemoryManager;
   friend class ValueFactory;
+  friend std::shared_ptr<base_internal::UnknownSetImpl>
+  interop_internal::GetUnknownValueImpl(
+      const Persistent<const UnknownValue>& value);
+  friend void interop_internal::SetUnknownValueImpl(
+      Persistent<UnknownValue>& value,
+      std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
   UnknownValue() : UnknownValue(nullptr) {}
 
   explicit UnknownValue(std::shared_ptr<base_internal::UnknownSetImpl> impl);
+
+  UnknownValue(AttributeSet attribute_set,
+               FunctionResultSet function_result_set)
+      : UnknownValue(std::make_shared<base_internal::UnknownSetImpl>(
+            std::move(attribute_set), std::move(function_result_set))) {}
 
   std::shared_ptr<base_internal::UnknownSetImpl> impl_;
 };
