@@ -50,7 +50,6 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
 
   const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::MessageFactory* message_factory_;
-  ProtoWrapperTypeOptions unboxing_option_;
   mutable absl::flat_hash_map<std::string,
                               std::unique_ptr<ProtoMessageTypeAdapter>>
       type_cache_ ABSL_GUARDED_BY(mu_);
