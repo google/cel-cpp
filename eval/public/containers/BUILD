@@ -14,8 +14,7 @@
 
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
-
+licenses(["notice"])
 # TODO(issues/69): Expose this in a public API.
 
 package_group(

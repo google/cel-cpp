@@ -2,7 +2,7 @@
 # that compiles Expr object into evaluatable CelExpression
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 exports_files(["LICENSE"])
 
