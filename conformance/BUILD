@@ -14,7 +14,7 @@
 
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 ALL_TESTS = [
     "@com_google_cel_spec//tests/simple:testdata/basic.textproto",
