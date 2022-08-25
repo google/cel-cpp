@@ -12,7 +12,6 @@
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
@@ -170,16 +169,8 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
       }
     }
 
-    std::string arg_types;
-    for (const CelValue& arg : input_args) {
-      if (!arg_types.empty()) {
-        absl::StrAppend(&arg_types, ", ");
-      }
-      absl::StrAppend(&arg_types, CelValue::TypeName(arg.type()));
-    }
     // If no errors or unknowns in input args, create new CelError.
-    *result = CreateNoMatchingOverloadError(
-        frame->memory_manager(), absl::StrCat(name_, "(", arg_types, ")"));
+    *result = CreateNoMatchingOverloadError(frame->memory_manager());
   }
 
   return absl::OkStatus();
