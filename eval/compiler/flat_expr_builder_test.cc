@@ -315,7 +315,7 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie()->message(),
-              Eq("No matching overloads found"));
+              Eq("No matching overloads found : concat(string, string)"));
 
   ASSERT_THAT(warnings, testing::SizeIs(1));
   EXPECT_EQ(warnings[0].code(), absl::StatusCode::kInvalidArgument);

@@ -38,6 +38,7 @@ using testing::Eq;
 using testing::Not;
 using testing::UnorderedElementsAre;
 using cel::internal::IsOk;
+using cel::internal::StatusIs;
 
 int GetExprId() {
   static int id = 0;
@@ -326,6 +327,9 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
+  EXPECT_THAT(*value.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       testing::HasSubstr("_+_(int64, uint64)")));
 }
 
 // Test situation when no overloads match input arguments during evaluation

@@ -165,6 +165,7 @@ cc_library(
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
