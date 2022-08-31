@@ -119,6 +119,19 @@ cc_library(
 )
 
 cc_library(
+    name = "regex_match_step",
+    srcs = ["regex_match_step.cc"],
+    hdrs = ["regex_match_step.h"],
+    deps = [
+        ":evaluator_core",
+        ":expression_step_base",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_library(
     name = "ident_step",
     srcs = [
         "ident_step.cc",
@@ -393,6 +406,28 @@ cc_test(
         "//internal:testing",
         "//parser",
         "@com_google_absl//absl/status",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "regex_match_step_test",
+    size = "small",
+    srcs = [
+        "regex_match_step_test.cc",
+    ],
+    deps = [
+        ":regex_match_step",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_options",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],

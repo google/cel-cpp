@@ -56,6 +56,9 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
       options.enable_heterogeneous_equality);
   builder->set_enable_qualified_identifier_rewrites(
       options.enable_qualified_identifier_rewrites);
+  builder->set_enable_regex(options.enable_regex);
+  builder->set_enable_regex_precompilation(options.enable_regex_precompilation);
+  builder->set_regex_max_program_size(options.regex_max_program_size);
 
   switch (options.unknown_processing) {
     case UnknownProcessingOptions::kAttributeAndFunction:
