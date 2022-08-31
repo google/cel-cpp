@@ -320,12 +320,61 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "cel_proto_lite_wrap_util",
+    srcs = ["cel_proto_lite_wrap_util.cc"],
+    hdrs = ["cel_proto_lite_wrap_util.h"],
+    deps = [
+        "//eval/public:cel_value",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:overflow",
+        "//internal:proto_time_encoding",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "cel_proto_lite_wrap_util_test",
+    srcs = ["cel_proto_lite_wrap_util_test.cc"],
+    deps = [
+        ":cel_proto_lite_wrap_util",
+        ":trivial_legacy_type_info",
+        "//eval/public:cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/containers:container_backed_map_impl",
+        "//eval/testutil:test_message_cc_proto",
+        "//internal:proto_time_encoding",
+        "//internal:testing",
+        "//testutil:util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_test(
     name = "trivial_legacy_type_info_test",
     srcs = ["trivial_legacy_type_info_test.cc"],
     deps = [
         ":trivial_legacy_type_info",
         "//eval/public:message_wrapper",
+        "//internal:testing",
+    ],
+)
+
+cc_test(
+    name = "legacy_type_provider_test",
+    srcs = ["legacy_type_provider_test.cc"],
+    deps = [
+        ":legacy_type_info_apis",
+        ":legacy_type_provider",
         "//internal:testing",
     ],
 )
