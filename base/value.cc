@@ -41,7 +41,7 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(Value);
 
-const Persistent<const Type>& Value::type() const {
+Persistent<const Type> Value::type() const {
   switch (kind()) {
     case Kind::kNullType:
       return static_cast<const NullValue*>(this)->type().As<const Type>();

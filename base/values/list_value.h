@@ -43,7 +43,7 @@ class ListValue : public Value, public base_internal::HeapData {
 
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  constexpr const Persistent<const ListType>& type() const { return type_; }
+  const Persistent<const ListType> type() const { return type_; }
 
   constexpr Kind kind() const { return kKind; }
 

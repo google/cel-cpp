@@ -36,9 +36,7 @@ class UnknownValue final : public Value, public base_internal::HeapData {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const UnknownType>& type() const {
-    return UnknownType::Get();
-  }
+  Persistent<const UnknownType> type() const { return UnknownType::Get(); }
 
   std::string DebugString() const;
 

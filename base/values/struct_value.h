@@ -48,7 +48,7 @@ class StructValue : public Value, public base_internal::HeapData {
 
   constexpr Kind kind() const { return kKind; }
 
-  constexpr const Persistent<const StructType>& type() const { return type_; }
+  const Persistent<const StructType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 

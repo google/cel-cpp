@@ -36,7 +36,7 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const ErrorType>& type() const { return ErrorType::Get(); }
+  Persistent<const ErrorType> type() const { return ErrorType::Get(); }
 
   std::string DebugString() const;
 

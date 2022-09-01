@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -53,7 +52,7 @@ class StringValue : public Value {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const StringType>& type() const { return StringType::Get(); }
+  Persistent<const StringType> type() const { return StringType::Get(); }
 
   std::string DebugString() const;
 

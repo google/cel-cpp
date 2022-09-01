@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -47,7 +46,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  constexpr const Persistent<const EnumType>& type() const { return type_; }
+  const Persistent<const EnumType> type() const { return type_; }
 
   std::string DebugString() const;
 
