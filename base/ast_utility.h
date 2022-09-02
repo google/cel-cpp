@@ -27,7 +27,6 @@ namespace internal {
 // Conversion utility functions from proto types to native types
 // Note that these functions are recursive in nature leading to stack overflows
 // when converting pathologically large hand-rolled ASTs.
-absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& constant);
 absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr);
 absl::StatusOr<SourceInfo> ToNative(
     const google::api::expr::v1alpha1::SourceInfo& source_info);
@@ -38,6 +37,10 @@ absl::StatusOr<Reference> ToNative(
     const google::api::expr::v1alpha1::Reference& reference);
 absl::StatusOr<CheckedExpr> ToNative(
     const google::api::expr::v1alpha1::CheckedExpr& checked_expr);
+
+// Conversion utility for protobuf constant cel value representation.
+absl::StatusOr<Constant> ConvertConstant(
+    const google::api::expr::v1alpha1::Constant& constant);
 
 }  // namespace internal
 }  // namespace ast

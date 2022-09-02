@@ -349,6 +349,7 @@ cc_library(
     hdrs = ["ast_utility.h"],
     deps = [
         ":ast",
+        "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",

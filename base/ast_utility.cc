@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stack>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,16 +26,232 @@
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
+#include "internal/status_macros.h"
 
 namespace cel::ast::internal {
+namespace {
+namespace exprpb = ::google::api::expr;
 
-absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& constant) {
+constexpr int kMaxIterations = 1'000'000;
+
+struct ConversionStackEntry {
+  // Not null.
+  Expr* expr;
+  // Not null.
+  const exprpb::Expr* proto_expr;
+};
+
+Ident ConvertIdent(const exprpb::Expr::Ident& ident) {
+  return Ident(ident.name());
+}
+
+absl::StatusOr<Select> ConvertSelect(const exprpb::Expr::Select& select,
+                                     std::stack<ConversionStackEntry>& stack) {
+  Select value(std::make_unique<Expr>(), select.field(), select.test_only());
+  stack.push({&value.mutable_operand(), &select.operand()});
+  return value;
+}
+
+absl::StatusOr<Call> ConvertCall(const exprpb::Expr::Call& call,
+                                 std::stack<ConversionStackEntry>& stack) {
+  Call ret_val;
+  ret_val.set_function(call.function());
+  ret_val.set_args(std::vector<Expr>(call.args_size()));
+  for (int i = 0; i < ret_val.args().size(); i++) {
+    stack.push({&ret_val.mutable_args()[i], &call.args(i)});
+  }
+  if (call.has_target()) {
+    stack.push({&ret_val.mutable_target(), &call.target()});
+  }
+  return ret_val;
+}
+
+absl::StatusOr<CreateList> ConvertCreateList(
+    const exprpb::Expr::CreateList& create_list,
+    std::stack<ConversionStackEntry>& stack) {
+  CreateList ret_val;
+  ret_val.set_elements(std::vector<Expr>(create_list.elements_size()));
+
+  for (int i = 0; i < ret_val.elements().size(); i++) {
+    stack.push({&ret_val.mutable_elements()[i], &create_list.elements(i)});
+  }
+  return ret_val;
+}
+
+absl::StatusOr<CreateStruct::Entry::KeyKind> ConvertCreateStructEntryKey(
+    const exprpb::Expr::CreateStruct::Entry& entry,
+    std::stack<ConversionStackEntry>& stack) {
+  switch (entry.key_kind_case()) {
+    case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kFieldKey:
+      return entry.field_key();
+    case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kMapKey: {
+      auto native_map_key = std::make_unique<Expr>();
+      stack.push({native_map_key.get(), &entry.map_key()});
+      return native_map_key;
+    }
+    default:
+      return absl::InvalidArgumentError(
+          "Illegal type provided for "
+          "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind.");
+  }
+}
+
+absl::StatusOr<CreateStruct::Entry> ConvertCreateStructEntry(
+    const exprpb::Expr::CreateStruct::Entry& entry,
+    std::stack<ConversionStackEntry>& stack) {
+  CEL_ASSIGN_OR_RETURN(auto native_key,
+                       ConvertCreateStructEntryKey(entry, stack));
+
+  if (!entry.has_value()) {
+    return absl::InvalidArgumentError(
+        "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value");
+  }
+  CreateStruct::Entry result(entry.id(), std::move(native_key),
+                             std::make_unique<Expr>());
+  stack.push({&result.mutable_value(), &entry.value()});
+
+  return result;
+}
+
+absl::StatusOr<CreateStruct> ConvertCreateStruct(
+    const exprpb::Expr::CreateStruct& create_struct,
+    std::stack<ConversionStackEntry>& stack) {
+  std::vector<CreateStruct::Entry> entries;
+  entries.reserve(create_struct.entries_size());
+  for (const auto& entry : create_struct.entries()) {
+    CEL_ASSIGN_OR_RETURN(auto native_entry,
+                         ConvertCreateStructEntry(entry, stack));
+    entries.push_back(std::move(native_entry));
+  }
+  return CreateStruct(create_struct.message_name(), std::move(entries));
+}
+
+absl::StatusOr<Comprehension> ConvertComprehension(
+    const google::api::expr::v1alpha1::Expr::Comprehension& comprehension,
+    std::stack<ConversionStackEntry>& stack) {
+  Comprehension ret_val;
+  // accu_var
+  if (comprehension.accu_var().empty()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'accu_var' must not be empty");
+  }
+  ret_val.set_accu_var(comprehension.accu_var());
+  // iter_var
+  if (comprehension.iter_var().empty()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'iter_var' must not be empty");
+  }
+  ret_val.set_iter_var(comprehension.iter_var());
+
+  // accu_init
+  if (!comprehension.has_accu_init()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'accu_init' must be set");
+  }
+  stack.push({&ret_val.mutable_accu_init(), &comprehension.accu_init()});
+
+  // iter_range optional
+  if (comprehension.has_iter_range()) {
+    stack.push({&ret_val.mutable_iter_range(), &comprehension.iter_range()});
+  }
+
+  // loop_condition
+  if (!comprehension.has_loop_condition()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'loop_condition' must be set");
+  }
+  stack.push(
+      {&ret_val.mutable_loop_condition(), &comprehension.loop_condition()});
+
+  // loop_step
+  if (!comprehension.has_loop_step()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'loop_step' must be set");
+  }
+  stack.push({&ret_val.mutable_loop_step(), &comprehension.loop_step()});
+
+  // result
+  if (!comprehension.has_result()) {
+    return absl::InvalidArgumentError(
+        "Invalid comprehension: 'result' must be set");
+  }
+  stack.push({&ret_val.mutable_result(), &comprehension.result()});
+
+  return ret_val;
+}
+
+absl::StatusOr<Expr> ConvertExpr(const exprpb::Expr& expr,
+                                 std::stack<ConversionStackEntry>& stack) {
+  switch (expr.expr_kind_case()) {
+    case google::api::expr::v1alpha1::Expr::kConstExpr: {
+      CEL_ASSIGN_OR_RETURN(auto native_const,
+                           ConvertConstant(expr.const_expr()));
+      return Expr(expr.id(), std::move(native_const));
+    }
+    case google::api::expr::v1alpha1::Expr::kIdentExpr:
+      return Expr(expr.id(), ConvertIdent(expr.ident_expr()));
+    case google::api::expr::v1alpha1::Expr::kSelectExpr: {
+      CEL_ASSIGN_OR_RETURN(auto native_select,
+                           ConvertSelect(expr.select_expr(), stack));
+      return Expr(expr.id(), std::move(native_select));
+    }
+    case google::api::expr::v1alpha1::Expr::kCallExpr: {
+      CEL_ASSIGN_OR_RETURN(auto native_call,
+                           ConvertCall(expr.call_expr(), stack));
+
+      return Expr(expr.id(), std::move(native_call));
+    }
+    case google::api::expr::v1alpha1::Expr::kListExpr: {
+      CEL_ASSIGN_OR_RETURN(auto native_list,
+                           ConvertCreateList(expr.list_expr(), stack));
+
+      return Expr(expr.id(), std::move(native_list));
+    }
+    case google::api::expr::v1alpha1::Expr::kStructExpr: {
+      CEL_ASSIGN_OR_RETURN(auto native_struct,
+                           ConvertCreateStruct(expr.struct_expr(), stack));
+      return Expr(expr.id(), std::move(native_struct));
+    }
+    case google::api::expr::v1alpha1::Expr::kComprehensionExpr: {
+      CEL_ASSIGN_OR_RETURN(
+          auto native_comprehension,
+          ConvertComprehension(expr.comprehension_expr(), stack));
+      return Expr(expr.id(), std::move(native_comprehension));
+    }
+    default:
+      // kind unset
+      return Expr(expr.id(), absl::monostate());
+  }
+}
+
+absl::StatusOr<Expr> ToNativeExprImpl(const exprpb::Expr& proto_expr) {
+  std::stack<ConversionStackEntry> conversion_stack;
+  int iterations = 0;
+  Expr root;
+  conversion_stack.push({&root, &proto_expr});
+  while (!conversion_stack.empty()) {
+    ConversionStackEntry entry = conversion_stack.top();
+    conversion_stack.pop();
+    CEL_ASSIGN_OR_RETURN(*entry.expr,
+                         ConvertExpr(*entry.proto_expr, conversion_stack));
+    ++iterations;
+    if (iterations > kMaxIterations) {
+      return absl::InternalError(
+          "max iterations exceeded in proto to native ast conversion.");
+    }
+  }
+  return root;
+}
+
+}  // namespace
+
+absl::StatusOr<Constant> ConvertConstant(
+    const google::api::expr::v1alpha1::Constant& constant) {
   switch (constant.constant_kind_case()) {
     case google::api::expr::v1alpha1::Constant::kNullValue:
       return Constant(NullValue::kNullValue);
@@ -62,222 +279,8 @@ absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& c
   }
 }
 
-Ident ToNative(const google::api::expr::v1alpha1::Expr::Ident& ident) {
-  return Ident(ident.name());
-}
-
-absl::StatusOr<Select> ToNative(const google::api::expr::v1alpha1::Expr::Select& select) {
-  auto native_operand = ToNative(select.operand());
-  if (!native_operand.ok()) {
-    return native_operand.status();
-  }
-  return Select(std::make_unique<Expr>(*std::move(native_operand)),
-                select.field(), select.test_only());
-}
-
-absl::StatusOr<Call> ToNative(const google::api::expr::v1alpha1::Expr::Call& call) {
-  Call ret_val;
-  ret_val.mutable_args().reserve(call.args_size());
-  for (const auto& arg : call.args()) {
-    auto native_arg = ToNative(arg);
-    if (!native_arg.ok()) {
-      return native_arg.status();
-    }
-    ret_val.mutable_args().emplace_back(*(std::move(native_arg)));
-  }
-  ret_val.set_function(call.function());
-  if (call.has_target()) {
-    auto native_target = ToNative(call.target());
-    if (!native_target.ok()) {
-      return native_target.status();
-    }
-    ret_val.set_target(std::make_unique<Expr>(*(std::move(native_target))));
-  }
-  return ret_val;
-}
-
-absl::StatusOr<CreateList> ToNative(
-    const google::api::expr::v1alpha1::Expr::CreateList& create_list) {
-  CreateList ret_val;
-  ret_val.mutable_elements().reserve(create_list.elements_size());
-  for (const auto& elem : create_list.elements()) {
-    auto native_elem = ToNative(elem);
-    if (!native_elem.ok()) {
-      return native_elem.status();
-    }
-    ret_val.mutable_elements().emplace_back(*std::move(native_elem));
-  }
-  return ret_val;
-}
-
-absl::StatusOr<CreateStruct::Entry> ToNative(
-    const google::api::expr::v1alpha1::Expr::CreateStruct::Entry& entry) {
-  auto key = [](const google::api::expr::v1alpha1::Expr::CreateStruct::Entry& entry)
-      -> absl::StatusOr<CreateStruct::Entry::KeyKind> {
-    switch (entry.key_kind_case()) {
-      case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kFieldKey:
-        return entry.field_key();
-      case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kMapKey: {
-        auto native_map_key = ToNative(entry.map_key());
-        if (!native_map_key.ok()) {
-          return native_map_key.status();
-        }
-        return std::make_unique<Expr>(*(std::move(native_map_key)));
-      }
-      default:
-        return absl::InvalidArgumentError(
-            "Illegal type provided for "
-            "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind.");
-    }
-  };
-  auto native_key = key(entry);
-  if (!native_key.ok()) {
-    return native_key.status();
-  }
-  if (!entry.has_value()) {
-    return absl::InvalidArgumentError(
-        "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value");
-  }
-  auto native_value = ToNative(entry.value());
-  if (!native_value.ok()) {
-    return native_value.status();
-  }
-  return CreateStruct::Entry(
-      entry.id(), *std::move(native_key),
-      std::make_unique<Expr>(*(std::move(native_value))));
-}
-
-absl::StatusOr<CreateStruct> ToNative(
-    const google::api::expr::v1alpha1::Expr::CreateStruct& create_struct) {
-  std::vector<CreateStruct::Entry> entries;
-  entries.reserve(create_struct.entries_size());
-  for (const auto& entry : create_struct.entries()) {
-    auto native_entry = ToNative(entry);
-    if (!native_entry.ok()) {
-      return native_entry.status();
-    }
-    entries.emplace_back(*(std::move(native_entry)));
-  }
-  return CreateStruct(create_struct.message_name(), std::move(entries));
-}
-
-absl::StatusOr<Comprehension> ToNative(
-    const google::api::expr::v1alpha1::Expr::Comprehension& comprehension) {
-  Comprehension ret_val;
-  // accu_var
-  if (comprehension.accu_var().empty()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'accu_var' must not be empty");
-  }
-  ret_val.set_accu_var(comprehension.accu_var());
-  // iter_var
-  if (comprehension.iter_var().empty()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'iter_var' must not be empty");
-  }
-  ret_val.set_iter_var(comprehension.iter_var());
-  // accu_init
-  if (!comprehension.has_accu_init()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'accu_init' must be set");
-  }
-  auto native_accu_init = ToNative(comprehension.accu_init());
-  if (!native_accu_init.ok()) {
-    return native_accu_init.status();
-  }
-  ret_val.set_accu_init(std::make_unique<Expr>(*(std::move(native_accu_init))));
-  // iter_range optional
-  if (comprehension.has_iter_range()) {
-    auto native_iter_range = ToNative(comprehension.iter_range());
-    if (!native_iter_range.ok()) {
-      return native_iter_range.status();
-    }
-    ret_val.set_iter_range(
-        std::make_unique<Expr>(*(std::move(native_iter_range))));
-  }
-  // loop_condition
-  if (!comprehension.has_loop_condition()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'loop_condition' must be set");
-  }
-  auto native_loop_condition = ToNative(comprehension.loop_condition());
-  if (!native_loop_condition.ok()) {
-    return native_loop_condition.status();
-  }
-  ret_val.set_loop_condition(
-      std::make_unique<Expr>(*(std::move(native_loop_condition))));
-  // loop_step
-  if (!comprehension.has_loop_step()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'loop_step' must be set");
-  }
-  auto native_loop_step = ToNative(comprehension.loop_step());
-  if (!native_loop_step.ok()) {
-    return native_loop_step.status();
-  }
-  ret_val.set_loop_step(std::make_unique<Expr>(*(std::move(native_loop_step))));
-  // result
-  if (!comprehension.has_result()) {
-    return absl::InvalidArgumentError(
-        "Invalid comprehension: 'result' must be set");
-  }
-  auto native_result = ToNative(comprehension.result());
-  if (!native_result.ok()) {
-    return native_result.status();
-  }
-  ret_val.set_result(std::make_unique<Expr>(*(std::move(native_result))));
-  return ret_val;
-}
-
 absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr) {
-  switch (expr.expr_kind_case()) {
-    case google::api::expr::v1alpha1::Expr::kConstExpr: {
-      auto native_const = ToNative(expr.const_expr());
-      if (!native_const.ok()) {
-        return native_const.status();
-      }
-      return Expr(expr.id(), *(std::move(native_const)));
-    }
-    case google::api::expr::v1alpha1::Expr::kIdentExpr:
-      return Expr(expr.id(), ToNative(expr.ident_expr()));
-    case google::api::expr::v1alpha1::Expr::kSelectExpr: {
-      auto native_select = ToNative(expr.select_expr());
-      if (!native_select.ok()) {
-        return native_select.status();
-      }
-      return Expr(expr.id(), *(std::move(native_select)));
-    }
-    case google::api::expr::v1alpha1::Expr::kCallExpr: {
-      auto native_call = ToNative(expr.call_expr());
-      if (!native_call.ok()) {
-        return native_call.status();
-      }
-      return Expr(expr.id(), *(std::move(native_call)));
-    }
-    case google::api::expr::v1alpha1::Expr::kListExpr: {
-      auto native_list = ToNative(expr.list_expr());
-      if (!native_list.ok()) {
-        return native_list.status();
-      }
-      return Expr(expr.id(), *(std::move(native_list)));
-    }
-    case google::api::expr::v1alpha1::Expr::kStructExpr: {
-      auto native_struct = ToNative(expr.struct_expr());
-      if (!native_struct.ok()) {
-        return native_struct.status();
-      }
-      return Expr(expr.id(), *(std::move(native_struct)));
-    }
-    case google::api::expr::v1alpha1::Expr::kComprehensionExpr: {
-      auto native_comprehension = ToNative(expr.comprehension_expr());
-      if (!native_comprehension.ok()) {
-        return native_comprehension.status();
-      }
-      return Expr(expr.id(), *(std::move(native_comprehension)));
-    }
-    default:
-      return Expr(expr.id(), absl::monostate());
-  }
+  return ToNativeExprImpl(expr);
 }
 
 absl::StatusOr<SourceInfo> ToNative(
@@ -493,7 +496,7 @@ absl::StatusOr<Reference> ToNative(
     ret_val.mutable_overload_id().emplace_back(elem);
   }
   if (reference.has_value()) {
-    auto native_value = ToNative(reference.value());
+    auto native_value = ConvertConstant(reference.value());
     if (!native_value.ok()) {
       return native_value.status();
     }
