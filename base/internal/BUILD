@@ -86,7 +86,6 @@ cc_library(
         ":data",
         "//base:handle",
         "//base:kind",
-        "//internal:casts",
         "//internal:rtti",
     ],
 )

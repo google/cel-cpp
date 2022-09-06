@@ -355,7 +355,8 @@ void PersistentValueHandle::Delete() const {
       delete static_cast<MapValue*>(static_cast<Value*>(data_.get()));
       break;
     case Kind::kStruct:
-      delete static_cast<StructValue*>(static_cast<Value*>(data_.get()));
+      delete static_cast<AbstractStructValue*>(
+          static_cast<Value*>(data_.get()));
       break;
     case Kind::kString:
       delete static_cast<StringStringValue*>(static_cast<Value*>(data_.get()));

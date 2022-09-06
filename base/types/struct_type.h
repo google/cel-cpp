@@ -21,9 +21,12 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
+#include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "internal/rtti.h"
@@ -37,7 +40,7 @@ class TypeManager;
 
 // StructType represents an struct type. An struct is a set of fields
 // that can be looked up by name and/or number.
-class StructType : public Type, public base_internal::HeapData {
+class StructType : public Type {
  public:
   struct Field;
 
@@ -67,19 +70,134 @@ class StructType : public Type, public base_internal::HeapData {
 
   Kind kind() const { return kKind; }
 
-  virtual absl::string_view name() const = 0;
+  absl::string_view name() const;
 
-  std::string DebugString() const { return std::string(name()); }
+  std::string DebugString() const;
 
-  virtual void HashValue(absl::HashState state) const;
+  void HashValue(absl::HashState state) const;
 
-  virtual bool Equals(const Type& other) const;
+  bool Equals(const Type& other) const;
 
   // Find the field definition for the given identifier.
   absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
 
  protected:
-  StructType();
+  absl::StatusOr<Persistent<StructValue>> NewInstance(
+      TypedStructValueFactory& factory) const;
+
+  // Called by FindField.
+  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
+                                        absl::string_view name) const;
+
+  // Called by FindField.
+  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
+                                          int64_t number) const;
+
+ private:
+  friend internal::TypeInfo base_internal::GetStructTypeTypeId(
+      const StructType& struct_type);
+  struct FindFieldVisitor;
+
+  friend struct FindFieldVisitor;
+  friend class MemoryManager;
+  friend class TypeFactory;
+  friend class base_internal::PersistentTypeHandle;
+  friend class StructValue;
+  friend class base_internal::LegacyStructType;
+  friend class base_internal::AbstractStructType;
+
+  StructType() = default;
+
+  // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const;
+};
+
+namespace base_internal {
+
+// In an ideal world we would just make StructType a heap type. Unfortunately we
+// have to deal with our legacy API and we do not want to unncessarily perform
+// heap allocations during interop. So we have an inline variant and heap
+// variant.
+
+ABSL_ATTRIBUTE_WEAK absl::string_view MessageTypeName(uintptr_t msg);
+ABSL_ATTRIBUTE_WEAK bool MessageTypeHash(uintptr_t msg, absl::HashState state);
+ABSL_ATTRIBUTE_WEAK bool MessageTypeEquals(uintptr_t lhs, const Type& rhs);
+
+class LegacyStructType final : public StructType,
+                               public base_internal::InlineData {
+ public:
+  static bool Is(const Type& type) {
+    return type.kind() == kKind &&
+           static_cast<const StructType&>(type).TypeId() ==
+               internal::TypeId<LegacyStructType>();
+  }
+
+  absl::string_view name() const;
+
+  // Always returns the same string.
+  std::string DebugString() const { return std::string(name()); }
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Type& other) const;
+
+  // Always returns an error.
+  absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
+
+ protected:
+  // Always returns an error.
+  absl::StatusOr<Persistent<StructValue>> NewInstance(
+      TypedStructValueFactory& factory) const;
+
+  // Always returns an error.
+  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
+                                        absl::string_view name) const;
+
+  // Always returns an error.
+  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
+                                          int64_t number) const;
+
+ private:
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  friend class cel::StructType;
+  friend class base_internal::LegacyStructValue;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  explicit LegacyStructType(uintptr_t msg)
+      : StructType(), base_internal::InlineData(kMetadata), msg_(msg) {}
+
+  internal::TypeInfo TypeId() const {
+    return internal::TypeId<LegacyStructType>();
+  }
+
+  // This is a type erased pointer to google::protobuf::Message or google::protobuf::MessageLite. It
+  // is not tagged.
+  uintptr_t msg_;
+};
+
+class AbstractStructType : public StructType, public base_internal::HeapData {
+ public:
+  static bool Is(const Type& type) {
+    return type.kind() == kKind &&
+           static_cast<const StructType&>(type).TypeId() !=
+               internal::TypeId<LegacyStructType>();
+  }
+
+  virtual absl::string_view name() const = 0;
+
+  virtual std::string DebugString() const { return std::string(name()); }
+
+  virtual void HashValue(absl::HashState state) const;
+
+  virtual bool Equals(const Type& other) const;
+
+ protected:
+  AbstractStructType();
 
   virtual absl::StatusOr<Persistent<StructValue>> NewInstance(
       TypedStructValueFactory& factory) const = 0;
@@ -102,18 +220,23 @@ class StructType : public Type, public base_internal::HeapData {
   friend class TypeFactory;
   friend class base_internal::PersistentTypeHandle;
   friend class StructValue;
+  friend class cel::StructType;
 
-  StructType(const StructType&) = delete;
-  StructType(StructType&&) = delete;
+  AbstractStructType(const AbstractStructType&) = delete;
+  AbstractStructType(AbstractStructType&&) = delete;
 
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 };
 
+}  // namespace base_internal
+
+#define CEL_STRUCT_TYPE_CLASS ::cel::base_internal::AbstractStructType
+
 // CEL_DECLARE_STRUCT_TYPE declares `struct_type` as an struct type. It must be
 // part of the class definition of `struct_type`.
 //
-// class MyStructType : public cel::StructType {
+// class MyStructType : public CEL_STRUCT_TYPE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_STRUCT_TYPE(MyStructType);
@@ -124,7 +247,7 @@ class StructType : public Type, public base_internal::HeapData {
 // CEL_IMPLEMENT_ENUM_TYPE implements `struct_type` as an struct type. It
 // must be called after the class definition of `struct_type`.
 //
-// class MyStructType : public cel::StructType {
+// class MyStructType : public CEL_STRUCT_TYPE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_STRUCT_TYPE(MyStructType);

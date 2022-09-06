@@ -107,6 +107,8 @@ class StringBytesValue;
 class InlinedCordStringValue;
 class InlinedStringViewStringValue;
 class StringStringValue;
+class LegacyStructValue;
+class AbstractStructValue;
 
 using StringValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;

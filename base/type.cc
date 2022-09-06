@@ -309,7 +309,7 @@ void PersistentTypeHandle::Delete() const {
       delete static_cast<EnumType*>(static_cast<Type*>(data_.get()));
       break;
     case Kind::kStruct:
-      delete static_cast<StructType*>(static_cast<Type*>(data_.get()));
+      delete static_cast<AbstractStructType*>(static_cast<Type*>(data_.get()));
       break;
     default:
       internal::unreachable();

@@ -126,11 +126,11 @@ H AbslHashValue(H state, const TestStruct& test_struct) {
                     test_struct.double_field);
 }
 
-class TestStructValue final : public StructValue {
+class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
  public:
   explicit TestStructValue(const Persistent<const StructType>& type,
                            TestStruct value)
-      : StructValue(type), value_(std::move(value)) {}
+      : CEL_STRUCT_VALUE_CLASS(type), value_(std::move(value)) {}
 
   std::string DebugString() const override {
     return absl::StrCat("bool_field: ", value().bool_field,
@@ -278,10 +278,8 @@ class TestStructValue final : public StructValue {
 
 CEL_IMPLEMENT_STRUCT_VALUE(TestStructValue);
 
-class TestStructType final : public StructType {
+class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
-  using StructType::StructType;
-
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:

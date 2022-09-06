@@ -91,10 +91,8 @@ CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
 //   double double_field;
 // };
 
-class TestStructType final : public StructType {
+class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
-  using StructType::StructType;
-
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:
