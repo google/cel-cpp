@@ -54,6 +54,7 @@ enum class Kind /* : uint8_t */ {
 
   // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
   // we can store `Kind` using 7 bits.
+  kNotForUseWithExhaustiveSwitchStatements = 127,
 };
 
 ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);
