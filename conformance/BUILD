@@ -53,6 +53,7 @@ cc_binary(
         "//parser",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_cel_spec//proto/test/v1/proto2:test_all_types_cc_proto",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
@@ -70,9 +71,10 @@ cc_binary(
         srcs = ["@com_google_cel_spec//tests:conftest.sh"],
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
-            "--server=\"$(location :server) " + arg + "\"",
+            "--server=\"$(location :server) --base64_encode " + arg + "\"",
             "--skip_check",
             "--pipe",
+            "--pipe_base64",
 
             # Tests which require spec changes.
             # TODO(issues/93): Deprecate Duration.getMilliseconds.
@@ -82,17 +84,13 @@ cc_binary(
             # TODO(issues/112): Unbound functions result in empty eval response.
             "--skip_test=basic/functions/unbound",
             "--skip_test=basic/functions/unbound_is_runtime_error",
-            # TODO(issues/116): dynamic/list/var and dynamic/value_struct/var fail to JSON parse correctly.
-            "--skip_test=dynamic/list/var",
-            "--skip_test=dynamic/value_struct/var",
+
             # TODO(issues/97): Parse-only qualified variable lookup "x.y" wtih binding "x.y" or "y" within container "x" fails
             "--skip_test=fields/qualified_identifier_resolution/qualified_ident,map_field_select,ident_with_longest_prefix_check,qualified_identifier_resolution_unchecked",
             "--skip_test=namespace/qualified/self_eval_qualified_lookup",
             "--skip_test=namespace/namespace/self_eval_container_lookup,self_eval_container_lookup_unchecked",
             # TODO(issues/117): Integer overflow on enum assignments should error.
             "--skip_test=enums/legacy_proto2/select_big,select_neg",
-            # TODO(issues/5): JSON to Proto parser/unparser doesn't support unknown enum values.
-            "--skip_test=enums/legacy_proto2/assign_standalone_int_big,assign_standalone_int_neg",
 
             # Future features for CEL 1.0
             # TODO(issues/119): Strong typing support for enums, specified but not implemented.
@@ -115,14 +113,13 @@ sh_test(
     srcs = ["@com_google_cel_spec//tests:conftest-nofail.sh"],
     args = [
         "$(location @com_google_cel_spec//tests/simple:simple_test)",
-        "--server=$(location :server)",
+        "--server=\"$(location :server) --base64_encode\"",
         "--skip_check",
-        # TODO(issues/116): Debug why dynamic/list/var fails to JSON parse correctly.
-        "--skip_test=dynamic/list/var",
         # TODO(issues/119): Strong typing support for enums, specified but not implemented.
         "--skip_test=enums/strong_proto2",
         "--skip_test=enums/strong_proto3",
         "--pipe",
+        "--pipe_base64",
     ] + ["$(location " + test + ")" for test in ALL_TESTS],
     data = [
         ":server",
