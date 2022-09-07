@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
+#include "absl/base/macros.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
@@ -78,11 +79,6 @@ using Call = ::google::api::expr::v1alpha1::Expr::Call;
 using CreateList = ::google::api::expr::v1alpha1::Expr::CreateList;
 using CreateStruct = ::google::api::expr::v1alpha1::Expr::CreateStruct;
 using Comprehension = ::google::api::expr::v1alpha1::Expr::Comprehension;
-
-template <typename ExprT>
-bool IsConstExprString(const ExprT& expr) {
-  return expr.has_const_expr() && expr.const_expr().has_string_value();
-}
 
 template <typename ExprT>
 bool IsFunctionOverload(
@@ -500,9 +496,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     // constant.
     if (enable_regex_ && enable_regex_precompilation_ &&
         IsOptimizeableMatchesCall(*expr, *call_expr)) {
-      const auto& pattern_expr = call_expr->args().back();
       auto program = regex_program_builder_.BuildRegexProgram(
-          pattern_expr.const_expr().string_value());
+          GetConstantString(call_expr->args().back()));
       if (!program.ok()) {
         SetProgressStatusError(program.status());
         return;
@@ -752,13 +747,36 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
  private:
+  bool IsConstantString(const cel::ast::internal::Expr& expr) const {
+    if (expr.has_const_expr() && expr.const_expr().has_string_value()) {
+      return true;
+    }
+    if (!expr.has_ident_expr()) {
+      return false;
+    }
+    auto const_value = constant_idents_.find(expr.ident_expr().name());
+    return const_value != constant_idents_.end() &&
+           const_value->second.IsString();
+  }
+
+  absl::string_view GetConstantString(
+      const cel::ast::internal::Expr& expr) const {
+    ABSL_ASSERT(IsConstantString(expr));
+    if (expr.has_const_expr()) {
+      return expr.const_expr().string_value();
+    }
+    return constant_idents_.find(expr.ident_expr().name())
+        ->second.StringOrDie()
+        .value();
+  }
+
   bool IsOptimizeableMatchesCall(
       const cel::ast::internal::Expr& expr,
       const cel::ast::internal::Call& call_expr) const {
     return IsFunctionOverload(expr,
                               google::api::expr::runtime::builtin::kRegexMatch,
                               "matches_string", 2, reference_map_) &&
-           IsConstExprString(call_expr.args().back());
+           IsConstantString(call_expr.args().back());
   }
 
   const google::api::expr::runtime::Resolver& resolver_;
