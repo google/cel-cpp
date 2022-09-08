@@ -17,6 +17,7 @@
 #include <stack>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "absl/log/log.h"
 #include "absl/types/variant.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/source_position.h"

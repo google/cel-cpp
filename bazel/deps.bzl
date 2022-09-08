@@ -7,9 +7,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 def base_deps():
     """Base evaluator and test dependencies."""
 
-    # 2021-11-30
-    ABSL_SHA1 = "3e1983c5c07eb8a43ad030e770cbae023a470a04"
-    ABSL_SHA256 = "f3d286893fe23eb0efbb30709848b26fa4a311692b147bea1b0d1efff9c8f03a"
+    # 2022-09-08
+    ABSL_SHA1 = "518984e432e0597fd4e66a9c52148e8dec2bb46a"
+    ABSL_SHA256 = "97e721f8f2a49c507190821a76cdf1c8b659eb49728e6dcf527670f943b2ba60"
     http_archive(
         name = "com_google_absl",
         urls = ["https://github.com/abseil/abseil-cpp/archive/" + ABSL_SHA1 + ".zip"],
@@ -124,10 +124,10 @@ def cel_spec_deps():
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "6040c0a6df9601751e628405706bac18948b8eb3"  # 3/31/2022
+    CEL_SPEC_GIT_SHA = "2cfa4f6a2dd7cb101459f6a286a4920c7322649f"  # 9/7/2022
     http_archive(
         name = "com_google_cel_spec",
-        sha256 = "6b4ca28de8d8a3038a96c393774c2ab65abd6a57cb50295dddea406b2eeafc9e",
+        sha256 = "78bfc17821607919724b033f1ba6e636d0cdfe056363055f4ab7f46b19e6a184",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )

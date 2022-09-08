@@ -176,7 +176,9 @@ class PipeCodec {
     if (base64_encoded_) {
       return Base64DecodeToMessage(data, out);
     } else {
-      return JsonStringToMessage(data, out);
+      return JsonStringToMessage(data, out).ok()
+                 ? absl::OkStatus()
+                 : absl::InvalidArgumentError("bad input");
     }
   }
 
@@ -184,7 +186,9 @@ class PipeCodec {
     if (base64_encoded_) {
       return Base64EncodeFromMessage(msg, out);
     } else {
-      return MessageToJsonString(msg, out);
+      return MessageToJsonString(msg, out).ok()
+                 ? absl::OkStatus()
+                 : absl::InvalidArgumentError("bad input");
     }
   }
 

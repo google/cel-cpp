@@ -35,7 +35,6 @@
 
 namespace cel::ast::internal {
 namespace {
-namespace exprpb = ::google::api::expr;
 
 constexpr int kMaxIterations = 1'000'000;
 
@@ -43,21 +42,22 @@ struct ConversionStackEntry {
   // Not null.
   Expr* expr;
   // Not null.
-  const exprpb::Expr* proto_expr;
+  const ::google::api::expr::v1alpha1::Expr* proto_expr;
 };
 
-Ident ConvertIdent(const exprpb::Expr::Ident& ident) {
+Ident ConvertIdent(const ::google::api::expr::v1alpha1::Expr::Ident& ident) {
   return Ident(ident.name());
 }
 
-absl::StatusOr<Select> ConvertSelect(const exprpb::Expr::Select& select,
-                                     std::stack<ConversionStackEntry>& stack) {
+absl::StatusOr<Select> ConvertSelect(
+    const ::google::api::expr::v1alpha1::Expr::Select& select,
+    std::stack<ConversionStackEntry>& stack) {
   Select value(std::make_unique<Expr>(), select.field(), select.test_only());
   stack.push({&value.mutable_operand(), &select.operand()});
   return value;
 }
 
-absl::StatusOr<Call> ConvertCall(const exprpb::Expr::Call& call,
+absl::StatusOr<Call> ConvertCall(const ::google::api::expr::v1alpha1::Expr::Call& call,
                                  std::stack<ConversionStackEntry>& stack) {
   Call ret_val;
   ret_val.set_function(call.function());
@@ -72,7 +72,7 @@ absl::StatusOr<Call> ConvertCall(const exprpb::Expr::Call& call,
 }
 
 absl::StatusOr<CreateList> ConvertCreateList(
-    const exprpb::Expr::CreateList& create_list,
+    const ::google::api::expr::v1alpha1::Expr::CreateList& create_list,
     std::stack<ConversionStackEntry>& stack) {
   CreateList ret_val;
   ret_val.set_elements(std::vector<Expr>(create_list.elements_size()));
@@ -84,7 +84,7 @@ absl::StatusOr<CreateList> ConvertCreateList(
 }
 
 absl::StatusOr<CreateStruct::Entry::KeyKind> ConvertCreateStructEntryKey(
-    const exprpb::Expr::CreateStruct::Entry& entry,
+    const ::google::api::expr::v1alpha1::Expr::CreateStruct::Entry& entry,
     std::stack<ConversionStackEntry>& stack) {
   switch (entry.key_kind_case()) {
     case google::api::expr::v1alpha1::Expr_CreateStruct_Entry::kFieldKey:
@@ -102,7 +102,7 @@ absl::StatusOr<CreateStruct::Entry::KeyKind> ConvertCreateStructEntryKey(
 }
 
 absl::StatusOr<CreateStruct::Entry> ConvertCreateStructEntry(
-    const exprpb::Expr::CreateStruct::Entry& entry,
+    const ::google::api::expr::v1alpha1::Expr::CreateStruct::Entry& entry,
     std::stack<ConversionStackEntry>& stack) {
   CEL_ASSIGN_OR_RETURN(auto native_key,
                        ConvertCreateStructEntryKey(entry, stack));
@@ -119,7 +119,7 @@ absl::StatusOr<CreateStruct::Entry> ConvertCreateStructEntry(
 }
 
 absl::StatusOr<CreateStruct> ConvertCreateStruct(
-    const exprpb::Expr::CreateStruct& create_struct,
+    const ::google::api::expr::v1alpha1::Expr::CreateStruct& create_struct,
     std::stack<ConversionStackEntry>& stack) {
   std::vector<CreateStruct::Entry> entries;
   entries.reserve(create_struct.entries_size());
@@ -185,7 +185,7 @@ absl::StatusOr<Comprehension> ConvertComprehension(
   return ret_val;
 }
 
-absl::StatusOr<Expr> ConvertExpr(const exprpb::Expr& expr,
+absl::StatusOr<Expr> ConvertExpr(const ::google::api::expr::v1alpha1::Expr& expr,
                                  std::stack<ConversionStackEntry>& stack) {
   switch (expr.expr_kind_case()) {
     case google::api::expr::v1alpha1::Expr::kConstExpr: {
@@ -229,7 +229,8 @@ absl::StatusOr<Expr> ConvertExpr(const exprpb::Expr& expr,
   }
 }
 
-absl::StatusOr<Expr> ToNativeExprImpl(const exprpb::Expr& proto_expr) {
+absl::StatusOr<Expr> ToNativeExprImpl(
+    const ::google::api::expr::v1alpha1::Expr& proto_expr) {
   std::stack<ConversionStackEntry> conversion_stack;
   int iterations = 0;
   Expr root;

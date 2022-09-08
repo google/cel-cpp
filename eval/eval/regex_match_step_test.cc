@@ -29,6 +29,8 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using google::api::expr::v1alpha1::CheckedExpr;
+using google::api::expr::v1alpha1::Reference;
 using testing::Eq;
 using cel::internal::StatusIs;
 

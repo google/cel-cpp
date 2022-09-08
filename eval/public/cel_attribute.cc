@@ -53,23 +53,23 @@ Attribute::Attribute(const google::api::expr::v1alpha1::Expr& variable,
 AttributeQualifier AttributeQualifier::Create(const CelValue& value) {
   switch (value.type()) {
     case Kind::kInt64:
-      return AttributeQualifier(std::in_place_type<int64_t>,
+      return AttributeQualifier(absl::in_place_type<int64_t>,
                                 value.Int64OrDie());
     case Kind::kUint64:
-      return AttributeQualifier(std::in_place_type<uint64_t>,
+      return AttributeQualifier(absl::in_place_type<uint64_t>,
                                 value.Uint64OrDie());
     case Kind::kString:
-      return AttributeQualifier(std::in_place_type<std::string>,
+      return AttributeQualifier(absl::in_place_type<std::string>,
                                 std::string(value.StringOrDie().value()));
     case Kind::kBool:
-      return AttributeQualifier(std::in_place_type<bool>, value.BoolOrDie());
+      return AttributeQualifier(absl::in_place_type<bool>, value.BoolOrDie());
     default:
       return AttributeQualifier();
   }
 }
 
 bool AttributeQualifier::IsMatch(const CelValue& cel_value) const {
-  return std::visit(AttributeQualifierIsMatchVisitor{cel_value}, value_);
+  return absl::visit(AttributeQualifierIsMatchVisitor{cel_value}, value_);
 }
 
 }  // namespace cel
@@ -108,13 +108,13 @@ struct QualifierVisitor {
 
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
-    std::initializer_list<std::variant<absl::string_view, int64_t, uint64_t, bool,
-                                       CelAttributeQualifierPattern>>
+    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
+                                        CelAttributeQualifierPattern>>
         path_spec) {
   std::vector<CelAttributeQualifierPattern> path;
   path.reserve(path_spec.size());
   for (const auto& spec_elem : path_spec) {
-    path.emplace_back(std::visit(QualifierVisitor(), spec_elem));
+    path.emplace_back(absl::visit(QualifierVisitor(), spec_elem));
   }
   return CelAttributePattern(std::string(variable), std::move(path));
 }

@@ -256,7 +256,7 @@ const absl::StatusOr<std::string> Attribute::AsString() const {
   std::string result = std::string(variable_name());
 
   for (const auto& qualifier : qualifier_path()) {
-    CEL_RETURN_IF_ERROR(std::visit(
+    CEL_RETURN_IF_ERROR(absl::visit(
         AttributeStringPrinter(&result, qualifier.kind()), qualifier.value_));
   }
 

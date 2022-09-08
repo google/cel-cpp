@@ -327,6 +327,7 @@ cc_library(
     deps = [
         "//eval/public:cel_value",
         "//eval/testutil:test_message_cc_proto",
+        "//internal:casts",
         "//internal:overflow",
         "//internal:proto_time_encoding",
         "@com_google_absl//absl/container:flat_hash_map",

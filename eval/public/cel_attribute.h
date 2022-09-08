@@ -145,8 +145,8 @@ class CelAttributePattern {
 // must outlive the returned pattern.
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
-    std::initializer_list<std::variant<absl::string_view, int64_t, uint64_t, bool,
-                                       CelAttributeQualifierPattern>>
+    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
+                                        CelAttributeQualifierPattern>>
         path_spec = {});
 
 }  // namespace google::api::expr::runtime

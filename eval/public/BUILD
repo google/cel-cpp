@@ -79,6 +79,7 @@ cc_library(
         "//internal:status_macros",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -492,6 +493,7 @@ cc_library(
     deps = [
         ":ast_visitor",
         ":source_position",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -674,6 +676,7 @@ cc_library(
     deps = [
         ":ast_visitor",
         ":source_position",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

@@ -27,7 +27,7 @@ class LegacyTypeProviderTestEmpty : public LegacyTypeProvider {
  public:
   absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override {
-    return std::nullopt;
+    return absl::nullopt;
   }
 };
 
@@ -59,14 +59,14 @@ class LegacyTypeProviderTestImpl : public LegacyTypeProvider {
     if (name == "test") {
       return LegacyTypeAdapter(nullptr, nullptr);
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
   absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
       absl::string_view name) const override {
     if (name == "test") {
       return test_type_info_;
     }
-    return std::nullopt;
+    return absl::nullopt;
   }
 
  private:
@@ -75,8 +75,8 @@ class LegacyTypeProviderTestImpl : public LegacyTypeProvider {
 
 TEST(LegacyTypeProviderTest, EmptyTypeProviderHasProvideTypeInfo) {
   LegacyTypeProviderTestEmpty provider;
-  EXPECT_EQ(provider.ProvideLegacyType("test"), std::nullopt);
-  EXPECT_EQ(provider.ProvideLegacyTypeInfo("test"), std::nullopt);
+  EXPECT_EQ(provider.ProvideLegacyType("test"), absl::nullopt);
+  EXPECT_EQ(provider.ProvideLegacyTypeInfo("test"), absl::nullopt);
 }
 
 TEST(LegacyTypeProviderTest, NonEmptyTypeProviderProvidesSomeTypes) {
@@ -84,8 +84,8 @@ TEST(LegacyTypeProviderTest, NonEmptyTypeProviderProvidesSomeTypes) {
   LegacyTypeProviderTestImpl provider(&test_type_info);
   EXPECT_TRUE(provider.ProvideLegacyType("test").has_value());
   EXPECT_TRUE(provider.ProvideLegacyTypeInfo("test").has_value());
-  EXPECT_EQ(provider.ProvideLegacyType("other"), std::nullopt);
-  EXPECT_EQ(provider.ProvideLegacyTypeInfo("other"), std::nullopt);
+  EXPECT_EQ(provider.ProvideLegacyType("other"), absl::nullopt);
+  EXPECT_EQ(provider.ProvideLegacyTypeInfo("other"), absl::nullopt);
 }
 
 }  // namespace

@@ -33,6 +33,7 @@
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
 #include "eval/testutil/test_message.pb.h"
+#include "internal/casts.h"
 #include "internal/overflow.h"
 #include "internal/proto_time_encoding.h"
 
@@ -532,63 +533,86 @@ absl::StatusOr<CelValue> UnwrapFromWellKnownType(
   WellKnownType type = GetWellKnownType(message->GetTypeName());
   switch (type) {
     case kDoubleValue: {
-      auto value = down_cast<const google::protobuf::DoubleValue*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::DoubleValue*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kFloatValue: {
-      auto value = down_cast<const google::protobuf::FloatValue*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::FloatValue*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kInt32Value: {
-      auto value = down_cast<const google::protobuf::Int32Value*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Int32Value*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kInt64Value: {
-      auto value = down_cast<const google::protobuf::Int64Value*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Int64Value*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kUInt32Value: {
-      auto value = down_cast<const google::protobuf::UInt32Value*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::UInt32Value*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kUInt64Value: {
-      auto value = down_cast<const google::protobuf::UInt64Value*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::UInt64Value*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kBoolValue: {
-      auto value = down_cast<const google::protobuf::BoolValue*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::BoolValue*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kTimestamp: {
-      auto value = down_cast<const google::protobuf::Timestamp*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Timestamp*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kDuration: {
-      auto value = down_cast<const google::protobuf::Duration*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Duration*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kStruct: {
-      auto value = down_cast<const google::protobuf::Struct*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Struct*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kListValue: {
-      auto value = down_cast<const google::protobuf::ListValue*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::ListValue*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kValue: {
-      auto value = down_cast<const google::protobuf::Value*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Value*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kStringValue: {
-      auto value = down_cast<const google::protobuf::StringValue*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::StringValue*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kBytesValue: {
-      auto value = down_cast<const google::protobuf::BytesValue*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::BytesValue*>(
+              message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kAny: {
-      auto value = down_cast<const google::protobuf::Any*>(message);
+      auto value =
+          cel::internal::down_cast<const google::protobuf::Any*>(message);
       return CreateCelValue(*value, type_info, arena);
     } break;
     case kUnknown:

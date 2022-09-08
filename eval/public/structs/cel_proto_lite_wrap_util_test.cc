@@ -339,7 +339,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueStruct) {
   CelValue wrong_key = CelValue::CreateBool(true);
   EXPECT_THAT(cel_map->Has(wrong_key),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  std::optional<CelValue> lockup_wrong_key = (*cel_map)[wrong_key];
+  absl::optional<CelValue> lockup_wrong_key = (*cel_map)[wrong_key];
   ASSERT_TRUE(lockup_wrong_key.has_value());
   EXPECT_TRUE((*lockup_wrong_key).IsError());
 
@@ -348,7 +348,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueStruct) {
   auto missing_field_presence = cel_map->Has(missing_field);
   ASSERT_OK(missing_field_presence);
   EXPECT_FALSE(*missing_field_presence);
-  EXPECT_EQ((*cel_map)[missing_field], std::nullopt);
+  EXPECT_EQ((*cel_map)[missing_field], absl::nullopt);
 
   const CelList* key_list = cel_map->ListKeys().value();
   ASSERT_EQ(key_list->size(), kFields.size());
