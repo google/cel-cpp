@@ -15,8 +15,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using google::api::expr::v1alpha1::Expr;
-
+using ::cel::ast::internal::Expr;
 using google::protobuf::Arena;
 using testing::Eq;
 class LogicStepTest : public testing::TestWithParam<bool> {
@@ -24,12 +23,12 @@ class LogicStepTest : public testing::TestWithParam<bool> {
   absl::Status EvaluateLogic(CelValue arg0, CelValue arg1, bool is_or,
                              CelValue* result, bool enable_unknown) {
     Expr expr0;
-    auto ident_expr0 = expr0.mutable_ident_expr();
-    ident_expr0->set_name("name0");
+    auto& ident_expr0 = expr0.mutable_ident_expr();
+    ident_expr0.set_name("name0");
 
     Expr expr1;
-    auto ident_expr1 = expr1.mutable_ident_expr();
-    ident_expr1->set_name("name1");
+    auto& ident_expr1 = expr1.mutable_ident_expr();
+    ident_expr1.set_name("name1");
 
     ExecutionPath path;
     CEL_ASSIGN_OR_RETURN(auto step, CreateIdentStep(ident_expr0, expr0.id()));
@@ -41,7 +40,7 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     CEL_ASSIGN_OR_RETURN(step, (is_or) ? CreateOrStep(2) : CreateAndStep(2));
     path.push_back(std::move(step));
 
-    auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+    auto dummy_expr = absl::make_unique<Expr>();
     CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                                &TestTypeRegistry(), 0, {}, enable_unknown);
 
@@ -209,30 +208,29 @@ TEST_F(LogicStepTest, TestAndLogicUnknownHandling) {
   ASSERT_TRUE(result.IsUnknownSet());
 
   Expr expr0;
-  auto ident_expr0 = expr0.mutable_ident_expr();
-  ident_expr0->set_name("name0");
+  auto& ident_expr0 = expr0.mutable_ident_expr();
+  ident_expr0.set_name("name0");
 
   Expr expr1;
-  auto ident_expr1 = expr1.mutable_ident_expr();
-  ident_expr1->set_name("name1");
+  auto& ident_expr1 = expr1.mutable_ident_expr();
+  ident_expr1.set_name("name1");
 
-  CelAttribute attr0(expr0, {}), attr1(expr1, {});
-  UnknownAttributeSet unknown_attr_set0({&attr0});
-  UnknownAttributeSet unknown_attr_set1({&attr1});
+  CelAttribute attr0(expr0.ident_expr().name(), {}),
+      attr1(expr1.ident_expr().name(), {});
+  UnknownAttributeSet unknown_attr_set0({attr0});
+  UnknownAttributeSet unknown_attr_set1({attr1});
   UnknownSet unknown_set0(unknown_attr_set0);
   UnknownSet unknown_set1(unknown_attr_set1);
 
-  EXPECT_THAT(unknown_attr_set0.attributes().size(), Eq(1));
-  EXPECT_THAT(unknown_attr_set1.attributes().size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set0.size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set1.size(), Eq(1));
 
   status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                          CelValue::CreateUnknownSet(&unknown_set1), false,
                          &result, true);
   ASSERT_OK(status);
   ASSERT_TRUE(result.IsUnknownSet());
-  ASSERT_THAT(
-      result.UnknownSetOrDie()->unknown_attributes().attributes().size(),
-      Eq(2));
+  ASSERT_THAT(result.UnknownSetOrDie()->unknown_attributes().size(), Eq(2));
 }
 
 TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
@@ -272,31 +270,30 @@ TEST_F(LogicStepTest, TestOrLogicUnknownHandling) {
   ASSERT_TRUE(result.IsUnknownSet());
 
   Expr expr0;
-  auto ident_expr0 = expr0.mutable_ident_expr();
-  ident_expr0->set_name("name0");
+  auto& ident_expr0 = expr0.mutable_ident_expr();
+  ident_expr0.set_name("name0");
 
   Expr expr1;
-  auto ident_expr1 = expr1.mutable_ident_expr();
-  ident_expr1->set_name("name1");
+  auto& ident_expr1 = expr1.mutable_ident_expr();
+  ident_expr1.set_name("name1");
 
-  CelAttribute attr0(expr0, {}), attr1(expr1, {});
-  UnknownAttributeSet unknown_attr_set0({&attr0});
-  UnknownAttributeSet unknown_attr_set1({&attr1});
+  CelAttribute attr0(expr0.ident_expr().name(), {}),
+      attr1(expr1.ident_expr().name(), {});
+  UnknownAttributeSet unknown_attr_set0({attr0});
+  UnknownAttributeSet unknown_attr_set1({attr1});
 
   UnknownSet unknown_set0(unknown_attr_set0);
   UnknownSet unknown_set1(unknown_attr_set1);
 
-  EXPECT_THAT(unknown_attr_set0.attributes().size(), Eq(1));
-  EXPECT_THAT(unknown_attr_set1.attributes().size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set0.size(), Eq(1));
+  EXPECT_THAT(unknown_attr_set1.size(), Eq(1));
 
   status = EvaluateLogic(CelValue::CreateUnknownSet(&unknown_set0),
                          CelValue::CreateUnknownSet(&unknown_set1), true,
                          &result, true);
   ASSERT_OK(status);
   ASSERT_TRUE(result.IsUnknownSet());
-  ASSERT_THAT(
-      result.UnknownSetOrDie()->unknown_attributes().attributes().size(),
-      Eq(2));
+  ASSERT_THAT(result.UnknownSetOrDie()->unknown_attributes().size(), Eq(2));
 }
 
 INSTANTIATE_TEST_SUITE_P(LogicStepTest, LogicStepTest, testing::Bool());

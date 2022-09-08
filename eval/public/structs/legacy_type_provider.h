@@ -36,6 +36,18 @@ class LegacyTypeProvider : public cel::TypeProvider {
   // TODO(issues/5): add alternative for new type system.
   virtual absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const = 0;
+
+  // Return LegacyTypeInfoApis for the fully qualified type name if available.
+  //
+  // nullopt values are interpreted as not present.
+  //
+  // Since custom type providers should create values compatible with evaluator
+  // created ones, the TypeInfoApis returned from this method should be the same
+  // as the ones used in value creation.
+  virtual absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
+      absl::string_view name) const {
+    return absl::nullopt;
+  }
 };
 
 }  // namespace google::api::expr::runtime

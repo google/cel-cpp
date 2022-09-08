@@ -5,13 +5,14 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
+#include "base/ast.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
 
 // Factory method for Ident - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const google::api::expr::v1alpha1::Expr::Ident* ident, int64_t expr_id);
+    const cel::ast::internal::Ident& ident, int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

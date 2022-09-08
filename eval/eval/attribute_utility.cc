@@ -1,13 +1,12 @@
 #include "eval/eval/attribute_utility.h"
 
-#include "absl/status/status.h"
+#include <utility>
+
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 
 namespace google::api::expr::runtime {
-
-using ::google::protobuf::Arena;
 
 bool AttributeUtility::CheckForMissingAttribute(
     const AttributeTrail& trail) const {
@@ -19,7 +18,7 @@ bool AttributeUtility::CheckForMissingAttribute(
     // (b/161297249) Preserving existing behavior for now, will add a streamz
     // for partial match, follow up with tightening up which fields are exposed
     // to the condition (w/ ajay and jim)
-    if (pattern.IsMatch(*trail.attribute()) ==
+    if (pattern.IsMatch(trail.attribute()) ==
         CelAttributePattern::MatchType::FULL) {
       return true;
     }
@@ -34,7 +33,7 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
     return false;
   }
   for (const auto& pattern : *unknown_patterns_) {
-    auto current_match = pattern.IsMatch(*trail.attribute());
+    auto current_match = pattern.IsMatch(trail.attribute());
     if (current_match == CelAttributePattern::MatchType::FULL ||
         (use_partial &&
          current_match == CelAttributePattern::MatchType::PARTIAL)) {
@@ -50,20 +49,28 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
 const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const CelValue> args, const UnknownSet* initial_set) const {
-  const UnknownSet* result = initial_set;
+  absl::optional<UnknownSet> result_set;
 
   for (const auto& value : args) {
     if (!value.IsUnknownSet()) continue;
 
     auto current_set = value.UnknownSetOrDie();
-    if (result == nullptr) {
-      result = current_set;
-    } else {
-      result = memory_manager_.New<UnknownSet>(*result, *current_set).release();
+    if (!result_set.has_value()) {
+      if (initial_set != nullptr) {
+        result_set.emplace(*initial_set);
+      } else {
+        result_set.emplace();
+      }
     }
+    result_set->Add(*current_set);
   }
 
-  return result;
+  if (!result_set.has_value()) {
+    return initial_set;
+  }
+
+  return memory_manager_.New<UnknownSet>(std::move(result_set).value())
+      .release();
 }
 
 // Creates merged UnknownAttributeSet.
@@ -73,15 +80,15 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
 UnknownAttributeSet AttributeUtility::CheckForUnknowns(
     absl::Span<const AttributeTrail> args, bool use_partial) const {
-  std::vector<const CelAttribute*> unknown_attrs;
+  UnknownAttributeSet attribute_set;
 
-  for (auto trail : args) {
+  for (const auto& trail : args) {
     if (CheckForUnknown(trail, use_partial)) {
-      unknown_attrs.push_back(trail.attribute());
+      attribute_set.Add(trail.attribute());
     }
   }
 
-  return UnknownAttributeSet(unknown_attrs);
+  return attribute_set;
 }
 
 // Creates merged UnknownAttributeSet.
@@ -94,14 +101,18 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const CelValue> args, absl::Span<const AttributeTrail> attrs,
     const UnknownSet* initial_set, bool use_partial) const {
   UnknownAttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
-  if (!attr_set.attributes().empty()) {
+  if (!attr_set.empty()) {
+    UnknownSet result_set(std::move(attr_set));
     if (initial_set != nullptr) {
-      initial_set =
-          memory_manager_.New<UnknownSet>(*initial_set, UnknownSet(attr_set))
-              .release();
-    } else {
-      initial_set = memory_manager_.New<UnknownSet>(attr_set).release();
+      result_set.Add(*initial_set);
     }
+    for (const auto& value : args) {
+      if (!value.IsUnknownSet()) {
+        continue;
+      }
+      result_set.Add(*value.UnknownSetOrDie());
+    }
+    return memory_manager_.New<UnknownSet>(std::move(result_set)).release();
   }
   return MergeUnknowns(args, initial_set);
 }

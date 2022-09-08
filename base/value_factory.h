@@ -27,6 +27,8 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "base/attribute_set.h"
+#include "base/function_result_set.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/type_manager.h"
@@ -46,6 +48,7 @@
 #include "base/values/timestamp_value.h"
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
+#include "base/values/unknown_value.h"
 
 namespace cel {
 
@@ -206,6 +209,24 @@ class ValueFactory final {
 
   Persistent<const TypeValue> CreateTypeValue(
       const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Persistent<UnknownValue> CreateUnknownValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateUnknownValue(AttributeSet(), FunctionResultSet());
+  }
+
+  Persistent<UnknownValue> CreateUnknownValue(AttributeSet attribute_set)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateUnknownValue(std::move(attribute_set), FunctionResultSet());
+  }
+
+  Persistent<UnknownValue> CreateUnknownValue(
+      FunctionResultSet function_result_set) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return CreateUnknownValue(AttributeSet(), std::move(function_result_set));
+  }
+
+  Persistent<UnknownValue> CreateUnknownValue(
+      AttributeSet attribute_set,
+      FunctionResultSet function_result_set) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const {
     return type_manager().memory_manager();

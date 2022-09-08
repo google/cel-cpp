@@ -14,7 +14,11 @@
 
 #include "base/ast.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace cel::ast::internal {
 
@@ -65,8 +69,13 @@ const Expr& CreateStruct::Entry::value() const {
 }
 
 bool CreateStruct::Entry::operator==(const Entry& other) const {
-  return id_ == other.id_ && key_kind_ == other.key_kind_ &&
-         value() == other.value();
+  bool has_same_key = false;
+  if (has_field_key() && other.has_field_key()) {
+    has_same_key = field_key() == other.field_key();
+  } else if (has_map_key() && other.has_map_key()) {
+    has_same_key = map_key() == other.map_key();
+  }
+  return id_ == other.id_ && has_same_key && value() == other.value();
 }
 
 const Expr& Comprehension::iter_range() const {

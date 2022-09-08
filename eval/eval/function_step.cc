@@ -12,6 +12,7 @@
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "eval/eval/attribute_trail.h"
@@ -33,7 +34,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::ProtoMemoryManager;
 
 // Only non-strict functions are allowed to consume errors and unknown sets.
 bool IsNonStrict(const CelFunction& function) {
@@ -73,7 +74,7 @@ std::vector<CelValue> CheckForPartialUnknowns(
   for (size_t i = 0; i < args.size(); i++) {
     auto attr_set = frame->attribute_utility().CheckForUnknowns(
         attrs.subspan(i, 1), /*use_partial=*/true);
-    if (!attr_set.attributes().empty()) {
+    if (!attr_set.empty()) {
       auto unknown_set = frame->memory_manager()
                              .New<UnknownSet>(std::move(attr_set))
                              .release();
@@ -169,8 +170,16 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
       }
     }
 
+    std::string arg_types;
+    for (const CelValue& arg : input_args) {
+      if (!arg_types.empty()) {
+        absl::StrAppend(&arg_types, ", ");
+      }
+      absl::StrAppend(&arg_types, CelValue::TypeName(arg.type()));
+    }
     // If no errors or unknowns in input args, create new CelError.
-    *result = CreateNoMatchingOverloadError(frame->memory_manager());
+    *result = CreateNoMatchingOverloadError(
+        frame->memory_manager(), absl::StrCat(name_, "(", arg_types, ")"));
   }
 
   return absl::OkStatus();
@@ -302,22 +311,22 @@ absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
+    const cel::ast::internal::Call& call_expr, int64_t expr_id,
     std::vector<const CelFunctionProvider*>& lazy_overloads) {
-  bool receiver_style = call_expr->has_target();
-  size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
-  const std::string& name = call_expr->function();
+  bool receiver_style = call_expr.has_target();
+  size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
+  const std::string& name = call_expr.function();
   std::vector<CelValue::Type> args(num_args, CelValue::Type::kAny);
   return absl::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
                                              lazy_overloads, expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const google::api::expr::v1alpha1::Expr::Call* call_expr, int64_t expr_id,
+    const cel::ast::internal::Call& call_expr, int64_t expr_id,
     std::vector<const CelFunction*>& overloads) {
-  bool receiver_style = call_expr->has_target();
-  size_t num_args = call_expr->args_size() + (receiver_style ? 1 : 0);
-  const std::string& name = call_expr->function();
+  bool receiver_style = call_expr.has_target();
+  size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
+  const std::string& name = call_expr.function();
   return absl::make_unique<EagerFunctionStep>(overloads, name, num_args,
                                               expr_id);
 }

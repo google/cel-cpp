@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
@@ -54,9 +55,7 @@ absl::Status IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
   // Populate trails if either MissingAttributeError or UnknownPattern
   // is enabled.
   if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
-    google::api::expr::v1alpha1::Expr expr;
-    expr.mutable_ident_expr()->set_name(name_);
-    *trail = AttributeTrail(std::move(expr), frame->memory_manager());
+    *trail = AttributeTrail(name_);
   }
 
   if (frame->enable_missing_attribute_errors() && !name_.empty() &&
@@ -91,7 +90,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 
   CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result, &trail));
 
-  frame->value_stack().Push(result, trail);
+  frame->value_stack().Push(result, std::move(trail));
 
   return absl::OkStatus();
 }
@@ -99,8 +98,8 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const google::api::expr::v1alpha1::Expr::Ident* ident_expr, int64_t expr_id) {
-  return absl::make_unique<IdentStep>(ident_expr->name(), expr_id);
+    const cel::ast::internal::Ident& ident_expr, int64_t expr_id) {
+  return absl::make_unique<IdentStep>(ident_expr.name(), expr_id);
 }
 
 }  // namespace google::api::expr::runtime

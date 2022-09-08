@@ -1,16 +1,19 @@
 #include "eval/eval/const_value_step.h"
 
 #include <cstdint>
+#include <memory>
+#include <string>
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "absl/status/statusor.h"
+#include "absl/time/time.h"
+#include "base/ast.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/public/cel_value.h"
 #include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime {
-
-using ::google::api::expr::v1alpha1::Constant;
 
 namespace {
 
@@ -33,44 +36,32 @@ absl::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-absl::optional<CelValue> ConvertConstant(const Constant* const_expr) {
-  CelValue value = CelValue::CreateNull();
-  switch (const_expr->constant_kind_case()) {
-    case Constant::kNullValue:
-      value = CelValue::CreateNull();
-      break;
-    case Constant::kBoolValue:
-      value = CelValue::CreateBool(const_expr->bool_value());
-      break;
-    case Constant::kInt64Value:
-      value = CelValue::CreateInt64(const_expr->int64_value());
-      break;
-    case Constant::kUint64Value:
-      value = CelValue::CreateUint64(const_expr->uint64_value());
-      break;
-    case Constant::kDoubleValue:
-      value = CelValue::CreateDouble(const_expr->double_value());
-      break;
-    case Constant::kStringValue:
-      value = CelValue::CreateString(&const_expr->string_value());
-      break;
-    case Constant::kBytesValue:
-      value = CelValue::CreateBytes(&const_expr->bytes_value());
-      break;
-    case Constant::kDurationValue:
-      value = CelValue::CreateDuration(
-          cel::internal::DecodeDuration(const_expr->duration_value()));
-      break;
-    case Constant::kTimestampValue:
-      value = CelValue::CreateTimestamp(
-          cel::internal::DecodeTime(const_expr->timestamp_value()));
-      break;
-    default:
-      // constant with no kind specified
-      return {};
-      break;
-  }
-  return value;
+absl::optional<CelValue> ConvertConstant(
+    const cel::ast::internal::Constant& const_expr) {
+  struct {
+    CelValue operator()(const cel::ast::internal::NullValue& value) {
+      return CelValue::CreateNull();
+    }
+    CelValue operator()(bool value) { return CelValue::CreateBool(value); }
+    CelValue operator()(int64_t value) { return CelValue::CreateInt64(value); }
+    CelValue operator()(uint64_t value) {
+      return CelValue::CreateUint64(value);
+    }
+    CelValue operator()(double value) { return CelValue::CreateDouble(value); }
+    CelValue operator()(const std::string& value) {
+      return CelValue::CreateString(&value);
+    }
+    CelValue operator()(const cel::ast::internal::Bytes& value) {
+      return CelValue::CreateBytes(&value.bytes);
+    }
+    CelValue operator()(const absl::Duration duration) {
+      return CelValue::CreateDuration(duration);
+    }
+    CelValue operator()(const absl::Time timestamp) {
+      return CelValue::CreateTimestamp(timestamp);
+    }
+  } handler;
+  return absl::visit(handler, const_expr.constant_kind());
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(

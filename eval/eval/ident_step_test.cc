@@ -15,22 +15,21 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::cel::ast::internal::Expr;
+using ::google::protobuf::Arena;
 using testing::Eq;
-
-using google::protobuf::Arena;
 
 TEST(IdentStepTest, TestIdentStep) {
   Expr expr;
-  auto ident_expr = expr.mutable_ident_expr();
-  ident_expr->set_name("name0");
+  auto& ident_expr = expr.mutable_ident_expr();
+  ident_expr.set_name("name0");
 
   ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {});
@@ -51,15 +50,15 @@ TEST(IdentStepTest, TestIdentStep) {
 
 TEST(IdentStepTest, TestIdentStepNameNotFound) {
   Expr expr;
-  auto ident_expr = expr.mutable_ident_expr();
-  ident_expr->set_name("name0");
+  auto& ident_expr = expr.mutable_ident_expr();
+  ident_expr.set_name("name0");
 
   ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {});
@@ -77,15 +76,15 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
 
 TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   Expr expr;
-  auto ident_expr = expr.mutable_ident_expr();
-  ident_expr->set_name("name0");
+  auto& ident_expr = expr.mutable_ident_expr();
+  ident_expr.set_name("name0");
 
   ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {},
@@ -115,15 +114,15 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
 
 TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   Expr expr;
-  auto ident_expr = expr.mutable_ident_expr();
-  ident_expr->set_name("name0");
+  auto& ident_expr = expr.mutable_ident_expr();
+  ident_expr.set_name("name0");
 
   ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {}, false, false,
@@ -154,15 +153,15 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
 
 TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   Expr expr;
-  auto ident_expr = expr.mutable_ident_expr();
-  ident_expr->set_name("name0");
+  auto& ident_expr = expr.mutable_ident_expr();
+  ident_expr.set_name("name0");
 
   ASSERT_OK_AND_ASSIGN(auto step, CreateIdentStep(ident_expr, expr.id()));
 
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<google::api::expr::v1alpha1::Expr>();
+  auto dummy_expr = absl::make_unique<Expr>();
 
   // Expression with unknowns enabled.
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),

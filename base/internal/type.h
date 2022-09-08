@@ -22,7 +22,6 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
-#include "internal/casts.h"
 #include "internal/rtti.h"
 
 namespace cel {
@@ -36,6 +35,10 @@ class PersistentTypeHandle;
 
 class ListTypeImpl;
 class MapTypeImpl;
+class LegacyStructType;
+class AbstractStructType;
+class LegacyStructValue;
+class AbstractStructValue;
 
 template <Kind K>
 class SimpleType;

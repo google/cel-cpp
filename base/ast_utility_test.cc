@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -33,6 +34,8 @@ namespace cel {
 namespace ast {
 namespace internal {
 namespace {
+
+using cel::internal::StatusIs;
 
 TEST(AstUtilityTest, IdentToNative) {
   google::api::expr::v1alpha1::Expr expr;
@@ -60,10 +63,10 @@ TEST(AstUtilityTest, SelectToNative) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  ASSERT_OK_AND_ASSIGN(auto native_expr, ToNative(expr));
 
-  ASSERT_TRUE(native_expr->has_select_expr());
-  auto& native_select = native_expr->select_expr();
+  ASSERT_TRUE(native_expr.has_select_expr());
+  auto& native_select = native_expr.select_expr();
   ASSERT_TRUE(native_select.operand().has_ident_expr());
   EXPECT_EQ(native_select.operand().ident_expr().name(), "name");
   EXPECT_EQ(native_select.field(), "field");
@@ -83,10 +86,10 @@ TEST(AstUtilityTest, CallToNative) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  ASSERT_OK_AND_ASSIGN(auto native_expr, ToNative(expr));
 
-  ASSERT_TRUE(native_expr->has_call_expr());
-  auto& native_call = native_expr->call_expr();
+  ASSERT_TRUE(native_expr.has_call_expr());
+  auto& native_call = native_expr.call_expr();
   ASSERT_TRUE(native_call.target().has_ident_expr());
   EXPECT_EQ(native_call.target().ident_expr().name(), "name");
   EXPECT_EQ(native_call.function(), "function");
@@ -109,10 +112,10 @@ TEST(AstUtilityTest, CreateListToNative) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  ASSERT_OK_AND_ASSIGN(auto native_expr, ToNative(expr));
 
-  ASSERT_TRUE(native_expr->has_list_expr());
-  auto& native_create_list = native_expr->list_expr();
+  ASSERT_TRUE(native_expr.has_list_expr());
+  auto& native_create_list = native_expr.list_expr();
   auto& native_elem1 = native_create_list.elements()[0];
   ASSERT_TRUE(native_elem1.has_ident_expr());
   ASSERT_EQ(native_elem1.ident_expr().name(), "elem1");
@@ -216,6 +219,40 @@ TEST(AstUtilityTest, ComprehensionToNative) {
   EXPECT_EQ(native_comprehension.result().ident_expr().name(), "result");
 }
 
+TEST(AstUtilityTest, ComplexityLimit) {
+  google::api::expr::v1alpha1::Expr expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        id: 1
+        call_expr {
+          function: "_+_"
+          args {
+            id: 2
+            const_expr { int64_value: 1 }
+          }
+          args {
+            id: 3
+            const_expr { int64_value: 1 }
+          }
+        }
+      )pb",
+      &expr));
+
+  constexpr int kLogComplexityLimit = 20;
+  for (int i = 0; i < kLogComplexityLimit - 1; i++) {
+    google::api::expr::v1alpha1::Expr next;
+    next.mutable_call_expr()->set_function("_+_");
+    *(next.mutable_call_expr()->add_args()) = expr;
+    *(next.mutable_call_expr()->add_args()) = std::move(expr);
+    expr = std::move(next);
+  }
+
+  auto status_or = ToNative(expr);
+
+  EXPECT_THAT(status_or, StatusIs(absl::StatusCode::kInternal,
+                                  testing::HasSubstr("max iterations")));
+}
+
 TEST(AstUtilityTest, ConstantToNative) {
   google::api::expr::v1alpha1::Expr expr;
   auto* constant = expr.mutable_const_expr();
@@ -233,7 +270,7 @@ TEST(AstUtilityTest, ConstantBoolTrueToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_bool_value(true);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_bool_value());
   EXPECT_TRUE(native_constant->bool_value());
@@ -243,7 +280,7 @@ TEST(AstUtilityTest, ConstantBoolFalseToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_bool_value(false);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_bool_value());
   EXPECT_FALSE(native_constant->bool_value());
@@ -253,7 +290,7 @@ TEST(AstUtilityTest, ConstantInt64ToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_int64_value(-23);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_int64_value());
   ASSERT_FALSE(native_constant->has_uint64_value());
@@ -264,7 +301,7 @@ TEST(AstUtilityTest, ConstantUint64ToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_uint64_value(23);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_uint64_value());
   ASSERT_FALSE(native_constant->has_int64_value());
@@ -275,7 +312,7 @@ TEST(AstUtilityTest, ConstantDoubleToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_double_value(12.34);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_double_value());
   EXPECT_EQ(native_constant->double_value(), 12.34);
@@ -285,7 +322,7 @@ TEST(AstUtilityTest, ConstantStringToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_string_value("string");
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_string_value());
   EXPECT_EQ(native_constant->string_value(), "string");
@@ -295,10 +332,10 @@ TEST(AstUtilityTest, ConstantBytesToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_bytes_value("bytes");
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
-  ASSERT_TRUE(native_constant->has_string_value());
-  EXPECT_EQ(native_constant->string_value(), "bytes");
+  ASSERT_TRUE(native_constant->has_bytes_value());
+  EXPECT_EQ(native_constant->bytes_value(), "bytes");
 }
 
 TEST(AstUtilityTest, ConstantDurationToNative) {
@@ -306,7 +343,7 @@ TEST(AstUtilityTest, ConstantDurationToNative) {
   constant.mutable_duration_value()->set_seconds(123);
   constant.mutable_duration_value()->set_nanos(456);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_duration_value());
   EXPECT_EQ(native_constant->duration_value(),
@@ -318,7 +355,7 @@ TEST(AstUtilityTest, ConstantTimestampToNative) {
   constant.mutable_timestamp_value()->set_seconds(123);
   constant.mutable_timestamp_value()->set_nanos(456);
 
-  auto native_constant = ToNative(constant);
+  auto native_constant = ConvertConstant(constant);
 
   ASSERT_TRUE(native_constant->has_time_value());
   EXPECT_EQ(native_constant->time_value(),
@@ -326,24 +363,19 @@ TEST(AstUtilityTest, ConstantTimestampToNative) {
 }
 
 TEST(AstUtilityTest, ConstantError) {
-  auto native_constant = ToNative(google::api::expr::v1alpha1::Constant());
+  auto native_constant = ConvertConstant(google::api::expr::v1alpha1::Constant());
 
   EXPECT_EQ(native_constant.status().code(),
             absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_constant.status().message(),
-              ::testing::HasSubstr(
-                  "Illegal type supplied for google::api::expr::v1alpha1::Constant."));
+              ::testing::HasSubstr("Unsupported constant type"));
 }
 
-TEST(AstUtilityTest, ExprError) {
-  auto native_constant = ToNative(google::api::expr::v1alpha1::Expr());
+TEST(AstUtilityTest, ExprUnset) {
+  auto native_expr = ToNative(google::api::expr::v1alpha1::Expr());
 
-  EXPECT_EQ(native_constant.status().code(),
-            absl::StatusCode::kInvalidArgument);
-  EXPECT_THAT(
-      native_constant.status().message(),
-      ::testing::HasSubstr(
-          "Illegal type supplied for google::api::expr::v1alpha1::Expr::expr_kind."));
+  EXPECT_TRUE(
+      absl::holds_alternative<absl::monostate>(native_expr->expr_kind()));
 }
 
 TEST(AstUtilityTest, SourceInfoToNative) {

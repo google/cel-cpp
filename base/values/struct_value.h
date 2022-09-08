@@ -20,9 +20,11 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/struct_type.h"
@@ -34,7 +36,7 @@ namespace cel {
 class ValueFactory;
 
 // StructValue represents an instance of cel::StructType.
-class StructValue : public Value, public base_internal::HeapData {
+class StructValue : public Value {
  public:
   static constexpr Kind kKind = Kind::kStruct;
 
@@ -48,13 +50,13 @@ class StructValue : public Value, public base_internal::HeapData {
 
   constexpr Kind kind() const { return kKind; }
 
-  constexpr const Persistent<const StructType>& type() const { return type_; }
+  Persistent<const StructType> type() const;
 
-  virtual std::string DebugString() const = 0;
+  std::string DebugString() const;
 
-  virtual void HashValue(absl::HashState state) const = 0;
+  void HashValue(absl::HashState state) const;
 
-  virtual bool Equals(const Value& other) const = 0;
+  bool Equals(const Value& other) const;
 
   absl::Status SetField(FieldId field, const Persistent<const Value>& value);
 
@@ -64,7 +66,172 @@ class StructValue : public Value, public base_internal::HeapData {
   absl::StatusOr<bool> HasField(FieldId field) const;
 
  protected:
-  explicit StructValue(Persistent<const StructType> type);
+  absl::Status SetFieldByName(absl::string_view name,
+                              const Persistent<const Value>& value);
+
+  absl::Status SetFieldByNumber(int64_t number,
+                                const Persistent<const Value>& value);
+
+  absl::StatusOr<Persistent<const Value>> GetFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const;
+
+  absl::StatusOr<Persistent<const Value>> GetFieldByNumber(
+      ValueFactory& value_factory, int64_t number) const;
+
+  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
+
+  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
+
+ private:
+  struct SetFieldVisitor;
+  struct GetFieldVisitor;
+  struct HasFieldVisitor;
+
+  friend struct SetFieldVisitor;
+  friend struct GetFieldVisitor;
+  friend struct HasFieldVisitor;
+  friend internal::TypeInfo base_internal::GetStructValueTypeId(
+      const StructValue& struct_value);
+  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::LegacyStructValue;
+  friend class base_internal::AbstractStructValue;
+
+  StructValue() = default;
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+
+  StructValue(const StructValue&) = delete;
+  StructValue(StructValue&&) = delete;
+
+  // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const;
+};
+
+CEL_INTERNAL_VALUE_DECL(StructValue);
+
+namespace base_internal {
+
+// In an ideal world we would just make StructType a heap type. Unfortunately we
+// have to deal with our legacy API and we do not want to unncessarily perform
+// heap allocations during interop. So we have an inline variant and heap
+// variant.
+
+ABSL_ATTRIBUTE_WEAK void MessageValueHash(uintptr_t msg, uintptr_t type_info,
+                                          absl::HashState state);
+ABSL_ATTRIBUTE_WEAK bool MessageValueEquals(uintptr_t lhs_msg,
+                                            uintptr_t lhs_type_info,
+                                            const Value& rhs);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByNumber(
+    uintptr_t msg, uintptr_t type_info, int64_t number);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByName(
+    uintptr_t msg, uintptr_t type_info, absl::string_view name);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<const Value>>
+MessageValueGetFieldByNumber(uintptr_t msg, uintptr_t type_info,
+                             ValueFactory& value_factory, int64_t number);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<const Value>>
+MessageValueGetFieldByName(uintptr_t msg, uintptr_t type_info,
+                           ValueFactory& value_factory, absl::string_view name);
+ABSL_ATTRIBUTE_WEAK absl::Status MessageValueSetFieldByNumber(
+    uintptr_t msg, uintptr_t type_info, int64_t number,
+    const Persistent<const Value>& value);
+ABSL_ATTRIBUTE_WEAK absl::Status MessageValueSetFieldByName(
+    uintptr_t msg, uintptr_t type_info, absl::string_view name,
+    const Persistent<const Value>& value);
+
+class LegacyStructValue final : public StructValue, public InlineData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const StructValue&>(value).TypeId() ==
+               internal::TypeId<LegacyStructValue>();
+  }
+
+  Persistent<const StructType> type() const;
+
+  std::string DebugString() const;
+
+  void HashValue(absl::HashState state) const;
+
+  bool Equals(const Value& other) const;
+
+ protected:
+  absl::Status SetFieldByName(absl::string_view name,
+                              const Persistent<const Value>& value);
+
+  absl::Status SetFieldByNumber(int64_t number,
+                                const Persistent<const Value>& value);
+
+  absl::StatusOr<Persistent<const Value>> GetFieldByName(
+      ValueFactory& value_factory, absl::string_view name) const;
+
+  absl::StatusOr<Persistent<const Value>> GetFieldByNumber(
+      ValueFactory& value_factory, int64_t number) const;
+
+  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
+
+  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const;
+
+ private:
+  struct SetFieldVisitor;
+  struct GetFieldVisitor;
+  struct HasFieldVisitor;
+
+  friend struct SetFieldVisitor;
+  friend struct GetFieldVisitor;
+  friend struct HasFieldVisitor;
+  friend internal::TypeInfo base_internal::GetStructValueTypeId(
+      const StructValue& struct_value);
+  friend class base_internal::PersistentValueHandle;
+  friend class cel::StructValue;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  LegacyStructValue(uintptr_t msg, uintptr_t type_info)
+      : StructValue(),
+        base_internal::InlineData(kMetadata),
+        msg_(msg),
+        type_info_(type_info) {}
+
+  // Called by base_internal::ValueHandleBase to implement Is for Transient and
+  // Persistent.
+
+  LegacyStructValue(const LegacyStructValue&) = delete;
+  LegacyStructValue(LegacyStructValue&&) = delete;
+
+  // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const {
+    return internal::TypeId<LegacyStructValue>();
+  }
+
+  // This is a type erased pointer to google::protobuf::Message or google::protobuf::MessageLite, it
+  // is tagged.
+  uintptr_t msg_;
+  // This is a type erased pointer to LegacyTypeInfoProvider.
+  uintptr_t type_info_;
+};
+
+class AbstractStructValue : public StructValue, public HeapData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const StructValue&>(value).TypeId() !=
+               internal::TypeId<LegacyStructValue>();
+  }
+
+  Persistent<const StructType> type() const { return type_; }
+
+  virtual std::string DebugString() const = 0;
+
+  virtual void HashValue(absl::HashState state) const = 0;
+
+  virtual bool Equals(const Value& other) const = 0;
+
+ protected:
+  explicit AbstractStructValue(Persistent<const StructType> type);
 
   virtual absl::Status SetFieldByName(absl::string_view name,
                                       const Persistent<const Value>& value) = 0;
@@ -93,12 +260,13 @@ class StructValue : public Value, public base_internal::HeapData {
   friend internal::TypeInfo base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
   friend class base_internal::PersistentValueHandle;
+  friend class cel::StructValue;
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
   // Persistent.
 
-  StructValue(const StructValue&) = delete;
-  StructValue(StructValue&&) = delete;
+  AbstractStructValue(const AbstractStructValue&) = delete;
+  AbstractStructValue(AbstractStructValue&&) = delete;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
@@ -106,12 +274,14 @@ class StructValue : public Value, public base_internal::HeapData {
   const Persistent<const StructType> type_;
 };
 
-CEL_INTERNAL_VALUE_DECL(StructValue);
+}  // namespace base_internal
+
+#define CEL_STRUCT_VALUE_CLASS ::cel::base_internal::AbstractStructValue
 
 // CEL_DECLARE_STRUCT_VALUE declares `struct_value` as an struct value. It must
 // be part of the class definition of `struct_value`.
 //
-// class MyStructValue : public cel::StructValue {
+// class MyStructValue : public CEL_STRUCT_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_STRUCT_VALUE(MyStructValue);
@@ -122,7 +292,7 @@ CEL_INTERNAL_VALUE_DECL(StructValue);
 // CEL_IMPLEMENT_STRUCT_VALUE implements `struct_value` as an struct
 // value. It must be called after the class definition of `struct_value`.
 //
-// class MyStructValue : public cel::StructValue {
+// class MyStructValue : public CEL_STRUCT_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_STRUCT_VALUE(MyStructValue);

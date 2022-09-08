@@ -86,8 +86,19 @@ cc_library(
         ":data",
         "//base:handle",
         "//base:kind",
-        "//internal:casts",
         "//internal:rtti",
+    ],
+)
+
+cc_library(
+    name = "unknown_set",
+    srcs = ["unknown_set.cc"],
+    hdrs = ["unknown_set.h"],
+    deps = [
+        "//base:attributes",
+        "//base:functions",
+        "//internal:no_destructor",
+        "@com_google_absl//absl/base:core_headers",
     ],
 )
 
@@ -98,6 +109,7 @@ cc_library(
     ],
     deps = [
         ":data",
+        ":unknown_set",
         "//base:handle",
         "//base:type",
         "//internal:rtti",

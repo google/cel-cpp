@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -29,6 +30,7 @@
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
+#include "base/internal/unknown_set.h"
 #include "base/types/enum_type.h"
 #include "internal/rtti.h"
 
@@ -39,6 +41,7 @@ class StringValue;
 class StructValue;
 class ListValue;
 class MapValue;
+class UnknownValue;
 
 namespace base_internal {
 
@@ -104,11 +107,14 @@ class StringBytesValue;
 class InlinedCordStringValue;
 class InlinedStringViewStringValue;
 class StringStringValue;
+class LegacyStructValue;
+class AbstractStructValue;
 
 using StringValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
 using BytesValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
+struct UnknownSetImpl;
 
 }  // namespace base_internal
 
@@ -118,6 +124,10 @@ base_internal::StringValueRep GetStringValueRep(
     const Persistent<const StringValue>& value);
 base_internal::BytesValueRep GetBytesValueRep(
     const Persistent<const BytesValue>& value);
+std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
+    const Persistent<const UnknownValue>& value);
+void SetUnknownValueImpl(Persistent<UnknownValue>& value,
+                         std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
 }  // namespace interop_internal
 

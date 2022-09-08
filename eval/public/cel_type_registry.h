@@ -4,13 +4,13 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/descriptor.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "eval/public/cel_value.h"
@@ -56,6 +56,12 @@ class CelTypeRegistry {
   //
   // Enum registration must be performed prior to CelExpression creation.
   void Register(const google::protobuf::EnumDescriptor* enum_descriptor);
+
+  // Register an enum whose values may be used within CEL expressions.
+  //
+  // Enum registration must be performed prior to CelExpression creation.
+  void RegisterEnum(absl::string_view name,
+                    std::vector<Enumerator> enumerators);
 
   // Register a new type provider.
   //

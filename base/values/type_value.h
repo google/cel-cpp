@@ -35,7 +35,7 @@ class TypeValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const TypeType>& type() const { return TypeType::Get(); }
+  Persistent<const TypeType> type() const { return TypeType::Get(); }
 
   std::string DebugString() const;
 

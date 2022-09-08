@@ -19,7 +19,6 @@
 
 #include "google/protobuf/descriptor.h"
 #include "absl/synchronization/mutex.h"
-#include "eval/public/cel_value.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 
 namespace google::api::expr::runtime {
@@ -43,6 +42,12 @@ absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
   }
   // ProtoMessageTypeAdapter provides apis for both access and mutation.
   return LegacyTypeAdapter(result, result);
+}
+
+absl::optional<const LegacyTypeInfoApis*>
+ProtobufDescriptorProvider::ProvideLegacyTypeInfo(
+    absl::string_view name) const {
+  return &GetGenericProtoTypeInfoInstance();
 }
 
 std::unique_ptr<ProtoMessageTypeAdapter> ProtobufDescriptorProvider::GetType(

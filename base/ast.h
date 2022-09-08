@@ -31,6 +31,13 @@ namespace cel::ast::internal {
 
 enum class NullValue { kNullValue = 0 };
 
+// A holder class to differentiate between CEL string and CEL bytes constants.
+struct Bytes {
+  std::string bytes;
+
+  bool operator==(const Bytes& other) const { return bytes == other.bytes; }
+};
+
 // Represents a primitive literal.
 //
 // This is similar as the primitives supported in the well-known type
@@ -48,8 +55,9 @@ enum class NullValue { kNullValue = 0 };
 // message that can hold any constant object representation supplied or
 // produced at evaluation time.
 // --)
-using ConstantKind = absl::variant<NullValue, bool, int64_t, uint64_t, double,
-                                   std::string, absl::Duration, absl::Time>;
+using ConstantKind =
+    absl::variant<NullValue, bool, int64_t, uint64_t, double, std::string,
+                  Bytes, absl::Duration, absl::Time>;
 
 class Constant {
  public:
@@ -77,6 +85,8 @@ class Constant {
     return NullValue::kNullValue;
   }
 
+  void set_null_value(NullValue null_value) { constant_kind_ = null_value; }
+
   bool has_bool_value() const {
     return absl::holds_alternative<bool>(constant_kind_);
   }
@@ -88,6 +98,8 @@ class Constant {
     }
     return false;
   }
+
+  void set_bool_value(bool bool_value) { constant_kind_ = bool_value; }
 
   bool has_int64_value() const {
     return absl::holds_alternative<int64_t>(constant_kind_);
@@ -101,6 +113,8 @@ class Constant {
     return 0;
   }
 
+  void set_int64_value(int64_t int64_value) { constant_kind_ = int64_value; }
+
   bool has_uint64_value() const {
     return absl::holds_alternative<uint64_t>(constant_kind_);
   }
@@ -111,6 +125,10 @@ class Constant {
       return *value;
     }
     return 0;
+  }
+
+  void set_uint64_value(uint64_t uint64_value) {
+    constant_kind_ = uint64_value;
   }
 
   bool has_double_value() const {
@@ -125,6 +143,8 @@ class Constant {
     return 0;
   }
 
+  void set_double_value(double double_value) { constant_kind_ = double_value; }
+
   bool has_string_value() const {
     return absl::holds_alternative<std::string>(constant_kind_);
   }
@@ -138,8 +158,33 @@ class Constant {
     return *default_string_value_;
   }
 
+  void set_string_value(std::string string_value) {
+    constant_kind_ = string_value;
+  }
+
+  bool has_bytes_value() const {
+    return absl::holds_alternative<Bytes>(constant_kind_);
+  }
+
+  const std::string& bytes_value() const {
+    auto* value = absl::get_if<Bytes>(&constant_kind_);
+    if (value != nullptr) {
+      return value->bytes;
+    }
+    static std::string* default_string_value_ = new std::string("");
+    return *default_string_value_;
+  }
+
+  void set_bytes_value(std::string bytes_value) {
+    constant_kind_ = Bytes{std::move(bytes_value)};
+  }
+
   bool has_duration_value() const {
     return absl::holds_alternative<absl::Duration>(constant_kind_);
+  }
+
+  void set_duration_value(absl::Duration duration_value) {
+    constant_kind_ = std::move(duration_value);
   }
 
   const absl::Duration& duration_value() const {
@@ -162,6 +207,10 @@ class Constant {
     }
     static absl::Time default_time_;
     return default_time_;
+  }
+
+  void set_time_value(absl::Time time_value) {
+    constant_kind_ = std::move(time_value);
   }
 
   bool operator==(const Constant& other) const {
@@ -252,18 +301,15 @@ class Select {
 // (-- TODO(issues/5): Convert built-in globals to instance methods --)
 class Call {
  public:
-  Call() {}
+  Call();
   Call(std::unique_ptr<Expr> target, std::string function,
-       std::vector<Expr> args)
-      : target_(std::move(target)),
-        function_(std::move(function)),
-        args_(std::move(args)) {}
+       std::vector<Expr> args);
 
   void set_target(std::unique_ptr<Expr> target) { target_ = std::move(target); }
 
   void set_function(std::string function) { function_ = std::move(function); }
 
-  void set_args(std::vector<Expr> args) { args_ = std::move(args); }
+  void set_args(std::vector<Expr> args);
 
   bool has_target() const { return target_ != nullptr; }
 
@@ -304,21 +350,16 @@ class Call {
 // --)
 class CreateList {
  public:
-  CreateList() {}
-  explicit CreateList(std::vector<Expr> elements)
-      : elements_(std::move(elements)) {}
+  CreateList();
+  explicit CreateList(std::vector<Expr> elements);
 
-  void set_elements(std::vector<Expr> elements) {
-    elements_ = std::move(elements);
-  }
+  void set_elements(std::vector<Expr> elements);
 
   const std::vector<Expr>& elements() const { return elements_; }
 
   std::vector<Expr>& mutable_elements() { return elements_; }
 
-  bool operator==(const CreateList& other) const {
-    return elements_ == other.elements_;
-  }
+  bool operator==(const CreateList& other) const;
 
  private:
   // The elements part of the list.
@@ -369,6 +410,10 @@ class CreateStruct {
       return *default_field_key;
     }
 
+    void set_field_key(std::string field_key) {
+      key_kind_ = std::move(field_key);
+    }
+
     const Expr& map_key() const;
 
     Expr& mutable_map_key() {
@@ -393,11 +438,13 @@ class CreateStruct {
 
     bool operator==(const Entry& other) const;
 
+    bool operator!=(const Entry& other) const { return !operator==(other); }
+
    private:
     // Required. An id assigned to this node by the parser which is unique
     // in a given expression tree. This is used to associate type
     // information and other attributes to the node.
-    int64_t id_;
+    int64_t id_ = 0;
     // The `Entry` key kinds.
     KeyKind key_kind_;
     // Required. The value assigned to the key.
@@ -607,8 +654,12 @@ class Comprehension {
   std::unique_ptr<Expr> result_;
 };
 
-using ExprKind = absl::variant<Constant, Ident, Select, Call, CreateList,
-                               CreateStruct, Comprehension>;
+// Even though, the Expr proto does not allow for an unset, macro calls in the
+// way they are used today sometimes elide parts of the AST if its
+// unchanged/uninteresting.
+using ExprKind =
+    absl::variant<absl::monostate /* unset */, Constant, Ident, Select, Call,
+                  CreateList, CreateStruct, Comprehension>;
 
 // Analogous to google::api::expr::v1alpha1::Expr
 // An abstract representation of a common expression.
@@ -1066,18 +1117,14 @@ class MapType {
 // --)
 class FunctionType {
  public:
-  FunctionType() {}
-  FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types)
-      : result_type_(std::move(result_type)),
-        arg_types_(std::move(arg_types)) {}
+  FunctionType();
+  FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types);
 
   void set_result_type(std::unique_ptr<Type> result_type) {
     result_type_ = std::move(result_type);
   }
 
-  void set_arg_types(std::vector<Type> arg_types) {
-    arg_types_ = std::move(arg_types);
-  }
+  void set_arg_types(std::vector<Type> arg_types);
 
   bool has_result_type() const { return result_type_ != nullptr; }
 
@@ -1109,15 +1156,12 @@ class FunctionType {
 // TODO(issues/5): decide on final naming for this.
 class AbstractType {
  public:
-  AbstractType() {}
-  AbstractType(std::string name, std::vector<Type> parameter_types)
-      : name_(std::move(name)), parameter_types_(std::move(parameter_types)) {}
+  AbstractType();
+  AbstractType(std::string name, std::vector<Type> parameter_types);
 
   void set_name(std::string name) { name_ = std::move(name); }
 
-  void set_parameter_types(std::vector<Type> parameter_types) {
-    parameter_types_ = std::move(parameter_types);
-  }
+  void set_parameter_types(std::vector<Type> parameter_types);
 
   const std::string& name() const { return name_; }
 
@@ -1125,9 +1169,7 @@ class AbstractType {
 
   std::vector<Type>& mutable_parameter_types() { return parameter_types_; }
 
-  bool operator==(const AbstractType& other) const {
-    return name_ == other.name_ && parameter_types_ == other.parameter_types_;
-  }
+  bool operator==(const AbstractType& other) const;
 
  private:
   // The fully qualified name of this abstract type.
@@ -1388,6 +1430,8 @@ class Type {
 // Describes a resolved reference to a declaration.
 class Reference {
  public:
+  Reference() {}
+
   Reference(std::string name, std::vector<std::string> overload_id,
             Constant value)
       : name_(std::move(name)),
@@ -1406,11 +1450,24 @@ class Reference {
 
   const std::vector<std::string>& overload_id() const { return overload_id_; }
 
-  const Constant& value() const { return value_; }
+  const Constant& value() const {
+    if (value_.has_value()) {
+      return value_.value();
+    }
+    static const Constant* default_constant = new Constant;
+    return *default_constant;
+  }
 
   std::vector<std::string>& mutable_overload_id() { return overload_id_; }
 
-  Constant& mutable_value() { return value_; }
+  Constant& mutable_value() {
+    if (!value_.has_value()) {
+      value_.emplace();
+    }
+    return *value_;
+  }
+
+  bool has_value() const { return value_.has_value(); }
 
  private:
   // The fully qualified name of the declaration.
@@ -1426,7 +1483,7 @@ class Reference {
   std::vector<std::string> overload_id_;
   // For references to constants, this may contain the value of the
   // constant if known at compile time.
-  Constant value_;
+  absl::optional<Constant> value_;
 };
 
 // Analogous to google::api::expr::v1alpha1::CheckedExpr
@@ -1528,6 +1585,58 @@ class CheckedExpr {
   // may have structural differences.
   Expr expr_;
 };
+
+////////////////////////////////////////////////////////////////////////
+// Implementation details
+////////////////////////////////////////////////////////////////////////
+
+inline Call::Call() {}
+
+inline Call::Call(std::unique_ptr<Expr> target, std::string function,
+                  std::vector<Expr> args)
+    : target_(std::move(target)),
+      function_(std::move(function)),
+      args_(std::move(args)) {}
+
+inline void Call::set_args(std::vector<Expr> args) { args_ = std::move(args); }
+
+inline CreateList::CreateList() {}
+
+inline CreateList::CreateList(std::vector<Expr> elements)
+    : elements_(std::move(elements)) {}
+
+inline void CreateList::set_elements(std::vector<Expr> elements) {
+  elements_ = std::move(elements);
+}
+
+inline bool CreateList::operator==(const CreateList& other) const {
+  return elements_ == other.elements_;
+}
+
+inline FunctionType::FunctionType() {}
+
+inline FunctionType::FunctionType(std::unique_ptr<Type> result_type,
+                                  std::vector<Type> arg_types)
+    : result_type_(std::move(result_type)), arg_types_(std::move(arg_types)) {}
+
+inline void FunctionType::set_arg_types(std::vector<Type> arg_types) {
+  arg_types_ = std::move(arg_types);
+}
+
+inline AbstractType::AbstractType() {}
+
+inline AbstractType::AbstractType(std::string name,
+                                  std::vector<Type> parameter_types)
+    : name_(std::move(name)), parameter_types_(std::move(parameter_types)) {}
+
+inline void AbstractType::set_parameter_types(
+    std::vector<Type> parameter_types) {
+  parameter_types_ = std::move(parameter_types);
+}
+
+inline bool AbstractType::operator==(const AbstractType& other) const {
+  return name_ == other.name_ && parameter_types_ == other.parameter_types_;
+}
 
 }  // namespace cel::ast::internal
 

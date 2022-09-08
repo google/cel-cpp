@@ -61,9 +61,6 @@ struct InterpreterOptions {
   // resulting value is known from the left-hand side.
   bool short_circuiting = true;
 
-  // DEPRECATED. This option has no effect.
-  bool partial_string_match = true;
-
   // Enable constant folding during the expression creation. If enabled,
   // an arena must be provided for constant generation.
   // Note that expression tracing applies a modified expression if this option
@@ -147,6 +144,21 @@ struct InterpreterOptions {
   // Note: This makes an implicit copy of the input expression for lifetime
   // safety.
   bool enable_qualified_identifier_rewrites = false;
+
+  // Historically regular expressions were compiled on each invocation to
+  // `matches` and not re-used, even if the regular expression is a constant.
+  // Enabling this option causes constant regular expressions to be compiled
+  // ahead-of-time and re-used for each invocation to `matches`. A side effect
+  // of this is that invalid regular expressions will result in errors when
+  // building an expression.
+  //
+  // It is recommended that this option be enabled in conjunction with
+  // enable_constant_folding.
+  //
+  // Note: In most cases enabling this option is safe, however to perform this
+  // optimization overloads are not consulted for applicable calls. If you have
+  // overriden the default `matches` function you should not enable this option.
+  bool enable_regex_precompilation = false;
 };
 
 }  // namespace google::api::expr::runtime

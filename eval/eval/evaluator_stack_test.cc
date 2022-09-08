@@ -8,7 +8,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManager;
-using testing::NotNull;
 
 // Test Value Stack Push/Pop operation
 TEST(EvaluatorStackTest, StackPushPop) {
@@ -23,18 +22,18 @@ TEST(EvaluatorStackTest, StackPushPop) {
   stack.Push(CelValue::CreateInt64(3), AttributeTrail(expr, manager));
 
   ASSERT_EQ(stack.Peek().Int64OrDie(), 3);
-  ASSERT_THAT(stack.PeekAttribute().attribute(), NotNull());
-  ASSERT_EQ(*stack.PeekAttribute().attribute(), attribute);
+  ASSERT_FALSE(stack.PeekAttribute().empty());
+  ASSERT_EQ(stack.PeekAttribute().attribute(), attribute);
 
   stack.Pop(1);
 
   ASSERT_EQ(stack.Peek().Int64OrDie(), 2);
-  ASSERT_EQ(stack.PeekAttribute().attribute(), nullptr);
+  ASSERT_TRUE(stack.PeekAttribute().empty());
 
   stack.Pop(1);
 
   ASSERT_EQ(stack.Peek().Int64OrDie(), 1);
-  ASSERT_EQ(stack.PeekAttribute().attribute(), nullptr);
+  ASSERT_TRUE(stack.PeekAttribute().empty());
 }
 
 // Test that inner stacks within value stack retain the equality of their sizes.

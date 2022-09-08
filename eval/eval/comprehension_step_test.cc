@@ -24,17 +24,16 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::Ident;
 using ::google::protobuf::ListValue;
 using ::google::protobuf::Struct;
 using ::google::protobuf::Arena;
 using testing::Eq;
 using testing::SizeIs;
 
-using IdentExpr = google::api::expr::v1alpha1::Expr::Ident;
-using Expr = google::api::expr::v1alpha1::Expr;
-
-IdentExpr CreateIdent(const std::string& var) {
-  IdentExpr expr;
+Ident CreateIdent(const std::string& var) {
+  Ident expr;
   expr.set_name(var);
   return expr;
 }
@@ -62,8 +61,8 @@ MATCHER_P(CelStringValue, val, "") {
 
 TEST_F(ListKeysStepTest, ListPassedThrough) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(&ident, 0);
+  Ident ident = CreateIdent("var");
+  auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
@@ -89,8 +88,8 @@ TEST_F(ListKeysStepTest, ListPassedThrough) {
 
 TEST_F(ListKeysStepTest, MapToKeyList) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(&ident, 0);
+  Ident ident = CreateIdent("var");
+  auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
@@ -125,8 +124,8 @@ TEST_F(ListKeysStepTest, MapToKeyList) {
 
 TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(&ident, 0);
+  Ident ident = CreateIdent("var");
+  auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
@@ -154,18 +153,17 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
 
   ASSERT_OK(eval_result);
   ASSERT_TRUE(eval_result->IsUnknownSet());
-  const auto& attrs =
-      eval_result->UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs = eval_result->UnknownSetOrDie()->unknown_attributes();
 
   EXPECT_THAT(attrs, SizeIs(1));
-  EXPECT_THAT(attrs.at(0)->variable_name(), Eq("var"));
-  EXPECT_THAT(attrs.at(0)->qualifier_path(), SizeIs(0));
+  EXPECT_THAT(attrs.begin()->variable_name(), Eq("var"));
+  EXPECT_THAT(attrs.begin()->qualifier_path(), SizeIs(0));
 }
 
 TEST_F(ListKeysStepTest, ErrorPassedThrough) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(&ident, 0);
+  Ident ident = CreateIdent("var");
+  auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
@@ -189,8 +187,8 @@ TEST_F(ListKeysStepTest, ErrorPassedThrough) {
 
 TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
   ExecutionPath path;
-  IdentExpr ident = CreateIdent("var");
-  auto result = CreateIdentStep(&ident, 0);
+  Ident ident = CreateIdent("var");
+  auto result = CreateIdentStep(ident, 0);
   ASSERT_OK(result);
   path.push_back(*std::move(result));
   result = CreateListKeysStep(1);
@@ -209,8 +207,7 @@ TEST_F(ListKeysStepTest, UnknownSetPassedThrough) {
 
   ASSERT_OK(eval_result);
   ASSERT_TRUE(eval_result->IsUnknownSet());
-  EXPECT_THAT(eval_result->UnknownSetOrDie()->unknown_attributes().attributes(),
-              SizeIs(1));
+  EXPECT_THAT(eval_result->UnknownSetOrDie()->unknown_attributes(), SizeIs(1));
 }
 
 }  // namespace

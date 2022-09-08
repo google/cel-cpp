@@ -3,12 +3,13 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
-#include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
@@ -106,6 +107,11 @@ void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
 void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_descriptor) {
   enums_.insert(enum_descriptor);
   AddEnumFromDescriptor(enum_descriptor, enums_map_);
+}
+
+void CelTypeRegistry::RegisterEnum(absl::string_view enum_name,
+                                   std::vector<Enumerator> enumerators) {
+  enums_map_[enum_name] = std::move(enumerators);
 }
 
 std::shared_ptr<const LegacyTypeProvider>

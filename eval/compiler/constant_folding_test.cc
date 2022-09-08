@@ -5,21 +5,24 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "google/protobuf/util/message_differencer.h"
+#include "base/ast_utility.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_value.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
-namespace google::api::expr::runtime {
+namespace cel::ast::internal {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::runtime::CelFunctionRegistry;
+using ::google::api::expr::runtime::CelValue;
 
 // Validate select is preserved as-is
 TEST(ConstantFoldingTest, Select) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // has(x.y)
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 1
@@ -32,20 +35,20 @@ TEST(ConstantFoldingTest, Select) {
       test_only: true
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
-  google::protobuf::util::MessageDifferencer md;
-  EXPECT_TRUE(md.Compare(out, expr)) << out.DebugString();
+  FoldConstants(native_expr, registry, &arena, idents, &out);
+  EXPECT_EQ(out, native_expr);
   EXPECT_TRUE(idents.empty());
 }
 
 // Validate struct message creation
 TEST(ConstantFoldingTest, StructMessage) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // {"field1": "y", "field2": "t"}
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -64,15 +67,16 @@ TEST(ConstantFoldingTest, StructMessage) {
           message_name: "MyProto"
         })pb",
       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
-  Expr expected;
+  google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 5
     struct_expr {
@@ -89,8 +93,9 @@ TEST(ConstantFoldingTest, StructMessage) {
       message_name: "MyProto"
     })",
                                       &expected);
-  google::protobuf::util::MessageDifferencer md;
-  EXPECT_TRUE(md.Compare(out, expected)) << out.DebugString();
+  auto native_expected_expr = ToNative(expected).value();
+
+  EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 2);
   EXPECT_TRUE(idents["$v0"].IsString());
@@ -101,7 +106,7 @@ TEST(ConstantFoldingTest, StructMessage) {
 
 // Validate struct creation is not folded but recursed into
 TEST(ConstantFoldingTest, StructComprehension) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // {"x": "y", "z": "t"}
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 5
@@ -118,15 +123,16 @@ TEST(ConstantFoldingTest, StructComprehension) {
       }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
-  Expr expected;
+  google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 5
     struct_expr {
@@ -142,8 +148,9 @@ TEST(ConstantFoldingTest, StructComprehension) {
       }
     })",
                                       &expected);
-  google::protobuf::util::MessageDifferencer md;
-  EXPECT_TRUE(md.Compare(out, expected)) << out.DebugString();
+  auto native_expected_expr = ToNative(expected).value();
+
+  EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 3);
   EXPECT_TRUE(idents["$v0"].IsString());
@@ -153,7 +160,7 @@ TEST(ConstantFoldingTest, StructComprehension) {
 }
 
 TEST(ConstantFoldingTest, ListComprehension) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // [1, [2, 3]]
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 45
@@ -167,16 +174,17 @@ TEST(ConstantFoldingTest, ListComprehension) {
       }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
   ASSERT_EQ(out.id(), 45);
-  ASSERT_TRUE(out.has_ident_expr()) << out.DebugString();
+  ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
   auto value = idents[out.ident_expr().name()];
   ASSERT_TRUE(value.IsList());
@@ -190,7 +198,7 @@ TEST(ConstantFoldingTest, ListComprehension) {
 
 // Validate that logic function application are not folded
 TEST(ConstantFoldingTest, LogicApplication) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // true && false
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 105
@@ -204,6 +212,7 @@ TEST(ConstantFoldingTest, LogicApplication) {
       }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -211,15 +220,15 @@ TEST(ConstantFoldingTest, LogicApplication) {
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
   ASSERT_EQ(out.id(), 105);
-  ASSERT_TRUE(out.has_call_expr()) << out.DebugString();
+  ASSERT_TRUE(out.has_call_expr());
   ASSERT_EQ(idents.size(), 2);
 }
 
 TEST(ConstantFoldingTest, FunctionApplication) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // [1] + [2]
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 15
@@ -237,6 +246,7 @@ TEST(ConstantFoldingTest, FunctionApplication) {
       }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -244,10 +254,10 @@ TEST(ConstantFoldingTest, FunctionApplication) {
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
   ASSERT_EQ(out.id(), 15);
-  ASSERT_TRUE(out.has_ident_expr()) << out.DebugString();
+  ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
   ASSERT_TRUE(idents[out.ident_expr().name()].IsList());
 
@@ -258,7 +268,7 @@ TEST(ConstantFoldingTest, FunctionApplication) {
 }
 
 TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // [1, 1].size()
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 10
@@ -271,6 +281,7 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
         }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -278,17 +289,17 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
   ASSERT_EQ(out.id(), 10);
-  ASSERT_TRUE(out.has_ident_expr()) << out.DebugString();
+  ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
   ASSERT_TRUE(idents[out.ident_expr().name()].IsInt64());
   ASSERT_EQ(idents[out.ident_expr().name()].Int64OrDie(), 2);
 }
 
 TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // 1 + [2]
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 16
@@ -304,6 +315,7 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
       }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -311,17 +323,17 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
   ASSERT_EQ(out.id(), 16);
-  ASSERT_TRUE(out.has_ident_expr()) << out.DebugString();
+  ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
   ASSERT_TRUE(CheckNoMatchingOverloadError(idents[out.ident_expr().name()]));
 }
 
 // Validate that comprehension is recursed into
 TEST(ConstantFoldingTest, MapComprehension) {
-  Expr expr;
+  google::api::expr::v1alpha1::Expr expr;
   // {1: "", 2: ""}.all(x, x > 0)
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 1
@@ -372,15 +384,16 @@ TEST(ConstantFoldingTest, MapComprehension) {
       }
     })",
                                       &expr);
+  auto native_expr = ToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
   absl::flat_hash_map<std::string, CelValue> idents;
   Expr out;
-  FoldConstants(expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, &out);
 
-  Expr expected;
+  google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
     id: 1
     comprehension_expr {
@@ -430,8 +443,9 @@ TEST(ConstantFoldingTest, MapComprehension) {
       }
     })",
                                       &expected);
-  google::protobuf::util::MessageDifferencer md;
-  EXPECT_TRUE(md.Compare(out, expected)) << out.DebugString();
+  auto native_expected_expr = ToNative(expected).value();
+
+  EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 6);
   EXPECT_TRUE(idents["$v0"].IsBool());
@@ -444,4 +458,4 @@ TEST(ConstantFoldingTest, MapComprehension) {
 
 }  // namespace
 
-}  // namespace google::api::expr::runtime
+}  // namespace cel::ast::internal

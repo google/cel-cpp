@@ -75,6 +75,10 @@ Persistent<const TypeType> TypeFactory::GetTypeType() {
   return TypeType::Get();
 }
 
+Persistent<const UnknownType> TypeFactory::GetUnknownType() {
+  return UnknownType::Get();
+}
+
 absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
     const Persistent<const Type>& element) {
   absl::MutexLock lock(&list_types_mutex_);

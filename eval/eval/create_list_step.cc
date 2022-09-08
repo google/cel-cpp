@@ -84,17 +84,15 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
-    const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
-    int64_t expr_id) {
+    const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
   return absl::make_unique<CreateListStep>(
-      expr_id, create_list_expr->elements_size(), /*immutable=*/true);
+      expr_id, create_list_expr.elements().size(), /*immutable=*/true);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
-    const google::api::expr::v1alpha1::Expr::CreateList* create_list_expr,
-    int64_t expr_id) {
+    const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
   return absl::make_unique<CreateListStep>(
-      expr_id, create_list_expr->elements_size(), /*immutable=*/false);
+      expr_id, create_list_expr.elements().size(), /*immutable=*/false);
 }
 
 }  // namespace google::api::expr::runtime

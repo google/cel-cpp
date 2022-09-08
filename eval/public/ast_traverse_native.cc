@@ -16,6 +16,7 @@
 
 #include <stack>
 
+#include "absl/log/log.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
 #include "eval/public/ast_visitor_native.h"
@@ -172,6 +173,9 @@ struct PostVisitor {
         visitor->PostVisitComprehension(&expr->comprehension_expr(), expr,
                                         &position);
       }
+      void operator()(absl::monostate) {
+        LOG(ERROR) << "Unsupported Expr kind";
+      }
     } handler{visitor, record.expr,
               SourcePosition(expr->id(), record.source_info)};
     absl::visit(handler, record.expr->expr_kind());
@@ -301,6 +305,7 @@ struct PushDepsVisitor {
                               record.source_info, &stack,
                               options.use_comprehension_callbacks);
       }
+      void operator()(absl::monostate) {}
     } handler{stack, options, record};
     absl::visit(handler, record.expr->expr_kind());
   }

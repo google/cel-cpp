@@ -85,14 +85,14 @@ absl::optional<CelValue> CheckForMarkedAttributes(const AttributeTrail& trail,
 
   if (frame->enable_missing_attribute_errors() &&
       frame->attribute_utility().CheckForMissingAttribute(trail)) {
-    auto attribute_string = trail.attribute()->AsString();
+    auto attribute_string = trail.attribute().AsString();
     if (attribute_string.ok()) {
       return CreateMissingAttributeError(frame->memory_manager(),
                                          *attribute_string);
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
-    GOOGLE_LOG(ERROR)
+    LOG(ERROR)
         << "Invalid attribute pattern matched select path: "
         << attribute_string.status().ToString();  // NOLINT: OSS compatibility
     return CreateErrorValue(frame->memory_manager(), attribute_string.status());
@@ -153,7 +153,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   if (arg.IsNull()) {
     CelValue error_value =
         CreateErrorValue(frame->memory_manager(), "Message is NULL");
-    frame->value_stack().PopAndPush(error_value, result_trail);
+    frame->value_stack().PopAndPush(error_value, std::move(result_trail));
     return absl::OkStatus();
   }
 
@@ -165,7 +165,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       CheckForMarkedAttributes(result_trail, frame);
   if (marked_attribute_check.has_value()) {
     frame->value_stack().PopAndPush(marked_attribute_check.value(),
-                                    result_trail);
+                                    std::move(result_trail));
     return absl::OkStatus();
   }
 
@@ -175,7 +175,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       if (arg.MapOrDie() == nullptr) {
         frame->value_stack().PopAndPush(
             CreateErrorValue(frame->memory_manager(), "Map is NULL"),
-            result_trail);
+            std::move(result_trail));
         return absl::OkStatus();
       }
       break;
@@ -185,7 +185,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
           arg.GetValue(&w) && w.message_ptr() == nullptr) {
         frame->value_stack().PopAndPush(
             CreateErrorValue(frame->memory_manager(), "Message is NULL"),
-            result_trail);
+            std::move(result_trail));
         return absl::OkStatus();
       }
       break;
@@ -218,7 +218,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
       CEL_RETURN_IF_ERROR(
           CreateValueFromField(wrapper, frame->memory_manager(), &result));
-      frame->value_stack().PopAndPush(result, result_trail);
+      frame->value_stack().PopAndPush(result, std::move(result_trail));
 
       return absl::OkStatus();
     }
@@ -235,7 +235,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       } else {
         result = CreateNoSuchKeyError(frame->memory_manager(), field_);
       }
-      frame->value_stack().PopAndPush(result, result_trail);
+      frame->value_stack().PopAndPush(result, std::move(result_trail));
       return absl::OkStatus();
     }
     default:
@@ -247,10 +247,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const google::api::expr::v1alpha1::Expr::Select* select_expr, int64_t expr_id,
+    const cel::ast::internal::Select& select_expr, int64_t expr_id,
     absl::string_view select_path, bool enable_wrapper_type_null_unboxing) {
   return absl::make_unique<SelectStep>(
-      select_expr->field(), select_expr->test_only(), expr_id, select_path,
+      select_expr.field(), select_expr.test_only(), expr_id, select_path,
       enable_wrapper_type_null_unboxing);
 }
 

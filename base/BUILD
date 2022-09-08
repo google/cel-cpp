@@ -20,6 +20,28 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "attributes",
+    srcs = [
+        "attribute.cc",
+    ],
+    hdrs = [
+        "attribute.h",
+        "attribute_set.h",
+    ],
+    deps = [
+        ":kind",
+        "//internal:status_macros",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
     name = "handle",
     hdrs = ["handle.h"],
     deps = [
@@ -127,6 +149,7 @@ cc_library(
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/hash",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:variant",
@@ -204,7 +227,6 @@ cc_test(
         ":value",
         "//base/internal:memory_manager_testing",
         "//internal:testing",
-        "@com_google_absl//absl/hash",
         "@com_google_absl//absl/hash:hash_testing",
         "@com_google_absl//absl/status",
     ],
@@ -219,10 +241,13 @@ cc_library(
         "value.h",
     ] + glob(["values/*.h"]),
     deps = [
+        ":attributes",
+        ":functions",
         ":handle",
         ":kind",
         ":type",
         "//base/internal:data",
+        "//base/internal:unknown_set",
         "//base/internal:value",
         "//internal:casts",
         "//internal:rtti",
@@ -248,6 +273,8 @@ cc_library(
     srcs = ["value_factory.cc"],
     hdrs = ["value_factory.h"],
     deps = [
+        ":attributes",
+        ":functions",
         ":handle",
         ":memory_manager",
         ":type_manager",
@@ -297,8 +324,10 @@ cc_library(
         "ast.h",
     ],
     deps = [
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
     ],
@@ -312,8 +341,7 @@ cc_test(
     deps = [
         ":ast",
         "//internal:testing",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/types:variant",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -323,14 +351,34 @@ cc_library(
     hdrs = ["ast_utility.h"],
     deps = [
         ":ast",
+        "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "functions",
+    srcs = [
+        "function.cc",
+        "function_result_set.cc",
+    ],
+    hdrs = [
+        "function.h",
+        "function_result.h",
+        "function_result_set.h",
+    ],
+    deps = [
+        ":kind",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

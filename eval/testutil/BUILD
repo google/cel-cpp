@@ -1,7 +1,7 @@
 # This package contains testing utility code
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 proto_library(
     name = "test_message_protos",

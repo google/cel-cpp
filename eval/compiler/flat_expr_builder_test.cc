@@ -199,15 +199,21 @@ TEST(FlatExprBuilderTest, MapKeyValueUnset) {
 
   // Don't set either the key or the value for the map creation step.
   auto* entry = expr.mutable_struct_expr()->add_entries();
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Map entry missing key")));
+  EXPECT_THAT(
+      builder.CreateExpression(&expr, &source_info).status(),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("Illegal type provided for "
+                    "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind")));
 
   // Set the entry key, but not the value.
   entry->mutable_map_key()->mutable_const_expr()->set_bool_value(true);
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Map entry missing value")));
+  EXPECT_THAT(
+      builder.CreateExpression(&expr, &source_info).status(),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr(
+              "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value")));
 }
 
 TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
@@ -223,15 +229,21 @@ TEST(FlatExprBuilderTest, MessageFieldValueUnset) {
   auto* create_message = expr.mutable_struct_expr();
   create_message->set_message_name("google.protobuf.Value");
   auto* entry = create_message->add_entries();
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Struct entry missing field name")));
+  EXPECT_THAT(
+      builder.CreateExpression(&expr, &source_info).status(),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr("Illegal type provided for "
+                    "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind")));
 
   // Set the entry field, but not the value.
   entry->set_field_key("bool_value");
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Struct entry missing value")));
+  EXPECT_THAT(
+      builder.CreateExpression(&expr, &source_info).status(),
+      StatusIs(
+          absl::StatusCode::kInvalidArgument,
+          HasSubstr(
+              "google::api::expr::v1alpha1::Expr::CreateStruct::Entry missing value")));
 }
 
 TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {
@@ -303,7 +315,7 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie()->message(),
-              Eq("No matching overloads found"));
+              Eq("No matching overloads found : concat(string, string)"));
 
   ASSERT_THAT(warnings, testing::SizeIs(1));
   EXPECT_EQ(warnings[0].code(), absl::StatusCode::kInvalidArgument);
@@ -1695,9 +1707,9 @@ TEST(FlatExprBuilderTest, Ternary) {
     value2.mutable_ident_expr()->set_name("value2");
     CelAttribute value2_attr(value2, {});
 
-    UnknownSet unknown_selector(UnknownAttributeSet({&selector_attr}));
-    UnknownSet unknown_value1(UnknownAttributeSet({&value1_attr}));
-    UnknownSet unknown_value2(UnknownAttributeSet({&value2_attr}));
+    UnknownSet unknown_selector(UnknownAttributeSet({selector_attr}));
+    UnknownSet unknown_value1(UnknownAttributeSet({value1_attr}));
+    UnknownSet unknown_value2(UnknownAttributeSet({value2_attr}));
     CelValue result;
     ASSERT_OK(RunTernaryExpression(
         CelValue::CreateUnknownSet(&unknown_selector),
@@ -1705,10 +1717,9 @@ TEST(FlatExprBuilderTest, Ternary) {
         CelValue::CreateUnknownSet(&unknown_value2), &arena, &result));
     ASSERT_TRUE(result.IsUnknownSet());
     const UnknownSet* result_set = result.UnknownSetOrDie();
-    EXPECT_THAT(result_set->unknown_attributes().attributes().size(), Eq(1));
-    EXPECT_THAT(
-        result_set->unknown_attributes().attributes()[0]->variable_name(),
-        Eq("selector"));
+    EXPECT_THAT(result_set->unknown_attributes().size(), Eq(1));
+    EXPECT_THAT(result_set->unknown_attributes().begin()->variable_name(),
+                Eq("selector"));
   }
 }
 

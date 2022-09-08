@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -8,51 +9,14 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/function.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
 // Type that describes CelFunction.
 // This complex structure is needed for overloads support.
-class CelFunctionDescriptor {
- public:
-  CelFunctionDescriptor(absl::string_view name, bool receiver_style,
-                        std::vector<CelValue::Type> types,
-                        bool is_strict = true)
-      : name_(name),
-        receiver_style_(receiver_style),
-        types_(std::move(types)),
-        is_strict_(is_strict) {}
-
-  // Function name.
-  const std::string& name() const { return name_; }
-
-  // Whether function is receiver style i.e. true means arg0.name(args[1:]...).
-  bool receiver_style() const { return receiver_style_; }
-
-  // The argmument types the function accepts.
-  const std::vector<CelValue::Type>& types() const { return types_; }
-
-  // if true (strict, default), error or unknown arguments are propagated
-  // instead of calling the function. if false (non-strict), the function may
-  // receive error or unknown values as arguments.
-  bool is_strict() const { return is_strict_; }
-
-  // Helper for matching a descriptor. This tests that the shape is the same --
-  // |other| accepts the same number and types of arguments and is the same call
-  // style).
-  bool ShapeMatches(const CelFunctionDescriptor& other) const {
-    return ShapeMatches(other.receiver_style(), other.types());
-  }
-  bool ShapeMatches(bool receiver_style,
-                    const std::vector<CelValue::Type>& types) const;
-
- private:
-  std::string name_;
-  bool receiver_style_;
-  std::vector<CelValue::Type> types_;
-  bool is_strict_;
-};
+using CelFunctionDescriptor = ::cel::FunctionDescriptor;
 
 // CelFunction is a handler that represents single
 // CEL function.

@@ -38,6 +38,7 @@
 #include "base/types/timestamp_type.h"
 #include "base/types/type_type.h"
 #include "base/types/uint_type.h"
+#include "base/types/unknown_type.h"
 #include "internal/unreachable.h"
 
 namespace cel {
@@ -80,6 +81,10 @@ absl::string_view Type::name() const {
       return static_cast<const MapType*>(this)->name();
     case Kind::kStruct:
       return static_cast<const StructType*>(this)->name();
+    case Kind::kUnknown:
+      return static_cast<const UnknownType*>(this)->name();
+    default:
+      return "*unreachable*";
   }
 }
 
@@ -119,6 +124,10 @@ std::string Type::DebugString() const {
       return static_cast<const MapType*>(this)->DebugString();
     case Kind::kStruct:
       return static_cast<const StructType*>(this)->DebugString();
+    case Kind::kUnknown:
+      return static_cast<const UnknownType*>(this)->DebugString();
+    default:
+      return "*unreachable*";
   }
 }
 
@@ -161,6 +170,10 @@ bool Type::Equals(const Type& other) const {
       return static_cast<const MapType*>(this)->Equals(other);
     case Kind::kStruct:
       return static_cast<const StructType*>(this)->Equals(other);
+    case Kind::kUnknown:
+      return static_cast<const UnknownType*>(this)->Equals(other);
+    default:
+      return kind() == other.kind() && name() == other.name();
   }
 }
 
@@ -202,6 +215,11 @@ void Type::HashValue(absl::HashState state) const {
       return static_cast<const MapType*>(this)->HashValue(std::move(state));
     case Kind::kStruct:
       return static_cast<const StructType*>(this)->HashValue(std::move(state));
+    case Kind::kUnknown:
+      return static_cast<const UnknownType*>(this)->HashValue(std::move(state));
+    default:
+      absl::HashState::combine(std::move(state), kind(), name());
+      return;
   }
 }
 
@@ -300,7 +318,7 @@ void PersistentTypeHandle::Delete() const {
       delete static_cast<EnumType*>(static_cast<Type*>(data_.get()));
       break;
     case Kind::kStruct:
-      delete static_cast<StructType*>(static_cast<Type*>(data_.get()));
+      delete static_cast<AbstractStructType*>(static_cast<Type*>(data_.get()));
       break;
     default:
       internal::unreachable();

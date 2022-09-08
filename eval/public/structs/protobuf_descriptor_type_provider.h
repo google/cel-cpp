@@ -25,7 +25,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 
@@ -42,6 +41,9 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
   absl::optional<LegacyTypeAdapter> ProvideLegacyType(
       absl::string_view name) const override;
 
+  absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
+      absl::string_view name) const override;
+
  private:
   // Run a lookup if the type adapter hasn't already been built.
   // returns nullptr if not found.
@@ -50,7 +52,6 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
 
   const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::MessageFactory* message_factory_;
-  ProtoWrapperTypeOptions unboxing_option_;
   mutable absl::flat_hash_map<std::string,
                               std::unique_ptr<ProtoMessageTypeAdapter>>
       type_cache_ ABSL_GUARDED_BY(mu_);

@@ -14,7 +14,7 @@
 
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 exports_files(["LICENSE"])
 
@@ -71,6 +71,7 @@ cc_library(
     deps = [
         ":cel_value_internal",
         ":message_wrapper",
+        "//base:kind",
         "//base:memory_manager",
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
@@ -78,6 +79,7 @@ cc_library(
         "//internal:status_macros",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -100,6 +102,7 @@ cc_library(
     deps = [
         ":cel_value",
         ":cel_value_internal",
+        "//base:attributes",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -123,15 +126,10 @@ cc_library(
 
 cc_library(
     name = "unknown_attribute_set",
-    srcs = [
-    ],
     hdrs = [
         "unknown_attribute_set.h",
     ],
-    deps = [
-        ":cel_attribute",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
+    deps = ["//base:attributes"],
 )
 
 cc_library(
@@ -183,6 +181,7 @@ cc_library(
     ],
     deps = [
         ":cel_value",
+        "//base:functions",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
@@ -494,6 +493,7 @@ cc_library(
     deps = [
         ":ast_visitor",
         ":source_position",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
@@ -511,6 +511,7 @@ cc_library(
         ":ast_visitor_native",
         ":source_position_native",
         "//base:ast",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:variant",
     ],
 )
@@ -588,6 +589,7 @@ cc_test(
         ":cel_value_internal",
         ":unknown_attribute_set",
         ":unknown_set",
+        "//base:kind",
         "//base:memory_manager",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:trivial_legacy_type_info",
@@ -674,6 +676,7 @@ cc_library(
     deps = [
         ":ast_visitor",
         ":source_position",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -694,6 +697,39 @@ cc_test(
         "//parser",
         "//testutil:util",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "ast_rewrite_native",
+    srcs = [
+        "ast_rewrite_native.cc",
+    ],
+    hdrs = [
+        "ast_rewrite_native.h",
+    ],
+    deps = [
+        ":ast_visitor_native",
+        ":source_position_native",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "ast_rewrite_native_test",
+    srcs = [
+        "ast_rewrite_native_test.cc",
+    ],
+    deps = [
+        ":ast_rewrite_native",
+        ":ast_visitor_native",
+        ":source_position_native",
+        "//base:ast_utility",
+        "//internal:testing",
+        "//parser",
+        "//testutil:util",
     ],
 )
 
@@ -907,11 +943,7 @@ cc_library(
     hdrs = ["unknown_function_result_set.h"],
     deps = [
         ":cel_function",
-        ":cel_options",
-        ":cel_value",
-        ":set_util",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "//base:functions",
     ],
 )
 
@@ -941,6 +973,7 @@ cc_library(
     deps = [
         ":unknown_attribute_set",
         ":unknown_function_result_set",
+        "//base/internal:unknown_set",
     ],
 )
 
@@ -949,6 +982,7 @@ cc_test(
     srcs = ["unknown_set_test.cc"],
     deps = [
         ":cel_attribute",
+        ":cel_function",
         ":unknown_attribute_set",
         ":unknown_function_result_set",
         ":unknown_set",

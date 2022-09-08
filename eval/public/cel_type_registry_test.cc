@@ -122,6 +122,26 @@ TEST(CelTypeRegistryTest, RegisterEnumDescriptor) {
   RegisterEnumDescriptorTest().Test();
 }
 
+TEST(CelTypeRegistryTest, RegisterEnum) {
+  CelTypeRegistry registry;
+  registry.RegisterEnum("google.api.expr.runtime.TestMessage.TestEnum",
+                        {
+                            {"TEST_ENUM_UNSPECIFIED", 0},
+                            {"TEST_ENUM_1", 10},
+                            {"TEST_ENUM_2", 20},
+                            {"TEST_ENUM_3", 30},
+                        });
+
+  EXPECT_THAT(
+      registry.enums_map(),
+      Contains(Pair("google.api.expr.runtime.TestMessage.TestEnum",
+                    Contains(testing::Truly(
+                        [](const CelTypeRegistry::Enumerator& enumerator) {
+                          return enumerator.name == "TEST_ENUM_2" &&
+                                 enumerator.number == 20;
+                        })))));
+}
+
 TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
   CelTypeRegistry registry;
 

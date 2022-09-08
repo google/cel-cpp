@@ -156,16 +156,16 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
-    const google::api::expr::v1alpha1::Expr::CreateStruct* create_struct_expr,
+    const cel::ast::internal::CreateStruct& create_struct_expr,
     const LegacyTypeMutationApis* type_adapter, int64_t expr_id) {
   if (type_adapter != nullptr) {
     std::vector<CreateStructStepForMessage::FieldEntry> entries;
 
-    for (const auto& entry : create_struct_expr->entries()) {
+    for (const auto& entry : create_struct_expr.entries()) {
       if (!type_adapter->DefinesField(entry.field_key())) {
         return absl::InvalidArgumentError(absl::StrCat(
             "Invalid message creation: field '", entry.field_key(),
-            "' not found in '", create_struct_expr->message_name(), "'"));
+            "' not found in '", create_struct_expr.message_name(), "'"));
       }
       entries.push_back({entry.field_key()});
     }
@@ -175,7 +175,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
   } else {
     // Make map-creating step.
     return std::make_unique<CreateStructStepForMap>(
-        expr_id, create_struct_expr->entries_size());
+        expr_id, create_struct_expr.entries().size());
   }
 }
 

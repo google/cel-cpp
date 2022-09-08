@@ -138,6 +138,16 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_qualified_identifier_rewrites;
   }
 
+  void set_enable_regex(bool enable) { enable_regex_ = enable; }
+
+  void set_enable_regex_precompilation(bool enable) {
+    enable_regex_precompilation_ = enable;
+  }
+
+  void set_regex_max_program_size(int regex_max_program_size) {
+    regex_max_program_size_ = regex_max_program_size;
+  }
+
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -178,6 +188,9 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_wrapper_type_null_unboxing_ = false;
   bool enable_heterogeneous_equality_ = false;
   bool enable_qualified_identifier_rewrites_ = false;
+  bool enable_regex_ = false;
+  bool enable_regex_precompilation_ = false;
+  int regex_max_program_size_ = -1;
 };
 
 }  // namespace google::api::expr::runtime

@@ -22,27 +22,39 @@
 
 namespace cel {
 
-enum class Kind : uint8_t {
+enum class Kind /* : uint8_t */ {
+  // Must match legacy CelValue::Type.
   kNullType = 0,
-  kError,
-  kDyn,
-  kAny,
-  kType,
   kBool,
   kInt,
   kUint,
   kDouble,
   kString,
   kBytes,
-  kEnum,
+  kStruct,
   kDuration,
   kTimestamp,
   kList,
   kMap,
-  kStruct,
+  kUnknown,
+  kType,
+  kError,
+  kAny,
+
+  // New kinds not present in legacy CelValue.
+  kEnum,
+  kDyn,
+
+  // Legacy aliases, deprecated do not use.
+  kInt64 = kInt,
+  kUint64 = kUint,
+  kMessage = kStruct,
+  kUnknownSet = kUnknown,
+  kCelType = kType,
 
   // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
   // we can store `Kind` using 7 bits.
+  kNotForUseWithExhaustiveSwitchStatements = 127,
 };
 
 ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);

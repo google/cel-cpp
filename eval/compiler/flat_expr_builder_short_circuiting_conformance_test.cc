@@ -251,8 +251,8 @@ TEST_P(ShortCircuitingTest, UnknownAnd) {
   ASSERT_TRUE(result.IsUnknownSet());
   const UnknownAttributeSet& attrs =
       result.UnknownSetOrDie()->unknown_attributes();
-  ASSERT_THAT(attrs.attributes(), testing::SizeIs(1));
-  EXPECT_THAT(attrs.attributes()[0]->variable_name(), testing::Eq("var1"));
+  ASSERT_THAT(attrs, testing::SizeIs(1));
+  EXPECT_THAT(attrs.begin()->variable_name(), testing::Eq("var1"));
 }
 
 TEST_P(ShortCircuitingTest, UnknownOr) {
@@ -283,8 +283,8 @@ TEST_P(ShortCircuitingTest, UnknownOr) {
   ASSERT_TRUE(result.IsUnknownSet());
   const UnknownAttributeSet& attrs =
       result.UnknownSetOrDie()->unknown_attributes();
-  ASSERT_THAT(attrs.attributes(), testing::SizeIs(1));
-  EXPECT_THAT(attrs.attributes()[0]->variable_name(), testing::Eq("var1"));
+  ASSERT_THAT(attrs, testing::SizeIs(1));
+  EXPECT_THAT(attrs.begin()->variable_name(), testing::Eq("var1"));
 }
 
 TEST_P(ShortCircuitingTest, BasicTernary) {
@@ -364,10 +364,9 @@ TEST_P(ShortCircuitingTest, TernaryUnknownCondHandling) {
       BuildAndEval(builder.get(), expr, activation, &arena, &result));
 
   ASSERT_TRUE(result.IsUnknownSet());
-  const auto& attrs =
-      result.UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs = result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs, SizeIs(1));
-  EXPECT_THAT(attrs[0]->variable_name(), Eq("cond"));
+  EXPECT_THAT(attrs.begin()->variable_name(), Eq("cond"));
 
   // Unknown branches are discarded if condition is unknown
   activation.set_unknown_attribute_patterns({CelAttributePattern("cond", {}),
@@ -377,10 +376,9 @@ TEST_P(ShortCircuitingTest, TernaryUnknownCondHandling) {
   ASSERT_NO_FATAL_FAILURE(
       BuildAndEval(builder.get(), expr, activation, &arena, &result));
   ASSERT_TRUE(result.IsUnknownSet());
-  const auto& attrs2 =
-      result.UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs2 = result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs2, SizeIs(1));
-  EXPECT_THAT(attrs2[0]->variable_name(), Eq("cond"));
+  EXPECT_THAT(attrs2.begin()->variable_name(), Eq("cond"));
 }
 
 TEST_P(ShortCircuitingTest, TernaryUnknownArgsHandling) {
@@ -413,10 +411,9 @@ TEST_P(ShortCircuitingTest, TernaryUnknownArgsHandling) {
   ASSERT_NO_FATAL_FAILURE(
       BuildAndEval(builder.get(), expr, activation, &arena, &result));
   ASSERT_TRUE(result.IsUnknownSet());
-  const auto& attrs3 =
-      result.UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs3 = result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs3, SizeIs(1));
-  EXPECT_EQ(attrs3[0]->variable_name(), "arg2");
+  EXPECT_EQ(attrs3.begin()->variable_name(), "arg2");
 }
 
 TEST_P(ShortCircuitingTest, TernaryUnknownAndErrorHandling) {
@@ -451,10 +448,9 @@ TEST_P(ShortCircuitingTest, TernaryUnknownAndErrorHandling) {
   ASSERT_NO_FATAL_FAILURE(
       BuildAndEval(builder.get(), expr, activation, &arena, &result));
   ASSERT_TRUE(result.IsUnknownSet());
-  const auto& attrs =
-      result.UnknownSetOrDie()->unknown_attributes().attributes();
+  const auto& attrs = result.UnknownSetOrDie()->unknown_attributes();
   ASSERT_THAT(attrs, SizeIs(1));
-  EXPECT_EQ(attrs[0]->variable_name(), "cond");
+  EXPECT_EQ(attrs.begin()->variable_name(), "cond");
 }
 
 const char* TestName(testing::TestParamInfo<bool> info) {

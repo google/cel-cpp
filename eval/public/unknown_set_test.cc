@@ -3,6 +3,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "eval/public/cel_attribute.h"
+#include "eval/public/cel_function.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "internal/testing.h"
@@ -19,9 +20,7 @@ using testing::UnorderedElementsAre;
 
 UnknownFunctionResultSet MakeFunctionResult(Arena* arena, int64_t id) {
   CelFunctionDescriptor desc("OneInt", false, {CelValue::Type::kInt64});
-  const auto* function_result =
-      Arena::Create<UnknownFunctionResult>(arena, desc, /*expr_id=*/0);
-  return UnknownFunctionResultSet(function_result);
+  return UnknownFunctionResultSet(UnknownFunctionResult(desc, /*expr_id=*/0));
 }
 
 UnknownAttributeSet MakeAttribute(Arena* arena, int64_t id) {
@@ -31,16 +30,15 @@ UnknownAttributeSet MakeAttribute(Arena* arena, int64_t id) {
   std::vector<CelAttributeQualifier> attr_trail{
       CelAttributeQualifier::Create(CelValue::CreateInt64(id))};
 
-  const auto* attr = Arena::Create<CelAttribute>(arena, expr, attr_trail);
-  return UnknownAttributeSet({attr});
+  return UnknownAttributeSet({CelAttribute(expr, std::move(attr_trail))});
 }
 
 MATCHER_P(UnknownAttributeIs, id, "") {
-  const CelAttribute* attr = arg;
-  if (attr->qualifier_path().size() != 1) {
+  const CelAttribute& attr = arg;
+  if (attr.qualifier_path().size() != 1) {
     return false;
   }
-  auto maybe_qualifier = attr->qualifier_path()[0].GetInt64Key();
+  auto maybe_qualifier = attr.qualifier_path()[0].GetInt64Key();
   if (!maybe_qualifier.has_value()) {
     return false;
   }
@@ -56,18 +54,17 @@ TEST(UnknownSet, AttributesMerge) {
   UnknownSet e(c, d);
 
   EXPECT_THAT(
-      d.unknown_attributes().attributes(),
+      d.unknown_attributes(),
       UnorderedElementsAre(UnknownAttributeIs(1), UnknownAttributeIs(2)));
   EXPECT_THAT(
-      e.unknown_attributes().attributes(),
+      e.unknown_attributes(),
       UnorderedElementsAre(UnknownAttributeIs(1), UnknownAttributeIs(2)));
 }
 
 TEST(UnknownSet, DefaultEmpty) {
   UnknownSet empty_set;
-  EXPECT_THAT(empty_set.unknown_attributes().attributes(), IsEmpty());
-  EXPECT_THAT(empty_set.unknown_function_results().unknown_function_results(),
-              IsEmpty());
+  EXPECT_THAT(empty_set.unknown_attributes(), IsEmpty());
+  EXPECT_THAT(empty_set.unknown_function_results(), IsEmpty());
 }
 
 TEST(UnknownSet, MixedMerges) {
@@ -79,10 +76,10 @@ TEST(UnknownSet, MixedMerges) {
   UnknownSet d(a, b);
   UnknownSet e(c, d);
 
-  EXPECT_THAT(d.unknown_attributes().attributes(),
+  EXPECT_THAT(d.unknown_attributes(),
               UnorderedElementsAre(UnknownAttributeIs(1)));
   EXPECT_THAT(
-      e.unknown_attributes().attributes(),
+      e.unknown_attributes(),
       UnorderedElementsAre(UnknownAttributeIs(1), UnknownAttributeIs(2)));
 }
 

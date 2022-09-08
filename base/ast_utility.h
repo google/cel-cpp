@@ -24,8 +24,8 @@ namespace cel {
 namespace ast {
 namespace internal {
 
-// Conversion utility functions from proto types to native types
-absl::StatusOr<Constant> ToNative(const google::api::expr::v1alpha1::Constant& constant);
+// Utilities for converting protobuf CEL message types to their corresponding
+// internal C++ representations.
 absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr);
 absl::StatusOr<SourceInfo> ToNative(
     const google::api::expr::v1alpha1::SourceInfo& source_info);
@@ -36,6 +36,10 @@ absl::StatusOr<Reference> ToNative(
     const google::api::expr::v1alpha1::Reference& reference);
 absl::StatusOr<CheckedExpr> ToNative(
     const google::api::expr::v1alpha1::CheckedExpr& checked_expr);
+
+// Conversion utility for the protobuf constant CEL value representation.
+absl::StatusOr<Constant> ConvertConstant(
+    const google::api::expr::v1alpha1::Constant& constant);
 
 }  // namespace internal
 }  // namespace ast

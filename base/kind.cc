@@ -50,6 +50,8 @@ absl::string_view KindToString(Kind kind) {
       return "map";
     case Kind::kStruct:
       return "struct";
+    case Kind::kUnknown:
+      return "*unknown*";
     default:
       return "*error*";
   }

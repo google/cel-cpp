@@ -14,6 +14,7 @@
 
 #include "base/value_factory.h"
 
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -242,6 +243,13 @@ ValueFactory::CreateTimestampValue(absl::Time value) {
 Persistent<const TypeValue> ValueFactory::CreateTypeValue(
     const Persistent<const Type>& value) {
   return PersistentHandleFactory<const TypeValue>::Make<TypeValue>(value);
+}
+
+Persistent<UnknownValue> ValueFactory::CreateUnknownValue(
+    AttributeSet attribute_set, FunctionResultSet function_result_set) {
+  return PersistentHandleFactory<UnknownValue>::Make<UnknownValue>(
+      memory_manager(), std::move(attribute_set),
+      std::move(function_result_set));
 }
 
 absl::StatusOr<Persistent<const BytesValue>>

@@ -30,13 +30,15 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::ast::internal::Call;
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::Ident;
 using testing::ElementsAre;
 using testing::Eq;
 using testing::Not;
 using testing::UnorderedElementsAre;
 using cel::internal::IsOk;
-
-using google::api::expr::v1alpha1::Expr;
+using cel::internal::StatusIs;
 
 int GetExprId() {
   static int id = 0;
@@ -54,10 +56,10 @@ class ConstFunction : public CelFunction {
     return CelFunctionDescriptor{name, false, {}};
   }
 
-  static Expr::Call MakeCall(absl::string_view name) {
-    Expr::Call call;
-    call.set_function(name.data(), name.size());
-    call.clear_target();
+  static Call MakeCall(absl::string_view name) {
+    Call call;
+    call.set_function(std::string(name));
+    call.set_target(nullptr);
     return call;
   }
 
@@ -91,12 +93,12 @@ class AddFunction : public CelFunction {
         "_+_", false, {CelValue::Type::kInt64, CelValue::Type::kInt64}};
   }
 
-  static Expr::Call MakeCall() {
-    Expr::Call call;
+  static Call MakeCall() {
+    Call call;
     call.set_function("_+_");
-    call.add_args();
-    call.add_args();
-    call.clear_target();
+    call.mutable_args().emplace_back();
+    call.mutable_args().emplace_back();
+    call.set_target(nullptr);
     return call;
   }
 
@@ -133,11 +135,11 @@ class SinkFunction : public CelFunction {
     return CelFunctionDescriptor{"Sink", false, {type}, is_strict};
   }
 
-  static Expr::Call MakeCall() {
-    Expr::Call call;
+  static Call MakeCall() {
+    Call call;
     call.set_function("Sink");
-    call.add_args();
-    call.clear_target();
+    call.mutable_args().emplace_back();
+    call.set_target(nullptr);
     return call;
   }
 
@@ -188,20 +190,20 @@ std::vector<CelValue::Type> ArgumentMatcher(int argument_count) {
   return argument_matcher;
 }
 
-std::vector<CelValue::Type> ArgumentMatcher(const Expr::Call* call) {
-  return ArgumentMatcher(call->has_target() ? call->args_size() + 1
-                                            : call->args_size());
+std::vector<CelValue::Type> ArgumentMatcher(const Call& call) {
+  return ArgumentMatcher(call.has_target() ? call.args().size() + 1
+                                           : call.args().size());
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
-    const Expr::Call* call, const CelFunctionRegistry& registry) {
+    const Call& call, const CelFunctionRegistry& registry) {
   auto argument_matcher = ArgumentMatcher(call);
   auto lazy_overloads = registry.FindLazyOverloads(
-      call->function(), call->has_target(), argument_matcher);
+      call.function(), call.has_target(), argument_matcher);
   if (!lazy_overloads.empty()) {
     return CreateFunctionStep(call, GetExprId(), lazy_overloads);
   }
-  auto overloads = registry.FindOverloads(call->function(), call->has_target(),
+  auto overloads = registry.FindOverloads(call.function(), call.has_target(),
                                           argument_matcher);
   return CreateFunctionStep(call, GetExprId(), overloads);
 }
@@ -244,13 +246,13 @@ TEST_P(FunctionStepTest, SimpleFunctionTest) {
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const3");
-  Expr::Call call2 = ConstFunction::MakeCall("Const2");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const3");
+  Call call2 = ConstFunction::MakeCall("Const2");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -275,11 +277,11 @@ TEST_P(FunctionStepTest, TestStackUnderflow) {
 
   AddFunction add_func;
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const3");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const3");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step2));
@@ -305,14 +307,14 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
                       CelValue::CreateUint64(4), "Const4"))
                   .ok());
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const3");
-  Expr::Call call2 = ConstFunction::MakeCall("Const4");
+  Call call1 = ConstFunction::MakeCall("Const3");
+  Call call2 = ConstFunction::MakeCall("Const4");
   // Add expects {int64_t, int64_t} but it's {int64_t, uint64_t}.
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -325,6 +327,9 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
+  EXPECT_THAT(*value.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       testing::HasSubstr("_+_(int64, uint64)")));
 }
 
 // Test situation when no overloads match input arguments during evaluation
@@ -348,13 +353,13 @@ TEST_P(FunctionStepTest,
                       CelValue::CreateError(&error1), "ConstError2"))
                   .ok());
 
-  Expr::Call call1 = ConstFunction::MakeCall("ConstError1");
-  Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("ConstError1");
+  Call call2 = ConstFunction::MakeCall("ConstError2");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -386,13 +391,13 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
       absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(absl::make_unique<AddFunction>()));
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const3");
-  Expr::Call call2 = ConstFunction::MakeCall("Const2");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const3");
+  Call call2 = ConstFunction::MakeCall("Const2");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -431,13 +436,13 @@ TEST_P(FunctionStepTest,
   ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
       CelValue::CreateError(&error1), "ConstError2")));
 
-  Expr::Call call1 = ConstFunction::MakeCall("ConstError1");
-  Expr::Call call2 = ConstFunction::MakeCall("ConstError2");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("ConstError1");
+  Call call2 = ConstFunction::MakeCall("ConstError2");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -497,13 +502,13 @@ TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
   CelFunctionRegistry registry;
   AddDefaults(registry);
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const3");
-  Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const3");
+  Call call2 = ConstFunction::MakeCall("ConstUnknown");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -527,12 +532,12 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
 
   // Build the expression path that corresponds to CEL expression
   // "sink(param)".
-  Expr::Ident ident1;
+  Ident ident1;
   ident1.set_name("param");
-  Expr::Call call1 = SinkFunction::MakeCall();
+  Call call1 = SinkFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(&ident1, GetExprId()));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident1, GetExprId()));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -569,13 +574,13 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
           .Register(absl::make_unique<ConstFunction>(error_value, "ConstError"))
           .ok());
 
-  Expr::Call call1 = ConstFunction::MakeCall("ConstError");
-  Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("ConstError");
+  Call call2 = ConstFunction::MakeCall("ConstUnknown");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -609,13 +614,13 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   ASSERT_OK(registry.Register(
       absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const2");
-  Expr::Call call2 = ConstFunction::MakeCall("Const3");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const2");
+  Call call2 = ConstFunction::MakeCall("Const3");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -646,17 +651,17 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
 
   // Add(Add(2, 3), Add(2, 3))
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const2");
-  Expr::Call call2 = ConstFunction::MakeCall("Const3");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const2");
+  Call call2 = ConstFunction::MakeCall("Const3");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
-  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step5, MakeTestFunctionStep(&add_call, registry));
-  ASSERT_OK_AND_ASSIGN(auto step6, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step5, MakeTestFunctionStep(add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step6, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -691,17 +696,17 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
 
   // Add(Add(2, 3), Add(3, 2))
 
-  Expr::Call call1 = ConstFunction::MakeCall("Const2");
-  Expr::Call call2 = ConstFunction::MakeCall("Const3");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("Const2");
+  Call call2 = ConstFunction::MakeCall("Const3");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
-  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step5, MakeTestFunctionStep(&add_call, registry));
-  ASSERT_OK_AND_ASSIGN(auto step6, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step5, MakeTestFunctionStep(add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step6, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -739,13 +744,13 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK(registry.Register(
       absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
-  Expr::Call call1 = ConstFunction::MakeCall("ConstError");
-  Expr::Call call2 = ConstFunction::MakeCall("ConstUnknown");
-  Expr::Call add_call = AddFunction::MakeCall();
+  Call call1 = ConstFunction::MakeCall("ConstError");
+  Call call2 = ConstFunction::MakeCall("ConstUnknown");
+  Call add_call = AddFunction::MakeCall();
 
-  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(&call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(&call2, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(&add_call, registry));
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(add_call, registry));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -824,10 +829,11 @@ class FunctionStepNullCoercionTest : public testing::Test {
  public:
   FunctionStepNullCoercionTest() {
     identifier_expr_.set_id(GetExprId());
-    identifier_expr_.mutable_ident_expr()->set_name("id");
+    identifier_expr_.mutable_ident_expr().set_name("id");
     call_expr_.set_id(GetExprId());
-    call_expr_.mutable_call_expr()->set_function("Fn");
-    call_expr_.mutable_call_expr()->add_args()->set_id(GetExprId());
+    call_expr_.mutable_call_expr().set_function("Fn");
+    call_expr_.mutable_call_expr().mutable_args().emplace_back().set_id(
+        GetExprId());
     activation_.InsertValue("id", CelValue::CreateNull());
   }
 
@@ -846,11 +852,11 @@ TEST_F(FunctionStepNullCoercionTest, EnabledSupportsMessageOverloads) {
 
   ASSERT_OK_AND_ASSIGN(
       auto ident_step,
-      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
   path.push_back(std::move(ident_step));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+  ASSERT_OK_AND_ASSIGN(auto call_step,
+                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
 
   path.push_back(std::move(call_step));
 
@@ -870,11 +876,11 @@ TEST_F(FunctionStepNullCoercionTest, EnabledPrefersNullOverloads) {
 
   ASSERT_OK_AND_ASSIGN(
       auto ident_step,
-      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
   path.push_back(std::move(ident_step));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+  ASSERT_OK_AND_ASSIGN(auto call_step,
+                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
 
   path.push_back(std::move(call_step));
 
@@ -893,11 +899,11 @@ TEST_F(FunctionStepNullCoercionTest, EnabledNullMessageDoesNotEscape) {
 
   ASSERT_OK_AND_ASSIGN(
       auto ident_step,
-      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
   path.push_back(std::move(ident_step));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+  ASSERT_OK_AND_ASSIGN(auto call_step,
+                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
 
   path.push_back(std::move(call_step));
 
@@ -916,11 +922,11 @@ TEST_F(FunctionStepNullCoercionTest, Disabled) {
 
   ASSERT_OK_AND_ASSIGN(
       auto ident_step,
-      CreateIdentStep(&identifier_expr_.ident_expr(), identifier_expr_.id()));
+      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
   path.push_back(std::move(ident_step));
 
-  ASSERT_OK_AND_ASSIGN(
-      auto call_step, MakeTestFunctionStep(&call_expr_.call_expr(), registry_));
+  ASSERT_OK_AND_ASSIGN(auto call_step,
+                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
 
   path.push_back(std::move(call_step));
 
@@ -941,12 +947,12 @@ TEST(FunctionStepStrictnessTest,
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/true)));
   ExecutionPath path;
-  Expr::Call call0 = ConstFunction::MakeCall("ConstUnknown");
-  Expr::Call call1 = SinkFunction::MakeCall();
+  Call call0 = ConstFunction::MakeCall("ConstUnknown");
+  Call call1 = SinkFunction::MakeCall();
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step0,
-                       MakeTestFunctionStep(&call0, registry));
+                       MakeTestFunctionStep(call0, registry));
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step1,
-                       MakeTestFunctionStep(&call1, registry));
+                       MakeTestFunctionStep(call1, registry));
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   Expr placeholder_expr;
@@ -966,12 +972,12 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/false)));
   ExecutionPath path;
-  Expr::Call call0 = ConstFunction::MakeCall("ConstUnknown");
-  Expr::Call call1 = SinkFunction::MakeCall();
+  Call call0 = ConstFunction::MakeCall("ConstUnknown");
+  Call call1 = SinkFunction::MakeCall();
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step0,
-                       MakeTestFunctionStep(&call0, registry));
+                       MakeTestFunctionStep(call0, registry));
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ExpressionStep> step1,
-                       MakeTestFunctionStep(&call1, registry));
+                       MakeTestFunctionStep(call1, registry));
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   Expr placeholder_expr;

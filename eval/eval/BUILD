@@ -2,7 +2,7 @@
 # internals.
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])  # Apache 2.0
+licenses(["notice"])
 
 exports_files(["LICENSE"])
 
@@ -18,6 +18,7 @@ cc_library(
         ":attribute_trail",
         ":attribute_utility",
         ":evaluator_stack",
+        "//base:ast",
         "//base:memory_manager",
         "//eval/compiler:resolver",
         "//eval/public:base_activation",
@@ -86,9 +87,11 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:ast",
         "//eval/public:cel_value",
         "//internal:proto_time_encoding",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -116,6 +119,19 @@ cc_library(
 )
 
 cc_library(
+    name = "regex_match_step",
+    srcs = ["regex_match_step.cc"],
+    hdrs = ["regex_match_step.h"],
+    deps = [
+        ":evaluator_core",
+        ":expression_step_base",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+cc_library(
     name = "ident_step",
     srcs = [
         "ident_step.cc",
@@ -127,6 +143,7 @@ cc_library(
         ":attribute_trail",
         ":evaluator_core",
         ":expression_step_base",
+        "//base:ast",
         "//eval/public:unknown_attribute_set",
         "//extensions/protobuf:memory_manager",
         "@com_google_absl//absl/status",
@@ -161,6 +178,7 @@ cc_library(
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -179,11 +197,11 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:ast",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
-        "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
@@ -349,7 +367,9 @@ cc_test(
         ":const_value_step",
         ":evaluator_core",
         ":test_type_registry",
+        "//base:ast",
         "//eval/public:activation",
+        "//eval/public:cel_value",
         "//eval/public/testing:matchers",
         "//internal:status_macros",
         "//internal:testing",
@@ -386,6 +406,28 @@ cc_test(
         "//internal:testing",
         "//parser",
         "@com_google_absl//absl/status",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "regex_match_step_test",
+    size = "small",
+    srcs = [
+        "regex_match_step_test.cc",
+    ],
+    deps = [
+        ":regex_match_step",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_options",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -577,8 +619,10 @@ cc_library(
         "//eval/public:cel_expression",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/utility",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
@@ -613,7 +657,6 @@ cc_library(
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_function_result_set",
         "//eval/public:unknown_set",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_protobuf//:protobuf",
@@ -628,7 +671,6 @@ cc_test(
     ],
     deps = [
         ":attribute_utility",
-        "//base:memory_manager",
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",

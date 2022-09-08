@@ -45,6 +45,7 @@ class StructValue;
 class ListValue;
 class MapValue;
 class TypeValue;
+class UnknownValue;
 class ValueFactory;
 
 // A representation of a CEL value that enables reflection and introspection of
@@ -59,7 +60,7 @@ class Value : public base_internal::Data {
   Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
-  const Persistent<const Type>& type() const;
+  Persistent<const Type> type() const;
 
   std::string DebugString() const;
 
@@ -76,6 +77,7 @@ class Value : public base_internal::Data {
   friend class ListValue;
   friend class MapValue;
   friend class TypeValue;
+  friend class UnknownValue;
   friend class base_internal::PersistentValueHandle;
   template <typename T, typename U>
   friend class base_internal::SimpleValue;
@@ -221,7 +223,7 @@ class SimpleValue : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const T>& type() const { return T::Get(); }
+  Persistent<const T> type() const { return T::Get(); }
 
   void HashValue(absl::HashState state) const {
     absl::HashState::combine(std::move(state), type(), value());
@@ -262,7 +264,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const NullType>& type() const { return NullType::Get(); }
+  Persistent<const NullType> type() const { return NullType::Get(); }
 
   void HashValue(absl::HashState state) const {
     absl::HashState::combine(std::move(state), type(), 0);

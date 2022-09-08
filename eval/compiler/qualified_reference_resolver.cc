@@ -4,8 +4,6 @@
 #include <functional>
 #include <string>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -15,20 +13,19 @@
 #include "absl/types/optional.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/expression_build_warning.h"
-#include "eval/public/ast_rewrite.h"
+#include "eval/public/ast_rewrite_native.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
-#include "eval/public/source_position.h"
+#include "eval/public/source_position_native.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::api::expr::v1alpha1::Constant;
-using ::google::api::expr::v1alpha1::Expr;
-using ::google::api::expr::v1alpha1::Reference;
-using ::google::api::expr::v1alpha1::SourceInfo;
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::Reference;
+using ::cel::ast::internal::SourcePosition;
 
 // Determines if function is implemented with custom evaluation step instead of
 // registered.
@@ -77,10 +74,11 @@ absl::optional<std::string> BestOverloadMatch(const Resolver& resolver,
 //
 // On post visit pass, update function calls to determine whether the function
 // target is a namespace for the function or a receiver for the call.
-class ReferenceResolver : public AstRewriterBase {
+class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
  public:
-  ReferenceResolver(const google::protobuf::Map<int64_t, Reference>* reference_map,
-                    const Resolver& resolver, BuilderWarnings& warnings)
+  ReferenceResolver(
+      const absl::flat_hash_map<int64_t, Reference>* reference_map,
+      const Resolver& resolver, BuilderWarnings& warnings)
       : reference_map_(reference_map),
         resolver_(resolver),
         warnings_(warnings) {}
@@ -95,9 +93,9 @@ class ReferenceResolver : public AstRewriterBase {
 
     // Fold compile time constant (e.g. enum values)
     if (reference != nullptr && reference->has_value()) {
-      if (reference->value().constant_kind_case() == Constant::kInt64Value) {
+      if (reference->value().has_int64_value()) {
         // Replace enum idents with const reference value.
-        expr->mutable_const_expr()->set_int64_value(
+        expr->mutable_const_expr().set_int64_value(
             reference->value().int64_value());
         return true;
       } else {
@@ -107,15 +105,14 @@ class ReferenceResolver : public AstRewriterBase {
     }
 
     if (reference != nullptr) {
-      switch (expr->expr_kind_case()) {
-        case Expr::kIdentExpr:
-          return MaybeUpdateIdentNode(expr, *reference);
-        case Expr::kSelectExpr:
-          return MaybeUpdateSelectNode(expr, *reference);
-        default:
-          // Call nodes are updated on post visit so they will see any select
-          // path rewrites.
-          return false;
+      if (expr->has_ident_expr()) {
+        return MaybeUpdateIdentNode(expr, *reference);
+      } else if (expr->has_select_expr()) {
+        return MaybeUpdateSelectNode(expr, *reference);
+      } else {
+        // Call nodes are updated on post visit so they will see any select
+        // path rewrites.
+        return false;
       }
     }
     return false;
@@ -137,26 +134,26 @@ class ReferenceResolver : public AstRewriterBase {
   // TODO(issues/95): This duplicates some of the overload matching behavior
   // for parsed expressions. We should refactor to consolidate the code.
   bool MaybeUpdateCallNode(Expr* out, const Reference* reference) {
-    auto* call_expr = out->mutable_call_expr();
-    if (reference != nullptr && reference->overload_id_size() == 0) {
+    auto& call_expr = out->mutable_call_expr();
+    if (reference != nullptr && reference->overload_id().empty()) {
       warnings_
           .AddWarning(absl::InvalidArgumentError(
               absl::StrCat("Reference map doesn't provide overloads for ",
                            out->call_expr().function())))
           .IgnoreError();
     }
-    bool receiver_style = call_expr->has_target();
-    int arg_num = call_expr->args_size();
+    bool receiver_style = call_expr.has_target();
+    int arg_num = call_expr.args().size();
     if (receiver_style) {
-      auto maybe_namespace = ToNamespace(call_expr->target());
+      auto maybe_namespace = ToNamespace(call_expr.target());
       if (maybe_namespace.has_value()) {
         std::string resolved_name =
-            absl::StrCat(*maybe_namespace, ".", call_expr->function());
+            absl::StrCat(*maybe_namespace, ".", call_expr.function());
         auto resolved_function =
             BestOverloadMatch(resolver_, resolved_name, arg_num);
         if (resolved_function.has_value()) {
-          call_expr->set_function(*resolved_function);
-          call_expr->clear_target();
+          call_expr.set_function(*resolved_function);
+          call_expr.set_target(nullptr);
           return true;
         }
       }
@@ -164,28 +161,28 @@ class ReferenceResolver : public AstRewriterBase {
       // Not a receiver style function call. Check to see if it is a namespaced
       // function using a shorthand inside the expression container.
       auto maybe_resolved_function =
-          BestOverloadMatch(resolver_, call_expr->function(), arg_num);
+          BestOverloadMatch(resolver_, call_expr.function(), arg_num);
       if (!maybe_resolved_function.has_value()) {
         warnings_
             .AddWarning(absl::InvalidArgumentError(
                 absl::StrCat("No overload found in reference resolve step for ",
-                             call_expr->function())))
+                             call_expr.function())))
             .IgnoreError();
-      } else if (maybe_resolved_function.value() != call_expr->function()) {
-        call_expr->set_function(maybe_resolved_function.value());
+      } else if (maybe_resolved_function.value() != call_expr.function()) {
+        call_expr.set_function(maybe_resolved_function.value());
         return true;
       }
     }
     // For parity, if we didn't rewrite the receiver call style function,
     // check that an overload is provided in the builder.
-    if (call_expr->has_target() &&
-        !OverloadExists(resolver_, call_expr->function(),
+    if (call_expr.has_target() &&
+        !OverloadExists(resolver_, call_expr.function(),
                         ArgumentsMatcher(arg_num + 1),
                         /* receiver_style= */ true)) {
       warnings_
           .AddWarning(absl::InvalidArgumentError(
               absl::StrCat("No overload found in reference resolve step for ",
-                           call_expr->function())))
+                           call_expr.function())))
           .IgnoreError();
     }
     return false;
@@ -201,7 +198,7 @@ class ReferenceResolver : public AstRewriterBase {
                                          "test -- has(container.attr)"))
           .IgnoreError();
     } else if (!reference.name().empty()) {
-      out->mutable_ident_expr()->set_name(reference.name());
+      out->mutable_ident_expr().set_name(reference.name());
       rewritten_reference_.insert(out->id());
       return true;
     }
@@ -213,7 +210,7 @@ class ReferenceResolver : public AstRewriterBase {
   bool MaybeUpdateIdentNode(Expr* out, const Reference& reference) {
     if (!reference.name().empty() &&
         reference.name() != out->ident_expr().name()) {
-      out->mutable_ident_expr()->set_name(reference.name());
+      out->mutable_ident_expr().set_name(reference.name());
       rewritten_reference_.insert(out->id());
       return true;
     }
@@ -230,21 +227,20 @@ class ReferenceResolver : public AstRewriterBase {
       // This should not be treated as a function qualifier.
       return absl::nullopt;
     }
-    switch (expr.expr_kind_case()) {
-      case Expr::kIdentExpr:
-        return expr.ident_expr().name();
-      case Expr::kSelectExpr:
-        if (expr.select_expr().test_only()) {
-          return absl::nullopt;
-        }
-        maybe_parent_namespace = ToNamespace(expr.select_expr().operand());
-        if (!maybe_parent_namespace.has_value()) {
-          return absl::nullopt;
-        }
-        return absl::StrCat(*maybe_parent_namespace, ".",
-                            expr.select_expr().field());
-      default:
+    if (expr.has_ident_expr()) {
+      return expr.ident_expr().name();
+    } else if (expr.has_select_expr()) {
+      if (expr.select_expr().test_only()) {
         return absl::nullopt;
+      }
+      maybe_parent_namespace = ToNamespace(expr.select_expr().operand());
+      if (!maybe_parent_namespace.has_value()) {
+        return absl::nullopt;
+      }
+      return absl::StrCat(*maybe_parent_namespace, ".",
+                          expr.select_expr().field());
+    } else {
+      return absl::nullopt;
     }
   }
 
@@ -255,14 +251,22 @@ class ReferenceResolver : public AstRewriterBase {
     if (reference_map_ == nullptr) {
       return nullptr;
     }
+
     auto iter = reference_map_->find(expr_id);
     if (iter == reference_map_->end()) {
+      return nullptr;
+    }
+    if (expr_id == 0) {
+      warnings_
+          .AddWarning(absl::InvalidArgumentError(
+              "reference map entries for expression id 0 are not supported"))
+          .IgnoreError();
       return nullptr;
     }
     return &iter->second;
   }
 
-  const google::protobuf::Map<int64_t, Reference>* reference_map_;
+  const absl::flat_hash_map<int64_t, Reference>* reference_map_;
   const Resolver& resolver_;
   BuilderWarnings& warnings_;
   absl::flat_hash_set<int64_t> rewritten_reference_;
@@ -271,14 +275,16 @@ class ReferenceResolver : public AstRewriterBase {
 }  // namespace
 
 absl::StatusOr<bool> ResolveReferences(
-    const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
-    const Resolver& resolver, const SourceInfo* source_info,
-    BuilderWarnings& warnings, Expr* expr) {
+    const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
+        reference_map,
+    const Resolver& resolver, const cel::ast::internal::SourceInfo* source_info,
+    BuilderWarnings& warnings, cel::ast::internal::Expr* expr) {
   ReferenceResolver ref_resolver(reference_map, resolver, warnings);
 
   // Rewriting interface doesn't support failing mid traverse propagate first
   // error encountered if fail fast enabled.
-  bool was_rewritten = AstRewrite(expr, source_info, &ref_resolver);
+  bool was_rewritten =
+      cel::ast::internal::AstRewrite(expr, source_info, &ref_resolver);
   if (warnings.fail_immediately() && !warnings.warnings().empty()) {
     return warnings.warnings().front();
   }

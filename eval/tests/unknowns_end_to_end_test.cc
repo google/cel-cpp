@@ -162,13 +162,13 @@ class UnknownsTest : public testing::Test {
 };
 
 MATCHER_P(FunctionCallIs, fn_name, "") {
-  const UnknownFunctionResult* result = arg;
-  return result->descriptor().name() == fn_name;
+  const UnknownFunctionResult& result = arg;
+  return result.descriptor().name() == fn_name;
 }
 
 MATCHER_P(AttributeIs, attr, "") {
-  const CelAttribute* result = arg;
-  return result->variable_name() == attr;
+  const CelAttribute& result = arg;
+  return result.variable_name() == attr;
 }
 
 TEST_F(UnknownsTest, NoUnknowns) {
@@ -211,7 +211,7 @@ TEST_F(UnknownsTest, UnknownAttributes) {
   CelValue response = maybe_response.value();
 
   ASSERT_TRUE(response.IsUnknownSet());
-  EXPECT_THAT(response.UnknownSetOrDie()->unknown_attributes().attributes(),
+  EXPECT_THAT(response.UnknownSetOrDie()->unknown_attributes(),
               ElementsAre(AttributeIs("var1")));
 }
 
@@ -275,9 +275,7 @@ TEST_F(UnknownsTest, UnknownFunctions) {
   CelValue response = maybe_response.value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
-  EXPECT_THAT(response.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
+  EXPECT_THAT(response.UnknownSetOrDie()->unknown_function_results(),
               ElementsAre(FunctionCallIs("F1")));
 }
 
@@ -300,11 +298,9 @@ TEST_F(UnknownsTest, UnknownsMerge) {
   CelValue response = maybe_response.value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
-  EXPECT_THAT(response.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
+  EXPECT_THAT(response.UnknownSetOrDie()->unknown_function_results(),
               ElementsAre(FunctionCallIs("F1")));
-  EXPECT_THAT(response.UnknownSetOrDie()->unknown_attributes().attributes(),
+  EXPECT_THAT(response.UnknownSetOrDie()->unknown_attributes(),
               ElementsAre(AttributeIs("var2")));
 }
 
@@ -452,9 +448,7 @@ TEST_F(UnknownsCompTest, UnknownsMerge) {
   CelValue response = eval_status.value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
-  EXPECT_THAT(response.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
+  EXPECT_THAT(response.UnknownSetOrDie()->unknown_function_results(),
               testing::SizeIs(1));
 }
 
@@ -589,9 +583,7 @@ TEST_F(UnknownsCompCondTest, UnknownConditionReturned) {
   ASSERT_TRUE(response.IsUnknownSet()) << *response.ErrorOrDie();
   // The comprehension ends on the first non-bool condition, so we only get one
   // call captured in the UnknownSet.
-  EXPECT_THAT(response.UnknownSetOrDie()
-                  ->unknown_function_results()
-                  .unknown_function_results(),
+  EXPECT_THAT(response.UnknownSetOrDie()->unknown_function_results(),
               testing::SizeIs(1));
 }
 
@@ -710,13 +702,12 @@ TEST(UnknownsIterAttrTest, IterAttributeTrail) {
   CelValue response = plan->Evaluate(activation, &arena).value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
-  ASSERT_EQ(
-      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  ASSERT_EQ(response.UnknownSetOrDie()->unknown_attributes().size(), 1);
   // 'var[1]' is partially unknown when we make the function call so we treat it
   // as unknown.
   ASSERT_EQ(response.UnknownSetOrDie()
                 ->unknown_attributes()
-                .attributes()[0]
+                .begin()
                 ->qualifier_path()
                 .size(),
             1);
@@ -761,7 +752,7 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypes) {
   CelValue response = plan->Evaluate(activation, &arena).value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
-  ASSERT_EQ(response.UnknownSetOrDie(), &unknown_set);
+  ASSERT_EQ(*response.UnknownSetOrDie(), unknown_set);
 }
 
 TEST(UnknownsIterAttrTest, IterAttributeTrailMapKeyTypesShortcutted) {
@@ -901,13 +892,12 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMap) {
   CelValue response = plan->Evaluate(activation, &arena).value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
-  ASSERT_EQ(
-      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  ASSERT_EQ(response.UnknownSetOrDie()->unknown_attributes().size(), 1);
   // 'var[1].key' is unknown when we make the Fn function call.
   // comprehension is:  ((([] + false) + unk) + false) -> unk
   ASSERT_EQ(response.UnknownSetOrDie()
                 ->unknown_attributes()
-                .attributes()[0]
+                .begin()
                 ->qualifier_path()
                 .size(),
             2);
@@ -1019,13 +1009,12 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailFilterValues) {
   CelValue response = plan->Evaluate(activation, &arena).value();
 
   ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
-  ASSERT_EQ(
-      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  ASSERT_EQ(response.UnknownSetOrDie()->unknown_attributes().size(), 1);
   // 'var[1].value_key' is unknown when we make the cons function call.
   // comprehension is:  ((([] + [1]) + unk) + [1]) -> unk
   ASSERT_EQ(response.UnknownSetOrDie()
                 ->unknown_attributes()
-                .attributes()[0]
+                .begin()
                 ->qualifier_path()
                 .size(),
             2);
@@ -1085,11 +1074,10 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailFilterConditions) {
   // loop2: (true)? unk{1} + [1] : unk{1} -> unk{1}
   // result: unk{1}
   ASSERT_TRUE(response.IsUnknownSet()) << CelValue::TypeName(response.type());
-  ASSERT_EQ(
-      response.UnknownSetOrDie()->unknown_attributes().attributes().size(), 1);
+  ASSERT_EQ(response.UnknownSetOrDie()->unknown_attributes().size(), 1);
   ASSERT_EQ(response.UnknownSetOrDie()
                 ->unknown_attributes()
-                .attributes()[0]
+                .begin()
                 ->qualifier_path()
                 .size(),
             2);

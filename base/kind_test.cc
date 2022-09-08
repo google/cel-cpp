@@ -39,6 +39,7 @@ TEST(Kind, ToString) {
   EXPECT_EQ(KindToString(Kind::kList), "list");
   EXPECT_EQ(KindToString(Kind::kMap), "map");
   EXPECT_EQ(KindToString(Kind::kStruct), "struct");
+  EXPECT_EQ(KindToString(Kind::kUnknown), "*unknown*");
   EXPECT_EQ(KindToString(static_cast<Kind>(std::numeric_limits<int>::max())),
             "*error*");
 }

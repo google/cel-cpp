@@ -14,10 +14,10 @@
 
 #include "base/type.h"
 
+#include <memory>
 #include <type_traits>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
 #include "base/handle.h"
@@ -33,7 +33,6 @@
 namespace cel {
 namespace {
 
-using testing::SizeIs;
 using cel::internal::StatusIs;
 
 enum class TestEnum {
@@ -92,10 +91,8 @@ CEL_IMPLEMENT_ENUM_TYPE(TestEnumType);
 //   double double_field;
 // };
 
-class TestStructType final : public StructType {
+class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
-  using StructType::StructType;
-
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:
@@ -260,6 +257,7 @@ TEST_P(TypeTest, Null) {
   EXPECT_FALSE(type_factory.GetNullType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetNullType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetNullType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Error) {
@@ -282,6 +280,7 @@ TEST_P(TypeTest, Error) {
   EXPECT_FALSE(type_factory.GetErrorType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetErrorType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetErrorType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Dyn) {
@@ -304,6 +303,7 @@ TEST_P(TypeTest, Dyn) {
   EXPECT_FALSE(type_factory.GetDynType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetDynType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetDynType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Any) {
@@ -326,6 +326,7 @@ TEST_P(TypeTest, Any) {
   EXPECT_FALSE(type_factory.GetAnyType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetAnyType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetAnyType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Bool) {
@@ -348,6 +349,7 @@ TEST_P(TypeTest, Bool) {
   EXPECT_FALSE(type_factory.GetBoolType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetBoolType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetBoolType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Int) {
@@ -370,6 +372,7 @@ TEST_P(TypeTest, Int) {
   EXPECT_FALSE(type_factory.GetIntType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetIntType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetIntType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Uint) {
@@ -392,6 +395,7 @@ TEST_P(TypeTest, Uint) {
   EXPECT_FALSE(type_factory.GetUintType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetUintType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetUintType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Double) {
@@ -414,6 +418,7 @@ TEST_P(TypeTest, Double) {
   EXPECT_FALSE(type_factory.GetDoubleType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetDoubleType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetDoubleType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, String) {
@@ -436,6 +441,7 @@ TEST_P(TypeTest, String) {
   EXPECT_FALSE(type_factory.GetStringType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetStringType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetStringType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Bytes) {
@@ -458,6 +464,7 @@ TEST_P(TypeTest, Bytes) {
   EXPECT_FALSE(type_factory.GetBytesType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetBytesType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetBytesType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Duration) {
@@ -480,6 +487,7 @@ TEST_P(TypeTest, Duration) {
   EXPECT_FALSE(type_factory.GetDurationType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetDurationType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetDurationType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Timestamp) {
@@ -503,6 +511,7 @@ TEST_P(TypeTest, Timestamp) {
   EXPECT_FALSE(type_factory.GetTimestampType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<MapType>());
   EXPECT_FALSE(type_factory.GetTimestampType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetTimestampType().Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Enum) {
@@ -528,6 +537,7 @@ TEST_P(TypeTest, Enum) {
   EXPECT_FALSE(enum_type.Is<ListType>());
   EXPECT_FALSE(enum_type.Is<MapType>());
   EXPECT_FALSE(enum_type.Is<TypeType>());
+  EXPECT_FALSE(enum_type.Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Struct) {
@@ -555,6 +565,7 @@ TEST_P(TypeTest, Struct) {
   EXPECT_FALSE(struct_type.Is<ListType>());
   EXPECT_FALSE(struct_type.Is<MapType>());
   EXPECT_FALSE(struct_type.Is<TypeType>());
+  EXPECT_FALSE(struct_type.Is<UnknownType>());
 }
 
 TEST_P(TypeTest, List) {
@@ -582,6 +593,7 @@ TEST_P(TypeTest, List) {
   EXPECT_TRUE(list_type.Is<ListType>());
   EXPECT_FALSE(list_type.Is<MapType>());
   EXPECT_FALSE(list_type.Is<TypeType>());
+  EXPECT_FALSE(list_type.Is<UnknownType>());
 }
 
 TEST_P(TypeTest, Map) {
@@ -615,6 +627,7 @@ TEST_P(TypeTest, Map) {
   EXPECT_FALSE(map_type.Is<ListType>());
   EXPECT_TRUE(map_type.Is<MapType>());
   EXPECT_FALSE(map_type.Is<TypeType>());
+  EXPECT_FALSE(map_type.Is<UnknownType>());
 }
 
 TEST_P(TypeTest, TypeType) {
@@ -637,6 +650,30 @@ TEST_P(TypeTest, TypeType) {
   EXPECT_FALSE(type_factory.GetTypeType().Is<ListType>());
   EXPECT_FALSE(type_factory.GetTypeType().Is<MapType>());
   EXPECT_TRUE(type_factory.GetTypeType().Is<TypeType>());
+  EXPECT_FALSE(type_factory.GetTypeType().Is<UnknownType>());
+}
+
+TEST_P(TypeTest, UnknownType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetUnknownType()->kind(), Kind::kUnknown);
+  EXPECT_EQ(type_factory.GetUnknownType()->name(), "*unknown*");
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<NullType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<DynType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<AnyType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<BoolType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<IntType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<UintType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<DoubleType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<StringType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<BytesType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<DurationType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<TimestampType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<EnumType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<StructType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<ListType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<MapType>());
+  EXPECT_FALSE(type_factory.GetUnknownType().Is<TypeType>());
+  EXPECT_TRUE(type_factory.GetUnknownType().Is<UnknownType>());
 }
 
 using EnumTypeTest = TypeTest;
@@ -875,6 +912,7 @@ TEST_P(TypeTest, SupportsAbslHash) {
       Persistent<const Type>(Must(type_factory.CreateMapType(
           type_factory.GetStringType(), type_factory.GetBoolType()))),
       Persistent<const Type>(type_factory.GetTypeType()),
+      Persistent<const Type>(type_factory.GetUnknownType()),
   }));
 }
 
