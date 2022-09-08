@@ -280,7 +280,6 @@ cc_library(
     deps = [
         ":legacy_type_provider",
         ":proto_message_type_adapter",
-        "//eval/public:cel_value",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
@@ -294,12 +293,13 @@ cc_test(
     name = "protobuf_descriptor_type_provider_test",
     srcs = ["protobuf_descriptor_type_provider_test.cc"],
     deps = [
+        ":legacy_type_info_apis",
         ":protobuf_descriptor_type_provider",
         "//eval/public:cel_value",
         "//eval/public/testing:matchers",
         "//extensions/protobuf:memory_manager",
-        "//internal:status_macros",
         "//internal:testing",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

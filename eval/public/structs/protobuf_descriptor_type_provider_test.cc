@@ -14,10 +14,13 @@
 
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 
+#include <optional>
+
+#include "google/protobuf/wrappers.pb.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/testing/matchers.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -30,9 +33,18 @@ TEST(ProtobufDescriptorProvider, Basic) {
   google::protobuf::Arena arena;
   cel::extensions::ProtoMemoryManager manager(&arena);
   auto type_adapter = provider.ProvideLegacyType("google.protobuf.Int64Value");
+  std::optional<const LegacyTypeInfoApis*> type_info =
+      provider.ProvideLegacyTypeInfo("google.protobuf.Int64Value");
 
   ASSERT_TRUE(type_adapter.has_value());
   ASSERT_TRUE(type_adapter->mutation_apis() != nullptr);
+  ASSERT_TRUE(type_info.has_value());
+  ASSERT_TRUE(type_info != nullptr);
+
+  google::protobuf::Int64Value int64_value;
+  CelValue::MessageWrapper int64_cel_value(&int64_value, *type_info);
+  EXPECT_EQ((*type_info)->GetTypename(int64_cel_value),
+            "google.protobuf.Int64Value");
 
   ASSERT_TRUE(type_adapter->mutation_apis()->DefinesField("value"));
   ASSERT_OK_AND_ASSIGN(CelValue::MessageWrapper::Builder value,
@@ -74,8 +86,10 @@ TEST(ProtobufDescriptorProvider, NotFound) {
   google::protobuf::Arena arena;
   cel::extensions::ProtoMemoryManager manager(&arena);
   auto type_adapter = provider.ProvideLegacyType("UnknownType");
+  auto type_info = provider.ProvideLegacyTypeInfo("UnknownType");
 
   ASSERT_FALSE(type_adapter.has_value());
+  ASSERT_TRUE(type_info.has_value());
 }
 
 }  // namespace

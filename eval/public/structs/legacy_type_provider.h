@@ -44,7 +44,7 @@ class LegacyTypeProvider : public cel::TypeProvider {
   // Since custom type providers should create values compatible with evaluator
   // created ones, the TypeInfoApis returned from this method should be the same
   // as the ones used in value creation.
-  virtual absl::optional<LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
+  virtual absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
       absl::string_view name) const {
     return absl::nullopt;
   }

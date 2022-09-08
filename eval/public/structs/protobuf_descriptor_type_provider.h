@@ -25,7 +25,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/public/structs/proto_message_type_adapter.h"
 
@@ -40,6 +39,9 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
       : descriptor_pool_(pool), message_factory_(factory) {}
 
   absl::optional<LegacyTypeAdapter> ProvideLegacyType(
+      absl::string_view name) const override;
+
+  absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
       absl::string_view name) const override;
 
  private:
