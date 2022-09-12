@@ -1486,7 +1486,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
     auto regex_matches = [max_size = options.regex_max_program_size](
                              Arena* arena, CelValue::StringHolder target,
                              CelValue::StringHolder regex) -> CelValue {
-      RE2 re2(re2::StringPiece(regex.value().data(), regex.value().size()));
+      RE2 re2(regex.value());
       if (max_size > 0 && re2.ProgramSize() > max_size) {
         return CreateErrorValue(arena, "exceeded RE2 max program size",
                                 absl::StatusCode::kInvalidArgument);
@@ -1495,7 +1495,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
         return CreateErrorValue(arena, "invalid_argument",
                                 absl::StatusCode::kInvalidArgument);
       }
-      return CelValue::CreateBool(RE2::PartialMatch(re2::StringPiece(target.value().data(), target.value().size()), re2));
+      return CelValue::CreateBool(RE2::PartialMatch(target.value(), re2));
     };
 
     status = PortableFunctionAdapter<

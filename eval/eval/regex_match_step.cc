@@ -57,7 +57,7 @@ class RegexMatchStep final : public ExpressionStepBase {
           absl::StatusCode::kInternal,
           "Original pattern and supplied pattern are not the same");
     }
-    bool match = RE2::PartialMatch(re2::StringPiece(subject.StringOrDie().value().data(), subject.StringOrDie().value().size()), *re2_);
+    bool match = RE2::PartialMatch(subject.StringOrDie().value(), *re2_);
     frame->value_stack().Pop(kNumRegexMatchArguments);
     frame->value_stack().Push(CelValue::CreateBool(match));
     return absl::OkStatus();

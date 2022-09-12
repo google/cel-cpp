@@ -21,10 +21,6 @@ class BaseActivation {
   BaseActivation(const BaseActivation&) = delete;
   BaseActivation& operator=(const BaseActivation&) = delete;
 
-  // Move-constructible/move-assignable
-  BaseActivation(BaseActivation&& other) = default;
-  BaseActivation& operator=(BaseActivation&& other) = default;
-
   // Return a list of function overloads for the given name.
   virtual std::vector<const CelFunction*> FindFunctionOverloads(
       absl::string_view) const = 0;
@@ -53,7 +49,7 @@ class BaseActivation {
     return *empty;
   }
 
-  virtual ~BaseActivation() = default;
+  virtual ~BaseActivation() {}
 };
 
 }  // namespace google::api::expr::runtime

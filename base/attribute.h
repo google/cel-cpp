@@ -27,7 +27,7 @@
 #include "absl/types/variant.h"
 #include "base/kind.h"
 
-namespace google::api::expr {
+namespace google::api::expr::v1alpha1 {
 class Expr;
 namespace runtime {
 class CelValue;

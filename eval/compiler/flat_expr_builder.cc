@@ -126,7 +126,7 @@ class RegexProgramBuilder final {
       }
       programs_.erase(existing);
     }
-    auto program = std::make_shared<RE2>(re2::StringPiece(pattern.data(), pattern.size()));
+    auto program = std::make_shared<RE2>(pattern);
     if (max_program_size_ > 0 && program->ProgramSize() > max_program_size_) {
       return absl::InvalidArgumentError("exceeded RE2 max program size");
     }
