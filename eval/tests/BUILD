@@ -14,7 +14,6 @@ cc_test(
     srcs = [
         "benchmark_test.cc",
     ],
-    tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
