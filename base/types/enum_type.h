@@ -82,16 +82,6 @@ class EnumType : public Type, public base_internal::HeapData {
  protected:
   EnumType();
 
-  // Construct a new instance of EnumValue with a type of this. Called by
-  // EnumValue::New.
-  virtual absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      TypedEnumValueFactory& factory, absl::string_view name) const = 0;
-
-  // Construct a new instance of EnumValue with a type of this. Called by
-  // EnumValue::New.
-  virtual absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      TypedEnumValueFactory& factory, int64_t number) const = 0;
-
   // Called by FindConstant.
   virtual absl::StatusOr<Constant> FindConstantByName(
       absl::string_view name) const = 0;

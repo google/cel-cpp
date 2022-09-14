@@ -49,6 +49,7 @@
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
 #include "base/values/unknown_value.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -168,8 +169,19 @@ class ValueFactory final {
   absl::StatusOr<Persistent<const EnumValue>> CreateEnumValue(
       const Persistent<const EnumType>& enum_type,
       int64_t number) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    CEL_ASSIGN_OR_RETURN(auto constant,
+                         enum_type->FindConstant(EnumType::ConstantId(number)));
     return base_internal::PersistentHandleFactory<
-        const EnumValue>::template Make<EnumValue>(enum_type, number);
+        const EnumValue>::template Make<EnumValue>(enum_type, constant.number);
+  }
+
+  absl::StatusOr<Persistent<const EnumValue>> CreateEnumValue(
+      const Persistent<const EnumType>& enum_type,
+      absl::string_view name) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    CEL_ASSIGN_OR_RETURN(auto constant,
+                         enum_type->FindConstant(EnumType::ConstantId(name)));
+    return base_internal::PersistentHandleFactory<
+        const EnumValue>::template Make<EnumValue>(enum_type, constant.number);
   }
 
   template <typename T>

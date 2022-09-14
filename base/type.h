@@ -45,8 +45,8 @@ class ValueFactory;
 class TypedEnumValueFactory;
 class TypedStructValueFactory;
 
-// A representation of a CEL type that enables reflection, for static analysis,
-// and introspection, for program construction, of types.
+// A representation of a CEL type that enables introspection, for program
+// construction, of types.
 class Type : public base_internal::Data {
  public:
   static bool Is(const Type& type ABSL_ATTRIBUTE_UNUSED) { return true; }

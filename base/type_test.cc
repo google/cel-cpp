@@ -47,16 +47,6 @@ class TestEnumType final : public EnumType {
   absl::string_view name() const override { return "test_enum.TestEnum"; }
 
  protected:
-  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      TypedEnumValueFactory& factory, absl::string_view name) const override {
-    return absl::UnimplementedError("");
-  }
-
-  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      TypedEnumValueFactory& factory, int64_t number) const override {
-    return absl::UnimplementedError("");
-  }
-
   absl::StatusOr<Constant> FindConstantByName(
       absl::string_view name) const override {
     if (name == "VALUE1") {
@@ -96,11 +86,6 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const override {
-    return absl::UnimplementedError("");
-  }
-
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const override {
     if (name == "bool_field") {
