@@ -179,16 +179,6 @@ absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
   return absl::visit(HasFieldVisitor{*this}, field.data_);
 }
 
-absl::StatusOr<Persistent<StructValue>> StructType::NewInstance(
-    TypedStructValueFactory& factory) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)
-        ->NewInstance(factory);
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)
-      ->NewInstance(factory);
-}
-
 namespace base_internal {
 
 Persistent<const StructType> LegacyStructValue::type() const {
@@ -235,11 +225,6 @@ absl::StatusOr<bool> LegacyStructValue::HasFieldByName(
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(int64_t number) const {
   return MessageValueHasFieldByNumber(msg_, type_info_, number);
-}
-
-absl::StatusOr<Persistent<StructValue>> LegacyStructType::NewInstance(
-    TypedStructValueFactory& factory) const {
-  return absl::UnimplementedError("");
 }
 
 AbstractStructValue::AbstractStructValue(Persistent<const StructType> type)

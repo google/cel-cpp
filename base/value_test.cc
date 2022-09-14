@@ -62,31 +62,15 @@ class TestEnumType final : public EnumType {
   absl::string_view name() const override { return "test_enum.TestEnum"; }
 
  protected:
-  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      TypedEnumValueFactory& factory, absl::string_view name) const override {
-    if (name == "VALUE1") {
-      return factory.CreateEnumValue(TestEnum::kValue1);
-    } else if (name == "VALUE2") {
-      return factory.CreateEnumValue(TestEnum::kValue2);
-    }
-    return absl::NotFoundError("");
-  }
-
-  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      TypedEnumValueFactory& factory, int64_t number) const override {
-    switch (number) {
-      case 1:
-        return factory.CreateEnumValue(TestEnum::kValue1);
-      case 2:
-        return factory.CreateEnumValue(TestEnum::kValue2);
-      default:
-        return absl::NotFoundError("");
-    }
-  }
-
   absl::StatusOr<Constant> FindConstantByName(
       absl::string_view name) const override {
-    return absl::UnimplementedError("");
+    if (name == "VALUE1") {
+      return Constant("VALUE1", 1);
+    }
+    if (name == "VALUE2") {
+      return Constant("VALUE2", 2);
+    }
+    return absl::NotFoundError("");
   }
 
   absl::StatusOr<Constant> FindConstantByNumber(int64_t number) const override {
@@ -128,6 +112,9 @@ H AbslHashValue(H state, const TestStruct& test_struct) {
 
 class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
  public:
+  explicit TestStructValue(const Persistent<const StructType>& type)
+      : TestStructValue(type, TestStruct{}) {}
+
   explicit TestStructValue(const Persistent<const StructType>& type,
                            TestStruct value)
       : CEL_STRUCT_VALUE_CLASS(type), value_(std::move(value)) {}
@@ -283,11 +270,6 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const override {
-    return factory.CreateStructValue<TestStructValue>(TestStruct{});
-  }
-
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const override {
     if (name == "bool_field") {
@@ -623,16 +605,14 @@ INSTANTIATE_TEST_SUITE_P(
             {"Enum",
              [](TypeFactory& type_factory,
                 ValueFactory& value_factory) -> Persistent<const Value> {
-               return Must(EnumValue::New(
-                   Must(type_factory.CreateEnumType<TestEnumType>()),
-                   value_factory, EnumType::ConstantId("VALUE1")));
+               return Must(value_factory.CreateEnumValue(
+                   Must(type_factory.CreateEnumType<TestEnumType>()), 1));
              }},
             {"Struct",
              [](TypeFactory& type_factory,
                 ValueFactory& value_factory) -> Persistent<const Value> {
-               return Must(StructValue::New(
-                   Must(type_factory.CreateStructType<TestStructType>()),
-                   value_factory));
+               return Must(value_factory.CreateStructValue<TestStructValue>(
+                   Must(type_factory.CreateStructType<TestStructType>())));
              }},
             {"List",
              [](TypeFactory& type_factory,
@@ -1992,22 +1972,20 @@ TEST_P(ValueTest, Enum) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(
-      auto one_value,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
+  ASSERT_OK_AND_ASSIGN(auto one_value,
+                       value_factory.CreateEnumValue(enum_type, "VALUE1"));
   EXPECT_TRUE(one_value.Is<EnumValue>());
   EXPECT_FALSE(one_value.Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value, Must(EnumValue::New(enum_type, value_factory,
-                                           EnumType::ConstantId("VALUE1"))));
+  EXPECT_EQ(one_value,
+            Must(value_factory.CreateEnumValue(enum_type, "VALUE1")));
   EXPECT_EQ(one_value->kind(), Kind::kEnum);
   EXPECT_EQ(one_value->type(), enum_type);
   EXPECT_EQ(one_value->name(), "VALUE1");
   EXPECT_EQ(one_value->number(), 1);
 
-  ASSERT_OK_AND_ASSIGN(
-      auto two_value,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE2")));
+  ASSERT_OK_AND_ASSIGN(auto two_value,
+                       value_factory.CreateEnumValue(enum_type, "VALUE2"));
   EXPECT_TRUE(two_value.Is<EnumValue>());
   EXPECT_FALSE(two_value.Is<NullValue>());
   EXPECT_EQ(two_value, two_value);
@@ -2028,25 +2006,20 @@ TEST_P(EnumTypeTest, NewInstance) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(
-      auto one_value,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
-  ASSERT_OK_AND_ASSIGN(
-      auto two_value,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE2")));
-  ASSERT_OK_AND_ASSIGN(
-      auto one_value_by_number,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId(1)));
-  ASSERT_OK_AND_ASSIGN(
-      auto two_value_by_number,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId(2)));
+  ASSERT_OK_AND_ASSIGN(auto one_value,
+                       value_factory.CreateEnumValue(enum_type, "VALUE1"));
+  ASSERT_OK_AND_ASSIGN(auto two_value,
+                       value_factory.CreateEnumValue(enum_type, "VALUE2"));
+  ASSERT_OK_AND_ASSIGN(auto one_value_by_number,
+                       value_factory.CreateEnumValue(enum_type, 1));
+  ASSERT_OK_AND_ASSIGN(auto two_value_by_number,
+                       value_factory.CreateEnumValue(enum_type, 2));
   EXPECT_EQ(one_value, one_value_by_number);
   EXPECT_EQ(two_value, two_value_by_number);
 
-  EXPECT_THAT(
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE3")),
-      StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(EnumValue::New(enum_type, value_factory, EnumType::ConstantId(3)),
+  EXPECT_THAT(value_factory.CreateEnumValue(enum_type, "VALUE3"),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(value_factory.CreateEnumValue(enum_type, 3),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -2060,19 +2033,23 @@ TEST_P(ValueTest, Struct) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
-  ASSERT_OK_AND_ASSIGN(auto zero_value,
-                       StructValue::New(struct_type, value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto zero_value,
+      value_factory.CreateStructValue<TestStructValue>(struct_type));
   EXPECT_TRUE(zero_value.Is<StructValue>());
   EXPECT_TRUE(zero_value.Is<TestStructValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Must(StructValue::New(struct_type, value_factory)));
+  EXPECT_EQ(
+      zero_value,
+      Must(value_factory.CreateStructValue<TestStructValue>(struct_type)));
   EXPECT_EQ(zero_value->kind(), Kind::kStruct);
   EXPECT_EQ(zero_value->type(), struct_type);
   EXPECT_EQ(zero_value.As<TestStructValue>()->value(), TestStruct{});
 
-  ASSERT_OK_AND_ASSIGN(auto one_value,
-                       StructValue::New(struct_type, value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto one_value,
+      value_factory.CreateStructValue<TestStructValue>(struct_type));
   ASSERT_OK(one_value->SetField(StructValue::FieldId("bool_field"),
                                 value_factory.CreateBoolValue(true)));
   ASSERT_OK(one_value->SetField(StructValue::FieldId("int_field"),
@@ -2102,8 +2079,9 @@ TEST_P(StructValueTest, SetField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
-  ASSERT_OK_AND_ASSIGN(auto struct_value,
-                       StructValue::New(struct_type, value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto struct_value,
+      value_factory.CreateStructValue<TestStructValue>(struct_type));
   EXPECT_OK(struct_value->SetField(StructValue::FieldId("bool_field"),
                                    value_factory.CreateBoolValue(true)));
   EXPECT_THAT(
@@ -2180,8 +2158,9 @@ TEST_P(StructValueTest, GetField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
-  ASSERT_OK_AND_ASSIGN(auto struct_value,
-                       StructValue::New(struct_type, value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto struct_value,
+      value_factory.CreateStructValue<TestStructValue>(struct_type));
   EXPECT_THAT(
       struct_value->GetField(value_factory, StructValue::FieldId("bool_field")),
       IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
@@ -2215,8 +2194,9 @@ TEST_P(StructValueTest, HasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
-  ASSERT_OK_AND_ASSIGN(auto struct_value,
-                       StructValue::New(struct_type, value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto struct_value,
+      value_factory.CreateStructValue<TestStructValue>(struct_type));
   EXPECT_THAT(struct_value->HasField(StructValue::FieldId("bool_field")),
               IsOkAndHolds(true));
   EXPECT_THAT(struct_value->HasField(StructValue::FieldId(0)),
@@ -2439,11 +2419,11 @@ TEST_P(ValueTest, SupportsAbslHash) {
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(auto struct_type,
                        type_factory.CreateStructType<TestStructType>());
+  ASSERT_OK_AND_ASSIGN(auto enum_value,
+                       value_factory.CreateEnumValue(enum_type, 1));
   ASSERT_OK_AND_ASSIGN(
-      auto enum_value,
-      EnumValue::New(enum_type, value_factory, EnumType::ConstantId("VALUE1")));
-  ASSERT_OK_AND_ASSIGN(auto struct_value,
-                       StructValue::New(struct_type, value_factory));
+      auto struct_value,
+      value_factory.CreateStructValue<TestStructValue>(struct_type));
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto list_value,

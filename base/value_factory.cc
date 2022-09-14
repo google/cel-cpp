@@ -122,46 +122,6 @@ absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
   return value_factory.CreateBytesValue(std::move(cord));
 }
 
-struct EnumType::NewInstanceVisitor final {
-  const Persistent<const EnumType>& enum_type;
-  ValueFactory& value_factory;
-
-  absl::StatusOr<Persistent<const EnumValue>> operator()(
-      absl::string_view name) const {
-    TypedEnumValueFactory factory(value_factory, enum_type);
-    return enum_type->NewInstanceByName(factory, name);
-  }
-
-  absl::StatusOr<Persistent<const EnumValue>> operator()(int64_t number) const {
-    TypedEnumValueFactory factory(value_factory, enum_type);
-    return enum_type->NewInstanceByNumber(factory, number);
-  }
-};
-
-absl::StatusOr<Persistent<const EnumValue>> EnumValue::New(
-    const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
-    EnumType::ConstantId id) {
-  CEL_ASSIGN_OR_RETURN(
-      auto enum_value,
-      absl::visit(EnumType::NewInstanceVisitor{enum_type, value_factory},
-                  id.data_));
-  if (!enum_value->type_) {
-    // In case somebody is caching, we avoid setting the type_ if it has already
-    // been set, to avoid a race condition where one CPU sees a half written
-    // pointer.
-    const_cast<EnumValue&>(*enum_value).type_ = enum_type;
-  }
-  return enum_value;
-}
-
-absl::StatusOr<Persistent<StructValue>> StructValue::New(
-    const Persistent<const StructType>& struct_type,
-    ValueFactory& value_factory) {
-  TypedStructValueFactory factory(value_factory, struct_type);
-  CEL_ASSIGN_OR_RETURN(auto struct_value, struct_type->NewInstance(factory));
-  return struct_value;
-}
-
 Persistent<const BoolValue> ValueFactory::CreateBoolValue(bool value) {
   return PersistentHandleFactory<const BoolValue>::Make<BoolValue>(value);
 }

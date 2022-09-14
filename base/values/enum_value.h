@@ -21,7 +21,6 @@
 #include <utility>
 
 #include "absl/hash/hash.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -40,13 +39,9 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  static absl::StatusOr<Persistent<const EnumValue>> New(
-      const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
-      EnumType::ConstantId id);
-
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const EnumType> type() const { return type_; }
+  Persistent<const EnumType> type() const { return type_; }
 
   std::string DebugString() const;
 

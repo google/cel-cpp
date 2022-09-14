@@ -44,10 +44,6 @@ class StructValue : public Value {
 
   using FieldId = StructType::FieldId;
 
-  static absl::StatusOr<Persistent<StructValue>> New(
-      const Persistent<const StructType>& struct_type,
-      ValueFactory& value_factory);
-
   constexpr Kind kind() const { return kKind; }
 
   Persistent<const StructType> type() const;

@@ -82,9 +82,6 @@ class StructType : public Type {
   absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
 
  protected:
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const;
-
   // Called by FindField.
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const;
@@ -146,10 +143,6 @@ class LegacyStructType final : public StructType,
 
  protected:
   // Always returns an error.
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const;
-
-  // Always returns an error.
   absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
                                         absl::string_view name) const;
 
@@ -198,9 +191,6 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
 
  protected:
   AbstractStructType();
-
-  virtual absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const = 0;
 
   // Called by FindField.
   virtual absl::StatusOr<Field> FindFieldByName(
