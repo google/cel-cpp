@@ -146,6 +146,7 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
 }
 
 class DucktypedMessageAdapter : public LegacyTypeAccessApis,
+                                public LegacyTypeMutationApis,
                                 public LegacyTypeInfoApis {
  public:
   // Implement field access APIs.
@@ -205,7 +206,54 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
     return message->ShortDebugString();
   }
 
+  bool DefinesField(absl::string_view field_name) const override {
+    // Pretend all our fields exist. Real errors will be returned from field
+    // getters and setters.
+    return true;
+  }
+
+  absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
+      cel::MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError("NewInstance is not implemented");
+  }
+
+  absl::StatusOr<CelValue> AdaptFromWellKnownType(
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder instance) const override {
+    if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
+      return absl::UnimplementedError(
+          "MessageLite is not supported, descriptor is required");
+    }
+    return ProtoMessageTypeAdapter(
+               cel::internal::down_cast<const google::protobuf::Message*>(
+                   instance.message_ptr())
+                   ->GetDescriptor(),
+               nullptr)
+        .AdaptFromWellKnownType(memory_manager, instance);
+  }
+
+  absl::Status SetField(
+      absl::string_view field_name, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const override {
+    if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
+      return absl::UnimplementedError(
+          "MessageLite is not supported, descriptor is required");
+    }
+    return ProtoMessageTypeAdapter(
+               cel::internal::down_cast<const google::protobuf::Message*>(
+                   instance.message_ptr())
+                   ->GetDescriptor(),
+               nullptr)
+        .SetField(field_name, value, memory_manager, instance);
+  }
+
   const LegacyTypeAccessApis* GetAccessApis(
+      const MessageWrapper& wrapped_message) const override {
+    return this;
+  }
+
+  const LegacyTypeMutationApis* GetMutationApis(
       const MessageWrapper& wrapped_message) const override {
     return this;
   }
@@ -235,6 +283,11 @@ absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
 
 absl::StatusOr<CelValue::MessageWrapper::Builder>
 ProtoMessageTypeAdapter::NewInstance(cel::MemoryManager& memory_manager) const {
+  if (message_factory_ == nullptr) {
+    return absl::UnimplementedError(
+        absl::StrCat("Cannot create message ", descriptor_->name()));
+  }
+
   // This implementation requires arena-backed memory manager.
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
   const Message* prototype = message_factory_->GetPrototype(descriptor_);

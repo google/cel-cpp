@@ -23,6 +23,7 @@ namespace google::api::expr::runtime {
 
 // Forward declared to resolve cyclic dependency.
 class LegacyTypeAccessApis;
+class LegacyTypeMutationApis;
 
 // Interface for providing type info from a user defined type (represented as a
 // message).
@@ -58,6 +59,17 @@ class LegacyTypeInfoApis {
   // is not defined for the type.
   virtual const LegacyTypeAccessApis* GetAccessApis(
       const MessageWrapper& wrapped_message) const = 0;
+
+  // Return a pointer to the wrapped message's mutation api implementation.
+  //
+  // The CEL interpreter assumes that the returned pointer is owned externally
+  // and will outlive any CelValues created by the interpreter.
+  //
+  // Nullptr signals that the value does not provide mutation apis.
+  virtual const LegacyTypeMutationApis* GetMutationApis(
+      const MessageWrapper& wrapped_message) const {
+    return nullptr;
+  }
 };
 
 }  // namespace google::api::expr::runtime
