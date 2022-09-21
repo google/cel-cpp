@@ -36,16 +36,18 @@ EnumType::EnumType() : base_internal::HeapData(kKind) {
 struct EnumType::FindConstantVisitor final {
   const EnumType& enum_type;
 
-  absl::StatusOr<Constant> operator()(absl::string_view name) const {
+  absl::StatusOr<absl::optional<Constant>> operator()(
+      absl::string_view name) const {
     return enum_type.FindConstantByName(name);
   }
 
-  absl::StatusOr<Constant> operator()(int64_t number) const {
+  absl::StatusOr<absl::optional<Constant>> operator()(int64_t number) const {
     return enum_type.FindConstantByNumber(number);
   }
 };
 
-absl::StatusOr<EnumType::Constant> EnumType::FindConstant(ConstantId id) const {
+absl::StatusOr<absl::optional<EnumType::Constant>> EnumType::FindConstant(
+    ConstantId id) const {
   return absl::visit(FindConstantVisitor{*this}, id.data_);
 }
 

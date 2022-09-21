@@ -62,7 +62,7 @@ class TestEnumType final : public EnumType {
   absl::string_view name() const override { return "test_enum.TestEnum"; }
 
  protected:
-  absl::StatusOr<Constant> FindConstantByName(
+  absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override {
     if (name == "VALUE1") {
       return Constant("VALUE1", 1);
@@ -70,17 +70,18 @@ class TestEnumType final : public EnumType {
     if (name == "VALUE2") {
       return Constant("VALUE2", 2);
     }
-    return absl::NotFoundError("");
+    return absl::nullopt;
   }
 
-  absl::StatusOr<Constant> FindConstantByNumber(int64_t number) const override {
+  absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
+      int64_t number) const override {
     switch (number) {
       case 1:
         return Constant("VALUE1", 1);
       case 2:
         return Constant("VALUE2", 2);
       default:
-        return absl::NotFoundError("");
+        return absl::nullopt;
     }
   }
 
@@ -270,8 +271,8 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
  protected:
-  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
-                                        absl::string_view name) const override {
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const override {
     if (name == "bool_field") {
       return Field("bool_field", 0, type_manager.type_factory().GetBoolType());
     } else if (name == "int_field") {
@@ -282,11 +283,11 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
       return Field("double_field", 3,
                    type_manager.type_factory().GetDoubleType());
     }
-    return absl::NotFoundError("");
+    return absl::nullopt;
   }
 
-  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                          int64_t number) const override {
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const override {
     switch (number) {
       case 0:
         return Field("bool_field", 0,
@@ -300,7 +301,7 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
         return Field("double_field", 3,
                      type_manager.type_factory().GetDoubleType());
       default:
-        return absl::NotFoundError("");
+        return absl::nullopt;
     }
   }
 

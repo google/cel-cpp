@@ -23,10 +23,10 @@ CEL_INTERNAL_VALUE_IMPL(EnumValue);
 
 absl::string_view EnumValue::name() const {
   auto constant = type()->FindConstantByNumber(number());
-  if (!constant.ok()) {
+  if (!constant.ok() || !constant->has_value()) {
     return absl::string_view();
   }
-  return constant->name;
+  return (*constant)->name;
 }
 
 std::string EnumValue::DebugString() const {

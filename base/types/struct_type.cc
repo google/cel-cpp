@@ -70,7 +70,7 @@ internal::TypeInfo StructType::TypeId() const {
   return static_cast<const base_internal::AbstractStructType*>(this)->TypeId();
 }
 
-absl::StatusOr<StructType::Field> StructType::FindFieldByName(
+absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByName(
     TypeManager& type_manager, absl::string_view name) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructType*>(this)
@@ -80,7 +80,7 @@ absl::StatusOr<StructType::Field> StructType::FindFieldByName(
       ->FindFieldByName(type_manager, name);
 }
 
-absl::StatusOr<StructType::Field> StructType::FindFieldByNumber(
+absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByNumber(
     TypeManager& type_manager, int64_t number) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructType*>(this)
@@ -94,16 +94,17 @@ struct StructType::FindFieldVisitor final {
   const StructType& struct_type;
   TypeManager& type_manager;
 
-  absl::StatusOr<Field> operator()(absl::string_view name) const {
+  absl::StatusOr<absl::optional<Field>> operator()(
+      absl::string_view name) const {
     return struct_type.FindFieldByName(type_manager, name);
   }
 
-  absl::StatusOr<Field> operator()(int64_t number) const {
+  absl::StatusOr<absl::optional<Field>> operator()(int64_t number) const {
     return struct_type.FindFieldByNumber(type_manager, number);
   }
 };
 
-absl::StatusOr<StructType::Field> StructType::FindField(
+absl::StatusOr<absl::optional<StructType::Field>> StructType::FindField(
     TypeManager& type_manager, FieldId id) const {
   return absl::visit(FindFieldVisitor{*this, type_manager}, id.data_);
 }
@@ -122,22 +123,18 @@ bool LegacyStructType::Equals(const Type& other) const {
   return MessageTypeEquals(msg_, other);
 }
 
-absl::StatusOr<LegacyStructType::Field> LegacyStructType::FindField(
-    TypeManager& type_manager, FieldId id) const {
+// Always returns an error.
+absl::StatusOr<absl::optional<StructType::Field>>
+LegacyStructType::FindFieldByName(TypeManager& type_manager,
+                                  absl::string_view name) const {
   return absl::UnimplementedError(
       "Legacy struct type does not support type introspection");
 }
 
 // Always returns an error.
-absl::StatusOr<LegacyStructType::Field> LegacyStructType::FindFieldByName(
-    TypeManager& type_manager, absl::string_view name) const {
-  return absl::UnimplementedError(
-      "Legacy struct type does not support type introspection");
-}
-
-// Always returns an error.
-absl::StatusOr<LegacyStructType::Field> LegacyStructType::FindFieldByNumber(
-    TypeManager& type_manager, int64_t number) const {
+absl::StatusOr<absl::optional<StructType::Field>>
+LegacyStructType::FindFieldByNumber(TypeManager& type_manager,
+                                    int64_t number) const {
   return absl::UnimplementedError(
       "Legacy struct type does not support type introspection");
 }
