@@ -24,7 +24,7 @@ namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(ListType);
 
-ListType::ListType(Persistent<const Type> element)
+ListType::ListType(Persistent<Type> element)
     : base_internal::HeapData(kKind), element_(std::move(element)) {
   // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
   ABSL_ASSERT(

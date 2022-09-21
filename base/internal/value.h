@@ -85,7 +85,7 @@ struct InlineValue final {
     absl::Cord cord_value;
     absl::string_view string_value;
     struct {
-      Persistent<const EnumType> type;
+      Persistent<EnumType> type;
       int64_t number;
     } enum_value;
   };
@@ -121,11 +121,11 @@ struct UnknownSetImpl;
 namespace interop_internal {
 
 base_internal::StringValueRep GetStringValueRep(
-    const Persistent<const StringValue>& value);
+    const Persistent<StringValue>& value);
 base_internal::BytesValueRep GetBytesValueRep(
-    const Persistent<const BytesValue>& value);
+    const Persistent<BytesValue>& value);
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Persistent<const UnknownValue>& value);
+    const Persistent<UnknownValue>& value);
 void SetUnknownValueImpl(Persistent<UnknownValue>& value,
                          std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
@@ -133,13 +133,9 @@ void SetUnknownValueImpl(Persistent<UnknownValue>& value,
 
 }  // namespace cel
 
-#define CEL_INTERNAL_VALUE_DECL(name)     \
-  extern template class Persistent<name>; \
-  extern template class Persistent<const name>
+#define CEL_INTERNAL_VALUE_DECL(name) extern template class Persistent<name>
 
-#define CEL_INTERNAL_VALUE_IMPL(name) \
-  template class Persistent<name>;    \
-  template class Persistent<const name>
+#define CEL_INTERNAL_VALUE_IMPL(name) template class Persistent<name>
 
 #define CEL_INTERNAL_DECLARE_VALUE(base, derived)           \
  public:                                                    \

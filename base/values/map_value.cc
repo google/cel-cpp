@@ -22,7 +22,7 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(MapValue);
 
-MapValue::MapValue(Persistent<const MapType> type)
+MapValue::MapValue(Persistent<MapType> type)
     : base_internal::HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
   ABSL_ASSERT(

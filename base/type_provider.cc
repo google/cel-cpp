@@ -33,7 +33,7 @@ class BuiltinTypeProvider final : public TypeProvider {
  public:
   using BuiltinType =
       std::pair<absl::string_view,
-                absl::StatusOr<Persistent<const Type>> (*)(TypeFactory&)>;
+                absl::StatusOr<Persistent<Type>> (*)(TypeFactory&)>;
 
   BuiltinTypeProvider()
       : types_{{
@@ -57,7 +57,7 @@ class BuiltinTypeProvider final : public TypeProvider {
         });
   }
 
-  absl::StatusOr<Persistent<const Type>> ProvideType(
+  absl::StatusOr<Persistent<Type>> ProvideType(
       TypeFactory& type_factory, absl::string_view name) const override {
     auto existing = std::lower_bound(
         types_.begin(), types_.end(), name,
@@ -65,71 +65,71 @@ class BuiltinTypeProvider final : public TypeProvider {
           return lhs.first < rhs;
         });
     if (existing == types_.end() || existing->first != name) {
-      return Persistent<const Type>();
+      return Persistent<Type>();
     }
     return (existing->second)(type_factory);
   }
 
  private:
-  static absl::StatusOr<Persistent<const Type>> GetNullType(
+  static absl::StatusOr<Persistent<Type>> GetNullType(
       TypeFactory& type_factory) {
     return type_factory.GetNullType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetBoolType(
+  static absl::StatusOr<Persistent<Type>> GetBoolType(
       TypeFactory& type_factory) {
     return type_factory.GetBoolType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetIntType(
+  static absl::StatusOr<Persistent<Type>> GetIntType(
       TypeFactory& type_factory) {
     return type_factory.GetIntType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetUintType(
+  static absl::StatusOr<Persistent<Type>> GetUintType(
       TypeFactory& type_factory) {
     return type_factory.GetUintType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetDoubleType(
+  static absl::StatusOr<Persistent<Type>> GetDoubleType(
       TypeFactory& type_factory) {
     return type_factory.GetDoubleType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetBytesType(
+  static absl::StatusOr<Persistent<Type>> GetBytesType(
       TypeFactory& type_factory) {
     return type_factory.GetBytesType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetStringType(
+  static absl::StatusOr<Persistent<Type>> GetStringType(
       TypeFactory& type_factory) {
     return type_factory.GetStringType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetDurationType(
+  static absl::StatusOr<Persistent<Type>> GetDurationType(
       TypeFactory& type_factory) {
     return type_factory.GetDurationType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetTimestampType(
+  static absl::StatusOr<Persistent<Type>> GetTimestampType(
       TypeFactory& type_factory) {
     return type_factory.GetTimestampType();
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetListType(
+  static absl::StatusOr<Persistent<Type>> GetListType(
       TypeFactory& type_factory) {
     // The element type does not matter.
     return type_factory.CreateListType(type_factory.GetDynType());
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetMapType(
+  static absl::StatusOr<Persistent<Type>> GetMapType(
       TypeFactory& type_factory) {
     // The key and value types do not matter.
     return type_factory.CreateMapType(type_factory.GetDynType(),
                                       type_factory.GetDynType());
   }
 
-  static absl::StatusOr<Persistent<const Type>> GetTypeType(
+  static absl::StatusOr<Persistent<Type>> GetTypeType(
       TypeFactory& type_factory) {
     return type_factory.GetTypeType();
   }

@@ -45,7 +45,7 @@ class MapValue : public Value, public base_internal::HeapData {
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const MapType> type() const { return type_; }
+  const Persistent<MapType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
@@ -57,18 +57,16 @@ class MapValue : public Value, public base_internal::HeapData {
 
   virtual void HashValue(absl::HashState state) const = 0;
 
-  virtual absl::StatusOr<Persistent<const Value>> Get(
-      ValueFactory& value_factory,
-      const Persistent<const Value>& key) const = 0;
+  virtual absl::StatusOr<Persistent<Value>> Get(
+      ValueFactory& value_factory, const Persistent<Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(
-      const Persistent<const Value>& key) const = 0;
+  virtual absl::StatusOr<bool> Has(const Persistent<Value>& key) const = 0;
 
-  virtual absl::StatusOr<Persistent<const ListValue>> ListKeys(
+  virtual absl::StatusOr<Persistent<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;
 
  protected:
-  explicit MapValue(Persistent<const MapType> type);
+  explicit MapValue(Persistent<MapType> type);
 
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
@@ -78,7 +76,7 @@ class MapValue : public Value, public base_internal::HeapData {
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  const Persistent<const MapType> type_;
+  const Persistent<MapType> type_;
 };
 
 CEL_INTERNAL_VALUE_DECL(MapValue);

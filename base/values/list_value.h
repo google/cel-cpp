@@ -43,7 +43,7 @@ class ListValue : public Value, public base_internal::HeapData {
 
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  const Persistent<const ListType> type() const { return type_; }
+  const Persistent<ListType> type() const { return type_; }
 
   constexpr Kind kind() const { return kKind; }
 
@@ -53,15 +53,15 @@ class ListValue : public Value, public base_internal::HeapData {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Persistent<const Value>> Get(
-      ValueFactory& value_factory, size_t index) const = 0;
+  virtual absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                                size_t index) const = 0;
 
   virtual bool Equals(const Value& other) const = 0;
 
   virtual void HashValue(absl::HashState state) const = 0;
 
  protected:
-  explicit ListValue(Persistent<const ListType> type);
+  explicit ListValue(Persistent<ListType> type);
 
  private:
   friend internal::TypeInfo base_internal::GetListValueTypeId(
@@ -71,7 +71,7 @@ class ListValue : public Value, public base_internal::HeapData {
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  const Persistent<const ListType> type_;
+  const Persistent<ListType> type_;
 };
 
 CEL_INTERNAL_VALUE_DECL(ListValue);

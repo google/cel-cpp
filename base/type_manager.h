@@ -47,7 +47,7 @@ class TypeManager final {
 
   TypeProvider& type_provider() const { return type_provider_; }
 
-  absl::StatusOr<Persistent<const Type>> ResolveType(absl::string_view name);
+  absl::StatusOr<Persistent<Type>> ResolveType(absl::string_view name);
 
  private:
   TypeFactory& type_factory_;
@@ -55,7 +55,7 @@ class TypeManager final {
 
   mutable absl::Mutex mutex_;
   // std::string as the key because we also cache types which do not exist.
-  mutable absl::flat_hash_map<std::string, Persistent<const Type>> types_
+  mutable absl::flat_hash_map<std::string, Persistent<Type>> types_
       ABSL_GUARDED_BY(mutex_);
 };
 

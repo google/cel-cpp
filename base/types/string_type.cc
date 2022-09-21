@@ -24,18 +24,17 @@ CEL_INTERNAL_TYPE_IMPL(StringType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<const StringType>) char instance_storage[sizeof(
-    Persistent<const StringType>)];
+alignas(Persistent<StringType>) char instance_storage[sizeof(
+    Persistent<StringType>)];
 
 }  // namespace
 
-const Persistent<const StringType>& StringType::Get() {
+const Persistent<StringType>& StringType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<const StringType>::MakeAt<
-        StringType>(&instance_storage[0]);
+    base_internal::PersistentHandleFactory<StringType>::MakeAt<StringType>(
+        &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<const StringType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Persistent<StringType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

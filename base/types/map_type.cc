@@ -24,7 +24,7 @@ namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(MapType);
 
-MapType::MapType(Persistent<const Type> key, Persistent<const Type> value)
+MapType::MapType(Persistent<Type> key, Persistent<Type> value)
     : base_internal::HeapData(kKind),
       key_(std::move(key)),
       value_(std::move(value)) {

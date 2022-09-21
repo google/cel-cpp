@@ -34,7 +34,7 @@ class MemoryManager;
 // element is the same type.
 class ListType final : public Type, public base_internal::HeapData {
   // I would have liked to make this class final, but we cannot instantiate
-  // Persistent<const Type> or Transient<const Type> at this point. It must be
+  // Persistent<Type> or Transient<const Type> at this point. It must be
   // done after the post include below. Maybe we should separate out the post
   // includes on a per type basis so we can do that?
  public:
@@ -53,16 +53,16 @@ class ListType final : public Type, public base_internal::HeapData {
   bool Equals(const Type& other) const;
 
   // Returns the type of the elements in the list.
-  const Persistent<const Type>& element() const { return element_; }
+  const Persistent<Type>& element() const { return element_; }
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
   friend class base_internal::PersistentTypeHandle;
 
-  explicit ListType(Persistent<const Type> element);
+  explicit ListType(Persistent<Type> element);
 
-  const Persistent<const Type> element_;
+  const Persistent<Type> element_;
 };
 
 CEL_INTERNAL_TYPE_DECL(ListType);

@@ -29,64 +29,52 @@ using base_internal::PersistentHandleFactory;
 
 }  // namespace
 
-Persistent<const NullType> TypeFactory::GetNullType() {
-  return NullType::Get();
-}
+Persistent<NullType> TypeFactory::GetNullType() { return NullType::Get(); }
 
-Persistent<const ErrorType> TypeFactory::GetErrorType() {
-  return ErrorType::Get();
-}
+Persistent<ErrorType> TypeFactory::GetErrorType() { return ErrorType::Get(); }
 
-Persistent<const DynType> TypeFactory::GetDynType() { return DynType::Get(); }
+Persistent<DynType> TypeFactory::GetDynType() { return DynType::Get(); }
 
-Persistent<const AnyType> TypeFactory::GetAnyType() { return AnyType::Get(); }
+Persistent<AnyType> TypeFactory::GetAnyType() { return AnyType::Get(); }
 
-Persistent<const BoolType> TypeFactory::GetBoolType() {
-  return BoolType::Get();
-}
+Persistent<BoolType> TypeFactory::GetBoolType() { return BoolType::Get(); }
 
-Persistent<const IntType> TypeFactory::GetIntType() { return IntType::Get(); }
+Persistent<IntType> TypeFactory::GetIntType() { return IntType::Get(); }
 
-Persistent<const UintType> TypeFactory::GetUintType() {
-  return UintType::Get();
-}
+Persistent<UintType> TypeFactory::GetUintType() { return UintType::Get(); }
 
-Persistent<const DoubleType> TypeFactory::GetDoubleType() {
+Persistent<DoubleType> TypeFactory::GetDoubleType() {
   return DoubleType::Get();
 }
 
-Persistent<const StringType> TypeFactory::GetStringType() {
+Persistent<StringType> TypeFactory::GetStringType() {
   return StringType::Get();
 }
 
-Persistent<const BytesType> TypeFactory::GetBytesType() {
-  return BytesType::Get();
-}
+Persistent<BytesType> TypeFactory::GetBytesType() { return BytesType::Get(); }
 
-Persistent<const DurationType> TypeFactory::GetDurationType() {
+Persistent<DurationType> TypeFactory::GetDurationType() {
   return DurationType::Get();
 }
 
-Persistent<const TimestampType> TypeFactory::GetTimestampType() {
+Persistent<TimestampType> TypeFactory::GetTimestampType() {
   return TimestampType::Get();
 }
 
-Persistent<const TypeType> TypeFactory::GetTypeType() {
-  return TypeType::Get();
-}
+Persistent<TypeType> TypeFactory::GetTypeType() { return TypeType::Get(); }
 
-Persistent<const UnknownType> TypeFactory::GetUnknownType() {
+Persistent<UnknownType> TypeFactory::GetUnknownType() {
   return UnknownType::Get();
 }
 
-absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
-    const Persistent<const Type>& element) {
+absl::StatusOr<Persistent<ListType>> TypeFactory::CreateListType(
+    const Persistent<Type>& element) {
   absl::MutexLock lock(&list_types_mutex_);
   auto existing = list_types_.find(element);
   if (existing != list_types_.end()) {
     return existing->second;
   }
-  auto list_type = PersistentHandleFactory<const ListType>::Make<ListType>(
+  auto list_type = PersistentHandleFactory<ListType>::Make<ListType>(
       memory_manager(), element);
   if (ABSL_PREDICT_FALSE(!list_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
@@ -98,15 +86,15 @@ absl::StatusOr<Persistent<const ListType>> TypeFactory::CreateListType(
   return list_type;
 }
 
-absl::StatusOr<Persistent<const MapType>> TypeFactory::CreateMapType(
-    const Persistent<const Type>& key, const Persistent<const Type>& value) {
+absl::StatusOr<Persistent<MapType>> TypeFactory::CreateMapType(
+    const Persistent<Type>& key, const Persistent<Type>& value) {
   auto key_and_value = std::make_pair(key, value);
   absl::MutexLock lock(&map_types_mutex_);
   auto existing = map_types_.find(key_and_value);
   if (existing != map_types_.end()) {
     return existing->second;
   }
-  auto map_type = PersistentHandleFactory<const MapType>::Make<MapType>(
+  auto map_type = PersistentHandleFactory<MapType>::Make<MapType>(
       memory_manager(), key, value);
   if (ABSL_PREDICT_FALSE(!map_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as

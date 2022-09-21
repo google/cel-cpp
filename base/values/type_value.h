@@ -35,7 +35,7 @@ class TypeValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const TypeType> type() const { return TypeType::Get(); }
+  Persistent<TypeType> type() const { return TypeType::Get(); }
 
   std::string DebugString() const;
 
@@ -43,7 +43,7 @@ class TypeValue final : public Value, public base_internal::InlineData {
 
   bool Equals(const Value& other) const;
 
-  constexpr const Persistent<const Type>& value() const { return value_; }
+  constexpr const Persistent<Type>& value() const { return value_; }
 
  private:
   friend class PersistentValueHandle;
@@ -54,7 +54,7 @@ class TypeValue final : public Value, public base_internal::InlineData {
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  explicit TypeValue(Persistent<const Type> value)
+  explicit TypeValue(Persistent<Type> value)
       : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   TypeValue(const TypeValue&) = default;
@@ -62,7 +62,7 @@ class TypeValue final : public Value, public base_internal::InlineData {
   TypeValue& operator=(const TypeValue&) = default;
   TypeValue& operator=(TypeValue&&) = default;
 
-  Persistent<const Type> value_;
+  Persistent<Type> value_;
 };
 
 CEL_INTERNAL_VALUE_DECL(TypeValue);

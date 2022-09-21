@@ -33,7 +33,7 @@ class DurationValue final
 
   using Base::Is;
 
-  static Persistent<const DurationValue> Zero(ValueFactory& value_factory);
+  static Persistent<DurationValue> Zero(ValueFactory& value_factory);
 
   using Base::kind;
 

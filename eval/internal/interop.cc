@@ -40,15 +40,15 @@ using google::api::expr::runtime::UnknownSet;
 
 class LegacyListValue final : public ListValue {
  public:
-  LegacyListValue(Persistent<const ListType> type, const CelList* impl)
+  LegacyListValue(Persistent<ListType> type, const CelList* impl)
       : ListValue(std::move(type)), impl_(impl) {}
 
   size_t size() const override { return impl_->size(); }
 
   bool empty() const override { return impl_->empty(); }
 
-  absl::StatusOr<Persistent<const Value>> Get(ValueFactory& value_factory,
-                                              size_t index) const override;
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        size_t index) const override;
 
   std::string DebugString() const override;
 
@@ -65,7 +65,7 @@ class LegacyListValue final : public ListValue {
 
 CEL_IMPLEMENT_LIST_VALUE(LegacyListValue);
 
-absl::StatusOr<Persistent<const Value>> LegacyListValue::Get(
+absl::StatusOr<Persistent<Value>> LegacyListValue::Get(
     ValueFactory& value_factory, size_t index) const {
   return FromLegacyValue(value_factory, (*impl_)[index]);
 }
@@ -86,7 +86,7 @@ void LegacyListValue::HashValue(absl::HashState state) const {
 
 class LegacyCelList final : public CelList {
  public:
-  LegacyCelList(ValueFactory& value_factory, Persistent<const ListValue> impl)
+  LegacyCelList(ValueFactory& value_factory, Persistent<ListValue> impl)
       : value_factory_(value_factory), impl_(std::move(impl)) {}
 
   CelValue operator[](int index) const override {
@@ -110,12 +110,12 @@ class LegacyCelList final : public CelList {
 
  private:
   ValueFactory& value_factory_;
-  Persistent<const ListValue> impl_;
+  Persistent<ListValue> impl_;
 };
 
 class LegacyMapValue final : public MapValue {
  public:
-  LegacyMapValue(Persistent<const MapType> type, ValueFactory& value_factory,
+  LegacyMapValue(Persistent<MapType> type, ValueFactory& value_factory,
                  const CelMap* impl)
       : MapValue(std::move(type)), value_factory_(value_factory), impl_(impl) {}
 
@@ -137,23 +137,23 @@ class LegacyMapValue final : public MapValue {
     // TODO(issues/5): deal with this
   }
 
-  absl::StatusOr<Persistent<const Value>> Get(
+  absl::StatusOr<Persistent<Value>> Get(
       ValueFactory& value_factory,
-      const Persistent<const Value>& key) const override {
+      const Persistent<Value>& key) const override {
     CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(value_factory, key));
     auto legacy_value = (*impl_)[legacy_key];
     if (!legacy_value.has_value()) {
-      return Persistent<const Value>();
+      return Persistent<Value>();
     }
     return FromLegacyValue(value_factory, std::move(legacy_value).value());
   }
 
-  absl::StatusOr<bool> Has(const Persistent<const Value>& key) const override {
+  absl::StatusOr<bool> Has(const Persistent<Value>& key) const override {
     CEL_ASSIGN_OR_RETURN(auto legacy_value, ToLegacyValue(value_factory_, key));
     return impl_->Has(legacy_value);
   }
 
-  absl::StatusOr<Persistent<const ListValue>> ListKeys(
+  absl::StatusOr<Persistent<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          value_factory.type_factory().CreateListType(
@@ -175,7 +175,7 @@ CEL_IMPLEMENT_MAP_VALUE(LegacyMapValue);
 
 class LegacyCelMap final : public CelMap {
  public:
-  LegacyCelMap(ValueFactory& value_factory, Persistent<const MapValue> impl)
+  LegacyCelMap(ValueFactory& value_factory, Persistent<MapValue> impl)
       : value_factory_(value_factory), impl_(std::move(impl)) {}
 
   absl::optional<CelValue> operator[](CelValue key) const override {
@@ -221,33 +221,33 @@ class LegacyCelMap final : public CelMap {
 
  private:
   ValueFactory& value_factory_;
-  Persistent<const MapValue> impl_;
+  Persistent<MapValue> impl_;
 };
 
 }  // namespace
 
-absl::StatusOr<Persistent<const StringValue>> CreateStringValueFromView(
+absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
     cel::ValueFactory& value_factory, absl::string_view input) {
   return value_factory.CreateStringValueFromView(input);
 }
 
-absl::StatusOr<Persistent<const BytesValue>> CreateBytesValueFromView(
+absl::StatusOr<Persistent<BytesValue>> CreateBytesValueFromView(
     cel::ValueFactory& value_factory, absl::string_view input) {
   return value_factory.CreateBytesValueFromView(input);
 }
 
 base_internal::StringValueRep GetStringValueRep(
-    const Persistent<const StringValue>& value) {
+    const Persistent<StringValue>& value) {
   return value->rep();
 }
 
 base_internal::BytesValueRep GetBytesValueRep(
-    const Persistent<const BytesValue>& value) {
+    const Persistent<BytesValue>& value) {
   return value->rep();
 }
 
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Persistent<const UnknownValue>& value) {
+    const Persistent<UnknownValue>& value) {
   return value->impl_;
 }
 
@@ -266,7 +266,7 @@ void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,
   unknown_set.impl_ = std::move(impl);
 }
 
-absl::StatusOr<Persistent<const Value>> FromLegacyValue(
+absl::StatusOr<Persistent<Value>> FromLegacyValue(
     cel::ValueFactory& value_factory, const CelValue& legacy_value) {
   switch (legacy_value.type()) {
     case CelValue::Type::kNullType:
@@ -368,7 +368,7 @@ struct StringValueToLegacyVisitor final {
 }  // namespace
 
 absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
-                                       const Persistent<const Value>& value) {
+                                       const Persistent<Value>& value) {
   switch (value->kind()) {
     case Kind::kNullType:
       return CelValue::CreateNull();
@@ -382,52 +382,50 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
       // Should be fine, so long as we are using an arena allocator.
       return CelValue::CreateCelType(CelValue::CelTypeHolder(
           value_factory.memory_manager()
-              .New<std::string>(value.As<const TypeValue>()->value()->name())
+              .New<std::string>(value.As<TypeValue>()->value()->name())
               .release()));
     case Kind::kBool:
-      return CelValue::CreateBool(value.As<const BoolValue>()->value());
+      return CelValue::CreateBool(value.As<BoolValue>()->value());
     case Kind::kInt:
-      return CelValue::CreateInt64(value.As<const IntValue>()->value());
+      return CelValue::CreateInt64(value.As<IntValue>()->value());
     case Kind::kUint:
-      return CelValue::CreateUint64(value.As<const UintValue>()->value());
+      return CelValue::CreateUint64(value.As<UintValue>()->value());
     case Kind::kDouble:
-      return CelValue::CreateDouble(value.As<const DoubleValue>()->value());
+      return CelValue::CreateDouble(value.As<DoubleValue>()->value());
     case Kind::kString:
       return absl::visit(
           StringValueToLegacyVisitor{value_factory.memory_manager()},
-          GetStringValueRep(value.As<const StringValue>()));
+          GetStringValueRep(value.As<StringValue>()));
     case Kind::kBytes:
       return absl::visit(
           BytesValueToLegacyVisitor{value_factory.memory_manager()},
-          GetBytesValueRep(value.As<const BytesValue>()));
+          GetBytesValueRep(value.As<BytesValue>()));
     case Kind::kEnum:
       break;
     case Kind::kDuration:
-      return CelValue::CreateDuration(value.As<const DurationValue>()->value());
+      return CelValue::CreateDuration(value.As<DurationValue>()->value());
     case Kind::kTimestamp:
-      return CelValue::CreateTimestamp(
-          value.As<const TimestampValue>()->value());
+      return CelValue::CreateTimestamp(value.As<TimestampValue>()->value());
     case Kind::kList: {
       if (value.Is<LegacyListValue>()) {
         // Fast path.
-        return CelValue::CreateList(value.As<const LegacyListValue>()->value());
+        return CelValue::CreateList(value.As<LegacyListValue>()->value());
       }
       return CelValue::CreateList(
           value_factory.memory_manager()
-              .New<LegacyCelList>(
-                  value_factory,
-                  Persistent<const ListValue>(value.As<const ListValue>()))
+              .New<LegacyCelList>(value_factory,
+                                  Persistent<ListValue>(value.As<ListValue>()))
               .release());
     }
     case Kind::kMap: {
       if (value.Is<LegacyMapValue>()) {
         // Fast path.
-        return CelValue::CreateMap(value.As<const LegacyMapValue>()->value());
+        return CelValue::CreateMap(value.As<LegacyMapValue>()->value());
       }
       return CelValue::CreateMap(
           value_factory.memory_manager()
-              .New<LegacyCelMap>(value_factory, Persistent<const MapValue>(
-                                                    value.As<const MapValue>()))
+              .New<LegacyCelMap>(value_factory,
+                                 Persistent<MapValue>(value.As<MapValue>()))
               .release());
     }
     case Kind::kStruct:
@@ -436,7 +434,7 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
       auto* legacy_value =
           value_factory.memory_manager().New<UnknownSet>().release();
       SetUnknownSetImpl(*legacy_value,
-                        GetUnknownValueImpl(value.As<const UnknownValue>()));
+                        GetUnknownValueImpl(value.As<UnknownValue>()));
       return CelValue::CreateUnknownSet(legacy_value);
     }
     default:

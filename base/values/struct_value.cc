@@ -26,7 +26,7 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(StructValue);
 
-Persistent<const StructType> StructValue::type() const {
+Persistent<StructType> StructValue::type() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructValue*>(this)->type();
   }
@@ -61,27 +61,7 @@ bool StructValue::Equals(const Value& other) const {
       other);
 }
 
-absl::Status StructValue::SetFieldByName(absl::string_view name,
-                                         const Persistent<const Value>& value) {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<base_internal::LegacyStructValue*>(this)->SetFieldByName(
-        name, value);
-  }
-  return static_cast<base_internal::AbstractStructValue*>(this)->SetFieldByName(
-      name, value);
-}
-
-absl::Status StructValue::SetFieldByNumber(
-    int64_t number, const Persistent<const Value>& value) {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<base_internal::LegacyStructValue*>(this)
-        ->SetFieldByNumber(number, value);
-  }
-  return static_cast<base_internal::AbstractStructValue*>(this)
-      ->SetFieldByNumber(number, value);
-}
-
-absl::StatusOr<Persistent<const Value>> StructValue::GetFieldByName(
+absl::StatusOr<Persistent<Value>> StructValue::GetFieldByName(
     ValueFactory& value_factory, absl::string_view name) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructValue*>(this)
@@ -91,7 +71,7 @@ absl::StatusOr<Persistent<const Value>> StructValue::GetFieldByName(
       ->GetFieldByName(value_factory, name);
 }
 
-absl::StatusOr<Persistent<const Value>> StructValue::GetFieldByNumber(
+absl::StatusOr<Persistent<Value>> StructValue::GetFieldByNumber(
     ValueFactory& value_factory, int64_t number) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructValue*>(this)
@@ -126,29 +106,15 @@ internal::TypeInfo StructValue::TypeId() const {
   return static_cast<const base_internal::AbstractStructValue*>(this)->TypeId();
 }
 
-struct StructValue::SetFieldVisitor final {
-  StructValue& struct_value;
-  const Persistent<const Value>& value;
-
-  absl::Status operator()(absl::string_view name) const {
-    return struct_value.SetFieldByName(name, value);
-  }
-
-  absl::Status operator()(int64_t number) const {
-    return struct_value.SetFieldByNumber(number, value);
-  }
-};
-
 struct StructValue::GetFieldVisitor final {
   const StructValue& struct_value;
   ValueFactory& value_factory;
 
-  absl::StatusOr<Persistent<const Value>> operator()(
-      absl::string_view name) const {
+  absl::StatusOr<Persistent<Value>> operator()(absl::string_view name) const {
     return struct_value.GetFieldByName(value_factory, name);
   }
 
-  absl::StatusOr<Persistent<const Value>> operator()(int64_t number) const {
+  absl::StatusOr<Persistent<Value>> operator()(int64_t number) const {
     return struct_value.GetFieldByNumber(value_factory, number);
   }
 };
@@ -165,12 +131,7 @@ struct StructValue::HasFieldVisitor final {
   }
 };
 
-absl::Status StructValue::SetField(FieldId field,
-                                   const Persistent<const Value>& value) {
-  return absl::visit(SetFieldVisitor{*this, value}, field.data_);
-}
-
-absl::StatusOr<Persistent<const Value>> StructValue::GetField(
+absl::StatusOr<Persistent<Value>> StructValue::GetField(
     ValueFactory& value_factory, FieldId field) const {
   return absl::visit(GetFieldVisitor{*this, value_factory}, field.data_);
 }
@@ -181,9 +142,8 @@ absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
 
 namespace base_internal {
 
-Persistent<const StructType> LegacyStructValue::type() const {
-  return PersistentHandleFactory<const StructType>::Make<LegacyStructType>(
-      msg_);
+Persistent<StructType> LegacyStructValue::type() const {
+  return PersistentHandleFactory<StructType>::Make<LegacyStructType>(msg_);
 }
 
 std::string LegacyStructValue::DebugString() const {
@@ -198,22 +158,12 @@ bool LegacyStructValue::Equals(const Value& other) const {
   return MessageValueEquals(msg_, type_info_, other);
 }
 
-absl::Status LegacyStructValue::SetFieldByName(
-    absl::string_view name, const Persistent<const Value>& value) {
-  return MessageValueSetFieldByName(msg_, type_info_, name, value);
-}
-
-absl::Status LegacyStructValue::SetFieldByNumber(
-    int64_t number, const Persistent<const Value>& value) {
-  return MessageValueSetFieldByNumber(msg_, type_info_, number, value);
-}
-
-absl::StatusOr<Persistent<const Value>> LegacyStructValue::GetFieldByName(
+absl::StatusOr<Persistent<Value>> LegacyStructValue::GetFieldByName(
     ValueFactory& value_factory, absl::string_view name) const {
   return MessageValueGetFieldByName(msg_, type_info_, value_factory, name);
 }
 
-absl::StatusOr<Persistent<const Value>> LegacyStructValue::GetFieldByNumber(
+absl::StatusOr<Persistent<Value>> LegacyStructValue::GetFieldByNumber(
     ValueFactory& value_factory, int64_t number) const {
   return MessageValueGetFieldByNumber(msg_, type_info_, value_factory, number);
 }
@@ -227,7 +177,7 @@ absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(int64_t number) const {
   return MessageValueHasFieldByNumber(msg_, type_info_, number);
 }
 
-AbstractStructValue::AbstractStructValue(Persistent<const StructType> type)
+AbstractStructValue::AbstractStructValue(Persistent<StructType> type)
     : StructValue(), base_internal::HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
   ABSL_ASSERT(

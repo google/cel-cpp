@@ -60,7 +60,7 @@ class Value : public base_internal::Data {
   Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
-  Persistent<const Type> type() const;
+  Persistent<Type> type() const;
 
   std::string DebugString() const;
 
@@ -223,7 +223,7 @@ class SimpleValue : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const T> type() const { return T::Get(); }
+  Persistent<T> type() const { return T::Get(); }
 
   void HashValue(absl::HashState state) const {
     absl::HashState::combine(std::move(state), type(), value());
@@ -264,7 +264,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const NullType> type() const { return NullType::Get(); }
+  Persistent<NullType> type() const { return NullType::Get(); }
 
   void HashValue(absl::HashState state) const {
     absl::HashState::combine(std::move(state), type(), 0);
