@@ -307,23 +307,22 @@ CEL_INTERNAL_TYPE_DECL(Type);
 
 }  // namespace cel
 
-#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)         \
- private:                                                                 \
-  friend class value_class;                                               \
-  friend class TypeFactory;                                               \
-  friend class base_internal::PersistentTypeHandle;                       \
-  template <typename T, typename U>                                       \
-  friend class base_internal::SimpleValue;                                \
-  template <size_t Size, size_t Align>                                    \
-  friend class base_internal::AnyData;                                    \
-                                                                          \
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Persistent<const type_class>& \
-  Get();                                                                  \
-                                                                          \
-  type_class() = default;                                                 \
-  type_class(const type_class&) = default;                                \
-  type_class(type_class&&) = default;                                     \
-  type_class& operator=(const type_class&) = default;                     \
+#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)          \
+ private:                                                                  \
+  friend class value_class;                                                \
+  friend class TypeFactory;                                                \
+  friend class base_internal::PersistentTypeHandle;                        \
+  template <typename T, typename U>                                        \
+  friend class base_internal::SimpleValue;                                 \
+  template <size_t Size, size_t Align>                                     \
+  friend class base_internal::AnyData;                                     \
+                                                                           \
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const Persistent<type_class>& Get(); \
+                                                                           \
+  type_class() = default;                                                  \
+  type_class(const type_class&) = default;                                 \
+  type_class(type_class&&) = default;                                      \
+  type_class& operator=(const type_class&) = default;                      \
   type_class& operator=(type_class&&) = default
 
 #define CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(type_class)        \

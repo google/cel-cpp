@@ -49,7 +49,7 @@ TEST(ValueInterop, NullFromLegacy) {
   auto legacy_value = CelValue::CreateNull();
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const NullValue>());
+  EXPECT_TRUE(value.Is<NullValue>());
 }
 
 TEST(ValueInterop, NullToLegacy) {
@@ -70,8 +70,8 @@ TEST(ValueInterop, BoolFromLegacy) {
   auto legacy_value = CelValue::CreateBool(true);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const BoolValue>());
-  EXPECT_TRUE(value.As<const BoolValue>()->value());
+  EXPECT_TRUE(value.Is<BoolValue>());
+  EXPECT_TRUE(value.As<BoolValue>()->value());
 }
 
 TEST(ValueInterop, BoolToLegacy) {
@@ -93,8 +93,8 @@ TEST(ValueInterop, IntFromLegacy) {
   auto legacy_value = CelValue::CreateInt64(1);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const IntValue>());
-  EXPECT_EQ(value.As<const IntValue>()->value(), 1);
+  EXPECT_TRUE(value.Is<IntValue>());
+  EXPECT_EQ(value.As<IntValue>()->value(), 1);
 }
 
 TEST(ValueInterop, IntToLegacy) {
@@ -116,8 +116,8 @@ TEST(ValueInterop, UintFromLegacy) {
   auto legacy_value = CelValue::CreateUint64(1);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const UintValue>());
-  EXPECT_EQ(value.As<const UintValue>()->value(), 1);
+  EXPECT_TRUE(value.Is<UintValue>());
+  EXPECT_EQ(value.As<UintValue>()->value(), 1);
 }
 
 TEST(ValueInterop, UintToLegacy) {
@@ -139,8 +139,8 @@ TEST(ValueInterop, DoubleFromLegacy) {
   auto legacy_value = CelValue::CreateDouble(1.0);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const DoubleValue>());
-  EXPECT_EQ(value.As<const DoubleValue>()->value(), 1.0);
+  EXPECT_TRUE(value.Is<DoubleValue>());
+  EXPECT_EQ(value.As<DoubleValue>()->value(), 1.0);
 }
 
 TEST(ValueInterop, DoubleToLegacy) {
@@ -163,8 +163,8 @@ TEST(ValueInterop, DurationFromLegacy) {
   auto legacy_value = CelValue::CreateDuration(duration);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const DurationValue>());
-  EXPECT_EQ(value.As<const DurationValue>()->value(), duration);
+  EXPECT_TRUE(value.Is<DurationValue>());
+  EXPECT_EQ(value.As<DurationValue>()->value(), duration);
 }
 
 TEST(ValueInterop, DurationToLegacy) {
@@ -188,8 +188,8 @@ TEST(ValueInterop, TimestampFromLegacy) {
   auto legacy_value = CelValue::CreateTimestamp(timestamp);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const TimestampValue>());
-  EXPECT_EQ(value.As<const TimestampValue>()->value(), timestamp);
+  EXPECT_TRUE(value.Is<TimestampValue>());
+  EXPECT_EQ(value.As<TimestampValue>()->value(), timestamp);
 }
 
 TEST(ValueInterop, TimestampToLegacy) {
@@ -214,8 +214,8 @@ TEST(ValueInterop, ErrorFromLegacy) {
   auto legacy_value = CelValue::CreateError(&error);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const ErrorValue>());
-  EXPECT_EQ(value.As<const ErrorValue>()->value(), error);
+  EXPECT_TRUE(value.Is<ErrorValue>());
+  EXPECT_EQ(value.As<ErrorValue>()->value(), error);
 }
 
 TEST(ValueInterop, TypeFromLegacy) {
@@ -226,8 +226,8 @@ TEST(ValueInterop, TypeFromLegacy) {
   auto legacy_value = CelValue::CreateCelTypeView("bool");
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const TypeValue>());
-  EXPECT_EQ(value.As<const TypeValue>()->value(),
+  EXPECT_TRUE(value.Is<TypeValue>());
+  EXPECT_EQ(value.As<TypeValue>()->value(),
             type_manager.type_factory().GetBoolType());
 }
 
@@ -250,8 +250,8 @@ TEST(ValueInterop, StringFromLegacy) {
   auto legacy_value = CelValue::CreateStringView("test");
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const StringValue>());
-  EXPECT_EQ(value.As<const StringValue>()->ToString(), "test");
+  EXPECT_TRUE(value.Is<StringValue>());
+  EXPECT_EQ(value.As<StringValue>()->ToString(), "test");
 }
 
 TEST(ValueInterop, StringToLegacy) {
@@ -285,8 +285,8 @@ TEST(ValueInterop, BytesFromLegacy) {
   auto legacy_value = CelValue::CreateBytesView("test");
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const BytesValue>());
-  EXPECT_EQ(value.As<const BytesValue>()->ToString(), "test");
+  EXPECT_TRUE(value.Is<BytesValue>());
+  EXPECT_EQ(value.As<BytesValue>()->ToString(), "test");
 }
 
 TEST(ValueInterop, BytesToLegacy) {
@@ -324,17 +324,17 @@ TEST(ValueInterop, ListFromLegacy) {
           .release());
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const ListValue>());
-  EXPECT_EQ(value.As<const ListValue>()->size(), 1);
+  EXPECT_TRUE(value.Is<ListValue>());
+  EXPECT_EQ(value.As<ListValue>()->size(), 1);
   ASSERT_OK_AND_ASSIGN(auto element,
-                       value.As<const ListValue>()->Get(value_factory, 0));
-  EXPECT_TRUE(element.Is<const IntValue>());
-  EXPECT_EQ(element.As<const IntValue>()->value(), 0);
+                       value.As<ListValue>()->Get(value_factory, 0));
+  EXPECT_TRUE(element.Is<IntValue>());
+  EXPECT_EQ(element.As<IntValue>()->value(), 0);
 }
 
 class TestListValue final : public ListValue {
  public:
-  explicit TestListValue(const Persistent<const ListType>& type,
+  explicit TestListValue(const Persistent<ListType>& type,
                          std::vector<int64_t> elements)
       : ListValue(type), elements_(std::move(elements)) {
     ABSL_ASSERT(type->element().Is<IntType>());
@@ -342,8 +342,8 @@ class TestListValue final : public ListValue {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Persistent<const Value>> Get(ValueFactory& value_factory,
-                                              size_t index) const override {
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
@@ -403,20 +403,19 @@ TEST(ValueInterop, MapFromLegacy) {
   auto legacy_value = CelValue::CreateMap(legacy_map);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const MapValue>());
-  EXPECT_EQ(value.As<const MapValue>()->size(), 1);
+  EXPECT_TRUE(value.Is<MapValue>());
+  EXPECT_EQ(value.As<MapValue>()->size(), 1);
   auto entry_key = value_factory.CreateIntValue(1);
-  EXPECT_THAT(value.As<const MapValue>()->Has(entry_key),
-              IsOkAndHolds(Eq(true)));
-  ASSERT_OK_AND_ASSIGN(auto entry_value, value.As<const MapValue>()->Get(
-                                             value_factory, entry_key));
-  EXPECT_TRUE(entry_value.Is<const StringValue>());
-  EXPECT_EQ(entry_value.As<const StringValue>()->ToString(), "foo");
+  EXPECT_THAT(value.As<MapValue>()->Has(entry_key), IsOkAndHolds(Eq(true)));
+  ASSERT_OK_AND_ASSIGN(auto entry_value,
+                       value.As<MapValue>()->Get(value_factory, entry_key));
+  EXPECT_TRUE(entry_value.Is<StringValue>());
+  EXPECT_EQ(entry_value.As<StringValue>()->ToString(), "foo");
 }
 
 class TestMapValue final : public MapValue {
  public:
-  explicit TestMapValue(const Persistent<const MapType>& type,
+  explicit TestMapValue(const Persistent<MapType>& type,
                         std::map<int64_t, std::string> entries)
       : MapValue(type), entries_(std::move(entries)) {}
 
@@ -447,21 +446,21 @@ class TestMapValue final : public MapValue {
     absl::HashState::combine(std::move(state), type(), entries_);
   }
 
-  absl::StatusOr<Persistent<const Value>> Get(
+  absl::StatusOr<Persistent<Value>> Get(
       ValueFactory& value_factory,
-      const Persistent<const Value>& key) const override {
-    auto existing = entries_.find(key.As<const IntValue>()->value());
+      const Persistent<Value>& key) const override {
+    auto existing = entries_.find(key.As<IntValue>()->value());
     if (existing == entries_.end()) {
-      return Persistent<const Value>();
+      return Persistent<Value>();
     }
     return value_factory.CreateStringValue(existing->second);
   }
 
-  absl::StatusOr<bool> Has(const Persistent<const Value>& key) const override {
-    return entries_.find(key.As<const IntValue>()->value()) != entries_.end();
+  absl::StatusOr<bool> Has(const Persistent<Value>& key) const override {
+    return entries_.find(key.As<IntValue>()->value()) != entries_.end();
   }
 
-  absl::StatusOr<Persistent<const ListValue>> ListKeys(
+  absl::StatusOr<Persistent<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          value_factory.type_factory().CreateListType(
@@ -518,10 +517,9 @@ TEST(ValueInterop, UnknownFromLegacy) {
   auto legacy_value = CelValue::CreateUnknownSet(&unknown_set);
   ASSERT_OK_AND_ASSIGN(auto value,
                        FromLegacyValue(value_factory, legacy_value));
-  EXPECT_TRUE(value.Is<const UnknownValue>());
-  EXPECT_EQ(value.As<const UnknownValue>()->attribute_set(), attributes);
-  EXPECT_EQ(value.As<const UnknownValue>()->function_result_set(),
-            function_results);
+  EXPECT_TRUE(value.Is<UnknownValue>());
+  EXPECT_EQ(value.As<UnknownValue>()->attribute_set(), attributes);
+  EXPECT_EQ(value.As<UnknownValue>()->function_result_set(), function_results);
 }
 
 TEST(ValueInterop, UnknownToLegacy) {

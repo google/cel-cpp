@@ -113,11 +113,10 @@ H AbslHashValue(H state, const TestStruct& test_struct) {
 
 class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
  public:
-  explicit TestStructValue(const Persistent<const StructType>& type)
+  explicit TestStructValue(const Persistent<StructType>& type)
       : TestStructValue(type, TestStruct{}) {}
 
-  explicit TestStructValue(const Persistent<const StructType>& type,
-                           TestStruct value)
+  explicit TestStructValue(const Persistent<StructType>& type, TestStruct value)
       : CEL_STRUCT_VALUE_CLASS(type), value_(std::move(value)) {}
 
   std::string DebugString() const override {
@@ -130,68 +129,7 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
   const TestStruct& value() const { return value_; }
 
  protected:
-  absl::Status SetFieldByName(absl::string_view name,
-                              const Persistent<const Value>& value) override {
-    if (name == "bool_field") {
-      if (!value.Is<BoolValue>()) {
-        return absl::InvalidArgumentError("");
-      }
-      value_.bool_field = value.As<const BoolValue>()->value();
-    } else if (name == "int_field") {
-      if (!value.Is<IntValue>()) {
-        return absl::InvalidArgumentError("");
-      }
-      value_.int_field = value.As<const IntValue>()->value();
-    } else if (name == "uint_field") {
-      if (!value.Is<UintValue>()) {
-        return absl::InvalidArgumentError("");
-      }
-      value_.uint_field = value.As<const UintValue>()->value();
-    } else if (name == "double_field") {
-      if (!value.Is<DoubleValue>()) {
-        return absl::InvalidArgumentError("");
-      }
-      value_.double_field = value.As<const DoubleValue>()->value();
-    } else {
-      return absl::NotFoundError("");
-    }
-    return absl::OkStatus();
-  }
-
-  absl::Status SetFieldByNumber(int64_t number,
-                                const Persistent<const Value>& value) override {
-    switch (number) {
-      case 0:
-        if (!value.Is<BoolValue>()) {
-          return absl::InvalidArgumentError("");
-        }
-        value_.bool_field = value.As<const BoolValue>()->value();
-        break;
-      case 1:
-        if (!value.Is<IntValue>()) {
-          return absl::InvalidArgumentError("");
-        }
-        value_.int_field = value.As<const IntValue>()->value();
-        break;
-      case 2:
-        if (!value.Is<UintValue>()) {
-          return absl::InvalidArgumentError("");
-        }
-        value_.uint_field = value.As<const UintValue>()->value();
-        break;
-      case 3:
-        if (!value.Is<DoubleValue>()) {
-          return absl::InvalidArgumentError("");
-        }
-        value_.double_field = value.As<const DoubleValue>()->value();
-        break;
-      default:
-        return absl::NotFoundError("");
-    }
-    return absl::OkStatus();
-  }
-
-  absl::StatusOr<Persistent<const Value>> GetFieldByName(
+  absl::StatusOr<Persistent<Value>> GetFieldByName(
       ValueFactory& value_factory, absl::string_view name) const override {
     if (name == "bool_field") {
       return value_factory.CreateBoolValue(value().bool_field);
@@ -205,7 +143,7 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
     return absl::NotFoundError("");
   }
 
-  absl::StatusOr<Persistent<const Value>> GetFieldByNumber(
+  absl::StatusOr<Persistent<Value>> GetFieldByNumber(
       ValueFactory& value_factory, int64_t number) const override {
     switch (number) {
       case 0:
@@ -313,7 +251,7 @@ CEL_IMPLEMENT_STRUCT_TYPE(TestStructType);
 
 class TestListValue final : public ListValue {
  public:
-  explicit TestListValue(const Persistent<const ListType>& type,
+  explicit TestListValue(const Persistent<ListType>& type,
                          std::vector<int64_t> elements)
       : ListValue(type), elements_(std::move(elements)) {
     ABSL_ASSERT(type->element().Is<IntType>());
@@ -321,8 +259,8 @@ class TestListValue final : public ListValue {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Persistent<const Value>> Get(ValueFactory& value_factory,
-                                              size_t index) const override {
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
@@ -354,7 +292,7 @@ CEL_IMPLEMENT_LIST_VALUE(TestListValue);
 
 class TestMapValue final : public MapValue {
  public:
-  explicit TestMapValue(const Persistent<const MapType>& type,
+  explicit TestMapValue(const Persistent<MapType>& type,
                         std::map<std::string, int64_t> entries)
       : MapValue(type), entries_(std::move(entries)) {
     ABSL_ASSERT(type->key().Is<StringType>());
@@ -363,24 +301,24 @@ class TestMapValue final : public MapValue {
 
   size_t size() const override { return entries_.size(); }
 
-  absl::StatusOr<Persistent<const Value>> Get(
+  absl::StatusOr<Persistent<Value>> Get(
       ValueFactory& value_factory,
-      const Persistent<const Value>& key) const override {
+      const Persistent<Value>& key) const override {
     if (!key.Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
-    auto entry = entries_.find(key.As<const StringValue>()->ToString());
+    auto entry = entries_.find(key.As<StringValue>()->ToString());
     if (entry == entries_.end()) {
       return absl::NotFoundError("");
     }
     return value_factory.CreateIntValue(entry->second);
   }
 
-  absl::StatusOr<bool> Has(const Persistent<const Value>& key) const override {
+  absl::StatusOr<bool> Has(const Persistent<Value>& key) const override {
     if (!key.Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
-    auto entry = entries_.find(key.As<const StringValue>()->ToString());
+    auto entry = entries_.find(key.As<StringValue>()->ToString());
     if (entry == entries_.end()) {
       return false;
     }
@@ -396,7 +334,7 @@ class TestMapValue final : public MapValue {
     return absl::StrCat("{", absl::StrJoin(parts, ", "), "}");
   }
 
-  absl::StatusOr<Persistent<const ListValue>> ListKeys(
+  absl::StatusOr<Persistent<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     return absl::UnimplementedError("MapValue::ListKeys is not implemented");
   }
@@ -474,26 +412,25 @@ TEST(Value, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_copy_assignable_v<Persistent<Value>>);
   EXPECT_TRUE(std::is_move_assignable_v<Persistent<Value>>);
   EXPECT_TRUE(std::is_swappable_v<Persistent<Value>>);
-  EXPECT_TRUE(std::is_default_constructible_v<Persistent<const Value>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<const Value>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Persistent<const Value>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<const Value>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Persistent<const Value>>);
-  EXPECT_TRUE(std::is_swappable_v<Persistent<const Value>>);
+  EXPECT_TRUE(std::is_default_constructible_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Persistent<Value>>);
+  EXPECT_TRUE(std::is_swappable_v<Persistent<Value>>);
 }
 
 TEST_P(ValueTest, DefaultConstructor) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Persistent<const Value> value;
+  Persistent<Value> value;
   EXPECT_FALSE(value);
 }
 
 struct ConstructionAssignmentTestCase final {
   std::string name;
-  std::function<Persistent<const Value>(TypeFactory&, ValueFactory&)>
-      default_value;
+  std::function<Persistent<Value>(TypeFactory&, ValueFactory&)> default_value;
 };
 
 using ConstructionAssignmentTest =
@@ -503,9 +440,9 @@ TEST_P(ConstructionAssignmentTest, CopyConstructor) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Persistent<const Value> from(
+  Persistent<Value> from(
       test_case().default_value(type_factory, value_factory));
-  Persistent<const Value> to(from);
+  Persistent<Value> to(from);
   IS_INITIALIZED(to);
   EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
 }
@@ -514,9 +451,9 @@ TEST_P(ConstructionAssignmentTest, MoveConstructor) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Persistent<const Value> from(
+  Persistent<Value> from(
       test_case().default_value(type_factory, value_factory));
-  Persistent<const Value> to(std::move(from));
+  Persistent<Value> to(std::move(from));
   IS_INITIALIZED(from);
   EXPECT_FALSE(from);
   EXPECT_EQ(to, test_case().default_value(type_factory, value_factory));
@@ -526,9 +463,9 @@ TEST_P(ConstructionAssignmentTest, CopyAssignment) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Persistent<const Value> from(
+  Persistent<Value> from(
       test_case().default_value(type_factory, value_factory));
-  Persistent<const Value> to;
+  Persistent<Value> to;
   to = from;
   EXPECT_EQ(to, from);
 }
@@ -537,9 +474,9 @@ TEST_P(ConstructionAssignmentTest, MoveAssignment) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Persistent<const Value> from(
+  Persistent<Value> from(
       test_case().default_value(type_factory, value_factory));
-  Persistent<const Value> to;
+  Persistent<Value> to;
   to = std::move(from);
   IS_INITIALIZED(from);
   EXPECT_FALSE(from);
@@ -552,79 +489,77 @@ INSTANTIATE_TEST_SUITE_P(
         base_internal::MemoryManagerTestModeAll(),
         testing::ValuesIn<ConstructionAssignmentTestCase>({
             {"Null",
-             [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
-               return value_factory.GetNullValue();
-             }},
+             [](TypeFactory& type_factory, ValueFactory& value_factory)
+                 -> Persistent<Value> { return value_factory.GetNullValue(); }},
             {"Bool",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateBoolValue(false);
              }},
             {"Int",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateIntValue(0);
              }},
             {"Uint",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateUintValue(0);
              }},
             {"Double",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateDoubleValue(0.0);
              }},
             {"Duration",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(
                    value_factory.CreateDurationValue(absl::ZeroDuration()));
              }},
             {"Timestamp",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(
                    value_factory.CreateTimestampValue(absl::UnixEpoch()));
              }},
             {"Error",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateErrorValue(absl::CancelledError());
              }},
             {"Bytes",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(value_factory.CreateBytesValue(""));
              }},
             {"String",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(value_factory.CreateStringValue(""));
              }},
             {"Enum",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(value_factory.CreateEnumValue(
                    Must(type_factory.CreateEnumType<TestEnumType>()), 1));
              }},
             {"Struct",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(value_factory.CreateStructValue<TestStructValue>(
                    Must(type_factory.CreateStructType<TestStructType>())));
              }},
             {"List",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(value_factory.CreateListValue<TestListValue>(
                    Must(type_factory.CreateListType(type_factory.GetIntType())),
                    std::vector<int64_t>{}));
              }},
             {"Map",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return Must(value_factory.CreateMapValue<TestMapValue>(
                    Must(type_factory.CreateMapType(type_factory.GetStringType(),
                                                    type_factory.GetIntType())),
@@ -632,12 +567,12 @@ INSTANTIATE_TEST_SUITE_P(
              }},
             {"Type",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateTypeValue(type_factory.GetNullType());
              }},
             {"Unknown",
              [](TypeFactory& type_factory,
-                ValueFactory& value_factory) -> Persistent<const Value> {
+                ValueFactory& value_factory) -> Persistent<Value> {
                return value_factory.CreateUnknownValue();
              }},
         })),
@@ -653,8 +588,8 @@ TEST_P(ValueTest, Swap) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  Persistent<const Value> lhs = value_factory.CreateIntValue(0);
-  Persistent<const Value> rhs = value_factory.CreateUintValue(0);
+  Persistent<Value> lhs = value_factory.CreateIntValue(0);
+  Persistent<Value> rhs = value_factory.CreateUintValue(0);
   std::swap(lhs, rhs);
   EXPECT_EQ(lhs, value_factory.CreateUintValue(0));
   EXPECT_EQ(rhs, value_factory.CreateIntValue(0));
@@ -1249,18 +1184,18 @@ TEST_P(ValueTest, Unknown) {
   EXPECT_EQ(zero_value->type(), type_factory.GetUnknownType());
 }
 
-Persistent<const BytesValue> MakeStringBytes(ValueFactory& value_factory,
-                                             absl::string_view value) {
+Persistent<BytesValue> MakeStringBytes(ValueFactory& value_factory,
+                                       absl::string_view value) {
   return Must(value_factory.CreateBytesValue(value));
 }
 
-Persistent<const BytesValue> MakeCordBytes(ValueFactory& value_factory,
-                                           absl::string_view value) {
+Persistent<BytesValue> MakeCordBytes(ValueFactory& value_factory,
+                                     absl::string_view value) {
   return Must(value_factory.CreateBytesValue(absl::Cord(value)));
 }
 
-Persistent<const BytesValue> MakeExternalBytes(ValueFactory& value_factory,
-                                               absl::string_view value) {
+Persistent<BytesValue> MakeExternalBytes(ValueFactory& value_factory,
+                                         absl::string_view value) {
   return Must(value_factory.CreateBytesValue(value, []() {}));
 }
 
@@ -1608,18 +1543,18 @@ INSTANTIATE_TEST_SUITE_P(
                          {"\xef\xbf\xbd"},
                      })));
 
-Persistent<const StringValue> MakeStringString(ValueFactory& value_factory,
-                                               absl::string_view value) {
+Persistent<StringValue> MakeStringString(ValueFactory& value_factory,
+                                         absl::string_view value) {
   return Must(value_factory.CreateStringValue(value));
 }
 
-Persistent<const StringValue> MakeCordString(ValueFactory& value_factory,
-                                             absl::string_view value) {
+Persistent<StringValue> MakeCordString(ValueFactory& value_factory,
+                                       absl::string_view value) {
   return Must(value_factory.CreateStringValue(absl::Cord(value)));
 }
 
-Persistent<const StringValue> MakeExternalString(ValueFactory& value_factory,
-                                                 absl::string_view value) {
+Persistent<StringValue> MakeExternalString(ValueFactory& value_factory,
+                                           absl::string_view value) {
   return Must(value_factory.CreateStringValue(value, []() {}));
 }
 
@@ -2048,17 +1983,9 @@ TEST_P(ValueTest, Struct) {
   EXPECT_EQ(zero_value->type(), struct_type);
   EXPECT_EQ(zero_value.As<TestStructValue>()->value(), TestStruct{});
 
-  ASSERT_OK_AND_ASSIGN(
-      auto one_value,
-      value_factory.CreateStructValue<TestStructValue>(struct_type));
-  ASSERT_OK(one_value->SetField(StructValue::FieldId("bool_field"),
-                                value_factory.CreateBoolValue(true)));
-  ASSERT_OK(one_value->SetField(StructValue::FieldId("int_field"),
-                                value_factory.CreateIntValue(1)));
-  ASSERT_OK(one_value->SetField(StructValue::FieldId("uint_field"),
-                                value_factory.CreateUintValue(1)));
-  ASSERT_OK(one_value->SetField(StructValue::FieldId("double_field"),
-                                value_factory.CreateDoubleValue(1.0)));
+  ASSERT_OK_AND_ASSIGN(auto one_value,
+                       value_factory.CreateStructValue<TestStructValue>(
+                           struct_type, TestStruct{true, 1, 1, 1.0}));
   EXPECT_TRUE(one_value.Is<StructValue>());
   EXPECT_TRUE(one_value.Is<TestStructValue>());
   EXPECT_FALSE(one_value.Is<NullValue>());
@@ -2073,85 +2000,6 @@ TEST_P(ValueTest, Struct) {
 }
 
 using StructValueTest = ValueTest;
-
-TEST_P(StructValueTest, SetField) {
-  TypeFactory type_factory(memory_manager());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto struct_type,
-                       type_factory.CreateStructType<TestStructType>());
-  ASSERT_OK_AND_ASSIGN(
-      auto struct_value,
-      value_factory.CreateStructValue<TestStructValue>(struct_type));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId("bool_field"),
-                                   value_factory.CreateBoolValue(true)));
-  EXPECT_THAT(
-      struct_value->GetField(value_factory, StructValue::FieldId("bool_field")),
-      IsOkAndHolds(Eq(value_factory.CreateBoolValue(true))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId(0),
-                                   value_factory.CreateBoolValue(false)));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(0)),
-              IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId("int_field"),
-                                   value_factory.CreateIntValue(1)));
-  EXPECT_THAT(
-      struct_value->GetField(value_factory, StructValue::FieldId("int_field")),
-      IsOkAndHolds(Eq(value_factory.CreateIntValue(1))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId(1),
-                                   value_factory.CreateIntValue(0)));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(1)),
-              IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId("uint_field"),
-                                   value_factory.CreateUintValue(1)));
-  EXPECT_THAT(
-      struct_value->GetField(value_factory, StructValue::FieldId("uint_field")),
-      IsOkAndHolds(Eq(value_factory.CreateUintValue(1))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId(2),
-                                   value_factory.CreateUintValue(0)));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(2)),
-              IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId("double_field"),
-                                   value_factory.CreateDoubleValue(1.0)));
-  EXPECT_THAT(struct_value->GetField(value_factory,
-                                     StructValue::FieldId("double_field")),
-              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(1.0))));
-  EXPECT_OK(struct_value->SetField(StructValue::FieldId(3),
-                                   value_factory.CreateDoubleValue(0.0)));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(3)),
-              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
-
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("bool_field"),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(0),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("int_field"),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(1),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("uint_field"),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(2),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("double_field"),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(3),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kInvalidArgument));
-
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId("missing_field"),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_value->SetField(StructValue::FieldId(4),
-                                     value_factory.GetNullValue()),
-              StatusIs(absl::StatusCode::kNotFound));
-}
 
 TEST_P(StructValueTest, GetField) {
   TypeFactory type_factory(memory_manager());
@@ -2437,32 +2285,31 @@ TEST_P(ValueTest, SupportsAbslHash) {
                        value_factory.CreateMapValue<TestMapValue>(
                            map_type, std::map<std::string, int64_t>{}));
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
-      Persistent<const Value>(value_factory.GetNullValue()),
-      Persistent<const Value>(
-          value_factory.CreateErrorValue(absl::CancelledError())),
-      Persistent<const Value>(value_factory.CreateBoolValue(false)),
-      Persistent<const Value>(value_factory.CreateIntValue(0)),
-      Persistent<const Value>(value_factory.CreateUintValue(0)),
-      Persistent<const Value>(value_factory.CreateDoubleValue(0.0)),
-      Persistent<const Value>(
+      Persistent<Value>(value_factory.GetNullValue()),
+      Persistent<Value>(value_factory.CreateErrorValue(absl::CancelledError())),
+      Persistent<Value>(value_factory.CreateBoolValue(false)),
+      Persistent<Value>(value_factory.CreateIntValue(0)),
+      Persistent<Value>(value_factory.CreateUintValue(0)),
+      Persistent<Value>(value_factory.CreateDoubleValue(0.0)),
+      Persistent<Value>(
           Must(value_factory.CreateDurationValue(absl::ZeroDuration()))),
-      Persistent<const Value>(
+      Persistent<Value>(
           Must(value_factory.CreateTimestampValue(absl::UnixEpoch()))),
-      Persistent<const Value>(value_factory.GetBytesValue()),
-      Persistent<const Value>(Must(value_factory.CreateBytesValue("foo"))),
-      Persistent<const Value>(
+      Persistent<Value>(value_factory.GetBytesValue()),
+      Persistent<Value>(Must(value_factory.CreateBytesValue("foo"))),
+      Persistent<Value>(
           Must(value_factory.CreateBytesValue(absl::Cord("bar")))),
-      Persistent<const Value>(value_factory.GetStringValue()),
-      Persistent<const Value>(Must(value_factory.CreateStringValue("foo"))),
-      Persistent<const Value>(
+      Persistent<Value>(value_factory.GetStringValue()),
+      Persistent<Value>(Must(value_factory.CreateStringValue("foo"))),
+      Persistent<Value>(
           Must(value_factory.CreateStringValue(absl::Cord("bar")))),
-      Persistent<const Value>(enum_value),
-      Persistent<const Value>(struct_value),
-      Persistent<const Value>(list_value),
-      Persistent<const Value>(map_value),
-      Persistent<const Value>(
+      Persistent<Value>(enum_value),
+      Persistent<Value>(struct_value),
+      Persistent<Value>(list_value),
+      Persistent<Value>(map_value),
+      Persistent<Value>(
           value_factory.CreateTypeValue(type_factory.GetNullType())),
-      Persistent<const Value>(value_factory.CreateUnknownValue()),
+      Persistent<Value>(value_factory.CreateUnknownValue()),
   }));
 }
 

@@ -24,18 +24,17 @@ CEL_INTERNAL_TYPE_IMPL(BoolType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<const BoolType>) char instance_storage[sizeof(
-    Persistent<const BoolType>)];
+alignas(
+    Persistent<BoolType>) char instance_storage[sizeof(Persistent<BoolType>)];
 
 }  // namespace
 
-const Persistent<const BoolType>& BoolType::Get() {
+const Persistent<BoolType>& BoolType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<const BoolType>::MakeAt<BoolType>(
+    base_internal::PersistentHandleFactory<BoolType>::MakeAt<BoolType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<const BoolType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Persistent<BoolType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

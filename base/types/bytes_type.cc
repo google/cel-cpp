@@ -24,18 +24,17 @@ CEL_INTERNAL_TYPE_IMPL(BytesType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<const BytesType>) char instance_storage[sizeof(
-    Persistent<const BytesType>)];
+alignas(
+    Persistent<BytesType>) char instance_storage[sizeof(Persistent<BytesType>)];
 
 }  // namespace
 
-const Persistent<const BytesType>& BytesType::Get() {
+const Persistent<BytesType>& BytesType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<const BytesType>::MakeAt<BytesType>(
+    base_internal::PersistentHandleFactory<BytesType>::MakeAt<BytesType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<const BytesType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Persistent<BytesType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

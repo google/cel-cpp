@@ -35,7 +35,7 @@ class TypeFactory;
 // where each key appears at most once.
 class MapType final : public Type, public base_internal::HeapData {
   // I would have liked to make this class final, but we cannot instantiate
-  // Persistent<const Type> or Transient<const Type> at this point. It must be
+  // Persistent<Type> or Transient<const Type> at this point. It must be
   // done after the post include below. Maybe we should separate out the post
   // includes on a per type basis so we can do that?
  public:
@@ -54,20 +54,20 @@ class MapType final : public Type, public base_internal::HeapData {
   bool Equals(const Type& other) const;
 
   // Returns the type of the keys in the map.
-  const Persistent<const Type>& key() const { return key_; }
+  const Persistent<Type>& key() const { return key_; }
 
   // Returns the type of the values in the map.
-  const Persistent<const Type>& value() const { return value_; }
+  const Persistent<Type>& value() const { return value_; }
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
   friend class base_internal::PersistentTypeHandle;
 
-  explicit MapType(Persistent<const Type> key, Persistent<const Type> value);
+  explicit MapType(Persistent<Type> key, Persistent<Type> value);
 
-  const Persistent<const Type> key_;
-  const Persistent<const Type> value_;
+  const Persistent<Type> key_;
+  const Persistent<Type> value_;
 };
 
 CEL_INTERNAL_TYPE_DECL(MapType);

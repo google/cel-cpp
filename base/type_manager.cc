@@ -23,7 +23,7 @@
 
 namespace cel {
 
-absl::StatusOr<Persistent<const Type>> TypeManager::ResolveType(
+absl::StatusOr<Persistent<Type>> TypeManager::ResolveType(
     absl::string_view name) {
   {
     // Check for builtin types first.

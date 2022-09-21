@@ -250,8 +250,7 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   CEL_INTERNAL_IMPLEMENT_TYPE(Struct, struct_type)
 
 struct StructType::Field final {
-  explicit Field(absl::string_view name, int64_t number,
-                 Persistent<const Type> type)
+  explicit Field(absl::string_view name, int64_t number, Persistent<Type> type)
       : name(name), number(number), type(std::move(type)) {}
 
   // The field name.
@@ -259,7 +258,7 @@ struct StructType::Field final {
   // The field number.
   int64_t number;
   // The field type;
-  Persistent<const Type> type;
+  Persistent<Type> type;
 };
 
 CEL_INTERNAL_TYPE_DECL(StructType);

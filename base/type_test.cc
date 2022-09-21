@@ -172,24 +172,24 @@ TEST(Type, PersistentHandleTypeTraits) {
   EXPECT_TRUE(std::is_copy_assignable_v<Persistent<Type>>);
   EXPECT_TRUE(std::is_move_assignable_v<Persistent<Type>>);
   EXPECT_TRUE(std::is_swappable_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_default_constructible_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_swappable_v<Persistent<const Type>>);
+  EXPECT_TRUE(std::is_default_constructible_v<Persistent<Type>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<Type>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Persistent<Type>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<Type>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Persistent<Type>>);
+  EXPECT_TRUE(std::is_swappable_v<Persistent<Type>>);
 }
 
 TEST_P(TypeTest, CopyConstructor) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> type(type_factory.GetIntType());
+  Persistent<Type> type(type_factory.GetIntType());
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, MoveConstructor) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> from(type_factory.GetIntType());
-  Persistent<const Type> to(std::move(from));
+  Persistent<Type> from(type_factory.GetIntType());
+  Persistent<Type> to(std::move(from));
   IS_INITIALIZED(from);
   EXPECT_FALSE(from);
   EXPECT_EQ(to, type_factory.GetIntType());
@@ -197,15 +197,15 @@ TEST_P(TypeTest, MoveConstructor) {
 
 TEST_P(TypeTest, CopyAssignment) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> type(type_factory.GetNullType());
+  Persistent<Type> type(type_factory.GetNullType());
   type = type_factory.GetIntType();
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, MoveAssignment) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> from(type_factory.GetIntType());
-  Persistent<const Type> to(type_factory.GetNullType());
+  Persistent<Type> from(type_factory.GetIntType());
+  Persistent<Type> to(type_factory.GetNullType());
   to = std::move(from);
   IS_INITIALIZED(from);
   EXPECT_FALSE(from);
@@ -214,8 +214,8 @@ TEST_P(TypeTest, MoveAssignment) {
 
 TEST_P(TypeTest, Swap) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> lhs = type_factory.GetIntType();
-  Persistent<const Type> rhs = type_factory.GetUintType();
+  Persistent<Type> lhs = type_factory.GetIntType();
+  Persistent<Type> rhs = type_factory.GetUintType();
   std::swap(lhs, rhs);
   EXPECT_EQ(lhs, type_factory.GetUintType());
   EXPECT_EQ(rhs, type_factory.GetIntType());
@@ -880,27 +880,26 @@ INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
 TEST_P(TypeTest, SupportsAbslHash) {
   TypeFactory type_factory(memory_manager());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
-      Persistent<const Type>(type_factory.GetNullType()),
-      Persistent<const Type>(type_factory.GetErrorType()),
-      Persistent<const Type>(type_factory.GetDynType()),
-      Persistent<const Type>(type_factory.GetAnyType()),
-      Persistent<const Type>(type_factory.GetBoolType()),
-      Persistent<const Type>(type_factory.GetIntType()),
-      Persistent<const Type>(type_factory.GetUintType()),
-      Persistent<const Type>(type_factory.GetDoubleType()),
-      Persistent<const Type>(type_factory.GetStringType()),
-      Persistent<const Type>(type_factory.GetBytesType()),
-      Persistent<const Type>(type_factory.GetDurationType()),
-      Persistent<const Type>(type_factory.GetTimestampType()),
-      Persistent<const Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
-      Persistent<const Type>(
-          Must(type_factory.CreateStructType<TestStructType>())),
-      Persistent<const Type>(
+      Persistent<Type>(type_factory.GetNullType()),
+      Persistent<Type>(type_factory.GetErrorType()),
+      Persistent<Type>(type_factory.GetDynType()),
+      Persistent<Type>(type_factory.GetAnyType()),
+      Persistent<Type>(type_factory.GetBoolType()),
+      Persistent<Type>(type_factory.GetIntType()),
+      Persistent<Type>(type_factory.GetUintType()),
+      Persistent<Type>(type_factory.GetDoubleType()),
+      Persistent<Type>(type_factory.GetStringType()),
+      Persistent<Type>(type_factory.GetBytesType()),
+      Persistent<Type>(type_factory.GetDurationType()),
+      Persistent<Type>(type_factory.GetTimestampType()),
+      Persistent<Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
+      Persistent<Type>(Must(type_factory.CreateStructType<TestStructType>())),
+      Persistent<Type>(
           Must(type_factory.CreateListType(type_factory.GetBoolType()))),
-      Persistent<const Type>(Must(type_factory.CreateMapType(
+      Persistent<Type>(Must(type_factory.CreateMapType(
           type_factory.GetStringType(), type_factory.GetBoolType()))),
-      Persistent<const Type>(type_factory.GetTypeType()),
-      Persistent<const Type>(type_factory.GetUnknownType()),
+      Persistent<Type>(type_factory.GetTypeType()),
+      Persistent<Type>(type_factory.GetUnknownType()),
   }));
 }
 

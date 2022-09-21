@@ -50,8 +50,8 @@ struct HandlePolicy {
   static_assert(!std::is_pointer_v<T>, "Handles do not support pointers");
   static_assert(std::is_class_v<T>, "Handles only support classes");
   static_assert(!std::is_volatile_v<T>, "Handles do not support volatile");
-  static_assert((std::is_base_of_v<Data, std::remove_const_t<T>> &&
-                 !std::is_same_v<Data, std::remove_const_t<T>>),
+  static_assert(!std::is_const_v<T>, "Handles do not support const");
+  static_assert((std::is_base_of_v<Data, T> && !std::is_same_v<Data, T>),
                 "Handles do not support this type");
 };
 

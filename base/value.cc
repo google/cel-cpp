@@ -41,40 +41,40 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(Value);
 
-Persistent<const Type> Value::type() const {
+Persistent<Type> Value::type() const {
   switch (kind()) {
     case Kind::kNullType:
-      return static_cast<const NullValue*>(this)->type().As<const Type>();
+      return static_cast<const NullValue*>(this)->type().As<Type>();
     case Kind::kError:
-      return static_cast<const ErrorValue*>(this)->type().As<const Type>();
+      return static_cast<const ErrorValue*>(this)->type().As<Type>();
     case Kind::kType:
-      return static_cast<const TypeValue*>(this)->type().As<const Type>();
+      return static_cast<const TypeValue*>(this)->type().As<Type>();
     case Kind::kBool:
-      return static_cast<const BoolValue*>(this)->type().As<const Type>();
+      return static_cast<const BoolValue*>(this)->type().As<Type>();
     case Kind::kInt:
-      return static_cast<const IntValue*>(this)->type().As<const Type>();
+      return static_cast<const IntValue*>(this)->type().As<Type>();
     case Kind::kUint:
-      return static_cast<const UintValue*>(this)->type().As<const Type>();
+      return static_cast<const UintValue*>(this)->type().As<Type>();
     case Kind::kDouble:
-      return static_cast<const DoubleValue*>(this)->type().As<const Type>();
+      return static_cast<const DoubleValue*>(this)->type().As<Type>();
     case Kind::kString:
-      return static_cast<const StringValue*>(this)->type().As<const Type>();
+      return static_cast<const StringValue*>(this)->type().As<Type>();
     case Kind::kBytes:
-      return static_cast<const BytesValue*>(this)->type().As<const Type>();
+      return static_cast<const BytesValue*>(this)->type().As<Type>();
     case Kind::kEnum:
-      return static_cast<const EnumValue*>(this)->type().As<const Type>();
+      return static_cast<const EnumValue*>(this)->type().As<Type>();
     case Kind::kDuration:
-      return static_cast<const DurationValue*>(this)->type().As<const Type>();
+      return static_cast<const DurationValue*>(this)->type().As<Type>();
     case Kind::kTimestamp:
-      return static_cast<const TimestampValue*>(this)->type().As<const Type>();
+      return static_cast<const TimestampValue*>(this)->type().As<Type>();
     case Kind::kList:
-      return static_cast<const ListValue*>(this)->type().As<const Type>();
+      return static_cast<const ListValue*>(this)->type().As<Type>();
     case Kind::kMap:
-      return static_cast<const MapValue*>(this)->type().As<const Type>();
+      return static_cast<const MapValue*>(this)->type().As<Type>();
     case Kind::kStruct:
-      return static_cast<const StructValue*>(this)->type().As<const Type>();
+      return static_cast<const StructValue*>(this)->type().As<Type>();
     case Kind::kUnknown:
-      return static_cast<const UnknownValue*>(this)->type().As<const Type>();
+      return static_cast<const UnknownValue*>(this)->type().As<Type>();
     default:
       internal::unreachable();
   }

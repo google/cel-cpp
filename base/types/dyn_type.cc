@@ -24,18 +24,16 @@ CEL_INTERNAL_TYPE_IMPL(DynType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<const DynType>) char instance_storage[sizeof(
-    Persistent<const DynType>)];
+alignas(Persistent<DynType>) char instance_storage[sizeof(Persistent<DynType>)];
 
 }  // namespace
 
-const Persistent<const DynType>& DynType::Get() {
+const Persistent<DynType>& DynType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<const DynType>::MakeAt<DynType>(
+    base_internal::PersistentHandleFactory<DynType>::MakeAt<DynType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<const DynType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Persistent<DynType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

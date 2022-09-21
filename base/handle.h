@@ -80,7 +80,7 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   // Reinterpret the handle of type `T` as type `F`. `T` must be derived from
   // `F`, `F` must be derived from `T`, or `F` must be the same as `T`.
   //
-  // Persistent<const Resource> handle;
+  // Persistent<Resource> handle;
   // handle.As<const SubResource>()->SubMethod();
   template <typename F>
   std::enable_if_t<
@@ -91,9 +91,6 @@ class Persistent final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Handle, typename Persistent<F>::Handle>,
                   "Persistent<T> and Persistent<F> must have the same "
                   "implementation type");
-    static_assert(
-        (std::is_const_v<T> == std::is_const_v<F> || std::is_const_v<F>),
-        "Constness cannot be removed, only added using As()");
     ABSL_ASSERT(this->template Is<F>());
     // Persistent<T> and Persistent<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
@@ -106,7 +103,7 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   // Reinterpret the handle of type `T` as type `F`. `T` must be derived from
   // `F`, `F` must be derived from `T`, or `F` must be the same as `T`.
   //
-  // Persistent<const Resource> handle;
+  // Persistent<Resource> handle;
   // handle.As<const SubResource>()->SubMethod();
   template <typename F>
   std::enable_if_t<
@@ -117,9 +114,6 @@ class Persistent final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Handle, typename Persistent<F>::Handle>,
                   "Persistent<T> and Persistent<F> must have the same "
                   "implementation type");
-    static_assert(
-        (std::is_const_v<T> == std::is_const_v<F> || std::is_const_v<F>),
-        "Constness cannot be removed, only added using As()");
     ABSL_ASSERT(this->template Is<std::remove_const_t<F>>());
     // Persistent<T> and Persistent<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
@@ -132,6 +126,7 @@ class Persistent final : private base_internal::HandlePolicy<T> {
   // Is checks wether `T` is an instance of `F`.
   template <typename F>
   bool Is() const {
+    base_internal::HandlePolicy<F>{};
     return static_cast<bool>(*this) && F::Is(static_cast<const T&>(**this));
   }
 

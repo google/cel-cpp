@@ -31,7 +31,7 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
 
   using Base::Is;
 
-  static Persistent<const NullValue> Get(ValueFactory& value_factory);
+  static Persistent<NullValue> Get(ValueFactory& value_factory);
 
   using Base::kind;
 

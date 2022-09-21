@@ -39,12 +39,12 @@ class StringValue : public Value {
  public:
   static constexpr Kind kKind = StringType::kKind;
 
-  static Persistent<const StringValue> Empty(ValueFactory& value_factory);
+  static Persistent<StringValue> Empty(ValueFactory& value_factory);
 
   // Concat concatenates the contents of two ByteValue, returning a new
   // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
   // the input ByteValue.
-  static absl::StatusOr<Persistent<const StringValue>> Concat(
+  static absl::StatusOr<Persistent<StringValue>> Concat(
       ValueFactory& value_factory, const StringValue& lhs,
       const StringValue& rhs);
 
@@ -52,7 +52,7 @@ class StringValue : public Value {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const StringType> type() const { return StringType::Get(); }
+  Persistent<StringType> type() const { return StringType::Get(); }
 
   std::string DebugString() const;
 
@@ -82,7 +82,7 @@ class StringValue : public Value {
   friend class base_internal::InlinedStringViewStringValue;
   friend class base_internal::StringStringValue;
   friend base_internal::StringValueRep interop_internal::GetStringValueRep(
-      const Persistent<const StringValue>& value);
+      const Persistent<StringValue>& value);
 
   StringValue() = default;
   StringValue(const StringValue&) = default;

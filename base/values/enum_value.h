@@ -41,7 +41,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const EnumType> type() const { return type_; }
+  Persistent<EnumType> type() const { return type_; }
 
   std::string DebugString() const;
 
@@ -62,12 +62,12 @@ class EnumValue final : public Value, public base_internal::InlineData {
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  EnumValue(Persistent<const EnumType> type, int64_t number)
+  EnumValue(Persistent<EnumType> type, int64_t number)
       : base_internal::InlineData(kMetadata),
         type_(std::move(type)),
         number_(number) {}
 
-  Persistent<const EnumType> type_;
+  Persistent<EnumType> type_;
   int64_t number_;
 };
 
