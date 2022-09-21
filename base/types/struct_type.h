@@ -25,6 +25,7 @@
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -78,17 +79,21 @@ class StructType : public Type {
 
   bool Equals(const Type& other) const;
 
-  // Find the field definition for the given identifier.
-  absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
+  // Find the field definition for the given identifier. If the field does
+  // not exist, an OK status and empty optional is returned. If the field
+  // exists, an OK status and the field is returned. Otherwise an error is
+  // returned.
+  absl::StatusOr<absl::optional<Field>> FindField(TypeManager& type_manager,
+                                                  FieldId id) const;
 
  protected:
   // Called by FindField.
-  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
-                                        absl::string_view name) const;
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const;
 
   // Called by FindField.
-  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                          int64_t number) const;
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const;
 
  private:
   friend internal::TypeInfo base_internal::GetStructTypeTypeId(
@@ -138,17 +143,14 @@ class LegacyStructType final : public StructType,
 
   bool Equals(const Type& other) const;
 
-  // Always returns an error.
-  absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
-
  protected:
   // Always returns an error.
-  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
-                                        absl::string_view name) const;
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const;
 
   // Always returns an error.
-  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                          int64_t number) const;
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const;
 
  private:
   static constexpr uintptr_t kMetadata =
@@ -193,12 +195,12 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   AbstractStructType();
 
   // Called by FindField.
-  virtual absl::StatusOr<Field> FindFieldByName(
+  virtual absl::StatusOr<absl::optional<Field>> FindFieldByName(
       TypeManager& type_manager, absl::string_view name) const = 0;
 
   // Called by FindField.
-  virtual absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                                  int64_t number) const = 0;
+  virtual absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const = 0;
 
  private:
   friend internal::TypeInfo base_internal::GetStructTypeTypeId(

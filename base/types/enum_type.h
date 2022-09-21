@@ -23,6 +23,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -76,18 +77,21 @@ class EnumType : public Type, public base_internal::HeapData {
 
   virtual bool Equals(const Type& other) const;
 
-  // Find the constant definition for the given identifier.
-  absl::StatusOr<Constant> FindConstant(ConstantId id) const;
+  // Find the constant definition for the given identifier. If the constant does
+  // not exist, an OK status and empty optional is returned. If the constant
+  // exists, an OK status and the constant is returned. Otherwise an error is
+  // returned.
+  absl::StatusOr<absl::optional<Constant>> FindConstant(ConstantId id) const;
 
  protected:
   EnumType();
 
   // Called by FindConstant.
-  virtual absl::StatusOr<Constant> FindConstantByName(
+  virtual absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const = 0;
 
   // Called by FindConstant.
-  virtual absl::StatusOr<Constant> FindConstantByNumber(
+  virtual absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
       int64_t number) const = 0;
 
  private:

@@ -25,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/attribute_set.h"
@@ -171,8 +172,11 @@ class ValueFactory final {
       int64_t number) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     CEL_ASSIGN_OR_RETURN(auto constant,
                          enum_type->FindConstant(EnumType::ConstantId(number)));
+    if (!constant.has_value()) {
+      return absl::NotFoundError(absl::StrCat("no such enum number", number));
+    }
     return base_internal::PersistentHandleFactory<
-        const EnumValue>::template Make<EnumValue>(enum_type, constant.number);
+        const EnumValue>::template Make<EnumValue>(enum_type, constant->number);
   }
 
   absl::StatusOr<Persistent<const EnumValue>> CreateEnumValue(
@@ -180,8 +184,11 @@ class ValueFactory final {
       absl::string_view name) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     CEL_ASSIGN_OR_RETURN(auto constant,
                          enum_type->FindConstant(EnumType::ConstantId(name)));
+    if (!constant.has_value()) {
+      return absl::NotFoundError(absl::StrCat("no such enum value", name));
+    }
     return base_internal::PersistentHandleFactory<
-        const EnumValue>::template Make<EnumValue>(enum_type, constant.number);
+        const EnumValue>::template Make<EnumValue>(enum_type, constant->number);
   }
 
   template <typename T>
