@@ -128,7 +128,10 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(iter_range, iter_range_attr);
   current_index += 1;
 
-  CelValue current_value = (*cel_list)[current_index];
+  CelValue current_value =
+      (*cel_list).Get(cel::extensions::ProtoMemoryManager::CastToProtoArena(
+                          frame->memory_manager()),
+                      current_index);
   frame->value_stack().Push(CelValue::CreateInt64(current_index));
   AttributeTrail iter_trail = iter_range_attr.Step(
       CelAttributeQualifier::Create(CelValue::CreateInt64(current_index)),
@@ -233,7 +236,9 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
   }
 
   const CelValue& map = frame->value_stack().Peek();
-  auto list_keys = map.MapOrDie()->ListKeys();
+  auto list_keys = map.MapOrDie()->ListKeys(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(
+          frame->memory_manager()));
   if (!list_keys.ok()) {
     return std::move(list_keys).status();
   }

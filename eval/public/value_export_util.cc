@@ -38,7 +38,8 @@ absl::Status KeyAsString(const CelValue& value, std::string* key) {
 }
 
 //  Export content of CelValue as google.protobuf.Value.
-absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
+absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value,
+                                google::protobuf::Arena* arena) {
   if (in_value.IsNull()) {
     out_value->set_null_value(google::protobuf::NULL_VALUE);
     return absl::OkStatus();
@@ -111,8 +112,8 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
       const CelList* cel_list = in_value.ListOrDie();
       auto out_values = out_value->mutable_list_value();
       for (int i = 0; i < cel_list->size(); i++) {
-        auto status =
-            ExportAsProtoValue((*cel_list)[i], out_values->add_values());
+        auto status = ExportAsProtoValue((*cel_list).Get(arena, i),
+                                         out_values->add_values(), arena);
         if (!status.ok()) {
           return status;
         }
@@ -121,19 +122,19 @@ absl::Status ExportAsProtoValue(const CelValue& in_value, Value* out_value) {
     }
     case CelValue::Type::kMap: {
       const CelMap* cel_map = in_value.MapOrDie();
-      CEL_ASSIGN_OR_RETURN(auto keys_list, cel_map->ListKeys());
+      CEL_ASSIGN_OR_RETURN(auto keys_list, cel_map->ListKeys(arena));
       auto out_values = out_value->mutable_struct_value()->mutable_fields();
       for (int i = 0; i < keys_list->size(); i++) {
         std::string key;
-        CelValue map_key = (*keys_list)[i];
+        CelValue map_key = (*keys_list).Get(arena, i);
         auto status = KeyAsString(map_key, &key);
         if (!status.ok()) {
           return status;
         }
-        auto map_value_ref = (*cel_map)[map_key];
+        auto map_value_ref = (*cel_map).Get(arena, map_key);
         CelValue map_value =
             (map_value_ref) ? map_value_ref.value() : CelValue();
-        status = ExportAsProtoValue(map_value, &((*out_values)[key]));
+        status = ExportAsProtoValue(map_value, &((*out_values)[key]), arena);
         if (!status.ok()) {
           return status;
         }

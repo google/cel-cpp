@@ -525,6 +525,13 @@ class CelList {
  public:
   virtual CelValue operator[](int index) const = 0;
 
+  // Like `operator[](int)` above, but also accepts an arena. Prefer calling
+  // this variant if the arena is known.
+  virtual CelValue Get(google::protobuf::Arena* arena, int index) const {
+    static_cast<void>(arena);
+    return (*this)[index];
+  }
+
   // List size
   virtual int size() const = 0;
   // Default empty check. Can be overridden in subclass for performance.
@@ -552,6 +559,14 @@ class CelMap {
   // TODO(issues/122): Make this method const correct.
   virtual absl::optional<CelValue> operator[](CelValue key) const = 0;
 
+  // Like `operator[](CelValue)` above, but also accepts an arena. Prefer
+  // calling this variant if the arena is known.
+  virtual absl::optional<CelValue> Get(google::protobuf::Arena* arena,
+                                       CelValue key) const {
+    static_cast<void>(arena);
+    return (*this)[key];
+  }
+
   // Return whether the key is present within the map.
   //
   // Typically, key resolution will be a simple boolean result; however, there
@@ -564,7 +579,8 @@ class CelMap {
   virtual absl::StatusOr<bool> Has(const CelValue& key) const {
     // This check safeguards against issues with invalid key types such as NaN.
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
-    auto value = (*this)[key];
+    google::protobuf::Arena arena;
+    auto value = (*this).Get(&arena, key);
     if (!value.has_value()) {
       return false;
     }
@@ -584,6 +600,13 @@ class CelMap {
   // Return list of keys. CelList is owned by Arena, so no
   // ownership is passed.
   virtual absl::StatusOr<const CelList*> ListKeys() const = 0;
+
+  // Like `ListKeys()` above, but also accepts an arena. Prefer calling this
+  // variant if the arena is known.
+  virtual absl::StatusOr<const CelList*> ListKeys(google::protobuf::Arena* arena) const {
+    static_cast<void>(arena);
+    return ListKeys();
+  }
 
   virtual ~CelMap() {}
 };

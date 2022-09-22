@@ -199,9 +199,10 @@ absl::optional<bool> ListEqual(const CelList* t1, const CelList* t2) {
     return false;
   }
 
+  google::protobuf::Arena arena;
   for (int i = 0; i < index_size; i++) {
-    CelValue e1 = (*t1)[i];
-    CelValue e2 = (*t2)[i];
+    CelValue e1 = (*t1).Get(&arena, i);
+    CelValue e2 = (*t2).Get(&arena, i);
     absl::optional<bool> eq = EqualsProvider()(e1, e2);
     if (eq.has_value()) {
       if (!(*eq)) {
@@ -243,15 +244,16 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
     return false;
   }
 
-  auto list_keys = t1->ListKeys();
+  google::protobuf::Arena arena;
+  auto list_keys = t1->ListKeys(&arena);
   if (!list_keys.ok()) {
     return absl::nullopt;
   }
   const CelList* keys = *list_keys;
   for (int i = 0; i < keys->size(); i++) {
-    CelValue key = (*keys)[i];
-    CelValue v1 = (*t1)[key].value();
-    absl::optional<CelValue> v2 = (*t2)[key];
+    CelValue key = (*keys).Get(&arena, i);
+    CelValue v1 = (*t1).Get(&arena, key).value();
+    absl::optional<CelValue> v2 = (*t2).Get(&arena, key);
     if (!v2.has_value()) {
       auto number = GetNumberFromCelValue(key);
       if (!number.has_value()) {
@@ -261,7 +263,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
         CelValue int_key = CelValue::CreateInt64(number->AsInt());
         absl::optional<bool> eq = EqualsProvider()(key, int_key);
         if (eq.has_value() && *eq) {
-          v2 = (*t2)[int_key];
+          v2 = (*t2).Get(&arena, int_key);
         }
       }
       if (!key.IsUint64() && !v2.has_value() &&
@@ -269,7 +271,7 @@ absl::optional<bool> MapEqual(const CelMap* t1, const CelMap* t2) {
         CelValue uint_key = CelValue::CreateUint64(number->AsUint());
         absl::optional<bool> eq = EqualsProvider()(key, uint_key);
         if (eq.has_value() && *eq) {
-          v2 = (*t2)[uint_key];
+          v2 = (*t2).Get(&arena, uint_key);
         }
       }
     }

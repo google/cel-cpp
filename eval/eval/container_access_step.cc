@@ -39,27 +39,29 @@ class ContainerAccessStep : public ExpressionStepBase {
 inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
                                                  const CelValue& key,
                                                  ExecutionFrame* frame) const {
+  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
+      frame->memory_manager());
   if (frame->enable_heterogeneous_numeric_lookups()) {
     // Double isn't a supported key type but may be convertible to an integer.
     absl::optional<CelNumber> number = GetNumberFromCelValue(key);
     if (number.has_value()) {
       // consider uint as uint first then try coercion.
       if (key.IsUint64()) {
-        absl::optional<CelValue> maybe_value = (*cel_map)[key];
+        absl::optional<CelValue> maybe_value = (*cel_map).Get(arena, key);
         if (maybe_value.has_value()) {
           return *maybe_value;
         }
       }
       if (number->LosslessConvertibleToInt()) {
         absl::optional<CelValue> maybe_value =
-            (*cel_map)[CelValue::CreateInt64(number->AsInt())];
+            (*cel_map).Get(arena, CelValue::CreateInt64(number->AsInt()));
         if (maybe_value.has_value()) {
           return *maybe_value;
         }
       }
       if (number->LosslessConvertibleToUint()) {
         absl::optional<CelValue> maybe_value =
-            (*cel_map)[CelValue::CreateUint64(number->AsUint())];
+            (*cel_map).Get(arena, CelValue::CreateUint64(number->AsUint()));
         if (maybe_value.has_value()) {
           return *maybe_value;
         }
@@ -72,7 +74,7 @@ inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
   if (!status.ok()) {
     return CreateErrorValue(frame->memory_manager(), status);
   }
-  absl::optional<CelValue> maybe_value = (*cel_map)[key];
+  absl::optional<CelValue> maybe_value = (*cel_map).Get(arena, key);
   if (maybe_value.has_value()) {
     return maybe_value.value();
   }
@@ -83,6 +85,8 @@ inline CelValue ContainerAccessStep::LookupInMap(const CelMap* cel_map,
 inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
                                                   const CelValue& key,
                                                   ExecutionFrame* frame) const {
+  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
+      frame->memory_manager());
   absl::optional<int64_t> maybe_idx;
   if (frame->enable_heterogeneous_numeric_lookups()) {
     auto number = GetNumberFromCelValue(key);
@@ -100,7 +104,7 @@ inline CelValue ContainerAccessStep::LookupInList(const CelList* cel_list,
           frame->memory_manager(),
           absl::StrCat("Index error: index=", idx, " size=", cel_list->size()));
     }
-    return (*cel_list)[idx];
+    return (*cel_list).Get(arena, idx);
   }
 
   return CreateErrorValue(

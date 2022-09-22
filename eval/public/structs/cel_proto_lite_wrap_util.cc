@@ -811,7 +811,7 @@ absl::StatusOr<ListValue*> CreateMessageFromValue(const CelValue& cel_value,
     wrapper = google::protobuf::Arena::CreateMessage<ListValue>(arena);
   }
   for (int i = 0; i < list.size(); i++) {
-    auto element = list[i];
+    auto element = list.Get(arena, i);
     Value* element_value = nullptr;
     CEL_ASSIGN_OR_RETURN(element_value,
                          CreateMessageFromValue(element, element_value, arena));
@@ -833,17 +833,17 @@ absl::StatusOr<Struct*> CreateMessageFromValue(const CelValue& cel_value,
     wrapper = google::protobuf::Arena::CreateMessage<Struct>(arena);
   }
   const google::api::expr::runtime::CelMap& map = *cel_value.MapOrDie();
-  const auto& keys = *map.ListKeys().value();
+  const auto& keys = *map.ListKeys(arena).value();
   auto fields = wrapper->mutable_fields();
   for (int i = 0; i < keys.size(); i++) {
-    auto k = keys[i];
+    auto k = keys.Get(arena, i);
     // If the key is not a string type, abort the conversion.
     if (!k.IsString()) {
       return absl::InternalError("map key is expected to have String type.");
     }
     std::string key(k.StringOrDie().value());
 
-    auto v = map[k];
+    auto v = map.Get(arena, k);
     if (!v.has_value()) {
       return absl::InternalError("map value is expected to have value.");
     }

@@ -40,9 +40,10 @@ int ComparisonImpl(const CelList* lhs, const CelList* rhs) {
   if (size_comparison != 0) {
     return size_comparison;
   }
+  google::protobuf::Arena arena;
   for (int i = 0; i < lhs->size(); i++) {
-    CelValue lhs_i = lhs->operator[](i);
-    CelValue rhs_i = rhs->operator[](i);
+    CelValue lhs_i = lhs->Get(&arena, i);
+    CelValue rhs_i = rhs->Get(&arena, i);
     int value_comparison = CelValueCompare(lhs_i, rhs_i);
     if (value_comparison != 0) {
       return value_comparison;
@@ -63,17 +64,19 @@ int ComparisonImpl(const CelMap* lhs, const CelMap* rhs) {
     return size_comparison;
   }
 
+  google::protobuf::Arena arena;
+
   std::vector<CelValue> lhs_keys;
   std::vector<CelValue> rhs_keys;
   lhs_keys.reserve(lhs->size());
   rhs_keys.reserve(lhs->size());
 
-  const CelList* lhs_key_view = lhs->ListKeys().value();
-  const CelList* rhs_key_view = rhs->ListKeys().value();
+  const CelList* lhs_key_view = lhs->ListKeys(&arena).value();
+  const CelList* rhs_key_view = rhs->ListKeys(&arena).value();
 
   for (int i = 0; i < lhs->size(); i++) {
-    lhs_keys.push_back(lhs_key_view->operator[](i));
-    rhs_keys.push_back(rhs_key_view->operator[](i));
+    lhs_keys.push_back(lhs_key_view->Get(&arena, i));
+    rhs_keys.push_back(rhs_key_view->Get(&arena, i));
   }
 
   std::sort(lhs_keys.begin(), lhs_keys.end(), &CelValueLessThan);
@@ -88,8 +91,8 @@ int ComparisonImpl(const CelMap* lhs, const CelMap* rhs) {
     }
 
     // keys equal, compare values.
-    auto lhs_value_i = lhs->operator[](lhs_key_i).value();
-    auto rhs_value_i = rhs->operator[](rhs_key_i).value();
+    auto lhs_value_i = lhs->Get(&arena, lhs_key_i).value();
+    auto rhs_value_i = rhs->Get(&arena, rhs_key_i).value();
     int value_comparison = CelValueCompare(lhs_value_i, rhs_value_i);
     if (value_comparison != 0) {
       return value_comparison;
