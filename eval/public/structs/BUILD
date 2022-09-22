@@ -60,6 +60,7 @@ cc_library(
         "//eval/testutil:test_message_cc_proto",
         "//internal:overflow",
         "//internal:proto_time_encoding",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

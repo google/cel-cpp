@@ -22,7 +22,8 @@ namespace api {
 namespace expr {
 namespace runtime {
 
-absl::Status CelValueToValue(const CelValue& value, Value* result) {
+absl::Status CelValueToValue(const CelValue& value, Value* result,
+                             google::protobuf::Arena* arena) {
   switch (value.type()) {
     case CelValue::Type::kBool:
       result->set_bool_value(value.BoolOrDie());
@@ -78,25 +79,26 @@ absl::Status CelValueToValue(const CelValue& value, Value* result) {
       auto& list = *value.ListOrDie();
       auto* list_value = result->mutable_list_value();
       for (int i = 0; i < list.size(); ++i) {
-        CEL_RETURN_IF_ERROR(CelValueToValue(list[i], list_value->add_values()));
+        CEL_RETURN_IF_ERROR(
+            CelValueToValue(list[i], list_value->add_values(), arena));
       }
       break;
     }
     case CelValue::Type::kMap: {
       auto* map_value = result->mutable_map_value();
       auto& cel_map = *value.MapOrDie();
-      CEL_ASSIGN_OR_RETURN(const auto* keys, cel_map.ListKeys());
+      CEL_ASSIGN_OR_RETURN(const auto* keys, cel_map.ListKeys(arena));
       for (int i = 0; i < keys->size(); ++i) {
-        CelValue key = (*keys)[i];
+        CelValue key = (*keys).Get(arena, i);
         auto* entry = map_value->add_entries();
-        CEL_RETURN_IF_ERROR(CelValueToValue(key, entry->mutable_key()));
-        auto optional_value = cel_map[key];
+        CEL_RETURN_IF_ERROR(CelValueToValue(key, entry->mutable_key(), arena));
+        auto optional_value = cel_map.Get(arena, key);
         if (!optional_value) {
           return absl::Status(absl::StatusCode::kInternal,
                               "key not found in map");
         }
         CEL_RETURN_IF_ERROR(
-            CelValueToValue(*optional_value, entry->mutable_value()));
+            CelValueToValue(*optional_value, entry->mutable_value(), arena));
       }
       break;
     }

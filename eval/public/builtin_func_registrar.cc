@@ -252,11 +252,11 @@ bool ValueEquals(const CelValue& value, CelValue::BytesHolder other) {
 
 // Template function implementing CEL in() function
 template <typename T>
-bool In(Arena*, T value, const CelList* list) {
+bool In(Arena* arena, T value, const CelList* list) {
   int index_size = list->size();
 
   for (int i = 0; i < index_size; i++) {
-    CelValue element = (*list)[i];
+    CelValue element = (*list).Get(arena, i);
 
     if (ValueEquals<T>(element, value)) {
       return true;
@@ -272,7 +272,7 @@ CelValue HeterogeneousEqualityIn(Arena* arena, CelValue value,
   int index_size = list->size();
 
   for (int i = 0; i < index_size; i++) {
-    CelValue element = (*list)[i];
+    CelValue element = (*list).Get(arena, i);
     absl::optional<bool> element_equals = CelValueEqualImpl(element, value);
 
     // If equality is undefined (e.g. duration == double), just treat as false.
@@ -297,7 +297,7 @@ const CelList* AppendList(Arena* arena, const CelList* value1,
   MutableListImpl* mutable_list = const_cast<MutableListImpl*>(
       cel::internal::down_cast<const MutableListImpl*>(value1));
   for (int i = 0; i < value2->size(); i++) {
-    mutable_list->Append((*value2)[i]);
+    mutable_list->Append((*value2).Get(arena, i));
   }
   return mutable_list;
 }
@@ -328,10 +328,10 @@ const CelList* ConcatList(Arena* arena, const CelList* value1,
   joined_values.reserve(size1 + size2);
 
   for (int i = 0; i < size1; i++) {
-    joined_values.push_back((*value1)[i]);
+    joined_values.push_back((*value1).Get(arena, i));
   }
   for (int i = 0; i < size2; i++) {
-    joined_values.push_back((*value2)[i]);
+    joined_values.push_back((*value2).Get(arena, i));
   }
 
   auto concatenated =

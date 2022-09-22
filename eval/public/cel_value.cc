@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 
+#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
@@ -59,6 +60,8 @@ const absl::Status* DurationOverflowError() {
 }
 
 struct DebugStringVisitor {
+  google::protobuf::Arena* const arena;
+
   std::string operator()(bool arg) { return absl::StrFormat("%d", arg); }
   std::string operator()(int64_t arg) { return absl::StrFormat("%lld", arg); }
   std::string operator()(uint64_t arg) { return absl::StrFormat("%llu", arg); }
@@ -91,18 +94,18 @@ struct DebugStringVisitor {
     std::vector<std::string> elements;
     elements.reserve(arg->size());
     for (int i = 0; i < arg->size(); i++) {
-      elements.push_back(arg->operator[](i).DebugString());
+      elements.push_back(arg->Get(arena, i).DebugString());
     }
     return absl::StrCat("[", absl::StrJoin(elements, ", "), "]");
   }
 
   std::string operator()(const CelMap* arg) {
-    const CelList* keys = arg->ListKeys().value();
+    const CelList* keys = arg->ListKeys(arena).value();
     std::vector<std::string> elements;
     elements.reserve(keys->size());
     for (int i = 0; i < keys->size(); i++) {
-      const auto& key = (*keys)[i];
-      const auto& optional_value = arg->operator[](key);
+      const auto& key = (*keys).Get(arena, i);
+      const auto& optional_value = arg->Get(arena, key);
       elements.push_back(absl::StrCat("<", key.DebugString(), ">: <",
                                       optional_value.has_value()
                                           ? optional_value->DebugString()
@@ -237,8 +240,9 @@ CelValue CelValue::ObtainCelType() const {
 
 // Returns debug string describing a value
 const std::string CelValue::DebugString() const {
+  google::protobuf::Arena arena;
   return absl::StrCat(CelValue::TypeName(type()), ": ",
-                      InternalVisit<std::string>(DebugStringVisitor()));
+                      InternalVisit<std::string>(DebugStringVisitor{&arena}));
 }
 
 CelValue CreateErrorValue(cel::MemoryManager& manager,

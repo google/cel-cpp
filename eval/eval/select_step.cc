@@ -227,7 +227,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
       const CelMap& cel_map = *arg.MapOrDie();
 
       CelValue field_name = CelValue::CreateString(&field_);
-      absl::optional<CelValue> lookup_result = cel_map[field_name];
+      absl::optional<CelValue> lookup_result =
+          cel_map.Get(cel::extensions::ProtoMemoryManager::CastToProtoArena(
+                          frame->memory_manager()),
+                      field_name);
 
       // If object is not found, we return Error, per CEL specification.
       if (lookup_result.has_value()) {

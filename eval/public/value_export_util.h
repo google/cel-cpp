@@ -2,6 +2,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_VALUE_EXPORT_UTIL_H_
 
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "eval/public/cel_value.h"
 
@@ -13,7 +14,14 @@ namespace google::api::expr::runtime {
 // - exports integer keys in maps as strings;
 // - handles Duration and Timestamp as generic messages.
 absl::Status ExportAsProtoValue(const CelValue& in_value,
-                                google::protobuf::Value* out_value);
+                                google::protobuf::Value* out_value,
+                                google::protobuf::Arena* arena);
+
+inline absl::Status ExportAsProtoValue(const CelValue& in_value,
+                                       google::protobuf::Value* out_value) {
+  google::protobuf::Arena arena;
+  return ExportAsProtoValue(in_value, out_value, &arena);
+}
 
 }  // namespace google::api::expr::runtime
 

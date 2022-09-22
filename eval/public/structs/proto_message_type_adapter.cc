@@ -365,11 +365,11 @@ absl::Status ProtoMessageTypeAdapter::SetField(
         ValidateSetFieldOp(value_field_descriptor != nullptr, field_name,
                            "failed to find value field descriptor"));
 
-    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys());
+    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys(arena));
     for (int i = 0; i < key_list->size(); i++) {
-      CelValue key = (*key_list)[i];
+      CelValue key = (*key_list).Get(arena, i);
 
-      auto value = (*cel_map)[key];
+      auto value = (*cel_map).Get(arena, key);
       CEL_RETURN_IF_ERROR(ValidateSetFieldOp(value.has_value(), field_name,
                                              "error serializing CelMap"));
       Message* entry_msg = mutable_message->GetReflection()->AddMessage(
@@ -388,7 +388,7 @@ absl::Status ProtoMessageTypeAdapter::SetField(
 
     for (int i = 0; i < cel_list->size(); i++) {
       CEL_RETURN_IF_ERROR(internal::AddValueToRepeatedField(
-          (*cel_list)[i], field_descriptor, mutable_message, arena));
+          (*cel_list).Get(arena, i), field_descriptor, mutable_message, arena));
     }
   } else {
     CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
