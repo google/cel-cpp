@@ -20,6 +20,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -434,6 +435,13 @@ CelValue CreateCelValue(const std::string& value,
 CelValue CreateCelValue(const absl::Cord& value,
                         const LegacyTypeInfoApis* type_info, Arena* arena) {
   return CelValue::CreateBytes(Arena::Create<std::string>(arena, value));
+}
+
+CelValue CreateCelValue(const std::string_view string_value,
+                        const LegacyTypeInfoApis* type_info,
+                        google::protobuf::Arena* arena) {
+  return CelValue::CreateString(
+      Arena::Create<std::string>(arena, string_value));
 }
 
 CelValue CreateCelValue(const BoolValue& wrapper,

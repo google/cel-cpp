@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_CEL_PROTO_LITE_WRAP_UTIL_H_
 
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 #include "google/protobuf/any.pb.h"
@@ -114,6 +115,10 @@ CelValue CreateCelValue(const google::protobuf::BytesValue& wrapper,
                         google::protobuf::Arena* arena);
 // Creates CelValue from provided google::protobuf::Any.
 CelValue CreateCelValue(const google::protobuf::Any& any_value,
+                        const LegacyTypeInfoApis* type_info,
+                        google::protobuf::Arena* arena);
+// Creates CelValue from provided std::string_view
+CelValue CreateCelValue(const std::string_view string_value,
                         const LegacyTypeInfoApis* type_info,
                         google::protobuf::Arena* arena);
 // Creates CelValue from provided MessageLite-derived typed reference. It always

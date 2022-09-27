@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -277,6 +278,15 @@ TEST_F(CelProtoWrapperTest, CreateCelValueString) {
   Value json;
   json.set_string_value(test);
   ExpectUnwrappedPrimitive(json, value);
+}
+
+TEST_F(CelProtoWrapperTest, CreateCelValueStringView) {
+  const std::string test = "test";
+  const std::string_view test_view(test);
+
+  CelValue cel_value = CreateCelValue(test_view, type_info(), arena());
+  EXPECT_TRUE(cel_value.IsString());
+  EXPECT_EQ(cel_value.StringOrDie().value(), test);
 }
 
 TEST_F(CelProtoWrapperTest, CreateCelValueCord) {
