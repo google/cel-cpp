@@ -108,7 +108,13 @@ class LegacyCelList final : public CelList {
   // List size
   int size() const override { return static_cast<int>(impl_->size()); }
 
+  Persistent<ListValue> value() const { return impl_; }
+
  private:
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<LegacyCelList>();
+  }
+
   ValueFactory& value_factory_;
   Persistent<ListValue> impl_;
 };
@@ -219,12 +225,26 @@ class LegacyCelMap final : public CelMap {
     return legacy_list_keys.ListOrDie();
   }
 
+  Persistent<MapValue> value() const { return impl_; }
+
  private:
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<LegacyCelMap>();
+  }
+
   ValueFactory& value_factory_;
   Persistent<MapValue> impl_;
 };
 
 }  // namespace
+
+internal::TypeInfo CelListAccess::TypeId(const CelList& list) {
+  return list.TypeId();
+}
+
+internal::TypeInfo CelMapAccess::TypeId(const CelMap& map) {
+  return map.TypeId();
+}
 
 absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
     cel::ValueFactory& value_factory, absl::string_view input) {
@@ -292,8 +312,12 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
     case CelValue::Type::kTimestamp:
       return value_factory.CreateTimestampValue(legacy_value.TimestampOrDie());
     case CelValue::Type::kList: {
-      // Unfortunately we cannot detect LegacyCelList due to lack of RTTI-like
-      // feature.
+      if (CelListAccess::TypeId(*legacy_value.ListOrDie()) ==
+          internal::TypeId<LegacyCelList>()) {
+        // Fast path.
+        return static_cast<const LegacyCelList*>(legacy_value.ListOrDie())
+            ->value();
+      }
       CEL_ASSIGN_OR_RETURN(auto type,
                            value_factory.type_factory().CreateListType(
                                value_factory.type_factory().GetDynType()));
@@ -301,8 +325,12 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
           type, legacy_value.ListOrDie());
     }
     case CelValue::Type::kMap: {
-      // Unfortunately we cannot detect LegacyCelMap due to lack of RTTI-like
-      // feature.
+      if (CelMapAccess::TypeId(*legacy_value.MapOrDie()) ==
+          internal::TypeId<LegacyCelMap>()) {
+        // Fast path.
+        return static_cast<const LegacyCelMap*>(legacy_value.MapOrDie())
+            ->value();
+      }
       CEL_ASSIGN_OR_RETURN(auto type,
                            value_factory.type_factory().CreateMapType(
                                value_factory.type_factory().GetDynType(),

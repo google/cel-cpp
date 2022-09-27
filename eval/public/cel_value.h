@@ -38,8 +38,14 @@
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/message_wrapper.h"
 #include "internal/casts.h"
+#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
+
+namespace cel::interop_internal {
+struct CelListAccess;
+struct CelMapAccess;
+}  // namespace cel::interop_internal
 
 namespace google::api::expr::runtime {
 
@@ -538,6 +544,13 @@ class CelList {
   virtual bool empty() const { return size() == 0; }
 
   virtual ~CelList() {}
+
+ private:
+  friend class cel::interop_internal::CelListAccess;
+
+  virtual cel::internal::TypeInfo TypeId() const {
+    return cel::internal::TypeInfo();
+  }
 };
 
 // CelMap is a base class for map accessors.
@@ -609,6 +622,13 @@ class CelMap {
   }
 
   virtual ~CelMap() {}
+
+ private:
+  friend class cel::interop_internal::CelMapAccess;
+
+  virtual cel::internal::TypeInfo TypeId() const {
+    return cel::internal::TypeInfo();
+  }
 };
 
 // Utility method that generates CelValue containing CelError.

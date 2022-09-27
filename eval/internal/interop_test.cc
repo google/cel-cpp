@@ -390,6 +390,40 @@ TEST(ValueInterop, ListToLegacy) {
   EXPECT_EQ((*legacy_value.ListOrDie())[0].Int64OrDie(), 0);
 }
 
+TEST(ValueInterop, ModernListRoundtrip) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       value_factory.type_factory().CreateListType(
+                           value_factory.type_factory().GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateListValue<TestListValue>(
+                                       type, std::vector<int64_t>{0}));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(value_factory, legacy_value));
+  // Cheat, we want pointer equality.
+  EXPECT_EQ(&*value, &*modern_value);
+}
+
+TEST(ValueInterop, LegacyListRoundtrip) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = CelValue::CreateList(
+      memory_manager
+          ->New<google::api::expr::runtime::ContainerBackedListImpl>(
+              std::vector<CelValue>{CelValue::CreateInt64(0)})
+          .release());
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value,
+                       ToLegacyValue(value_factory, modern_value));
+  EXPECT_EQ(value.ListOrDie(), legacy_value.ListOrDie());
+}
+
 TEST(ValueInterop, MapFromLegacy) {
   auto memory_manager = ArenaMemoryManager::Default();
   TypeFactory type_factory(*memory_manager);
@@ -494,6 +528,24 @@ TEST(ValueInterop, MapToLegacy) {
                        value_factory.CreateMapValue<TestMapValue>(
                            type, std::map<int64_t, std::string>{{1, "foo"}}));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(value_factory, legacy_value));
+  EXPECT_EQ(&*value, &*modern_value);
+}
+
+TEST(ValueInterop, ModernMapRoundtrip) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       value_factory.type_factory().CreateMapType(
+                           value_factory.type_factory().GetIntType(),
+                           value_factory.type_factory().GetStringType()));
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           type, std::map<int64_t, std::string>{{1, "foo"}}));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
   EXPECT_TRUE(legacy_value.IsMap());
   EXPECT_EQ(legacy_value.MapOrDie()->size(), 1);
   EXPECT_TRUE(
@@ -503,6 +555,21 @@ TEST(ValueInterop, MapToLegacy) {
                 .StringOrDie()
                 .value(),
             "foo");
+}
+
+TEST(ValueInterop, LegacyMapRoundtrip) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value = CelValue::CreateMap(
+      memory_manager->New<google::api::expr::runtime::CelMapBuilder>()
+          .release());
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value,
+                       ToLegacyValue(value_factory, modern_value));
+  EXPECT_EQ(value.MapOrDie(), legacy_value.MapOrDie());
 }
 
 TEST(ValueInterop, UnknownFromLegacy) {

@@ -25,6 +25,7 @@ cc_library(
         "//base:value_factory",
         "//eval/public:cel_value",
         "//eval/public:unknown_set",
+        "//internal:rtti",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",

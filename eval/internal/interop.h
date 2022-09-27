@@ -25,12 +25,23 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "eval/public/cel_value.h"
+#include "internal/rtti.h"
 
 namespace google::api::expr::runtime {
 class UnknownSet;
 }
 
 namespace cel::interop_internal {
+
+struct CelListAccess final {
+  static internal::TypeInfo TypeId(
+      const google::api::expr::runtime::CelList& list);
+};
+
+struct CelMapAccess final {
+  static internal::TypeInfo TypeId(
+      const google::api::expr::runtime::CelMap& map);
+};
 
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.

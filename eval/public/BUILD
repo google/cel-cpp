@@ -76,6 +76,7 @@ cc_library(
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
         "//internal:casts",
+        "//internal:rtti",
         "//internal:status_macros",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
