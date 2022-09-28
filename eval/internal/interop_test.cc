@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
 #include "absl/time/time.h"
@@ -30,6 +31,7 @@
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/unknown_set.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 
 namespace cel::interop_internal {
@@ -42,8 +44,9 @@ using testing::Eq;
 using cel::internal::IsOkAndHolds;
 
 TEST(ValueInterop, NullFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateNull();
@@ -53,8 +56,9 @@ TEST(ValueInterop, NullFromLegacy) {
 }
 
 TEST(ValueInterop, NullToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.GetNullValue();
@@ -63,8 +67,9 @@ TEST(ValueInterop, NullToLegacy) {
 }
 
 TEST(ValueInterop, BoolFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateBool(true);
@@ -75,8 +80,9 @@ TEST(ValueInterop, BoolFromLegacy) {
 }
 
 TEST(ValueInterop, BoolToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateBoolValue(true);
@@ -86,8 +92,9 @@ TEST(ValueInterop, BoolToLegacy) {
 }
 
 TEST(ValueInterop, IntFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateInt64(1);
@@ -98,8 +105,9 @@ TEST(ValueInterop, IntFromLegacy) {
 }
 
 TEST(ValueInterop, IntToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateIntValue(1);
@@ -109,8 +117,9 @@ TEST(ValueInterop, IntToLegacy) {
 }
 
 TEST(ValueInterop, UintFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateUint64(1);
@@ -121,8 +130,9 @@ TEST(ValueInterop, UintFromLegacy) {
 }
 
 TEST(ValueInterop, UintToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateUintValue(1);
@@ -132,8 +142,9 @@ TEST(ValueInterop, UintToLegacy) {
 }
 
 TEST(ValueInterop, DoubleFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateDouble(1.0);
@@ -144,8 +155,9 @@ TEST(ValueInterop, DoubleFromLegacy) {
 }
 
 TEST(ValueInterop, DoubleToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateDoubleValue(1.0);
@@ -155,8 +167,9 @@ TEST(ValueInterop, DoubleToLegacy) {
 }
 
 TEST(ValueInterop, DurationFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
@@ -168,8 +181,9 @@ TEST(ValueInterop, DurationFromLegacy) {
 }
 
 TEST(ValueInterop, DurationToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
@@ -180,8 +194,9 @@ TEST(ValueInterop, DurationToLegacy) {
 }
 
 TEST(ValueInterop, TimestampFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
@@ -193,8 +208,9 @@ TEST(ValueInterop, TimestampFromLegacy) {
 }
 
 TEST(ValueInterop, TimestampToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
@@ -207,8 +223,9 @@ TEST(ValueInterop, TimestampToLegacy) {
 
 TEST(ValueInterop, ErrorFromLegacy) {
   auto error = absl::CancelledError();
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateError(&error);
@@ -219,8 +236,9 @@ TEST(ValueInterop, ErrorFromLegacy) {
 }
 
 TEST(ValueInterop, TypeFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateCelTypeView("bool");
@@ -232,8 +250,9 @@ TEST(ValueInterop, TypeFromLegacy) {
 }
 
 TEST(ValueInterop, TypeToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateTypeValue(type_factory.GetBoolType());
@@ -243,8 +262,9 @@ TEST(ValueInterop, TypeToLegacy) {
 }
 
 TEST(ValueInterop, StringFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateStringView("test");
@@ -255,8 +275,9 @@ TEST(ValueInterop, StringFromLegacy) {
 }
 
 TEST(ValueInterop, StringToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateStringValue("test"));
@@ -266,8 +287,9 @@ TEST(ValueInterop, StringToLegacy) {
 }
 
 TEST(ValueInterop, CordStringToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value,
@@ -278,8 +300,9 @@ TEST(ValueInterop, CordStringToLegacy) {
 }
 
 TEST(ValueInterop, BytesFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateBytesView("test");
@@ -290,8 +313,9 @@ TEST(ValueInterop, BytesFromLegacy) {
 }
 
 TEST(ValueInterop, BytesToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateBytesValue("test"));
@@ -301,8 +325,9 @@ TEST(ValueInterop, BytesToLegacy) {
 }
 
 TEST(ValueInterop, CordBytesToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value,
@@ -313,13 +338,14 @@ TEST(ValueInterop, CordBytesToLegacy) {
 }
 
 TEST(ValueInterop, ListFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateList(
       memory_manager
-          ->New<google::api::expr::runtime::ContainerBackedListImpl>(
+          .New<google::api::expr::runtime::ContainerBackedListImpl>(
               std::vector<CelValue>{CelValue::CreateInt64(0)})
           .release());
   ASSERT_OK_AND_ASSIGN(auto value,
@@ -374,8 +400,9 @@ class TestListValue final : public ListValue {
 CEL_IMPLEMENT_LIST_VALUE(TestListValue);
 
 TEST(ValueInterop, ListToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
@@ -391,8 +418,9 @@ TEST(ValueInterop, ListToLegacy) {
 }
 
 TEST(ValueInterop, ModernListRoundtrip) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
@@ -408,13 +436,14 @@ TEST(ValueInterop, ModernListRoundtrip) {
 }
 
 TEST(ValueInterop, LegacyListRoundtrip) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = CelValue::CreateList(
       memory_manager
-          ->New<google::api::expr::runtime::ContainerBackedListImpl>(
+          .New<google::api::expr::runtime::ContainerBackedListImpl>(
               std::vector<CelValue>{CelValue::CreateInt64(0)})
           .release());
   ASSERT_OK_AND_ASSIGN(auto modern_value,
@@ -425,13 +454,13 @@ TEST(ValueInterop, LegacyListRoundtrip) {
 }
 
 TEST(ValueInterop, MapFromLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto* legacy_map =
-      memory_manager->New<google::api::expr::runtime::CelMapBuilder>()
-          .release();
+      memory_manager.New<google::api::expr::runtime::CelMapBuilder>().release();
   ASSERT_OK(legacy_map->Add(CelValue::CreateInt64(1),
                             CelValue::CreateStringView("foo")));
   auto legacy_value = CelValue::CreateMap(legacy_map);
@@ -516,8 +545,9 @@ class TestMapValue final : public MapValue {
 CEL_IMPLEMENT_MAP_VALUE(TestMapValue);
 
 TEST(ValueInterop, MapToLegacy) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
@@ -534,8 +564,9 @@ TEST(ValueInterop, MapToLegacy) {
 }
 
 TEST(ValueInterop, ModernMapRoundtrip) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto type,
@@ -558,12 +589,13 @@ TEST(ValueInterop, ModernMapRoundtrip) {
 }
 
 TEST(ValueInterop, LegacyMapRoundtrip) {
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = CelValue::CreateMap(
-      memory_manager->New<google::api::expr::runtime::CelMapBuilder>()
+      memory_manager.New<google::api::expr::runtime::CelMapBuilder>()
           .release());
   ASSERT_OK_AND_ASSIGN(auto modern_value,
                        FromLegacyValue(value_factory, value));
@@ -576,8 +608,9 @@ TEST(ValueInterop, UnknownFromLegacy) {
   AttributeSet attributes({Attribute("foo")});
   FunctionResultSet function_results(
       FunctionResult(FunctionDescriptor("bar", false, std::vector<Kind>{}), 1));
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   UnknownSet unknown_set(attributes, function_results);
@@ -593,8 +626,9 @@ TEST(ValueInterop, UnknownToLegacy) {
   AttributeSet attributes({Attribute("foo")});
   FunctionResultSet function_results(
       FunctionResult(FunctionDescriptor("bar", false, std::vector<Kind>{}), 1));
-  auto memory_manager = ArenaMemoryManager::Default();
-  TypeFactory type_factory(*memory_manager);
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateUnknownValue(attributes, function_results);

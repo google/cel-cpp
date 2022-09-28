@@ -49,9 +49,11 @@ cc_test(
         "//eval/public:unknown_set",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
+        "//extensions/protobuf:memory_manager",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
     ],
 )
