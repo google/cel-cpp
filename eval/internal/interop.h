@@ -25,7 +25,7 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "eval/public/cel_value.h"
-#include "internal/rtti.h"
+#include "eval/public/message_wrapper.h"
 
 namespace google::api::expr::runtime {
 class UnknownSet;
@@ -41,6 +41,31 @@ struct CelListAccess final {
 struct CelMapAccess final {
   static internal::TypeInfo TypeId(
       const google::api::expr::runtime::CelMap& map);
+};
+
+struct LegacyStructTypeAccess final {
+  static Persistent<StructType> Create(uintptr_t message);
+};
+
+struct LegacyStructValueAccess final {
+  static Persistent<StructValue> Create(
+      const google::api::expr::runtime::MessageWrapper& wrapper);
+  static Persistent<StructValue> Create(uintptr_t message, uintptr_t type_info);
+  static uintptr_t Message(const base_internal::LegacyStructValue& value);
+  static uintptr_t TypeInfo(const base_internal::LegacyStructValue& value);
+  static google::api::expr::runtime::MessageWrapper ToMessageWrapper(
+      const base_internal::LegacyStructValue& value);
+};
+
+struct MessageWrapperAccess final {
+  static uintptr_t Message(
+      const google::api::expr::runtime::MessageWrapper& wrapper);
+  static uintptr_t TypeInfo(
+      const google::api::expr::runtime::MessageWrapper& wrapper);
+  static google::api::expr::runtime::MessageWrapper Make(uintptr_t message,
+                                                         uintptr_t type_info);
+  static google::api::expr::runtime::MessageWrapper::Builder ToBuilder(
+      google::api::expr::runtime::MessageWrapper& wrapper);
 };
 
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead

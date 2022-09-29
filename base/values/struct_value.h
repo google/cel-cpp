@@ -33,6 +33,10 @@
 
 namespace cel {
 
+namespace interop_internal {
+struct LegacyStructValueAccess;
+}
+
 class ValueFactory;
 
 // StructValue represents an instance of cel::StructType.
@@ -83,12 +87,6 @@ class StructValue : public Value {
   friend class base_internal::AbstractStructValue;
 
   StructValue() = default;
-
-  // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
-
-  StructValue(const StructValue&) = delete;
-  StructValue(StructValue&&) = delete;
 
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   internal::TypeInfo TypeId() const;
@@ -156,6 +154,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
       const StructValue& struct_value);
   friend class base_internal::PersistentValueHandle;
   friend class cel::StructValue;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+  friend struct interop_internal::LegacyStructValueAccess;
 
   static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline | base_internal::kTriviallyCopyable |

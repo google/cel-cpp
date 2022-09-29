@@ -68,6 +68,11 @@ cc_library(
 )
 
 cc_library(
+    name = "message_wrapper",
+    hdrs = ["message_wrapper.h"],
+)
+
+cc_library(
     name = "operators",
     hdrs = ["operators.h"],
     deps = [

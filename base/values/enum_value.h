@@ -39,6 +39,8 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using ConstantId = EnumType::ConstantId;
+
   constexpr Kind kind() const { return kKind; }
 
   Persistent<EnumType> type() const { return type_; }

@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/api.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
@@ -30,6 +31,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
@@ -37,11 +39,13 @@
 namespace cel::interop_internal {
 namespace {
 
+using google::api::expr::runtime::CelProtoWrapper;
 using google::api::expr::runtime::CelValue;
 using google::api::expr::runtime::ContainerBackedListImpl;
 using google::api::expr::runtime::UnknownSet;
 using testing::Eq;
 using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 TEST(ValueInterop, NullFromLegacy) {
   google::protobuf::Arena arena;
@@ -602,6 +606,83 @@ TEST(ValueInterop, LegacyMapRoundtrip) {
   ASSERT_OK_AND_ASSIGN(auto legacy_value,
                        ToLegacyValue(value_factory, modern_value));
   EXPECT_EQ(value.MapOrDie(), legacy_value.MapOrDie());
+}
+
+TEST(ValueInterop, StructFromLegacy) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Api api;
+  api.set_name("foo");
+  auto legacy_value = CelProtoWrapper::CreateMessage(&api, &arena);
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       FromLegacyValue(value_factory, legacy_value));
+  EXPECT_EQ(value->kind(), Kind::kStruct);
+  EXPECT_EQ(value->type()->kind(), Kind::kStruct);
+  EXPECT_EQ(value->type()->name(), "google.protobuf.Api");
+  EXPECT_THAT(value.As<StructValue>()->HasField(StructValue::FieldId("name")),
+              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(value.As<StructValue>()->HasField(StructValue::FieldId(1)),
+              StatusIs(absl::StatusCode::kUnimplemented));
+  ASSERT_OK_AND_ASSIGN(auto value_name_field,
+                       value.As<StructValue>()->GetField(
+                           value_factory, StructValue::FieldId("name")));
+  ASSERT_TRUE(value_name_field.Is<StringValue>());
+  EXPECT_EQ(value_name_field.As<StringValue>()->ToString(), "foo");
+  EXPECT_THAT(
+      value.As<StructValue>()->GetField(value_factory, StructValue::FieldId(1)),
+      StatusIs(absl::StatusCode::kUnimplemented));
+  auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
+      *value.As<base_internal::LegacyStructValue>());
+  auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
+  EXPECT_EQ(legacy_value_wrapper.HasFullProto(), value_wrapper.HasFullProto());
+  EXPECT_EQ(legacy_value_wrapper.message_ptr(), value_wrapper.message_ptr());
+  EXPECT_EQ(legacy_value_wrapper.legacy_type_info(),
+            value_wrapper.legacy_type_info());
+}
+
+TEST(ValueInterop, LegacyStructRoundtrip) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Api api;
+  api.set_name("foo");
+  auto value = CelProtoWrapper::CreateMessage(&api, &arena);
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value,
+                       ToLegacyValue(value_factory, modern_value));
+  auto value_wrapper = value.MessageWrapperOrDie();
+  auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
+  EXPECT_EQ(legacy_value_wrapper.HasFullProto(), value_wrapper.HasFullProto());
+  EXPECT_EQ(legacy_value_wrapper.message_ptr(), value_wrapper.message_ptr());
+  EXPECT_EQ(legacy_value_wrapper.legacy_type_info(),
+            value_wrapper.legacy_type_info());
+}
+
+TEST(ValueInterop, LegacyStructEquality) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Api lhs_api;
+  lhs_api.set_name("foo");
+  google::protobuf::Api rhs_api;
+  rhs_api.set_name("foo");
+  ASSERT_OK_AND_ASSIGN(
+      auto lhs_value,
+      FromLegacyValue(value_factory,
+                      CelProtoWrapper::CreateMessage(&lhs_api, &arena)));
+  ASSERT_OK_AND_ASSIGN(
+      auto rhs_value,
+      FromLegacyValue(value_factory,
+                      CelProtoWrapper::CreateMessage(&rhs_api, &arena)));
+  EXPECT_EQ(lhs_value, rhs_value);
 }
 
 TEST(ValueInterop, UnknownFromLegacy) {

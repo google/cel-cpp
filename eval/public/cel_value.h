@@ -298,10 +298,14 @@ class CelValue {
   // Returns stored const Message* value.
   // Fails if stored value type is not const Message*.
   const google::protobuf::Message* MessageOrDie() const {
-    MessageWrapper wrapped = GetValueOrDie<MessageWrapper>(Type::kMessage);
+    MessageWrapper wrapped = MessageWrapperOrDie();
     ABSL_ASSERT(wrapped.HasFullProto());
     return cel::internal::down_cast<const google::protobuf::Message*>(
         wrapped.message_ptr());
+  }
+
+  MessageWrapper MessageWrapperOrDie() const {
+    return GetValueOrDie<MessageWrapper>(Type::kMessage);
   }
 
   // Returns stored duration value.

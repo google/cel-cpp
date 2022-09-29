@@ -15,10 +15,17 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_MESSAGE_WRAPPER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_MESSAGE_WRAPPER_H_
 
+#include <cstdint>
+
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 #include "absl/base/macros.h"
 #include "absl/numeric/bits.h"
+#include "base/internal/message_wrapper.h"
+
+namespace cel::interop_internal {
+struct MessageWrapperAccess;
+}  // namespace cel::interop_internal
 
 namespace google::api::expr::runtime {
 
@@ -56,6 +63,10 @@ class MessageWrapper {
     }
 
    private:
+    friend class MessageWrapper;
+
+    explicit Builder(uintptr_t message_ptr) : message_ptr_(message_ptr) {}
+
     uintptr_t message_ptr_;
   };
 
@@ -95,12 +106,18 @@ class MessageWrapper {
   }
 
  private:
+  friend struct ::cel::interop_internal::MessageWrapperAccess;
+
   MessageWrapper(uintptr_t message_ptr,
                  const LegacyTypeInfoApis* legacy_type_info)
       : message_ptr_(message_ptr), legacy_type_info_(legacy_type_info) {}
 
-  static constexpr uintptr_t kTagMask = 1 << 0;
-  static constexpr uintptr_t kPtrMask = ~kTagMask;
+  Builder ToBuilder() { return Builder(message_ptr_); }
+
+  static constexpr uintptr_t kTagMask =
+      ::cel::base_internal::kMessageWrapperTagMask;
+  static constexpr uintptr_t kPtrMask =
+      ::cel::base_internal::kMessageWrapperPtrMask;
   uintptr_t message_ptr_;
   const LegacyTypeInfoApis* legacy_type_info_;
 };

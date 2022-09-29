@@ -24,6 +24,7 @@ cc_library(
         "message_wrapper.h",
     ],
     deps = [
+        "//base/internal:message_wrapper",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/numeric:bits",
         "@com_google_protobuf//:protobuf",

@@ -19,14 +19,24 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/message.h"
+#include "google/protobuf/message_lite.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/internal/message_wrapper.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
+#include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
+#include "base/values/struct_value.h"
+#include "eval/public/structs/legacy_type_adapter.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/unknown_set.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace cel::interop_internal {
@@ -36,6 +46,8 @@ namespace {
 using google::api::expr::runtime::CelList;
 using google::api::expr::runtime::CelMap;
 using google::api::expr::runtime::CelValue;
+using google::api::expr::runtime::LegacyTypeInfoApis;
+using google::api::expr::runtime::MessageWrapper;
 using google::api::expr::runtime::UnknownSet;
 
 class LegacyListValue final : public ListValue {
@@ -246,6 +258,57 @@ internal::TypeInfo CelMapAccess::TypeId(const CelMap& map) {
   return map.TypeId();
 }
 
+Persistent<StructType> LegacyStructTypeAccess::Create(uintptr_t message) {
+  return base_internal::PersistentHandleFactory<StructType>::Make<
+      base_internal::LegacyStructType>(message);
+}
+
+Persistent<StructValue> LegacyStructValueAccess::Create(
+    const MessageWrapper& wrapper) {
+  return Create(MessageWrapperAccess::Message(wrapper),
+                MessageWrapperAccess::TypeInfo(wrapper));
+}
+
+Persistent<StructValue> LegacyStructValueAccess::Create(uintptr_t message,
+                                                        uintptr_t type_info) {
+  return base_internal::PersistentHandleFactory<StructValue>::Make<
+      base_internal::LegacyStructValue>(message, type_info);
+}
+
+uintptr_t LegacyStructValueAccess::Message(
+    const base_internal::LegacyStructValue& value) {
+  return value.msg_;
+}
+
+uintptr_t LegacyStructValueAccess::TypeInfo(
+    const base_internal::LegacyStructValue& value) {
+  return value.type_info_;
+}
+
+MessageWrapper LegacyStructValueAccess::ToMessageWrapper(
+    const base_internal::LegacyStructValue& value) {
+  return MessageWrapperAccess::Make(Message(value), TypeInfo(value));
+}
+
+uintptr_t MessageWrapperAccess::Message(const MessageWrapper& wrapper) {
+  return wrapper.message_ptr_;
+}
+
+uintptr_t MessageWrapperAccess::TypeInfo(const MessageWrapper& wrapper) {
+  return reinterpret_cast<uintptr_t>(wrapper.legacy_type_info_);
+}
+
+MessageWrapper MessageWrapperAccess::Make(uintptr_t message,
+                                          uintptr_t type_info) {
+  return MessageWrapper(message,
+                        reinterpret_cast<const LegacyTypeInfoApis*>(type_info));
+}
+
+MessageWrapper::Builder MessageWrapperAccess::ToBuilder(
+    MessageWrapper& wrapper) {
+  return wrapper.ToBuilder();
+}
+
 absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
     cel::ValueFactory& value_factory, absl::string_view input) {
   return value_factory.CreateStringValueFromView(input);
@@ -305,8 +368,12 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
     case CelValue::Type::kBytes:
       return CreateBytesValueFromView(value_factory,
                                       legacy_value.BytesOrDie().value());
-    case CelValue::Type::kMessage:
-      break;
+    case CelValue::Type::kMessage: {
+      const auto& wrapper = legacy_value.MessageWrapperOrDie();
+      return LegacyStructValueAccess::Create(
+          MessageWrapperAccess::Message(wrapper),
+          MessageWrapperAccess::TypeInfo(wrapper));
+    }
     case CelValue::Type::kDuration:
       return value_factory.CreateDurationValue(legacy_value.DurationOrDie());
     case CelValue::Type::kTimestamp:
@@ -456,8 +523,17 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
                                  Persistent<MapValue>(value.As<MapValue>()))
               .release());
     }
-    case Kind::kStruct:
-      break;
+    case Kind::kStruct: {
+      if (!value.Is<base_internal::LegacyStructValue>()) {
+        return absl::UnimplementedError(
+            "only legacy struct types and values can be used for interop");
+      }
+      return CelValue::CreateMessageWrapper(MessageWrapperAccess::Make(
+          LegacyStructValueAccess::Message(
+              *value.As<base_internal::LegacyStructValue>()),
+          LegacyStructValueAccess::TypeInfo(
+              *value.As<base_internal::LegacyStructValue>())));
+    }
     case Kind::kUnknown: {
       auto* legacy_value =
           value_factory.memory_manager().New<UnknownSet>().release();
@@ -474,3 +550,83 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
 }
 
 }  // namespace cel::interop_internal
+
+namespace cel::base_internal {
+
+namespace {
+
+using google::api::expr::runtime::LegacyTypeInfoApis;
+using google::api::expr::runtime::MessageWrapper;
+using google::api::expr::runtime::ProtoWrapperTypeOptions;
+using interop_internal::FromLegacyValue;
+using interop_internal::LegacyStructValueAccess;
+using interop_internal::MessageWrapperAccess;
+
+}  // namespace
+
+absl::string_view MessageTypeName(uintptr_t msg) {
+  if ((msg & kMessageWrapperTagMask) != kMessageWrapperTagMask) {
+    // For google::protobuf::MessageLite, this is actually LegacyTypeInfoApis.
+    return reinterpret_cast<const LegacyTypeInfoApis*>(msg)->GetTypename(
+        MessageWrapper());
+  }
+  return reinterpret_cast<const google::protobuf::Message*>(msg & kMessageWrapperPtrMask)
+      ->GetDescriptor()
+      ->full_name();
+}
+
+void MessageValueHash(uintptr_t msg, uintptr_t type_info,
+                      absl::HashState state) {
+  // Getting rid of hash, do nothing.
+}
+
+bool MessageValueEquals(uintptr_t lhs_msg, uintptr_t lhs_type_info,
+                        const Value& rhs) {
+  if (!LegacyStructValue::Is(rhs)) {
+    return false;
+  }
+  return reinterpret_cast<const LegacyTypeInfoApis*>(lhs_type_info)
+      ->GetAccessApis(MessageWrapperAccess::Make(lhs_msg, lhs_type_info))
+      ->IsEqualTo(
+          MessageWrapperAccess::Make(lhs_msg, lhs_type_info),
+          LegacyStructValueAccess::ToMessageWrapper(
+              static_cast<const base_internal::LegacyStructValue&>(rhs)));
+}
+
+absl::StatusOr<bool> MessageValueHasFieldByNumber(uintptr_t msg,
+                                                  uintptr_t type_info,
+                                                  int64_t number) {
+  return absl::UnimplementedError(
+      "legacy struct values do not support looking up fields by number");
+}
+
+absl::StatusOr<bool> MessageValueHasFieldByName(uintptr_t msg,
+                                                uintptr_t type_info,
+                                                absl::string_view name) {
+  auto wrapper = MessageWrapperAccess::Make(msg, type_info);
+  return reinterpret_cast<const LegacyTypeInfoApis*>(type_info)
+      ->GetAccessApis(wrapper)
+      ->HasField(name, wrapper);
+}
+
+absl::StatusOr<Persistent<Value>> MessageValueGetFieldByNumber(
+    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    int64_t number) {
+  return absl::UnimplementedError(
+      "legacy struct values do not supported looking up fields by number");
+}
+
+absl::StatusOr<Persistent<Value>> MessageValueGetFieldByName(
+    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    absl::string_view name) {
+  auto wrapper = MessageWrapperAccess::Make(msg, type_info);
+  CEL_ASSIGN_OR_RETURN(
+      auto legacy_value,
+      reinterpret_cast<const LegacyTypeInfoApis*>(type_info)
+          ->GetAccessApis(wrapper)
+          ->GetField(name, wrapper, ProtoWrapperTypeOptions::kUnsetNull,
+                     value_factory.memory_manager()));
+  return FromLegacyValue(value_factory, legacy_value);
+}
+
+}  // namespace cel::base_internal

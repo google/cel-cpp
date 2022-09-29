@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/internal/message_wrapper.h"
 
 namespace cel {
 
@@ -116,11 +117,13 @@ absl::string_view LegacyStructType::name() const {
 }
 
 void LegacyStructType::HashValue(absl::HashState state) const {
-  MessageTypeHash(msg_, std::move(state));
+  absl::HashState::combine(std::move(state), kind(), name(), TypeId());
 }
 
 bool LegacyStructType::Equals(const Type& other) const {
-  return MessageTypeEquals(msg_, other);
+  return kind() == other.kind() &&
+         name() == static_cast<const StructType&>(other).name() &&
+         TypeId() == static_cast<const StructType&>(other).TypeId();
 }
 
 // Always returns an error.

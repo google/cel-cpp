@@ -34,6 +34,10 @@
 
 namespace cel {
 
+namespace interop_internal {
+struct LegacyStructTypeAccess;
+}
+
 class MemoryManager;
 class StructValue;
 class TypedStructValueFactory;
@@ -122,8 +126,6 @@ namespace base_internal {
 // variant.
 
 ABSL_ATTRIBUTE_WEAK absl::string_view MessageTypeName(uintptr_t msg);
-ABSL_ATTRIBUTE_WEAK bool MessageTypeHash(uintptr_t msg, absl::HashState state);
-ABSL_ATTRIBUTE_WEAK bool MessageTypeEquals(uintptr_t lhs, const Type& rhs);
 
 class LegacyStructType final : public StructType,
                                public base_internal::InlineData {
@@ -158,6 +160,7 @@ class LegacyStructType final : public StructType,
       base_internal::kTriviallyDestructible |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
+  friend struct interop_internal::LegacyStructTypeAccess;
   friend class cel::StructType;
   friend class base_internal::LegacyStructValue;
   template <size_t Size, size_t Align>
@@ -170,8 +173,8 @@ class LegacyStructType final : public StructType,
     return internal::TypeId<LegacyStructType>();
   }
 
-  // This is a type erased pointer to google::protobuf::Message or google::protobuf::MessageLite. It
-  // is not tagged.
+  // This is a type erased pointer to google::protobuf::Message or LegacyTypeInfoApis. It
+  // is tagged when it is google::protobuf::Message.
   uintptr_t msg_;
 };
 

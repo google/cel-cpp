@@ -20,6 +20,7 @@
 #include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "base/internal/data.h"
+#include "base/internal/message_wrapper.h"
 #include "base/types/struct_type.h"
 
 namespace cel {
@@ -143,7 +144,13 @@ absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
 namespace base_internal {
 
 Persistent<StructType> LegacyStructValue::type() const {
-  return PersistentHandleFactory<StructType>::Make<LegacyStructType>(msg_);
+  if ((msg_ & kMessageWrapperTagMask) == kMessageWrapperTagMask) {
+    // google::protobuf::Message
+    return PersistentHandleFactory<StructType>::Make<LegacyStructType>(msg_);
+  }
+  // LegacyTypeInfoApis
+  return PersistentHandleFactory<StructType>::Make<LegacyStructType>(
+      type_info_);
 }
 
 std::string LegacyStructValue::DebugString() const {

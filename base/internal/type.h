@@ -49,8 +49,20 @@ internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type);
 
 internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
 
-inline constexpr size_t kTypeInlineSize = sizeof(void*);
-inline constexpr size_t kTypeInlineAlign = alignof(void*);
+struct InlineType final {
+  uintptr_t vptr;
+  union {
+    uintptr_t legacy;
+  };
+};
+
+inline constexpr size_t kTypeInlineSize = sizeof(InlineType);
+inline constexpr size_t kTypeInlineAlign = alignof(InlineType);
+
+static_assert(kTypeInlineSize <= 16,
+              "Size of an inline type should be less than 16 bytes.");
+static_assert(kTypeInlineAlign <= alignof(std::max_align_t),
+              "Alignment of an inline type should not be overaligned.");
 
 struct AnyType final : public AnyData<kTypeInlineSize, kTypeInlineAlign> {};
 
