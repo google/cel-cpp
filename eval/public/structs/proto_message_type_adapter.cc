@@ -88,9 +88,8 @@ absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
   const Reflection* reflection = message->GetReflection();
   const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
   if (field_desc == nullptr) {
-    // TODO(issues/5): switch from std::string to absl::string_view
-    std::string ext_name(field_name);
-    field_desc = message->GetReflection()->FindKnownExtensionByName(ext_name);
+    // Search to see whether the field name is referring to an extension.
+    field_desc = message->GetReflection()->FindKnownExtensionByName(field_name);
   }
   if (field_desc == nullptr) {
     return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
