@@ -349,10 +349,12 @@ void PersistentValueHandle::Destruct() {
 void PersistentValueHandle::Delete() const {
   switch (data_.kind()) {
     case Kind::kList:
-      delete static_cast<ListValue*>(static_cast<Value*>(data_.get()));
+      delete static_cast<AbstractListValue*>(
+          static_cast<ListValue*>(static_cast<Value*>(data_.get())));
       break;
     case Kind::kMap:
-      delete static_cast<MapValue*>(static_cast<Value*>(data_.get()));
+      delete static_cast<AbstractMapValue*>(
+          static_cast<MapValue*>(static_cast<Value*>(data_.get())));
       break;
     case Kind::kStruct:
       delete static_cast<AbstractStructValue*>(

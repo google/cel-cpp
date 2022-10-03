@@ -249,11 +249,11 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
 
 CEL_IMPLEMENT_STRUCT_TYPE(TestStructType);
 
-class TestListValue final : public ListValue {
+class TestListValue final : public CEL_LIST_VALUE_CLASS {
  public:
   explicit TestListValue(const Persistent<ListType>& type,
                          std::vector<int64_t> elements)
-      : ListValue(type), elements_(std::move(elements)) {
+      : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {
     ABSL_ASSERT(type->element().Is<IntType>());
   }
 
@@ -290,11 +290,11 @@ class TestListValue final : public ListValue {
 
 CEL_IMPLEMENT_LIST_VALUE(TestListValue);
 
-class TestMapValue final : public MapValue {
+class TestMapValue final : public CEL_MAP_VALUE_CLASS {
  public:
   explicit TestMapValue(const Persistent<MapType>& type,
                         std::map<std::string, int64_t> entries)
-      : MapValue(type), entries_(std::move(entries)) {
+      : CEL_MAP_VALUE_CLASS(type), entries_(std::move(entries)) {
     ABSL_ASSERT(type->key().Is<StringType>());
     ABSL_ASSERT(type->value().Is<IntType>());
   }

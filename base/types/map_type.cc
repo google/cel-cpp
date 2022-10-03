@@ -19,20 +19,12 @@
 
 #include "absl/base/macros.h"
 #include "absl/strings/str_cat.h"
+#include "base/internal/data.h"
+#include "base/types/dyn_type.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(MapType);
-
-MapType::MapType(Persistent<Type> key, Persistent<Type> value)
-    : base_internal::HeapData(kKind),
-      key_(std::move(key)),
-      value_(std::move(value)) {
-  // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
-  ABSL_ASSERT(
-      reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
-      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
-}
 
 std::string MapType::DebugString() const {
   return absl::StrCat(name(), "(", key()->DebugString(), ", ",
@@ -52,5 +44,41 @@ void MapType::HashValue(absl::HashState state) const {
   // avoid hash suffix/prefix collisions.
   absl::HashState::combine(std::move(state), key(), value(), kind(), name());
 }
+
+const Persistent<Type>& MapType::key() const {
+  if (base_internal::Metadata::IsStoredInline(*this)) {
+    return static_cast<const base_internal::LegacyMapType&>(*this).key();
+  }
+  return static_cast<const base_internal::ModernMapType&>(*this).key();
+}
+
+const Persistent<Type>& MapType::value() const {
+  if (base_internal::Metadata::IsStoredInline(*this)) {
+    return static_cast<const base_internal::LegacyMapType&>(*this).value();
+  }
+  return static_cast<const base_internal::ModernMapType&>(*this).value();
+}
+
+namespace base_internal {
+
+const Persistent<Type>& LegacyMapType::key() const {
+  return DynType::Get().As<Type>();
+}
+
+const Persistent<Type>& LegacyMapType::value() const {
+  return DynType::Get().As<Type>();
+}
+
+ModernMapType::ModernMapType(Persistent<Type> key, Persistent<Type> value)
+    : MapType(),
+      HeapData(kKind),
+      key_(std::move(key)),
+      value_(std::move(value)) {
+  // Ensure `Type*` and `HeapData*` are not thunked.
+  ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
+              reinterpret_cast<uintptr_t>(static_cast<HeapData*>(this)));
+}
+
+}  // namespace base_internal
 
 }  // namespace cel

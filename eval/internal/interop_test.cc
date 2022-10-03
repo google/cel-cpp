@@ -54,8 +54,7 @@ TEST(ValueInterop, NullFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateNull();
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<NullValue>());
 }
 
@@ -66,7 +65,7 @@ TEST(ValueInterop, NullToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.GetNullValue();
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsNull());
 }
 
@@ -77,8 +76,7 @@ TEST(ValueInterop, BoolFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateBool(true);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<BoolValue>());
   EXPECT_TRUE(value.As<BoolValue>()->value());
 }
@@ -90,7 +88,7 @@ TEST(ValueInterop, BoolToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateBoolValue(true);
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsBool());
   EXPECT_TRUE(legacy_value.BoolOrDie());
 }
@@ -102,8 +100,7 @@ TEST(ValueInterop, IntFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateInt64(1);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<IntValue>());
   EXPECT_EQ(value.As<IntValue>()->value(), 1);
 }
@@ -115,7 +112,7 @@ TEST(ValueInterop, IntToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateIntValue(1);
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsInt64());
   EXPECT_EQ(legacy_value.Int64OrDie(), 1);
 }
@@ -127,8 +124,7 @@ TEST(ValueInterop, UintFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateUint64(1);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<UintValue>());
   EXPECT_EQ(value.As<UintValue>()->value(), 1);
 }
@@ -140,7 +136,7 @@ TEST(ValueInterop, UintToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateUintValue(1);
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsUint64());
   EXPECT_EQ(legacy_value.Uint64OrDie(), 1);
 }
@@ -152,8 +148,7 @@ TEST(ValueInterop, DoubleFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateDouble(1.0);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<DoubleValue>());
   EXPECT_EQ(value.As<DoubleValue>()->value(), 1.0);
 }
@@ -165,7 +160,7 @@ TEST(ValueInterop, DoubleToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateDoubleValue(1.0);
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsDouble());
   EXPECT_EQ(legacy_value.DoubleOrDie(), 1.0);
 }
@@ -178,8 +173,7 @@ TEST(ValueInterop, DurationFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   auto legacy_value = CelValue::CreateDuration(duration);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<DurationValue>());
   EXPECT_EQ(value.As<DurationValue>()->value(), duration);
 }
@@ -192,7 +186,7 @@ TEST(ValueInterop, DurationToLegacy) {
   ValueFactory value_factory(type_manager);
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateDurationValue(duration));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsDuration());
   EXPECT_EQ(legacy_value.DurationOrDie(), duration);
 }
@@ -205,8 +199,7 @@ TEST(ValueInterop, TimestampFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
   auto legacy_value = CelValue::CreateTimestamp(timestamp);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<TimestampValue>());
   EXPECT_EQ(value.As<TimestampValue>()->value(), timestamp);
 }
@@ -220,7 +213,7 @@ TEST(ValueInterop, TimestampToLegacy) {
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateTimestampValue(timestamp));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsTimestamp());
   EXPECT_EQ(legacy_value.TimestampOrDie(), timestamp);
 }
@@ -233,8 +226,7 @@ TEST(ValueInterop, ErrorFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateError(&error);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<ErrorValue>());
   EXPECT_EQ(value.As<ErrorValue>()->value(), error);
 }
@@ -246,8 +238,7 @@ TEST(ValueInterop, TypeFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateCelTypeView("bool");
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<TypeValue>());
   EXPECT_EQ(value.As<TypeValue>()->value(),
             type_manager.type_factory().GetBoolType());
@@ -260,7 +251,7 @@ TEST(ValueInterop, TypeToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateTypeValue(type_factory.GetBoolType());
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsCelType());
   EXPECT_EQ(legacy_value.CelTypeOrDie().value(), "bool");
 }
@@ -272,8 +263,7 @@ TEST(ValueInterop, StringFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateStringView("test");
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<StringValue>());
   EXPECT_EQ(value.As<StringValue>()->ToString(), "test");
 }
@@ -285,7 +275,7 @@ TEST(ValueInterop, StringToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateStringValue("test"));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsString());
   EXPECT_EQ(legacy_value.StringOrDie().value(), "test");
 }
@@ -298,7 +288,7 @@ TEST(ValueInterop, CordStringToLegacy) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateStringValue(absl::Cord("test")));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsString());
   EXPECT_EQ(legacy_value.StringOrDie().value(), "test");
 }
@@ -310,8 +300,7 @@ TEST(ValueInterop, BytesFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateBytesView("test");
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<BytesValue>());
   EXPECT_EQ(value.As<BytesValue>()->ToString(), "test");
 }
@@ -323,7 +312,7 @@ TEST(ValueInterop, BytesToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateBytesValue("test"));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsBytes());
   EXPECT_EQ(legacy_value.BytesOrDie().value(), "test");
 }
@@ -336,7 +325,7 @@ TEST(ValueInterop, CordBytesToLegacy) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateBytesValue(absl::Cord("test")));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsBytes());
   EXPECT_EQ(legacy_value.BytesOrDie().value(), "test");
 }
@@ -352,8 +341,7 @@ TEST(ValueInterop, ListFromLegacy) {
           .New<google::api::expr::runtime::ContainerBackedListImpl>(
               std::vector<CelValue>{CelValue::CreateInt64(0)})
           .release());
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<ListValue>());
   EXPECT_EQ(value.As<ListValue>()->size(), 1);
   ASSERT_OK_AND_ASSIGN(auto element,
@@ -362,11 +350,11 @@ TEST(ValueInterop, ListFromLegacy) {
   EXPECT_EQ(element.As<IntValue>()->value(), 0);
 }
 
-class TestListValue final : public ListValue {
+class TestListValue final : public CEL_LIST_VALUE_CLASS {
  public:
   explicit TestListValue(const Persistent<ListType>& type,
                          std::vector<int64_t> elements)
-      : ListValue(type), elements_(std::move(elements)) {
+      : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {
     ABSL_ASSERT(type->element().Is<IntType>());
   }
 
@@ -414,11 +402,11 @@ TEST(ValueInterop, ListToLegacy) {
                            value_factory.type_factory().GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateListValue<TestListValue>(
                                        type, std::vector<int64_t>{0}));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsList());
   EXPECT_EQ(legacy_value.ListOrDie()->size(), 1);
-  EXPECT_TRUE((*legacy_value.ListOrDie())[0].IsInt64());
-  EXPECT_EQ((*legacy_value.ListOrDie())[0].Int64OrDie(), 0);
+  EXPECT_TRUE((*legacy_value.ListOrDie()).Get(&arena, 0).IsInt64());
+  EXPECT_EQ((*legacy_value.ListOrDie()).Get(&arena, 0).Int64OrDie(), 0);
 }
 
 TEST(ValueInterop, ModernListRoundtrip) {
@@ -432,9 +420,9 @@ TEST(ValueInterop, ModernListRoundtrip) {
                            value_factory.type_factory().GetIntType()));
   ASSERT_OK_AND_ASSIGN(auto value, value_factory.CreateListValue<TestListValue>(
                                        type, std::vector<int64_t>{0}));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(auto modern_value,
-                       FromLegacyValue(value_factory, legacy_value));
+                       FromLegacyValue(&arena, legacy_value));
   // Cheat, we want pointer equality.
   EXPECT_EQ(&*value, &*modern_value);
 }
@@ -450,10 +438,8 @@ TEST(ValueInterop, LegacyListRoundtrip) {
           .New<google::api::expr::runtime::ContainerBackedListImpl>(
               std::vector<CelValue>{CelValue::CreateInt64(0)})
           .release());
-  ASSERT_OK_AND_ASSIGN(auto modern_value,
-                       FromLegacyValue(value_factory, value));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value,
-                       ToLegacyValue(value_factory, modern_value));
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   EXPECT_EQ(value.ListOrDie(), legacy_value.ListOrDie());
 }
 
@@ -468,8 +454,7 @@ TEST(ValueInterop, MapFromLegacy) {
   ASSERT_OK(legacy_map->Add(CelValue::CreateInt64(1),
                             CelValue::CreateStringView("foo")));
   auto legacy_value = CelValue::CreateMap(legacy_map);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<MapValue>());
   EXPECT_EQ(value.As<MapValue>()->size(), 1);
   auto entry_key = value_factory.CreateIntValue(1);
@@ -480,11 +465,11 @@ TEST(ValueInterop, MapFromLegacy) {
   EXPECT_EQ(entry_value.As<StringValue>()->ToString(), "foo");
 }
 
-class TestMapValue final : public MapValue {
+class TestMapValue final : public CEL_MAP_VALUE_CLASS {
  public:
   explicit TestMapValue(const Persistent<MapType>& type,
                         std::map<int64_t, std::string> entries)
-      : MapValue(type), entries_(std::move(entries)) {}
+      : CEL_MAP_VALUE_CLASS(type), entries_(std::move(entries)) {}
 
   std::string DebugString() const override {
     std::string output;
@@ -561,9 +546,9 @@ TEST(ValueInterop, MapToLegacy) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateMapValue<TestMapValue>(
                            type, std::map<int64_t, std::string>{{1, "foo"}}));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(auto modern_value,
-                       FromLegacyValue(value_factory, legacy_value));
+                       FromLegacyValue(&arena, legacy_value));
   EXPECT_EQ(&*value, &*modern_value);
 }
 
@@ -580,12 +565,15 @@ TEST(ValueInterop, ModernMapRoundtrip) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        value_factory.CreateMapValue<TestMapValue>(
                            type, std::map<int64_t, std::string>{{1, "foo"}}));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsMap());
   EXPECT_EQ(legacy_value.MapOrDie()->size(), 1);
-  EXPECT_TRUE(
-      (*legacy_value.MapOrDie())[CelValue::CreateInt64(1)].value().IsString());
-  EXPECT_EQ((*legacy_value.MapOrDie())[CelValue::CreateInt64(1)]
+  EXPECT_TRUE((*legacy_value.MapOrDie())
+                  .Get(&arena, CelValue::CreateInt64(1))
+                  .value()
+                  .IsString());
+  EXPECT_EQ((*legacy_value.MapOrDie())
+                .Get(&arena, CelValue::CreateInt64(1))
                 .value()
                 .StringOrDie()
                 .value(),
@@ -601,10 +589,8 @@ TEST(ValueInterop, LegacyMapRoundtrip) {
   auto value = CelValue::CreateMap(
       memory_manager.New<google::api::expr::runtime::CelMapBuilder>()
           .release());
-  ASSERT_OK_AND_ASSIGN(auto modern_value,
-                       FromLegacyValue(value_factory, value));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value,
-                       ToLegacyValue(value_factory, modern_value));
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   EXPECT_EQ(value.MapOrDie(), legacy_value.MapOrDie());
 }
 
@@ -617,8 +603,7 @@ TEST(ValueInterop, StructFromLegacy) {
   google::protobuf::Api api;
   api.set_name("foo");
   auto legacy_value = CelProtoWrapper::CreateMessage(&api, &arena);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_EQ(value->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->name(), "google.protobuf.Api");
@@ -652,10 +637,8 @@ TEST(ValueInterop, LegacyStructRoundtrip) {
   google::protobuf::Api api;
   api.set_name("foo");
   auto value = CelProtoWrapper::CreateMessage(&api, &arena);
-  ASSERT_OK_AND_ASSIGN(auto modern_value,
-                       FromLegacyValue(value_factory, value));
-  ASSERT_OK_AND_ASSIGN(auto legacy_value,
-                       ToLegacyValue(value_factory, modern_value));
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   auto value_wrapper = value.MessageWrapperOrDie();
   auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
   EXPECT_EQ(legacy_value_wrapper.HasFullProto(), value_wrapper.HasFullProto());
@@ -674,14 +657,12 @@ TEST(ValueInterop, LegacyStructEquality) {
   lhs_api.set_name("foo");
   google::protobuf::Api rhs_api;
   rhs_api.set_name("foo");
-  ASSERT_OK_AND_ASSIGN(
-      auto lhs_value,
-      FromLegacyValue(value_factory,
-                      CelProtoWrapper::CreateMessage(&lhs_api, &arena)));
-  ASSERT_OK_AND_ASSIGN(
-      auto rhs_value,
-      FromLegacyValue(value_factory,
-                      CelProtoWrapper::CreateMessage(&rhs_api, &arena)));
+  ASSERT_OK_AND_ASSIGN(auto lhs_value,
+                       FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(
+                                                   &lhs_api, &arena)));
+  ASSERT_OK_AND_ASSIGN(auto rhs_value,
+                       FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(
+                                                   &rhs_api, &arena)));
   EXPECT_EQ(lhs_value, rhs_value);
 }
 
@@ -696,8 +677,7 @@ TEST(ValueInterop, UnknownFromLegacy) {
   ValueFactory value_factory(type_manager);
   UnknownSet unknown_set(attributes, function_results);
   auto legacy_value = CelValue::CreateUnknownSet(&unknown_set);
-  ASSERT_OK_AND_ASSIGN(auto value,
-                       FromLegacyValue(value_factory, legacy_value));
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value.Is<UnknownValue>());
   EXPECT_EQ(value.As<UnknownValue>()->attribute_set(), attributes);
   EXPECT_EQ(value.As<UnknownValue>()->function_result_set(), function_results);
@@ -713,7 +693,7 @@ TEST(ValueInterop, UnknownToLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateUnknownValue(attributes, function_results);
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(value_factory, value));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsUnknownSet());
   EXPECT_EQ(legacy_value.UnknownSetOrDie()->unknown_attributes(), attributes);
   EXPECT_EQ(legacy_value.UnknownSetOrDie()->unknown_function_results(),

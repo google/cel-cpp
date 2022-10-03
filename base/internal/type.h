@@ -39,6 +39,10 @@ class LegacyStructType;
 class AbstractStructType;
 class LegacyStructValue;
 class AbstractStructValue;
+class LegacyListType;
+class ModernListType;
+class LegacyMapType;
+class ModernMapType;
 
 template <Kind K>
 class SimpleType;

@@ -309,10 +309,12 @@ void PersistentTypeHandle::Destruct() {
 void PersistentTypeHandle::Delete() const {
   switch (data_.kind()) {
     case Kind::kList:
-      delete static_cast<ListType*>(static_cast<Type*>(data_.get()));
+      delete static_cast<ModernListType*>(
+          static_cast<ListType*>(static_cast<Type*>(data_.get())));
       break;
     case Kind::kMap:
-      delete static_cast<MapType*>(static_cast<Type*>(data_.get()));
+      delete static_cast<ModernMapType*>(
+          static_cast<MapType*>(static_cast<Type*>(data_.get())));
       break;
     case Kind::kEnum:
       delete static_cast<EnumType*>(static_cast<Type*>(data_.get()));

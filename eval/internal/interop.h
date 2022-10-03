@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 
+#include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
@@ -71,12 +72,12 @@ struct MessageWrapperAccess final {
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
 absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
-    cel::ValueFactory& value_factory, absl::string_view input);
+    absl::string_view input);
 
 // Unlike ValueFactory::CreateBytesValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
 absl::StatusOr<Persistent<BytesValue>> CreateBytesValueFromView(
-    cel::ValueFactory& value_factory, absl::string_view input);
+    absl::string_view input);
 
 base_internal::StringValueRep GetStringValueRep(
     const Persistent<StringValue>& value);
@@ -86,13 +87,12 @@ base_internal::BytesValueRep GetBytesValueRep(
 
 // Converts a legacy CEL value to the new CEL value representation.
 absl::StatusOr<Persistent<Value>> FromLegacyValue(
-    cel::ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
+    google::protobuf::Arena* arena,
     const google::api::expr::runtime::CelValue& legacy_value);
 
 // Converts a new CEL value to the legacy CEL value representation.
 absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
-    cel::ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-    const Persistent<Value>& value);
+    google::protobuf::Arena* arena, const Persistent<Value>& value);
 
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
     const Persistent<UnknownValue>& value);

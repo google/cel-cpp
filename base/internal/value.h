@@ -109,6 +109,10 @@ class InlinedStringViewStringValue;
 class StringStringValue;
 class LegacyStructValue;
 class AbstractStructValue;
+class LegacyListValue;
+class AbstractListValue;
+class LegacyMapValue;
+class AbstractMapValue;
 
 using StringValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;

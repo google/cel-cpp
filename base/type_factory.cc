@@ -74,8 +74,9 @@ absl::StatusOr<Persistent<ListType>> TypeFactory::CreateListType(
   if (existing != list_types_.end()) {
     return existing->second;
   }
-  auto list_type = PersistentHandleFactory<ListType>::Make<ListType>(
-      memory_manager(), element);
+  auto list_type =
+      PersistentHandleFactory<ListType>::Make<base_internal::ModernListType>(
+          memory_manager(), element);
   if (ABSL_PREDICT_FALSE(!list_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
     // they can add details on the size and alignment more easily and
@@ -94,8 +95,9 @@ absl::StatusOr<Persistent<MapType>> TypeFactory::CreateMapType(
   if (existing != map_types_.end()) {
     return existing->second;
   }
-  auto map_type = PersistentHandleFactory<MapType>::Make<MapType>(
-      memory_manager(), key, value);
+  auto map_type =
+      PersistentHandleFactory<MapType>::Make<base_internal::ModernMapType>(
+          memory_manager(), key, value);
   if (ABSL_PREDICT_FALSE(!map_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
     // they can add details on the size and alignment more easily and

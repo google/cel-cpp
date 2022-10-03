@@ -32,11 +32,7 @@ class MemoryManager;
 
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
-class ListType final : public Type, public base_internal::HeapData {
-  // I would have liked to make this class final, but we cannot instantiate
-  // Persistent<Type> or Transient<const Type> at this point. It must be
-  // done after the post include below. Maybe we should separate out the post
-  // includes on a per type basis so we can do that?
+class ListType : public Type {
  public:
   static constexpr Kind kKind = Kind::kList;
 
@@ -53,19 +49,63 @@ class ListType final : public Type, public base_internal::HeapData {
   bool Equals(const Type& other) const;
 
   // Returns the type of the elements in the list.
-  const Persistent<Type>& element() const { return element_; }
+  const Persistent<Type>& element() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
   friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::LegacyListType;
+  friend class base_internal::ModernListType;
 
-  explicit ListType(Persistent<Type> element);
+  ListType() = default;
+};
+
+CEL_INTERNAL_TYPE_DECL(ListType);
+
+namespace base_internal {
+
+// LegacyListType is used by LegacyListValue for compatibility with the legacy
+// API. It's element is always the dynamic type regardless of whether the the
+// expression is checked or not.
+class LegacyListType final : public ListType, public InlineData {
+ public:
+  // Returns the type of the elements in the list.
+  const Persistent<Type>& element() const;
+
+ private:
+  friend class MemoryManager;
+  friend class TypeFactory;
+  friend class cel::ListType;
+  friend class base_internal::PersistentTypeHandle;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  LegacyListType() : ListType(), InlineData(kMetadata) {}
+};
+
+class ModernListType final : public ListType, public HeapData {
+ public:
+  // Returns the type of the elements in the list.
+  const Persistent<Type>& element() const { return element_; }
+
+ private:
+  friend class cel::MemoryManager;
+  friend class TypeFactory;
+  friend class cel::ListType;
+  friend class base_internal::PersistentTypeHandle;
+
+  explicit ModernListType(Persistent<Type> element);
 
   const Persistent<Type> element_;
 };
 
-CEL_INTERNAL_TYPE_DECL(ListType);
+}  // namespace base_internal
 
 }  // namespace cel
 

@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 #include "absl/status/status.h"
@@ -28,6 +29,7 @@
 #include "base/internal/message_wrapper.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "base/type_provider.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/values/list_value.h"
@@ -43,6 +45,9 @@ namespace cel::interop_internal {
 
 namespace {
 
+using base_internal::InlinedStringViewBytesValue;
+using base_internal::InlinedStringViewStringValue;
+using base_internal::PersistentHandleFactory;
 using google::api::expr::runtime::CelList;
 using google::api::expr::runtime::CelMap;
 using google::api::expr::runtime::CelValue;
@@ -50,69 +55,37 @@ using google::api::expr::runtime::LegacyTypeInfoApis;
 using google::api::expr::runtime::MessageWrapper;
 using google::api::expr::runtime::UnknownSet;
 
-class LegacyListValue final : public ListValue {
- public:
-  LegacyListValue(Persistent<ListType> type, const CelList* impl)
-      : ListValue(std::move(type)), impl_(impl) {}
-
-  size_t size() const override { return impl_->size(); }
-
-  bool empty() const override { return impl_->empty(); }
-
-  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                        size_t index) const override;
-
-  std::string DebugString() const override;
-
-  const CelList* value() const { return impl_; }
-
- private:
-  const CelList* impl_;
-
-  bool Equals(const Value& other) const override;
-  void HashValue(absl::HashState state) const override;
-
-  CEL_DECLARE_LIST_VALUE(LegacyListValue);
-};
-
-CEL_IMPLEMENT_LIST_VALUE(LegacyListValue);
-
-absl::StatusOr<Persistent<Value>> LegacyListValue::Get(
-    ValueFactory& value_factory, size_t index) const {
-  return FromLegacyValue(value_factory, (*impl_)[index]);
-}
-
-std::string LegacyListValue::DebugString() const {
-  // TODO(issues/5): maybe implement this
-  return "<legacy>";
-}
-
-bool LegacyListValue::Equals(const Value& other) const {
-  // TODO(issues/5): deal with this
-  return false;
-}
-
-void LegacyListValue::HashValue(absl::HashState state) const {
-  // TODO(issues/5): deal with this
-}
-
 class LegacyCelList final : public CelList {
  public:
-  LegacyCelList(ValueFactory& value_factory, Persistent<ListValue> impl)
-      : value_factory_(value_factory), impl_(std::move(impl)) {}
+  explicit LegacyCelList(Persistent<ListValue> impl) : impl_(std::move(impl)) {}
 
-  CelValue operator[](int index) const override {
-    auto value = impl_->Get(value_factory_, static_cast<size_t>(index));
-    if (!value.ok()) {
-      return CelValue::CreateError(value_factory_.memory_manager()
-                                       .New<absl::Status>(value.status())
-                                       .release());
+  CelValue operator[](int index) const override { return Get(nullptr, index); }
+
+  CelValue Get(google::protobuf::Arena* arena, int index) const override {
+    if (arena == nullptr) {
+      static const absl::Status* status = []() {
+        return new absl::Status(absl::InvalidArgumentError(
+            "CelList::Get must be called with google::protobuf::Arena* for "
+            "interoperation"));
+      }();
+      return CelValue::CreateError(status);
     }
-    auto legacy_value = ToLegacyValue(value_factory_, *value);
+    // Do not do this at  home. This is extremely unsafe, and we only do it for
+    // interoperation, because we know that references to the below should not
+    // persist past the return value.
+    extensions::ProtoMemoryManager memory_manager(arena);
+    TypeFactory type_factory(memory_manager);
+    TypeManager type_manager(type_factory, TypeProvider::Builtin());
+    ValueFactory value_factory(type_manager);
+    auto value = impl_->Get(value_factory, static_cast<size_t>(index));
+    if (!value.ok()) {
+      return CelValue::CreateError(
+          google::protobuf::Arena::Create<absl::Status>(arena, value.status()));
+    }
+    auto legacy_value = ToLegacyValue(arena, *value);
     if (!legacy_value.ok()) {
-      return CelValue::CreateError(value_factory_.memory_manager()
-                                       .New<absl::Status>(legacy_value.status())
-                                       .release());
+      return CelValue::CreateError(
+          google::protobuf::Arena::Create<absl::Status>(arena, legacy_value.status()));
     }
     return std::move(legacy_value).value();
   }
@@ -127,102 +100,61 @@ class LegacyCelList final : public CelList {
     return internal::TypeId<LegacyCelList>();
   }
 
-  ValueFactory& value_factory_;
   Persistent<ListValue> impl_;
 };
 
-class LegacyMapValue final : public MapValue {
- public:
-  LegacyMapValue(Persistent<MapType> type, ValueFactory& value_factory,
-                 const CelMap* impl)
-      : MapValue(std::move(type)), value_factory_(value_factory), impl_(impl) {}
-
-  std::string DebugString() const override {
-    // TODO(issues/5): maybe implement this
-    return "<legacy>";
-  }
-
-  size_t size() const override { return static_cast<size_t>(impl_->size()); }
-
-  bool empty() const override { return impl_->empty(); }
-
-  bool Equals(const Value& other) const override {
-    // TODO(issues/5): deal with this
-    return false;
-  }
-
-  void HashValue(absl::HashState state) const override {
-    // TODO(issues/5): deal with this
-  }
-
-  absl::StatusOr<Persistent<Value>> Get(
-      ValueFactory& value_factory,
-      const Persistent<Value>& key) const override {
-    CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(value_factory, key));
-    auto legacy_value = (*impl_)[legacy_key];
-    if (!legacy_value.has_value()) {
-      return Persistent<Value>();
-    }
-    return FromLegacyValue(value_factory, std::move(legacy_value).value());
-  }
-
-  absl::StatusOr<bool> Has(const Persistent<Value>& key) const override {
-    CEL_ASSIGN_OR_RETURN(auto legacy_value, ToLegacyValue(value_factory_, key));
-    return impl_->Has(legacy_value);
-  }
-
-  absl::StatusOr<Persistent<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
-    CEL_ASSIGN_OR_RETURN(auto type,
-                         value_factory.type_factory().CreateListType(
-                             value_factory.type_factory().GetDynType()));
-    CEL_ASSIGN_OR_RETURN(auto* keys, impl_->ListKeys());
-    return value_factory.CreateListValue<LegacyListValue>(type, keys);
-  }
-
-  const CelMap* value() const { return impl_; }
-
- private:
-  ValueFactory& value_factory_;
-  const CelMap* impl_;
-
-  CEL_DECLARE_MAP_VALUE(LegacyMapValue);
-};
-
-CEL_IMPLEMENT_MAP_VALUE(LegacyMapValue);
-
 class LegacyCelMap final : public CelMap {
  public:
-  LegacyCelMap(ValueFactory& value_factory, Persistent<MapValue> impl)
-      : value_factory_(value_factory), impl_(std::move(impl)) {}
+  explicit LegacyCelMap(Persistent<MapValue> impl) : impl_(std::move(impl)) {}
 
   absl::optional<CelValue> operator[](CelValue key) const override {
-    auto modern_key = FromLegacyValue(value_factory_, key);
-    if (!modern_key.ok()) {
-      return CelValue::CreateError(value_factory_.memory_manager()
-                                       .New<absl::Status>(modern_key.status())
-                                       .release());
+    return Get(nullptr, key);
+  }
+
+  absl::optional<CelValue> Get(google::protobuf::Arena* arena,
+                               CelValue key) const override {
+    if (arena == nullptr) {
+      static const absl::Status* status = []() {
+        return new absl::Status(absl::InvalidArgumentError(
+            "CelMap::Get must be called with google::protobuf::Arena* for "
+            "interoperation"));
+      }();
+      return CelValue::CreateError(status);
     }
-    auto modern_value = impl_->Get(value_factory_, *modern_key);
+    auto modern_key = FromLegacyValue(arena, key);
+    if (!modern_key.ok()) {
+      return CelValue::CreateError(
+          google::protobuf::Arena::Create<absl::Status>(arena, modern_key.status()));
+    }
+    // Do not do this at  home. This is extremely unsafe, and we only do it for
+    // interoperation, because we know that references to the below should not
+    // persist past the return value.
+    extensions::ProtoMemoryManager memory_manager(arena);
+    TypeFactory type_factory(memory_manager);
+    TypeManager type_manager(type_factory, TypeProvider::Builtin());
+    ValueFactory value_factory(type_manager);
+    auto modern_value = impl_->Get(value_factory, *modern_key);
     if (!modern_value.ok()) {
-      return CelValue::CreateError(value_factory_.memory_manager()
-                                       .New<absl::Status>(modern_value.status())
-                                       .release());
+      return CelValue::CreateError(
+          google::protobuf::Arena::Create<absl::Status>(arena, modern_value.status()));
     }
     if (!*modern_value) {
       return absl::nullopt;
     }
-    auto legacy_value = ToLegacyValue(value_factory_, *modern_value);
+    auto legacy_value = ToLegacyValue(arena, *modern_value);
     if (!legacy_value.ok()) {
-      return CelValue::CreateError(value_factory_.memory_manager()
-                                       .New<absl::Status>(legacy_value.status())
-                                       .release());
+      return CelValue::CreateError(
+          google::protobuf::Arena::Create<absl::Status>(arena, legacy_value.status()));
     }
     return std::move(legacy_value).value();
   }
 
   absl::StatusOr<bool> Has(const CelValue& key) const override {
-    CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(value_factory_, key));
+    // Do not do this at  home. This is extremely unsafe, and we only do it for
+    // interoperation, because we know that references to the below should not
+    // persist past the return value.
+    google::protobuf::Arena arena;
+    CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(&arena, key));
     return impl_->Has(modern_key);
   }
 
@@ -231,9 +163,25 @@ class LegacyCelMap final : public CelMap {
   bool empty() const override { return impl_->empty(); }
 
   absl::StatusOr<const CelList*> ListKeys() const override {
-    CEL_ASSIGN_OR_RETURN(auto list_keys, impl_->ListKeys(value_factory_));
+    return ListKeys(nullptr);
+  }
+
+  absl::StatusOr<const CelList*> ListKeys(google::protobuf::Arena* arena) const override {
+    if (arena == nullptr) {
+      return absl::InvalidArgumentError(
+          "CelMap::ListKeys must be called with google::protobuf::Arena* for "
+          "interoperation");
+    }
+    // Do not do this at  home. This is extremely unsafe, and we only do it for
+    // interoperation, because we know that references to the below should not
+    // persist past the return value.
+    extensions::ProtoMemoryManager memory_manager(arena);
+    TypeFactory type_factory(memory_manager);
+    TypeManager type_manager(type_factory, TypeProvider::Builtin());
+    ValueFactory value_factory(type_manager);
+    CEL_ASSIGN_OR_RETURN(auto list_keys, impl_->ListKeys(value_factory));
     CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,
-                         ToLegacyValue(value_factory_, list_keys));
+                         ToLegacyValue(arena, list_keys));
     return legacy_list_keys.ListOrDie();
   }
 
@@ -244,7 +192,6 @@ class LegacyCelMap final : public CelMap {
     return internal::TypeId<LegacyCelMap>();
   }
 
-  ValueFactory& value_factory_;
   Persistent<MapValue> impl_;
 };
 
@@ -310,13 +257,15 @@ MessageWrapper::Builder MessageWrapperAccess::ToBuilder(
 }
 
 absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
-    cel::ValueFactory& value_factory, absl::string_view input) {
-  return value_factory.CreateStringValueFromView(input);
+    absl::string_view input) {
+  return PersistentHandleFactory<StringValue>::Make<
+      InlinedStringViewStringValue>(input);
 }
 
 absl::StatusOr<Persistent<BytesValue>> CreateBytesValueFromView(
-    cel::ValueFactory& value_factory, absl::string_view input) {
-  return value_factory.CreateBytesValueFromView(input);
+    absl::string_view input) {
+  return PersistentHandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(
+      input);
 }
 
 base_internal::StringValueRep GetStringValueRep(
@@ -350,24 +299,26 @@ void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,
 }
 
 absl::StatusOr<Persistent<Value>> FromLegacyValue(
-    cel::ValueFactory& value_factory, const CelValue& legacy_value) {
+    google::protobuf::Arena* arena, const CelValue& legacy_value) {
   switch (legacy_value.type()) {
     case CelValue::Type::kNullType:
-      return value_factory.GetNullValue();
+      return PersistentHandleFactory<NullValue>::Make<NullValue>();
     case CelValue::Type::kBool:
-      return value_factory.CreateBoolValue(legacy_value.BoolOrDie());
+      return PersistentHandleFactory<BoolValue>::Make<BoolValue>(
+          legacy_value.BoolOrDie());
     case CelValue::Type::kInt64:
-      return value_factory.CreateIntValue(legacy_value.Int64OrDie());
+      return PersistentHandleFactory<IntValue>::Make<IntValue>(
+          legacy_value.Int64OrDie());
     case CelValue::Type::kUint64:
-      return value_factory.CreateUintValue(legacy_value.Uint64OrDie());
+      return PersistentHandleFactory<UintValue>::Make<UintValue>(
+          legacy_value.Uint64OrDie());
     case CelValue::Type::kDouble:
-      return value_factory.CreateDoubleValue(legacy_value.DoubleOrDie());
+      return PersistentHandleFactory<DoubleValue>::Make<DoubleValue>(
+          legacy_value.DoubleOrDie());
     case CelValue::Type::kString:
-      return CreateStringValueFromView(value_factory,
-                                       legacy_value.StringOrDie().value());
+      return CreateStringValueFromView(legacy_value.StringOrDie().value());
     case CelValue::Type::kBytes:
-      return CreateBytesValueFromView(value_factory,
-                                      legacy_value.BytesOrDie().value());
+      return CreateBytesValueFromView(legacy_value.BytesOrDie().value());
     case CelValue::Type::kMessage: {
       const auto& wrapper = legacy_value.MessageWrapperOrDie();
       return LegacyStructValueAccess::Create(
@@ -375,9 +326,11 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
           MessageWrapperAccess::TypeInfo(wrapper));
     }
     case CelValue::Type::kDuration:
-      return value_factory.CreateDurationValue(legacy_value.DurationOrDie());
+      return PersistentHandleFactory<DurationValue>::Make<DurationValue>(
+          legacy_value.DurationOrDie());
     case CelValue::Type::kTimestamp:
-      return value_factory.CreateTimestampValue(legacy_value.TimestampOrDie());
+      return PersistentHandleFactory<TimestampValue>::Make<TimestampValue>(
+          legacy_value.TimestampOrDie());
     case CelValue::Type::kList: {
       if (CelListAccess::TypeId(*legacy_value.ListOrDie()) ==
           internal::TypeId<LegacyCelList>()) {
@@ -385,11 +338,9 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
         return static_cast<const LegacyCelList*>(legacy_value.ListOrDie())
             ->value();
       }
-      CEL_ASSIGN_OR_RETURN(auto type,
-                           value_factory.type_factory().CreateListType(
-                               value_factory.type_factory().GetDynType()));
-      return value_factory.CreateListValue<LegacyListValue>(
-          type, legacy_value.ListOrDie());
+      return PersistentHandleFactory<ListValue>::Make<
+          base_internal::LegacyListValue>(
+          reinterpret_cast<uintptr_t>(legacy_value.ListOrDie()));
     }
     case CelValue::Type::kMap: {
       if (CelMapAccess::TypeId(*legacy_value.MapOrDie()) ==
@@ -398,26 +349,29 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
         return static_cast<const LegacyCelMap*>(legacy_value.MapOrDie())
             ->value();
       }
-      CEL_ASSIGN_OR_RETURN(auto type,
-                           value_factory.type_factory().CreateMapType(
-                               value_factory.type_factory().GetDynType(),
-                               value_factory.type_factory().GetDynType()));
-      return value_factory.CreateMapValue<LegacyMapValue>(
-          type, value_factory, legacy_value.MapOrDie());
+      return PersistentHandleFactory<MapValue>::Make<
+          base_internal::LegacyMapValue>(
+          reinterpret_cast<uintptr_t>(legacy_value.MapOrDie()));
     } break;
     case CelValue::Type::kUnknownSet: {
-      auto value = value_factory.CreateUnknownValue();
+      extensions::ProtoMemoryManager memory_manager(arena);
+      auto value = PersistentHandleFactory<UnknownValue>::Make<UnknownValue>(
+          memory_manager);
       SetUnknownValueImpl(value,
                           GetUnknownSetImpl(*legacy_value.UnknownSetOrDie()));
       return value;
     }
     case CelValue::Type::kCelType: {
-      CEL_ASSIGN_OR_RETURN(auto type, value_factory.type_manager().ResolveType(
-                                          legacy_value.CelTypeOrDie().value()));
-      return value_factory.CreateTypeValue(type);
+      extensions::ProtoMemoryManager memory_manager(arena);
+      TypeFactory type_factory(memory_manager);
+      CEL_ASSIGN_OR_RETURN(
+          auto type, TypeProvider::Builtin().ProvideType(
+                         type_factory, legacy_value.CelTypeOrDie().value()));
+      return PersistentHandleFactory<TypeValue>::Make<TypeValue>(type);
     }
     case CelValue::Type::kError:
-      return value_factory.CreateErrorValue(*legacy_value.ErrorOrDie());
+      return PersistentHandleFactory<ErrorValue>::Make<ErrorValue>(
+          *legacy_value.ErrorOrDie());
     case CelValue::Type::kAny:
       return absl::InternalError(absl::StrCat(
           "illegal attempt to convert special CelValue type ",
@@ -433,36 +387,34 @@ absl::StatusOr<Persistent<Value>> FromLegacyValue(
 namespace {
 
 struct BytesValueToLegacyVisitor final {
-  MemoryManager& memory_manager;
+  google::protobuf::Arena* arena;
 
   absl::StatusOr<CelValue> operator()(absl::string_view value) const {
     return CelValue::CreateBytesView(value);
   }
 
   absl::StatusOr<CelValue> operator()(const absl::Cord& value) const {
-    return CelValue::CreateBytes(
-        memory_manager.New<std::string>(static_cast<std::string>(value))
-            .release());
+    return CelValue::CreateBytes(google::protobuf::Arena::Create<std::string>(
+        arena, static_cast<std::string>(value)));
   }
 };
 
 struct StringValueToLegacyVisitor final {
-  MemoryManager& memory_manager;
+  google::protobuf::Arena* arena;
 
   absl::StatusOr<CelValue> operator()(absl::string_view value) const {
     return CelValue::CreateStringView(value);
   }
 
   absl::StatusOr<CelValue> operator()(const absl::Cord& value) const {
-    return CelValue::CreateString(
-        memory_manager.New<std::string>(static_cast<std::string>(value))
-            .release());
+    return CelValue::CreateString(google::protobuf::Arena::Create<std::string>(
+        arena, static_cast<std::string>(value)));
   }
 };
 
 }  // namespace
 
-absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
+absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
                                        const Persistent<Value>& value) {
   switch (value->kind()) {
     case Kind::kNullType:
@@ -475,10 +427,9 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
       break;
     case Kind::kType:
       // Should be fine, so long as we are using an arena allocator.
-      return CelValue::CreateCelType(CelValue::CelTypeHolder(
-          value_factory.memory_manager()
-              .New<std::string>(value.As<TypeValue>()->value()->name())
-              .release()));
+      return CelValue::CreateCelType(
+          CelValue::CelTypeHolder(google::protobuf::Arena::Create<std::string>(
+              arena, value.As<TypeValue>()->value()->name())));
     case Kind::kBool:
       return CelValue::CreateBool(value.As<BoolValue>()->value());
     case Kind::kInt:
@@ -488,13 +439,11 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
     case Kind::kDouble:
       return CelValue::CreateDouble(value.As<DoubleValue>()->value());
     case Kind::kString:
-      return absl::visit(
-          StringValueToLegacyVisitor{value_factory.memory_manager()},
-          GetStringValueRep(value.As<StringValue>()));
+      return absl::visit(StringValueToLegacyVisitor{arena},
+                         GetStringValueRep(value.As<StringValue>()));
     case Kind::kBytes:
-      return absl::visit(
-          BytesValueToLegacyVisitor{value_factory.memory_manager()},
-          GetBytesValueRep(value.As<BytesValue>()));
+      return absl::visit(BytesValueToLegacyVisitor{arena},
+                         GetBytesValueRep(value.As<BytesValue>()));
     case Kind::kEnum:
       break;
     case Kind::kDuration:
@@ -502,26 +451,22 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
     case Kind::kTimestamp:
       return CelValue::CreateTimestamp(value.As<TimestampValue>()->value());
     case Kind::kList: {
-      if (value.Is<LegacyListValue>()) {
+      if (value.Is<base_internal::LegacyListValue>()) {
         // Fast path.
-        return CelValue::CreateList(value.As<LegacyListValue>()->value());
+        return CelValue::CreateList(reinterpret_cast<const CelList*>(
+            value.As<base_internal::LegacyListValue>()->value()));
       }
       return CelValue::CreateList(
-          value_factory.memory_manager()
-              .New<LegacyCelList>(value_factory,
-                                  Persistent<ListValue>(value.As<ListValue>()))
-              .release());
+          google::protobuf::Arena::Create<LegacyCelList>(arena, value.As<ListValue>()));
     }
     case Kind::kMap: {
-      if (value.Is<LegacyMapValue>()) {
+      if (value.Is<base_internal::LegacyMapValue>()) {
         // Fast path.
-        return CelValue::CreateMap(value.As<LegacyMapValue>()->value());
+        return CelValue::CreateMap(reinterpret_cast<const CelMap*>(
+            value.As<base_internal::LegacyMapValue>()->value()));
       }
       return CelValue::CreateMap(
-          value_factory.memory_manager()
-              .New<LegacyCelMap>(value_factory,
-                                 Persistent<MapValue>(value.As<MapValue>()))
-              .release());
+          google::protobuf::Arena::Create<LegacyCelMap>(arena, value.As<MapValue>()));
     }
     case Kind::kStruct: {
       if (!value.Is<base_internal::LegacyStructValue>()) {
@@ -535,8 +480,7 @@ absl::StatusOr<CelValue> ToLegacyValue(cel::ValueFactory& value_factory,
               *value.As<base_internal::LegacyStructValue>())));
     }
     case Kind::kUnknown: {
-      auto* legacy_value =
-          value_factory.memory_manager().New<UnknownSet>().release();
+      auto* legacy_value = google::protobuf::Arena::Create<UnknownSet>(arena);
       SetUnknownSetImpl(*legacy_value,
                         GetUnknownValueImpl(value.As<UnknownValue>()));
       return CelValue::CreateUnknownSet(legacy_value);
@@ -555,12 +499,16 @@ namespace cel::base_internal {
 
 namespace {
 
+using google::api::expr::runtime::CelList;
+using google::api::expr::runtime::CelMap;
+using google::api::expr::runtime::CelValue;
 using google::api::expr::runtime::LegacyTypeInfoApis;
 using google::api::expr::runtime::MessageWrapper;
 using google::api::expr::runtime::ProtoWrapperTypeOptions;
 using interop_internal::FromLegacyValue;
 using interop_internal::LegacyStructValueAccess;
 using interop_internal::MessageWrapperAccess;
+using interop_internal::ToLegacyValue;
 
 }  // namespace
 
@@ -626,7 +574,65 @@ absl::StatusOr<Persistent<Value>> MessageValueGetFieldByName(
           ->GetAccessApis(wrapper)
           ->GetField(name, wrapper, ProtoWrapperTypeOptions::kUnsetNull,
                      value_factory.memory_manager()));
-  return FromLegacyValue(value_factory, legacy_value);
+  return FromLegacyValue(extensions::ProtoMemoryManager::CastToProtoArena(
+                             value_factory.memory_manager()),
+                         legacy_value);
+}
+
+absl::StatusOr<Persistent<Value>> LegacyListValueGet(
+    uintptr_t impl, ValueFactory& value_factory, size_t index) {
+  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory.memory_manager());
+  return FromLegacyValue(arena, reinterpret_cast<const CelList*>(impl)->Get(
+                                    arena, static_cast<int>(index)));
+}
+
+size_t LegacyListValueSize(uintptr_t impl) {
+  return reinterpret_cast<const CelList*>(impl)->size();
+}
+
+bool LegacyListValueEmpty(uintptr_t impl) {
+  return reinterpret_cast<const CelList*>(impl)->empty();
+}
+
+size_t LegacyMapValueSize(uintptr_t impl) {
+  return reinterpret_cast<const CelMap*>(impl)->size();
+}
+
+bool LegacyMapValueEmpty(uintptr_t impl) {
+  return reinterpret_cast<const CelMap*>(impl)->empty();
+}
+
+absl::StatusOr<Persistent<Value>> LegacyMapValueGet(
+    uintptr_t impl, ValueFactory& value_factory, const Persistent<Value>& key) {
+  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory.memory_manager());
+  CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(arena, key));
+  auto legacy_value =
+      reinterpret_cast<const CelMap*>(impl)->Get(arena, legacy_key);
+  if (!legacy_value.has_value()) {
+    return Persistent<Value>();
+  }
+  return FromLegacyValue(arena, *legacy_value);
+}
+
+absl::StatusOr<bool> LegacyMapValueHas(uintptr_t impl,
+                                       const Persistent<Value>& key) {
+  google::protobuf::Arena arena;
+  CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(&arena, key));
+  return reinterpret_cast<const CelMap*>(impl)->Has(legacy_key);
+}
+
+absl::StatusOr<Persistent<ListValue>> LegacyMapValueListKeys(
+    uintptr_t impl, ValueFactory& value_factory) {
+  auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory.memory_manager());
+  CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,
+                       reinterpret_cast<const CelMap*>(impl)->ListKeys(arena));
+  CEL_ASSIGN_OR_RETURN(
+      auto list_keys,
+      FromLegacyValue(arena, CelValue::CreateList(legacy_list_keys)));
+  return list_keys.As<ListValue>();
 }
 
 }  // namespace cel::base_internal

@@ -44,6 +44,9 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
   using Base::Equals;
 
  private:
+  friend class base_internal::LegacyListType;
+  friend class base_internal::LegacyMapType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DynType, DynValue);
 };
 

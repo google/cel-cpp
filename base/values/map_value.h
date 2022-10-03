@@ -21,6 +21,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -37,13 +38,117 @@ class ListValue;
 class ValueFactory;
 
 // MapValue represents an instance of cel::MapType.
-class MapValue : public Value, public base_internal::HeapData {
+class MapValue : public Value {
  public:
   static constexpr Kind kKind = MapType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
   constexpr Kind kind() const { return kKind; }
+
+  Persistent<MapType> type() const;
+
+  std::string DebugString() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  bool Equals(const Value& other) const;
+
+  void HashValue(absl::HashState state) const;
+
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        const Persistent<Value>& key) const;
+
+  absl::StatusOr<bool> Has(const Persistent<Value>& key) const;
+
+  absl::StatusOr<Persistent<ListValue>> ListKeys(
+      ValueFactory& value_factory) const;
+
+ private:
+  friend internal::TypeInfo base_internal::GetMapValueTypeId(
+      const MapValue& map_value);
+  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::LegacyMapValue;
+  friend class base_internal::AbstractMapValue;
+
+  MapValue() = default;
+
+  // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const;
+};
+
+CEL_INTERNAL_VALUE_DECL(MapValue);
+
+namespace base_internal {
+
+ABSL_ATTRIBUTE_WEAK size_t LegacyMapValueSize(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK bool LegacyMapValueEmpty(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<Value>> LegacyMapValueGet(
+    uintptr_t impl, ValueFactory& value_factory, const Persistent<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> LegacyMapValueHas(
+    uintptr_t impl, const Persistent<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<ListValue>>
+LegacyMapValueListKeys(uintptr_t impl, ValueFactory& value_factory);
+
+class LegacyMapValue final : public MapValue, public InlineData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const MapValue&>(value).TypeId() ==
+               internal::TypeId<LegacyMapValue>();
+  }
+
+  Persistent<MapType> type() const;
+
+  std::string DebugString() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  bool Equals(const Value& other) const;
+
+  void HashValue(absl::HashState state) const;
+
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        const Persistent<Value>& key) const;
+
+  absl::StatusOr<bool> Has(const Persistent<Value>& key) const;
+
+  absl::StatusOr<Persistent<ListValue>> ListKeys(
+      ValueFactory& value_factory) const;
+
+  constexpr uintptr_t value() const { return impl_; }
+
+ private:
+  friend class base_internal::PersistentValueHandle;
+  friend class cel::MapValue;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  explicit LegacyMapValue(uintptr_t impl)
+      : MapValue(), InlineData(kMetadata), impl_(impl) {}
+
+  internal::TypeInfo TypeId() const {
+    return internal::TypeId<LegacyMapValue>();
+  }
+  uintptr_t impl_;
+};
+
+class AbstractMapValue : public MapValue, public HeapData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const MapValue&>(value).TypeId() !=
+               internal::TypeId<LegacyMapValue>();
+  }
 
   const Persistent<MapType> type() const { return type_; }
 
@@ -66,11 +171,10 @@ class MapValue : public Value, public base_internal::HeapData {
       ValueFactory& value_factory) const = 0;
 
  protected:
-  explicit MapValue(Persistent<MapType> type);
+  explicit AbstractMapValue(Persistent<MapType> type);
 
  private:
-  friend internal::TypeInfo base_internal::GetMapValueTypeId(
-      const MapValue& map_value);
+  friend class cel::MapValue;
   friend class base_internal::PersistentValueHandle;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
@@ -79,12 +183,18 @@ class MapValue : public Value, public base_internal::HeapData {
   const Persistent<MapType> type_;
 };
 
-CEL_INTERNAL_VALUE_DECL(MapValue);
+inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
+  return map_value.TypeId();
+}
+
+}  // namespace base_internal
+
+#define CEL_MAP_VALUE_CLASS ::cel::base_internal::AbstractMapValue
 
 // CEL_DECLARE_MAP_VALUE declares `map_value` as an map value. It must
 // be part of the class definition of `map_value`.
 //
-// class MyMapValue : public cel::MapValue {
+// class MyMapValue : public CEL_MAP_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_MAP_VALUE(MyMapValue);
@@ -95,7 +205,7 @@ CEL_INTERNAL_VALUE_DECL(MapValue);
 // CEL_IMPLEMENT_MAP_VALUE implements `map_value` as an map
 // value. It must be called after the class definition of `map_value`.
 //
-// class MyMapValue : public cel::MapValue {
+// class MyMapValue : public CEL_MAP_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_MAP_VALUE(MyMapValue);
@@ -104,14 +214,6 @@ CEL_INTERNAL_VALUE_DECL(MapValue);
 // CEL_IMPLEMENT_MAP_VALUE(MyMapValue);
 #define CEL_IMPLEMENT_MAP_VALUE(map_value) \
   CEL_INTERNAL_IMPLEMENT_VALUE(Map, map_value)
-
-namespace base_internal {
-
-inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
-  return map_value.TypeId();
-}
-
-}  // namespace base_internal
 
 }  // namespace cel
 

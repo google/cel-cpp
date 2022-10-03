@@ -33,11 +33,7 @@ class TypeFactory;
 
 // MapType represents a map type. A map is container of key and value pairs
 // where each key appears at most once.
-class MapType final : public Type, public base_internal::HeapData {
-  // I would have liked to make this class final, but we cannot instantiate
-  // Persistent<Type> or Transient<const Type> at this point. It must be
-  // done after the post include below. Maybe we should separate out the post
-  // includes on a per type basis so we can do that?
+class MapType : public Type {
  public:
   static constexpr Kind kKind = Kind::kMap;
 
@@ -54,23 +50,69 @@ class MapType final : public Type, public base_internal::HeapData {
   bool Equals(const Type& other) const;
 
   // Returns the type of the keys in the map.
-  const Persistent<Type>& key() const { return key_; }
+  const Persistent<Type>& key() const;
 
   // Returns the type of the values in the map.
-  const Persistent<Type>& value() const { return value_; }
+  const Persistent<Type>& value() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
   friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::LegacyMapType;
+  friend class base_internal::ModernMapType;
 
-  explicit MapType(Persistent<Type> key, Persistent<Type> value);
+  MapType() = default;
+};
+
+CEL_INTERNAL_TYPE_DECL(MapType);
+
+namespace base_internal {
+
+// LegacyMapType is used by LegacymapValue for compatibility with the legacy
+// API. It's key and value are always the dynamic type regardless of whether the
+// the expression is checked or not.
+class LegacyMapType final : public MapType, public InlineData {
+ public:
+  const Persistent<Type>& key() const;
+
+  const Persistent<Type>& value() const;
+
+ private:
+  friend class MemoryManager;
+  friend class TypeFactory;
+  friend class cel::MapType;
+  friend class base_internal::PersistentTypeHandle;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  LegacyMapType() : MapType(), InlineData(kMetadata) {}
+};
+
+class ModernMapType final : public MapType, public HeapData {
+ public:
+  const Persistent<Type>& key() const { return key_; }
+
+  const Persistent<Type>& value() const { return value_; }
+
+ private:
+  friend class cel::MemoryManager;
+  friend class TypeFactory;
+  friend class cel::MapType;
+  friend class base_internal::PersistentTypeHandle;
+
+  explicit ModernMapType(Persistent<Type> key, Persistent<Type> value);
 
   const Persistent<Type> key_;
   const Persistent<Type> value_;
 };
 
-CEL_INTERNAL_TYPE_DECL(MapType);
+}  // namespace base_internal
 
 }  // namespace cel
 

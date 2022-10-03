@@ -14,20 +14,107 @@
 
 #include "base/values/map_value.h"
 
+#include <string>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "base/internal/data.h"
+#include "base/types/map_type.h"
+#include "base/values/list_value.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(MapValue);
 
-MapValue::MapValue(Persistent<MapType> type)
-    : base_internal::HeapData(kKind), type_(std::move(type)) {
-  // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
-  ABSL_ASSERT(
-      reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
-      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+#define CEL_INTERNAL_MAP_VALUE_DISPATCH(method, ...)                       \
+  base_internal::Metadata::IsStoredInline(*this)                           \
+      ? static_cast<const base_internal::LegacyMapValue&>(*this).method(   \
+            __VA_ARGS__)                                                   \
+      : static_cast<const base_internal::AbstractMapValue&>(*this).method( \
+            __VA_ARGS__)
+
+Persistent<MapType> MapValue::type() const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(type);
 }
+
+std::string MapValue::DebugString() const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(DebugString);
+}
+
+size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
+
+bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
+
+bool MapValue::Equals(const Value& other) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Equals, other);
+}
+
+void MapValue::HashValue(absl::HashState state) const {
+  CEL_INTERNAL_MAP_VALUE_DISPATCH(HashValue, std::move(state));
+}
+
+absl::StatusOr<Persistent<Value>> MapValue::Get(
+    ValueFactory& value_factory, const Persistent<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
+}
+
+absl::StatusOr<bool> MapValue::Has(const Persistent<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, key);
+}
+
+absl::StatusOr<Persistent<ListValue>> MapValue::ListKeys(
+    ValueFactory& value_factory) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, value_factory);
+}
+
+internal::TypeInfo MapValue::TypeId() const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(TypeId);
+}
+
+#undef CEL_INTERNAL_MAP_VALUE_DISPATCH
+
+namespace base_internal {
+
+Persistent<MapType> LegacyMapValue::type() const {
+  return PersistentHandleFactory<MapType>::Make<LegacyMapType>();
+}
+
+std::string LegacyMapValue::DebugString() const { return "map"; }
+
+size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
+
+bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
+
+bool LegacyMapValue::Equals(const Value& other) const {
+  // Unimplemented.
+  return false;
+}
+
+void LegacyMapValue::HashValue(absl::HashState state) const {
+  // Unimplemented.
+}
+
+absl::StatusOr<Persistent<Value>> LegacyMapValue::Get(
+    ValueFactory& value_factory, const Persistent<Value>& key) const {
+  return LegacyMapValueGet(impl_, value_factory, key);
+}
+
+absl::StatusOr<bool> LegacyMapValue::Has(const Persistent<Value>& key) const {
+  return LegacyMapValueHas(impl_, key);
+}
+
+absl::StatusOr<Persistent<ListValue>> LegacyMapValue::ListKeys(
+    ValueFactory& value_factory) const {
+  return LegacyMapValueListKeys(impl_, value_factory);
+}
+
+AbstractMapValue::AbstractMapValue(Persistent<MapType> type)
+    : HeapData(kKind), type_(std::move(type)) {
+  // Ensure `Value*` and `HeapData*` are not thunked.
+  ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
+              reinterpret_cast<uintptr_t>(static_cast<HeapData*>(this)));
+}
+
+}  // namespace base_internal
 
 }  // namespace cel

@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -35,7 +36,7 @@ namespace cel {
 class ValueFactory;
 
 // ListValue represents an instance of cel::ListType.
-class ListValue : public Value, public base_internal::HeapData {
+class ListValue : public Value {
  public:
   static constexpr Kind kKind = ListType::kKind;
 
@@ -43,9 +44,99 @@ class ListValue : public Value, public base_internal::HeapData {
 
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  const Persistent<ListType> type() const { return type_; }
+  Persistent<ListType> type() const;
 
   constexpr Kind kind() const { return kKind; }
+
+  std::string DebugString() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        size_t index) const;
+
+  bool Equals(const Value& other) const;
+
+  void HashValue(absl::HashState state) const;
+
+ private:
+  friend class base_internal::LegacyListValue;
+  friend class base_internal::AbstractListValue;
+  friend internal::TypeInfo base_internal::GetListValueTypeId(
+      const ListValue& list_value);
+  friend class base_internal::PersistentValueHandle;
+
+  ListValue() = default;
+
+  // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const;
+};
+
+namespace base_internal {
+
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<Value>> LegacyListValueGet(
+    uintptr_t impl, ValueFactory& value_factory, size_t index);
+ABSL_ATTRIBUTE_WEAK size_t LegacyListValueSize(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK bool LegacyListValueEmpty(uintptr_t impl);
+
+class LegacyListValue final : public ListValue, public InlineData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const ListValue&>(value).TypeId() ==
+               internal::TypeId<LegacyListValue>();
+  }
+
+  Persistent<ListType> type() const;
+
+  std::string DebugString() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
+                                        size_t index) const;
+
+  bool Equals(const Value& other) const;
+
+  void HashValue(absl::HashState state) const;
+
+  constexpr uintptr_t value() const { return impl_; }
+
+ private:
+  friend class base_internal::PersistentValueHandle;
+  friend class cel::ListValue;
+  template <size_t Size, size_t Align>
+  friend class AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  explicit LegacyListValue(uintptr_t impl)
+      : ListValue(), InlineData(kMetadata), impl_(impl) {}
+
+  // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const {
+    return internal::TypeId<LegacyListValue>();
+  }
+
+  uintptr_t impl_;
+};
+
+class AbstractListValue : public ListValue, public HeapData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const ListValue&>(value).TypeId() !=
+               internal::TypeId<LegacyListValue>();
+  }
+
+  const Persistent<ListType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
@@ -61,9 +152,12 @@ class ListValue : public Value, public base_internal::HeapData {
   virtual void HashValue(absl::HashState state) const = 0;
 
  protected:
-  explicit ListValue(Persistent<ListType> type);
+  explicit AbstractListValue(Persistent<ListType> type);
 
  private:
+  friend class cel::ListValue;
+  friend class base_internal::LegacyListValue;
+  friend class base_internal::AbstractListValue;
   friend internal::TypeInfo base_internal::GetListValueTypeId(
       const ListValue& list_value);
   friend class base_internal::PersistentValueHandle;
@@ -74,12 +168,20 @@ class ListValue : public Value, public base_internal::HeapData {
   const Persistent<ListType> type_;
 };
 
+inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
+  return list_value.TypeId();
+}
+
+}  // namespace base_internal
+
+#define CEL_LIST_VALUE_CLASS ::cel::base_internal::AbstractListValue
+
 CEL_INTERNAL_VALUE_DECL(ListValue);
 
 // CEL_DECLARE_LIST_VALUE declares `list_value` as an list value. It must
 // be part of the class definition of `list_value`.
 //
-// class MyListValue : public cel::ListValue {
+// class MyListValue : public CEL_LIST_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_LIST_VALUE(MyListValue);
@@ -90,7 +192,7 @@ CEL_INTERNAL_VALUE_DECL(ListValue);
 // CEL_IMPLEMENT_LIST_VALUE implements `list_value` as an list
 // value. It must be called after the class definition of `list_value`.
 //
-// class MyListValue : public cel::ListValue {
+// class MyListValue : public CEL_LIST_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_LIST_VALUE(MyListValue);
@@ -99,14 +201,6 @@ CEL_INTERNAL_VALUE_DECL(ListValue);
 // CEL_IMPLEMENT_LIST_VALUE(MyListValue);
 #define CEL_IMPLEMENT_LIST_VALUE(list_value) \
   CEL_INTERNAL_IMPLEMENT_VALUE(List, list_value)
-
-namespace base_internal {
-
-inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
-  return list_value.TypeId();
-}
-
-}  // namespace base_internal
 
 }  // namespace cel
 

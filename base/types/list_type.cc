@@ -19,18 +19,12 @@
 
 #include "absl/base/macros.h"
 #include "absl/strings/str_cat.h"
+#include "base/internal/data.h"
+#include "base/types/dyn_type.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(ListType);
-
-ListType::ListType(Persistent<Type> element)
-    : base_internal::HeapData(kKind), element_(std::move(element)) {
-  // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
-  ABSL_ASSERT(
-      reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
-      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
-}
 
 std::string ListType::DebugString() const {
   return absl::StrCat(name(), "(", element()->DebugString(), ")");
@@ -48,5 +42,27 @@ void ListType::HashValue(absl::HashState state) const {
   // avoid hash suffix/prefix collisions.
   absl::HashState::combine(std::move(state), element(), kind(), name());
 }
+
+const Persistent<Type>& ListType::element() const {
+  if (base_internal::Metadata::IsStoredInline(*this)) {
+    return static_cast<const base_internal::LegacyListType&>(*this).element();
+  }
+  return static_cast<const base_internal::ModernListType&>(*this).element();
+}
+
+namespace base_internal {
+
+const Persistent<Type>& LegacyListType::element() const {
+  return DynType::Get().As<Type>();
+}
+
+ModernListType::ModernListType(Persistent<Type> element)
+    : ListType(), HeapData(kKind), element_(std::move(element)) {
+  // Ensure `Type*` and `HeapData*` are not thunked.
+  ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
+              reinterpret_cast<uintptr_t>(static_cast<HeapData*>(this)));
+}
+
+}  // namespace base_internal
 
 }  // namespace cel
