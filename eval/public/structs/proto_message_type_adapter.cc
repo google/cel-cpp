@@ -87,7 +87,11 @@ absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const Reflection* reflection = message->GetReflection();
   const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
-
+  if (field_desc == nullptr) {
+    // TODO(issues/5): switch from std::string to absl::string_view
+    std::string ext_name(field_name);
+    field_desc = message->GetReflection()->FindKnownExtensionByName(ext_name);
+  }
   if (field_desc == nullptr) {
     return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
   }
@@ -119,7 +123,10 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
                                       cel::MemoryManager& memory_manager) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
-
+  if (field_desc == nullptr) {
+    std::string ext_name(field_name);
+    field_desc = message->GetReflection()->FindKnownExtensionByName(ext_name);
+  }
   if (field_desc == nullptr) {
     return CreateNoSuchFieldError(memory_manager, field_name);
   }

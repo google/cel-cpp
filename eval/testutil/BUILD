@@ -4,7 +4,7 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 proto_library(
-    name = "test_message_protos",
+    name = "test_message_proto",
     srcs = [
         "test_message.proto",
     ],
@@ -19,7 +19,7 @@ proto_library(
 
 cc_proto_library(
     name = "test_message_cc_proto",
-    deps = [":test_message_protos"],
+    deps = [":test_message_proto"],
 )
 
 proto_library(
@@ -27,4 +27,17 @@ proto_library(
     srcs = [
         "simple_test_message.proto",
     ],
+)
+
+proto_library(
+    name = "test_extensions_proto",
+    srcs = [
+        "test_extensions.proto",
+    ],
+    deps = ["@com_google_protobuf//:wrappers_proto"],
+)
+
+cc_proto_library(
+    name = "test_extensions_cc_proto",
+    deps = [":test_extensions_proto"],
 )

@@ -520,6 +520,7 @@ cc_test(
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:trivial_legacy_type_info",
         "//eval/public/testing:matchers",
+        "//eval/testutil:test_extensions_cc_proto",
         "//eval/testutil:test_message_cc_proto",
         "//internal:status_macros",
         "//internal:testing",
