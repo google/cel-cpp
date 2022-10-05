@@ -26,29 +26,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/field_access_impl.h"
 #include "eval/public/structs/protobuf_value_factory.h"
-
-#ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-
-namespace google::protobuf::expr {
-
-// CelMapReflectionFriend provides access to Reflection's private methods. The
-// class is a friend of google::protobuf::Reflection. We do not add FieldBackedMapImpl as
-// a friend directly, because it belongs to google:: namespace. The build of
-// protobuf fails on MSVC if this namespace is used, probably because
-// of macros usage.
-class CelMapReflectionFriend {
- public:
-  static bool LookupMapValue(const Reflection* reflection,
-                             const Message& message,
-                             const FieldDescriptor* field, const MapKey& key,
-                             MapValueConstRef* val) {
-    return reflection->LookupMapValue(message, field, key, val);
-  }
-};
-
-}  // namespace google::protobuf::expr
-
-#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+#include "extensions/protobuf/internal/map_reflection.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -161,16 +139,11 @@ absl::StatusOr<const CelList*> FieldBackedMapImpl::ListKeys() const {
 }
 
 absl::StatusOr<bool> FieldBackedMapImpl::Has(const CelValue& key) const {
-#ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
   MapValueConstRef value_ref;
   return LookupMapValue(key, &value_ref);
-#else   // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-  return LegacyHasMapValue(key);
-#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 }
 
 absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
-#ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
   // Fast implementation which uses a friend method to do a hash-based key
   // lookup.
   MapValueConstRef value_ref;
@@ -191,17 +164,10 @@ absl::optional<CelValue> FieldBackedMapImpl::operator[](CelValue key) const {
     return CreateErrorValue(arena_, result.status());
   }
   return *result;
-
-#else  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-  // Default proto implementation, does not use fast-path key lookup.
-  return LegacyLookupMapValue(key);
-#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
 }
 
 absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
     const CelValue& key, MapValueConstRef* value_ref) const {
-#ifdef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-
   if (!MatchesMapKeyType(key_desc_, key)) {
     return InvalidMapKeyType(key_desc_->cpp_type_name());
   }
@@ -250,11 +216,8 @@ absl::StatusOr<bool> FieldBackedMapImpl::LookupMapValue(
       return InvalidMapKeyType(key_desc_->cpp_type_name());
   }
   // Look the value up
-  return google::protobuf::expr::CelMapReflectionFriend::LookupMapValue(
-      reflection_, *message_, descriptor_, proto_key, value_ref);
-#else   // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
-  return absl::UnimplementedError("fast-path key lookup not implemented");
-#endif  // GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
+  return cel::extensions::protobuf_internal::LookupMapValue(
+      *reflection_, *message_, *descriptor_, proto_key, value_ref);
 }
 
 absl::StatusOr<bool> FieldBackedMapImpl::LegacyHasMapValue(

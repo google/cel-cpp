@@ -204,6 +204,7 @@ cc_library(
         "//eval/public:cel_value",
         "//eval/public/structs:field_access_impl",
         "//eval/public/structs:protobuf_value_factory",
+        "//extensions/protobuf/internal:map_reflection",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
