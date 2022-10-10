@@ -129,39 +129,6 @@ TEST(CelAttributeQualifierTest, TestStringComparison) {
               CelAttributeQualifier::Create(CelValue::CreateString(&kTest)));
 }
 
-void TestAllCelValueMismatches(const CelAttributeQualifierPattern& qualifier) {
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateNull()));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateBool(false)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateInt64(0)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateUint64(0)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateDouble(0.)));
-
-  const std::string kStr = "Those are not the droids you are looking for.";
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateString(&kStr)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateBytes(&kStr)));
-
-  Duration msg_duration;
-  msg_duration.set_seconds(0);
-  msg_duration.set_nanos(0);
-  EXPECT_FALSE(
-      qualifier.IsMatch(CelProtoWrapper::CreateDuration(&msg_duration)));
-
-  Timestamp msg_timestamp;
-  msg_timestamp.set_seconds(0);
-  msg_timestamp.set_nanos(0);
-  EXPECT_FALSE(
-      qualifier.IsMatch(CelProtoWrapper::CreateTimestamp(&msg_timestamp)));
-
-  DummyList dummy_list;
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateList(&dummy_list)));
-
-  DummyMap dummy_map;
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateMap(&dummy_map)));
-
-  google::protobuf::Arena arena;
-  EXPECT_FALSE(qualifier.IsMatch(CreateErrorValue(&arena, kStr)));
-}
-
 void TestAllQualifierMismatches(const CelAttributeQualifierPattern& qualifier) {
   const std::string test = "Those are not the droids you are looking for.";
   EXPECT_FALSE(qualifier.IsMatch(
@@ -172,51 +139,6 @@ void TestAllQualifierMismatches(const CelAttributeQualifierPattern& qualifier) {
       CelAttributeQualifier::Create(CelValue::CreateUint64(0))));
   EXPECT_FALSE(qualifier.IsMatch(
       CelAttributeQualifier::Create(CelValue::CreateString(&test))));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueBoolMatch) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateBool(true));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateBool(true);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueInt64Match) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateInt64(1);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueUint64Match) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateUint64(1));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateUint64(1);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueStringMatch) {
-  std::string kTest = "test";
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateString(&kTest));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateString(&kTest);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
 }
 
 TEST(CelAttributeQualifierPatternTest, TestQualifierBoolMatch) {
@@ -290,11 +212,6 @@ TEST(CreateCelAttributePattern, Basic) {
 
   EXPECT_THAT(pattern.variable(), Eq("abc"));
   ASSERT_THAT(pattern.qualifier_path(), SizeIs(5));
-  EXPECT_TRUE(
-      pattern.qualifier_path()[0].IsMatch(CelValue::CreateStringView(kTest)));
-  EXPECT_TRUE(pattern.qualifier_path()[1].IsMatch(CelValue::CreateUint64(1)));
-  EXPECT_TRUE(pattern.qualifier_path()[2].IsMatch(CelValue::CreateInt64(-1)));
-  EXPECT_TRUE(pattern.qualifier_path()[3].IsMatch(CelValue::CreateBool(false)));
   EXPECT_TRUE(pattern.qualifier_path()[4].IsWildcard());
 }
 

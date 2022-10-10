@@ -65,23 +65,6 @@ class CelAttributeQualifierPattern {
     return value_.value() == qualifier;
   }
 
-  bool IsMatch(const CelValue& cel_value) const {
-    if (!value_.has_value()) {
-      switch (cel_value.type()) {
-        case CelValue::Type::kInt64:
-        case CelValue::Type::kUint64:
-        case CelValue::Type::kString:
-        case CelValue::Type::kBool: {
-          return true;
-        }
-        default: {
-          return false;
-        }
-      }
-    }
-    return value_->IsMatch(cel_value);
-  }
-
   bool IsMatch(absl::string_view other_key) const {
     if (!value_.has_value()) return true;
     return value_->IsMatch(other_key);
