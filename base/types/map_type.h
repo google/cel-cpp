@@ -50,15 +50,15 @@ class MapType : public Type {
   bool Equals(const Type& other) const;
 
   // Returns the type of the keys in the map.
-  const Persistent<Type>& key() const;
+  const Handle<Type>& key() const;
 
   // Returns the type of the values in the map.
-  const Persistent<Type>& value() const;
+  const Handle<Type>& value() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   friend class base_internal::LegacyMapType;
   friend class base_internal::ModernMapType;
 
@@ -74,15 +74,15 @@ namespace base_internal {
 // the expression is checked or not.
 class LegacyMapType final : public MapType, public InlineData {
  public:
-  const Persistent<Type>& key() const;
+  const Handle<Type>& key() const;
 
-  const Persistent<Type>& value() const;
+  const Handle<Type>& value() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
   friend class cel::MapType;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   template <size_t Size, size_t Align>
   friend class AnyData;
 
@@ -96,20 +96,20 @@ class LegacyMapType final : public MapType, public InlineData {
 
 class ModernMapType final : public MapType, public HeapData {
  public:
-  const Persistent<Type>& key() const { return key_; }
+  const Handle<Type>& key() const { return key_; }
 
-  const Persistent<Type>& value() const { return value_; }
+  const Handle<Type>& value() const { return value_; }
 
  private:
   friend class cel::MemoryManager;
   friend class TypeFactory;
   friend class cel::MapType;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
 
-  explicit ModernMapType(Persistent<Type> key, Persistent<Type> value);
+  explicit ModernMapType(Handle<Type> key, Handle<Type> value);
 
-  const Persistent<Type> key_;
-  const Persistent<Type> value_;
+  const Handle<Type> key_;
+  const Handle<Type> value_;
 };
 
 }  // namespace base_internal

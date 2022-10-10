@@ -48,7 +48,7 @@ namespace base_internal {
 template <typename T, typename U>
 class SimpleValue;
 
-class PersistentValueHandle;
+class ValueHandle;
 
 internal::TypeInfo GetStructValueTypeId(const StructValue& struct_value);
 
@@ -85,7 +85,7 @@ struct InlineValue final {
     absl::Cord cord_value;
     absl::string_view string_value;
     struct {
-      Persistent<EnumType> type;
+      Handle<EnumType> type;
       int64_t number;
     } enum_value;
   };
@@ -125,29 +125,28 @@ struct UnknownSetImpl;
 namespace interop_internal {
 
 base_internal::StringValueRep GetStringValueRep(
-    const Persistent<StringValue>& value);
-base_internal::BytesValueRep GetBytesValueRep(
-    const Persistent<BytesValue>& value);
+    const Handle<StringValue>& value);
+base_internal::BytesValueRep GetBytesValueRep(const Handle<BytesValue>& value);
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Persistent<UnknownValue>& value);
-void SetUnknownValueImpl(Persistent<UnknownValue>& value,
+    const Handle<UnknownValue>& value);
+void SetUnknownValueImpl(Handle<UnknownValue>& value,
                          std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
 }  // namespace interop_internal
 
 }  // namespace cel
 
-#define CEL_INTERNAL_VALUE_DECL(name) extern template class Persistent<name>
+#define CEL_INTERNAL_VALUE_DECL(name) extern template class Handle<name>
 
-#define CEL_INTERNAL_VALUE_IMPL(name) template class Persistent<name>
+#define CEL_INTERNAL_VALUE_IMPL(name) template class Handle<name>
 
-#define CEL_INTERNAL_DECLARE_VALUE(base, derived)           \
- public:                                                    \
-  static bool Is(const ::cel::Value& value);                \
-                                                            \
- private:                                                   \
-  friend class ::cel::base_internal::PersistentValueHandle; \
-                                                            \
+#define CEL_INTERNAL_DECLARE_VALUE(base, derived) \
+ public:                                          \
+  static bool Is(const ::cel::Value& value);      \
+                                                  \
+ private:                                         \
+  friend class ::cel::base_internal::ValueHandle; \
+                                                  \
   ::cel::internal::TypeInfo TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_VALUE(base, derived)                           \

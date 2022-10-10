@@ -24,18 +24,17 @@ CEL_INTERNAL_TYPE_IMPL(DurationType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<DurationType>) char instance_storage[sizeof(
-    Persistent<DurationType>)];
+alignas(
+    Handle<DurationType>) char instance_storage[sizeof(Handle<DurationType>)];
 
 }  // namespace
 
-const Persistent<DurationType>& DurationType::Get() {
+const Handle<DurationType>& DurationType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<DurationType>::MakeAt<DurationType>(
+    base_internal::HandleFactory<DurationType>::MakeAt<DurationType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<DurationType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Handle<DurationType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

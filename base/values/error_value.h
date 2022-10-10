@@ -36,7 +36,7 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<ErrorType> type() const { return ErrorType::Get(); }
+  Handle<ErrorType> type() const { return ErrorType::Get(); }
 
   std::string DebugString() const;
 
@@ -47,7 +47,7 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   constexpr const absl::Status& value() const { return value_; }
 
  private:
-  friend class PersistentValueHandle;
+  friend class ValueHandle;
   template <size_t Size, size_t Align>
   friend class base_internal::AnyData;
 

@@ -23,24 +23,11 @@
 
 namespace cel::base_internal {
 
-// Enumeration of different types of handles.
-enum class HandleType {
-  kPersistent = 0,
-};
-
-template <HandleType H, typename T, typename = void>
+template <typename T, typename = void>
 struct HandleTraits;
 
-// Convenient aliases.
 template <typename T>
-using PersistentHandleTraits = HandleTraits<HandleType::kPersistent, T>;
-
-template <HandleType H, typename T>
 struct HandleFactory;
-
-// Convenient aliases.
-template <typename T>
-using PersistentHandleFactory = HandleFactory<HandleType::kPersistent, T>;
 
 // Non-virtual base class enforces type requirements via static_asserts for
 // types used with handles.

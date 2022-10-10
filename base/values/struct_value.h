@@ -50,7 +50,7 @@ class StructValue : public Value {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<StructType> type() const;
+  Handle<StructType> type() const;
 
   std::string DebugString() const;
 
@@ -58,17 +58,17 @@ class StructValue : public Value {
 
   bool Equals(const Value& other) const;
 
-  absl::StatusOr<Persistent<Value>> GetField(ValueFactory& value_factory,
-                                             FieldId field) const;
+  absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
+                                         FieldId field) const;
 
   absl::StatusOr<bool> HasField(FieldId field) const;
 
  protected:
-  absl::StatusOr<Persistent<Value>> GetFieldByName(
-      ValueFactory& value_factory, absl::string_view name) const;
+  absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
+                                               absl::string_view name) const;
 
-  absl::StatusOr<Persistent<Value>> GetFieldByNumber(
-      ValueFactory& value_factory, int64_t number) const;
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
+                                                 int64_t number) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -82,7 +82,7 @@ class StructValue : public Value {
   friend struct HasFieldVisitor;
   friend internal::TypeInfo base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class base_internal::LegacyStructValue;
   friend class base_internal::AbstractStructValue;
 
@@ -110,12 +110,12 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByNumber(
     uintptr_t msg, uintptr_t type_info, int64_t number);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByName(
     uintptr_t msg, uintptr_t type_info, absl::string_view name);
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<Value>>
-MessageValueGetFieldByNumber(uintptr_t msg, uintptr_t type_info,
-                             ValueFactory& value_factory, int64_t number);
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<Value>>
-MessageValueGetFieldByName(uintptr_t msg, uintptr_t type_info,
-                           ValueFactory& value_factory, absl::string_view name);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
+    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    int64_t number);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
+    uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
+    absl::string_view name);
 
 class LegacyStructValue final : public StructValue, public InlineData {
  public:
@@ -125,7 +125,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
                internal::TypeId<LegacyStructValue>();
   }
 
-  Persistent<StructType> type() const;
+  Handle<StructType> type() const;
 
   std::string DebugString() const;
 
@@ -134,11 +134,11 @@ class LegacyStructValue final : public StructValue, public InlineData {
   bool Equals(const Value& other) const;
 
  protected:
-  absl::StatusOr<Persistent<Value>> GetFieldByName(
-      ValueFactory& value_factory, absl::string_view name) const;
+  absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
+                                               absl::string_view name) const;
 
-  absl::StatusOr<Persistent<Value>> GetFieldByNumber(
-      ValueFactory& value_factory, int64_t number) const;
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
+                                                 int64_t number) const;
 
   absl::StatusOr<bool> HasFieldByName(absl::string_view name) const;
 
@@ -152,7 +152,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
   friend struct HasFieldVisitor;
   friend internal::TypeInfo base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class cel::StructValue;
   template <size_t Size, size_t Align>
   friend class AnyData;
@@ -170,7 +170,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
         type_info_(type_info) {}
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
+  // Handle.
 
   LegacyStructValue(const LegacyStructValue&) = delete;
   LegacyStructValue(LegacyStructValue&&) = delete;
@@ -195,7 +195,7 @@ class AbstractStructValue : public StructValue, public HeapData {
                internal::TypeId<LegacyStructValue>();
   }
 
-  Persistent<StructType> type() const { return type_; }
+  Handle<StructType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
@@ -204,12 +204,12 @@ class AbstractStructValue : public StructValue, public HeapData {
   virtual bool Equals(const Value& other) const = 0;
 
  protected:
-  explicit AbstractStructValue(Persistent<StructType> type);
+  explicit AbstractStructValue(Handle<StructType> type);
 
-  virtual absl::StatusOr<Persistent<Value>> GetFieldByName(
+  virtual absl::StatusOr<Handle<Value>> GetFieldByName(
       ValueFactory& value_factory, absl::string_view name) const = 0;
 
-  virtual absl::StatusOr<Persistent<Value>> GetFieldByNumber(
+  virtual absl::StatusOr<Handle<Value>> GetFieldByNumber(
       ValueFactory& value_factory, int64_t number) const = 0;
 
   virtual absl::StatusOr<bool> HasFieldByName(absl::string_view name) const = 0;
@@ -224,11 +224,11 @@ class AbstractStructValue : public StructValue, public HeapData {
   friend struct HasFieldVisitor;
   friend internal::TypeInfo base_internal::GetStructValueTypeId(
       const StructValue& struct_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class cel::StructValue;
 
   // Called by base_internal::ValueHandleBase to implement Is for Transient and
-  // Persistent.
+  // Handle.
 
   AbstractStructValue(const AbstractStructValue&) = delete;
   AbstractStructValue(AbstractStructValue&&) = delete;
@@ -236,7 +236,7 @@ class AbstractStructValue : public StructValue, public HeapData {
   // Called by CEL_IMPLEMENT_STRUCT_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  const Persistent<StructType> type_;
+  const Handle<StructType> type_;
 };
 
 }  // namespace base_internal

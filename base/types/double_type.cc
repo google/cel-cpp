@@ -24,17 +24,16 @@ CEL_INTERNAL_TYPE_IMPL(DoubleType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<DoubleType>) char instance_storage[sizeof(
-    Persistent<DoubleType>)];
+alignas(Handle<DoubleType>) char instance_storage[sizeof(Handle<DoubleType>)];
 
 }  // namespace
 
-const Persistent<DoubleType>& DoubleType::Get() {
+const Handle<DoubleType>& DoubleType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<DoubleType>::MakeAt<DoubleType>(
+    base_internal::HandleFactory<DoubleType>::MakeAt<DoubleType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<DoubleType>*>(&instance_storage[0]);
+  return *reinterpret_cast<const Handle<DoubleType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

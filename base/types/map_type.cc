@@ -45,14 +45,14 @@ void MapType::HashValue(absl::HashState state) const {
   absl::HashState::combine(std::move(state), key(), value(), kind(), name());
 }
 
-const Persistent<Type>& MapType::key() const {
+const Handle<Type>& MapType::key() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyMapType&>(*this).key();
   }
   return static_cast<const base_internal::ModernMapType&>(*this).key();
 }
 
-const Persistent<Type>& MapType::value() const {
+const Handle<Type>& MapType::value() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyMapType&>(*this).value();
   }
@@ -61,15 +61,15 @@ const Persistent<Type>& MapType::value() const {
 
 namespace base_internal {
 
-const Persistent<Type>& LegacyMapType::key() const {
+const Handle<Type>& LegacyMapType::key() const {
   return DynType::Get().As<Type>();
 }
 
-const Persistent<Type>& LegacyMapType::value() const {
+const Handle<Type>& LegacyMapType::value() const {
   return DynType::Get().As<Type>();
 }
 
-ModernMapType::ModernMapType(Persistent<Type> key, Persistent<Type> value)
+ModernMapType::ModernMapType(Handle<Type> key, Handle<Type> value)
     : MapType(),
       HeapData(kKind),
       key_(std::move(key)),

@@ -36,7 +36,7 @@ class UnknownValue final : public Value, public base_internal::HeapData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<UnknownType> type() const { return UnknownType::Get(); }
+  Handle<UnknownType> type() const { return UnknownType::Get(); }
 
   std::string DebugString() const;
 
@@ -58,9 +58,9 @@ class UnknownValue final : public Value, public base_internal::HeapData {
   friend class cel::MemoryManager;
   friend class ValueFactory;
   friend std::shared_ptr<base_internal::UnknownSetImpl>
-  interop_internal::GetUnknownValueImpl(const Persistent<UnknownValue>& value);
+  interop_internal::GetUnknownValueImpl(const Handle<UnknownValue>& value);
   friend void interop_internal::SetUnknownValueImpl(
-      Persistent<UnknownValue>& value,
+      Handle<UnknownValue>& value,
       std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
   UnknownValue() : UnknownValue(nullptr) {}

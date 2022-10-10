@@ -24,18 +24,16 @@ CEL_INTERNAL_TYPE_IMPL(UnknownType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<UnknownType>) char instance_storage[sizeof(
-    Persistent<UnknownType>)];
+alignas(Handle<UnknownType>) char instance_storage[sizeof(Handle<UnknownType>)];
 
 }  // namespace
 
-const Persistent<UnknownType>& UnknownType::Get() {
+const Handle<UnknownType>& UnknownType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<UnknownType>::MakeAt<UnknownType>(
+    base_internal::HandleFactory<UnknownType>::MakeAt<UnknownType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<UnknownType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Handle<UnknownType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

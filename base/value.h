@@ -60,7 +60,7 @@ class Value : public base_internal::Data {
   Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
-  Persistent<Type> type() const;
+  Handle<Type> type() const;
 
   std::string DebugString() const;
 
@@ -78,7 +78,7 @@ class Value : public base_internal::Data {
   friend class MapValue;
   friend class TypeValue;
   friend class UnknownValue;
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   template <typename T, typename U>
   friend class base_internal::SimpleValue;
 
@@ -112,34 +112,31 @@ namespace cel {
 
 namespace base_internal {
 
-class PersistentValueHandle final {
+class ValueHandle final {
  public:
-  PersistentValueHandle() = default;
+  ValueHandle() = default;
 
   template <typename T, typename... Args>
-  explicit PersistentValueHandle(absl::in_place_type_t<T> in_place_type,
-                                 Args&&... args) {
+  explicit ValueHandle(absl::in_place_type_t<T> in_place_type, Args&&... args) {
     data_.ConstructInline<T>(std::forward<Args>(args)...);
   }
 
-  explicit PersistentValueHandle(const Value& value) {
-    data_.ConstructHeap(value);
-  }
+  explicit ValueHandle(const Value& value) { data_.ConstructHeap(value); }
 
-  PersistentValueHandle(const PersistentValueHandle& other) { CopyFrom(other); }
+  ValueHandle(const ValueHandle& other) { CopyFrom(other); }
 
-  PersistentValueHandle(PersistentValueHandle&& other) { MoveFrom(other); }
+  ValueHandle(ValueHandle&& other) { MoveFrom(other); }
 
-  ~PersistentValueHandle() { Destruct(); }
+  ~ValueHandle() { Destruct(); }
 
-  PersistentValueHandle& operator=(const PersistentValueHandle& other) {
+  ValueHandle& operator=(const ValueHandle& other) {
     if (this != &other) {
       CopyAssign(other);
     }
     return *this;
   }
 
-  PersistentValueHandle& operator=(PersistentValueHandle&& other) {
+  ValueHandle& operator=(ValueHandle&& other) {
     if (this != &other) {
       MoveAssign(other);
     }
@@ -150,18 +147,18 @@ class PersistentValueHandle final {
 
   explicit operator bool() const { return !data_.IsNull(); }
 
-  bool Equals(const PersistentValueHandle& other) const;
+  bool Equals(const ValueHandle& other) const;
 
   void HashValue(absl::HashState state) const;
 
  private:
-  void CopyFrom(const PersistentValueHandle& other);
+  void CopyFrom(const ValueHandle& other);
 
-  void MoveFrom(PersistentValueHandle& other);
+  void MoveFrom(ValueHandle& other);
 
-  void CopyAssign(const PersistentValueHandle& other);
+  void CopyAssign(const ValueHandle& other);
 
-  void MoveAssign(PersistentValueHandle& other);
+  void MoveAssign(ValueHandle& other);
 
   void Ref() const { data_.Ref(); }
 
@@ -179,33 +176,30 @@ class PersistentValueHandle final {
 };
 
 template <typename H>
-H AbslHashValue(H state, const PersistentValueHandle& handle) {
+H AbslHashValue(H state, const ValueHandle& handle) {
   handle.HashValue(absl::HashState::Create(&state));
   return state;
 }
 
-inline bool operator==(const PersistentValueHandle& lhs,
-                       const PersistentValueHandle& rhs) {
+inline bool operator==(const ValueHandle& lhs, const ValueHandle& rhs) {
   return lhs.Equals(rhs);
 }
 
-inline bool operator!=(const PersistentValueHandle& lhs,
-                       const PersistentValueHandle& rhs) {
+inline bool operator!=(const ValueHandle& lhs, const ValueHandle& rhs) {
   return !operator==(lhs, rhs);
 }
 
-// Specialization for Value providing the implementation to `Persistent`.
+// Specialization for Value providing the implementation to `Handle`.
 template <>
-struct HandleTraits<HandleType::kPersistent, Value> {
-  using handle_type = PersistentValueHandle;
+struct HandleTraits<Value> {
+  using handle_type = ValueHandle;
 };
 
-// Partial specialization for `Persistent` for all classes derived from Value.
+// Partial specialization for `Handle` for all classes derived from Value.
 template <typename T>
-struct HandleTraits<HandleType::kPersistent, T,
-                    std::enable_if_t<(std::is_base_of_v<Value, T> &&
-                                      !std::is_same_v<Value, T>)>>
-    final : public HandleTraits<HandleType::kPersistent, Value> {};
+struct HandleTraits<T, std::enable_if_t<(std::is_base_of_v<Value, T> &&
+                                         !std::is_same_v<Value, T>)>>
+    final : public HandleTraits<Value> {};
 
 template <typename T, typename U>
 class SimpleValue : public Value, InlineData {
@@ -223,7 +217,7 @@ class SimpleValue : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<T> type() const { return T::Get(); }
+  Handle<T> type() const { return T::Get(); }
 
   void HashValue(absl::HashState state) const {
     absl::HashState::combine(std::move(state), type(), value());
@@ -237,7 +231,7 @@ class SimpleValue : public Value, InlineData {
   constexpr U value() const { return value_; }
 
  private:
-  friend class PersistentValueHandle;
+  friend class ValueHandle;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline |
@@ -264,7 +258,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<NullType> type() const { return NullType::Get(); }
+  Handle<NullType> type() const { return NullType::Get(); }
 
   void HashValue(absl::HashState state) const {
     absl::HashState::combine(std::move(state), type(), 0);
@@ -273,7 +267,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
   bool Equals(const Value& other) const { return kind() == other.kind(); }
 
  private:
-  friend class PersistentValueHandle;
+  friend class ValueHandle;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
@@ -297,7 +291,7 @@ CEL_INTERNAL_VALUE_DECL(Value);
 #define CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(value_class)  \
  private:                                               \
   friend class ValueFactory;                            \
-  friend class base_internal::PersistentValueHandle;    \
+  friend class base_internal::ValueHandle;              \
   template <size_t Size, size_t Align>                  \
   friend class base_internal::AnyData;                  \
                                                         \

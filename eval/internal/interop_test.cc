@@ -352,7 +352,7 @@ TEST(ValueInterop, ListFromLegacy) {
 
 class TestListValue final : public CEL_LIST_VALUE_CLASS {
  public:
-  explicit TestListValue(const Persistent<ListType>& type,
+  explicit TestListValue(const Handle<ListType>& type,
                          std::vector<int64_t> elements)
       : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {
     ABSL_ASSERT(type->element().Is<IntType>());
@@ -360,8 +360,8 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                        size_t index) const override {
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
@@ -467,7 +467,7 @@ TEST(ValueInterop, MapFromLegacy) {
 
 class TestMapValue final : public CEL_MAP_VALUE_CLASS {
  public:
-  explicit TestMapValue(const Persistent<MapType>& type,
+  explicit TestMapValue(const Handle<MapType>& type,
                         std::map<int64_t, std::string> entries)
       : CEL_MAP_VALUE_CLASS(type), entries_(std::move(entries)) {}
 
@@ -498,21 +498,20 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
     absl::HashState::combine(std::move(state), type(), entries_);
   }
 
-  absl::StatusOr<Persistent<Value>> Get(
-      ValueFactory& value_factory,
-      const Persistent<Value>& key) const override {
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const override {
     auto existing = entries_.find(key.As<IntValue>()->value());
     if (existing == entries_.end()) {
-      return Persistent<Value>();
+      return Handle<Value>();
     }
     return value_factory.CreateStringValue(existing->second);
   }
 
-  absl::StatusOr<bool> Has(const Persistent<Value>& key) const override {
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
     return entries_.find(key.As<IntValue>()->value()) != entries_.end();
   }
 
-  absl::StatusOr<Persistent<ListValue>> ListKeys(
+  absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const override {
     CEL_ASSIGN_OR_RETURN(auto type,
                          value_factory.type_factory().CreateListType(

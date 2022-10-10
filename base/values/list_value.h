@@ -44,7 +44,7 @@ class ListValue : public Value {
 
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
-  Persistent<ListType> type() const;
+  Handle<ListType> type() const;
 
   constexpr Kind kind() const { return kKind; }
 
@@ -54,8 +54,8 @@ class ListValue : public Value {
 
   bool empty() const;
 
-  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                        size_t index) const;
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const;
 
   bool Equals(const Value& other) const;
 
@@ -66,7 +66,7 @@ class ListValue : public Value {
   friend class base_internal::AbstractListValue;
   friend internal::TypeInfo base_internal::GetListValueTypeId(
       const ListValue& list_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
 
   ListValue() = default;
 
@@ -76,7 +76,7 @@ class ListValue : public Value {
 
 namespace base_internal {
 
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<Value>> LegacyListValueGet(
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyListValueGet(
     uintptr_t impl, ValueFactory& value_factory, size_t index);
 ABSL_ATTRIBUTE_WEAK size_t LegacyListValueSize(uintptr_t impl);
 ABSL_ATTRIBUTE_WEAK bool LegacyListValueEmpty(uintptr_t impl);
@@ -89,7 +89,7 @@ class LegacyListValue final : public ListValue, public InlineData {
                internal::TypeId<LegacyListValue>();
   }
 
-  Persistent<ListType> type() const;
+  Handle<ListType> type() const;
 
   std::string DebugString() const;
 
@@ -97,8 +97,8 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                        size_t index) const;
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const;
 
   bool Equals(const Value& other) const;
 
@@ -107,7 +107,7 @@ class LegacyListValue final : public ListValue, public InlineData {
   constexpr uintptr_t value() const { return impl_; }
 
  private:
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class cel::ListValue;
   template <size_t Size, size_t Align>
   friend class AnyData;
@@ -136,7 +136,7 @@ class AbstractListValue : public ListValue, public HeapData {
                internal::TypeId<LegacyListValue>();
   }
 
-  const Persistent<ListType> type() const { return type_; }
+  const Handle<ListType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
@@ -144,15 +144,15 @@ class AbstractListValue : public ListValue, public HeapData {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                                size_t index) const = 0;
+  virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                            size_t index) const = 0;
 
   virtual bool Equals(const Value& other) const = 0;
 
   virtual void HashValue(absl::HashState state) const = 0;
 
  protected:
-  explicit AbstractListValue(Persistent<ListType> type);
+  explicit AbstractListValue(Handle<ListType> type);
 
  private:
   friend class cel::ListValue;
@@ -160,12 +160,12 @@ class AbstractListValue : public ListValue, public HeapData {
   friend class base_internal::AbstractListValue;
   friend internal::TypeInfo base_internal::GetListValueTypeId(
       const ListValue& list_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  const Persistent<ListType> type_;
+  const Handle<ListType> type_;
 };
 
 inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {

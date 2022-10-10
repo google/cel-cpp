@@ -33,7 +33,7 @@ class TimestampValue final
 
   using Base::Is;
 
-  static Persistent<TimestampValue> UnixEpoch(ValueFactory& value_factory);
+  static Handle<TimestampValue> UnixEpoch(ValueFactory& value_factory);
 
   using Base::kind;
 

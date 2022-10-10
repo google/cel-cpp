@@ -33,7 +33,7 @@ CEL_INTERNAL_VALUE_IMPL(MapValue);
       : static_cast<const base_internal::AbstractMapValue&>(*this).method( \
             __VA_ARGS__)
 
-Persistent<MapType> MapValue::type() const {
+Handle<MapType> MapValue::type() const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(type);
 }
 
@@ -53,16 +53,16 @@ void MapValue::HashValue(absl::HashState state) const {
   CEL_INTERNAL_MAP_VALUE_DISPATCH(HashValue, std::move(state));
 }
 
-absl::StatusOr<Persistent<Value>> MapValue::Get(
-    ValueFactory& value_factory, const Persistent<Value>& key) const {
+absl::StatusOr<Handle<Value>> MapValue::Get(ValueFactory& value_factory,
+                                            const Handle<Value>& key) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
 }
 
-absl::StatusOr<bool> MapValue::Has(const Persistent<Value>& key) const {
+absl::StatusOr<bool> MapValue::Has(const Handle<Value>& key) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, key);
 }
 
-absl::StatusOr<Persistent<ListValue>> MapValue::ListKeys(
+absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
     ValueFactory& value_factory) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, value_factory);
 }
@@ -75,8 +75,8 @@ internal::TypeInfo MapValue::TypeId() const {
 
 namespace base_internal {
 
-Persistent<MapType> LegacyMapValue::type() const {
-  return PersistentHandleFactory<MapType>::Make<LegacyMapType>();
+Handle<MapType> LegacyMapValue::type() const {
+  return HandleFactory<MapType>::Make<LegacyMapType>();
 }
 
 std::string LegacyMapValue::DebugString() const { return "map"; }
@@ -94,21 +94,21 @@ void LegacyMapValue::HashValue(absl::HashState state) const {
   // Unimplemented.
 }
 
-absl::StatusOr<Persistent<Value>> LegacyMapValue::Get(
-    ValueFactory& value_factory, const Persistent<Value>& key) const {
+absl::StatusOr<Handle<Value>> LegacyMapValue::Get(
+    ValueFactory& value_factory, const Handle<Value>& key) const {
   return LegacyMapValueGet(impl_, value_factory, key);
 }
 
-absl::StatusOr<bool> LegacyMapValue::Has(const Persistent<Value>& key) const {
+absl::StatusOr<bool> LegacyMapValue::Has(const Handle<Value>& key) const {
   return LegacyMapValueHas(impl_, key);
 }
 
-absl::StatusOr<Persistent<ListValue>> LegacyMapValue::ListKeys(
+absl::StatusOr<Handle<ListValue>> LegacyMapValue::ListKeys(
     ValueFactory& value_factory) const {
   return LegacyMapValueListKeys(impl_, value_factory);
 }
 
-AbstractMapValue::AbstractMapValue(Persistent<MapType> type)
+AbstractMapValue::AbstractMapValue(Handle<MapType> type)
     : HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `HeapData*` are not thunked.
   ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==

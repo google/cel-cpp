@@ -45,13 +45,13 @@ struct CelMapAccess final {
 };
 
 struct LegacyStructTypeAccess final {
-  static Persistent<StructType> Create(uintptr_t message);
+  static Handle<StructType> Create(uintptr_t message);
 };
 
 struct LegacyStructValueAccess final {
-  static Persistent<StructValue> Create(
+  static Handle<StructValue> Create(
       const google::api::expr::runtime::MessageWrapper& wrapper);
-  static Persistent<StructValue> Create(uintptr_t message, uintptr_t type_info);
+  static Handle<StructValue> Create(uintptr_t message, uintptr_t type_info);
   static uintptr_t Message(const base_internal::LegacyStructValue& value);
   static uintptr_t TypeInfo(const base_internal::LegacyStructValue& value);
   static google::api::expr::runtime::MessageWrapper ToMessageWrapper(
@@ -71,36 +71,35 @@ struct MessageWrapperAccess final {
 
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
-absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
+absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
     absl::string_view input);
 
 // Unlike ValueFactory::CreateBytesValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
-absl::StatusOr<Persistent<BytesValue>> CreateBytesValueFromView(
+absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
     absl::string_view input);
 
 base_internal::StringValueRep GetStringValueRep(
-    const Persistent<StringValue>& value);
+    const Handle<StringValue>& value);
 
-base_internal::BytesValueRep GetBytesValueRep(
-    const Persistent<BytesValue>& value);
+base_internal::BytesValueRep GetBytesValueRep(const Handle<BytesValue>& value);
 
 // Converts a legacy CEL value to the new CEL value representation.
-absl::StatusOr<Persistent<Value>> FromLegacyValue(
+absl::StatusOr<Handle<Value>> FromLegacyValue(
     google::protobuf::Arena* arena,
     const google::api::expr::runtime::CelValue& legacy_value);
 
 // Converts a new CEL value to the legacy CEL value representation.
 absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
-    google::protobuf::Arena* arena, const Persistent<Value>& value);
+    google::protobuf::Arena* arena, const Handle<Value>& value);
 
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Persistent<UnknownValue>& value);
+    const Handle<UnknownValue>& value);
 
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownSetImpl(
     const google::api::expr::runtime::UnknownSet& unknown_set);
 
-void SetUnknownValueImpl(Persistent<UnknownValue>& value,
+void SetUnknownValueImpl(Handle<UnknownValue>& value,
                          std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
 void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,

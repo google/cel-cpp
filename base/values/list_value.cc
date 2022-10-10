@@ -33,7 +33,7 @@ CEL_INTERNAL_VALUE_IMPL(ListValue);
       : static_cast<const base_internal::AbstractListValue&>(*this).method( \
             __VA_ARGS__)
 
-Persistent<ListType> ListValue::type() const {
+Handle<ListType> ListValue::type() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(type);
 }
 
@@ -49,8 +49,8 @@ bool ListValue::empty() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(empty);
 }
 
-absl::StatusOr<Persistent<Value>> ListValue::Get(ValueFactory& value_factory,
-                                                 size_t index) const {
+absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
+                                             size_t index) const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, value_factory, index);
 }
 
@@ -70,8 +70,8 @@ internal::TypeInfo ListValue::TypeId() const {
 
 namespace base_internal {
 
-Persistent<ListType> LegacyListValue::type() const {
-  return PersistentHandleFactory<ListType>::Make<LegacyListType>();
+Handle<ListType> LegacyListValue::type() const {
+  return HandleFactory<ListType>::Make<LegacyListType>();
 }
 
 std::string LegacyListValue::DebugString() const { return "list"; }
@@ -80,8 +80,8 @@ size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
 
 bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
 
-absl::StatusOr<Persistent<Value>> LegacyListValue::Get(
-    ValueFactory& value_factory, size_t index) const {
+absl::StatusOr<Handle<Value>> LegacyListValue::Get(ValueFactory& value_factory,
+                                                   size_t index) const {
   return LegacyListValueGet(impl_, value_factory, index);
 }
 
@@ -94,7 +94,7 @@ void LegacyListValue::HashValue(absl::HashState state) const {
   // Unimplemented.
 }
 
-AbstractListValue::AbstractListValue(Persistent<ListType> type)
+AbstractListValue::AbstractListValue(Handle<ListType> type)
     : HeapData(kKind), type_(std::move(type)) {
   // Ensure `Value*` and `HeapData*` are not thunked.
   ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==

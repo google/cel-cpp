@@ -105,7 +105,7 @@ class EnumType : public Type, public base_internal::HeapData {
   friend class MemoryManager;
   friend class EnumValue;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
 
   EnumType(const EnumType&) = delete;
   EnumType(EnumType&&) = delete;

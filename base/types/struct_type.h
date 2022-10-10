@@ -107,7 +107,7 @@ class StructType : public Type {
   friend struct FindFieldVisitor;
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   friend class StructValue;
   friend class base_internal::LegacyStructType;
   friend class base_internal::AbstractStructType;
@@ -213,7 +213,7 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   friend struct FindFieldVisitor;
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   friend class StructValue;
   friend class cel::StructType;
 
@@ -253,7 +253,7 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   CEL_INTERNAL_IMPLEMENT_TYPE(Struct, struct_type)
 
 struct StructType::Field final {
-  explicit Field(absl::string_view name, int64_t number, Persistent<Type> type)
+  explicit Field(absl::string_view name, int64_t number, Handle<Type> type)
       : name(name), number(number), type(std::move(type)) {}
 
   // The field name.
@@ -261,7 +261,7 @@ struct StructType::Field final {
   // The field number.
   int64_t number;
   // The field type;
-  Persistent<Type> type;
+  Handle<Type> type;
 };
 
 CEL_INTERNAL_TYPE_DECL(StructType);

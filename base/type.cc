@@ -225,7 +225,7 @@ void Type::HashValue(absl::HashState state) const {
 
 namespace base_internal {
 
-bool PersistentTypeHandle::Equals(const PersistentTypeHandle& other) const {
+bool TypeHandle::Equals(const TypeHandle& other) const {
   const auto* self = static_cast<const Type*>(data_.get());
   const auto* that = static_cast<const Type*>(other.data_.get());
   if (self == that) {
@@ -237,14 +237,14 @@ bool PersistentTypeHandle::Equals(const PersistentTypeHandle& other) const {
   return self->Equals(*that);
 }
 
-void PersistentTypeHandle::HashValue(absl::HashState state) const {
+void TypeHandle::HashValue(absl::HashState state) const {
   if (const auto* pointer = static_cast<const Type*>(data_.get());
       ABSL_PREDICT_TRUE(pointer != nullptr)) {
     pointer->HashValue(std::move(state));
   }
 }
 
-void PersistentTypeHandle::CopyFrom(const PersistentTypeHandle& other) {
+void TypeHandle::CopyFrom(const TypeHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
   if (ABSL_PREDICT_FALSE(locality == DataLocality::kStoredInline &&
@@ -261,7 +261,7 @@ void PersistentTypeHandle::CopyFrom(const PersistentTypeHandle& other) {
   }
 }
 
-void PersistentTypeHandle::MoveFrom(PersistentTypeHandle& other) {
+void TypeHandle::MoveFrom(TypeHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
   if (ABSL_PREDICT_FALSE(locality == DataLocality::kStoredInline &&
@@ -275,19 +275,19 @@ void PersistentTypeHandle::MoveFrom(PersistentTypeHandle& other) {
   }
 }
 
-void PersistentTypeHandle::CopyAssign(const PersistentTypeHandle& other) {
+void TypeHandle::CopyAssign(const TypeHandle& other) {
   // data_ is initialized.
   Destruct();
   CopyFrom(other);
 }
 
-void PersistentTypeHandle::MoveAssign(PersistentTypeHandle& other) {
+void TypeHandle::MoveAssign(TypeHandle& other) {
   // data_ is initialized.
   Destruct();
   MoveFrom(other);
 }
 
-void PersistentTypeHandle::Destruct() {
+void TypeHandle::Destruct() {
   switch (data_.locality()) {
     case DataLocality::kNull:
       break;
@@ -306,7 +306,7 @@ void PersistentTypeHandle::Destruct() {
   }
 }
 
-void PersistentTypeHandle::Delete() const {
+void TypeHandle::Delete() const {
   switch (data_.kind()) {
     case Kind::kList:
       delete static_cast<ModernListType*>(

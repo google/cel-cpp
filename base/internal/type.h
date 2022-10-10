@@ -31,7 +31,7 @@ class StructType;
 
 namespace base_internal {
 
-class PersistentTypeHandle;
+class TypeHandle;
 
 class ListTypeImpl;
 class MapTypeImpl;
@@ -74,17 +74,17 @@ struct AnyType final : public AnyData<kTypeInlineSize, kTypeInlineAlign> {};
 
 }  // namespace cel
 
-#define CEL_INTERNAL_TYPE_DECL(name) extern template class Persistent<name>
+#define CEL_INTERNAL_TYPE_DECL(name) extern template class Handle<name>
 
-#define CEL_INTERNAL_TYPE_IMPL(name) template class Persistent<name>
+#define CEL_INTERNAL_TYPE_IMPL(name) template class Handle<name>
 
-#define CEL_INTERNAL_DECLARE_TYPE(base, derived)           \
- public:                                                   \
-  static bool Is(const ::cel::Type& type);                 \
-                                                           \
- private:                                                  \
-  friend class ::cel::base_internal::PersistentTypeHandle; \
-                                                           \
+#define CEL_INTERNAL_DECLARE_TYPE(base, derived) \
+ public:                                         \
+  static bool Is(const ::cel::Type& type);       \
+                                                 \
+ private:                                        \
+  friend class ::cel::base_internal::TypeHandle; \
+                                                 \
   ::cel::internal::TypeInfo TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_TYPE(base, derived)                            \

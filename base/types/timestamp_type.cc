@@ -24,18 +24,17 @@ CEL_INTERNAL_TYPE_IMPL(TimestampType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<TimestampType>) char instance_storage[sizeof(
-    Persistent<TimestampType>)];
+alignas(
+    Handle<TimestampType>) char instance_storage[sizeof(Handle<TimestampType>)];
 
 }  // namespace
 
-const Persistent<TimestampType>& TimestampType::Get() {
+const Handle<TimestampType>& TimestampType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<TimestampType>::MakeAt<
-        TimestampType>(&instance_storage[0]);
+    base_internal::HandleFactory<TimestampType>::MakeAt<TimestampType>(
+        &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<TimestampType>*>(
-      &instance_storage[0]);
+  return *reinterpret_cast<const Handle<TimestampType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

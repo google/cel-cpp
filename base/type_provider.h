@@ -44,12 +44,12 @@ class TypeProvider {
 
   virtual ~TypeProvider() = default;
 
-  // Return a persistent handle to a Type for the fully qualified type name, if
+  // Return a Handle handle to a Type for the fully qualified type name, if
   // available.
   //
   // An empty handle is returned if the provider cannot find the requested type.
-  virtual absl::StatusOr<Persistent<Type>> ProvideType(
-      TypeFactory&, absl::string_view) const {
+  virtual absl::StatusOr<Handle<Type>> ProvideType(TypeFactory&,
+                                                   absl::string_view) const {
     return absl::UnimplementedError("ProvideType is not yet implemented");
   }
 };

@@ -46,7 +46,7 @@ class MapValue : public Value {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<MapType> type() const;
+  Handle<MapType> type() const;
 
   std::string DebugString() const;
 
@@ -58,18 +58,17 @@ class MapValue : public Value {
 
   void HashValue(absl::HashState state) const;
 
-  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                        const Persistent<Value>& key) const;
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const Persistent<Value>& key) const;
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
-  absl::StatusOr<Persistent<ListValue>> ListKeys(
-      ValueFactory& value_factory) const;
+  absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
       const MapValue& map_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class base_internal::LegacyMapValue;
   friend class base_internal::AbstractMapValue;
 
@@ -85,12 +84,12 @@ namespace base_internal {
 
 ABSL_ATTRIBUTE_WEAK size_t LegacyMapValueSize(uintptr_t impl);
 ABSL_ATTRIBUTE_WEAK bool LegacyMapValueEmpty(uintptr_t impl);
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<Value>> LegacyMapValueGet(
-    uintptr_t impl, ValueFactory& value_factory, const Persistent<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyMapValueGet(
+    uintptr_t impl, ValueFactory& value_factory, const Handle<Value>& key);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> LegacyMapValueHas(
-    uintptr_t impl, const Persistent<Value>& key);
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Persistent<ListValue>>
-LegacyMapValueListKeys(uintptr_t impl, ValueFactory& value_factory);
+    uintptr_t impl, const Handle<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
+    uintptr_t impl, ValueFactory& value_factory);
 
 class LegacyMapValue final : public MapValue, public InlineData {
  public:
@@ -100,7 +99,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
                internal::TypeId<LegacyMapValue>();
   }
 
-  Persistent<MapType> type() const;
+  Handle<MapType> type() const;
 
   std::string DebugString() const;
 
@@ -112,18 +111,17 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   void HashValue(absl::HashState state) const;
 
-  absl::StatusOr<Persistent<Value>> Get(ValueFactory& value_factory,
-                                        const Persistent<Value>& key) const;
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const Persistent<Value>& key) const;
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
-  absl::StatusOr<Persistent<ListValue>> ListKeys(
-      ValueFactory& value_factory) const;
+  absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
   constexpr uintptr_t value() const { return impl_; }
 
  private:
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class cel::MapValue;
   template <size_t Size, size_t Align>
   friend class AnyData;
@@ -150,7 +148,7 @@ class AbstractMapValue : public MapValue, public HeapData {
                internal::TypeId<LegacyMapValue>();
   }
 
-  const Persistent<MapType> type() const { return type_; }
+  const Handle<MapType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
@@ -162,25 +160,25 @@ class AbstractMapValue : public MapValue, public HeapData {
 
   virtual void HashValue(absl::HashState state) const = 0;
 
-  virtual absl::StatusOr<Persistent<Value>> Get(
-      ValueFactory& value_factory, const Persistent<Value>& key) const = 0;
+  virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                            const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(const Persistent<Value>& key) const = 0;
+  virtual absl::StatusOr<bool> Has(const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<Persistent<ListValue>> ListKeys(
+  virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;
 
  protected:
-  explicit AbstractMapValue(Persistent<MapType> type);
+  explicit AbstractMapValue(Handle<MapType> type);
 
  private:
   friend class cel::MapValue;
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  const Persistent<MapType> type_;
+  const Handle<MapType> type_;
 };
 
 inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {

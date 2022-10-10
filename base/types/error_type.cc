@@ -24,17 +24,16 @@ CEL_INTERNAL_TYPE_IMPL(ErrorType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(
-    Persistent<ErrorType>) char instance_storage[sizeof(Persistent<ErrorType>)];
+alignas(Handle<ErrorType>) char instance_storage[sizeof(Handle<ErrorType>)];
 
 }  // namespace
 
-const Persistent<ErrorType>& ErrorType::Get() {
+const Handle<ErrorType>& ErrorType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<ErrorType>::MakeAt<ErrorType>(
+    base_internal::HandleFactory<ErrorType>::MakeAt<ErrorType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<ErrorType>*>(&instance_storage[0]);
+  return *reinterpret_cast<const Handle<ErrorType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

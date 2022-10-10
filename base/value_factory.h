@@ -55,9 +55,9 @@
 namespace cel {
 
 namespace interop_internal {
-absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
+absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
     cel::ValueFactory& value_factory, absl::string_view input);
-absl::StatusOr<Persistent<BytesValue>> CreateBytesValueFromView(
+absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
     cel::ValueFactory& value_factory, absl::string_view input);
 }  // namespace interop_internal
 
@@ -80,47 +80,45 @@ class ValueFactory final {
 
   TypeManager& type_manager() const { return type_manager_; }
 
-  Persistent<NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<ErrorValue> CreateErrorValue(absl::Status status)
+  Handle<ErrorValue> CreateErrorValue(absl::Status status)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<BoolValue> CreateBoolValue(bool value)
+  Handle<BoolValue> CreateBoolValue(bool value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Handle<IntValue> CreateIntValue(int64_t value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Handle<UintValue> CreateUintValue(uint64_t value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<IntValue> CreateIntValue(int64_t value)
+  Handle<DoubleValue> CreateDoubleValue(double value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<UintValue> CreateUintValue(uint64_t value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  Persistent<DoubleValue> CreateDoubleValue(double value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  Persistent<BytesValue> GetBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  Handle<BytesValue> GetBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return GetEmptyBytesValue();
   }
 
-  absl::StatusOr<Persistent<BytesValue>> CreateBytesValue(const char* value)
+  absl::StatusOr<Handle<BytesValue>> CreateBytesValue(const char* value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateBytesValue(absl::string_view(value));
   }
 
-  absl::StatusOr<Persistent<BytesValue>> CreateBytesValue(
-      absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::StatusOr<Handle<BytesValue>> CreateBytesValue(absl::string_view value)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateBytesValue(std::string(value));
   }
 
-  absl::StatusOr<Persistent<BytesValue>> CreateBytesValue(std::string value)
+  absl::StatusOr<Handle<BytesValue>> CreateBytesValue(std::string value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<BytesValue>> CreateBytesValue(absl::Cord value)
+  absl::StatusOr<Handle<BytesValue>> CreateBytesValue(absl::Cord value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   template <typename Releaser>
-  absl::StatusOr<Persistent<BytesValue>> CreateBytesValue(
-      absl::string_view value,
-      Releaser&& releaser) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::StatusOr<Handle<BytesValue>> CreateBytesValue(absl::string_view value,
+                                                      Releaser&& releaser)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (value.empty()) {
       std::forward<Releaser>(releaser)();
       return GetEmptyBytesValue();
@@ -129,30 +127,30 @@ class ValueFactory final {
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
-  Persistent<StringValue> GetStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  Handle<StringValue> GetStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return GetEmptyStringValue();
   }
 
-  absl::StatusOr<Persistent<StringValue>> CreateStringValue(const char* value)
+  absl::StatusOr<Handle<StringValue>> CreateStringValue(const char* value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateStringValue(absl::string_view(value));
   }
 
-  absl::StatusOr<Persistent<StringValue>> CreateStringValue(
-      absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::StatusOr<Handle<StringValue>> CreateStringValue(absl::string_view value)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateStringValue(std::string(value));
   }
 
-  absl::StatusOr<Persistent<StringValue>> CreateStringValue(std::string value)
+  absl::StatusOr<Handle<StringValue>> CreateStringValue(std::string value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<StringValue>> CreateStringValue(absl::Cord value)
+  absl::StatusOr<Handle<StringValue>> CreateStringValue(absl::Cord value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   template <typename Releaser>
-  absl::StatusOr<Persistent<StringValue>> CreateStringValue(
-      absl::string_view value,
-      Releaser&& releaser) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  absl::StatusOr<Handle<StringValue>> CreateStringValue(absl::string_view value,
+                                                        Releaser&& releaser)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     if (value.empty()) {
       std::forward<Releaser>(releaser)();
       return GetEmptyStringValue();
@@ -161,90 +159,90 @@ class ValueFactory final {
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
-  absl::StatusOr<Persistent<DurationValue>> CreateDurationValue(
+  absl::StatusOr<Handle<DurationValue>> CreateDurationValue(
       absl::Duration value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<TimestampValue>> CreateTimestampValue(
-      absl::Time value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<Handle<TimestampValue>> CreateTimestampValue(absl::Time value)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<EnumValue>> CreateEnumValue(
-      const Persistent<EnumType>& enum_type,
+  absl::StatusOr<Handle<EnumValue>> CreateEnumValue(
+      const Handle<EnumType>& enum_type,
       int64_t number) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     CEL_ASSIGN_OR_RETURN(auto constant,
                          enum_type->FindConstant(EnumType::ConstantId(number)));
     if (!constant.has_value()) {
       return absl::NotFoundError(absl::StrCat("no such enum number", number));
     }
-    return base_internal::PersistentHandleFactory<EnumValue>::template Make<
-        EnumValue>(enum_type, constant->number);
+    return base_internal::HandleFactory<EnumValue>::template Make<EnumValue>(
+        enum_type, constant->number);
   }
 
-  absl::StatusOr<Persistent<EnumValue>> CreateEnumValue(
-      const Persistent<EnumType>& enum_type,
+  absl::StatusOr<Handle<EnumValue>> CreateEnumValue(
+      const Handle<EnumType>& enum_type,
       absl::string_view name) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     CEL_ASSIGN_OR_RETURN(auto constant,
                          enum_type->FindConstant(EnumType::ConstantId(name)));
     if (!constant.has_value()) {
       return absl::NotFoundError(absl::StrCat("no such enum value", name));
     }
-    return base_internal::PersistentHandleFactory<EnumValue>::template Make<
-        EnumValue>(enum_type, constant->number);
+    return base_internal::HandleFactory<EnumValue>::template Make<EnumValue>(
+        enum_type, constant->number);
   }
 
   template <typename T>
-  std::enable_if_t<std::is_enum_v<T>, absl::StatusOr<Persistent<EnumValue>>>
-  CreateEnumValue(const Persistent<EnumType>& enum_type,
+  std::enable_if_t<std::is_enum_v<T>, absl::StatusOr<Handle<EnumValue>>>
+  CreateEnumValue(const Handle<EnumType>& enum_type,
                   T value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateEnumValue(enum_type, static_cast<int64_t>(value));
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Persistent<T>>>
-  CreateStructValue(const Persistent<StructType>& struct_type,
-                    Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::PersistentHandleFactory<T>::template Make<
+  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
+      const Handle<StructType>& struct_type,
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<T>::template Make<
         std::remove_const_t<T>>(memory_manager(), struct_type,
                                 std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<ListValue, T, absl::StatusOr<Persistent<T>>> CreateListValue(
-      const Persistent<ListType>& type,
+  EnableIfBaseOfT<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
+      const Handle<ListType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::PersistentHandleFactory<T>::template Make<
+    return base_internal::HandleFactory<T>::template Make<
         std::remove_const_t<T>>(memory_manager(), type,
                                 std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<MapValue, T, absl::StatusOr<Persistent<T>>> CreateMapValue(
-      const Persistent<MapType>& type,
+  EnableIfBaseOfT<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
+      const Handle<MapType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::PersistentHandleFactory<T>::template Make<
+    return base_internal::HandleFactory<T>::template Make<
         std::remove_const_t<T>>(memory_manager(), type,
                                 std::forward<Args>(args)...);
   }
 
-  Persistent<TypeValue> CreateTypeValue(const Persistent<Type>& value)
+  Handle<TypeValue> CreateTypeValue(const Handle<Type>& value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<UnknownValue> CreateUnknownValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  Handle<UnknownValue> CreateUnknownValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateUnknownValue(AttributeSet(), FunctionResultSet());
   }
 
-  Persistent<UnknownValue> CreateUnknownValue(AttributeSet attribute_set)
+  Handle<UnknownValue> CreateUnknownValue(AttributeSet attribute_set)
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateUnknownValue(std::move(attribute_set), FunctionResultSet());
   }
 
-  Persistent<UnknownValue> CreateUnknownValue(
-      FunctionResultSet function_result_set) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  Handle<UnknownValue> CreateUnknownValue(FunctionResultSet function_result_set)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateUnknownValue(AttributeSet(), std::move(function_result_set));
   }
 
-  Persistent<UnknownValue> CreateUnknownValue(
-      AttributeSet attribute_set,
-      FunctionResultSet function_result_set) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<UnknownValue> CreateUnknownValue(AttributeSet attribute_set,
+                                          FunctionResultSet function_result_set)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const {
     return type_manager().memory_manager();
@@ -253,21 +251,21 @@ class ValueFactory final {
  private:
   friend class BytesValue;
   friend class StringValue;
-  friend absl::StatusOr<Persistent<StringValue>>
+  friend absl::StatusOr<Handle<StringValue>>
   interop_internal::CreateStringValueFromView(cel::ValueFactory& value_factory,
                                               absl::string_view input);
-  friend absl::StatusOr<Persistent<BytesValue>>
+  friend absl::StatusOr<Handle<BytesValue>>
   interop_internal::CreateBytesValueFromView(cel::ValueFactory& value_factory,
                                              absl::string_view input);
 
-  Persistent<BytesValue> GetEmptyBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<BytesValue> GetEmptyBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<BytesValue>> CreateBytesValueFromView(
+  absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<StringValue> GetEmptyStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<StringValue> GetEmptyStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<StringValue>> CreateStringValueFromView(
+  absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   TypeManager& type_manager_;
@@ -284,23 +282,23 @@ class TypedEnumValueFactory final {
  public:
   TypedEnumValueFactory(
       ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const Persistent<EnumType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const Handle<EnumType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : value_factory_(value_factory), enum_type_(enum_type) {}
 
-  absl::StatusOr<Persistent<EnumValue>> CreateEnumValue(int64_t number)
+  absl::StatusOr<Handle<EnumValue>> CreateEnumValue(int64_t number)
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_factory_.CreateEnumValue(enum_type_, number);
   }
 
   template <typename T>
-  std::enable_if_t<std::is_enum_v<T>, absl::StatusOr<Persistent<EnumValue>>>
+  std::enable_if_t<std::is_enum_v<T>, absl::StatusOr<Handle<EnumValue>>>
   CreateEnumValue(T value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateEnumValue(static_cast<int64_t>(value));
   }
 
  private:
   ValueFactory& value_factory_;
-  const Persistent<EnumType>& enum_type_;
+  const Handle<EnumType>& enum_type_;
 };
 
 // TypedStructValueFactory creates StructValue scoped to a specific StructType.
@@ -314,19 +312,19 @@ class TypedStructValueFactory final {
  public:
   TypedStructValueFactory(
       ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const Persistent<StructType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const Handle<StructType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : value_factory_(value_factory), struct_type_(enum_type) {}
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Persistent<T>>>
-  CreateStructValue(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return value_factory_.CreateStructValue<T>(struct_type_,
                                                std::forward<Args>(args)...);
   }
 
  private:
   ValueFactory& value_factory_;
-  const Persistent<StructType>& struct_type_;
+  const Handle<StructType>& struct_type_;
 };
 
 }  // namespace cel

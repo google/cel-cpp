@@ -31,9 +31,9 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
 
   using Base::Is;
 
-  static Persistent<BoolValue> False(ValueFactory& value_factory);
+  static Handle<BoolValue> False(ValueFactory& value_factory);
 
-  static Persistent<BoolValue> True(ValueFactory& value_factory);
+  static Handle<BoolValue> True(ValueFactory& value_factory);
 
   using Base::kind;
 

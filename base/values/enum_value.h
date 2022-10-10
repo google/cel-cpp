@@ -43,7 +43,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<EnumType> type() const { return type_; }
+  Handle<EnumType> type() const { return type_; }
 
   std::string DebugString() const;
 
@@ -56,7 +56,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
   absl::string_view name() const;
 
  private:
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   template <size_t Size, size_t Align>
   friend class base_internal::AnyData;
 
@@ -64,12 +64,12 @@ class EnumValue final : public Value, public base_internal::InlineData {
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  EnumValue(Persistent<EnumType> type, int64_t number)
+  EnumValue(Handle<EnumType> type, int64_t number)
       : base_internal::InlineData(kMetadata),
         type_(std::move(type)),
         number_(number) {}
 
-  Persistent<EnumType> type_;
+  Handle<EnumType> type_;
   int64_t number_;
 };
 

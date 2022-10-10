@@ -25,58 +25,51 @@ namespace cel {
 
 namespace {
 
-using base_internal::PersistentHandleFactory;
+using base_internal::HandleFactory;
 
 }  // namespace
 
-Persistent<NullType> TypeFactory::GetNullType() { return NullType::Get(); }
+Handle<NullType> TypeFactory::GetNullType() { return NullType::Get(); }
 
-Persistent<ErrorType> TypeFactory::GetErrorType() { return ErrorType::Get(); }
+Handle<ErrorType> TypeFactory::GetErrorType() { return ErrorType::Get(); }
 
-Persistent<DynType> TypeFactory::GetDynType() { return DynType::Get(); }
+Handle<DynType> TypeFactory::GetDynType() { return DynType::Get(); }
 
-Persistent<AnyType> TypeFactory::GetAnyType() { return AnyType::Get(); }
+Handle<AnyType> TypeFactory::GetAnyType() { return AnyType::Get(); }
 
-Persistent<BoolType> TypeFactory::GetBoolType() { return BoolType::Get(); }
+Handle<BoolType> TypeFactory::GetBoolType() { return BoolType::Get(); }
 
-Persistent<IntType> TypeFactory::GetIntType() { return IntType::Get(); }
+Handle<IntType> TypeFactory::GetIntType() { return IntType::Get(); }
 
-Persistent<UintType> TypeFactory::GetUintType() { return UintType::Get(); }
+Handle<UintType> TypeFactory::GetUintType() { return UintType::Get(); }
 
-Persistent<DoubleType> TypeFactory::GetDoubleType() {
-  return DoubleType::Get();
-}
+Handle<DoubleType> TypeFactory::GetDoubleType() { return DoubleType::Get(); }
 
-Persistent<StringType> TypeFactory::GetStringType() {
-  return StringType::Get();
-}
+Handle<StringType> TypeFactory::GetStringType() { return StringType::Get(); }
 
-Persistent<BytesType> TypeFactory::GetBytesType() { return BytesType::Get(); }
+Handle<BytesType> TypeFactory::GetBytesType() { return BytesType::Get(); }
 
-Persistent<DurationType> TypeFactory::GetDurationType() {
+Handle<DurationType> TypeFactory::GetDurationType() {
   return DurationType::Get();
 }
 
-Persistent<TimestampType> TypeFactory::GetTimestampType() {
+Handle<TimestampType> TypeFactory::GetTimestampType() {
   return TimestampType::Get();
 }
 
-Persistent<TypeType> TypeFactory::GetTypeType() { return TypeType::Get(); }
+Handle<TypeType> TypeFactory::GetTypeType() { return TypeType::Get(); }
 
-Persistent<UnknownType> TypeFactory::GetUnknownType() {
-  return UnknownType::Get();
-}
+Handle<UnknownType> TypeFactory::GetUnknownType() { return UnknownType::Get(); }
 
-absl::StatusOr<Persistent<ListType>> TypeFactory::CreateListType(
-    const Persistent<Type>& element) {
+absl::StatusOr<Handle<ListType>> TypeFactory::CreateListType(
+    const Handle<Type>& element) {
   absl::MutexLock lock(&list_types_mutex_);
   auto existing = list_types_.find(element);
   if (existing != list_types_.end()) {
     return existing->second;
   }
-  auto list_type =
-      PersistentHandleFactory<ListType>::Make<base_internal::ModernListType>(
-          memory_manager(), element);
+  auto list_type = HandleFactory<ListType>::Make<base_internal::ModernListType>(
+      memory_manager(), element);
   if (ABSL_PREDICT_FALSE(!list_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
     // they can add details on the size and alignment more easily and
@@ -87,17 +80,16 @@ absl::StatusOr<Persistent<ListType>> TypeFactory::CreateListType(
   return list_type;
 }
 
-absl::StatusOr<Persistent<MapType>> TypeFactory::CreateMapType(
-    const Persistent<Type>& key, const Persistent<Type>& value) {
+absl::StatusOr<Handle<MapType>> TypeFactory::CreateMapType(
+    const Handle<Type>& key, const Handle<Type>& value) {
   auto key_and_value = std::make_pair(key, value);
   absl::MutexLock lock(&map_types_mutex_);
   auto existing = map_types_.find(key_and_value);
   if (existing != map_types_.end()) {
     return existing->second;
   }
-  auto map_type =
-      PersistentHandleFactory<MapType>::Make<base_internal::ModernMapType>(
-          memory_manager(), key, value);
+  auto map_type = HandleFactory<MapType>::Make<base_internal::ModernMapType>(
+      memory_manager(), key, value);
   if (ABSL_PREDICT_FALSE(!map_type)) {
     // TODO(issues/5): maybe have the handle factories return statuses as
     // they can add details on the size and alignment more easily and

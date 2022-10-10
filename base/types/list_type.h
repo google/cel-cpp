@@ -49,12 +49,12 @@ class ListType : public Type {
   bool Equals(const Type& other) const;
 
   // Returns the type of the elements in the list.
-  const Persistent<Type>& element() const;
+  const Handle<Type>& element() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   friend class base_internal::LegacyListType;
   friend class base_internal::ModernListType;
 
@@ -71,13 +71,13 @@ namespace base_internal {
 class LegacyListType final : public ListType, public InlineData {
  public:
   // Returns the type of the elements in the list.
-  const Persistent<Type>& element() const;
+  const Handle<Type>& element() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
   friend class cel::ListType;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   template <size_t Size, size_t Align>
   friend class AnyData;
 
@@ -92,17 +92,17 @@ class LegacyListType final : public ListType, public InlineData {
 class ModernListType final : public ListType, public HeapData {
  public:
   // Returns the type of the elements in the list.
-  const Persistent<Type>& element() const { return element_; }
+  const Handle<Type>& element() const { return element_; }
 
  private:
   friend class cel::MemoryManager;
   friend class TypeFactory;
   friend class cel::ListType;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
 
-  explicit ModernListType(Persistent<Type> element);
+  explicit ModernListType(Handle<Type> element);
 
-  const Persistent<Type> element_;
+  const Handle<Type> element_;
 };
 
 }  // namespace base_internal

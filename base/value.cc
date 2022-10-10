@@ -41,7 +41,7 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(Value);
 
-Persistent<Type> Value::type() const {
+Handle<Type> Value::type() const {
   switch (kind()) {
     case Kind::kNullType:
       return static_cast<const NullValue*>(this)->type().As<Type>();
@@ -205,7 +205,7 @@ bool Value::Equals(const Value& other) const {
 
 namespace base_internal {
 
-bool PersistentValueHandle::Equals(const PersistentValueHandle& other) const {
+bool ValueHandle::Equals(const ValueHandle& other) const {
   const auto* self = static_cast<const Value*>(data_.get());
   const auto* that = static_cast<const Value*>(other.data_.get());
   if (self == that) {
@@ -217,14 +217,14 @@ bool PersistentValueHandle::Equals(const PersistentValueHandle& other) const {
   return *self == *that;
 }
 
-void PersistentValueHandle::HashValue(absl::HashState state) const {
+void ValueHandle::HashValue(absl::HashState state) const {
   if (const auto* pointer = static_cast<const Value*>(data_.get());
       ABSL_PREDICT_TRUE(pointer != nullptr)) {
     pointer->HashValue(std::move(state));
   }
 }
 
-void PersistentValueHandle::CopyFrom(const PersistentValueHandle& other) {
+void ValueHandle::CopyFrom(const ValueHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
   if (locality == DataLocality::kStoredInline &&
@@ -262,7 +262,7 @@ void PersistentValueHandle::CopyFrom(const PersistentValueHandle& other) {
   }
 }
 
-void PersistentValueHandle::MoveFrom(PersistentValueHandle& other) {
+void ValueHandle::MoveFrom(ValueHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
   if (locality == DataLocality::kStoredInline &&
@@ -299,19 +299,19 @@ void PersistentValueHandle::MoveFrom(PersistentValueHandle& other) {
   }
 }
 
-void PersistentValueHandle::CopyAssign(const PersistentValueHandle& other) {
+void ValueHandle::CopyAssign(const ValueHandle& other) {
   // data_ is initialized.
   Destruct();
   CopyFrom(other);
 }
 
-void PersistentValueHandle::MoveAssign(PersistentValueHandle& other) {
+void ValueHandle::MoveAssign(ValueHandle& other) {
   // data_ is initialized.
   Destruct();
   MoveFrom(other);
 }
 
-void PersistentValueHandle::Destruct() {
+void ValueHandle::Destruct() {
   switch (data_.locality()) {
     case DataLocality::kNull:
       break;
@@ -346,7 +346,7 @@ void PersistentValueHandle::Destruct() {
   }
 }
 
-void PersistentValueHandle::Delete() const {
+void ValueHandle::Delete() const {
   switch (data_.kind()) {
     case Kind::kList:
       delete static_cast<AbstractListValue*>(

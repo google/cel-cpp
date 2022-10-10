@@ -39,20 +39,20 @@ class BytesValue : public Value {
  public:
   static constexpr Kind kKind = BytesType::kKind;
 
-  static Persistent<BytesValue> Empty(ValueFactory& value_factory);
+  static Handle<BytesValue> Empty(ValueFactory& value_factory);
 
   // Concat concatenates the contents of two ByteValue, returning a new
   // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
   // the input ByteValue.
-  static absl::StatusOr<Persistent<BytesValue>> Concat(
-      ValueFactory& value_factory, const BytesValue& lhs,
-      const BytesValue& rhs);
+  static absl::StatusOr<Handle<BytesValue>> Concat(ValueFactory& value_factory,
+                                                   const BytesValue& lhs,
+                                                   const BytesValue& rhs);
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<BytesType> type() const { return BytesType::Get(); }
+  Handle<BytesType> type() const { return BytesType::Get(); }
 
   std::string DebugString() const;
 
@@ -77,12 +77,12 @@ class BytesValue : public Value {
   bool Equals(const Value& other) const;
 
  private:
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class base_internal::InlinedCordBytesValue;
   friend class base_internal::InlinedStringViewBytesValue;
   friend class base_internal::StringBytesValue;
   friend base_internal::BytesValueRep interop_internal::GetBytesValueRep(
-      const Persistent<BytesValue>& value);
+      const Handle<BytesValue>& value);
 
   BytesValue() = default;
   BytesValue(const BytesValue&) = default;

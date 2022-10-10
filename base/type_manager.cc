@@ -23,8 +23,7 @@
 
 namespace cel {
 
-absl::StatusOr<Persistent<Type>> TypeManager::ResolveType(
-    absl::string_view name) {
+absl::StatusOr<Handle<Type>> TypeManager::ResolveType(absl::string_view name) {
   {
     // Check for builtin types first.
     CEL_ASSIGN_OR_RETURN(

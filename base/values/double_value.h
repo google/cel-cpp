@@ -32,11 +32,11 @@ class DoubleValue final
 
   using Base::Is;
 
-  static Persistent<DoubleValue> NaN(ValueFactory& value_factory);
+  static Handle<DoubleValue> NaN(ValueFactory& value_factory);
 
-  static Persistent<DoubleValue> PositiveInfinity(ValueFactory& value_factory);
+  static Handle<DoubleValue> PositiveInfinity(ValueFactory& value_factory);
 
-  static Persistent<DoubleValue> NegativeInfinity(ValueFactory& value_factory);
+  static Handle<DoubleValue> NegativeInfinity(ValueFactory& value_factory);
 
   using Base::kind;
 

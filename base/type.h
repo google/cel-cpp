@@ -101,31 +101,31 @@ namespace cel {
 
 namespace base_internal {
 
-class PersistentTypeHandle final {
+class TypeHandle final {
  public:
-  PersistentTypeHandle() = default;
+  TypeHandle() = default;
 
   template <typename T, typename... Args>
-  explicit PersistentTypeHandle(absl::in_place_type_t<T>, Args&&... args) {
+  explicit TypeHandle(absl::in_place_type_t<T>, Args&&... args) {
     data_.ConstructInline<T>(std::forward<Args>(args)...);
   }
 
-  explicit PersistentTypeHandle(const Type& type) { data_.ConstructHeap(type); }
+  explicit TypeHandle(const Type& type) { data_.ConstructHeap(type); }
 
-  PersistentTypeHandle(const PersistentTypeHandle& other) { CopyFrom(other); }
+  TypeHandle(const TypeHandle& other) { CopyFrom(other); }
 
-  PersistentTypeHandle(PersistentTypeHandle&& other) { MoveFrom(other); }
+  TypeHandle(TypeHandle&& other) { MoveFrom(other); }
 
-  ~PersistentTypeHandle() { Destruct(); }
+  ~TypeHandle() { Destruct(); }
 
-  PersistentTypeHandle& operator=(const PersistentTypeHandle& other) {
+  TypeHandle& operator=(const TypeHandle& other) {
     if (this != &other) {
       CopyAssign(other);
     }
     return *this;
   }
 
-  PersistentTypeHandle& operator=(PersistentTypeHandle&& other) {
+  TypeHandle& operator=(TypeHandle&& other) {
     if (this != &other) {
       MoveAssign(other);
     }
@@ -136,18 +136,18 @@ class PersistentTypeHandle final {
 
   explicit operator bool() const { return !data_.IsNull(); }
 
-  bool Equals(const PersistentTypeHandle& other) const;
+  bool Equals(const TypeHandle& other) const;
 
   void HashValue(absl::HashState state) const;
 
  private:
-  void CopyFrom(const PersistentTypeHandle& other);
+  void CopyFrom(const TypeHandle& other);
 
-  void MoveFrom(PersistentTypeHandle& other);
+  void MoveFrom(TypeHandle& other);
 
-  void CopyAssign(const PersistentTypeHandle& other);
+  void CopyAssign(const TypeHandle& other);
 
-  void MoveAssign(PersistentTypeHandle& other);
+  void MoveAssign(TypeHandle& other);
 
   void Ref() const { data_.Ref(); }
 
@@ -165,33 +165,30 @@ class PersistentTypeHandle final {
 };
 
 template <typename H>
-H AbslHashValue(H state, const PersistentTypeHandle& handle) {
+H AbslHashValue(H state, const TypeHandle& handle) {
   handle.HashValue(absl::HashState::Create(&state));
   return state;
 }
 
-inline bool operator==(const PersistentTypeHandle& lhs,
-                       const PersistentTypeHandle& rhs) {
+inline bool operator==(const TypeHandle& lhs, const TypeHandle& rhs) {
   return lhs.Equals(rhs);
 }
 
-inline bool operator!=(const PersistentTypeHandle& lhs,
-                       const PersistentTypeHandle& rhs) {
+inline bool operator!=(const TypeHandle& lhs, const TypeHandle& rhs) {
   return !operator==(lhs, rhs);
 }
 
-// Specialization for Type providing the implementation to `Persistent`.
+// Specialization for Type providing the implementation to `Handle`.
 template <>
-struct HandleTraits<HandleType::kPersistent, Type> {
-  using handle_type = PersistentTypeHandle;
+struct HandleTraits<Type> {
+  using handle_type = TypeHandle;
 };
 
-// Partial specialization for `Persistent` for all classes derived from Type.
+// Partial specialization for `Handle` for all classes derived from Type.
 template <typename T>
-struct HandleTraits<
-    HandleType::kPersistent, T,
-    std::enable_if_t<(std::is_base_of_v<Type, T> && !std::is_same_v<Type, T>)>>
-    final : public HandleTraits<HandleType::kPersistent, Type> {};
+struct HandleTraits<T, std::enable_if_t<(std::is_base_of_v<Type, T> &&
+                                         !std::is_same_v<Type, T>)>>
+    final : public HandleTraits<Type> {};
 
 template <Kind K>
 struct SimpleTypeName;
@@ -294,7 +291,7 @@ class SimpleType : public Type, public InlineData {
   bool Equals(const Type& other) const { return kind() == other.kind(); }
 
  private:
-  friend class PersistentTypeHandle;
+  friend class TypeHandle;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
@@ -307,22 +304,22 @@ CEL_INTERNAL_TYPE_DECL(Type);
 
 }  // namespace cel
 
-#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)          \
- private:                                                                  \
-  friend class value_class;                                                \
-  friend class TypeFactory;                                                \
-  friend class base_internal::PersistentTypeHandle;                        \
-  template <typename T, typename U>                                        \
-  friend class base_internal::SimpleValue;                                 \
-  template <size_t Size, size_t Align>                                     \
-  friend class base_internal::AnyData;                                     \
-                                                                           \
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Persistent<type_class>& Get(); \
-                                                                           \
-  type_class() = default;                                                  \
-  type_class(const type_class&) = default;                                 \
-  type_class(type_class&&) = default;                                      \
-  type_class& operator=(const type_class&) = default;                      \
+#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)      \
+ private:                                                              \
+  friend class value_class;                                            \
+  friend class TypeFactory;                                            \
+  friend class base_internal::TypeHandle;                              \
+  template <typename T, typename U>                                    \
+  friend class base_internal::SimpleValue;                             \
+  template <size_t Size, size_t Align>                                 \
+  friend class base_internal::AnyData;                                 \
+                                                                       \
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<type_class>& Get(); \
+                                                                       \
+  type_class() = default;                                              \
+  type_class(const type_class&) = default;                             \
+  type_class(type_class&&) = default;                                  \
+  type_class& operator=(const type_class&) = default;                  \
   type_class& operator=(type_class&&) = default
 
 #define CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(type_class)        \

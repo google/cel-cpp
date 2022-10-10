@@ -24,16 +24,16 @@ CEL_INTERNAL_TYPE_IMPL(AnyType);
 namespace {
 
 ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<AnyType>) char instance_storage[sizeof(Persistent<AnyType>)];
+alignas(Handle<AnyType>) char instance_storage[sizeof(Handle<AnyType>)];
 
 }  // namespace
 
-const Persistent<AnyType>& AnyType::Get() {
+const Handle<AnyType>& AnyType::Get() {
   absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<AnyType>::MakeAt<AnyType>(
+    base_internal::HandleFactory<AnyType>::MakeAt<AnyType>(
         &instance_storage[0]);
   });
-  return *reinterpret_cast<const Persistent<AnyType>*>(&instance_storage[0]);
+  return *reinterpret_cast<const Handle<AnyType>*>(&instance_storage[0]);
 }
 
 }  // namespace cel

@@ -43,7 +43,7 @@ void ListType::HashValue(absl::HashState state) const {
   absl::HashState::combine(std::move(state), element(), kind(), name());
 }
 
-const Persistent<Type>& ListType::element() const {
+const Handle<Type>& ListType::element() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyListType&>(*this).element();
   }
@@ -52,11 +52,11 @@ const Persistent<Type>& ListType::element() const {
 
 namespace base_internal {
 
-const Persistent<Type>& LegacyListType::element() const {
+const Handle<Type>& LegacyListType::element() const {
   return DynType::Get().As<Type>();
 }
 
-ModernListType::ModernListType(Persistent<Type> element)
+ModernListType::ModernListType(Handle<Type> element)
     : ListType(), HeapData(kKind), element_(std::move(element)) {
   // Ensure `Type*` and `HeapData*` are not thunked.
   ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
