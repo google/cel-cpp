@@ -35,7 +35,8 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/structs/trivial_legacy_type_info.h"
+#include "eval/public/structs/legacy_any_packing.h"
+#include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/testing.h"
@@ -46,6 +47,7 @@ namespace google::api::expr::runtime::internal {
 namespace {
 
 using testing::Eq;
+using testing::EqualsProto;
 using testing::UnorderedPointwise;
 using cel::internal::StatusIs;
 
@@ -68,9 +70,88 @@ using google::protobuf::UInt64Value;
 
 using google::protobuf::Arena;
 
+class ProtobufDescriptorAnyPackingApis : public LegacyAnyPackingApis {
+ public:
+  ProtobufDescriptorAnyPackingApis(const google::protobuf::DescriptorPool* pool,
+                                   google::protobuf::MessageFactory* factory)
+      : descriptor_pool_(pool), message_factory_(factory) {}
+  absl::StatusOr<google::protobuf::MessageLite*> Unpack(
+      const google::protobuf::Any& any_message,
+      google::protobuf::Arena* arena) const override {
+    auto type_url = any_message.type_url();
+    auto pos = type_url.find_last_of('/');
+    if (pos == absl::string_view::npos) {
+      return absl::InternalError("Malformed type_url string");
+    }
+
+    std::string full_name = std::string(type_url.substr(pos + 1));
+    const google::protobuf::Descriptor* nested_descriptor =
+        descriptor_pool_->FindMessageTypeByName(full_name);
+
+    if (nested_descriptor == nullptr) {
+      // Descriptor not found for the type
+      // TODO(issues/25) What error code?
+      return absl::InternalError("Descriptor not found");
+    }
+
+    const google::protobuf::Message* prototype =
+        message_factory_->GetPrototype(nested_descriptor);
+    if (prototype == nullptr) {
+      return absl::InternalError("Prototype not found");
+    }
+
+    google::protobuf::Message* nested_message = prototype->New(arena);
+    if (!any_message.UnpackTo(nested_message)) {
+      return absl::InternalError("Failed to unpack Any into message");
+    }
+    return nested_message;
+  }
+  absl::Status Pack(const google::protobuf::MessageLite* message,
+                    google::protobuf::Any& any_message) const override {
+    const google::protobuf::Message* message_ptr =
+        down_cast<const google::protobuf::Message*>(message);
+    any_message.PackFrom(*message_ptr);
+    return absl::OkStatus();
+  }
+
+ private:
+  const google::protobuf::DescriptorPool* descriptor_pool_;
+  google::protobuf::MessageFactory* message_factory_;
+};
+
+class ProtobufDescriptorProviderWithAny : public ProtobufDescriptorProvider {
+ public:
+  ProtobufDescriptorProviderWithAny(const google::protobuf::DescriptorPool* pool,
+                                    google::protobuf::MessageFactory* factory)
+      : ProtobufDescriptorProvider(pool, factory),
+        any_packing_apis_(std::make_unique<ProtobufDescriptorAnyPackingApis>(
+            pool, factory)) {}
+  absl::optional<const LegacyAnyPackingApis*> ProvideLegacyAnyPackingApis(
+      absl::string_view name) const override {
+    return any_packing_apis_.get();
+  }
+
+ private:
+  std::unique_ptr<ProtobufDescriptorAnyPackingApis> any_packing_apis_;
+};
+
+class ProtobufDescriptorProviderWithoutAny : public ProtobufDescriptorProvider {
+ public:
+  ProtobufDescriptorProviderWithoutAny(const google::protobuf::DescriptorPool* pool,
+                                       google::protobuf::MessageFactory* factory)
+      : ProtobufDescriptorProvider(pool, factory) {}
+  absl::optional<const LegacyAnyPackingApis*> ProvideLegacyAnyPackingApis(
+      absl::string_view name) const override {
+    return std::nullopt;
+  }
+};
+
 class CelProtoWrapperTest : public ::testing::Test {
  protected:
-  CelProtoWrapperTest() : type_info_(TrivialTypeInfo::GetInstance()) {
+  CelProtoWrapperTest()
+      : type_provider_(std::make_unique<ProtobufDescriptorProviderWithAny>(
+            google::protobuf::DescriptorPool::generated_pool(),
+            google::protobuf::MessageFactory::generated_factory())) {
     factory_.SetDelegateToGeneratedFactory(true);
   }
 
@@ -79,7 +160,7 @@ class CelProtoWrapperTest : public ::testing::Test {
     // Test the input value wraps to the destination message type.
     MessageType* tested_message = nullptr;
     absl::StatusOr<MessageType*> result =
-        CreateMessageFromValue(value, tested_message, arena());
+        CreateMessageFromValue(value, tested_message, type_provider(), arena());
     EXPECT_OK(result);
     tested_message = *result;
     EXPECT_TRUE(tested_message != nullptr);
@@ -87,7 +168,8 @@ class CelProtoWrapperTest : public ::testing::Test {
 
     // Test the same as above, but with allocated message.
     MessageType* created_message = Arena::CreateMessage<MessageType>(arena());
-    result = CreateMessageFromValue(value, created_message, arena());
+    result = CreateMessageFromValue(value, created_message, type_provider(),
+                                    arena());
     EXPECT_EQ(created_message, *result);
     created_message = *result;
     EXPECT_TRUE(created_message != nullptr);
@@ -96,7 +178,7 @@ class CelProtoWrapperTest : public ::testing::Test {
 
   template <class MessageType, class T>
   void ExpectUnwrappedPrimitive(const MessageType& message, T result) {
-    CelValue cel_value = CreateCelValue(message, type_info(), arena());
+    CelValue cel_value = CreateCelValue(message, type_provider(), arena());
     T value;
     EXPECT_TRUE(cel_value.GetValue(&value));
     EXPECT_THAT(value, Eq(result));
@@ -104,7 +186,7 @@ class CelProtoWrapperTest : public ::testing::Test {
     T dyn_value;
     auto reflected_copy = ReflectedCopy(message);
     absl::StatusOr<CelValue> cel_dyn_value =
-        UnwrapFromWellKnownType(reflected_copy.get(), type_info(), arena());
+        UnwrapFromWellKnownType(reflected_copy.get(), type_provider(), arena());
     EXPECT_OK(cel_dyn_value.status());
     EXPECT_THAT(cel_dyn_value->type(), Eq(cel_value.type()));
     EXPECT_TRUE(cel_dyn_value->GetValue(&dyn_value));
@@ -112,9 +194,7 @@ class CelProtoWrapperTest : public ::testing::Test {
 
     Any any;
     any.PackFrom(message);
-    CelValue any_cel_value = CreateCelValue(any, type_info(), arena());
-    LOG(INFO) << "vitos: " << message.DebugString()
-              << ", cel_value: " << any_cel_value.DebugString();
+    CelValue any_cel_value = CreateCelValue(any, type_provider(), arena());
     T any_value;
     EXPECT_TRUE(any_cel_value.GetValue(&any_value));
     EXPECT_THAT(any_value, Eq(result));
@@ -123,7 +203,7 @@ class CelProtoWrapperTest : public ::testing::Test {
   template <class MessageType>
   void ExpectUnwrappedMessage(const MessageType& message,
                               google::protobuf::Message* result) {
-    CelValue cel_value = CreateCelValue(message, type_info(), arena());
+    CelValue cel_value = CreateCelValue(message, type_provider(), arena());
     if (result == nullptr) {
       EXPECT_TRUE(cel_value.IsNull());
       return;
@@ -141,11 +221,13 @@ class CelProtoWrapperTest : public ::testing::Test {
   }
 
   Arena* arena() { return &arena_; }
-  const LegacyTypeInfoApis* type_info() const { return type_info_; }
+  const LegacyTypeProvider* type_provider() const {
+    return type_provider_.get();
+  }
 
  private:
   Arena arena_;
-  const LegacyTypeInfoApis* type_info_;
+  std::unique_ptr<LegacyTypeProvider> type_provider_;
   google::protobuf::DynamicMessageFactory factory_;
 };
 
@@ -154,7 +236,8 @@ TEST_F(CelProtoWrapperTest, TestType) {
   msg_duration.set_seconds(2);
   msg_duration.set_nanos(3);
 
-  CelValue value_duration2 = CreateCelValue(msg_duration, type_info(), arena());
+  CelValue value_duration2 =
+      CreateCelValue(msg_duration, type_provider(), arena());
   EXPECT_THAT(value_duration2.type(), Eq(CelValue::Type::kDuration));
 
   Timestamp msg_timestamp;
@@ -162,7 +245,7 @@ TEST_F(CelProtoWrapperTest, TestType) {
   msg_timestamp.set_nanos(3);
 
   CelValue value_timestamp2 =
-      CreateCelValue(msg_timestamp, type_info(), arena());
+      CreateCelValue(msg_timestamp, type_provider(), arena());
   EXPECT_THAT(value_timestamp2.type(), Eq(CelValue::Type::kTimestamp));
 }
 
@@ -171,7 +254,7 @@ TEST_F(CelProtoWrapperTest, TestDuration) {
   Duration msg_duration;
   msg_duration.set_seconds(2);
   msg_duration.set_nanos(3);
-  CelValue value = CreateCelValue(msg_duration, type_info(), arena());
+  CelValue value = CreateCelValue(msg_duration, type_provider(), arena());
   EXPECT_THAT(value.type(), Eq(CelValue::Type::kDuration));
 
   Duration out;
@@ -186,7 +269,7 @@ TEST_F(CelProtoWrapperTest, TestTimestamp) {
   msg_timestamp.set_seconds(2);
   msg_timestamp.set_nanos(3);
 
-  CelValue value = CreateCelValue(msg_timestamp, type_info(), arena());
+  CelValue value = CreateCelValue(msg_timestamp, type_provider(), arena());
 
   EXPECT_TRUE(value.IsTimestamp());
   Timestamp out;
@@ -210,14 +293,14 @@ TEST_F(CelProtoWrapperTest, UnwrapDynamicValueNull) {
 
   ASSERT_OK_AND_ASSIGN(CelValue value,
                        UnwrapFromWellKnownType(ReflectedCopy(value_msg).get(),
-                                               type_info(), arena()));
+                                               type_provider(), arena()));
   EXPECT_TRUE(value.IsNull());
 }
 
 TEST_F(CelProtoWrapperTest, CreateCelValueBool) {
   bool value = true;
 
-  CelValue cel_value = CreateCelValue(value, type_info(), arena());
+  CelValue cel_value = CreateCelValue(value, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsBool());
   EXPECT_EQ(cel_value.BoolOrDie(), value);
 
@@ -229,11 +312,12 @@ TEST_F(CelProtoWrapperTest, CreateCelValueBool) {
 TEST_F(CelProtoWrapperTest, CreateCelValueDouble) {
   double value = 1.0;
 
-  CelValue cel_value = CreateCelValue(value, type_info(), arena());
+  CelValue cel_value = CreateCelValue(value, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsDouble());
   EXPECT_DOUBLE_EQ(cel_value.DoubleOrDie(), value);
 
-  cel_value = CreateCelValue(static_cast<float>(value), type_info(), arena());
+  cel_value =
+      CreateCelValue(static_cast<float>(value), type_provider(), arena());
   EXPECT_TRUE(cel_value.IsDouble());
   EXPECT_DOUBLE_EQ(cel_value.DoubleOrDie(), value);
 
@@ -245,11 +329,12 @@ TEST_F(CelProtoWrapperTest, CreateCelValueDouble) {
 TEST_F(CelProtoWrapperTest, CreateCelValueInt) {
   int64_t value = 10;
 
-  CelValue cel_value = CreateCelValue(value, type_info(), arena());
+  CelValue cel_value = CreateCelValue(value, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsInt64());
   EXPECT_EQ(cel_value.Int64OrDie(), value);
 
-  cel_value = CreateCelValue(static_cast<int32_t>(value), type_info(), arena());
+  cel_value =
+      CreateCelValue(static_cast<int32_t>(value), type_provider(), arena());
   EXPECT_TRUE(cel_value.IsInt64());
   EXPECT_EQ(cel_value.Int64OrDie(), value);
 }
@@ -257,12 +342,12 @@ TEST_F(CelProtoWrapperTest, CreateCelValueInt) {
 TEST_F(CelProtoWrapperTest, CreateCelValueUint) {
   uint64_t value = 10;
 
-  CelValue cel_value = CreateCelValue(value, type_info(), arena());
+  CelValue cel_value = CreateCelValue(value, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsUint64());
   EXPECT_EQ(cel_value.Uint64OrDie(), value);
 
   cel_value =
-      CreateCelValue(static_cast<uint32_t>(value), type_info(), arena());
+      CreateCelValue(static_cast<uint32_t>(value), type_provider(), arena());
   EXPECT_TRUE(cel_value.IsUint64());
   EXPECT_EQ(cel_value.Uint64OrDie(), value);
 }
@@ -271,7 +356,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueString) {
   const std::string test = "test";
   auto value = CelValue::StringHolder(&test);
 
-  CelValue cel_value = CreateCelValue(test, type_info(), arena());
+  CelValue cel_value = CreateCelValue(test, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsString());
   EXPECT_EQ(cel_value.StringOrDie().value(), test);
 
@@ -284,7 +369,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueStringView) {
   const std::string test = "test";
   const std::string_view test_view(test);
 
-  CelValue cel_value = CreateCelValue(test_view, type_info(), arena());
+  CelValue cel_value = CreateCelValue(test_view, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsString());
   EXPECT_EQ(cel_value.StringOrDie().value(), test);
 }
@@ -295,7 +380,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueCord) {
   absl::Cord value;
   value.Append(test1);
   value.Append(test2);
-  CelValue cel_value = CreateCelValue(value, type_info(), arena());
+  CelValue cel_value = CreateCelValue(value, type_provider(), arena());
   EXPECT_TRUE(cel_value.IsBytes());
   EXPECT_EQ(cel_value.BytesOrDie().value(), test1 + test2);
 }
@@ -313,7 +398,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueStruct) {
   auto& value3 = (*value_struct.mutable_fields())[kFields[2]];
   value3.set_string_value("test");
 
-  CelValue value = CreateCelValue(value_struct, type_info(), arena());
+  CelValue value = CreateCelValue(value_struct, type_provider(), arena());
   ASSERT_TRUE(value.IsMap());
 
   const CelMap* cel_map = value.MapOrDie();
@@ -384,7 +469,7 @@ TEST_F(CelProtoWrapperTest, UnwrapDynamicStruct) {
   auto reflected_copy = ReflectedCopy(struct_msg);
   ASSERT_OK_AND_ASSIGN(
       CelValue value,
-      UnwrapFromWellKnownType(reflected_copy.get(), type_info(), arena()));
+      UnwrapFromWellKnownType(reflected_copy.get(), type_provider(), arena()));
   EXPECT_TRUE(value.IsMap());
   const CelMap* cel_map = value.MapOrDie();
   ASSERT_TRUE(cel_map != nullptr);
@@ -425,7 +510,7 @@ TEST_F(CelProtoWrapperTest, UnwrapDynamicValueStruct) {
   auto reflected_copy = ReflectedCopy(value_msg);
   ASSERT_OK_AND_ASSIGN(
       CelValue value,
-      UnwrapFromWellKnownType(reflected_copy.get(), type_info(), arena()));
+      UnwrapFromWellKnownType(reflected_copy.get(), type_provider(), arena()));
   EXPECT_TRUE(value.IsMap());
   EXPECT_TRUE(
       (*value.MapOrDie())[CelValue::CreateString(&kField1)].has_value());
@@ -442,7 +527,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueList) {
   list_value.add_values()->set_number_value(1.0);
   list_value.add_values()->set_string_value("test");
 
-  CelValue value = CreateCelValue(list_value, type_info(), arena());
+  CelValue value = CreateCelValue(list_value, type_provider(), arena());
   ASSERT_TRUE(value.IsList());
 
   const CelList* cel_list = value.ListOrDie();
@@ -463,7 +548,7 @@ TEST_F(CelProtoWrapperTest, CreateCelValueList) {
 
   Value proto_value;
   *proto_value.mutable_list_value() = list_value;
-  CelValue cel_value = CreateCelValue(list_value, type_info(), arena());
+  CelValue cel_value = CreateCelValue(list_value, type_provider(), arena());
   ASSERT_TRUE(cel_value.IsList());
 }
 
@@ -472,9 +557,9 @@ TEST_F(CelProtoWrapperTest, UnwrapListValue) {
   value_msg.mutable_list_value()->add_values()->set_number_value(1.);
   value_msg.mutable_list_value()->add_values()->set_number_value(2.);
 
-  ASSERT_OK_AND_ASSIGN(
-      CelValue value,
-      UnwrapFromWellKnownType(&value_msg.list_value(), type_info(), arena()));
+  ASSERT_OK_AND_ASSIGN(CelValue value,
+                       UnwrapFromWellKnownType(&value_msg.list_value(),
+                                               type_provider(), arena()));
   EXPECT_TRUE(value.IsList());
   EXPECT_THAT((*value.ListOrDie())[0].DoubleOrDie(), testing::DoubleEq(1));
   EXPECT_THAT((*value.ListOrDie())[1].DoubleOrDie(), testing::DoubleEq(2));
@@ -488,7 +573,7 @@ TEST_F(CelProtoWrapperTest, UnwrapDynamicValueListValue) {
   auto reflected_copy = ReflectedCopy(value_msg);
   ASSERT_OK_AND_ASSIGN(
       CelValue value,
-      UnwrapFromWellKnownType(reflected_copy.get(), type_info(), arena()));
+      UnwrapFromWellKnownType(reflected_copy.get(), type_provider(), arena()));
   EXPECT_TRUE(value.IsList());
   EXPECT_THAT((*value.ListOrDie())[0].DoubleOrDie(), testing::DoubleEq(1));
   EXPECT_THAT((*value.ListOrDie())[1].DoubleOrDie(), testing::DoubleEq(2));
@@ -497,7 +582,7 @@ TEST_F(CelProtoWrapperTest, UnwrapDynamicValueListValue) {
 TEST_F(CelProtoWrapperTest, UnwrapNullptr) {
   google::protobuf::MessageLite* msg = nullptr;
   ASSERT_OK_AND_ASSIGN(CelValue value,
-                       UnwrapFromWellKnownType(msg, type_info(), arena()));
+                       UnwrapFromWellKnownType(msg, type_provider(), arena()));
   EXPECT_TRUE(value.IsNull());
 }
 
@@ -505,7 +590,8 @@ TEST_F(CelProtoWrapperTest, UnwrapDuration) {
   Duration duration;
   duration.set_seconds(10);
   ASSERT_OK_AND_ASSIGN(
-      CelValue value, UnwrapFromWellKnownType(&duration, type_info(), arena()));
+      CelValue value,
+      UnwrapFromWellKnownType(&duration, type_provider(), arena()));
   EXPECT_TRUE(value.IsDuration());
   EXPECT_EQ(value.DurationOrDie() / absl::Seconds(1), 10);
 }
@@ -515,14 +601,14 @@ TEST_F(CelProtoWrapperTest, UnwrapTimestamp) {
   t.set_seconds(1615852799);
 
   ASSERT_OK_AND_ASSIGN(CelValue value,
-                       UnwrapFromWellKnownType(&t, type_info(), arena()));
+                       UnwrapFromWellKnownType(&t, type_provider(), arena()));
   EXPECT_TRUE(value.IsTimestamp());
   EXPECT_EQ(value.TimestampOrDie(), absl::FromUnixSeconds(1615852799));
 }
 
 TEST_F(CelProtoWrapperTest, UnwrapUnknown) {
   TestMessage msg;
-  EXPECT_THAT(UnwrapFromWellKnownType(&msg, type_info(), arena()),
+  EXPECT_THAT(UnwrapFromWellKnownType(&msg, type_provider(), arena()),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -545,7 +631,10 @@ TEST_F(CelProtoWrapperTest, UnwrapAnyOfNonWellKnownType) {
 
   Any any;
   any.PackFrom(test_message);
-  EXPECT_TRUE(CreateCelValue(any, type_info(), arena()).IsError());
+  CelValue cel_value = CreateCelValue(any, type_provider(), arena());
+  ASSERT_TRUE(cel_value.IsMessage());
+  EXPECT_THAT(cel_value.MessageWrapperOrDie().message_ptr(),
+              EqualsProto(test_message));
 }
 
 TEST_F(CelProtoWrapperTest, UnwrapNestedAny) {
@@ -556,19 +645,39 @@ TEST_F(CelProtoWrapperTest, UnwrapNestedAny) {
   any1.PackFrom(test_message);
   Any any2;
   any2.PackFrom(any1);
-  EXPECT_TRUE(CreateCelValue(any2, type_info(), arena()).IsError());
+  CelValue cel_value = CreateCelValue(any2, type_provider(), arena());
+  ASSERT_TRUE(cel_value.IsMessage());
+  EXPECT_THAT(cel_value.MessageWrapperOrDie().message_ptr(),
+              EqualsProto(test_message));
 }
 
 TEST_F(CelProtoWrapperTest, UnwrapInvalidAny) {
   Any any;
-  CelValue value = CreateCelValue(any, type_info(), arena());
+  CelValue value = CreateCelValue(any, type_provider(), arena());
   ASSERT_TRUE(value.IsError());
 
   any.set_type_url("/");
-  ASSERT_TRUE(CreateCelValue(any, type_info(), arena()).IsError());
+  ASSERT_TRUE(CreateCelValue(any, type_provider(), arena()).IsError());
 
   any.set_type_url("/invalid.proto.name");
-  ASSERT_TRUE(CreateCelValue(any, type_info(), arena()).IsError());
+  ASSERT_TRUE(CreateCelValue(any, type_provider(), arena()).IsError());
+}
+
+TEST_F(CelProtoWrapperTest, UnwrapAnyWithMissingTypeProvider) {
+  TestMessage test_message;
+  test_message.set_string_value("test");
+  Any any1;
+  any1.PackFrom(test_message);
+  CelValue value1 = CreateCelValue(any1, nullptr, arena());
+  ASSERT_TRUE(value1.IsError());
+
+  Int32Value test_int;
+  test_int.set_value(12);
+  Any any2;
+  any2.PackFrom(test_int);
+  CelValue value2 = CreateCelValue(any2, nullptr, arena());
+  ASSERT_TRUE(value2.IsInt64());
+  EXPECT_EQ(value2.Int64OrDie(), 12);
 }
 
 // Test support of google.protobuf.<Type>Value wrappers in CelValue.
@@ -795,8 +904,9 @@ TEST_F(CelProtoWrapperTest, WrapFailureInt64ToInt32Value) {
   auto cel_value = CelValue::CreateInt64(num);
 
   Int32Value* result = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, result, arena()),
-              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(
+      CreateMessageFromValue(cel_value, result, type_provider(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
 }
 
 TEST_F(CelProtoWrapperTest, WrapInt64ToValue) {
@@ -854,8 +964,9 @@ TEST_F(CelProtoWrapperTest, WrapFailureUint64ToUint32Value) {
   auto cel_value = CelValue::CreateUint64(num);
 
   UInt32Value* result = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, result, arena()),
-              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(
+      CreateMessageFromValue(cel_value, result, type_provider(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
 }
 
 TEST_F(CelProtoWrapperTest, WrapString) {
@@ -920,13 +1031,13 @@ TEST_F(CelProtoWrapperTest, WrapFailureListValueBadJSON) {
   TestMessage message;
   std::vector<CelValue> list_elems = {
       CelValue::CreateDouble(1.5),
-      CreateCelValue(message, type_info(), arena()),
+      CreateCelValue(message, type_provider(), arena()),
   };
   ContainerBackedListImpl list(std::move(list_elems));
   auto cel_value = CelValue::CreateList(&list);
 
   Value* json = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, json, arena()),
+  EXPECT_THAT(CreateMessageFromValue(cel_value, json, type_provider(), arena()),
               StatusIs(absl::StatusCode::kInternal));
 }
 
@@ -952,6 +1063,41 @@ TEST_F(CelProtoWrapperTest, WrapStruct) {
   ExpectWrappedMessage(cel_value, any);
 }
 
+TEST_F(CelProtoWrapperTest, WrapAnyMessage) {
+  TestMessage test;
+  test.set_string_value("test");
+  Any any;
+  any.PackFrom(test);
+  std::optional<const LegacyTypeInfoApis*> type_info =
+      type_provider()->ProvideLegacyTypeInfo(
+          "google.api.expr.runtime.TestMessage");
+  ASSERT_TRUE(type_info.has_value());
+  CelValue cel_value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(&test, *type_info));
+  ExpectWrappedMessage(cel_value, any);
+}
+
+TEST_F(CelProtoWrapperTest, WrapAnyMessageFailure) {
+  TestMessage test;
+  test.set_string_value("test");
+  Any any;
+  any.PackFrom(test);
+  auto type_provider_without_any =
+      std::make_unique<ProtobufDescriptorProviderWithoutAny>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory());
+  std::optional<const LegacyTypeInfoApis*> type_info =
+      type_provider()->ProvideLegacyTypeInfo(
+          "google.api.expr.runtime.TestMessage");
+  ASSERT_TRUE(type_info.has_value());
+  CelValue cel_value = CelValue::CreateMessageWrapper(
+      CelValue::MessageWrapper(&test, *type_info));
+  Any* tested_message = nullptr;
+  EXPECT_THAT(CreateMessageFromValue(cel_value, tested_message,
+                                     type_provider_without_any.get(), arena()),
+              StatusIs(absl::StatusCode::kInternal));
+}
+
 TEST_F(CelProtoWrapperTest, WrapFailureStructBadKeyType) {
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateInt64(1L), CelValue::CreateBool(true)}};
@@ -962,7 +1108,7 @@ TEST_F(CelProtoWrapperTest, WrapFailureStructBadKeyType) {
   auto cel_value = CelValue::CreateMap(cel_map.get());
 
   Value* json = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, json, arena()),
+  EXPECT_THAT(CreateMessageFromValue(cel_value, json, type_provider(), arena()),
               StatusIs(absl::StatusCode::kInternal));
 }
 
@@ -971,14 +1117,14 @@ TEST_F(CelProtoWrapperTest, WrapFailureStructBadValueType) {
   TestMessage bad_value;
   std::vector<std::pair<CelValue, CelValue>> args = {
       {CelValue::CreateString(CelValue::StringHolder(&kField1)),
-       CreateCelValue(bad_value, type_info(), arena())}};
+       CreateCelValue(bad_value, type_provider(), arena())}};
   auto cel_map =
       CreateContainerBackedMap(
           absl::Span<std::pair<CelValue, CelValue>>(args.data(), args.size()))
           .value();
   auto cel_value = CelValue::CreateMap(cel_map.get());
   Value* json = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, json, arena()),
+  EXPECT_THAT(CreateMessageFromValue(cel_value, json, type_provider(), arena()),
               StatusIs(absl::StatusCode::kInternal));
 }
 
@@ -986,83 +1132,98 @@ TEST_F(CelProtoWrapperTest, WrapFailureWrongType) {
   auto cel_value = CelValue::CreateNull();
   {
     BoolValue* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     BytesValue* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     DoubleValue* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     Duration* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     FloatValue* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     Int32Value* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     Int64Value* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     ListValue* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     StringValue* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     Struct* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     Timestamp* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     UInt32Value* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
   {
     UInt64Value* wrong_type = nullptr;
-    EXPECT_THAT(CreateMessageFromValue(cel_value, wrong_type, arena()),
-                StatusIs(absl::StatusCode::kInternal));
+    EXPECT_THAT(
+        CreateMessageFromValue(cel_value, wrong_type, type_provider(), arena()),
+        StatusIs(absl::StatusCode::kInternal));
   }
 }
 
 TEST_F(CelProtoWrapperTest, WrapFailureErrorToAny) {
   auto cel_value = CreateNoSuchFieldError(arena(), "error_field");
   Any* message = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, message, arena()),
-              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(
+      CreateMessageFromValue(cel_value, message, type_provider(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
 }
 
 TEST_F(CelProtoWrapperTest, WrapFailureErrorToValue) {
   auto cel_value = CreateNoSuchFieldError(arena(), "error_field");
   Value* message = nullptr;
-  EXPECT_THAT(CreateMessageFromValue(cel_value, message, arena()),
-              StatusIs(absl::StatusCode::kInternal));
+  EXPECT_THAT(
+      CreateMessageFromValue(cel_value, message, type_provider(), arena()),
+      StatusIs(absl::StatusCode::kInternal));
 }
 
 TEST_F(CelProtoWrapperTest, DebugString) {
@@ -1070,7 +1231,7 @@ TEST_F(CelProtoWrapperTest, DebugString) {
   list_value.add_values()->set_bool_value(true);
   list_value.add_values()->set_number_value(1.0);
   list_value.add_values()->set_string_value("test");
-  CelValue value = CreateCelValue(list_value, type_info(), arena());
+  CelValue value = CreateCelValue(list_value, type_provider(), arena());
   EXPECT_EQ(value.DebugString(),
             "CelList: [bool: 1, double: 1.000000, string: test]");
 
@@ -1082,7 +1243,7 @@ TEST_F(CelProtoWrapperTest, DebugString) {
   auto& value3 = (*value_struct.mutable_fields())["c"];
   value3.set_string_value("test");
 
-  value = CreateCelValue(value_struct, type_info(), arena());
+  value = CreateCelValue(value_struct, type_provider(), arena());
   EXPECT_THAT(
       value.DebugString(),
       testing::AllOf(testing::StartsWith("CelMap: {"),
@@ -1094,9 +1255,9 @@ TEST_F(CelProtoWrapperTest, DebugString) {
 TEST_F(CelProtoWrapperTest, CreateMessageFromValueUnimplementedUnknownType) {
   TestMessage* test_message_ptr = nullptr;
   TestMessage test_message;
-  CelValue cel_value = CreateCelValue(test_message, type_info(), arena());
-  absl::StatusOr<TestMessage*> result =
-      CreateMessageFromValue(cel_value, test_message_ptr, arena());
+  CelValue cel_value = CreateCelValue(test_message, type_provider(), arena());
+  absl::StatusOr<TestMessage*> result = CreateMessageFromValue(
+      cel_value, test_message_ptr, type_provider(), arena());
   EXPECT_THAT(result, StatusIs(absl::StatusCode::kUnimplemented));
 }
 

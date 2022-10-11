@@ -19,12 +19,14 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 #include "google/protobuf/wrappers.pb.h"
+#include "google/protobuf/message.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
@@ -33,6 +35,8 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/structs/legacy_any_packing.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/casts.h"
 #include "internal/overflow.h"
@@ -128,9 +132,9 @@ static bool IsJSONSafe(uint64_t i) {
 // Map implementation wrapping google.protobuf.ListValue
 class DynamicList : public CelList {
  public:
-  DynamicList(const ListValue* values, const LegacyTypeInfoApis* type_info,
+  DynamicList(const ListValue* values, const LegacyTypeProvider* type_provider,
               Arena* arena)
-      : arena_(arena), type_info_(type_info), values_(values) {}
+      : arena_(arena), type_provider_(type_provider), values_(values) {}
 
   CelValue operator[](int index) const override;
 
@@ -139,18 +143,18 @@ class DynamicList : public CelList {
 
  private:
   Arena* arena_;
-  const LegacyTypeInfoApis* type_info_;
+  const LegacyTypeProvider* type_provider_;
   const ListValue* values_;
 };
 
 // Map implementation wrapping google.protobuf.Struct.
 class DynamicMap : public CelMap {
  public:
-  DynamicMap(const Struct* values, const LegacyTypeInfoApis* type_info,
+  DynamicMap(const Struct* values, const LegacyTypeProvider* type_provider,
              Arena* arena)
       : arena_(arena),
         values_(values),
-        type_info_(type_info),
+        type_provider_(type_provider),
         key_list_(values) {}
 
   absl::StatusOr<bool> Has(const CelValue& key) const override {
@@ -211,35 +215,35 @@ class DynamicMap : public CelMap {
 
   Arena* arena_;
   const Struct* values_;
-  const LegacyTypeInfoApis* type_info_;
+  const LegacyTypeProvider* type_provider_;
   const DynamicMapKeyList key_list_;
 };
 }  // namespace
 
 CelValue CreateCelValue(const Duration& duration,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateDuration(DecodeDuration(duration));
 }
 
 CelValue CreateCelValue(const Timestamp& timestamp,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateTimestamp(DecodeTime(timestamp));
 }
 
 CelValue CreateCelValue(const ListValue& list_values,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateList(
-      Arena::Create<DynamicList>(arena, &list_values, type_info, arena));
+      Arena::Create<DynamicList>(arena, &list_values, type_provider, arena));
 }
 
 CelValue CreateCelValue(const Struct& struct_value,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateMap(
-      Arena::Create<DynamicMap>(arena, &struct_value, type_info, arena));
+      Arena::Create<DynamicMap>(arena, &struct_value, type_provider, arena));
 }
 
 CelValue CreateCelValue(const Any& any_value,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   auto type_url = any_value.type_url();
   auto pos = type_url.find_last_of('/');
   if (pos == absl::string_view::npos) {
@@ -258,7 +262,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into DoubleValue");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kFloatValue: {
       FloatValue* nested_message = Arena::CreateMessage<FloatValue>(arena);
@@ -267,7 +271,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into FloatValue");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kInt32Value: {
       Int32Value* nested_message = Arena::CreateMessage<Int32Value>(arena);
@@ -276,7 +280,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Int32Value");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kInt64Value: {
       Int64Value* nested_message = Arena::CreateMessage<Int64Value>(arena);
@@ -285,7 +289,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Int64Value");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kUInt32Value: {
       UInt32Value* nested_message = Arena::CreateMessage<UInt32Value>(arena);
@@ -294,7 +298,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into UInt32Value");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kUInt64Value: {
       UInt64Value* nested_message = Arena::CreateMessage<UInt64Value>(arena);
@@ -303,7 +307,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into UInt64Value");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kBoolValue: {
       BoolValue* nested_message = Arena::CreateMessage<BoolValue>(arena);
@@ -312,7 +316,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into BoolValue");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kTimestamp: {
       Timestamp* nested_message = Arena::CreateMessage<Timestamp>(arena);
@@ -321,7 +325,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Timestamp");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kDuration: {
       Duration* nested_message = Arena::CreateMessage<Duration>(arena);
@@ -330,7 +334,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Duration");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kStringValue: {
       StringValue* nested_message = Arena::CreateMessage<StringValue>(arena);
@@ -339,7 +343,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into StringValue");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kBytesValue: {
       BytesValue* nested_message = Arena::CreateMessage<BytesValue>(arena);
@@ -348,7 +352,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into BytesValue");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kListValue: {
       ListValue* nested_message = Arena::CreateMessage<ListValue>(arena);
@@ -357,7 +361,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into ListValue");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kStruct: {
       Struct* nested_message = Arena::CreateMessage<Struct>(arena);
@@ -366,7 +370,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Struct");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kValue: {
       Value* nested_message = Arena::CreateMessage<Value>(arena);
@@ -375,7 +379,7 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Value");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kAny: {
       Any* nested_message = Arena::CreateMessage<Any>(arena);
@@ -384,115 +388,139 @@ CelValue CreateCelValue(const Any& any_value,
         // TODO(issues/25) What error code?
         return CreateErrorValue(arena, "Failed to unpack Any into Any");
       }
-      return CreateCelValue(*nested_message, type_info, arena);
+      return CreateCelValue(*nested_message, type_provider, arena);
     } break;
     case kUnknown:
-      return CreateErrorValue(
-          arena, "Unpacking of type " + full_name + " is not supported.");
+      if (type_provider == nullptr) {
+        return CreateErrorValue(arena,
+                                "Provided LegacyTypeProvider is nullptr");
+      }
+      std::optional<const LegacyAnyPackingApis*> any_apis =
+          type_provider->ProvideLegacyAnyPackingApis(full_name);
+      if (!any_apis.has_value()) {
+        return CreateErrorValue(
+            arena, "Failed to get AnyPackingApis for " + full_name);
+      }
+      std::optional<const LegacyTypeInfoApis*> type_info =
+          type_provider->ProvideLegacyTypeInfo(full_name);
+      if (!type_info.has_value()) {
+        return CreateErrorValue(arena,
+                                "Failed to get TypeInfo for " + full_name);
+      }
+      absl::StatusOr<google::protobuf::MessageLite*> nested_message =
+          (*any_apis)->Unpack(any_value, arena);
+      if (!nested_message.ok()) {
+        // Failed to unpack.
+        // TODO(issues/25) What error code?
+        return CreateErrorValue(arena,
+                                "Failed to unpack Any into " + full_name);
+      }
+      return CelValue::CreateMessageWrapper(
+          CelValue::MessageWrapper(*nested_message, *type_info));
   }
 }
 
-CelValue CreateCelValue(bool value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(bool value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateBool(value);
 }
 
-CelValue CreateCelValue(int32_t value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(int32_t value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateInt64(value);
 }
 
-CelValue CreateCelValue(int64_t value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(int64_t value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateInt64(value);
 }
 
-CelValue CreateCelValue(uint32_t value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(uint32_t value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateUint64(value);
 }
 
-CelValue CreateCelValue(uint64_t value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(uint64_t value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateUint64(value);
 }
 
-CelValue CreateCelValue(float value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(float value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateDouble(value);
 }
 
-CelValue CreateCelValue(double value, const LegacyTypeInfoApis* type_info,
+CelValue CreateCelValue(double value, const LegacyTypeProvider* type_provider,
                         Arena* arena) {
   return CelValue::CreateDouble(value);
 }
 
 CelValue CreateCelValue(const std::string& value,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateString(&value);
 }
 
 CelValue CreateCelValue(const absl::Cord& value,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateBytes(Arena::Create<std::string>(arena, value));
 }
 
 CelValue CreateCelValue(const std::string_view string_value,
-                        const LegacyTypeInfoApis* type_info,
+                        const LegacyTypeProvider* type_provider,
                         google::protobuf::Arena* arena) {
   return CelValue::CreateString(
       Arena::Create<std::string>(arena, string_value));
 }
 
 CelValue CreateCelValue(const BoolValue& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateBool(wrapper.value());
 }
 
 CelValue CreateCelValue(const Int32Value& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateInt64(wrapper.value());
 }
 
 CelValue CreateCelValue(const UInt32Value& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateUint64(wrapper.value());
 }
 
 CelValue CreateCelValue(const Int64Value& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateInt64(wrapper.value());
 }
 
 CelValue CreateCelValue(const UInt64Value& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateUint64(wrapper.value());
 }
 
 CelValue CreateCelValue(const FloatValue& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateDouble(wrapper.value());
 }
 
 CelValue CreateCelValue(const DoubleValue& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateDouble(wrapper.value());
 }
 
 CelValue CreateCelValue(const StringValue& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   return CelValue::CreateString(&wrapper.value());
 }
 
 CelValue CreateCelValue(const BytesValue& wrapper,
-                        const LegacyTypeInfoApis* type_info, Arena* arena) {
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   // BytesValue stores value as Cord
   return CelValue::CreateBytes(
       Arena::Create<std::string>(arena, std::string(wrapper.value())));
 }
 
-CelValue CreateCelValue(const Value& value, const LegacyTypeInfoApis* type_info,
-                        Arena* arena) {
+CelValue CreateCelValue(const Value& value,
+                        const LegacyTypeProvider* type_provider, Arena* arena) {
   switch (value.kind_case()) {
     case Value::KindCase::kNullValue:
       return CelValue::CreateNull();
@@ -503,16 +531,16 @@ CelValue CreateCelValue(const Value& value, const LegacyTypeInfoApis* type_info,
     case Value::KindCase::kBoolValue:
       return CelValue::CreateBool(value.bool_value());
     case Value::KindCase::kStructValue:
-      return CreateCelValue(value.struct_value(), type_info, arena);
+      return CreateCelValue(value.struct_value(), type_provider, arena);
     case Value::KindCase::kListValue:
-      return CreateCelValue(value.list_value(), type_info, arena);
+      return CreateCelValue(value.list_value(), type_provider, arena);
     default:
       return CelValue::CreateNull();
   }
 }
 
 CelValue DynamicList::operator[](int index) const {
-  return CreateCelValue(values_->values(index), type_info_, arena_);
+  return CreateCelValue(values_->values(index), type_provider_, arena_);
 }
 
 absl::optional<CelValue> DynamicMap::operator[](CelValue key) const {
@@ -529,11 +557,11 @@ absl::optional<CelValue> DynamicMap::operator[](CelValue key) const {
     return absl::nullopt;
   }
 
-  return CreateCelValue(it->second, type_info_, arena_);
+  return CreateCelValue(it->second, type_provider_, arena_);
 }
 
 absl::StatusOr<CelValue> UnwrapFromWellKnownType(
-    const google::protobuf::MessageLite* message, const LegacyTypeInfoApis* type_info,
+    const google::protobuf::MessageLite* message, const LegacyTypeProvider* type_provider,
     Arena* arena) {
   if (message == nullptr) {
     return CelValue::CreateNull();
@@ -544,84 +572,84 @@ absl::StatusOr<CelValue> UnwrapFromWellKnownType(
       auto value =
           cel::internal::down_cast<const google::protobuf::DoubleValue*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kFloatValue: {
       auto value =
           cel::internal::down_cast<const google::protobuf::FloatValue*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kInt32Value: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Int32Value*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kInt64Value: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Int64Value*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kUInt32Value: {
       auto value =
           cel::internal::down_cast<const google::protobuf::UInt32Value*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kUInt64Value: {
       auto value =
           cel::internal::down_cast<const google::protobuf::UInt64Value*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kBoolValue: {
       auto value =
           cel::internal::down_cast<const google::protobuf::BoolValue*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kTimestamp: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Timestamp*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kDuration: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Duration*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kStruct: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Struct*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kListValue: {
       auto value =
           cel::internal::down_cast<const google::protobuf::ListValue*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kValue: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Value*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kStringValue: {
       auto value =
           cel::internal::down_cast<const google::protobuf::StringValue*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kBytesValue: {
       auto value =
           cel::internal::down_cast<const google::protobuf::BytesValue*>(
               message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kAny: {
       auto value =
           cel::internal::down_cast<const google::protobuf::Any*>(message);
-      return CreateCelValue(*value, type_info, arena);
+      return CreateCelValue(*value, type_provider, arena);
     } break;
     case kUnknown:
       return absl::NotFoundError(message->GetTypeName() +
@@ -629,9 +657,9 @@ absl::StatusOr<CelValue> UnwrapFromWellKnownType(
   }
 }
 
-absl::StatusOr<Duration*> CreateMessageFromValue(const CelValue& cel_value,
-                                                 Duration* wrapper,
-                                                 google::protobuf::Arena* arena) {
+absl::StatusOr<Duration*> CreateMessageFromValue(
+    const CelValue& cel_value, Duration* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   absl::Duration val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Duration type.");
@@ -646,9 +674,9 @@ absl::StatusOr<Duration*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<BoolValue*> CreateMessageFromValue(const CelValue& cel_value,
-                                                  BoolValue* wrapper,
-                                                  google::protobuf::Arena* arena) {
+absl::StatusOr<BoolValue*> CreateMessageFromValue(
+    const CelValue& cel_value, BoolValue* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   bool val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Bool type.");
@@ -660,9 +688,9 @@ absl::StatusOr<BoolValue*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<BytesValue*> CreateMessageFromValue(const CelValue& cel_value,
-                                                   BytesValue* wrapper,
-                                                   google::protobuf::Arena* arena) {
+absl::StatusOr<BytesValue*> CreateMessageFromValue(
+    const CelValue& cel_value, BytesValue* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   CelValue::BytesHolder view_val;
   if (!cel_value.GetValue(&view_val)) {
     return absl::InternalError("cel_value is expected to have Bytes type.");
@@ -674,9 +702,9 @@ absl::StatusOr<BytesValue*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<DoubleValue*> CreateMessageFromValue(const CelValue& cel_value,
-                                                    DoubleValue* wrapper,
-                                                    google::protobuf::Arena* arena) {
+absl::StatusOr<DoubleValue*> CreateMessageFromValue(
+    const CelValue& cel_value, DoubleValue* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   double val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Double type.");
@@ -688,9 +716,9 @@ absl::StatusOr<DoubleValue*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<FloatValue*> CreateMessageFromValue(const CelValue& cel_value,
-                                                   FloatValue* wrapper,
-                                                   google::protobuf::Arena* arena) {
+absl::StatusOr<FloatValue*> CreateMessageFromValue(
+    const CelValue& cel_value, FloatValue* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   double val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Double type.");
@@ -711,9 +739,9 @@ absl::StatusOr<FloatValue*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<Int32Value*> CreateMessageFromValue(const CelValue& cel_value,
-                                                   Int32Value* wrapper,
-                                                   google::protobuf::Arena* arena) {
+absl::StatusOr<Int32Value*> CreateMessageFromValue(
+    const CelValue& cel_value, Int32Value* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   int64_t val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Int64 type.");
@@ -730,9 +758,9 @@ absl::StatusOr<Int32Value*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<Int64Value*> CreateMessageFromValue(const CelValue& cel_value,
-                                                   Int64Value* wrapper,
-                                                   google::protobuf::Arena* arena) {
+absl::StatusOr<Int64Value*> CreateMessageFromValue(
+    const CelValue& cel_value, Int64Value* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   int64_t val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Int64 type.");
@@ -744,9 +772,9 @@ absl::StatusOr<Int64Value*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<StringValue*> CreateMessageFromValue(const CelValue& cel_value,
-                                                    StringValue* wrapper,
-                                                    google::protobuf::Arena* arena) {
+absl::StatusOr<StringValue*> CreateMessageFromValue(
+    const CelValue& cel_value, StringValue* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   CelValue::StringHolder view_val;
   if (!cel_value.GetValue(&view_val)) {
     return absl::InternalError("cel_value is expected to have String type.");
@@ -758,9 +786,9 @@ absl::StatusOr<StringValue*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<Timestamp*> CreateMessageFromValue(const CelValue& cel_value,
-                                                  Timestamp* wrapper,
-                                                  google::protobuf::Arena* arena) {
+absl::StatusOr<Timestamp*> CreateMessageFromValue(
+    const CelValue& cel_value, Timestamp* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   absl::Time val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have Timestamp type.");
@@ -775,9 +803,9 @@ absl::StatusOr<Timestamp*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<UInt32Value*> CreateMessageFromValue(const CelValue& cel_value,
-                                                    UInt32Value* wrapper,
-                                                    google::protobuf::Arena* arena) {
+absl::StatusOr<UInt32Value*> CreateMessageFromValue(
+    const CelValue& cel_value, UInt32Value* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   uint64_t val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have UInt64 type.");
@@ -794,9 +822,9 @@ absl::StatusOr<UInt32Value*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<UInt64Value*> CreateMessageFromValue(const CelValue& cel_value,
-                                                    UInt64Value* wrapper,
-                                                    google::protobuf::Arena* arena) {
+absl::StatusOr<UInt64Value*> CreateMessageFromValue(
+    const CelValue& cel_value, UInt64Value* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   uint64_t val;
   if (!cel_value.GetValue(&val)) {
     return absl::InternalError("cel_value is expected to have UInt64 type.");
@@ -808,9 +836,9 @@ absl::StatusOr<UInt64Value*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<ListValue*> CreateMessageFromValue(const CelValue& cel_value,
-                                                  ListValue* wrapper,
-                                                  google::protobuf::Arena* arena) {
+absl::StatusOr<ListValue*> CreateMessageFromValue(
+    const CelValue& cel_value, ListValue* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   if (!cel_value.IsList()) {
     return absl::InternalError("cel_value is expected to have List type.");
   }
@@ -821,8 +849,9 @@ absl::StatusOr<ListValue*> CreateMessageFromValue(const CelValue& cel_value,
   for (int i = 0; i < list.size(); i++) {
     auto element = list.Get(arena, i);
     Value* element_value = nullptr;
-    CEL_ASSIGN_OR_RETURN(element_value,
-                         CreateMessageFromValue(element, element_value, arena));
+    CEL_ASSIGN_OR_RETURN(
+        element_value,
+        CreateMessageFromValue(element, element_value, type_provider, arena));
     if (element_value == nullptr) {
       return absl::InternalError("Couldn't create value for a list element.");
     }
@@ -831,9 +860,9 @@ absl::StatusOr<ListValue*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<Struct*> CreateMessageFromValue(const CelValue& cel_value,
-                                               Struct* wrapper,
-                                               google::protobuf::Arena* arena) {
+absl::StatusOr<Struct*> CreateMessageFromValue(
+    const CelValue& cel_value, Struct* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   if (!cel_value.IsMap()) {
     return absl::InternalError("cel_value is expected to have Map type.");
   }
@@ -856,8 +885,9 @@ absl::StatusOr<Struct*> CreateMessageFromValue(const CelValue& cel_value,
       return absl::InternalError("map value is expected to have value.");
     }
     Value* field_value = nullptr;
-    CEL_ASSIGN_OR_RETURN(field_value,
-                         CreateMessageFromValue(v.value(), field_value, arena));
+    CEL_ASSIGN_OR_RETURN(
+        field_value,
+        CreateMessageFromValue(v.value(), field_value, type_provider, arena));
     if (field_value == nullptr) {
       return absl::InternalError("Couldn't create value for a field element.");
     }
@@ -866,9 +896,9 @@ absl::StatusOr<Struct*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<Value*> CreateMessageFromValue(const CelValue& cel_value,
-                                              Value* wrapper,
-                                              google::protobuf::Arena* arena) {
+absl::StatusOr<Value*> CreateMessageFromValue(
+    const CelValue& cel_value, Value* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   if (wrapper == nullptr) {
     wrapper = google::protobuf::Arena::CreateMessage<Value>(arena);
   }
@@ -948,15 +978,16 @@ absl::StatusOr<Value*> CreateMessageFromValue(const CelValue& cel_value,
     } break;
     case CelValue::Type::kList: {
       ListValue* list_wrapper = nullptr;
-      CEL_ASSIGN_OR_RETURN(
-          list_wrapper, CreateMessageFromValue(cel_value, list_wrapper, arena));
+      CEL_ASSIGN_OR_RETURN(list_wrapper,
+                           CreateMessageFromValue(cel_value, list_wrapper,
+                                                  type_provider, arena));
       wrapper->mutable_list_value()->Swap(list_wrapper);
     } break;
     case CelValue::Type::kMap: {
       Struct* struct_wrapper = nullptr;
-      CEL_ASSIGN_OR_RETURN(
-          struct_wrapper,
-          CreateMessageFromValue(cel_value, struct_wrapper, arena));
+      CEL_ASSIGN_OR_RETURN(struct_wrapper,
+                           CreateMessageFromValue(cel_value, struct_wrapper,
+                                                  type_provider, arena));
       wrapper->mutable_struct_value()->Swap(struct_wrapper);
     } break;
     case CelValue::Type::kNullType:
@@ -970,9 +1001,9 @@ absl::StatusOr<Value*> CreateMessageFromValue(const CelValue& cel_value,
   return wrapper;
 }
 
-absl::StatusOr<Any*> CreateMessageFromValue(const CelValue& cel_value,
-                                            Any* wrapper,
-                                            google::protobuf::Arena* arena) {
+absl::StatusOr<Any*> CreateMessageFromValue(
+    const CelValue& cel_value, Any* wrapper,
+    const LegacyTypeProvider* type_provider, google::protobuf::Arena* arena) {
   if (wrapper == nullptr) {
     wrapper = google::protobuf::Arena::CreateMessage<Any>(arena);
   }
@@ -981,58 +1012,86 @@ absl::StatusOr<Any*> CreateMessageFromValue(const CelValue& cel_value,
   switch (type) {
     case CelValue::Type::kBool: {
       BoolValue* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kBytes: {
       BytesValue* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kDouble: {
       DoubleValue* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kDuration: {
       Duration* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kInt64: {
       Int64Value* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kString: {
       StringValue* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kTimestamp: {
       Timestamp* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kUint64: {
       UInt64Value* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kList: {
       ListValue* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kMap: {
       Struct* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
     } break;
     case CelValue::Type::kNullType: {
       Value* v = nullptr;
-      CEL_ASSIGN_OR_RETURN(v, CreateMessageFromValue(cel_value, v, arena));
+      CEL_ASSIGN_OR_RETURN(
+          v, CreateMessageFromValue(cel_value, v, type_provider, arena));
       wrapper->PackFrom(*v);
+    } break;
+    case CelValue::Type::kMessage: {
+      MessageWrapper message_wrapper;
+      if (!cel_value.GetValue(&message_wrapper)) {
+        return absl::InternalError(
+            "Can not get message wrapper from message typed CelValue.");
+      }
+      std::optional<const LegacyAnyPackingApis*> any_apis =
+          type_provider->ProvideLegacyAnyPackingApis(
+              message_wrapper.message_ptr()->GetTypeName());
+      if (!any_apis.has_value()) {
+        return absl::InternalError(
+            "Can not get AnyPackingApis from given type_provider.");
+      }
+      absl::Status status =
+          (*any_apis)->Pack(message_wrapper.message_ptr(), *wrapper);
+      if (!status.ok()) return status;
     } break;
     default:
       return absl::InternalError(
