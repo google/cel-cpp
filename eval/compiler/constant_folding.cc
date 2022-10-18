@@ -7,6 +7,7 @@
 #include "absl/strings/str_cat.h"
 #include "base/ast.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/containers/container_backed_list_impl.h"
@@ -42,8 +43,11 @@ class ConstantFoldingTransform {
         // create a constant that references the input expression data
         // since the output expression is temporary
         auto value = google::api::expr::runtime::ConvertConstant(constant);
-        if (value.has_value()) {
-          transform->makeConstant(*value, out);
+        if (value) {
+          transform->makeConstant(
+              cel::interop_internal::ModernValueToLegacyValueOrDie(
+                  transform->arena_, value),
+              out);
           return true;
         } else {
           out->mutable_const_expr() = expr.const_expr();

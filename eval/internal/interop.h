@@ -69,16 +69,6 @@ struct MessageWrapperAccess final {
       google::api::expr::runtime::MessageWrapper& wrapper);
 };
 
-// Unlike ValueFactory::CreateStringValue, this does not copy input and instead
-// wraps it. It should only be used for interop with the legacy CelValue.
-absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
-    absl::string_view input);
-
-// Unlike ValueFactory::CreateBytesValue, this does not copy input and instead
-// wraps it. It should only be used for interop with the legacy CelValue.
-absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
-    absl::string_view input);
-
 base_internal::StringValueRep GetStringValueRep(
     const Handle<StringValue>& value);
 
@@ -92,6 +82,51 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(
 // Converts a new CEL value to the legacy CEL value representation.
 absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
     google::protobuf::Arena* arena, const Handle<Value>& value);
+
+Handle<NullValue> CreateNullValue();
+
+Handle<BoolValue> CreateBoolValue(bool value);
+
+Handle<IntValue> CreateIntValue(int64_t value);
+
+Handle<UintValue> CreateUintValue(uint64_t value);
+
+Handle<DoubleValue> CreateDoubleValue(double value);
+
+// Create a modern string value, without validation or copying. Should only be
+// used during interoperation.
+Handle<StringValue> CreateStringValueFromView(absl::string_view value);
+
+// Create a modern bytes value, without validation or copying. Should only be
+// used during interoperation.
+Handle<BytesValue> CreateBytesValueFromView(absl::string_view value);
+
+// Create a modern duration value, without validation. Should only be used
+// during interoperation.
+Handle<DurationValue> CreateDurationValue(absl::Duration value);
+
+// Create a modern timestamp value, without validation. Should only be used
+// during interoperation.
+Handle<TimestampValue> CreateTimestampValue(absl::Time value);
+
+// Convert a legacy value to a modern value, CHECK failing if its not possible.
+// This should only be used during rewritting of the evaluator when it is
+// guaranteed that all modern and legacy values are interoperable, and the
+// memory manager is google::protobuf::Arena.
+Handle<Value> LegacyValueToModernValueOrDie(
+    google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value);
+Handle<Value> LegacyValueToModernValueOrDie(
+    MemoryManager& memory_manager,
+    const google::api::expr::runtime::CelValue& value);
+
+// Convert a modern value to a legacy value, CHECK failing if its not possible.
+// This should only be used during rewritting of the evaluator when it is
+// guaranteed that all modern and legacy values are interoperable, and the
+// memory manager is google::protobuf::Arena.
+google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
+    google::protobuf::Arena* arena, const Handle<Value>& value);
+google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
+    MemoryManager& memory_manager, const Handle<Value>& value);
 
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
     const Handle<UnknownValue>& value);
