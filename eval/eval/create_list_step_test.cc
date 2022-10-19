@@ -37,7 +37,8 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
     expr0.mutable_const_expr().set_int64_value(value);
     CEL_ASSIGN_OR_RETURN(
         auto const_step,
-        CreateConstValueStep(ConvertConstant(expr0.const_expr()), expr0.id()));
+        CreateConstValueStep(ConvertConstant(expr0.const_expr()).value(),
+                             expr0.id()));
     path.push_back(std::move(const_step));
   }
 

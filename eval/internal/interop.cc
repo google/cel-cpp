@@ -22,7 +22,6 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
@@ -257,6 +256,16 @@ MessageWrapper::Builder MessageWrapperAccess::ToBuilder(
   return wrapper.ToBuilder();
 }
 
+absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
+    absl::string_view input) {
+  return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(input);
+}
+
+absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
+    absl::string_view input) {
+  return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(input);
+}
+
 base_internal::StringValueRep GetStringValueRep(
     const Handle<StringValue>& value) {
   return value->rep();
@@ -290,15 +299,18 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
                                               const CelValue& legacy_value) {
   switch (legacy_value.type()) {
     case CelValue::Type::kNullType:
-      return CreateNullValue();
+      return HandleFactory<NullValue>::Make<NullValue>();
     case CelValue::Type::kBool:
-      return CreateBoolValue(legacy_value.BoolOrDie());
+      return HandleFactory<BoolValue>::Make<BoolValue>(
+          legacy_value.BoolOrDie());
     case CelValue::Type::kInt64:
-      return CreateIntValue(legacy_value.Int64OrDie());
+      return HandleFactory<IntValue>::Make<IntValue>(legacy_value.Int64OrDie());
     case CelValue::Type::kUint64:
-      return CreateUintValue(legacy_value.Uint64OrDie());
+      return HandleFactory<UintValue>::Make<UintValue>(
+          legacy_value.Uint64OrDie());
     case CelValue::Type::kDouble:
-      return CreateDoubleValue(legacy_value.DoubleOrDie());
+      return HandleFactory<DoubleValue>::Make<DoubleValue>(
+          legacy_value.DoubleOrDie());
     case CelValue::Type::kString:
       return CreateStringValueFromView(legacy_value.StringOrDie().value());
     case CelValue::Type::kBytes:
@@ -310,9 +322,11 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
           MessageWrapperAccess::TypeInfo(wrapper));
     }
     case CelValue::Type::kDuration:
-      return CreateDurationValue(legacy_value.DurationOrDie());
+      return HandleFactory<DurationValue>::Make<DurationValue>(
+          legacy_value.DurationOrDie());
     case CelValue::Type::kTimestamp:
-      return CreateTimestampValue(legacy_value.TimestampOrDie());
+      return HandleFactory<TimestampValue>::Make<TimestampValue>(
+          legacy_value.TimestampOrDie());
     case CelValue::Type::kList: {
       if (CelListAccess::TypeId(*legacy_value.ListOrDie()) ==
           internal::TypeId<LegacyCelList>()) {
@@ -400,16 +414,16 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case Kind::kNullType:
       return CelValue::CreateNull();
     case Kind::kError:
-      return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
-          arena, value.As<ErrorValue>()->value()));
+      break;
     case Kind::kDyn:
       break;
     case Kind::kAny:
       break;
     case Kind::kType:
       // Should be fine, so long as we are using an arena allocator.
-      return CelValue::CreateCelTypeView(
-          value.As<TypeValue>()->value()->name());
+      return CelValue::CreateCelType(
+          CelValue::CelTypeHolder(google::protobuf::Arena::Create<std::string>(
+              arena, value.As<TypeValue>()->value()->name())));
     case Kind::kBool:
       return CelValue::CreateBool(value.As<BoolValue>()->value());
     case Kind::kInt:
@@ -471,69 +485,6 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
   return absl::UnimplementedError(
       absl::StrCat("conversion from cel::Value to CelValue for type ",
                    KindToString(value->kind()), " is not yet implemented"));
-}
-
-Handle<NullValue> CreateNullValue() {
-  return HandleFactory<NullValue>::Make<NullValue>();
-}
-
-Handle<BoolValue> CreateBoolValue(bool value) {
-  return HandleFactory<BoolValue>::Make<BoolValue>(value);
-}
-
-Handle<IntValue> CreateIntValue(int64_t value) {
-  return HandleFactory<IntValue>::Make<IntValue>(value);
-}
-
-Handle<UintValue> CreateUintValue(uint64_t value) {
-  return HandleFactory<UintValue>::Make<UintValue>(value);
-}
-
-Handle<DoubleValue> CreateDoubleValue(double value) {
-  return HandleFactory<DoubleValue>::Make<DoubleValue>(value);
-}
-
-Handle<StringValue> CreateStringValueFromView(absl::string_view value) {
-  return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(value);
-}
-
-Handle<BytesValue> CreateBytesValueFromView(absl::string_view value) {
-  return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(value);
-}
-
-Handle<DurationValue> CreateDurationValue(absl::Duration value) {
-  return HandleFactory<DurationValue>::Make<DurationValue>(value);
-}
-
-Handle<TimestampValue> CreateTimestampValue(absl::Time value) {
-  return HandleFactory<TimestampValue>::Make<TimestampValue>(value);
-}
-
-Handle<Value> LegacyValueToModernValueOrDie(
-    google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value) {
-  auto modern_value = FromLegacyValue(arena, value);
-  CHECK_OK(modern_value);  // Crash OK
-  return std::move(modern_value).value();
-}
-
-Handle<Value> LegacyValueToModernValueOrDie(
-    MemoryManager& memory_manager,
-    const google::api::expr::runtime::CelValue& value) {
-  return LegacyValueToModernValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value);
-}
-
-google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    google::protobuf::Arena* arena, const Handle<Value>& value) {
-  auto legacy_value = ToLegacyValue(arena, value);
-  CHECK_OK(legacy_value);  // Crash OK
-  return std::move(legacy_value).value();
-}
-
-google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, const Handle<Value>& value) {
-  return ModernValueToLegacyValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value);
 }
 
 }  // namespace cel::interop_internal

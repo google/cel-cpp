@@ -104,13 +104,13 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   cel::MemoryManager& memory_manager() { return memory_manager_; }
 
  private:
+  EvaluatorStack value_stack_;
+  std::set<std::string> iter_variable_names_;
+  std::vector<IterFrame> iter_stack_;
   // TODO(issues/5): State owns a ProtoMemoryManager to adapt from the client
   // provided arena. In the future, clients will have to maintain the particular
   // manager they want to use for evaluation.
   cel::extensions::ProtoMemoryManager memory_manager_;
-  EvaluatorStack value_stack_;
-  std::set<std::string> iter_variable_names_;
-  std::vector<IterFrame> iter_stack_;
 };
 
 // ExecutionFrame provides context for expression evaluation.

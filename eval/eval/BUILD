@@ -51,10 +51,6 @@ cc_library(
     ],
     deps = [
         ":attribute_trail",
-        "//base:handle",
-        "//base:memory_manager",
-        "//base:value",
-        "//eval/internal:interop",
         "//eval/public:cel_value",
         "@com_google_absl//absl/types:span",
     ],
@@ -92,12 +88,11 @@ cc_library(
         ":evaluator_core",
         ":expression_step_base",
         "//base:ast",
-        "//base:handle",
-        "//base:value",
-        "//eval/internal:interop",
         "//eval/public:cel_value",
+        "//internal:proto_time_encoding",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

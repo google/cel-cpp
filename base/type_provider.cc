@@ -29,8 +29,6 @@ namespace cel {
 
 namespace {
 
-using base_internal::HandleFactory;
-
 class BuiltinTypeProvider final : public TypeProvider {
  public:
   using BuiltinType = std::pair<absl::string_view,
@@ -112,12 +110,13 @@ class BuiltinTypeProvider final : public TypeProvider {
 
   static absl::StatusOr<Handle<Type>> GetListType(TypeFactory& type_factory) {
     // The element type does not matter.
-    return HandleFactory<ListType>::Make<base_internal::LegacyListType>();
+    return type_factory.CreateListType(type_factory.GetDynType());
   }
 
   static absl::StatusOr<Handle<Type>> GetMapType(TypeFactory& type_factory) {
     // The key and value types do not matter.
-    return HandleFactory<MapType>::Make<base_internal::LegacyMapType>();
+    return type_factory.CreateMapType(type_factory.GetDynType(),
+                                      type_factory.GetDynType());
   }
 
   static absl::StatusOr<Handle<Type>> GetTypeType(TypeFactory& type_factory) {

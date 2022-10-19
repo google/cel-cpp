@@ -3,14 +3,15 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 
+#include "google/protobuf/duration.pb.h"
+#include "google/protobuf/timestamp.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/ast.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
+#include "internal/proto_time_encoding.h"
 
 namespace google::api::expr::runtime {
 
@@ -18,14 +19,13 @@ namespace {
 
 class ConstValueStep : public ExpressionStepBase {
  public:
-  ConstValueStep(cel::Handle<cel::Value> value, int64_t expr_id,
-                 bool comes_from_ast)
-      : ExpressionStepBase(expr_id, comes_from_ast), value_(std::move(value)) {}
+  ConstValueStep(const CelValue& value, int64_t expr_id, bool comes_from_ast)
+      : ExpressionStepBase(expr_id, comes_from_ast), value_(value) {}
 
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  cel::Handle<cel::Value> value_;
+  CelValue value_;
 };
 
 absl::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
@@ -36,45 +36,44 @@ absl::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
 
 }  // namespace
 
-cel::Handle<cel::Value> ConvertConstant(
+absl::optional<CelValue> ConvertConstant(
     const cel::ast::internal::Constant& const_expr) {
   struct {
-    cel::Handle<cel::Value> operator()(
-        const cel::ast::internal::NullValue& value) {
-      return cel::interop_internal::CreateNullValue();
+    CelValue operator()(const cel::ast::internal::NullValue& value) {
+      return CelValue::CreateNull();
     }
-    cel::Handle<cel::Value> operator()(bool value) {
-      return cel::interop_internal::CreateBoolValue(value);
+    CelValue operator()(bool value) { return CelValue::CreateBool(value); }
+    CelValue operator()(int64_t value) { return CelValue::CreateInt64(value); }
+    CelValue operator()(uint64_t value) {
+      return CelValue::CreateUint64(value);
     }
-    cel::Handle<cel::Value> operator()(int64_t value) {
-      return cel::interop_internal::CreateIntValue(value);
+    CelValue operator()(double value) { return CelValue::CreateDouble(value); }
+    CelValue operator()(const std::string& value) {
+      return CelValue::CreateString(&value);
     }
-    cel::Handle<cel::Value> operator()(uint64_t value) {
-      return cel::interop_internal::CreateUintValue(value);
+    CelValue operator()(const cel::ast::internal::Bytes& value) {
+      return CelValue::CreateBytes(&value.bytes);
     }
-    cel::Handle<cel::Value> operator()(double value) {
-      return cel::interop_internal::CreateDoubleValue(value);
+    CelValue operator()(const absl::Duration duration) {
+      return CelValue::CreateDuration(duration);
     }
-    cel::Handle<cel::Value> operator()(const std::string& value) {
-      return cel::interop_internal::CreateStringValueFromView(value);
-    }
-    cel::Handle<cel::Value> operator()(const cel::ast::internal::Bytes& value) {
-      return cel::interop_internal::CreateBytesValueFromView(value.bytes);
-    }
-    cel::Handle<cel::Value> operator()(const absl::Duration duration) {
-      return cel::interop_internal::CreateDurationValue(duration);
-    }
-    cel::Handle<cel::Value> operator()(const absl::Time timestamp) {
-      return cel::interop_internal::CreateTimestampValue(timestamp);
+    CelValue operator()(const absl::Time timestamp) {
+      return CelValue::CreateTimestamp(timestamp);
     }
   } handler;
   return absl::visit(handler, const_expr.constant_kind());
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    cel::Handle<cel::Value> value, int64_t expr_id, bool comes_from_ast) {
-  return std::make_unique<ConstValueStep>(std::move(value), expr_id,
-                                          comes_from_ast);
+    CelValue value, int64_t expr_id, bool comes_from_ast) {
+  return std::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
+}
+
+// Factory method for Constant(Enum value) - based Execution step
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+    const google::protobuf::EnumValueDescriptor* value_descriptor, int64_t expr_id) {
+  return std::make_unique<ConstValueStep>(
+      CelValue::CreateInt64(value_descriptor->number()), expr_id, false);
 }
 
 }  // namespace google::api::expr::runtime

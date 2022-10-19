@@ -3,6 +3,8 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "google/protobuf/duration.pb.h"
+#include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
@@ -31,7 +33,8 @@ absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
   CEL_ASSIGN_OR_RETURN(
       auto step,
       CreateConstValueStep(
-          google::api::expr::runtime::ConvertConstant(const_expr), expr->id()));
+          google::api::expr::runtime::ConvertConstant(const_expr).value(),
+          expr->id()));
 
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));

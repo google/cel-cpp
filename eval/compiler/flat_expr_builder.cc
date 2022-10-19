@@ -250,8 +250,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       google::api::expr::runtime::ExecutionPath* path, bool short_circuiting,
       const absl::flat_hash_map<
           std::string, google::api::expr::runtime::CelValue>& constant_idents,
-      google::protobuf::Arena* constant_arena, bool enable_comprehension,
-      bool enable_comprehension_list_append,
+      bool enable_comprehension, bool enable_comprehension_list_append,
       bool enable_comprehension_vulnerability_check,
       bool enable_wrapper_type_null_unboxing,
       google::api::expr::runtime::BuilderWarnings* warnings,
@@ -265,7 +264,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         resolved_select_expr_(nullptr),
         short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
-        constant_arena_(constant_arena),
         enable_comprehension_(enable_comprehension),
         enable_comprehension_list_append_(enable_comprehension_list_append),
         enable_comprehension_vulnerability_check_(
@@ -298,9 +296,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
 
     auto value = ConvertConstant(*const_expr);
-    if (ValidateOrError(static_cast<bool>(value),
-                        "Unsupported constant type")) {
-      AddStep(CreateConstValueStep(std::move(value), expr->id()));
+    if (ValidateOrError(value.has_value(), "Unsupported constant type")) {
+      AddStep(CreateConstValueStep(*value, expr->id()));
     }
   }
 
@@ -322,11 +319,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     // Automatically replace constant idents with the backing CEL values.
     auto constant = constant_idents_.find(path);
     if (constant != constant_idents_.end()) {
-      // TODO(issues/5): this is temporary until migrating flat_expr_builder
-      AddStep(CreateConstValueStep(
-          cel::interop_internal::LegacyValueToModernValueOrDie(
-              constant_arena_, constant->second),
-          expr->id(), false));
+      AddStep(CreateConstValueStep(constant->second, expr->id(), false));
       return;
     }
 
@@ -811,7 +804,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   const absl::flat_hash_map<std::string, google::api::expr::runtime::CelValue>&
       constant_idents_;
-  google::protobuf::Arena* constant_arena_;
 
   bool enable_comprehension_;
   bool enable_comprehension_list_append_;
@@ -1156,7 +1148,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
 
 void ComprehensionVisitor::PreVisit(const cel::ast::internal::Expr*) {
   const cel::ast::internal::Expr* dummy = LoopStepDummy();
-  visitor_->AddStep(CreateConstValueStep(ConvertConstant(dummy->const_expr()),
+  visitor_->AddStep(CreateConstValueStep(*ConvertConstant(dummy->const_expr()),
                                          dummy->id(), false));
 }
 
@@ -1172,10 +1164,10 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
       visitor_->AddStep(CreateListKeysStep(expr->id()));
       const cel::ast::internal::Expr* minus1 = MinusOne();
       visitor_->AddStep(CreateConstValueStep(
-          ConvertConstant(minus1->const_expr()), minus1->id(), false));
+          *ConvertConstant(minus1->const_expr()), minus1->id(), false));
       const cel::ast::internal::Expr* dummy = CurrentValueDummy();
       visitor_->AddStep(CreateConstValueStep(
-          ConvertConstant(dummy->const_expr()), dummy->id(), false));
+          *ConvertConstant(dummy->const_expr()), dummy->id(), false));
       break;
     }
     case cel::ast::internal::ACCU_INIT: {
@@ -1316,7 +1308,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(
-      resolver, &execution_path, shortcircuiting_, idents, constant_arena_,
+      resolver, &execution_path, shortcircuiting_, idents,
       enable_comprehension_, enable_comprehension_list_append_,
       enable_comprehension_vulnerability_check_,
       enable_wrapper_type_null_unboxing_, &warnings_builder,
