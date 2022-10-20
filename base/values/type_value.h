@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "absl/hash/hash.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/type_type.h"
@@ -27,7 +28,7 @@
 
 namespace cel {
 
-class TypeValue final : public Value, public base_internal::InlineData {
+class TypeValue : public Value {
  public:
   static constexpr Kind kKind = TypeType::kKind;
 
@@ -43,7 +44,54 @@ class TypeValue final : public Value, public base_internal::InlineData {
 
   bool Equals(const Value& other) const;
 
-  constexpr const Handle<Type>& value() const { return value_; }
+  absl::string_view name() const;
+
+ private:
+  friend class ValueHandle;
+  template <size_t Size, size_t Align>
+  friend class base_internal::AnyData;
+  friend class base_internal::LegacyTypeValue;
+  friend class base_internal::ModernTypeValue;
+
+  TypeValue() = default;
+  TypeValue(const TypeValue&) = default;
+  TypeValue(TypeValue&&) = default;
+  TypeValue& operator=(const TypeValue&) = default;
+  TypeValue& operator=(TypeValue&&) = default;
+};
+
+CEL_INTERNAL_VALUE_DECL(TypeValue);
+
+namespace base_internal {
+
+class LegacyTypeValue final : public TypeValue, InlineData {
+ public:
+  absl::string_view name() const { return value_; }
+
+ private:
+  friend class ValueHandle;
+  template <size_t Size, size_t Align>
+  friend class base_internal::AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
+      base_internal::kTriviallyDestructible |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+
+  explicit LegacyTypeValue(absl::string_view value)
+      : base_internal::InlineData(kMetadata), value_(value) {}
+
+  LegacyTypeValue(const LegacyTypeValue&) = default;
+  LegacyTypeValue(LegacyTypeValue&&) = default;
+  LegacyTypeValue& operator=(const LegacyTypeValue&) = default;
+  LegacyTypeValue& operator=(LegacyTypeValue&&) = default;
+
+  absl::string_view value_;
+};
+
+class ModernTypeValue final : public TypeValue, InlineData {
+ public:
+  absl::string_view name() const { return value_->name(); }
 
  private:
   friend class ValueHandle;
@@ -54,18 +102,18 @@ class TypeValue final : public Value, public base_internal::InlineData {
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  explicit TypeValue(Handle<Type> value)
+  explicit ModernTypeValue(Handle<Type> value)
       : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
-  TypeValue(const TypeValue&) = default;
-  TypeValue(TypeValue&&) = default;
-  TypeValue& operator=(const TypeValue&) = default;
-  TypeValue& operator=(TypeValue&&) = default;
+  ModernTypeValue(const ModernTypeValue&) = default;
+  ModernTypeValue(ModernTypeValue&&) = default;
+  ModernTypeValue& operator=(const ModernTypeValue&) = default;
+  ModernTypeValue& operator=(ModernTypeValue&&) = default;
 
   Handle<Type> value_;
 };
 
-CEL_INTERNAL_VALUE_DECL(TypeValue);
+}  // namespace base_internal
 
 }  // namespace cel
 

@@ -36,6 +36,7 @@ using base_internal::InlinedCordBytesValue;
 using base_internal::InlinedCordStringValue;
 using base_internal::InlinedStringViewBytesValue;
 using base_internal::InlinedStringViewStringValue;
+using base_internal::ModernTypeValue;
 using base_internal::StringBytesValue;
 using base_internal::StringStringValue;
 
@@ -193,7 +194,7 @@ absl::StatusOr<Handle<TimestampValue>> ValueFactory::CreateTimestampValue(
 }
 
 Handle<TypeValue> ValueFactory::CreateTypeValue(const Handle<Type>& value) {
-  return HandleFactory<TypeValue>::Make<TypeValue>(value);
+  return HandleFactory<TypeValue>::Make<ModernTypeValue>(value);
 }
 
 Handle<UnknownValue> ValueFactory::CreateUnknownValue(

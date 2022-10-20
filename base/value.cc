@@ -243,8 +243,9 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
             *static_cast<const InlinedCordBytesValue*>(other.data_.get()));
         break;
       case Kind::kType:
-        data_.ConstructInline<TypeValue>(
-            *static_cast<const TypeValue*>(other.data_.get()));
+        data_.ConstructInline<base_internal::ModernTypeValue>(
+            *static_cast<const base_internal::ModernTypeValue*>(
+                other.data_.get()));
         break;
       case Kind::kEnum:
         data_.ConstructInline<EnumValue>(
@@ -281,8 +282,9 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
             std::move(*static_cast<InlinedCordBytesValue*>(other.data_.get())));
         break;
       case Kind::kType:
-        data_.ConstructInline<TypeValue>(
-            std::move(*static_cast<const TypeValue*>(other.data_.get())));
+        data_.ConstructInline<base_internal::ModernTypeValue>(
+            std::move(*static_cast<const base_internal::ModernTypeValue*>(
+                other.data_.get())));
         break;
       case Kind::kEnum:
         data_.ConstructInline<EnumValue>(
@@ -328,7 +330,7 @@ void ValueHandle::Destruct() {
             data_.Destruct<InlinedCordBytesValue>();
             break;
           case Kind::kType:
-            data_.Destruct<TypeValue>();
+            data_.Destruct<base_internal::ModernTypeValue>();
             break;
           case Kind::kEnum:
             data_.Destruct<EnumValue>();

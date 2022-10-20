@@ -48,6 +48,7 @@ namespace {
 using base_internal::HandleFactory;
 using base_internal::InlinedStringViewBytesValue;
 using base_internal::InlinedStringViewStringValue;
+using base_internal::LegacyTypeValue;
 using google::api::expr::runtime::CelList;
 using google::api::expr::runtime::CelMap;
 using google::api::expr::runtime::CelValue;
@@ -266,6 +267,10 @@ absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
   return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(input);
 }
 
+Handle<TypeValue> CreateTypeValueFromView(absl::string_view input) {
+  return HandleFactory<TypeValue>::Make<LegacyTypeValue>(input);
+}
+
 base_internal::StringValueRep GetStringValueRep(
     const Handle<StringValue>& value) {
   return value->rep();
@@ -355,14 +360,9 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
                           GetUnknownSetImpl(*legacy_value.UnknownSetOrDie()));
       return value;
     }
-    case CelValue::Type::kCelType: {
-      extensions::ProtoMemoryManager memory_manager(arena);
-      TypeFactory type_factory(memory_manager);
-      CEL_ASSIGN_OR_RETURN(
-          auto type, TypeProvider::Builtin().ProvideType(
-                         type_factory, legacy_value.CelTypeOrDie().value()));
-      return HandleFactory<TypeValue>::Make<TypeValue>(type);
-    }
+    case CelValue::Type::kCelType:
+      return HandleFactory<TypeValue>::Make<LegacyTypeValue>(
+          legacy_value.CelTypeOrDie().value());
     case CelValue::Type::kError:
       return HandleFactory<ErrorValue>::Make<ErrorValue>(
           *legacy_value.ErrorOrDie());
@@ -421,9 +421,14 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       break;
     case Kind::kType:
       // Should be fine, so long as we are using an arena allocator.
-      return CelValue::CreateCelType(
-          CelValue::CelTypeHolder(google::protobuf::Arena::Create<std::string>(
-              arena, value.As<TypeValue>()->value()->name())));
+      // We can only transport legacy type values.
+      if (!base_internal::Metadata::IsTriviallyCopyable(*value)) {
+        // Only legacy type values are trivially copyable, this must be the
+        // modern one which we cannot support here.
+        return absl::UnimplementedError(
+            "only legacy type values can be used for interop");
+      }
+      return CelValue::CreateCelTypeView(value.As<TypeValue>()->name());
     case Kind::kBool:
       return CelValue::CreateBool(value.As<BoolValue>()->value());
     case Kind::kInt:

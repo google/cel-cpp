@@ -17,19 +17,28 @@
 #include <string>
 #include <utility>
 
+#include "base/internal/data.h"
+
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
-std::string TypeValue::DebugString() const { return value()->DebugString(); }
+std::string TypeValue::DebugString() const { return std::string(name()); }
 
 bool TypeValue::Equals(const Value& other) const {
   return kind() == other.kind() &&
-         value() == static_cast<const TypeValue&>(other).value();
+         name() == static_cast<const TypeValue&>(other).name();
 }
 
 void TypeValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
+  absl::HashState::combine(std::move(state), type(), name());
+}
+
+absl::string_view TypeValue::name() const {
+  if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+    return static_cast<const base_internal::LegacyTypeValue&>(*this).name();
+  }
+  return static_cast<const base_internal::ModernTypeValue&>(*this).name();
 }
 
 }  // namespace cel

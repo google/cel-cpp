@@ -1146,7 +1146,7 @@ TEST_P(ValueTest, Type) {
             value_factory.CreateTypeValue(type_factory.GetNullType()));
   EXPECT_EQ(null_value->kind(), Kind::kType);
   EXPECT_EQ(null_value->type(), type_factory.GetTypeType());
-  EXPECT_EQ(null_value->value(), type_factory.GetNullType());
+  EXPECT_EQ(null_value->name(), "null_type");
 
   auto int_value = value_factory.CreateTypeValue(type_factory.GetIntType());
   EXPECT_TRUE(int_value.Is<TypeValue>());
@@ -1156,7 +1156,7 @@ TEST_P(ValueTest, Type) {
             value_factory.CreateTypeValue(type_factory.GetIntType()));
   EXPECT_EQ(int_value->kind(), Kind::kType);
   EXPECT_EQ(int_value->type(), type_factory.GetTypeType());
-  EXPECT_EQ(int_value->value(), type_factory.GetIntType());
+  EXPECT_EQ(int_value->name(), "int");
 
   EXPECT_NE(null_value, int_value);
   EXPECT_NE(int_value, null_value);

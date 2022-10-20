@@ -105,6 +105,8 @@ void SetUnknownValueImpl(Handle<UnknownValue>& value,
 void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,
                        std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
+Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);
+
 }  // namespace cel::interop_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_INTEROP_H_

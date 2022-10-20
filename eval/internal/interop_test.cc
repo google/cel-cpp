@@ -233,27 +233,30 @@ TEST(ValueInterop, ErrorFromLegacy) {
 
 TEST(ValueInterop, TypeFromLegacy) {
   google::protobuf::Arena arena;
-  extensions::ProtoMemoryManager memory_manager(&arena);
-  TypeFactory type_factory(memory_manager);
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  auto legacy_value = CelValue::CreateCelTypeView("bool");
-  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<TypeValue>());
-  EXPECT_EQ(value.As<TypeValue>()->value(),
-            type_manager.type_factory().GetBoolType());
+  auto legacy_value = CelValue::CreateCelTypeView("struct.that.does.not.Exist");
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(&arena, legacy_value));
+  EXPECT_TRUE(modern_value.Is<TypeValue>());
+  EXPECT_EQ(modern_value.As<TypeValue>()->name(), "struct.that.does.not.Exist");
 }
 
 TEST(ValueInterop, TypeToLegacy) {
+  google::protobuf::Arena arena;
+  auto modern_value = CreateTypeValueFromView("struct.that.does.not.Exist");
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
+  EXPECT_TRUE(legacy_value.IsCelType());
+  EXPECT_EQ(legacy_value.CelTypeOrDie().value(), "struct.that.does.not.Exist");
+}
+
+TEST(ValueInterop, ModernTypeUnimplemented) {
   google::protobuf::Arena arena;
   extensions::ProtoMemoryManager memory_manager(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateTypeValue(type_factory.GetBoolType());
-  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
-  EXPECT_TRUE(legacy_value.IsCelType());
-  EXPECT_EQ(legacy_value.CelTypeOrDie().value(), "bool");
+  EXPECT_THAT(ToLegacyValue(&arena, value),
+              StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 TEST(ValueInterop, StringFromLegacy) {

@@ -84,6 +84,7 @@ struct InlineValue final {
     absl::Status status_value;
     absl::Cord cord_value;
     absl::string_view string_value;
+    Handle<Type> type_value;
     struct {
       Handle<EnumType> type;
       int64_t number;
@@ -113,6 +114,8 @@ class LegacyListValue;
 class AbstractListValue;
 class LegacyMapValue;
 class AbstractMapValue;
+class LegacyTypeValue;
+class ModernTypeValue;
 
 using StringValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
