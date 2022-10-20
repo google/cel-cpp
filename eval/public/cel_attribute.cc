@@ -50,28 +50,6 @@ Attribute::Attribute(const google::api::expr::v1alpha1::Expr& variable,
                      std::vector<AttributeQualifier> qualifier_path)
     : Attribute(variable.ident_expr().name(), std::move(qualifier_path)) {}
 
-AttributeQualifier AttributeQualifier::Create(const CelValue& value) {
-  switch (value.type()) {
-    case Kind::kInt64:
-      return AttributeQualifier(absl::in_place_type<int64_t>,
-                                value.Int64OrDie());
-    case Kind::kUint64:
-      return AttributeQualifier(absl::in_place_type<uint64_t>,
-                                value.Uint64OrDie());
-    case Kind::kString:
-      return AttributeQualifier(absl::in_place_type<std::string>,
-                                std::string(value.StringOrDie().value()));
-    case Kind::kBool:
-      return AttributeQualifier(absl::in_place_type<bool>, value.BoolOrDie());
-    default:
-      return AttributeQualifier();
-  }
-}
-
-bool AttributeQualifier::IsMatch(const CelValue& cel_value) const {
-  return absl::visit(AttributeQualifierIsMatchVisitor{cel_value}, value_);
-}
-
 }  // namespace cel
 
 namespace google::api::expr::runtime {
@@ -84,19 +62,19 @@ struct QualifierVisitor {
     if (v == "*") {
       return CelAttributeQualifierPattern::CreateWildcard();
     }
-    return CelAttributeQualifierPattern::Create(CelValue::CreateStringView(v));
+    return CelAttributeQualifierPattern::OfString(std::string(v));
   }
 
   CelAttributeQualifierPattern operator()(int64_t v) {
-    return CelAttributeQualifierPattern::Create(CelValue::CreateInt64(v));
+    return CelAttributeQualifierPattern::OfInt(v);
   }
 
   CelAttributeQualifierPattern operator()(uint64_t v) {
-    return CelAttributeQualifierPattern::Create(CelValue::CreateUint64(v));
+    return CelAttributeQualifierPattern::OfUint(v);
   }
 
   CelAttributeQualifierPattern operator()(bool v) {
-    return CelAttributeQualifierPattern::Create(CelValue::CreateBool(v));
+    return CelAttributeQualifierPattern::OfBool(v);
   }
 
   CelAttributeQualifierPattern operator()(CelAttributeQualifierPattern v) {
@@ -105,6 +83,39 @@ struct QualifierVisitor {
 };
 
 }  // namespace
+
+CelAttributeQualifierPattern CreateCelAttributeQualifierPattern(
+    const CelValue& value) {
+  switch (value.type()) {
+    case cel::Kind::kInt64:
+      return CelAttributeQualifierPattern::OfInt(value.Int64OrDie());
+    case cel::Kind::kUint64:
+      return CelAttributeQualifierPattern::OfUint(value.Uint64OrDie());
+    case cel::Kind::kString:
+      return CelAttributeQualifierPattern::OfString(
+          std::string(value.StringOrDie().value()));
+    case cel::Kind::kBool:
+      return CelAttributeQualifierPattern::OfBool(value.BoolOrDie());
+    default:
+      return CelAttributeQualifierPattern(CelAttributeQualifier());
+  }
+}
+
+CelAttributeQualifier CreateCelAttributeQualifier(const CelValue& value) {
+  switch (value.type()) {
+    case cel::Kind::kInt64:
+      return CelAttributeQualifier::OfInt(value.Int64OrDie());
+    case cel::Kind::kUint64:
+      return CelAttributeQualifier::OfUint(value.Uint64OrDie());
+    case cel::Kind::kString:
+      return CelAttributeQualifier::OfString(
+          std::string(value.StringOrDie().value()));
+    case cel::Kind::kBool:
+      return CelAttributeQualifier::OfBool(value.BoolOrDie());
+    default:
+      return CelAttributeQualifier();
+  }
+}
 
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,

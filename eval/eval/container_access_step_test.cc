@@ -258,7 +258,7 @@ TEST_F(ContainerAccessStepTest, TestListIndexAccessUnknown) {
 
   std::vector<CelAttributePattern> patterns = {CelAttributePattern(
       "container",
-      {CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1))})};
+      {CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1))})};
 
   result = EvaluateAttribute(CelValue::CreateList(&cel_list),
                              CelValue::CreateInt64(1), true, true, patterns);

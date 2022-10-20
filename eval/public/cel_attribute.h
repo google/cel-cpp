@@ -36,11 +36,19 @@ using CelAttributeQualifier = ::cel::AttributeQualifier;
 // CelAttribute represents resolved attribute path.
 using CelAttribute = ::cel::Attribute;
 
+class CelAttributeQualifierPattern;
+
+CelAttributeQualifierPattern CreateCelAttributeQualifierPattern(
+    const CelValue& value);
+
 // CelAttributeQualifierPattern matches a segment in
 // attribute resolutuion path. CelAttributeQualifierPattern is capable of
 // matching path elements of types string/int64_t/uint64/bool.
 class CelAttributeQualifierPattern {
  private:
+  friend CelAttributeQualifierPattern CreateCelAttributeQualifierPattern(
+      const CelValue& value);
+
   // Qualifier value. If not set, treated as wildcard.
   std::optional<CelAttributeQualifier> value_;
 
@@ -49,9 +57,21 @@ class CelAttributeQualifierPattern {
       : value_(std::move(value)) {}
 
  public:
-  // Factory method.
-  static CelAttributeQualifierPattern Create(CelValue value) {
-    return CelAttributeQualifierPattern(CelAttributeQualifier::Create(value));
+  static CelAttributeQualifierPattern OfInt(int64_t value) {
+    return CelAttributeQualifierPattern(CelAttributeQualifier::OfInt(value));
+  }
+
+  static CelAttributeQualifierPattern OfUint(uint64_t value) {
+    return CelAttributeQualifierPattern(CelAttributeQualifier::OfUint(value));
+  }
+
+  static CelAttributeQualifierPattern OfString(std::string value) {
+    return CelAttributeQualifierPattern(
+        CelAttributeQualifier::OfString(std::move(value)));
+  }
+
+  static CelAttributeQualifierPattern OfBool(bool value) {
+    return CelAttributeQualifierPattern(CelAttributeQualifier::OfBool(value));
   }
 
   static CelAttributeQualifierPattern CreateWildcard() {
@@ -70,6 +90,11 @@ class CelAttributeQualifierPattern {
     return value_->IsMatch(other_key);
   }
 };
+
+CelAttributeQualifierPattern CreateCelAttributeQualifierPattern(
+    const CelValue& value);
+
+CelAttributeQualifier CreateCelAttributeQualifier(const CelValue& value);
 
 // CelAttributePattern is a fully-qualified absolute attribute path pattern.
 // Supported segments steps in the path are:

@@ -217,11 +217,11 @@ TEST(ActivationTest, ErrorPathTest) {
 
   const CelAttributePattern destination_ip_pattern(
       "destination",
-      {CelAttributeQualifierPattern::Create(CelValue::CreateStringView("ip"))});
+      {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("ip"))});
 
   AttributeTrail trail(*ident_expr, manager);
   trail = trail.Step(
-      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), manager);
+      CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
 
   ASSERT_EQ(destination_ip_pattern.IsMatch(trail.attribute()),
             CelAttributePattern::MatchType::FULL);

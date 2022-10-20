@@ -134,7 +134,7 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
     auto input_attrs =
         frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments);
     auto container_trail = input_attrs[0];
-    trail = container_trail.Step(CelAttributeQualifier::Create(key),
+    trail = container_trail.Step(CreateCelAttributeQualifier(key),
                                  frame->memory_manager());
 
     if (frame->attribute_utility().CheckForUnknown(trail,

@@ -46,11 +46,24 @@ class AttributeQualifier final {
   using Variant = absl::variant<Kind, int64_t, uint64_t, std::string, bool>;
 
  public:
-  // Factory method.
-  //
-  // TODO(issues/5): deprecate this and move it to a standalone method
-  static AttributeQualifier Create(
-      const google::api::expr::runtime::CelValue& value);
+  static AttributeQualifier OfInt(int64_t value) {
+    return AttributeQualifier(absl::in_place_type<int64_t>, std::move(value));
+  }
+
+  static AttributeQualifier OfUint(uint64_t value) {
+    return AttributeQualifier(absl::in_place_type<uint64_t>, std::move(value));
+  }
+
+  static AttributeQualifier OfString(std::string value) {
+    return AttributeQualifier(absl::in_place_type<std::string>,
+                              std::move(value));
+  }
+
+  static AttributeQualifier OfBool(bool value) {
+    return AttributeQualifier(absl::in_place_type<bool>, std::move(value));
+  }
+
+  AttributeQualifier() = default;
 
   AttributeQualifier(const AttributeQualifier&) = default;
   AttributeQualifier(AttributeQualifier&&) = default;
@@ -97,13 +110,9 @@ class AttributeQualifier final {
     return (key.has_value() && key.value() == other_key);
   }
 
-  bool IsMatch(const google::api::expr::runtime::CelValue& value) const;
-
  private:
   friend class Attribute;
   friend struct ComparatorVisitor;
-
-  AttributeQualifier() = default;
 
   template <typename T>
   AttributeQualifier(absl::in_place_type_t<T> in_place_type, T&& value)

@@ -550,7 +550,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   activation.InsertValue("param", CelProtoWrapper::CreateMessage(&msg, &arena));
   CelAttributePattern pattern(
       "param",
-      {CelAttributeQualifierPattern::Create(CelValue::CreateBool(true))});
+      {CreateCelAttributeQualifierPattern(CelValue::CreateBool(true))});
 
   // Set attribute pattern that marks attribute "param[true]" as unknown.
   // It should result in "param" being handled as partially unknown, which is

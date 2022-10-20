@@ -899,7 +899,7 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   EXPECT_EQ(result.BoolOrDie(), true);
 
   CelAttributePattern pattern("message",
-                              {CelAttributeQualifierPattern::Create(
+                              {CreateCelAttributeQualifierPattern(
                                   CelValue::CreateStringView("bool_value"))});
   activation.set_missing_attribute_patterns({pattern});
 
@@ -970,7 +970,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   {
     std::vector<CelAttributePattern> unknown_patterns;
     unknown_patterns.push_back(CelAttributePattern(
-        "message", {CelAttributeQualifierPattern::Create(
+        "message", {CreateCelAttributeQualifierPattern(
                        CelValue::CreateString(&kSegmentCorrect1))}));
     Activation activation;
     activation.InsertValue("message",
@@ -999,7 +999,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   {
     std::vector<CelAttributePattern> unknown_patterns;
     unknown_patterns.push_back(CelAttributePattern(
-        "message", {CelAttributeQualifierPattern::Create(
+        "message", {CreateCelAttributeQualifierPattern(
                        CelValue::CreateString(&kSegmentIncorrect))}));
     Activation activation;
     activation.InsertValue("message",

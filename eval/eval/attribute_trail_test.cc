@@ -23,7 +23,7 @@ TEST(AttributeTrailTest, AttributeTrailEmptyStep) {
   AttributeTrail trail;
   ASSERT_TRUE(trail.Step(&step, manager).empty());
   ASSERT_TRUE(
-      trail.Step(CelAttributeQualifier::Create(step_value), manager).empty());
+      trail.Step(CreateCelAttributeQualifier(step_value), manager).empty());
 }
 
 TEST(AttributeTrailTest, AttributeTrailStep) {
@@ -37,7 +37,7 @@ TEST(AttributeTrailTest, AttributeTrailStep) {
   AttributeTrail trail = AttributeTrail(root, manager).Step(&step, manager);
 
   ASSERT_EQ(trail.attribute(),
-            CelAttribute(root, {CelAttributeQualifier::Create(step_value)}));
+            CelAttribute(root, {CreateCelAttributeQualifier(step_value)}));
 }
 
 }  // namespace google::api::expr::runtime

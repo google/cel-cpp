@@ -107,8 +107,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
 
   AttributeTrail original_trail =
       AttributeTrail(ident, manager)
-          .Step(CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                manager);
+          .Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager);
   CelValue result;
   const AttributeTrail* trail;
 

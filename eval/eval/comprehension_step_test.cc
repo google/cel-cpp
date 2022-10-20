@@ -145,8 +145,8 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   activation.InsertValue("var", CelProtoWrapper::CreateMessage(&value, &arena));
   activation.set_unknown_attribute_patterns({CelAttributePattern(
       "var",
-      {CelAttributeQualifierPattern::Create(CelValue::CreateStringView("key2")),
-       CelAttributeQualifierPattern::Create(CelValue::CreateStringView("foo")),
+      {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("key2")),
+       CreateCelAttributeQualifierPattern(CelValue::CreateStringView("foo")),
        CelAttributeQualifierPattern::CreateWildcard()})});
 
   auto eval_result = expression->Evaluate(activation, &arena);

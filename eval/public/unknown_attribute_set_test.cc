@@ -28,10 +28,10 @@ TEST(UnknownAttributeSetTest, TestCreate) {
 
   std::shared_ptr<CelAttribute> cel_attr = std::make_shared<CelAttribute>(
       expr, std::vector<CelAttributeQualifier>(
-                {CelAttributeQualifier::Create(CelValue::CreateString(&kAttr1)),
-                 CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                 CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateBool(true))}));
+                {CreateCelAttributeQualifier(CelValue::CreateString(&kAttr1)),
+                 CreateCelAttributeQualifier(CelValue::CreateInt64(1)),
+                 CreateCelAttributeQualifier(CelValue::CreateUint64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateBool(true))}));
 
   UnknownAttributeSet unknown_set({*cel_attr});
   EXPECT_THAT(unknown_set.size(), Eq(1));
@@ -48,31 +48,31 @@ TEST(UnknownAttributeSetTest, TestMergeSets) {
 
   CelAttribute cel_attr1(
       expr, std::vector<CelAttributeQualifier>(
-                {CelAttributeQualifier::Create(CelValue::CreateString(&kAttr1)),
-                 CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                 CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateBool(true))}));
+                {CreateCelAttributeQualifier(CelValue::CreateString(&kAttr1)),
+                 CreateCelAttributeQualifier(CelValue::CreateInt64(1)),
+                 CreateCelAttributeQualifier(CelValue::CreateUint64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateBool(true))}));
 
   CelAttribute cel_attr1_copy(
       expr, std::vector<CelAttributeQualifier>(
-                {CelAttributeQualifier::Create(CelValue::CreateString(&kAttr1)),
-                 CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                 CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateBool(true))}));
+                {CreateCelAttributeQualifier(CelValue::CreateString(&kAttr1)),
+                 CreateCelAttributeQualifier(CelValue::CreateInt64(1)),
+                 CreateCelAttributeQualifier(CelValue::CreateUint64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateBool(true))}));
 
   CelAttribute cel_attr2(
       expr, std::vector<CelAttributeQualifier>(
-                {CelAttributeQualifier::Create(CelValue::CreateString(&kAttr1)),
-                 CelAttributeQualifier::Create(CelValue::CreateInt64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateBool(true))}));
+                {CreateCelAttributeQualifier(CelValue::CreateString(&kAttr1)),
+                 CreateCelAttributeQualifier(CelValue::CreateInt64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateUint64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateBool(true))}));
 
   CelAttribute cel_attr3(
       expr, std::vector<CelAttributeQualifier>(
-                {CelAttributeQualifier::Create(CelValue::CreateString(&kAttr1)),
-                 CelAttributeQualifier::Create(CelValue::CreateInt64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateUint64(2)),
-                 CelAttributeQualifier::Create(CelValue::CreateBool(false))}));
+                {CreateCelAttributeQualifier(CelValue::CreateString(&kAttr1)),
+                 CreateCelAttributeQualifier(CelValue::CreateInt64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateUint64(2)),
+                 CreateCelAttributeQualifier(CelValue::CreateBool(false))}));
 
   UnknownAttributeSet unknown_set1({cel_attr1, cel_attr2});
   UnknownAttributeSet unknown_set2({cel_attr1_copy, cel_attr3});
