@@ -137,6 +137,7 @@ cc_library(
     deps = [
         "//base:ast",
         "//eval/eval:const_value_step",
+        "//eval/internal:interop",
         "//eval/public:cel_builtins",
         "//eval/public:cel_function",
         "//eval/public:cel_function_registry",

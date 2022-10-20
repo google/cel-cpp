@@ -26,9 +26,9 @@ absl::Status InvalidIterationStateError() {
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     size_t value_stack_size, const std::set<std::string>& iter_variable_names,
     google::protobuf::Arena* arena)
-    : value_stack_(value_stack_size),
-      iter_variable_names_(iter_variable_names),
-      memory_manager_(arena) {}
+    : memory_manager_(arena),
+      value_stack_(value_stack_size, memory_manager_),
+      iter_variable_names_(iter_variable_names) {}
 
 void CelExpressionFlatEvaluationState::Reset() {
   iter_stack_.clear();

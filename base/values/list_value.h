@@ -136,7 +136,7 @@ class AbstractListValue : public ListValue, public HeapData {
                internal::TypeId<LegacyListValue>();
   }
 
-  const Handle<ListType> type() const { return type_; }
+  Handle<ListType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 

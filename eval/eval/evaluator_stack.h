@@ -6,7 +6,11 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "base/handle.h"
+#include "base/memory_manager.h"
+#include "base/value.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
@@ -16,7 +20,8 @@ namespace google::api::expr::runtime {
 // stack as Span<>.
 class EvaluatorStack {
  public:
-  explicit EvaluatorStack(size_t max_size) : current_size_(0) {
+  EvaluatorStack(size_t max_size, cel::MemoryManager& memory_manager)
+      : memory_manager_(memory_manager), current_size_(0) {
     stack_.resize(max_size);
     attribute_stack_.resize(max_size);
   }
@@ -96,6 +101,13 @@ class EvaluatorStack {
   // Put element on the top of the stack.
   void Push(const CelValue& value) { Push(value, AttributeTrail()); }
 
+  void Push(const cel::Handle<cel::Value>& value) {
+    // TODO(issues/5): this is temporary until migrating evaluator_stack
+    Push(cel::interop_internal::ModernValueToLegacyValueOrDie(memory_manager_,
+                                                              value),
+         AttributeTrail());
+  }
+
   void Push(const CelValue& value, AttributeTrail attribute) {
     if (current_size_ >= stack_.size()) {
       LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
@@ -146,6 +158,7 @@ class EvaluatorStack {
   }
 
  private:
+  cel::MemoryManager& memory_manager_;
   std::vector<CelValue> stack_;
   std::vector<AttributeTrail> attribute_stack_;
   size_t current_size_;

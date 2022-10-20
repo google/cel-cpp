@@ -16,7 +16,7 @@ TEST(EvaluatorStackTest, StackPushPop) {
   google::api::expr::v1alpha1::Expr expr;
   expr.mutable_ident_expr()->set_name("name");
   CelAttribute attribute(expr, {});
-  EvaluatorStack stack(10);
+  EvaluatorStack stack(10, manager);
   stack.Push(CelValue::CreateInt64(1));
   stack.Push(CelValue::CreateInt64(2), AttributeTrail());
   stack.Push(CelValue::CreateInt64(3), AttributeTrail(expr, manager));
@@ -38,7 +38,9 @@ TEST(EvaluatorStackTest, StackPushPop) {
 
 // Test that inner stacks within value stack retain the equality of their sizes.
 TEST(EvaluatorStackTest, StackBalanced) {
-  EvaluatorStack stack(10);
+  google::protobuf::Arena arena;
+  ProtoMemoryManager manager(&arena);
+  EvaluatorStack stack(10, manager);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
   stack.Push(CelValue::CreateInt64(1));
@@ -57,7 +59,9 @@ TEST(EvaluatorStackTest, StackBalanced) {
 }
 
 TEST(EvaluatorStackTest, Clear) {
-  EvaluatorStack stack(10);
+  google::protobuf::Arena arena;
+  ProtoMemoryManager manager(&arena);
+  EvaluatorStack stack(10, manager);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
   stack.Push(CelValue::CreateInt64(1));
@@ -71,7 +75,9 @@ TEST(EvaluatorStackTest, Clear) {
 }
 
 TEST(EvaluatorStackTest, CoerceNulls) {
-  EvaluatorStack stack(10);
+  google::protobuf::Arena arena;
+  ProtoMemoryManager manager(&arena);
+  EvaluatorStack stack(10, manager);
   stack.Push(CelValue::CreateNull());
   stack.Push(CelValue::CreateInt64(0));
 
