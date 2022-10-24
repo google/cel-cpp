@@ -258,7 +258,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       std::set<std::string>* iter_variable_names, bool enable_regex,
       bool enable_regex_precompilation, int regex_max_program_size,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
-          reference_map)
+          reference_map,
+      google::protobuf::Arena* arena)
       : resolver_(resolver),
         flattened_path_(path),
         progress_status_(absl::OkStatus()),
@@ -276,7 +277,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         enable_regex_(enable_regex),
         enable_regex_precompilation_(enable_regex_precompilation),
         regex_program_builder_(regex_max_program_size),
-        reference_map_(reference_map) {
+        reference_map_(reference_map),
+        arena_(arena) {
     DCHECK(iter_variable_names_);
   }
 
@@ -347,8 +349,11 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       // 'enable_qualified_type_identifiers' is set to true.
       const_value = resolver_.FindConstant(qualified_path, select_expr->id());
       if (const_value.has_value()) {
-        AddStep(CreateShadowableValueStep(qualified_path, *const_value,
-                                          select_expr->id()));
+        AddStep(CreateShadowableValueStep(
+            qualified_path,
+            cel::interop_internal::LegacyValueToModernValueOrDie(arena_,
+                                                                 *const_value),
+            select_expr->id()));
         resolved_select_expr_ = select_expr;
         namespace_stack_.clear();
         return;
@@ -359,7 +364,11 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     // Attempt to resolve a simple identifier as an enum or type constant value.
     const_value = resolver_.FindConstant(path, expr->id());
     if (const_value.has_value()) {
-      AddStep(CreateShadowableValueStep(path, *const_value, expr->id()));
+      AddStep(CreateShadowableValueStep(
+          path,
+          cel::interop_internal::LegacyValueToModernValueOrDie(arena_,
+                                                               *const_value),
+          expr->id()));
       return;
     }
 
@@ -829,6 +838,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   RegexProgramBuilder regex_program_builder_;
   const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>* const
       reference_map_;
+
+  google::protobuf::Arena* const arena_;
 };
 
 void BinaryCondVisitor::PreVisit(const cel::ast::internal::Expr* expr) {
@@ -1314,6 +1325,8 @@ FlatExprBuilder::CreateExpressionImpl(
     effective_expr = &const_fold_buffer;
   }
 
+  auto arena = std::make_unique<google::protobuf::Arena>();
+
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(
       resolver, &execution_path, shortcircuiting_, idents, constant_arena_,
@@ -1321,12 +1334,17 @@ FlatExprBuilder::CreateExpressionImpl(
       enable_comprehension_vulnerability_check_,
       enable_wrapper_type_null_unboxing_, &warnings_builder,
       &iter_variable_names, enable_regex_, enable_regex_precompilation_,
-      regex_max_program_size_, native_reference_map_ptr);
+      regex_max_program_size_, native_reference_map_ptr, arena.get());
 
   AstTraverse(effective_expr, native_source_info_ptr, &visitor);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();
+  }
+
+  if (arena->SpaceUsed() == 0) {
+    // No space in the arena was used, delete it.
+    arena.reset();
   }
 
   std::unique_ptr<CelExpression> expression_impl =
@@ -1335,7 +1353,8 @@ FlatExprBuilder::CreateExpressionImpl(
           comprehension_max_iterations_, std::move(iter_variable_names),
           enable_unknowns_, enable_unknown_function_results_,
           enable_missing_attribute_errors_, enable_null_coercion_,
-          enable_heterogeneous_equality_, std::move(rewrite_buffer));
+          enable_heterogeneous_equality_, std::move(rewrite_buffer),
+          std::move(arena));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

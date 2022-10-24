@@ -3,8 +3,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "absl/status/statusor.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_value.h"
 
@@ -14,7 +17,7 @@ namespace google::api::expr::runtime {
 // shadowed by an identifier of the same name within the runtime-provided
 // Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateShadowableValueStep(
-    const std::string& identifier, const CelValue& value, int64_t expr_id);
+    std::string identifier, cel::Handle<cel::Value> value, int64_t expr_id);
 
 }  // namespace google::api::expr::runtime
 

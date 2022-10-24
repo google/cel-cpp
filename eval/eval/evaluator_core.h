@@ -270,8 +270,10 @@ class CelExpressionFlatImpl : public CelExpression {
       bool enable_missing_attribute_errors = false,
       bool enable_null_coercion = true,
       bool enable_heterogeneous_equality = false,
-      std::unique_ptr<cel::ast::internal::Expr> rewritten_expr = nullptr)
+      std::unique_ptr<cel::ast::internal::Expr> rewritten_expr = nullptr,
+      std::unique_ptr<const google::protobuf::Arena> arena = nullptr)
       : rewritten_expr_(std::move(rewritten_expr)),
+        arena_(std::move(arena)),
         path_(std::move(path)),
         type_registry_(*type_registry),
         max_iterations_(max_iterations),
@@ -312,6 +314,8 @@ class CelExpressionFlatImpl : public CelExpression {
  private:
   // Maintain lifecycle of a modified expression.
   std::unique_ptr<cel::ast::internal::Expr> rewritten_expr_;
+  // Arena used while builting the expression, must live as long.
+  const std::unique_ptr<const google::protobuf::Arena> arena_;
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
   const int max_iterations_;
