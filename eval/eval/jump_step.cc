@@ -1,6 +1,7 @@
 #include "eval/eval/jump_step.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
@@ -100,14 +101,14 @@ class BoolCheckJumpStep : public JumpStepBase {
 absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateCondJumpStep(
     bool jump_condition, bool leave_on_stack, absl::optional<int> jump_offset,
     int64_t expr_id) {
-  return absl::make_unique<CondJumpStep>(jump_condition, leave_on_stack,
-                                         jump_offset, expr_id);
+  return std::make_unique<CondJumpStep>(jump_condition, leave_on_stack,
+                                        jump_offset, expr_id);
 }
 
 // Factory method for Jump step.
 absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
-  return absl::make_unique<JumpStep>(jump_offset, expr_id);
+  return std::make_unique<JumpStep>(jump_offset, expr_id);
 }
 
 // Factory method for Conditional Jump step.
@@ -115,7 +116,7 @@ absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateJumpStep(
 // If this value is an error or unknown, a jump is performed.
 absl::StatusOr<std::unique_ptr<JumpStepBase>> CreateBoolCheckJumpStep(
     absl::optional<int> jump_offset, int64_t expr_id) {
-  return absl::make_unique<BoolCheckJumpStep>(jump_offset, expr_id);
+  return std::make_unique<BoolCheckJumpStep>(jump_offset, expr_id);
 }
 
 // TODO(issues/41) Make sure Unknowns are properly supported by ternary

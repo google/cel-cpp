@@ -1,6 +1,7 @@
 #include "eval/eval/ident_step.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -99,7 +100,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const cel::ast::internal::Ident& ident_expr, int64_t expr_id) {
-  return absl::make_unique<IdentStep>(ident_expr.name(), expr_id);
+  return std::make_unique<IdentStep>(ident_expr.name(), expr_id);
 }
 
 }  // namespace google::api::expr::runtime

@@ -1,5 +1,6 @@
 #include "eval/eval/evaluator_core.h"
 
+#include <memory>
 #include <string>
 
 #include "absl/status/status.h"
@@ -137,7 +138,7 @@ bool ExecutionFrame::GetIterAttr(const std::string& name,
 
 std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
     google::protobuf::Arena* arena) const {
-  return absl::make_unique<CelExpressionFlatEvaluationState>(
+  return std::make_unique<CelExpressionFlatEvaluationState>(
       path_.size(), iter_variable_names_, arena);
 }
 

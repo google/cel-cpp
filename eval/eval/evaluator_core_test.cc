@@ -1,5 +1,6 @@
 #include "eval/eval/evaluator_core.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -58,15 +59,15 @@ class FakeIncrementExpressionStep : public ExpressionStep {
 
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionPath path;
-  auto const_step = absl::make_unique<const FakeConstExpressionStep>();
-  auto incr_step1 = absl::make_unique<const FakeIncrementExpressionStep>();
-  auto incr_step2 = absl::make_unique<const FakeIncrementExpressionStep>();
+  auto const_step = std::make_unique<const FakeConstExpressionStep>();
+  auto incr_step1 = std::make_unique<const FakeIncrementExpressionStep>();
+  auto incr_step2 = std::make_unique<const FakeIncrementExpressionStep>();
 
   path.push_back(std::move(const_step));
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
@@ -153,15 +154,15 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
 
 TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   ExecutionPath path;
-  auto const_step = absl::make_unique<FakeConstExpressionStep>();
-  auto incr_step1 = absl::make_unique<FakeIncrementExpressionStep>();
-  auto incr_step2 = absl::make_unique<FakeIncrementExpressionStep>();
+  auto const_step = std::make_unique<FakeConstExpressionStep>();
+  auto incr_step1 = std::make_unique<FakeIncrementExpressionStep>();
+  auto incr_step2 = std::make_unique<FakeIncrementExpressionStep>();
 
   path.push_back(std::move(const_step));
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<cel::ast::internal::Expr>();
+  auto dummy_expr = std::make_unique<cel::ast::internal::Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {});

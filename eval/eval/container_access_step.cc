@@ -1,6 +1,7 @@
 #include "eval/eval/container_access_step.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -196,7 +197,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
     return absl::InvalidArgumentError(absl::StrCat(
         "Invalid argument count for index operation: ", arg_count));
   }
-  return absl::make_unique<ContainerAccessStep>(expr_id);
+  return std::make_unique<ContainerAccessStep>(expr_id);
 }
 
 }  // namespace google::api::expr::runtime

@@ -1,5 +1,6 @@
 #include "eval/eval/ident_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -29,7 +30,7 @@ TEST(IdentStepTest, TestIdentStep) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {});
@@ -58,7 +59,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {});
@@ -84,7 +85,7 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {},
@@ -122,7 +123,7 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
                              &TestTypeRegistry(), 0, {}, false, false,
@@ -161,7 +162,7 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
   // Expression with unknowns enabled.
   CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),

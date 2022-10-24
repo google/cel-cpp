@@ -1,6 +1,7 @@
 #include "eval/eval/comprehension_step.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -218,7 +219,7 @@ class ListKeysStep : public ExpressionStepBase {
 };
 
 std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id) {
-  return absl::make_unique<ListKeysStep>(expr_id);
+  return std::make_unique<ListKeysStep>(expr_id);
 }
 
 absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {

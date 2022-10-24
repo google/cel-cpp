@@ -1,6 +1,7 @@
 #include "eval/eval/select_step.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -252,7 +253,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const cel::ast::internal::Select& select_expr, int64_t expr_id,
     absl::string_view select_path, bool enable_wrapper_type_null_unboxing) {
-  return absl::make_unique<SelectStep>(
+  return std::make_unique<SelectStep>(
       select_expr.field(), select_expr.test_only(), expr_id, select_path,
       enable_wrapper_type_null_unboxing);
 }

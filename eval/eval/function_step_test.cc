@@ -155,30 +155,30 @@ class SinkFunction : public CelFunction {
 void AddDefaults(CelFunctionRegistry& registry) {
   static UnknownSet* unknown_set = new UnknownSet();
   EXPECT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateInt64(3), "Const3"))
                   .ok());
   EXPECT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateInt64(2), "Const2"))
                   .ok());
   EXPECT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateUnknownSet(unknown_set), "ConstUnknown"))
                   .ok());
-  EXPECT_TRUE(registry.Register(absl::make_unique<AddFunction>()).ok());
+  EXPECT_TRUE(registry.Register(std::make_unique<AddFunction>()).ok());
 
   EXPECT_TRUE(
-      registry.Register(absl::make_unique<SinkFunction>(CelValue::Type::kList))
+      registry.Register(std::make_unique<SinkFunction>(CelValue::Type::kList))
           .ok());
 
   EXPECT_TRUE(
-      registry.Register(absl::make_unique<SinkFunction>(CelValue::Type::kMap))
+      registry.Register(std::make_unique<SinkFunction>(CelValue::Type::kMap))
           .ok());
 
   EXPECT_TRUE(
       registry
-          .Register(absl::make_unique<SinkFunction>(CelValue::Type::kMessage))
+          .Register(std::make_unique<SinkFunction>(CelValue::Type::kMessage))
           .ok());
 }
 
@@ -230,7 +230,7 @@ class FunctionStepTest
         unknown_function_results = false;
         break;
     }
-    return absl::make_unique<CelExpressionFlatImpl>(
+    return std::make_unique<CelExpressionFlatImpl>(
         &dummy_expr_, std::move(path), &TestTypeRegistry(), 0,
         std::set<std::string>(), unknowns, unknown_function_results);
   }
@@ -303,7 +303,7 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   AddDefaults(registry);
 
   ASSERT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateUint64(4), "Const4"))
                   .ok());
 
@@ -345,11 +345,11 @@ TEST_P(FunctionStepTest,
 
   // Constants have ERROR type, while AddFunction expects INT.
   ASSERT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateError(&error0), "ConstError1"))
                   .ok());
   ASSERT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateError(&error1), "ConstError2"))
                   .ok());
 
@@ -384,12 +384,12 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   ASSERT_OK(
       registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3")));
   ASSERT_OK(activation.InsertFunction(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(
       registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const2")));
   ASSERT_OK(activation.InsertFunction(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
-  ASSERT_OK(registry.Register(absl::make_unique<AddFunction>()));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+  ASSERT_OK(registry.Register(std::make_unique<AddFunction>()));
 
   Call call1 = ConstFunction::MakeCall("Const3");
   Call call2 = ConstFunction::MakeCall("Const2");
@@ -429,11 +429,11 @@ TEST_P(FunctionStepTest,
   // Constants have ERROR type, while AddFunction expects INT.
   ASSERT_OK(registry.RegisterLazyFunction(
       ConstFunction::CreateDescriptor("ConstError1")));
-  ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
+  ASSERT_OK(activation.InsertFunction(std::make_unique<ConstFunction>(
       CelValue::CreateError(&error0), "ConstError1")));
   ASSERT_OK(registry.RegisterLazyFunction(
       ConstFunction::CreateDescriptor("ConstError2")));
-  ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
+  ASSERT_OK(activation.InsertFunction(std::make_unique<ConstFunction>(
       CelValue::CreateError(&error1), "ConstError2")));
 
   Call call1 = ConstFunction::MakeCall("ConstError1");
@@ -487,7 +487,7 @@ class FunctionStepTestUnknowns
         unknown_functions = false;
         break;
     }
-    return absl::make_unique<CelExpressionFlatImpl>(
+    return std::make_unique<CelExpressionFlatImpl>(
         &expr_, std::move(path), &TestTypeRegistry(), 0,
         std::set<std::string>(), true, unknown_functions);
   }
@@ -571,7 +571,7 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
 
   ASSERT_TRUE(
       registry
-          .Register(absl::make_unique<ConstFunction>(error_value, "ConstError"))
+          .Register(std::make_unique<ConstFunction>(error_value, "ConstError"))
           .ok());
 
   Call call1 = ConstFunction::MakeCall("ConstError");
@@ -608,11 +608,11 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   Call call1 = ConstFunction::MakeCall("Const2");
   Call call2 = ConstFunction::MakeCall("Const3");
@@ -643,11 +643,11 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   // Add(Add(2, 3), Add(2, 3))
 
@@ -688,11 +688,11 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   // Add(Add(2, 3), Add(3, 2))
 
@@ -738,11 +738,11 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   CelValue unknown_value = CelValue::CreateUnknownSet(&unknown_set);
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(error_value, "ConstError")));
+      std::make_unique<ConstFunction>(error_value, "ConstError")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(unknown_value, "ConstUnknown")));
+      std::make_unique<ConstFunction>(unknown_value, "ConstUnknown")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   Call call1 = ConstFunction::MakeCall("ConstError");
   Call call2 = ConstFunction::MakeCall("ConstUnknown");
@@ -942,7 +942,7 @@ TEST(FunctionStepStrictnessTest,
      IfFunctionStrictAndGivenUnknownSkipsInvocation) {
   UnknownSet unknown_set;
   CelFunctionRegistry registry;
-  ASSERT_OK(registry.Register(absl::make_unique<ConstFunction>(
+  ASSERT_OK(registry.Register(std::make_unique<ConstFunction>(
       CelValue::CreateUnknownSet(&unknown_set), "ConstUnknown")));
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/true)));
@@ -967,7 +967,7 @@ TEST(FunctionStepStrictnessTest,
 TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   UnknownSet unknown_set;
   CelFunctionRegistry registry;
-  ASSERT_OK(registry.Register(absl::make_unique<ConstFunction>(
+  ASSERT_OK(registry.Register(std::make_unique<ConstFunction>(
       CelValue::CreateUnknownSet(&unknown_set), "ConstUnknown")));
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/false)));

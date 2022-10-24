@@ -317,8 +317,8 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr.function();
   std::vector<CelValue::Type> args(num_args, CelValue::Type::kAny);
-  return absl::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
-                                             lazy_overloads, expr_id);
+  return std::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
+                                            lazy_overloads, expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
@@ -327,8 +327,8 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr.function();
-  return absl::make_unique<EagerFunctionStep>(overloads, name, num_args,
-                                              expr_id);
+  return std::make_unique<EagerFunctionStep>(overloads, name, num_args,
+                                             expr_id);
 }
 
 }  // namespace google::api::expr::runtime

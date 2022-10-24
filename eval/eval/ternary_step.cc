@@ -1,6 +1,7 @@
 #include "eval/eval/ternary_step.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -69,7 +70,7 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateTernaryStep(
     int64_t expr_id) {
-  return absl::make_unique<TernaryStep>(expr_id);
+  return std::make_unique<TernaryStep>(expr_id);
 }
 
 }  // namespace google::api::expr::runtime

@@ -1,6 +1,7 @@
 #include "eval/eval/logic_step.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -112,12 +113,12 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
 // Factory method for "And" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateAndStep(int64_t expr_id) {
-  return absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
+  return std::make_unique<LogicalOpStep>(LogicalOpStep::OpType::AND, expr_id);
 }
 
 // Factory method for "Or" Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateOrStep(int64_t expr_id) {
-  return absl::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
+  return std::make_unique<LogicalOpStep>(LogicalOpStep::OpType::OR, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

@@ -1,6 +1,7 @@
 #include "eval/eval/create_list_step.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -85,13 +86,13 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
-  return absl::make_unique<CreateListStep>(
+  return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(), /*immutable=*/true);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
     const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
-  return absl::make_unique<CreateListStep>(
+  return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(), /*immutable=*/false);
 }
 
