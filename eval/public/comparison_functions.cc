@@ -382,58 +382,53 @@ std::function<CelValue(Arena*, Type, Type)> WrapComparison(Op op) {
 // Registers all equality functions for template parameters type.
 template <class Type>
 absl::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
+  using FunctionAdapter = PortableBinaryFunctionAdapter<CelValue, Type, Type>;
   // Inequality
-  absl::Status status =
-      PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
-          builtin::kInequal, false, WrapComparison<Type>(&Inequal<Type>),
-          registry);
-  if (!status.ok()) return status;
+  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
+      builtin::kInequal, false, WrapComparison<Type>(&Inequal<Type>))));
 
   // Equality
-  status = PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
-      builtin::kEqual, false, WrapComparison<Type>(&Equal<Type>), registry);
-  return status;
+  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
+      builtin::kEqual, false, WrapComparison<Type>(&Equal<Type>))));
+
+  return absl::OkStatus();
 }
 
 template <typename T, typename U>
 absl::Status RegisterSymmetricFunction(
     absl::string_view name, std::function<bool(google::protobuf::Arena*, T, U)> fn,
     CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
-      name, false, fn, registry)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      PortableBinaryFunctionAdapter<bool, T, U>::Create(name, false, fn)));
 
   // the symmetric version
-  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, U, T>::CreateAndRegister(
-      name, false,
-      [fn](google::protobuf::Arena* arena, U u, T t) { return fn(arena, t, u); },
-      registry)));
+  CEL_RETURN_IF_ERROR(
+      registry->Register(PortableBinaryFunctionAdapter<bool, U, T>::Create(
+          name, false,
+          [fn](google::protobuf::Arena* arena, U u, T t) { return fn(arena, t, u); })));
 
   return absl::OkStatus();
 }
 
 template <class Type>
 absl::Status RegisterOrderingFunctionsForType(CelFunctionRegistry* registry) {
+  using FunctionAdapter = PortableBinaryFunctionAdapter<bool, Type, Type>;
   // Less than
   // Extra paranthesis needed for Macros with multiple template arguments.
-  CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
-          builtin::kLess, false, LessThan<Type>, registry)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kLess, false, LessThan<Type>)));
 
   // Less than or Equal
-  CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
-          builtin::kLessOrEqual, false, LessThanOrEqual<Type>, registry)));
+  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
+      builtin::kLessOrEqual, false, LessThanOrEqual<Type>)));
 
   // Greater than
-  CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
-          builtin::kGreater, false, GreaterThan<Type>, registry)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kGreater, false, GreaterThan<Type>)));
 
   // Greater than or Equal
-  CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<bool, Type, Type>::CreateAndRegister(
-          builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>,
-          registry)));
+  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
+      builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>)));
 
   return absl::OkStatus();
 }
@@ -521,31 +516,29 @@ CelValue GeneralizedInequal(Arena* arena, CelValue t1, CelValue t2) {
 
 template <typename T, typename U>
 absl::Status RegisterCrossNumericComparisons(CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
-      builtin::kLess, /*receiver_style=*/false, &CrossNumericLessThan<T, U>,
-      registry)));
-  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
-      builtin::kGreater, /*receiver_style=*/false,
-      &CrossNumericGreaterThan<T, U>, registry)));
-  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
+  using FunctionAdapter = PortableBinaryFunctionAdapter<bool, T, U>;
+  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
+      builtin::kLess, /*receiver_style=*/false, &CrossNumericLessThan<T, U>)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kGreater, /*receiver_style=*/false,
+                              &CrossNumericGreaterThan<T, U>)));
+  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
       builtin::kGreaterOrEqual, /*receiver_style=*/false,
-      &CrossNumericGreaterOrEqualTo<T, U>, registry)));
-  CEL_RETURN_IF_ERROR((PortableFunctionAdapter<bool, T, U>::CreateAndRegister(
-      builtin::kLessOrEqual, /*receiver_style=*/false,
-      &CrossNumericLessOrEqualTo<T, U>, registry)));
+      &CrossNumericGreaterOrEqualTo<T, U>)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kLessOrEqual, /*receiver_style=*/false,
+                              &CrossNumericLessOrEqualTo<T, U>)));
   return absl::OkStatus();
 }
 
 absl::Status RegisterHeterogeneousComparisonFunctions(
     CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<CelValue, CelValue, CelValue>::CreateAndRegister(
-          builtin::kEqual, /*receiver_style=*/false, &GeneralizedEqual,
-          registry)));
-  CEL_RETURN_IF_ERROR(
-      (PortableFunctionAdapter<CelValue, CelValue, CelValue>::CreateAndRegister(
-          builtin::kInequal, /*receiver_style=*/false, &GeneralizedInequal,
-          registry)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, CelValue, CelValue>::Create(
+          builtin::kEqual, /*receiver_style=*/false, &GeneralizedEqual)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, CelValue, CelValue>::Create(
+          builtin::kInequal, /*receiver_style=*/false, &GeneralizedInequal)));
 
   CEL_RETURN_IF_ERROR(
       (RegisterCrossNumericComparisons<double, int64_t>(registry)));

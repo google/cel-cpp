@@ -18,11 +18,13 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
@@ -35,7 +37,7 @@ namespace internal {
 // Used for CEL type deduction based on C++ native type.
 struct TypeCodeMatcher {
   template <typename T>
-  constexpr std::optional<CelValue::Type> type_code() {
+  constexpr static std::optional<CelValue::Type> type_code() {
     if constexpr (std::is_same_v<T, CelValue>) {
       // A bit of a trick - to pass Any kind of value, we use generic CelValue
       // parameters.
@@ -185,120 +187,211 @@ struct ValueConverter : public ValueConverterBase<ValueConverter> {};
 // ValueConverter provides value conversions from native to CEL and vice versa.
 // ReturnType and Arguments types are instantiated for the particular shape of
 // the adapted functions.
-template <typename TypeCodeMatcher, typename ValueConverter,
-          typename ReturnType, typename... Arguments>
-class FunctionAdapter : public CelFunction {
+template <typename TypeCodeMatcher, typename ValueConverter>
+class FunctionAdapterImpl {
  public:
-  using FuncType = std::function<ReturnType(::google::protobuf::Arena*, Arguments...)>;
-  using TypeAdder = internal::TypeAdder<TypeCodeMatcher>;
+  // Implementations for the common cases of unary and binary functions.
+  // This reduces the binary size substantially over the generic templated
+  // versions.
+  template <typename ReturnType, typename T, typename U>
+  class BinaryFunction : public CelFunction {
+   public:
+    using FuncType = std::function<ReturnType(::google::protobuf::Arena*, T, U)>;
 
-  FunctionAdapter(CelFunctionDescriptor descriptor, FuncType handler)
-      : CelFunction(std::move(descriptor)), handler_(std::move(handler)) {}
+    static std::unique_ptr<CelFunction> Create(absl::string_view name,
+                                               bool receiver_style,
+                                               FuncType handler) {
+      constexpr auto arg1_type = TypeCodeMatcher::template type_code<T>();
+      static_assert(arg1_type.has_value(), "T does not map to a CEL type.");
+      constexpr auto arg2_type = TypeCodeMatcher::template type_code<U>();
+      static_assert(arg2_type.has_value(), "U does not map to a CEL type.");
+      std::vector<CelValue::Type> arg_types{*arg1_type, *arg2_type};
 
-  static absl::StatusOr<std::unique_ptr<CelFunction>> Create(
-      absl::string_view name, bool receiver_type,
-      std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler) {
-    std::vector<CelValue::Type> arg_types;
-    arg_types.reserve(sizeof...(Arguments));
-
-    if (!TypeAdder().template AddType<0, Arguments...>(&arg_types)) {
-      return absl::Status(
-          absl::StatusCode::kInternal,
-          absl::StrCat("Failed to create adapter for ", name,
-                       ": failed to determine input parameter type"));
+      return absl::WrapUnique(new BinaryFunction<ReturnType, T, U>(
+          CelFunctionDescriptor(name, receiver_style, std::move(arg_types)),
+          std::move(handler)));
     }
 
-    return std::make_unique<FunctionAdapter>(
-        CelFunctionDescriptor(name, receiver_type, std::move(arg_types)),
-        std::move(handler));
-  }
+    absl::Status Evaluate(absl::Span<const CelValue> arguments,
+                          CelValue* result,
+                          google::protobuf::Arena* arena) const override {
+      if (arguments.size() != 2) {
+        return absl::InternalError("Argument number mismatch, expected 2");
+      }
+      T arg;
+      if (!ValueConverter().ValueToNative(arguments[0], &arg)) {
+        return absl::InternalError("C++ to CEL type conversion failed");
+      }
+      U arg2;
+      if (!ValueConverter().ValueToNative(arguments[1], &arg2)) {
+        return absl::InternalError("C++ to CEL type conversion failed");
+      }
+      ReturnType handlerResult = handler_(arena, arg, arg2);
+      return ValueConverter().NativeToValue(handlerResult, arena, result);
+    }
 
-  // Creates function handler and attempts to register it with
-  // supplied function registry.
-  static absl::Status CreateAndRegister(
-      absl::string_view name, bool receiver_type,
-      std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler,
-      CelFunctionRegistry* registry) {
-    CEL_ASSIGN_OR_RETURN(auto cel_function,
-                         Create(name, receiver_type, std::move(handler)));
+   private:
+    BinaryFunction(CelFunctionDescriptor descriptor, FuncType handler)
+        : CelFunction(descriptor), handler_(std::move(handler)) {}
 
-    return registry->Register(std::move(cel_function));
-  }
+    FuncType handler_;
+  };
+
+  template <typename ReturnType, typename T>
+  class UnaryFunction : public CelFunction {
+   public:
+    using FuncType = std::function<ReturnType(::google::protobuf::Arena*, T)>;
+
+    static std::unique_ptr<CelFunction> Create(absl::string_view name,
+                                               bool receiver_style,
+                                               FuncType handler) {
+      constexpr auto arg_type = TypeCodeMatcher::template type_code<T>();
+      static_assert(arg_type.has_value(), "T does not map to a CEL type.");
+      std::vector<CelValue::Type> arg_types{*arg_type};
+
+      return absl::WrapUnique(new UnaryFunction<ReturnType, T>(
+          CelFunctionDescriptor(name, receiver_style, std::move(arg_types)),
+          std::move(handler)));
+    }
+
+    absl::Status Evaluate(absl::Span<const CelValue> arguments,
+                          CelValue* result,
+                          google::protobuf::Arena* arena) const override {
+      if (arguments.size() != 1) {
+        return absl::InternalError("Argument number mismatch, expected 1");
+      }
+      T arg;
+      if (!ValueConverter().ValueToNative(arguments[0], &arg)) {
+        return absl::InternalError("C++ to CEL type conversion failed");
+      }
+      ReturnType handlerResult = handler_(arena, arg);
+      return ValueConverter().NativeToValue(handlerResult, arena, result);
+    }
+
+   private:
+    UnaryFunction(CelFunctionDescriptor descriptor, FuncType handler)
+        : CelFunction(descriptor), handler_(std::move(handler)) {}
+
+    FuncType handler_;
+  };
+
+  // Generalized implementation.
+  template <typename ReturnType, typename... Arguments>
+  class FunctionAdapter : public CelFunction {
+   public:
+    using FuncType = std::function<ReturnType(::google::protobuf::Arena*, Arguments...)>;
+    using TypeAdder = internal::TypeAdder<TypeCodeMatcher>;
+
+    FunctionAdapter(CelFunctionDescriptor descriptor, FuncType handler)
+        : CelFunction(std::move(descriptor)), handler_(std::move(handler)) {}
+
+    static absl::StatusOr<std::unique_ptr<CelFunction>> Create(
+        absl::string_view name, bool receiver_type,
+        std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler) {
+      std::vector<CelValue::Type> arg_types;
+      arg_types.reserve(sizeof...(Arguments));
+
+      if (!TypeAdder().template AddType<0, Arguments...>(&arg_types)) {
+        return absl::Status(
+            absl::StatusCode::kInternal,
+            absl::StrCat("Failed to create adapter for ", name,
+                         ": failed to determine input parameter type"));
+      }
+
+      return std::make_unique<FunctionAdapter>(
+          CelFunctionDescriptor(name, receiver_type, std::move(arg_types)),
+          std::move(handler));
+    }
+
+    // Creates function handler and attempts to register it with
+    // supplied function registry.
+    static absl::Status CreateAndRegister(
+        absl::string_view name, bool receiver_type,
+        std::function<ReturnType(::google::protobuf::Arena*, Arguments...)> handler,
+        CelFunctionRegistry* registry) {
+      CEL_ASSIGN_OR_RETURN(auto cel_function,
+                           Create(name, receiver_type, std::move(handler)));
+
+      return registry->Register(std::move(cel_function));
+    }
 
 #if defined(__clang__) || !defined(__GNUC__)
-  template <int arg_index>
-  inline absl::Status RunWrap(absl::Span<const CelValue> arguments,
-                              std::tuple<::google::protobuf::Arena*, Arguments...> input,
-                              CelValue* result, ::google::protobuf::Arena* arena) const {
-    if (!ValueConverter().ValueToNative(arguments[arg_index],
-                                        &std::get<arg_index + 1>(input))) {
-      return absl::Status(absl::StatusCode::kInvalidArgument,
-                          "Type conversion failed");
+    template <int arg_index>
+    inline absl::Status RunWrap(
+        absl::Span<const CelValue> arguments,
+        std::tuple<::google::protobuf::Arena*, Arguments...> input, CelValue* result,
+        ::google::protobuf::Arena* arena) const {
+      if (!ValueConverter().ValueToNative(arguments[arg_index],
+                                          &std::get<arg_index + 1>(input))) {
+        return absl::Status(absl::StatusCode::kInvalidArgument,
+                            "Type conversion failed");
+      }
+      return RunWrap<arg_index + 1>(arguments, input, result, arena);
     }
-    return RunWrap<arg_index + 1>(arguments, input, result, arena);
-  }
 
-  template <>
-  inline absl::Status RunWrap<sizeof...(Arguments)>(
-      absl::Span<const CelValue>,
-      std::tuple<::google::protobuf::Arena*, Arguments...> input, CelValue* result,
-      ::google::protobuf::Arena* arena) const {
-    return ValueConverter().NativeToValue(absl::apply(handler_, input), arena,
-                                          result);
-  }
+    template <>
+    inline absl::Status RunWrap<sizeof...(Arguments)>(
+        absl::Span<const CelValue>,
+        std::tuple<::google::protobuf::Arena*, Arguments...> input, CelValue* result,
+        ::google::protobuf::Arena* arena) const {
+      return ValueConverter().NativeToValue(absl::apply(handler_, input), arena,
+                                            result);
+    }
 #else
-  inline absl::Status RunWrap(
-      std::function<ReturnType()> func,
-      ABSL_ATTRIBUTE_UNUSED const absl::Span<const CelValue> argset,
-      ::google::protobuf::Arena* arena, CelValue* result,
-      ABSL_ATTRIBUTE_UNUSED int arg_index) const {
-    return ValueConverter().NativeToValue(func(), arena, result);
-  }
-
-  template <typename Arg, typename... Args>
-  inline absl::Status RunWrap(std::function<ReturnType(Arg, Args...)> func,
-                              const absl::Span<const CelValue> argset,
-                              ::google::protobuf::Arena* arena, CelValue* result,
-                              int arg_index) const {
-    Arg argument;
-    if (!ValueConverter().ValueToNative(argset[arg_index], &argument)) {
-      return absl::Status(absl::StatusCode::kInvalidArgument,
-                          "Type conversion failed");
+    inline absl::Status RunWrap(
+        std::function<ReturnType()> func,
+        ABSL_ATTRIBUTE_UNUSED const absl::Span<const CelValue> argset,
+        ::google::protobuf::Arena* arena, CelValue* result,
+        ABSL_ATTRIBUTE_UNUSED int arg_index) const {
+      return ValueConverter().NativeToValue(func(), arena, result);
     }
 
-    std::function<ReturnType(Args...)> wrapped_func =
-        [func, argument](Args... args) -> ReturnType {
-      return func(argument, args...);
-    };
+    template <typename Arg, typename... Args>
+    inline absl::Status RunWrap(std::function<ReturnType(Arg, Args...)> func,
+                                const absl::Span<const CelValue> argset,
+                                ::google::protobuf::Arena* arena, CelValue* result,
+                                int arg_index) const {
+      Arg argument;
+      if (!ValueConverter().ValueToNative(argset[arg_index], &argument)) {
+        return absl::Status(absl::StatusCode::kInvalidArgument,
+                            "Type conversion failed");
+      }
 
-    return RunWrap(std::move(wrapped_func), argset, arena, result,
-                   arg_index + 1);
-  }
+      std::function<ReturnType(Args...)> wrapped_func =
+          [func, argument](Args... args) -> ReturnType {
+        return func(argument, args...);
+      };
+
+      return RunWrap(std::move(wrapped_func), argset, arena, result,
+                     arg_index + 1);
+    }
 #endif
 
-  absl::Status Evaluate(absl::Span<const CelValue> arguments, CelValue* result,
-                        ::google::protobuf::Arena* arena) const override {
-    if (arguments.size() != sizeof...(Arguments)) {
-      return absl::Status(absl::StatusCode::kInternal,
-                          "Argument number mismatch");
-    }
+    absl::Status Evaluate(absl::Span<const CelValue> arguments,
+                          CelValue* result,
+                          ::google::protobuf::Arena* arena) const override {
+      if (arguments.size() != sizeof...(Arguments)) {
+        return absl::Status(absl::StatusCode::kInternal,
+                            "Argument number mismatch");
+      }
 
 #if defined(__clang__) || !defined(__GNUC__)
-    std::tuple<::google::protobuf::Arena*, Arguments...> input;
-    std::get<0>(input) = arena;
-    return RunWrap<0>(arguments, input, result, arena);
+      std::tuple<::google::protobuf::Arena*, Arguments...> input;
+      std::get<0>(input) = arena;
+      return RunWrap<0>(arguments, input, result, arena);
 #else
-    const auto* handler = &handler_;
-    std::function<ReturnType(Arguments...)> wrapped_handler =
-        [handler, arena](Arguments... args) -> ReturnType {
-      return (*handler)(arena, args...);
-    };
-    return RunWrap(std::move(wrapped_handler), arguments, arena, result, 0);
+      const auto* handler = &handler_;
+      std::function<ReturnType(Arguments...)> wrapped_handler =
+          [handler, arena](Arguments... args) -> ReturnType {
+        return (*handler)(arena, args...);
+      };
+      return RunWrap(std::move(wrapped_handler), arguments, arena, result, 0);
 #endif
-  }
+    }
 
- private:
-  FuncType handler_;
+   private:
+    FuncType handler_;
+  };
 };
 
 }  // namespace internal

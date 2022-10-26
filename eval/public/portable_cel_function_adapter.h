@@ -27,10 +27,51 @@ namespace google::api::expr::runtime {
 //
 // Most users should prefer using the standard FunctionAdapter.
 template <typename ReturnType, typename... Arguments>
-using PortableFunctionAdapter =
-    internal::FunctionAdapter<internal::TypeCodeMatcher,
-                              internal::ValueConverter, ReturnType,
-                              Arguments...>;
+using PortableFunctionAdapter = internal::FunctionAdapterImpl<
+    internal::TypeCodeMatcher,
+    internal::ValueConverter>::FunctionAdapter<ReturnType, Arguments...>;
+
+// PortableUnaryFunctionAdapter provides a factory for adapting 1 argument
+// functions to CEL extension functions.
+//
+// Static Methods:
+//
+// Create(absl::string_view function_name, bool receiver_style,
+//          FunctionType func) -> std::unique_ptr<CelFunction>
+//
+// Usage example:
+//
+//  auto func = [](::google::protobuf::Arena* arena, int64_t i) -> int64_t {
+//    return -i;
+//  };
+//
+//  auto cel_func =
+//      PortableUnaryFunctionAdapter<int64_t, int64_t>::Create("negate", true,
+//      func);
+template <typename ReturnType, typename T>
+using PortableUnaryFunctionAdapter = internal::FunctionAdapterImpl<
+    internal::TypeCodeMatcher,
+    internal::ValueConverter>::UnaryFunction<ReturnType, T>;
+
+// PortableBinaryFunctionAdapter provides a factory for adapting 2 argument
+// functions to CEL extension functions.
+//
+// Create(absl::string_view function_name, bool receiver_style,
+//          FunctionType func) -> std::unique_ptr<CelFunction>
+//
+// Usage example:
+//
+//  auto func = [](::google::protobuf::Arena* arena, int64_t i, int64_t j) -> bool {
+//    return i < j;
+//  };
+//
+//  auto cel_func =
+//      PortableBinaryFunctionAdapter<bool, int64_t, int64_t>::Create("<",
+//      false, func);
+template <typename ReturnType, typename T, typename U>
+using PortableBinaryFunctionAdapter = internal::FunctionAdapterImpl<
+    internal::TypeCodeMatcher,
+    internal::ValueConverter>::BinaryFunction<ReturnType, T, U>;
 
 }  // namespace google::api::expr::runtime
 

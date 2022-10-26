@@ -199,22 +199,18 @@ CelValue Modulo<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
 // Registers all arithmetic functions for template parameter type.
 template <class Type>
 absl::Status RegisterArithmeticFunctionsForType(CelFunctionRegistry* registry) {
-  absl::Status status =
-      PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
-          builtin::kAdd, false, Add<Type>, registry);
-  if (!status.ok()) return status;
+  using FunctionAdapter = PortableBinaryFunctionAdapter<CelValue, Type, Type>;
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kAdd, false, Add<Type>)));
 
-  status = PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
-      builtin::kSubtract, false, Sub<Type>, registry);
-  if (!status.ok()) return status;
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kSubtract, false, Sub<Type>)));
 
-  status = PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
-      builtin::kMultiply, false, Mul<Type>, registry);
-  if (!status.ok()) return status;
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::Create(builtin::kMultiply, false, Mul<Type>)));
 
-  status = PortableFunctionAdapter<CelValue, Type, Type>::CreateAndRegister(
-      builtin::kDivide, false, Div<Type>, registry);
-  return status;
+  return registry->Register(
+      FunctionAdapter::Create(builtin::kDivide, false, Div<Type>));
 }
 
 template <class T>
@@ -524,35 +520,33 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
   if (options.enable_list_contains) {
     for (absl::string_view op : in_operators) {
       if (options.enable_heterogeneous_equality) {
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<CelValue, CelValue, const CelList*>::
-                 CreateAndRegister(op, false, &HeterogeneousEqualityIn,
-                                   registry)));
+        CEL_RETURN_IF_ERROR(registry->Register(
+            (PortableBinaryFunctionAdapter<CelValue, CelValue, const CelList*>::
+                 Create(op, false, &HeterogeneousEqualityIn))));
       } else {
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<bool, bool, const CelList*>::
-                 CreateAndRegister(op, false, In<bool>, registry)));
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<bool, int64_t, const CelList*>::
-                 CreateAndRegister(op, false, In<int64_t>, registry)));
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<bool, uint64_t, const CelList*>::
-                 CreateAndRegister(op, false, In<uint64_t>, registry)));
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<bool, double, const CelList*>::
-                 CreateAndRegister(op, false, In<double>, registry)));
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<
+        CEL_RETURN_IF_ERROR(registry->Register(
+            (PortableBinaryFunctionAdapter<bool, bool, const CelList*>::Create(
+                op, false, In<bool>))));
+        CEL_RETURN_IF_ERROR(registry->Register(
+            (PortableBinaryFunctionAdapter<
+                bool, int64_t, const CelList*>::Create(op, false,
+                                                       In<int64_t>))));
+        CEL_RETURN_IF_ERROR(registry->Register(
+            PortableBinaryFunctionAdapter<
+                bool, uint64_t, const CelList*>::Create(op, false,
+                                                        In<uint64_t>)));
+        CEL_RETURN_IF_ERROR(registry->Register(
+            PortableBinaryFunctionAdapter<bool, double, const CelList*>::Create(
+                op, false, In<double>)));
+        CEL_RETURN_IF_ERROR(registry->Register(
+            PortableBinaryFunctionAdapter<
                 bool, CelValue::StringHolder,
-                const CelList*>::CreateAndRegister(op, false,
-                                                   In<CelValue::StringHolder>,
-                                                   registry)));
-        CEL_RETURN_IF_ERROR(
-            (PortableFunctionAdapter<
+                const CelList*>::Create(op, false,
+                                        In<CelValue::StringHolder>)));
+        CEL_RETURN_IF_ERROR(registry->Register(
+            PortableBinaryFunctionAdapter<
                 bool, CelValue::BytesHolder,
-                const CelList*>::CreateAndRegister(op, false,
-                                                   In<CelValue::BytesHolder>,
-                                                   registry)));
+                const CelList*>::Create(op, false, In<CelValue::BytesHolder>)));
       }
     }
   }
@@ -650,37 +644,33 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
   };
 
   for (auto op : in_operators) {
-    auto status = PortableFunctionAdapter<
-        CelValue, CelValue::StringHolder,
-        const CelMap*>::CreateAndRegister(op, false, stringKeyInSet, registry);
+    auto status = registry->Register(
+        PortableBinaryFunctionAdapter<CelValue, CelValue::StringHolder,
+                                      const CelMap*>::Create(op, false,
+                                                             stringKeyInSet));
     if (!status.ok()) return status;
 
-    status =
-        PortableFunctionAdapter<CelValue, bool,
-                                const CelMap*>::CreateAndRegister(op, false,
-                                                                  boolKeyInSet,
-                                                                  registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<CelValue, bool, const CelMap*>::Create(
+            op, false, boolKeyInSet));
     if (!status.ok()) return status;
 
-    status =
-        PortableFunctionAdapter<CelValue, int64_t,
-                                const CelMap*>::CreateAndRegister(op, false,
-                                                                  intKeyInSet,
-                                                                  registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<CelValue, int64_t, const CelMap*>::Create(
+            op, false, intKeyInSet));
     if (!status.ok()) return status;
 
-    status =
-        PortableFunctionAdapter<CelValue, uint64_t,
-                                const CelMap*>::CreateAndRegister(op, false,
-                                                                  uintKeyInSet,
-                                                                  registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<CelValue, uint64_t,
+                                      const CelMap*>::Create(op, false,
+                                                             uintKeyInSet));
     if (!status.ok()) return status;
 
     if (options.enable_heterogeneous_equality) {
-      status = PortableFunctionAdapter<
-          CelValue, double, const CelMap*>::CreateAndRegister(op, false,
-                                                              doubleKeyInSet,
-                                                              registry);
+      status = registry->Register(
+          PortableBinaryFunctionAdapter<CelValue, double,
+                                        const CelMap*>::Create(op, false,
+                                                               doubleKeyInSet));
       if (!status.ok()) return status;
     }
   }
@@ -689,261 +679,266 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
 
 absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
                                      const InterpreterOptions& options) {
-  auto status = PortableFunctionAdapter<
-      bool, CelValue::StringHolder,
-      CelValue::StringHolder>::CreateAndRegister(builtin::kStringContains,
-                                                 false, StringContains,
-                                                 registry);
+  auto status = registry->Register(
+      PortableBinaryFunctionAdapter<
+          bool, CelValue::StringHolder,
+          CelValue::StringHolder>::Create(builtin::kStringContains, false,
+                                          StringContains));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<
-      bool, CelValue::StringHolder,
-      CelValue::StringHolder>::CreateAndRegister(builtin::kStringContains, true,
-                                                 StringContains, registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<
+          bool, CelValue::StringHolder,
+          CelValue::StringHolder>::Create(builtin::kStringContains, true,
+                                          StringContains));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<
-      bool, CelValue::StringHolder,
-      CelValue::StringHolder>::CreateAndRegister(builtin::kStringEndsWith,
-                                                 false, StringEndsWith,
-                                                 registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<
+          bool, CelValue::StringHolder,
+          CelValue::StringHolder>::Create(builtin::kStringEndsWith, false,
+                                          StringEndsWith));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<
-      bool, CelValue::StringHolder,
-      CelValue::StringHolder>::CreateAndRegister(builtin::kStringEndsWith, true,
-                                                 StringEndsWith, registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<
+          bool, CelValue::StringHolder,
+          CelValue::StringHolder>::Create(builtin::kStringEndsWith, true,
+                                          StringEndsWith));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<
-      bool, CelValue::StringHolder,
-      CelValue::StringHolder>::CreateAndRegister(builtin::kStringStartsWith,
-                                                 false, StringStartsWith,
-                                                 registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<
+          bool, CelValue::StringHolder,
+          CelValue::StringHolder>::Create(builtin::kStringStartsWith, false,
+                                          StringStartsWith));
   if (!status.ok()) return status;
 
-  return PortableFunctionAdapter<
-      bool, CelValue::StringHolder,
-      CelValue::StringHolder>::CreateAndRegister(builtin::kStringStartsWith,
-                                                 true, StringStartsWith,
-                                                 registry);
+  return registry->Register(
+      PortableBinaryFunctionAdapter<
+          bool, CelValue::StringHolder,
+          CelValue::StringHolder>::Create(builtin::kStringStartsWith, true,
+                                          StringStartsWith));
 }
 
 absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
                                         const InterpreterOptions& options) {
   auto status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kFullYear, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetFullYear(arena, ts, tz.value()); },
-              registry);
+      registry->Register(PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                                       CelValue::StringHolder>::
+                             Create(builtin::kFullYear, true,
+                                    [](Arena* arena, absl::Time ts,
+                                       CelValue::StringHolder tz) -> CelValue {
+                                      return GetFullYear(arena, ts, tz.value());
+                                    }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kFullYear, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetFullYear(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kMonth, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetMonth(arena, ts, tz.value()); },
-              registry);
-  if (!status.ok()) return status;
-
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kMonth, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetMonth(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kFullYear, true,
+          [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetFullYear(arena, ts, "");
+          }));
   if (!status.ok()) return status;
 
   status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kDayOfYear, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetDayOfYear(arena, ts, tz.value()); },
-              registry);
+      registry->Register(PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                                       CelValue::StringHolder>::
+                             Create(builtin::kMonth, true,
+                                    [](Arena* arena, absl::Time ts,
+                                       CelValue::StringHolder tz) -> CelValue {
+                                      return GetMonth(arena, ts, tz.value());
+                                    }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDayOfYear, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDayOfYear(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kMonth, true, [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetMonth(arena, ts, "");
+          }));
   if (!status.ok()) return status;
 
-  status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kDayOfMonth, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetDayOfMonth(arena, ts, tz.value()); },
-              registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                    CelValue::StringHolder>::
+          Create(builtin::kDayOfYear, true,
+                 [](Arena* arena, absl::Time ts,
+                    CelValue::StringHolder tz) -> CelValue {
+                   return GetDayOfYear(arena, ts, tz.value());
+                 }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDayOfMonth, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDayOfMonth(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kDayOfYear, true,
+          [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetDayOfYear(arena, ts, "");
+          }));
   if (!status.ok()) return status;
 
-  status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kDate, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetDate(arena, ts, tz.value()); },
-              registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                    CelValue::StringHolder>::
+          Create(builtin::kDayOfMonth, true,
+                 [](Arena* arena, absl::Time ts,
+                    CelValue::StringHolder tz) -> CelValue {
+                   return GetDayOfMonth(arena, ts, tz.value());
+                 }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDate, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDate(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kDayOfWeek, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetDayOfWeek(arena, ts, tz.value()); },
-              registry);
-  if (!status.ok()) return status;
-
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kDayOfWeek, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetDayOfWeek(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kDayOfMonth, true,
+          [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetDayOfMonth(arena, ts, "");
+          }));
   if (!status.ok()) return status;
 
   status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kHours, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetHours(arena, ts, tz.value()); },
-              registry);
+      registry->Register(PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                                       CelValue::StringHolder>::
+                             Create(builtin::kDate, true,
+                                    [](Arena* arena, absl::Time ts,
+                                       CelValue::StringHolder tz) -> CelValue {
+                                      return GetDate(arena, ts, tz.value());
+                                    }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kHours, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetHours(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kDate, true, [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetDate(arena, ts, "");
+          }));
   if (!status.ok()) return status;
 
-  status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kMinutes, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetMinutes(arena, ts, tz.value()); },
-              registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                    CelValue::StringHolder>::
+          Create(builtin::kDayOfWeek, true,
+                 [](Arena* arena, absl::Time ts,
+                    CelValue::StringHolder tz) -> CelValue {
+                   return GetDayOfWeek(arena, ts, tz.value());
+                 }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kMinutes, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetMinutes(arena, ts, "");
-      },
-      registry);
-  if (!status.ok()) return status;
-
-  status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kSeconds, true,
-              [](Arena* arena, absl::Time ts, CelValue::StringHolder tz)
-                  -> CelValue { return GetSeconds(arena, ts, tz.value()); },
-              registry);
-  if (!status.ok()) return status;
-
-  status = PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kSeconds, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetSeconds(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kDayOfWeek, true,
+          [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetDayOfWeek(arena, ts, "");
+          }));
   if (!status.ok()) return status;
 
   status =
-      PortableFunctionAdapter<CelValue, absl::Time, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kMilliseconds, true,
-              [](Arena* arena, absl::Time ts,
-                 CelValue::StringHolder tz) -> CelValue {
-                return GetMilliseconds(arena, ts, tz.value());
-              },
-              registry);
+      registry->Register(PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                                       CelValue::StringHolder>::
+                             Create(builtin::kHours, true,
+                                    [](Arena* arena, absl::Time ts,
+                                       CelValue::StringHolder tz) -> CelValue {
+                                      return GetHours(arena, ts, tz.value());
+                                    }));
   if (!status.ok()) return status;
 
-  return PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kMilliseconds, true,
-      [](Arena* arena, absl::Time ts) -> CelValue {
-        return GetMilliseconds(arena, ts, "");
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kHours, true, [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetHours(arena, ts, "");
+          }));
+  if (!status.ok()) return status;
+
+  status =
+      registry->Register(PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                                       CelValue::StringHolder>::
+                             Create(builtin::kMinutes, true,
+                                    [](Arena* arena, absl::Time ts,
+                                       CelValue::StringHolder tz) -> CelValue {
+                                      return GetMinutes(arena, ts, tz.value());
+                                    }));
+  if (!status.ok()) return status;
+
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kMinutes, true, [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetMinutes(arena, ts, "");
+          }));
+  if (!status.ok()) return status;
+
+  status =
+      registry->Register(PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                                       CelValue::StringHolder>::
+                             Create(builtin::kSeconds, true,
+                                    [](Arena* arena, absl::Time ts,
+                                       CelValue::StringHolder tz) -> CelValue {
+                                      return GetSeconds(arena, ts, tz.value());
+                                    }));
+  if (!status.ok()) return status;
+
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kSeconds, true, [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetSeconds(arena, ts, "");
+          }));
+  if (!status.ok()) return status;
+
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time,
+                                    CelValue::StringHolder>::
+          Create(builtin::kMilliseconds, true,
+                 [](Arena* arena, absl::Time ts,
+                    CelValue::StringHolder tz) -> CelValue {
+                   return GetMilliseconds(arena, ts, tz.value());
+                 }));
+  if (!status.ok()) return status;
+
+  return registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kMilliseconds, true,
+          [](Arena* arena, absl::Time ts) -> CelValue {
+            return GetMilliseconds(arena, ts, "");
+          }));
 }
 
 absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
                                               const InterpreterOptions&) {
   // bytes -> bytes
-  auto status =
-      PortableFunctionAdapter<CelValue::BytesHolder, CelValue::BytesHolder>::
-          CreateAndRegister(
-              builtin::kBytes, false,
-              [](Arena*, CelValue::BytesHolder value) -> CelValue::BytesHolder {
-                return value;
-              },
-              registry);
+  auto status = registry->Register(
+      PortableUnaryFunctionAdapter<
+          CelValue::BytesHolder,
+          CelValue::BytesHolder>::Create(builtin::kBytes, false,
+                                         [](Arena*, CelValue::BytesHolder value)
+                                             -> CelValue::BytesHolder {
+                                           return value;
+                                         }));
   if (!status.ok()) return status;
 
   // string -> bytes
-  return PortableFunctionAdapter<CelValue, CelValue::StringHolder>::
-      CreateAndRegister(
+  return registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
           builtin::kBytes, false,
           [](Arena* arena, CelValue::StringHolder value) -> CelValue {
             return CelValue::CreateBytesView(value.value());
-          },
-          registry);
+          }));
 }
 
 absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
                                                const InterpreterOptions&) {
   // double -> double
-  auto status = PortableFunctionAdapter<double, double>::CreateAndRegister(
-      builtin::kDouble, false, [](Arena*, double v) { return v; }, registry);
+  auto status =
+      registry->Register(PortableUnaryFunctionAdapter<double, double>::Create(
+          builtin::kDouble, false, [](Arena*, double v) { return v; }));
   if (!status.ok()) return status;
 
   // int -> double
-  status = PortableFunctionAdapter<double, int64_t>::CreateAndRegister(
-      builtin::kDouble, false,
-      [](Arena*, int64_t v) { return static_cast<double>(v); }, registry);
+  status =
+      registry->Register(PortableUnaryFunctionAdapter<double, int64_t>::Create(
+          builtin::kDouble, false,
+          [](Arena*, int64_t v) { return static_cast<double>(v); }));
   if (!status.ok()) return status;
 
   // string -> double
-  status = PortableFunctionAdapter<CelValue, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kDouble, false,
-          [](Arena* arena, CelValue::StringHolder s) {
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
+          builtin::kDouble, false, [](Arena* arena, CelValue::StringHolder s) {
             double result;
             if (absl::SimpleAtod(s.value(), &result)) {
               return CelValue::CreateDouble(result);
@@ -951,74 +946,73 @@ absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
               return CreateErrorValue(arena, "cannot convert string to double",
                                       absl::StatusCode::kInvalidArgument);
             }
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // uint -> double
-  return PortableFunctionAdapter<double, uint64_t>::CreateAndRegister(
-      builtin::kDouble, false,
-      [](Arena*, uint64_t v) { return static_cast<double>(v); }, registry);
+  return registry->Register(
+      PortableUnaryFunctionAdapter<double, uint64_t>::Create(
+          builtin::kDouble, false,
+          [](Arena*, uint64_t v) { return static_cast<double>(v); }));
 }
 
 absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
                                             const InterpreterOptions&) {
   // bool -> int
-  auto status = PortableFunctionAdapter<int64_t, bool>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena*, bool v) { return static_cast<int64_t>(v); }, registry);
+  auto status =
+      registry->Register(PortableUnaryFunctionAdapter<int64_t, bool>::Create(
+          builtin::kInt, false,
+          [](Arena*, bool v) { return static_cast<int64_t>(v); }));
   if (!status.ok()) return status;
 
   // double -> int
-  status = PortableFunctionAdapter<CelValue, double>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena* arena, double v) {
-        auto conv = cel::internal::CheckedDoubleToInt64(v);
-        if (!conv.ok()) {
-          return CreateErrorValue(arena, conv.status());
-        }
-        return CelValue::CreateInt64(*conv);
-      },
-      registry);
+  status =
+      registry->Register(PortableUnaryFunctionAdapter<CelValue, double>::Create(
+          builtin::kInt, false, [](Arena* arena, double v) {
+            auto conv = cel::internal::CheckedDoubleToInt64(v);
+            if (!conv.ok()) {
+              return CreateErrorValue(arena, conv.status());
+            }
+            return CelValue::CreateInt64(*conv);
+          }));
   if (!status.ok()) return status;
 
   // int -> int
-  status = PortableFunctionAdapter<int64_t, int64_t>::CreateAndRegister(
-      builtin::kInt, false, [](Arena*, int64_t v) { return v; }, registry);
+  status =
+      registry->Register(PortableUnaryFunctionAdapter<int64_t, int64_t>::Create(
+          builtin::kInt, false, [](Arena*, int64_t v) { return v; }));
   if (!status.ok()) return status;
 
   // string -> int
-  status = PortableFunctionAdapter<CelValue, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kInt, false,
-          [](Arena* arena, CelValue::StringHolder s) {
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
+          builtin::kInt, false, [](Arena* arena, CelValue::StringHolder s) {
             int64_t result;
             if (!absl::SimpleAtoi(s.value(), &result)) {
               return CreateErrorValue(arena, "cannot convert string to int",
                                       absl::StatusCode::kInvalidArgument);
             }
             return CelValue::CreateInt64(result);
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // time -> int
-  status = PortableFunctionAdapter<int64_t, absl::Time>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena*, absl::Time t) { return absl::ToUnixSeconds(t); }, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, absl::Time>::Create(
+          builtin::kInt, false,
+          [](Arena*, absl::Time t) { return absl::ToUnixSeconds(t); }));
   if (!status.ok()) return status;
 
   // uint -> int
-  return PortableFunctionAdapter<CelValue, uint64_t>::CreateAndRegister(
-      builtin::kInt, false,
-      [](Arena* arena, uint64_t v) {
-        auto conv = cel::internal::CheckedUint64ToInt64(v);
-        if (!conv.ok()) {
-          return CreateErrorValue(arena, conv.status());
-        }
-        return CelValue::CreateInt64(*conv);
-      },
-      registry);
+  return registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, uint64_t>::Create(
+          builtin::kInt, false, [](Arena* arena, uint64_t v) {
+            auto conv = cel::internal::CheckedUint64ToInt64(v);
+            if (!conv.ok()) {
+              return CreateErrorValue(arena, conv.status());
+            }
+            return CelValue::CreateInt64(*conv);
+          }));
 }
 
 absl::Status RegisterStringConversionFunctions(
@@ -1028,8 +1022,8 @@ absl::Status RegisterStringConversionFunctions(
     return absl::OkStatus();
   }
 
-  auto status = PortableFunctionAdapter<CelValue, CelValue::BytesHolder>::
-      CreateAndRegister(
+  auto status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::BytesHolder>::Create(
           builtin::kString, false,
           [](Arena* arena, CelValue::BytesHolder value) -> CelValue {
             if (::cel::internal::Utf8IsValid(value.value())) {
@@ -1037,127 +1031,119 @@ absl::Status RegisterStringConversionFunctions(
             }
             return CreateErrorValue(arena, "invalid UTF-8 bytes value",
                                     absl::StatusCode::kInvalidArgument);
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // double -> string
-  status = PortableFunctionAdapter<CelValue::StringHolder, double>::
-      CreateAndRegister(
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue::StringHolder, double>::Create(
           builtin::kString, false,
           [](Arena* arena, double value) -> CelValue::StringHolder {
             return CelValue::StringHolder(
                 Arena::Create<std::string>(arena, absl::StrCat(value)));
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // int -> string
-  status = PortableFunctionAdapter<CelValue::StringHolder, int64_t>::
-      CreateAndRegister(
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue::StringHolder, int64_t>::Create(
           builtin::kString, false,
           [](Arena* arena, int64_t value) -> CelValue::StringHolder {
             return CelValue::StringHolder(
                 Arena::Create<std::string>(arena, absl::StrCat(value)));
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // string -> string
-  status =
-      PortableFunctionAdapter<CelValue::StringHolder, CelValue::StringHolder>::
-          CreateAndRegister(
-              builtin::kString, false,
-              [](Arena*, CelValue::StringHolder value)
-                  -> CelValue::StringHolder { return value; },
-              registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue::StringHolder,
+                                   CelValue::StringHolder>::
+          Create(builtin::kString, false,
+                 [](Arena*, CelValue::StringHolder value)
+                     -> CelValue::StringHolder { return value; }));
   if (!status.ok()) return status;
 
   // uint -> string
-  status = PortableFunctionAdapter<CelValue::StringHolder, uint64_t>::
-      CreateAndRegister(
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue::StringHolder, uint64_t>::Create(
           builtin::kString, false,
           [](Arena* arena, uint64_t value) -> CelValue::StringHolder {
             return CelValue::StringHolder(
                 Arena::Create<std::string>(arena, absl::StrCat(value)));
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // duration -> string
-  status = PortableFunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
-      builtin::kString, false,
-      [](Arena* arena, absl::Duration value) -> CelValue {
-        auto encode = EncodeDurationToString(value);
-        if (!encode.ok()) {
-          return CreateErrorValue(arena, encode.status());
-        }
-        return CelValue::CreateString(
-            CelValue::StringHolder(Arena::Create<std::string>(arena, *encode)));
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
+          builtin::kString, false,
+          [](Arena* arena, absl::Duration value) -> CelValue {
+            auto encode = EncodeDurationToString(value);
+            if (!encode.ok()) {
+              return CreateErrorValue(arena, encode.status());
+            }
+            return CelValue::CreateString(CelValue::StringHolder(
+                Arena::Create<std::string>(arena, *encode)));
+          }));
   if (!status.ok()) return status;
 
   // timestamp -> string
-  return PortableFunctionAdapter<CelValue, absl::Time>::CreateAndRegister(
-      builtin::kString, false,
-      [](Arena* arena, absl::Time value) -> CelValue {
-        auto encode = EncodeTimeToString(value);
-        if (!encode.ok()) {
-          return CreateErrorValue(arena, encode.status());
-        }
-        return CelValue::CreateString(
-            CelValue::StringHolder(Arena::Create<std::string>(arena, *encode)));
-      },
-      registry);
+  return registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Time>::Create(
+          builtin::kString, false,
+          [](Arena* arena, absl::Time value) -> CelValue {
+            auto encode = EncodeTimeToString(value);
+            if (!encode.ok()) {
+              return CreateErrorValue(arena, encode.status());
+            }
+            return CelValue::CreateString(CelValue::StringHolder(
+                Arena::Create<std::string>(arena, *encode)));
+          }));
 }
 
 absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
                                              const InterpreterOptions&) {
   // double -> uint
-  auto status = PortableFunctionAdapter<CelValue, double>::CreateAndRegister(
-      builtin::kUint, false,
-      [](Arena* arena, double v) {
-        auto conv = cel::internal::CheckedDoubleToUint64(v);
-        if (!conv.ok()) {
-          return CreateErrorValue(arena, conv.status());
-        }
-        return CelValue::CreateUint64(*conv);
-      },
-      registry);
+  auto status =
+      registry->Register(PortableUnaryFunctionAdapter<CelValue, double>::Create(
+          builtin::kUint, false, [](Arena* arena, double v) {
+            auto conv = cel::internal::CheckedDoubleToUint64(v);
+            if (!conv.ok()) {
+              return CreateErrorValue(arena, conv.status());
+            }
+            return CelValue::CreateUint64(*conv);
+          }));
   if (!status.ok()) return status;
 
   // int -> uint
-  status = PortableFunctionAdapter<CelValue, int64_t>::CreateAndRegister(
-      builtin::kUint, false,
-      [](Arena* arena, int64_t v) {
-        auto conv = cel::internal::CheckedInt64ToUint64(v);
-        if (!conv.ok()) {
-          return CreateErrorValue(arena, conv.status());
-        }
-        return CelValue::CreateUint64(*conv);
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
+          builtin::kUint, false, [](Arena* arena, int64_t v) {
+            auto conv = cel::internal::CheckedInt64ToUint64(v);
+            if (!conv.ok()) {
+              return CreateErrorValue(arena, conv.status());
+            }
+            return CelValue::CreateUint64(*conv);
+          }));
   if (!status.ok()) return status;
 
   // string -> uint
-  status = PortableFunctionAdapter<CelValue, CelValue::StringHolder>::
-      CreateAndRegister(
-          builtin::kUint, false,
-          [](Arena* arena, CelValue::StringHolder s) {
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
+          builtin::kUint, false, [](Arena* arena, CelValue::StringHolder s) {
             uint64_t result;
             if (!absl::SimpleAtoi(s.value(), &result)) {
               return CreateErrorValue(arena, "doesn't convert to a string",
                                       absl::StatusCode::kInvalidArgument);
             }
             return CelValue::CreateUint64(result);
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   // uint -> uint
-  return PortableFunctionAdapter<uint64_t, uint64_t>::CreateAndRegister(
-      builtin::kUint, false, [](Arena*, uint64_t v) { return v; }, registry);
+  return registry->Register(
+      PortableUnaryFunctionAdapter<uint64_t, uint64_t>::Create(
+          builtin::kUint, false, [](Arena*, uint64_t v) { return v; }));
 }
 
 absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
@@ -1169,16 +1155,17 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // duration() conversion from string.
-  status = PortableFunctionAdapter<CelValue, CelValue::StringHolder>::
-      CreateAndRegister(builtin::kDuration, false, CreateDurationFromString,
-                        registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
+          builtin::kDuration, false, CreateDurationFromString));
   if (!status.ok()) return status;
 
   // dyn() identity function.
   // TODO(issues/102): strip dyn() function references at type-check time.
-  status = PortableFunctionAdapter<CelValue, CelValue>::CreateAndRegister(
-      builtin::kDyn, false,
-      [](Arena*, CelValue value) -> CelValue { return value; }, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue>::Create(
+          builtin::kDyn, false,
+          [](Arena*, CelValue value) -> CelValue { return value; }));
 
   status = RegisterIntConversionFunctions(registry, options);
   if (!status.ok()) return status;
@@ -1187,18 +1174,19 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // timestamp conversion from int.
-  status = PortableFunctionAdapter<CelValue, int64_t>::CreateAndRegister(
-      builtin::kTimestamp, false,
-      [](Arena*, int64_t epoch_seconds) -> CelValue {
-        return CelValue::CreateTimestamp(absl::FromUnixSeconds(epoch_seconds));
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
+          builtin::kTimestamp, false,
+          [](Arena*, int64_t epoch_seconds) -> CelValue {
+            return CelValue::CreateTimestamp(
+                absl::FromUnixSeconds(epoch_seconds));
+          }));
 
   // timestamp() conversion from string.
   bool enable_timestamp_duration_overflow_errors =
       options.enable_timestamp_duration_overflow_errors;
-  status = PortableFunctionAdapter<CelValue, CelValue::StringHolder>::
-      CreateAndRegister(
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
           builtin::kTimestamp, false,
           [=](Arena* arena, CelValue::StringHolder time_str) -> CelValue {
             absl::Time ts;
@@ -1215,8 +1203,7 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
               }
             }
             return CelValue::CreateTimestamp(ts);
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
   return RegisterUintConversionFunctions(registry, options);
@@ -1227,27 +1214,28 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
                                       const InterpreterOptions& options) {
   // logical NOT
-  absl::Status status = PortableFunctionAdapter<bool, bool>::CreateAndRegister(
-      builtin::kNot, false, [](Arena*, bool value) -> bool { return !value; },
-      registry);
+  absl::Status status =
+      registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
+          builtin::kNot, false,
+          [](Arena*, bool value) -> bool { return !value; }));
   if (!status.ok()) return status;
 
   // Negation group
-  status = PortableFunctionAdapter<CelValue, int64_t>::CreateAndRegister(
-      builtin::kNeg, false,
-      [](Arena* arena, int64_t value) -> CelValue {
-        auto inv = cel::internal::CheckedNegation(value);
-        if (!inv.ok()) {
-          return CreateErrorValue(arena, inv.status());
-        }
-        return CelValue::CreateInt64(*inv);
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
+          builtin::kNeg, false, [](Arena* arena, int64_t value) -> CelValue {
+            auto inv = cel::internal::CheckedNegation(value);
+            if (!inv.ok()) {
+              return CreateErrorValue(arena, inv.status());
+            }
+            return CelValue::CreateInt64(*inv);
+          }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<double, double>::CreateAndRegister(
-      builtin::kNeg, false,
-      [](Arena*, double value) -> double { return -value; }, registry);
+  status =
+      registry->Register(PortableUnaryFunctionAdapter<double, double>::Create(
+          builtin::kNeg, false,
+          [](Arena*, double value) -> double { return -value; }));
   if (!status.ok()) return status;
 
   CEL_RETURN_IF_ERROR(RegisterComparisonFunctions(registry, options));
@@ -1256,29 +1244,32 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   // Strictness
-  status = PortableFunctionAdapter<bool, bool>::CreateAndRegister(
+  status = registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
       builtin::kNotStrictlyFalse, false,
-      [](Arena*, bool value) -> bool { return value; }, registry);
+      [](Arena*, bool value) -> bool { return value; }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<bool, const CelError*>::CreateAndRegister(
-      builtin::kNotStrictlyFalse, false,
-      [](Arena*, const CelError*) -> bool { return true; }, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<bool, const CelError*>::Create(
+          builtin::kNotStrictlyFalse, false,
+          [](Arena*, const CelError*) -> bool { return true; }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<bool, const UnknownSet*>::CreateAndRegister(
-      builtin::kNotStrictlyFalse, false,
-      [](Arena*, const UnknownSet*) -> bool { return true; }, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<bool, const UnknownSet*>::Create(
+          builtin::kNotStrictlyFalse, false,
+          [](Arena*, const UnknownSet*) -> bool { return true; }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<bool, bool>::CreateAndRegister(
+  status = registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
       builtin::kNotStrictlyFalseDeprecated, false,
-      [](Arena*, bool value) -> bool { return value; }, registry);
+      [](Arena*, bool value) -> bool { return value; }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<bool, const CelError*>::CreateAndRegister(
-      builtin::kNotStrictlyFalseDeprecated, false,
-      [](Arena*, const CelError*) -> bool { return true; }, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<bool, const CelError*>::Create(
+          builtin::kNotStrictlyFalseDeprecated, false,
+          [](Arena*, const CelError*) -> bool { return true; }));
   if (!status.ok()) return status;
 
   // String size
@@ -1293,14 +1284,13 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.
-  status = PortableFunctionAdapter<
-      CelValue, CelValue::StringHolder>::CreateAndRegister(builtin::kSize, true,
-                                                           size_func, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
+          builtin::kSize, true, size_func));
   if (!status.ok()) return status;
-  status = PortableFunctionAdapter<
-      CelValue, CelValue::StringHolder>::CreateAndRegister(builtin::kSize,
-                                                           false, size_func,
-                                                           registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
+          builtin::kSize, false, size_func));
   if (!status.ok()) return status;
 
   // Bytes size
@@ -1309,15 +1299,13 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on bytes.
-  status = PortableFunctionAdapter<
-      int64_t, CelValue::BytesHolder>::CreateAndRegister(builtin::kSize, true,
-                                                         bytes_size_func,
-                                                         registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, CelValue::BytesHolder>::Create(
+          builtin::kSize, true, bytes_size_func));
   if (!status.ok()) return status;
-  status = PortableFunctionAdapter<
-      int64_t, CelValue::BytesHolder>::CreateAndRegister(builtin::kSize, false,
-                                                         bytes_size_func,
-                                                         registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, CelValue::BytesHolder>::Create(
+          builtin::kSize, false, bytes_size_func));
   if (!status.ok()) return status;
 
   // List size
@@ -1326,11 +1314,13 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   };
   // receiver style = true/false
   // Support both the global and receiver style size() for lists.
-  status = PortableFunctionAdapter<int64_t, const CelList*>::CreateAndRegister(
-      builtin::kSize, true, list_size_func, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, const CelList*>::Create(
+          builtin::kSize, true, list_size_func));
   if (!status.ok()) return status;
-  status = PortableFunctionAdapter<int64_t, const CelList*>::CreateAndRegister(
-      builtin::kSize, false, list_size_func, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, const CelList*>::Create(
+          builtin::kSize, false, list_size_func));
   if (!status.ok()) return status;
 
   // Map size
@@ -1338,11 +1328,13 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
     return (*cel_map).size();
   };
   // receiver style = true/false
-  status = PortableFunctionAdapter<int64_t, const CelMap*>::CreateAndRegister(
-      builtin::kSize, true, map_size_func, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, const CelMap*>::Create(
+          builtin::kSize, true, map_size_func));
   if (!status.ok()) return status;
-  status = PortableFunctionAdapter<int64_t, const CelMap*>::CreateAndRegister(
-      builtin::kSize, false, map_size_func, registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<int64_t, const CelMap*>::Create(
+          builtin::kSize, false, map_size_func));
   if (!status.ok()) return status;
 
   // Register set membership tests with the 'in' operator and its variants.
@@ -1362,72 +1354,72 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   bool enable_timestamp_duration_overflow_errors =
       options.enable_timestamp_duration_overflow_errors;
   // Special arithmetic operators for Timestamp and Duration
-  status = PortableFunctionAdapter<CelValue, absl::Time, absl::Duration>::
-      CreateAndRegister(
-          builtin::kAdd, false,
-          [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
-            if (enable_timestamp_duration_overflow_errors) {
-              auto sum = cel::internal::CheckedAdd(t1, d2);
-              if (!sum.ok()) {
-                return CreateErrorValue(arena, sum.status());
-              }
-              return CelValue::CreateTimestamp(*sum);
-            }
-            return CelValue::CreateTimestamp(t1 + d2);
-          },
-          registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time, absl::Duration>::
+          Create(
+              builtin::kAdd, false,
+              [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
+                if (enable_timestamp_duration_overflow_errors) {
+                  auto sum = cel::internal::CheckedAdd(t1, d2);
+                  if (!sum.ok()) {
+                    return CreateErrorValue(arena, sum.status());
+                  }
+                  return CelValue::CreateTimestamp(*sum);
+                }
+                return CelValue::CreateTimestamp(t1 + d2);
+              }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Duration, absl::Time>::
-      CreateAndRegister(
-          builtin::kAdd, false,
-          [=](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
-            if (enable_timestamp_duration_overflow_errors) {
-              auto sum = cel::internal::CheckedAdd(t1, d2);
-              if (!sum.ok()) {
-                return CreateErrorValue(arena, sum.status());
-              }
-              return CelValue::CreateTimestamp(*sum);
-            }
-            return CelValue::CreateTimestamp(t1 + d2);
-          },
-          registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Duration, absl::Time>::
+          Create(
+              builtin::kAdd, false,
+              [=](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
+                if (enable_timestamp_duration_overflow_errors) {
+                  auto sum = cel::internal::CheckedAdd(t1, d2);
+                  if (!sum.ok()) {
+                    return CreateErrorValue(arena, sum.status());
+                  }
+                  return CelValue::CreateTimestamp(*sum);
+                }
+                return CelValue::CreateTimestamp(t1 + d2);
+              }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Duration, absl::Duration>::
-      CreateAndRegister(
-          builtin::kAdd, false,
-          [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
-            if (enable_timestamp_duration_overflow_errors) {
-              auto sum = cel::internal::CheckedAdd(d1, d2);
-              if (!sum.ok()) {
-                return CreateErrorValue(arena, sum.status());
-              }
-              return CelValue::CreateDuration(*sum);
-            }
-            return CelValue::CreateDuration(d1 + d2);
-          },
-          registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Duration, absl::Duration>::
+          Create(builtin::kAdd, false,
+                 [=](Arena* arena, absl::Duration d1,
+                     absl::Duration d2) -> CelValue {
+                   if (enable_timestamp_duration_overflow_errors) {
+                     auto sum = cel::internal::CheckedAdd(d1, d2);
+                     if (!sum.ok()) {
+                       return CreateErrorValue(arena, sum.status());
+                     }
+                     return CelValue::CreateDuration(*sum);
+                   }
+                   return CelValue::CreateDuration(d1 + d2);
+                 }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time, absl::Duration>::
-      CreateAndRegister(
-          builtin::kSubtract, false,
-          [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
-            if (enable_timestamp_duration_overflow_errors) {
-              auto diff = cel::internal::CheckedSub(t1, d2);
-              if (!diff.ok()) {
-                return CreateErrorValue(arena, diff.status());
-              }
-              return CelValue::CreateTimestamp(*diff);
-            }
-            return CelValue::CreateTimestamp(t1 - d2);
-          },
-          registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time, absl::Duration>::
+          Create(
+              builtin::kSubtract, false,
+              [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
+                if (enable_timestamp_duration_overflow_errors) {
+                  auto diff = cel::internal::CheckedSub(t1, d2);
+                  if (!diff.ok()) {
+                    return CreateErrorValue(arena, diff.status());
+                  }
+                  return CelValue::CreateTimestamp(*diff);
+                }
+                return CelValue::CreateTimestamp(t1 - d2);
+              }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Time, absl::Time>::
-      CreateAndRegister(
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Time, absl::Time>::Create(
           builtin::kSubtract, false,
           [=](Arena* arena, absl::Time t1, absl::Time t2) -> CelValue {
             if (enable_timestamp_duration_overflow_errors) {
@@ -1438,46 +1430,47 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
               return CelValue::CreateDuration(*diff);
             }
             return CelValue::CreateDuration(t1 - t2);
-          },
-          registry);
+          }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Duration, absl::Duration>::
-      CreateAndRegister(
-          builtin::kSubtract, false,
-          [=](Arena* arena, absl::Duration d1, absl::Duration d2) -> CelValue {
-            if (enable_timestamp_duration_overflow_errors) {
-              auto diff = cel::internal::CheckedSub(d1, d2);
-              if (!diff.ok()) {
-                return CreateErrorValue(arena, diff.status());
-              }
-              return CelValue::CreateDuration(*diff);
-            }
-            return CelValue::CreateDuration(d1 - d2);
-          },
-          registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, absl::Duration, absl::Duration>::
+          Create(builtin::kSubtract, false,
+                 [=](Arena* arena, absl::Duration d1,
+                     absl::Duration d2) -> CelValue {
+                   if (enable_timestamp_duration_overflow_errors) {
+                     auto diff = cel::internal::CheckedSub(d1, d2);
+                     if (!diff.ok()) {
+                       return CreateErrorValue(arena, diff.status());
+                     }
+                     return CelValue::CreateDuration(*diff);
+                   }
+                   return CelValue::CreateDuration(d1 - d2);
+                 }));
   if (!status.ok()) return status;
 
   // Concat group
   if (options.enable_string_concat) {
-    status = PortableFunctionAdapter<
-        CelValue::StringHolder, CelValue::StringHolder,
-        CelValue::StringHolder>::CreateAndRegister(builtin::kAdd, false,
-                                                   ConcatString, registry);
+    status =
+        registry->Register(PortableBinaryFunctionAdapter<
+                           CelValue::StringHolder, CelValue::StringHolder,
+                           CelValue::StringHolder>::Create(builtin::kAdd, false,
+                                                           ConcatString));
     if (!status.ok()) return status;
 
-    status = PortableFunctionAdapter<
-        CelValue::BytesHolder, CelValue::BytesHolder,
-        CelValue::BytesHolder>::CreateAndRegister(builtin::kAdd, false,
-                                                  ConcatBytes, registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<
+            CelValue::BytesHolder, CelValue::BytesHolder,
+            CelValue::BytesHolder>::Create(builtin::kAdd, false, ConcatBytes));
     if (!status.ok()) return status;
   }
 
   if (options.enable_list_concat) {
-    status = PortableFunctionAdapter<
-        const CelList*, const CelList*,
-        const CelList*>::CreateAndRegister(builtin::kAdd, false, ConcatList,
-                                           registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<const CelList*, const CelList*,
+                                      const CelList*>::Create(builtin::kAdd,
+                                                              false,
+                                                              ConcatList));
     if (!status.ok()) return status;
   }
 
@@ -1498,83 +1491,85 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       return CelValue::CreateBool(RE2::PartialMatch(target.value(), re2));
     };
 
-    status = PortableFunctionAdapter<
-        CelValue, CelValue::StringHolder,
-        CelValue::StringHolder>::CreateAndRegister(builtin::kRegexMatch, false,
-                                                   regex_matches, registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<
+            CelValue, CelValue::StringHolder,
+            CelValue::StringHolder>::Create(builtin::kRegexMatch, false,
+                                            regex_matches));
     if (!status.ok()) return status;
 
     // Receiver-style matches function.
-    status = PortableFunctionAdapter<
-        CelValue, CelValue::StringHolder,
-        CelValue::StringHolder>::CreateAndRegister(builtin::kRegexMatch, true,
-                                                   regex_matches, registry);
+    status = registry->Register(
+        PortableBinaryFunctionAdapter<
+            CelValue, CelValue::StringHolder,
+            CelValue::StringHolder>::Create(builtin::kRegexMatch, true,
+                                            regex_matches));
     if (!status.ok()) return status;
   }
 
   status =
-      PortableFunctionAdapter<const CelList*, const CelList*, const CelList*>::
-          CreateAndRegister(builtin::kRuntimeListAppend, false, AppendList,
-                            registry);
+      registry->Register(PortableBinaryFunctionAdapter<
+                         const CelList*, const CelList*,
+                         const CelList*>::Create(builtin::kRuntimeListAppend,
+                                                 false, AppendList));
   if (!status.ok()) return status;
 
   status = RegisterStringFunctions(registry, options);
   if (!status.ok()) return status;
 
   // Modulo
-  status =
-      PortableFunctionAdapter<CelValue, int64_t, int64_t>::CreateAndRegister(
-          builtin::kModulo, false, Modulo<int64_t>, registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, int64_t, int64_t>::Create(
+          builtin::kModulo, false, Modulo<int64_t>));
   if (!status.ok()) return status;
 
-  status =
-      PortableFunctionAdapter<CelValue, uint64_t, uint64_t>::CreateAndRegister(
-          builtin::kModulo, false, Modulo<uint64_t>, registry);
+  status = registry->Register(
+      PortableBinaryFunctionAdapter<CelValue, uint64_t, uint64_t>::Create(
+          builtin::kModulo, false, Modulo<uint64_t>));
   if (!status.ok()) return status;
 
   status = RegisterTimestampFunctions(registry, options);
   if (!status.ok()) return status;
 
   // duration functions
-  status = PortableFunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
-      builtin::kHours, true,
-      [](Arena* arena, absl::Duration d) -> CelValue {
-        return GetHours(arena, d);
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
+          builtin::kHours, true,
+          [](Arena* arena, absl::Duration d) -> CelValue {
+            return GetHours(arena, d);
+          }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
-      builtin::kMinutes, true,
-      [](Arena* arena, absl::Duration d) -> CelValue {
-        return GetMinutes(arena, d);
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
+          builtin::kMinutes, true,
+          [](Arena* arena, absl::Duration d) -> CelValue {
+            return GetMinutes(arena, d);
+          }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
-      builtin::kSeconds, true,
-      [](Arena* arena, absl::Duration d) -> CelValue {
-        return GetSeconds(arena, d);
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
+          builtin::kSeconds, true,
+          [](Arena* arena, absl::Duration d) -> CelValue {
+            return GetSeconds(arena, d);
+          }));
   if (!status.ok()) return status;
 
-  status = PortableFunctionAdapter<CelValue, absl::Duration>::CreateAndRegister(
-      builtin::kMilliseconds, true,
-      [](Arena* arena, absl::Duration d) -> CelValue {
-        return GetMilliseconds(arena, d);
-      },
-      registry);
+  status = registry->Register(
+      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
+          builtin::kMilliseconds, true,
+          [](Arena* arena, absl::Duration d) -> CelValue {
+            return GetMilliseconds(arena, d);
+          }));
   if (!status.ok()) return status;
 
-  return PortableFunctionAdapter<CelValue::CelTypeHolder, CelValue>::
-      CreateAndRegister(
+  return registry->Register(
+      PortableUnaryFunctionAdapter<CelValue::CelTypeHolder, CelValue>::Create(
           builtin::kType, false,
           [](Arena*, CelValue value) -> CelValue::CelTypeHolder {
             return value.ObtainCelType().CelTypeOrDie();
-          },
-          registry);
+          }));
 }
 
 }  // namespace google::api::expr::runtime
