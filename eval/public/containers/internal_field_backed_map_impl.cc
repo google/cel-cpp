@@ -15,6 +15,7 @@
 #include "eval/public/containers/internal_field_backed_map_impl.h"
 
 #include <limits>
+#include <memory>
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
@@ -128,7 +129,7 @@ FieldBackedMapImpl::FieldBackedMapImpl(
       factory_(std::move(factory)),
       arena_(arena),
       key_list_(
-          absl::make_unique<KeyList>(message, descriptor, factory_, arena)) {}
+          std::make_unique<KeyList>(message, descriptor, factory_, arena)) {}
 
 int FieldBackedMapImpl::size() const {
   return reflection_->FieldSize(*message_, descriptor_);

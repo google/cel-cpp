@@ -155,7 +155,7 @@ TEST(FlatExprBuilderTest, SimpleEndToEnd) {
   FlatExprBuilder builder;
 
   ASSERT_OK(
-      builder.GetRegistry()->Register(absl::make_unique<ConcatFunction>()));
+      builder.GetRegistry()->Register(std::make_unique<ConcatFunction>()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 
@@ -342,9 +342,9 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   int count2 = 0;
 
   ASSERT_OK(builder.GetRegistry()->Register(
-      absl::make_unique<RecorderFunction>("recorder1", &count1)));
+      std::make_unique<RecorderFunction>("recorder1", &count1)));
   ASSERT_OK(builder.GetRegistry()->Register(
-      absl::make_unique<RecorderFunction>("recorder2", &count2)));
+      std::make_unique<RecorderFunction>("recorder2", &count2)));
 
   // Shortcircuiting on.
   ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
@@ -395,7 +395,7 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
 
   int count = 0;
   ASSERT_OK(builder.GetRegistry()->Register(
-      absl::make_unique<RecorderFunction>("loop_step", &count)));
+      std::make_unique<RecorderFunction>("loop_step", &count)));
 
   // Shortcircuiting on.
   ASSERT_OK_AND_ASSIGN(auto cel_expr_on,

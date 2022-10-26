@@ -1,5 +1,6 @@
 #include "eval/public/activation.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -81,7 +82,7 @@ TEST(ActivationTest, CheckValueInsertFindAndRemove) {
 TEST(ActivationTest, CheckValueProducerInsertFindAndRemove) {
   const std::string kValue = "42";
 
-  auto producer = absl::make_unique<MockValueProducer>();
+  auto producer = std::make_unique<MockValueProducer>();
 
   google::protobuf::Arena arena;
 
@@ -161,8 +162,8 @@ TEST(ActivationTest, CheckValueProducerClear) {
   const std::string kValue1 = "42";
   const std::string kValue2 = "43";
 
-  auto producer1 = absl::make_unique<MockValueProducer>();
-  auto producer2 = absl::make_unique<MockValueProducer>();
+  auto producer1 = std::make_unique<MockValueProducer>();
+  auto producer2 = std::make_unique<MockValueProducer>();
 
   google::protobuf::Arena arena;
 

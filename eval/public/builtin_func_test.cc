@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -1105,7 +1106,7 @@ class FakeMap : public CelMap {
     for (auto kv : data) {
       keys.push_back(create_cel_value(kv.first));
     }
-    keys_ = absl::make_unique<FakeList>(keys);
+    keys_ = std::make_unique<FakeList>(keys);
   }
 
   int size() const override { return data_.size(); }

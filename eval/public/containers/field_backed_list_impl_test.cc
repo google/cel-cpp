@@ -1,5 +1,6 @@
 #include "eval/public/containers/field_backed_list_impl.h"
 
+#include <memory>
 #include <string>
 
 #include "eval/testutil/test_message.pb.h"
@@ -24,7 +25,7 @@ std::unique_ptr<CelList> CreateList(const TestMessage* message,
   const google::protobuf::FieldDescriptor* field_desc =
       message->GetDescriptor()->FindFieldByName(field);
 
-  return absl::make_unique<FieldBackedListImpl>(message, field_desc, arena);
+  return std::make_unique<FieldBackedListImpl>(message, field_desc, arena);
 }
 
 TEST(FieldBackedListImplTest, BoolDatatypeTest) {

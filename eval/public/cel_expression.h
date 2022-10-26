@@ -76,8 +76,8 @@ class CelExpression {
 class CelExpressionBuilder {
  public:
   CelExpressionBuilder()
-      : func_registry_(absl::make_unique<CelFunctionRegistry>()),
-        type_registry_(absl::make_unique<CelTypeRegistry>()),
+      : func_registry_(std::make_unique<CelFunctionRegistry>()),
+        type_registry_(std::make_unique<CelTypeRegistry>()),
         container_("") {}
 
   virtual ~CelExpressionBuilder() {}

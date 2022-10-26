@@ -14,6 +14,7 @@
 
 #include "eval/public/containers/internal_field_backed_list_impl.h"
 
+#include <memory>
 #include <string>
 
 #include "eval/public/structs/cel_proto_wrapper.h"
@@ -35,7 +36,7 @@ std::unique_ptr<CelList> CreateList(const TestMessage* message,
   const google::protobuf::FieldDescriptor* field_desc =
       message->GetDescriptor()->FindFieldByName(field);
 
-  return absl::make_unique<FieldBackedListImpl>(
+  return std::make_unique<FieldBackedListImpl>(
       message, field_desc, &CelProtoWrapper::InternalWrapMessage, arena);
 }
 

@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -207,7 +208,7 @@ class FunctionAdapter : public CelFunction {
                        ": failed to determine input parameter type"));
     }
 
-    return absl::make_unique<FunctionAdapter>(
+    return std::make_unique<FunctionAdapter>(
         CelFunctionDescriptor(name, receiver_type, std::move(arg_types)),
         std::move(handler));
   }

@@ -1,3 +1,4 @@
+#include <memory>
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -242,7 +243,7 @@ TEST(EndToEndTest, LegacyNullMessageHandling) {
   auto builder = CreateCelExpressionBuilder(options);
   std::vector<CelValue> extension_calls;
   ASSERT_OK(builder->GetRegistry()->Register(
-      absl::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
+      std::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder->CreateExpression(&expr, &info));
@@ -275,7 +276,7 @@ TEST(EndToEndTest, StrictNullHandling) {
   auto builder = CreateCelExpressionBuilder(options);
   std::vector<CelValue> extension_calls;
   ASSERT_OK(builder->GetRegistry()->Register(
-      absl::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
+      std::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder->CreateExpression(&expr, &info));

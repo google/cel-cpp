@@ -459,18 +459,18 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
     std::unique_ptr<CondVisitor> cond_visitor;
     if (call_expr->function() == google::api::expr::runtime::builtin::kAnd) {
-      cond_visitor = absl::make_unique<BinaryCondVisitor>(
+      cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, /* cond_value= */ false, short_circuiting_);
     } else if (call_expr->function() ==
                google::api::expr::runtime::builtin::kOr) {
-      cond_visitor = absl::make_unique<BinaryCondVisitor>(
+      cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, /* cond_value= */ true, short_circuiting_);
     } else if (call_expr->function() ==
                google::api::expr::runtime::builtin::kTernary) {
       if (short_circuiting_) {
-        cond_visitor = absl::make_unique<TernaryCondVisitor>(this);
+        cond_visitor = std::make_unique<TernaryCondVisitor>(this);
       } else {
-        cond_visitor = absl::make_unique<ExhaustiveTernaryCondVisitor>(this);
+        cond_visitor = std::make_unique<ExhaustiveTernaryCondVisitor>(this);
       }
     } else {
       return;
@@ -609,7 +609,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
                     "Invalid comprehension: 'result' must be set");
     comprehension_stack_.push(comprehension);
     cond_visitor_stack_.push(
-        {expr, absl::make_unique<ComprehensionVisitor>(
+        {expr, std::make_unique<ComprehensionVisitor>(
                    this, short_circuiting_,
                    enable_comprehension_vulnerability_check_)});
     auto cond_visitor = FindCondVisitor(expr);
@@ -1348,7 +1348,7 @@ FlatExprBuilder::CreateExpressionImpl(
   }
 
   std::unique_ptr<CelExpression> expression_impl =
-      absl::make_unique<CelExpressionFlatImpl>(
+      std::make_unique<CelExpressionFlatImpl>(
           nullptr, std::move(execution_path), GetTypeRegistry(),
           comprehension_max_iterations_, std::move(iter_variable_names),
           enable_unknowns_, enable_unknown_function_results_,
