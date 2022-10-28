@@ -34,7 +34,6 @@ cc_library(
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
-        "//internal:no_destructor",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log",

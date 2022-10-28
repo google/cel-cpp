@@ -72,6 +72,7 @@ cc_library(
     deps = [
         ":cel_value_internal",
         ":message_wrapper",
+        ":unknown_set",
         "//base:kind",
         "//base:memory_manager",
         "//eval/public/structs:legacy_type_info_apis",
@@ -1043,10 +1044,7 @@ cc_library(
     name = "unknown_function_result_set",
     srcs = ["unknown_function_result_set.cc"],
     hdrs = ["unknown_function_result_set.h"],
-    deps = [
-        ":cel_function",
-        "//base:functions",
-    ],
+    deps = ["//base:functions"],
 )
 
 cc_test(

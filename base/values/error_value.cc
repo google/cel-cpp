@@ -72,4 +72,9 @@ void ErrorValue::HashValue(absl::HashState state) const {
   StatusHashValue(absl::HashState::combine(std::move(state), type()), value());
 }
 
+const absl::Status& ErrorValue::value() const {
+  return base_internal::Metadata::IsTriviallyCopyable(*this) ? *value_ptr_
+                                                             : value_;
+}
+
 }  // namespace cel

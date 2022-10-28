@@ -28,7 +28,7 @@
 
 namespace cel {
 
-class UnknownValue final : public Value, public base_internal::HeapData {
+class UnknownValue final : public Value, public base_internal::InlineData {
  public:
   static constexpr Kind kKind = UnknownType::kKind;
 
@@ -44,35 +44,62 @@ class UnknownValue final : public Value, public base_internal::HeapData {
 
   bool Equals(const Value& other) const;
 
-  const AttributeSet& attribute_set() const {
-    return impl_ != nullptr ? impl_->attributes
-                            : base_internal::EmptyAttributeSet();
-  }
+  const AttributeSet& attribute_set() const;
 
-  const FunctionResultSet& function_result_set() const {
-    return impl_ != nullptr ? impl_->function_results
-                            : base_internal::EmptyFunctionResultSet();
-  }
+  const FunctionResultSet& function_result_set() const;
 
  private:
-  friend class cel::MemoryManager;
-  friend class ValueFactory;
-  friend std::shared_ptr<base_internal::UnknownSetImpl>
-  interop_internal::GetUnknownValueImpl(const Handle<UnknownValue>& value);
-  friend void interop_internal::SetUnknownValueImpl(
-      Handle<UnknownValue>& value,
-      std::shared_ptr<base_internal::UnknownSetImpl> impl);
+  friend class ValueHandle;
+  template <size_t Size, size_t Align>
+  friend class base_internal::AnyData;
+  friend struct interop_internal::UnknownValueAccess;
 
-  UnknownValue() : UnknownValue(nullptr) {}
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  explicit UnknownValue(std::shared_ptr<base_internal::UnknownSetImpl> impl);
+  explicit UnknownValue(base_internal::UnknownSet value)
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
-  UnknownValue(AttributeSet attribute_set,
-               FunctionResultSet function_result_set)
-      : UnknownValue(std::make_shared<base_internal::UnknownSetImpl>(
-            std::move(attribute_set), std::move(function_result_set))) {}
+  explicit UnknownValue(const base_internal::UnknownSet* value_ptr)
+      : base_internal::InlineData(kMetadata |
+                                  base_internal::kTriviallyCopyable |
+                                  base_internal::kTriviallyDestructible),
+        value_ptr_(value_ptr) {}
 
-  std::shared_ptr<base_internal::UnknownSetImpl> impl_;
+  UnknownValue(const UnknownValue& other) : UnknownValue(other.value_) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  UnknownValue(UnknownValue&& other) : UnknownValue(std::move(other.value_)) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  ~UnknownValue() {
+    // Only called when `value_` is the active member.
+    value_.~UnknownSet();
+  }
+
+  UnknownValue& operator=(const UnknownValue& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = other.value_;
+    }
+    return *this;
+  }
+
+  UnknownValue& operator=(UnknownValue&& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = std::move(other.value_);
+    }
+    return *this;
+  }
+
+  union {
+    base_internal::UnknownSet value_;
+    const base_internal::UnknownSet* value_ptr_;
+  };
 };
 
 CEL_INTERNAL_VALUE_DECL(UnknownValue);

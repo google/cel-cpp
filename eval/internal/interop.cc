@@ -271,26 +271,6 @@ base_internal::BytesValueRep GetBytesValueRep(const Handle<BytesValue>& value) {
   return value->rep();
 }
 
-std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Handle<UnknownValue>& value) {
-  return value->impl_;
-}
-
-std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownSetImpl(
-    const UnknownSet& unknown_set) {
-  return unknown_set.impl_;
-}
-
-void SetUnknownValueImpl(Handle<UnknownValue>& value,
-                         std::shared_ptr<base_internal::UnknownSetImpl> impl) {
-  value->impl_ = std::move(impl);
-}
-
-void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,
-                       std::shared_ptr<base_internal::UnknownSetImpl> impl) {
-  unknown_set.impl_ = std::move(impl);
-}
-
 absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
                                               const CelValue& legacy_value) {
   switch (legacy_value.type()) {
@@ -338,20 +318,12 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
       return HandleFactory<MapValue>::Make<base_internal::LegacyMapValue>(
           reinterpret_cast<uintptr_t>(legacy_value.MapOrDie()));
     } break;
-    case CelValue::Type::kUnknownSet: {
-      extensions::ProtoMemoryManager memory_manager(arena);
-      auto value =
-          HandleFactory<UnknownValue>::Make<UnknownValue>(memory_manager);
-      SetUnknownValueImpl(value,
-                          GetUnknownSetImpl(*legacy_value.UnknownSetOrDie()));
-      return value;
-    }
+    case CelValue::Type::kUnknownSet:
+      return CreateUnknownValueFromView(legacy_value.UnknownSetOrDie());
     case CelValue::Type::kCelType:
-      return HandleFactory<TypeValue>::Make<LegacyTypeValue>(
-          legacy_value.CelTypeOrDie().value());
+      return CreateTypeValueFromView(legacy_value.CelTypeOrDie().value());
     case CelValue::Type::kError:
-      return HandleFactory<ErrorValue>::Make<ErrorValue>(
-          *legacy_value.ErrorOrDie());
+      return CreateErrorValueFromView(legacy_value.ErrorOrDie());
     case CelValue::Type::kAny:
       return absl::InternalError(absl::StrCat(
           "illegal attempt to convert special CelValue type ",
@@ -394,14 +366,35 @@ struct StringValueToLegacyVisitor final {
 
 }  // namespace
 
+struct ErrorValueAccess final {
+  static const absl::Status* value_ptr(const ErrorValue& value) {
+    return value.value_ptr_;
+  }
+};
+
+struct UnknownValueAccess final {
+  static const base_internal::UnknownSet& value(const UnknownValue& value) {
+    return value.value_;
+  }
+
+  static const base_internal::UnknownSet* value_ptr(const UnknownValue& value) {
+    return value.value_ptr_;
+  }
+};
+
 absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
                                        const Handle<Value>& value) {
   switch (value->kind()) {
     case Kind::kNullType:
       return CelValue::CreateNull();
-    case Kind::kError:
+    case Kind::kError: {
+      if (base_internal::Metadata::IsTriviallyCopyable(*value)) {
+        return CelValue::CreateError(
+            ErrorValueAccess::value_ptr(*value.As<ErrorValue>()));
+      }
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
           arena, value.As<ErrorValue>()->value()));
+    }
     case Kind::kDyn:
       break;
     case Kind::kAny:
@@ -466,10 +459,13 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
               *value.As<base_internal::LegacyStructValue>())));
     }
     case Kind::kUnknown: {
-      auto* legacy_value = google::protobuf::Arena::Create<UnknownSet>(arena);
-      SetUnknownSetImpl(*legacy_value,
-                        GetUnknownValueImpl(value.As<UnknownValue>()));
-      return CelValue::CreateUnknownSet(legacy_value);
+      if (base_internal::Metadata::IsTriviallyCopyable(*value)) {
+        return CelValue::CreateUnknownSet(
+            UnknownValueAccess::value_ptr(*value.As<UnknownValue>()));
+      }
+      return CelValue::CreateUnknownSet(
+          google::protobuf::Arena::Create<base_internal::UnknownSet>(
+              arena, UnknownValueAccess::value(*value.As<UnknownValue>())));
     }
     default:
       break;
@@ -513,6 +509,15 @@ Handle<DurationValue> CreateDurationValue(absl::Duration value) {
 
 Handle<TimestampValue> CreateTimestampValue(absl::Time value) {
   return HandleFactory<TimestampValue>::Make<TimestampValue>(value);
+}
+
+Handle<ErrorValue> CreateErrorValueFromView(const absl::Status* value) {
+  return HandleFactory<ErrorValue>::Make<ErrorValue>(value);
+}
+
+Handle<UnknownValue> CreateUnknownValueFromView(
+    const base_internal::UnknownSet* value) {
+  return HandleFactory<UnknownValue>::Make<UnknownValue>(value);
 }
 
 Handle<Value> LegacyValueToModernValueOrDie(

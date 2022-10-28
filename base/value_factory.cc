@@ -200,8 +200,8 @@ Handle<TypeValue> ValueFactory::CreateTypeValue(const Handle<Type>& value) {
 Handle<UnknownValue> ValueFactory::CreateUnknownValue(
     AttributeSet attribute_set, FunctionResultSet function_result_set) {
   return HandleFactory<UnknownValue>::Make<UnknownValue>(
-      memory_manager(), std::move(attribute_set),
-      std::move(function_result_set));
+      base_internal::UnknownSet(std::move(attribute_set),
+                                std::move(function_result_set)));
 }
 
 absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValueFromView(

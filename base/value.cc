@@ -234,6 +234,10 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
         data_.ConstructInline<ErrorValue>(
             *static_cast<const ErrorValue*>(other.data_.get()));
         break;
+      case Kind::kUnknown:
+        data_.ConstructInline<UnknownValue>(
+            *static_cast<const UnknownValue*>(other.data_.get()));
+        break;
       case Kind::kString:
         data_.ConstructInline<InlinedCordStringValue>(
             *static_cast<const InlinedCordStringValue*>(other.data_.get()));
@@ -272,6 +276,10 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
       case Kind::kError:
         data_.ConstructInline<ErrorValue>(
             std::move(*static_cast<ErrorValue*>(other.data_.get())));
+        break;
+      case Kind::kUnknown:
+        data_.ConstructInline<UnknownValue>(
+            std::move(*static_cast<UnknownValue*>(other.data_.get())));
         break;
       case Kind::kString:
         data_.ConstructInline<InlinedCordStringValue>(std::move(
@@ -323,6 +331,9 @@ void ValueHandle::Destruct() {
           case Kind::kError:
             data_.Destruct<ErrorValue>();
             break;
+          case Kind::kUnknown:
+            data_.Destruct<UnknownValue>();
+            break;
           case Kind::kString:
             data_.Destruct<InlinedCordStringValue>();
             break;
@@ -367,9 +378,6 @@ void ValueHandle::Delete() const {
       break;
     case Kind::kBytes:
       delete static_cast<StringBytesValue*>(static_cast<Value*>(data_.get()));
-      break;
-    case Kind::kUnknown:
-      delete static_cast<UnknownValue*>(static_cast<Value*>(data_.get()));
       break;
     default:
       internal::unreachable();

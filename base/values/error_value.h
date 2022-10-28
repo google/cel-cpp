@@ -19,6 +19,8 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "base/kind.h"
@@ -44,12 +46,13 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   bool Equals(const Value& other) const;
 
-  constexpr const absl::Status& value() const { return value_; }
+  const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>
   friend class base_internal::AnyData;
+  friend struct interop_internal::ErrorValueAccess;
 
   static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
@@ -58,12 +61,45 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   explicit ErrorValue(absl::Status value)
       : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
-  ErrorValue(const ErrorValue&) = default;
-  ErrorValue(ErrorValue&&) = default;
-  ErrorValue& operator=(const ErrorValue&) = default;
-  ErrorValue& operator=(ErrorValue&&) = default;
+  explicit ErrorValue(const absl::Status* value_ptr)
+      : base_internal::InlineData(kMetadata |
+                                  base_internal::kTriviallyCopyable |
+                                  base_internal::kTriviallyDestructible),
+        value_ptr_(value_ptr) {}
 
-  absl::Status value_;
+  ErrorValue(const ErrorValue& other) : ErrorValue(other.value_) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  ErrorValue(ErrorValue&& other) : ErrorValue(std::move(other.value_)) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  ~ErrorValue() {
+    // Only called when `value_` is the active member.
+    value_.~Status();
+  }
+
+  ErrorValue& operator=(const ErrorValue& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = other.value_;
+    }
+    return *this;
+  }
+
+  ErrorValue& operator=(ErrorValue&& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = std::move(other.value_);
+    }
+    return *this;
+  }
+
+  union {
+    absl::Status value_;
+    const absl::Status* value_ptr_;
+  };
 };
 
 CEL_INTERNAL_VALUE_DECL(ErrorValue);

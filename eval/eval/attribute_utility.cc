@@ -62,7 +62,7 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
         result_set.emplace();
       }
     }
-    result_set->Add(*current_set);
+    cel::base_internal::UnknownSetAccess::Add(*result_set, *current_set);
   }
 
   if (!result_set.has_value()) {
@@ -104,13 +104,14 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
   if (!attr_set.empty()) {
     UnknownSet result_set(std::move(attr_set));
     if (initial_set != nullptr) {
-      result_set.Add(*initial_set);
+      cel::base_internal::UnknownSetAccess::Add(result_set, *initial_set);
     }
     for (const auto& value : args) {
       if (!value.IsUnknownSet()) {
         continue;
       }
-      result_set.Add(*value.UnknownSetOrDie());
+      cel::base_internal::UnknownSetAccess::Add(result_set,
+                                                *value.UnknownSetOrDie());
     }
     return memory_manager_.New<UnknownSet>(std::move(result_set)).release();
   }

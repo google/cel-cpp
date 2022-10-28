@@ -23,12 +23,14 @@
 
 namespace google::api::expr::runtime {
 class AttributeUtility;
-class UnknownSet;
 }  // namespace google::api::expr::runtime
 
 namespace cel {
 
 class UnknownValue;
+namespace base_internal {
+class UnknownSet;
+}
 
 // Represents a collection of unknown function results at a particular point in
 // execution. Execution should advance further if this set of unknowns are
@@ -82,8 +84,8 @@ class FunctionResultSet final {
 
  private:
   friend class google::api::expr::runtime::AttributeUtility;
-  friend class google::api::expr::runtime::UnknownSet;
   friend class UnknownValue;
+  friend class base_internal::UnknownSet;
 
   void Add(const FunctionResult& function_result) {
     function_results_.insert(function_result);

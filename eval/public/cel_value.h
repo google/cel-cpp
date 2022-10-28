@@ -37,6 +37,7 @@
 #include "base/memory_manager.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/message_wrapper.h"
+#include "eval/public/unknown_set.h"
 #include "internal/casts.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
@@ -54,7 +55,6 @@ using CelError = absl::Status;
 // Break cyclic depdendencies for container types.
 class CelList;
 class CelMap;
-class UnknownSet;
 class LegacyTypeAdapter;
 
 class CelValue {

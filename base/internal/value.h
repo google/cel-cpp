@@ -135,6 +135,9 @@ std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
 void SetUnknownValueImpl(Handle<UnknownValue>& value,
                          std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
+struct ErrorValueAccess;
+struct UnknownValueAccess;
+
 }  // namespace interop_internal
 
 }  // namespace cel

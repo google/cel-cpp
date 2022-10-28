@@ -21,16 +21,13 @@
 
 #include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/variant.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
-
-namespace google::api::expr::runtime {
-class UnknownSet;
-}
 
 namespace cel::interop_internal {
 
@@ -71,13 +68,11 @@ struct MessageWrapperAccess final {
 
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
-Handle<StringValue> CreateStringValueFromView(
-    absl::string_view value);
+Handle<StringValue> CreateStringValueFromView(absl::string_view value);
 
 // Unlike ValueFactory::CreateBytesValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
-Handle<BytesValue> CreateBytesValueFromView(
-    absl::string_view value);
+Handle<BytesValue> CreateBytesValueFromView(absl::string_view value);
 
 base_internal::StringValueRep GetStringValueRep(
     const Handle<StringValue>& value);
@@ -119,6 +114,11 @@ Handle<DurationValue> CreateDurationValue(absl::Duration value);
 // during interoperation.
 Handle<TimestampValue> CreateTimestampValue(absl::Time value);
 
+Handle<ErrorValue> CreateErrorValueFromView(const absl::Status* value);
+
+Handle<UnknownValue> CreateUnknownValueFromView(
+    const base_internal::UnknownSet* value);
+
 // Convert a legacy value to a modern value, CHECK failing if its not possible.
 // This should only be used during rewritting of the evaluator when it is
 // guaranteed that all modern and legacy values are interoperable, and the
@@ -137,18 +137,6 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, const Handle<Value>& value);
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     MemoryManager& memory_manager, const Handle<Value>& value);
-
-std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Handle<UnknownValue>& value);
-
-std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownSetImpl(
-    const google::api::expr::runtime::UnknownSet& unknown_set);
-
-void SetUnknownValueImpl(Handle<UnknownValue>& value,
-                         std::shared_ptr<base_internal::UnknownSetImpl> impl);
-
-void SetUnknownSetImpl(google::api::expr::runtime::UnknownSet& unknown_set,
-                       std::shared_ptr<base_internal::UnknownSetImpl> impl);
 
 Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);
 
