@@ -14,6 +14,7 @@
 
 #include "eval/public/builtin_func_registrar.h"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <functional>
@@ -37,6 +38,8 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/comparison_functions.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "eval/public/equality_function_registrar.h"
+#include "eval/public/logical_function_registrar.h"
 #include "eval/public/portable_cel_function_adapter.h"
 #include "internal/casts.h"
 #include "internal/overflow.h"
@@ -336,8 +339,8 @@ const CelList* ConcatList(Arena* arena, const CelList* value1,
 }
 
 // Timestamp
-const absl::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
-                                     absl::TimeZone::CivilInfo* breakdown) {
+absl::Status FindTimeBreakdown(absl::Time timestamp, absl::string_view tz,
+                               absl::TimeZone::CivilInfo* breakdown) {
   absl::TimeZone time_zone;
 
   // Early return if there is no timezone.
@@ -1213,15 +1216,16 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
 
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
                                       const InterpreterOptions& options) {
-  // logical NOT
-  absl::Status status =
-      registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
-          builtin::kNot, false,
-          [](Arena*, bool value) -> bool { return !value; }));
-  if (!status.ok()) return status;
+  CEL_RETURN_IF_ERROR(registry->RegisterAll(
+      {
+          &RegisterEqualityFunctions,
+          &RegisterComparisonFunctions,
+          &RegisterLogicalFunctions,
+      },
+      options));
 
   // Negation group
-  status = registry->Register(
+  absl::Status status = registry->Register(
       PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
           builtin::kNeg, false, [](Arena* arena, int64_t value) -> CelValue {
             auto inv = cel::internal::CheckedNegation(value);
@@ -1238,38 +1242,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           [](Arena*, double value) -> double { return -value; }));
   if (!status.ok()) return status;
 
-  CEL_RETURN_IF_ERROR(RegisterComparisonFunctions(registry, options));
-
   status = RegisterConversionFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  // Strictness
-  status = registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
-      builtin::kNotStrictlyFalse, false,
-      [](Arena*, bool value) -> bool { return value; }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<bool, const CelError*>::Create(
-          builtin::kNotStrictlyFalse, false,
-          [](Arena*, const CelError*) -> bool { return true; }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<bool, const UnknownSet*>::Create(
-          builtin::kNotStrictlyFalse, false,
-          [](Arena*, const UnknownSet*) -> bool { return true; }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
-      builtin::kNotStrictlyFalseDeprecated, false,
-      [](Arena*, bool value) -> bool { return value; }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<bool, const CelError*>::Create(
-          builtin::kNotStrictlyFalseDeprecated, false,
-          [](Arena*, const CelError*) -> bool { return true; }));
   if (!status.ok()) return status;
 
   // String size

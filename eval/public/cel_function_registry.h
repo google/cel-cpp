@@ -1,8 +1,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_REGISTRY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_REGISTRY_H_
 
+#include <initializer_list>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "absl/container/node_hash_map.h"
-#include "absl/types/span.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_options.h"
@@ -15,15 +20,21 @@ namespace google::api::expr::runtime {
 // CelExpression objects from Expr ASTs.
 class CelFunctionRegistry {
  public:
-  CelFunctionRegistry() {}
+  CelFunctionRegistry() = default;
 
-  ~CelFunctionRegistry() {}
+  ~CelFunctionRegistry() = default;
+
+  using Registrar = absl::Status (*)(CelFunctionRegistry*,
+                                     const InterpreterOptions&);
 
   // Register CelFunction object. Object ownership is
   // passed to registry.
   // Function registration should be performed prior to
   // CelExpression creation.
   absl::Status Register(std::unique_ptr<CelFunction> function);
+
+  absl::Status RegisterAll(std::initializer_list<Registrar> registrars,
+                           const InterpreterOptions& opts);
 
   // Register a lazily provided function. CelFunctionProvider is used to get
   // a CelFunction ptr at evaluation time. The registry takes ownership of the

@@ -1,7 +1,12 @@
 #include "eval/public/cel_function_registry.h"
 
+#include <initializer_list>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
+
+#include "eval/public/cel_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -21,6 +26,15 @@ absl::Status CelFunctionRegistry::Register(
 
   auto& overloads = functions_[descriptor.name()];
   overloads.static_overloads.push_back(std::move(function));
+  return absl::OkStatus();
+}
+
+absl::Status CelFunctionRegistry::RegisterAll(
+    std::initializer_list<Registrar> registrars,
+    const InterpreterOptions& opts) {
+  for (Registrar registrar : registrars) {
+    CEL_RETURN_IF_ERROR(registrar(this, opts));
+  }
   return absl::OkStatus();
 }
 
