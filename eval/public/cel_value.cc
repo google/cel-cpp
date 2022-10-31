@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
@@ -11,6 +12,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "base/memory_manager.h"
+#include "eval/internal/errors.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -19,21 +21,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::extensions::NewInProtoArena;
 using ::google::protobuf::Arena;
-
-constexpr char kErrNoMatchingOverload[] = "No matching overloads found";
-constexpr char kErrNoSuchField[] = "no_such_field";
-constexpr char kErrNoSuchKey[] = "Key not found in map";
-constexpr absl::string_view kErrUnknownValue = "Unknown value ";
-// Error name for MissingAttributeError indicating that evaluation has
-// accessed an attribute whose value is undefined. go/terminal-unknown
-constexpr absl::string_view kErrMissingAttribute = "MissingAttributeError: ";
-constexpr absl::string_view kPayloadUrlUnknownPath = "unknown_path";
-constexpr absl::string_view kPayloadUrlMissingAttributePath =
-    "missing_attribute_path";
-constexpr absl::string_view kPayloadUrlUnknownFunctionResult =
-    "cel_is_unknown_function_result";
+namespace interop = ::cel::interop_internal;
 
 constexpr absl::string_view kNullTypeName = "null_type";
 constexpr absl::string_view kBoolTypeName = "bool";
@@ -250,8 +239,8 @@ CelValue CreateErrorValue(cel::MemoryManager& manager,
                           absl::StatusCode error_code) {
   // TODO(issues/5): assume arena-style allocator while migrating to new
   // value type.
-  CelError* error = NewInProtoArena<CelError>(manager, error_code, message);
-  return CelValue::CreateError(error);
+  Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(manager);
+  return CreateErrorValue(arena, message, error_code);
 }
 
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
@@ -262,64 +251,50 @@ CelValue CreateErrorValue(Arena* arena, absl::string_view message,
 
 CelValue CreateNoMatchingOverloadError(cel::MemoryManager& manager,
                                        absl::string_view fn) {
-  return CreateErrorValue(
-      manager,
-      absl::StrCat(kErrNoMatchingOverload, (!fn.empty()) ? " : " : "", fn),
-      absl::StatusCode::kUnknown);
+  return CelValue::CreateError(
+      interop::CreateNoMatchingOverloadError(manager, fn));
 }
 
 CelValue CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
                                        absl::string_view fn) {
-  return CreateErrorValue(
-      arena,
-      absl::StrCat(kErrNoMatchingOverload, (!fn.empty()) ? " : " : "", fn),
-      absl::StatusCode::kUnknown);
+  return CelValue::CreateError(
+      interop::CreateNoMatchingOverloadError(arena, fn));
 }
 
 bool CheckNoMatchingOverloadError(CelValue value) {
   return value.IsError() &&
          value.ErrorOrDie()->code() == absl::StatusCode::kUnknown &&
          absl::StrContains(value.ErrorOrDie()->message(),
-                           kErrNoMatchingOverload);
+                           interop::kErrNoMatchingOverload);
 }
 
 CelValue CreateNoSuchFieldError(cel::MemoryManager& manager,
                                 absl::string_view field) {
-  return CreateErrorValue(
-      manager,
-      absl::StrCat(kErrNoSuchField, !field.empty() ? " : " : "", field),
-      absl::StatusCode::kNotFound);
+  return CelValue::CreateError(interop::CreateNoSuchFieldError(manager, field));
 }
 
 CelValue CreateNoSuchFieldError(google::protobuf::Arena* arena, absl::string_view field) {
-  return CreateErrorValue(
-      arena, absl::StrCat(kErrNoSuchField, !field.empty() ? " : " : "", field),
-      absl::StatusCode::kNotFound);
+  return CelValue::CreateError(interop::CreateNoSuchFieldError(arena, field));
 }
 
 CelValue CreateNoSuchKeyError(cel::MemoryManager& manager,
                               absl::string_view key) {
-  return CreateErrorValue(manager, absl::StrCat(kErrNoSuchKey, " : ", key),
-                          absl::StatusCode::kNotFound);
+  return CelValue::CreateError(interop::CreateNoSuchKeyError(manager, key));
 }
 
 CelValue CreateNoSuchKeyError(google::protobuf::Arena* arena, absl::string_view key) {
-  return CreateErrorValue(arena, absl::StrCat(kErrNoSuchKey, " : ", key),
-                          absl::StatusCode::kNotFound);
+  return CelValue::CreateError(interop::CreateNoSuchKeyError(arena, key));
 }
 
 bool CheckNoSuchKeyError(CelValue value) {
-  return value.IsError() &&
-         absl::StartsWith(value.ErrorOrDie()->message(), kErrNoSuchKey);
+  return value.IsError() && absl::StartsWith(value.ErrorOrDie()->message(),
+                                             interop::kErrNoSuchKey);
 }
 
 CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
                                  absl::string_view unknown_path) {
-  CelError* error =
-      Arena::Create<CelError>(arena, absl::StatusCode::kUnavailable,
-                              absl::StrCat(kErrUnknownValue, unknown_path));
-  error->SetPayload(kPayloadUrlUnknownPath, absl::Cord(unknown_path));
-  return CelValue::CreateError(error);
+  return CelValue::CreateError(
+      interop::CreateUnknownValueError(arena, unknown_path));
 }
 
 bool IsUnknownValueError(const CelValue& value) {
@@ -327,7 +302,7 @@ bool IsUnknownValueError(const CelValue& value) {
   if (!value.IsError()) return false;
   const CelError* error = value.ErrorOrDie();
   if (error && error->code() == absl::StatusCode::kUnavailable) {
-    auto path = error->GetPayload(kPayloadUrlUnknownPath);
+    auto path = error->GetPayload(interop::kPayloadUrlUnknownPath);
     return path.has_value();
   }
   return false;
@@ -335,31 +310,23 @@ bool IsUnknownValueError(const CelValue& value) {
 
 CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
                                      absl::string_view missing_attribute_path) {
-  CelError* error = Arena::Create<CelError>(
-      arena, absl::StatusCode::kInvalidArgument,
-      absl::StrCat(kErrMissingAttribute, missing_attribute_path));
-  error->SetPayload(kPayloadUrlMissingAttributePath,
-                    absl::Cord(missing_attribute_path));
-  return CelValue::CreateError(error);
+  return CelValue::CreateError(
+      interop::CreateMissingAttributeError(arena, missing_attribute_path));
 }
 
 CelValue CreateMissingAttributeError(cel::MemoryManager& manager,
                                      absl::string_view missing_attribute_path) {
   // TODO(issues/5): assume arena-style allocator while migrating
   // to new value type.
-  CelError* error = NewInProtoArena<CelError>(
-      manager, absl::StatusCode::kInvalidArgument,
-      absl::StrCat(kErrMissingAttribute, missing_attribute_path));
-  error->SetPayload(kPayloadUrlMissingAttributePath,
-                    absl::Cord(missing_attribute_path));
-  return CelValue::CreateError(error);
+  return CelValue::CreateError(
+      interop::CreateMissingAttributeError(manager, missing_attribute_path));
 }
 
 bool IsMissingAttributeError(const CelValue& value) {
   const CelError* error;
   if (!value.GetValue(&error)) return false;
   if (error && error->code() == absl::StatusCode::kInvalidArgument) {
-    auto path = error->GetPayload(kPayloadUrlMissingAttributePath);
+    auto path = error->GetPayload(interop::kPayloadUrlMissingAttributePath);
     return path.has_value();
   }
   return false;
@@ -367,22 +334,14 @@ bool IsMissingAttributeError(const CelValue& value) {
 
 CelValue CreateUnknownFunctionResultError(cel::MemoryManager& manager,
                                           absl::string_view help_message) {
-  // TODO(issues/5): Assume arena-style allocation until new value type is
-  // introduced
-  CelError* error = NewInProtoArena<CelError>(
-      manager, absl::StatusCode::kUnavailable,
-      absl::StrCat("Unknown function result: ", help_message));
-  error->SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
-  return CelValue::CreateError(error);
+  return CelValue::CreateError(
+      interop::CreateUnknownFunctionResultError(manager, help_message));
 }
 
 CelValue CreateUnknownFunctionResultError(google::protobuf::Arena* arena,
                                           absl::string_view help_message) {
-  CelError* error = Arena::Create<CelError>(
-      arena, absl::StatusCode::kUnavailable,
-      absl::StrCat("Unknown function result: ", help_message));
-  error->SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
-  return CelValue::CreateError(error);
+  return CelValue::CreateError(
+      interop::CreateUnknownFunctionResultError(arena, help_message));
 }
 
 bool IsUnknownFunctionResult(const CelValue& value) {
@@ -392,7 +351,7 @@ bool IsUnknownFunctionResult(const CelValue& value) {
   if (error == nullptr || error->code() != absl::StatusCode::kUnavailable) {
     return false;
   }
-  auto payload = error->GetPayload(kPayloadUrlUnknownFunctionResult);
+  auto payload = error->GetPayload(interop::kPayloadUrlUnknownFunctionResult);
   return payload.has_value() && payload.value() == "true";
 }
 
