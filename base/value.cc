@@ -227,40 +227,45 @@ void ValueHandle::HashValue(absl::HashState state) const {
 void ValueHandle::CopyFrom(const ValueHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
-  if (locality == DataLocality::kStoredInline &&
-      !other.data_.IsTriviallyCopyable()) {
-    switch (other.data_.kind()) {
-      case Kind::kError:
-        data_.ConstructInline<ErrorValue>(
-            *static_cast<const ErrorValue*>(other.data_.get()));
-        break;
-      case Kind::kUnknown:
-        data_.ConstructInline<UnknownValue>(
-            *static_cast<const UnknownValue*>(other.data_.get()));
-        break;
-      case Kind::kString:
-        data_.ConstructInline<InlinedCordStringValue>(
-            *static_cast<const InlinedCordStringValue*>(other.data_.get()));
-        break;
-      case Kind::kBytes:
-        data_.ConstructInline<InlinedCordBytesValue>(
-            *static_cast<const InlinedCordBytesValue*>(other.data_.get()));
-        break;
-      case Kind::kType:
-        data_.ConstructInline<base_internal::ModernTypeValue>(
-            *static_cast<const base_internal::ModernTypeValue*>(
-                other.data_.get()));
-        break;
-      case Kind::kEnum:
-        data_.ConstructInline<EnumValue>(
-            *static_cast<const EnumValue*>(other.data_.get()));
-        break;
-      default:
-        internal::unreachable();
+  if (locality == DataLocality::kStoredInline) {
+    if (!other.data_.IsTriviallyCopyable()) {
+      switch (other.data_.kind_inline()) {
+        case Kind::kError:
+          data_.ConstructInline<ErrorValue>(
+              *static_cast<const ErrorValue*>(other.data_.get_inline()));
+          return;
+        case Kind::kUnknown:
+          data_.ConstructInline<UnknownValue>(
+              *static_cast<const UnknownValue*>(other.data_.get_inline()));
+          return;
+        case Kind::kString:
+          data_.ConstructInline<InlinedCordStringValue>(
+              *static_cast<const InlinedCordStringValue*>(
+                  other.data_.get_inline()));
+          return;
+        case Kind::kBytes:
+          data_.ConstructInline<InlinedCordBytesValue>(
+              *static_cast<const InlinedCordBytesValue*>(
+                  other.data_.get_inline()));
+          return;
+        case Kind::kType:
+          data_.ConstructInline<base_internal::ModernTypeValue>(
+              *static_cast<const base_internal::ModernTypeValue*>(
+                  other.data_.get_inline()));
+          return;
+        case Kind::kEnum:
+          data_.ConstructInline<EnumValue>(
+              *static_cast<const EnumValue*>(other.data_.get_inline()));
+          return;
+        default:
+          internal::unreachable();
+      }
+    } else {  // trivially copyable
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
     }
-  } else {
-    // We can simply just copy the bytes.
-    data_.CopyFrom(other.data_);
+  } else {  // not inline
+    data_.set_pointer(other.data_.pointer());
     if (locality == DataLocality::kReferenceCounted) {
       Ref();
     }
@@ -269,44 +274,50 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
 
 void ValueHandle::MoveFrom(ValueHandle& other) {
   // data_ is currently uninitialized.
-  auto locality = other.data_.locality();
-  if (locality == DataLocality::kStoredInline &&
-      !other.data_.IsTriviallyCopyable()) {
-    switch (other.data_.kind()) {
-      case Kind::kError:
-        data_.ConstructInline<ErrorValue>(
-            std::move(*static_cast<ErrorValue*>(other.data_.get())));
-        break;
-      case Kind::kUnknown:
-        data_.ConstructInline<UnknownValue>(
-            std::move(*static_cast<UnknownValue*>(other.data_.get())));
-        break;
-      case Kind::kString:
-        data_.ConstructInline<InlinedCordStringValue>(std::move(
-            *static_cast<InlinedCordStringValue*>(other.data_.get())));
-        break;
-      case Kind::kBytes:
-        data_.ConstructInline<InlinedCordBytesValue>(
-            std::move(*static_cast<InlinedCordBytesValue*>(other.data_.get())));
-        break;
-      case Kind::kType:
-        data_.ConstructInline<base_internal::ModernTypeValue>(
-            std::move(*static_cast<const base_internal::ModernTypeValue*>(
-                other.data_.get())));
-        break;
-      case Kind::kEnum:
-        data_.ConstructInline<EnumValue>(
-            std::move(*static_cast<const EnumValue*>(other.data_.get())));
-        break;
-      default:
-        internal::unreachable();
+  if (other.data_.IsStoredInline()) {
+    if (!other.data_.IsTriviallyCopyable()) {
+      switch (other.data_.kind_inline()) {
+        case Kind::kError:
+          data_.ConstructInline<ErrorValue>(
+              std::move(*static_cast<ErrorValue*>(other.data_.get_inline())));
+          other.data_.Destruct<ErrorValue>();
+          break;
+        case Kind::kUnknown:
+          data_.ConstructInline<UnknownValue>(
+              std::move(*static_cast<UnknownValue*>(other.data_.get_inline())));
+          other.data_.Destruct<UnknownValue>();
+          break;
+        case Kind::kString:
+          data_.ConstructInline<InlinedCordStringValue>(std::move(
+              *static_cast<InlinedCordStringValue*>(other.data_.get_inline())));
+          other.data_.Destruct<InlinedCordStringValue>();
+          break;
+        case Kind::kBytes:
+          data_.ConstructInline<InlinedCordBytesValue>(std::move(
+              *static_cast<InlinedCordBytesValue*>(other.data_.get_inline())));
+          other.data_.Destruct<InlinedCordBytesValue>();
+          break;
+        case Kind::kType:
+          data_.ConstructInline<ModernTypeValue>(std::move(
+              *static_cast<const ModernTypeValue*>(other.data_.get_inline())));
+          other.data_.Destruct<ModernTypeValue>();
+          break;
+        case Kind::kEnum:
+          data_.ConstructInline<EnumValue>(std::move(
+              *static_cast<const EnumValue*>(other.data_.get_inline())));
+          other.data_.Destruct<EnumValue>();
+          break;
+        default:
+          internal::unreachable();
+      }
+    } else {  // trivially copyable
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
     }
-    other.Destruct();
-    other.data_.Clear();
-  } else {
-    // We can simply just copy the bytes.
-    data_.MoveFrom(other.data_);
+  } else {  // not inline
+    data_.set_pointer(other.data_.pointer());
   }
+  other.data_.Clear();
 }
 
 void ValueHandle::CopyAssign(const ValueHandle& other) {
@@ -324,61 +335,63 @@ void ValueHandle::MoveAssign(ValueHandle& other) {
 void ValueHandle::Destruct() {
   switch (data_.locality()) {
     case DataLocality::kNull:
-      break;
+      return;
     case DataLocality::kStoredInline:
       if (!data_.IsTriviallyDestructible()) {
-        switch (data_.kind()) {
+        switch (data_.kind_inline()) {
           case Kind::kError:
             data_.Destruct<ErrorValue>();
-            break;
+            return;
           case Kind::kUnknown:
             data_.Destruct<UnknownValue>();
-            break;
+            return;
           case Kind::kString:
             data_.Destruct<InlinedCordStringValue>();
-            break;
+            return;
           case Kind::kBytes:
             data_.Destruct<InlinedCordBytesValue>();
-            break;
+            return;
           case Kind::kType:
-            data_.Destruct<base_internal::ModernTypeValue>();
-            break;
+            data_.Destruct<ModernTypeValue>();
+            return;
           case Kind::kEnum:
             data_.Destruct<EnumValue>();
-            break;
+            return;
           default:
             internal::unreachable();
         }
       }
-      break;
+      return;
     case DataLocality::kReferenceCounted:
       Unref();
-      break;
+      return;
     case DataLocality::kArenaAllocated:
-      break;
+      return;
   }
 }
 
 void ValueHandle::Delete() const {
-  switch (data_.kind()) {
+  switch (data_.kind_heap()) {
     case Kind::kList:
       delete static_cast<AbstractListValue*>(
-          static_cast<ListValue*>(static_cast<Value*>(data_.get())));
-      break;
+          static_cast<ListValue*>(static_cast<Value*>(data_.get_heap())));
+      return;
     case Kind::kMap:
       delete static_cast<AbstractMapValue*>(
-          static_cast<MapValue*>(static_cast<Value*>(data_.get())));
-      break;
+          static_cast<MapValue*>(static_cast<Value*>(data_.get_heap())));
+      return;
     case Kind::kStruct:
       delete static_cast<AbstractStructValue*>(
-          static_cast<Value*>(data_.get()));
-      break;
+          static_cast<Value*>(data_.get_heap()));
+      return;
     case Kind::kString:
-      delete static_cast<StringStringValue*>(static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<StringStringValue*>(
+          static_cast<Value*>(data_.get_heap()));
+      return;
     case Kind::kBytes:
-      delete static_cast<StringBytesValue*>(static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<StringBytesValue*>(
+          static_cast<Value*>(data_.get_heap()));
+      return;
     default:
       internal::unreachable();
   }

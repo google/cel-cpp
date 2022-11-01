@@ -28,7 +28,6 @@
 #include "absl/numeric/bits.h"
 #include "base/kind.h"
 #include "internal/assume_aligned.h"
-#include "internal/launder.h"
 
 namespace cel::base_internal {
 
@@ -38,11 +37,18 @@ inline constexpr int kKindShift = sizeof(uintptr_t) * 8 - 8;
 inline constexpr uint8_t kKindMask = (uint8_t{1} << 7) - 1;
 
 // uintptr_t with the least significant bit set.
-inline constexpr uintptr_t kStoredInline = uintptr_t{1} << 0;
+inline constexpr uintptr_t kPointerArenaAllocated = uintptr_t{1} << 0;
 // uintptr_t with the second to least significant bit set.
-inline constexpr uintptr_t kPointerArenaAllocated = uintptr_t{1} << 1;
-// Mask that has all bits set except for `kPointerArenaAllocated`.
-inline constexpr uintptr_t kPointerMask = ~kPointerArenaAllocated;
+inline constexpr uintptr_t kPointerReferenceCounted = uintptr_t{1} << 1;
+// uintptr_t with the least and second to to least significant bits set.
+inline constexpr uintptr_t kStoredInline =
+    kPointerArenaAllocated | kPointerReferenceCounted;
+// uintptr_t which is the bitwise OR of kPointerArenaAllocated,
+// kPointerReferenceCounted, and kStoredInline.
+inline constexpr uintptr_t kPointerBits =
+    kPointerArenaAllocated | kPointerReferenceCounted | kStoredInline;
+// Mask that has all bits set except for `kPointerBits`.
+inline constexpr uintptr_t kPointerMask = ~kPointerBits;
 // uintptr_t with the most significant bit set.
 inline constexpr uintptr_t kArenaAllocated = uintptr_t{1}
                                              << (sizeof(uintptr_t) * 8 - 1);
@@ -71,10 +77,17 @@ static_assert(std::is_trivially_destructible_v<std::atomic<uintptr_t>>,
 
 enum class DataLocality {
   kNull = 0,
-  kStoredInline,
-  kReferenceCounted,
-  kArenaAllocated,
+  kArenaAllocated = 1,
+  kReferenceCounted = 2,
+  kStoredInline = 3,
 };
+
+static_assert(static_cast<uintptr_t>(DataLocality::kArenaAllocated) ==
+              kPointerArenaAllocated);
+static_assert(static_cast<uintptr_t>(DataLocality::kReferenceCounted) ==
+              kPointerReferenceCounted);
+static_assert(static_cast<uintptr_t>(DataLocality::kStoredInline) ==
+              kStoredInline);
 
 // Empty base class of all classes that can be managed by handles.
 //
@@ -184,8 +197,8 @@ class Metadata final {
     // We specifically do not use `IsArenaAllocated()` and
     // `IsReferenceCounted()` here due to performance reasons. This code is
     // called often in handle implementations.
-    return IsNull(data)           ? DataLocality::kNull
-           : IsStoredInline(data) ? DataLocality::kStoredInline
+    ABSL_ASSERT(!IsNull(data));
+    return IsStoredInline(data) ? DataLocality::kStoredInline
            : ((ReferenceCount(data).load(std::memory_order_relaxed) &
                kArenaAllocated) != kArenaAllocated)
                ? DataLocality::kReferenceCounted
@@ -195,11 +208,12 @@ class Metadata final {
   static bool IsNull(const Data& data) { return VirtualPointer(data) == 0; }
 
   static bool IsStoredInline(const Data& data) {
-    return (VirtualPointer(data) & kStoredInline) == kStoredInline;
+    return (VirtualPointer(data) & kPointerBits) == kStoredInline;
   }
 
   static bool IsArenaAllocated(const Data& data) {
-    return !IsNull(data) && !IsStoredInline(data) &&
+    ABSL_ASSERT(!IsNull(data));
+    return !IsStoredInline(data) &&
            // We use relaxed because the top 8 bits are never mutated during
            // reference counting and that is all we care about.
            (ReferenceCount(data).load(std::memory_order_relaxed) &
@@ -207,7 +221,8 @@ class Metadata final {
   }
 
   static bool IsReferenceCounted(const Data& data) {
-    return !IsNull(data) && !IsStoredInline(data) &&
+    ABSL_ASSERT(!IsNull(data));
+    return !IsStoredInline(data) &&
            // We use relaxed because the top 8 bits are never mutated during
            // reference counting and that is all we care about.
            (ReferenceCount(data).load(std::memory_order_relaxed) &
@@ -298,8 +313,7 @@ union alignas(Align) AnyDataStorage final {
 // dereference our stored pointers as it may have already been deleted. Thus we
 // need to know if it was arena allocated without dereferencing the pointer.
 template <size_t Size, size_t Align>
-class AnyData {
- public:
+struct AnyData final {
   static_assert(Size >= sizeof(uintptr_t),
                 "Size must be at least sizeof(uintptr_t)");
   static_assert(Align >= alignof(uintptr_t),
@@ -310,69 +324,83 @@ class AnyData {
 
   using Storage = AnyDataStorage<kSize, kAlign>;
 
-  Kind kind() const {
-    ABSL_ASSERT(!IsNull());
-    return Metadata::Kind(*get());
+  Kind kind_inline() const {
+    // We do not need apply the mask as the upper bits are only used by heap
+    // allocated data.
+    return static_cast<Kind>(pointer() >> kKindShift);
+  }
+
+  Kind kind_heap() const {
+    return static_cast<Kind>(
+        ((reinterpret_cast<std::atomic<uintptr_t>*>((pointer() & kPointerMask) +
+                                                    sizeof(uintptr_t))
+              ->load(std::memory_order_relaxed)) >>
+         kKindShift) &
+        kKindMask);
   }
 
   DataLocality locality() const {
-    return pointer() == 0 ? DataLocality::kNull
-           : (pointer() & kStoredInline) == kStoredInline
-               ? DataLocality::kStoredInline
-           : (pointer() & kPointerArenaAllocated) == kPointerArenaAllocated
-               ? DataLocality::kArenaAllocated
-               : DataLocality::kReferenceCounted;
+    return static_cast<DataLocality>(pointer() & kPointerBits);
   }
 
   bool IsNull() const { return pointer() == 0; }
 
   bool IsStoredInline() const {
-    return (pointer() & kStoredInline) == kStoredInline;
+    return locality() == DataLocality::kStoredInline;
   }
 
   bool IsArenaAllocated() const {
-    return (pointer() & kPointerArenaAllocated) == kPointerArenaAllocated;
+    return locality() == DataLocality::kArenaAllocated;
   }
 
   bool IsReferenceCounted() const {
-    return pointer() != 0 &&
-           (pointer() & (kStoredInline | kPointerArenaAllocated)) == 0;
+    return locality() == DataLocality::kReferenceCounted;
   }
 
   void Ref() const {
     ABSL_ASSERT(IsReferenceCounted());
-    Metadata::Ref(*get());
+    // We do not need to apply the pointer mask, we know this is reference
+    // counted.
+    Metadata::Ref(*get_heap());
   }
 
   bool Unref() const {
     ABSL_ASSERT(IsReferenceCounted());
-    return Metadata::Unref(*get());
+    // We do not need to apply the pointer mask, we know this is reference
+    // counted.
+    return Metadata::Unref(*get_heap());
   }
 
   bool IsUnique() const {
     ABSL_ASSERT(IsReferenceCounted());
-    return Metadata::IsUnique(*get());
+    // We do not need to apply the pointer mask, we know this is reference
+    // counted.
+    return Metadata::IsUnique(*get_heap());
   }
 
   bool IsTriviallyCopyable() const {
     ABSL_ASSERT(IsStoredInline());
-    return Metadata::IsTriviallyCopyable(*get());
+    return (pointer() & kTriviallyCopyable) == kTriviallyCopyable;
   }
 
   bool IsTriviallyDestructible() const {
     ABSL_ASSERT(IsStoredInline());
-    return Metadata::IsTriviallyDestructible(*get());
+    return (pointer() & kTriviallyDestructible) == kTriviallyDestructible;
   }
 
   // IMPORTANT: Do not use `Metadata::For(get())` unless you know what you are
   // doing, instead us the method of the same name in this class.
   Data* get() const {
-    // We launder to ensure the compiler does not make any assumptions about the
-    // content of storage in regards to const.
-    return internal::launder(
-        (pointer() & kStoredInline) == kStoredInline
-            ? reinterpret_cast<Data*>(const_cast<uint8_t*>(buffer()))
-            : reinterpret_cast<Data*>(pointer() & kPointerMask));
+    return (pointer() & kPointerBits) == kStoredInline ? get_inline()
+                                                       : get_heap();
+  }
+
+  Data* get_inline() const {
+    return static_cast<Data*>(const_cast<void*>(buffer()));
+  }
+
+  Data* get_heap() const {
+    return reinterpret_cast<Data*>(pointer() & kPointerMask);
   }
 
   // Copy the bytes from other, similar to `std::memcpy`.
@@ -389,13 +417,13 @@ class AnyData {
   template <typename T>
   void Destruct() {
     ABSL_ASSERT(IsStoredInline());
-    static_cast<T*>(get())->~T();
+    static_cast<T*>(get_inline())->~T();
   }
 
   void Clear() {
     // We only need to clear the first `sizeof(uintptr_t)` bytes as that is
     // consulted to determine locality.
-    pointer() = 0;
+    set_pointer(0);
   }
 
   // Counterpart to `Metadata::SetArenaAllocated()` and
@@ -404,44 +432,28 @@ class AnyData {
     ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(&data)) >=
                 2);  // Assert pointer alignment results in at least the 2 least
                      // significant bits being unset.
-    pointer() = reinterpret_cast<uintptr_t>(&data) |
-                (Metadata::IsArenaAllocated(data) ? kPointerArenaAllocated : 0);
+    set_pointer(reinterpret_cast<uintptr_t>(&data) |
+                ((reinterpret_cast<std::atomic<uintptr_t>*>(
+                      reinterpret_cast<uintptr_t>(&data) + sizeof(uintptr_t))
+                      ->load(std::memory_order_relaxed) &
+                  kArenaAllocated) == kArenaAllocated
+                     ? kPointerArenaAllocated
+                     : kPointerReferenceCounted));
   }
 
   template <typename T, typename... Args>
   void ConstructInline(Args&&... args) {
     ::new (buffer()) T(std::forward<Args>(args)...);
-    ABSL_ASSERT(absl::countr_zero(pointer()) ==
-                0);  // Assert the least significant bit is set.
+    ABSL_ASSERT(IsStoredInline());
   }
 
-  uint8_t* buffer() {
-    // We launder because `storage.pointer` is technically the active member by
-    // default and we want to ensure the compiler does not make any assumptions
-    // based on this.
-    return &internal::launder(&storage)->buffer[0];
-  }
+  void* buffer() { return &storage.buffer[0]; }
 
-  const uint8_t* buffer() const {
-    // We launder because `storage.pointer` is technically the active member by
-    // default and we want to ensure the compiler does not make any assumptions
-    // based on this.
-    return &internal::launder(&storage)->buffer[0];
-  }
+  const void* buffer() const { return &storage.buffer[0]; }
 
-  uintptr_t& pointer() {
-    // We launder because `storage.pointer` is technically the active member by
-    // default and we want to ensure the compiler does not make any assumptions
-    // based on this.
-    return internal::launder(&storage)->pointer;
-  }
+  uintptr_t pointer() const { return storage.pointer; }
 
-  const uintptr_t& pointer() const {
-    // We launder because `storage.pointer` is technically the active member by
-    // default and we want to ensure the compiler does not make any assumptions
-    // based on this.
-    return internal::launder(&storage)->pointer;
-  }
+  void set_pointer(uintptr_t pointer) { storage.pointer = pointer; }
 
   Storage storage;
 };

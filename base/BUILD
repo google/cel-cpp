@@ -308,6 +308,7 @@ cc_test(
         ":value",
         ":value_factory",
         "//base/internal:memory_manager_testing",
+        "//internal:benchmark",
         "//internal:strings",
         "//internal:testing",
         "//internal:time",

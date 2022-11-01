@@ -247,14 +247,17 @@ void TypeHandle::HashValue(absl::HashState state) const {
 void TypeHandle::CopyFrom(const TypeHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
-  if (ABSL_PREDICT_FALSE(locality == DataLocality::kStoredInline &&
-                         !other.data_.IsTriviallyCopyable())) {
-    // Type currently has only trivially copyable inline
-    // representations.
-    internal::unreachable();
+  if (locality == DataLocality::kStoredInline) {
+    if (ABSL_PREDICT_FALSE(!other.data_.IsTriviallyCopyable())) {
+      // Type currently has only trivially copyable inline
+      // representations.
+      internal::unreachable();
+    } else {
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
+    }
   } else {
-    // We can simply just copy the bytes.
-    data_.CopyFrom(other.data_);
+    data_.set_pointer(other.data_.pointer());
     if (locality == DataLocality::kReferenceCounted) {
       Ref();
     }
@@ -263,16 +266,19 @@ void TypeHandle::CopyFrom(const TypeHandle& other) {
 
 void TypeHandle::MoveFrom(TypeHandle& other) {
   // data_ is currently uninitialized.
-  auto locality = other.data_.locality();
-  if (ABSL_PREDICT_FALSE(locality == DataLocality::kStoredInline &&
-                         !other.data_.IsTriviallyCopyable())) {
-    // Type currently has only trivially copyable inline
-    // representations.
-    internal::unreachable();
+  if (data_.IsStoredInline()) {
+    if (ABSL_PREDICT_FALSE(!other.data_.IsTriviallyCopyable())) {
+      // Type currently has only trivially copyable inline
+      // representations.
+      internal::unreachable();
+    } else {
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
+    }
   } else {
-    // We can simply just copy the bytes.
-    data_.MoveFrom(other.data_);
+    data_.set_pointer(other.data_.pointer());
   }
+  other.data_.Clear();
 }
 
 void TypeHandle::CopyAssign(const TypeHandle& other) {
@@ -290,38 +296,39 @@ void TypeHandle::MoveAssign(TypeHandle& other) {
 void TypeHandle::Destruct() {
   switch (data_.locality()) {
     case DataLocality::kNull:
-      break;
+      return;
     case DataLocality::kStoredInline:
       if (ABSL_PREDICT_FALSE(!data_.IsTriviallyDestructible())) {
         // Type currently has only trivially destructible inline
         // representations.
         internal::unreachable();
       }
-      break;
+      return;
     case DataLocality::kReferenceCounted:
       Unref();
-      break;
+      return;
     case DataLocality::kArenaAllocated:
-      break;
+      return;
   }
 }
 
 void TypeHandle::Delete() const {
-  switch (data_.kind()) {
+  switch (data_.kind_heap()) {
     case Kind::kList:
       delete static_cast<ModernListType*>(
-          static_cast<ListType*>(static_cast<Type*>(data_.get())));
-      break;
+          static_cast<ListType*>(static_cast<Type*>(data_.get_heap())));
+      return;
     case Kind::kMap:
       delete static_cast<ModernMapType*>(
-          static_cast<MapType*>(static_cast<Type*>(data_.get())));
-      break;
+          static_cast<MapType*>(static_cast<Type*>(data_.get_heap())));
+      return;
     case Kind::kEnum:
-      delete static_cast<EnumType*>(static_cast<Type*>(data_.get()));
-      break;
+      delete static_cast<EnumType*>(static_cast<Type*>(data_.get_heap()));
+      return;
     case Kind::kStruct:
-      delete static_cast<AbstractStructType*>(static_cast<Type*>(data_.get()));
-      break;
+      delete static_cast<AbstractStructType*>(
+          static_cast<Type*>(data_.get_heap()));
+      return;
     default:
       internal::unreachable();
   }

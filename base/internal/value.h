@@ -100,7 +100,7 @@ static_assert(kValueInlineSize <= 32,
 static_assert(kValueInlineAlign <= alignof(std::max_align_t),
               "Alignment of an inline value should not be overaligned.");
 
-struct AnyValue final : public AnyData<kValueInlineSize, kValueInlineAlign> {};
+using AnyValue = AnyData<kValueInlineSize, kValueInlineAlign>;
 
 class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;

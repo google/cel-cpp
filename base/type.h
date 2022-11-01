@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
@@ -119,20 +120,20 @@ class TypeHandle final {
   ~TypeHandle() { Destruct(); }
 
   TypeHandle& operator=(const TypeHandle& other) {
-    if (this != &other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
       CopyAssign(other);
     }
     return *this;
   }
 
   TypeHandle& operator=(TypeHandle&& other) {
-    if (this != &other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
       MoveAssign(other);
     }
     return *this;
   }
 
-  Type* get() const { return reinterpret_cast<Type*>(data_.get()); }
+  Type* get() const { return static_cast<Type*>(data_.get()); }
 
   explicit operator bool() const { return !data_.IsNull(); }
 

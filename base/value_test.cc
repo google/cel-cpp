@@ -38,6 +38,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
+#include "internal/benchmark.h"
 #include "internal/strings.h"
 #include "internal/testing.h"
 #include "internal/time.h"
@@ -2304,6 +2305,95 @@ TEST_P(ValueTest, SupportsAbslHash) {
 INSTANTIATE_TEST_SUITE_P(ValueTest, ValueTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
+
+Handle<NullValue> DefaultNullValue(ValueFactory& value_factory) {
+  return value_factory.GetNullValue();
+}
+
+Handle<ErrorValue> DefaultErrorValue(ValueFactory& value_factory) {
+  return value_factory.CreateErrorValue(absl::CancelledError());
+}
+
+Handle<BoolValue> DefaultBoolValue(ValueFactory& value_factory) {
+  return value_factory.CreateBoolValue(false);
+}
+
+Handle<IntValue> DefaultIntValue(ValueFactory& value_factory) {
+  return value_factory.CreateIntValue(0);
+}
+
+Handle<UintValue> DefaultUintValue(ValueFactory& value_factory) {
+  return value_factory.CreateUintValue(0);
+}
+
+Handle<DoubleValue> DefaultDoubleValue(ValueFactory& value_factory) {
+  return value_factory.CreateDoubleValue(0.0);
+}
+
+Handle<DurationValue> DefaultDurationValue(ValueFactory& value_factory) {
+  return Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
+}
+
+Handle<TimestampValue> DefaultTimestampValue(ValueFactory& value_factory) {
+  return Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
+}
+
+Handle<TypeValue> DefaultTypeValue(ValueFactory& value_factory) {
+  return value_factory.CreateTypeValue(
+      value_factory.type_factory().GetNullType());
+}
+
+#define BM_SIMPLE_VALUES_LIST(XX) \
+  XX(NullValue)                   \
+  XX(ErrorValue)                  \
+  XX(BoolValue)                   \
+  XX(IntValue)                    \
+  XX(UintValue)                   \
+  XX(DoubleValue)                 \
+  XX(DurationValue)               \
+  XX(TimestampValue)              \
+  XX(TypeValue)
+
+template <typename T, Handle<T> (*F)(ValueFactory&)>
+void BM_SimpleCopyConstruct(benchmark::State& state) {
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  Handle<Value> value = (*F)(value_factory);
+  for (auto s : state) {
+    Handle<Value> other(value);
+    benchmark::DoNotOptimize(other);
+  }
+}
+
+#define BM_SIMPLE_VALUES(type)                             \
+  void BM_##type##CopyConstruct(benchmark::State& state) { \
+    BM_SimpleCopyConstruct<type, Default##type>(state);    \
+  }                                                        \
+  BENCHMARK(BM_##type##CopyConstruct);
+
+BM_SIMPLE_VALUES_LIST(BM_SIMPLE_VALUES)
+
+#undef BM_SIMPLE_VALUES
+
+template <typename T, Handle<T> (*F)(ValueFactory&)>
+void BM_SimpleMoveConstruct(benchmark::State& state) {
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  for (auto s : state) {
+    Handle<Value> other((*F)(value_factory));
+    benchmark::DoNotOptimize(other);
+  }
+}
+
+#define BM_SIMPLE_VALUES(type)                             \
+  void BM_##type##MoveConstruct(benchmark::State& state) { \
+    BM_SimpleMoveConstruct<type, Default##type>(state);    \
+  }                                                        \
+  BENCHMARK(BM_##type##MoveConstruct);
+
+BM_SIMPLE_VALUES_LIST(BM_SIMPLE_VALUES)
 
 }  // namespace
 }  // namespace cel

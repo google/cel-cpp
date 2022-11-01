@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -130,20 +131,20 @@ class ValueHandle final {
   ~ValueHandle() { Destruct(); }
 
   ValueHandle& operator=(const ValueHandle& other) {
-    if (this != &other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
       CopyAssign(other);
     }
     return *this;
   }
 
   ValueHandle& operator=(ValueHandle&& other) {
-    if (this != &other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
       MoveAssign(other);
     }
     return *this;
   }
 
-  Value* get() const { return reinterpret_cast<Value*>(data_.get()); }
+  Value* get() const { return static_cast<Value*>(data_.get()); }
 
   explicit operator bool() const { return !data_.IsNull(); }
 

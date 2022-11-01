@@ -68,7 +68,7 @@ static_assert(kTypeInlineSize <= 16,
 static_assert(kTypeInlineAlign <= alignof(std::max_align_t),
               "Alignment of an inline type should not be overaligned.");
 
-struct AnyType final : public AnyData<kTypeInlineSize, kTypeInlineAlign> {};
+using AnyType = AnyData<kTypeInlineSize, kTypeInlineAlign>;
 
 }  // namespace base_internal
 
