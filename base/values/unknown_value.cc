@@ -32,13 +32,13 @@ bool UnknownValue::Equals(const Value& other) const {
 }
 
 const AttributeSet& UnknownValue::attribute_set() const {
-  return base_internal::Metadata::IsTriviallyCopyable(*this)
+  return base_internal::Metadata::IsTrivial(*this)
              ? value_ptr_->unknown_attributes()
              : value_.unknown_attributes();
 }
 
 const FunctionResultSet& UnknownValue::function_result_set() const {
-  return base_internal::Metadata::IsTriviallyCopyable(*this)
+  return base_internal::Metadata::IsTrivial(*this)
              ? value_ptr_->unknown_function_results()
              : value_.unknown_function_results();
 }

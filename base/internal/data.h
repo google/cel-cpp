@@ -33,8 +33,8 @@ namespace cel::base_internal {
 
 // Number of bits to shift to store kind.
 inline constexpr int kKindShift = sizeof(uintptr_t) * 8 - 8;
-// Mask that has all bits set except the most significant bit.
-inline constexpr uint8_t kKindMask = (uint8_t{1} << 7) - 1;
+// Mask that has all bits set except the two most significant bits.
+inline constexpr uint8_t kKindMask = (uint8_t{1} << 6) - 1;
 
 // uintptr_t with the least significant bit set.
 inline constexpr uintptr_t kPointerArenaAllocated = uintptr_t{1} << 0;
@@ -60,11 +60,8 @@ inline constexpr uintptr_t kReferenceCountMax =
     ((uintptr_t{1} << (sizeof(uintptr_t) * 8 - 8)) - 1);
 
 // uintptr_t with the 8th bit set. Used by inline data to indicate it is
-// trivially copyable.
-inline constexpr uintptr_t kTriviallyCopyable = 1 << 8;
-// uintptr_t with the 9th bit set. Used by inline data to indicate it is
-// trivially destuctible.
-inline constexpr uintptr_t kTriviallyDestructible = 1 << 9;
+// trivially copyable/moveable/destructible.
+inline constexpr uintptr_t kTrivial = 1 << 8;
 
 // We assert some expectations we have around alignment, size, and trivial
 // destructability.
@@ -252,15 +249,9 @@ class Metadata final {
             kReferenceCountMask) == 1;
   }
 
-  static bool IsTriviallyCopyable(const Data& data) {
+  static bool IsTrivial(const Data& data) {
     ABSL_ASSERT(IsStoredInline(data));
-    return (VirtualPointer(data) & kTriviallyCopyable) == kTriviallyCopyable;
-  }
-
-  static bool IsTriviallyDestructible(const Data& data) {
-    ABSL_ASSERT(IsStoredInline(data));
-    return (VirtualPointer(data) & kTriviallyDestructible) ==
-           kTriviallyDestructible;
+    return (VirtualPointer(data) & kTrivial) == kTrivial;
   }
 
   // Used by `MemoryManager::New()`.
@@ -378,14 +369,9 @@ struct AnyData final {
     return Metadata::IsUnique(*get_heap());
   }
 
-  bool IsTriviallyCopyable() const {
+  bool IsTrivial() const {
     ABSL_ASSERT(IsStoredInline());
-    return (pointer() & kTriviallyCopyable) == kTriviallyCopyable;
-  }
-
-  bool IsTriviallyDestructible() const {
-    ABSL_ASSERT(IsStoredInline());
-    return (pointer() & kTriviallyDestructible) == kTriviallyDestructible;
+    return (pointer() & kTrivial) == kTrivial;
   }
 
   // IMPORTANT: Do not use `Metadata::For(get())` unless you know what you are

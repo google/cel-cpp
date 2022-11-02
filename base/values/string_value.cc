@@ -213,7 +213,7 @@ absl::Cord StringValue::ToCord() const {
     case base_internal::DataLocality::kNull:
       return absl::Cord();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return absl::MakeCordFromExternal(
             static_cast<const base_internal::InlinedStringViewStringValue*>(
                 this)
@@ -259,7 +259,7 @@ base_internal::StringValueRep StringValue::rep() const {
     case base_internal::DataLocality::kNull:
       return base_internal::StringValueRep();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return base_internal::StringValueRep(
             absl::in_place_type<absl::string_view>,
             static_cast<const base_internal::InlinedStringViewStringValue*>(

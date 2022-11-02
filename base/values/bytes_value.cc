@@ -211,7 +211,7 @@ absl::Cord BytesValue::ToCord() const {
     case base_internal::DataLocality::kNull:
       return absl::Cord();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return absl::MakeCordFromExternal(
             static_cast<const base_internal::InlinedStringViewBytesValue*>(this)
                 ->value_,
@@ -256,7 +256,7 @@ base_internal::BytesValueRep BytesValue::rep() const {
     case base_internal::DataLocality::kNull:
       return base_internal::BytesValueRep();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return base_internal::BytesValueRep(
             absl::in_place_type<absl::string_view>,
             static_cast<const base_internal::InlinedStringViewBytesValue*>(this)

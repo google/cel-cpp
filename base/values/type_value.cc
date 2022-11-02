@@ -35,7 +35,7 @@ void TypeValue::HashValue(absl::HashState state) const {
 }
 
 absl::string_view TypeValue::name() const {
-  if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+  if (base_internal::Metadata::IsTrivial(*this)) {
     return static_cast<const base_internal::LegacyTypeValue&>(*this).name();
   }
   return static_cast<const base_internal::ModernTypeValue&>(*this).name();

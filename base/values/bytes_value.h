@@ -102,19 +102,17 @@ namespace base_internal {
 // Implementation of BytesValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
-class InlinedCordBytesValue final : public BytesValue,
-                                    public base_internal::InlineData {
+class InlinedCordBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
   template <size_t Size, size_t Align>
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedCordBytesValue(absl::Cord value)
-      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
+      : InlineData(kMetadata), value_(std::move(value)) {}
 
   InlinedCordBytesValue(const InlinedCordBytesValue&) = default;
   InlinedCordBytesValue(InlinedCordBytesValue&&) = default;
@@ -128,20 +126,17 @@ class InlinedCordBytesValue final : public BytesValue,
 // class is inheritently unsafe and care should be taken when using it.
 // Typically this should only be used for empty strings or data that is static
 // and lives for the duration of a program.
-class InlinedStringViewBytesValue final : public BytesValue,
-                                          public base_internal::InlineData {
+class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
   template <size_t Size, size_t Align>
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedStringViewBytesValue(absl::string_view value)
-      : base_internal::InlineData(kMetadata), value_(value) {}
+      : InlineData(kMetadata), value_(value) {}
 
   InlinedStringViewBytesValue(const InlinedStringViewBytesValue&) = default;
   InlinedStringViewBytesValue(InlinedStringViewBytesValue&&) = default;
@@ -155,8 +150,7 @@ class InlinedStringViewBytesValue final : public BytesValue,
 
 // Implementation of BytesValue that uses std::string and is allocated on the
 // heap, potentially reference counted.
-class StringBytesValue final : public BytesValue,
-                               public base_internal::HeapData {
+class StringBytesValue final : public BytesValue, public HeapData {
  private:
   friend class cel::MemoryManager;
   friend class BytesValue;

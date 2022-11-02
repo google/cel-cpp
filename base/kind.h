@@ -52,9 +52,9 @@ enum class Kind /* : uint8_t */ {
   kUnknownSet = kUnknown,
   kCelType = kType,
 
-  // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
-  // we can store `Kind` using 7 bits.
-  kNotForUseWithExhaustiveSwitchStatements = 127,
+  // INTERNAL: Do not exceed 63. Implementation details rely on the fact that
+  // we can store `Kind` using 6 bits.
+  kNotForUseWithExhaustiveSwitchStatements = 63,
 };
 
 ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);

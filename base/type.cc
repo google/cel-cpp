@@ -248,7 +248,7 @@ void TypeHandle::CopyFrom(const TypeHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
   if (locality == DataLocality::kStoredInline) {
-    if (ABSL_PREDICT_FALSE(!other.data_.IsTriviallyCopyable())) {
+    if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
       // Type currently has only trivially copyable inline
       // representations.
       internal::unreachable();
@@ -267,7 +267,7 @@ void TypeHandle::CopyFrom(const TypeHandle& other) {
 void TypeHandle::MoveFrom(TypeHandle& other) {
   // data_ is currently uninitialized.
   if (data_.IsStoredInline()) {
-    if (ABSL_PREDICT_FALSE(!other.data_.IsTriviallyCopyable())) {
+    if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
       // Type currently has only trivially copyable inline
       // representations.
       internal::unreachable();
@@ -298,7 +298,7 @@ void TypeHandle::Destruct() {
     case DataLocality::kNull:
       return;
     case DataLocality::kStoredInline:
-      if (ABSL_PREDICT_FALSE(!data_.IsTriviallyDestructible())) {
+      if (ABSL_PREDICT_FALSE(!data_.IsTrivial())) {
         // Type currently has only trivially destructible inline
         // representations.
         internal::unreachable();

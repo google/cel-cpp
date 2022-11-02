@@ -228,7 +228,7 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
   if (locality == DataLocality::kStoredInline) {
-    if (!other.data_.IsTriviallyCopyable()) {
+    if (!other.data_.IsTrivial()) {
       switch (other.data_.kind_inline()) {
         case Kind::kError:
           data_.ConstructInline<ErrorValue>(
@@ -275,7 +275,7 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
 void ValueHandle::MoveFrom(ValueHandle& other) {
   // data_ is currently uninitialized.
   if (other.data_.IsStoredInline()) {
-    if (!other.data_.IsTriviallyCopyable()) {
+    if (!other.data_.IsTrivial()) {
       switch (other.data_.kind_inline()) {
         case Kind::kError:
           data_.ConstructInline<ErrorValue>(
@@ -337,7 +337,7 @@ void ValueHandle::Destruct() {
     case DataLocality::kNull:
       return;
     case DataLocality::kStoredInline:
-      if (!data_.IsTriviallyDestructible()) {
+      if (!data_.IsTrivial()) {
         switch (data_.kind_inline()) {
           case Kind::kError:
             data_.Destruct<ErrorValue>();

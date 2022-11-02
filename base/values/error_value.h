@@ -62,9 +62,7 @@ class ErrorValue final : public Value, public base_internal::InlineData {
       : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   explicit ErrorValue(const absl::Status* value_ptr)
-      : base_internal::InlineData(kMetadata |
-                                  base_internal::kTriviallyCopyable |
-                                  base_internal::kTriviallyDestructible),
+      : base_internal::InlineData(kMetadata | base_internal::kTrivial),
         value_ptr_(value_ptr) {}
 
   ErrorValue(const ErrorValue& other) : ErrorValue(other.value_) {

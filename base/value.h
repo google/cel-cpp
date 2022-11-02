@@ -236,8 +236,10 @@ class SimpleValue : public Value, InlineData {
 
   static constexpr uintptr_t kMetadata =
       kStoredInline |
-      (std::is_trivially_copyable_v<U> ? kTriviallyCopyable : 0) |
-      (std::is_trivially_destructible_v<U> ? kTriviallyDestructible : 0) |
+      (std::conjunction_v<std::is_trivially_copyable<U>,
+                          std::is_trivially_destructible<U>>
+           ? kTrivial
+           : 0) |
       (static_cast<uintptr_t>(kKind) << kKindShift);
 
   U value_;
@@ -271,8 +273,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
   friend class ValueHandle;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 };
 
 }  // namespace base_internal

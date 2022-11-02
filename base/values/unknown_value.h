@@ -62,9 +62,7 @@ class UnknownValue final : public Value, public base_internal::InlineData {
       : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
   explicit UnknownValue(const base_internal::UnknownSet* value_ptr)
-      : base_internal::InlineData(kMetadata |
-                                  base_internal::kTriviallyCopyable |
-                                  base_internal::kTriviallyDestructible),
+      : base_internal::InlineData(kMetadata | base_internal::kTrivial),
         value_ptr_(value_ptr) {}
 
   UnknownValue(const UnknownValue& other) : UnknownValue(other.value_) {

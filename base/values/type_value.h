@@ -74,12 +74,10 @@ class LegacyTypeValue final : public TypeValue, InlineData {
   friend class base_internal::AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit LegacyTypeValue(absl::string_view value)
-      : base_internal::InlineData(kMetadata), value_(value) {}
+      : InlineData(kMetadata), value_(value) {}
 
   LegacyTypeValue(const LegacyTypeValue&) = default;
   LegacyTypeValue(LegacyTypeValue&&) = default;
@@ -99,11 +97,10 @@ class ModernTypeValue final : public TypeValue, InlineData {
   friend class base_internal::AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit ModernTypeValue(Handle<Type> value)
-      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
+      : InlineData(kMetadata), value_(std::move(value)) {}
 
   ModernTypeValue(const ModernTypeValue&) = default;
   ModernTypeValue(ModernTypeValue&&) = default;

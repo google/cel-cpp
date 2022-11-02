@@ -388,7 +388,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case Kind::kNullType:
       return CelValue::CreateNull();
     case Kind::kError: {
-      if (base_internal::Metadata::IsTriviallyCopyable(*value)) {
+      if (base_internal::Metadata::IsTrivial(*value)) {
         return CelValue::CreateError(
             ErrorValueAccess::value_ptr(*value.As<ErrorValue>()));
       }
@@ -402,7 +402,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case Kind::kType:
       // Should be fine, so long as we are using an arena allocator.
       // We can only transport legacy type values.
-      if (!base_internal::Metadata::IsTriviallyCopyable(*value)) {
+      if (!base_internal::Metadata::IsTrivial(*value)) {
         // Only legacy type values are trivially copyable, this must be the
         // modern one which we cannot support here.
         return absl::UnimplementedError(
@@ -459,7 +459,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
               *value.As<base_internal::LegacyStructValue>())));
     }
     case Kind::kUnknown: {
-      if (base_internal::Metadata::IsTriviallyCopyable(*value)) {
+      if (base_internal::Metadata::IsTrivial(*value)) {
         return CelValue::CreateUnknownSet(
             UnknownValueAccess::value_ptr(*value.As<UnknownValue>()));
       }

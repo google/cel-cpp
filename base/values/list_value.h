@@ -113,9 +113,7 @@ class LegacyListValue final : public ListValue, public InlineData {
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit LegacyListValue(uintptr_t impl)
       : ListValue(), InlineData(kMetadata), impl_(impl) {}

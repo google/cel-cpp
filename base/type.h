@@ -295,8 +295,7 @@ class SimpleType : public Type, public InlineData {
   friend class TypeHandle;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 };
 
 }  // namespace base_internal

@@ -127,9 +127,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit LegacyMapValue(uintptr_t impl)
       : MapValue(), InlineData(kMetadata), impl_(impl) {}
@@ -148,7 +146,7 @@ class AbstractMapValue : public MapValue, public HeapData {
                internal::TypeId<LegacyMapValue>();
   }
 
-  const Handle<MapType> type() const { return type_; }
+  Handle<MapType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 

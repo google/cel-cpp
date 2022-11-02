@@ -159,13 +159,11 @@ class LegacyStructValue final : public StructValue, public InlineData {
   friend struct interop_internal::LegacyStructValueAccess;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   LegacyStructValue(uintptr_t msg, uintptr_t type_info)
       : StructValue(),
-        base_internal::InlineData(kMetadata),
+        InlineData(kMetadata),
         msg_(msg),
         type_info_(type_info) {}
 

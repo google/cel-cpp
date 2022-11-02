@@ -102,8 +102,7 @@ namespace base_internal {
 // Implementation of StringValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
-class InlinedCordStringValue final : public StringValue,
-                                     public base_internal::InlineData {
+class InlinedCordStringValue final : public StringValue, public InlineData {
  private:
   friend class StringValue;
   friend class ValueFactory;
@@ -111,11 +110,10 @@ class InlinedCordStringValue final : public StringValue,
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedCordStringValue(absl::Cord value)
-      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
+      : InlineData(kMetadata), value_(std::move(value)) {}
 
   InlinedCordStringValue(const InlinedCordStringValue&) = default;
   InlinedCordStringValue(InlinedCordStringValue&&) = default;
@@ -130,7 +128,7 @@ class InlinedCordStringValue final : public StringValue,
 // Typically this should only be used for empty strings or data that is static
 // and lives for the duration of a program.
 class InlinedStringViewStringValue final : public StringValue,
-                                           public base_internal::InlineData {
+                                           public InlineData {
  private:
   friend class StringValue;
   friend class ValueFactory;
@@ -138,12 +136,10 @@ class InlinedStringViewStringValue final : public StringValue,
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedStringViewStringValue(absl::string_view value)
-      : base_internal::InlineData(kMetadata), value_(value) {}
+      : InlineData(kMetadata), value_(value) {}
 
   InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
   InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
@@ -157,8 +153,7 @@ class InlinedStringViewStringValue final : public StringValue,
 
 // Implementation of StringValue that uses std::string and is allocated on the
 // heap, potentially reference counted.
-class StringStringValue final : public StringValue,
-                                public base_internal::HeapData {
+class StringStringValue final : public StringValue, public HeapData {
  private:
   friend class cel::MemoryManager;
   friend class StringValue;
