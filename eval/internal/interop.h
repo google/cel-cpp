@@ -18,11 +18,13 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/value.h"
 #include "base/value_factory.h"
@@ -39,6 +41,10 @@ struct CelListAccess final {
 struct CelMapAccess final {
   static internal::TypeInfo TypeId(
       const google::api::expr::runtime::CelMap& map);
+};
+
+struct CelValueAccess final {
+  static google::api::expr::runtime::CelValue CreateNullMessage();
 };
 
 struct LegacyStructTypeAccess final {
@@ -90,6 +96,8 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
 
 Handle<NullValue> CreateNullValue();
 
+Handle<StructValue> CreateNullStructValue();
+
 Handle<BoolValue> CreateBoolValue(bool value);
 
 Handle<IntValue> CreateIntValue(int64_t value);
@@ -128,6 +136,12 @@ Handle<Value> LegacyValueToModernValueOrDie(
 Handle<Value> LegacyValueToModernValueOrDie(
     MemoryManager& memory_manager,
     const google::api::expr::runtime::CelValue& value);
+std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
+    google::protobuf::Arena* arena,
+    absl::Span<const google::api::expr::runtime::CelValue> values);
+std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
+    MemoryManager& memory_manager,
+    absl::Span<const google::api::expr::runtime::CelValue> values);
 
 // Convert a modern value to a legacy value, CHECK failing if its not possible.
 // This should only be used during rewritting of the evaluator when it is
@@ -137,6 +151,10 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, const Handle<Value>& value);
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     MemoryManager& memory_manager, const Handle<Value>& value);
+std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
+    google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values);
+std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
+    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values);
 
 Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);
 

@@ -333,7 +333,7 @@ TEST_P(ShortCircuitingTest, TernaryErrorHandling) {
       BuildAndEval(builder.get(), expr, activation, &arena, &result));
 
   ASSERT_TRUE(result.IsError());
-  EXPECT_EQ(result.ErrorOrDie(), &error1);
+  EXPECT_EQ(*result.ErrorOrDie(), error1);
 
   ASSERT_TRUE(activation.RemoveValueEntry("cond"));
   activation.InsertValue("cond", CelValue::CreateBool(false));
@@ -438,7 +438,7 @@ TEST_P(ShortCircuitingTest, TernaryUnknownAndErrorHandling) {
   ASSERT_NO_FATAL_FAILURE(
       BuildAndEval(builder.get(), expr, activation, &arena, &result));
   ASSERT_TRUE(result.IsError());
-  EXPECT_EQ(result.ErrorOrDie(), &error);
+  EXPECT_EQ(*result.ErrorOrDie(), error);
 
   // Error arg discarded if condition unknown
   activation.set_unknown_attribute_patterns({CelAttributePattern("cond", {})});

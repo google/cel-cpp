@@ -9,6 +9,7 @@
 #include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_attribute.h"
 #include "internal/status_macros.h"
 
@@ -89,51 +90,58 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   auto attr = frame->value_stack().GetAttributeSpan(5);
 
   // Get range from the stack.
-  CelValue iter_range = state[POS_ITER_RANGE];
-  if (!iter_range.IsList()) {
+  auto iter_range = state[POS_ITER_RANGE];
+  if (!iter_range.Is<cel::ListValue>()) {
     frame->value_stack().Pop(5);
-    if (iter_range.IsError() || iter_range.IsUnknownSet()) {
-      frame->value_stack().Push(iter_range);
+    if (iter_range.Is<cel::ErrorValue>() ||
+        iter_range.Is<cel::UnknownValue>()) {
+      frame->value_stack().Push(std::move(iter_range));
       return frame->JumpTo(error_jump_offset_);
     }
     frame->value_stack().Push(
         CreateNoMatchingOverloadError(frame->memory_manager(), "<iter_range>"));
     return frame->JumpTo(error_jump_offset_);
   }
-  const CelList* cel_list = iter_range.ListOrDie();
-  const AttributeTrail iter_range_attr = attr[POS_ITER_RANGE];
+  const CelList* cel_list =
+      cel::interop_internal::ModernValueToLegacyValueOrDie(
+          frame->memory_manager(), iter_range)
+          .ListOrDie();
+  AttributeTrail iter_range_attr = attr[POS_ITER_RANGE];
 
   // Get the current index off the stack.
-  CelValue current_index_value = state[POS_CURRENT_INDEX];
-  if (!current_index_value.IsInt64()) {
+  const auto& current_index_value = state[POS_CURRENT_INDEX];
+  if (!current_index_value.Is<cel::IntValue>()) {
     return absl::InternalError(
         absl::StrCat("ComprehensionNextStep: want int64_t, got ",
-                     CelValue::TypeName(current_index_value.type())));
+                     CelValue::TypeName(current_index_value->kind())));
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
-  int64_t current_index = current_index_value.Int64OrDie();
+  int64_t current_index = current_index_value.As<cel::IntValue>()->value();
   if (current_index == -1) {
     CEL_RETURN_IF_ERROR(frame->PushIterFrame(iter_var_, accu_var_));
   }
 
   // Update stack for breaking out of loop or next round.
-  CelValue loop_step = state[POS_LOOP_STEP];
+  auto loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  CEL_RETURN_IF_ERROR(frame->SetAccuVar(loop_step));
+  CEL_RETURN_IF_ERROR(
+      frame->SetAccuVar(cel::interop_internal::ModernValueToLegacyValueOrDie(
+          frame->memory_manager(), loop_step)));
   if (current_index >= cel_list->size() - 1) {
     CEL_RETURN_IF_ERROR(frame->ClearIterVar());
     return frame->JumpTo(jump_offset_);
   }
-  frame->value_stack().Push(iter_range, iter_range_attr);
+  frame->value_stack().Push(std::move(iter_range), iter_range_attr);
   current_index += 1;
 
   CelValue current_value =
       (*cel_list).Get(cel::extensions::ProtoMemoryManager::CastToProtoArena(
                           frame->memory_manager()),
                       current_index);
-  frame->value_stack().Push(CelValue::CreateInt64(current_index));
+  frame->value_stack().Push(
+      cel::interop_internal::CreateIntValue(current_index));
   AttributeTrail iter_trail = iter_range_attr.Step(
       CreateCelAttributeQualifier(CelValue::CreateInt64(current_index)),
       frame->memory_manager());
@@ -167,11 +175,12 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(5)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  CelValue loop_condition_value = frame->value_stack().Peek();
-  if (!loop_condition_value.IsBool()) {
+  auto loop_condition_value = frame->value_stack().Peek();
+  if (!loop_condition_value.Is<cel::BoolValue>()) {
     frame->value_stack().Pop(5);
-    if (loop_condition_value.IsError() || loop_condition_value.IsUnknownSet()) {
-      frame->value_stack().Push(loop_condition_value);
+    if (loop_condition_value.Is<cel::ErrorValue>() ||
+        loop_condition_value.Is<cel::UnknownValue>()) {
+      frame->value_stack().Push(std::move(loop_condition_value));
     } else {
       frame->value_stack().Push(CreateNoMatchingOverloadError(
           frame->memory_manager(), "<loop_condition>"));
@@ -181,7 +190,7 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     CEL_RETURN_IF_ERROR(frame->PopIterFrame());
     return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition = loop_condition_value.BoolOrDie();
+  bool loop_condition = loop_condition_value.As<cel::BoolValue>()->value();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     frame->value_stack().Pop(3);  // current_value, current_index, iter_range
@@ -202,9 +211,9 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(2)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  CelValue result = frame->value_stack().Peek();
+  auto result = frame->value_stack().Peek();
   frame->value_stack().Pop(1);  // result
-  frame->value_stack().PopAndPush(result);
+  frame->value_stack().PopAndPush(std::move(result));
   CEL_RETURN_IF_ERROR(frame->PopIterFrame());
   return absl::OkStatus();
 }
@@ -236,7 +245,8 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
     }
   }
 
-  const CelValue& map = frame->value_stack().Peek();
+  CelValue map = cel::interop_internal::ModernValueToLegacyValueOrDie(
+      frame->memory_manager(), frame->value_stack().Peek());
   auto list_keys = map.MapOrDie()->ListKeys(
       cel::extensions::ProtoMemoryManager::CastToProtoArena(
           frame->memory_manager()));
@@ -251,7 +261,8 @@ absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  const CelValue& map_value = frame->value_stack().Peek();
+  CelValue map_value = cel::interop_internal::ModernValueToLegacyValueOrDie(
+      frame->memory_manager(), frame->value_stack().Peek());
   if (map_value.IsMap()) {
     return ProjectKeys(frame);
   }

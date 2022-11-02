@@ -6,6 +6,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -33,7 +34,9 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
 
   CelValue value;
 
-  const CelValue& condition = args.at(0);
+  const CelValue& condition =
+      cel::interop_internal::ModernValueToLegacyValueOrDie(
+          frame->memory_manager(), args.at(0));
   // As opposed to regular functions, ternary treats unknowns or errors on the
   // condition (arg0) as blocking. If we get an error or unknown then we
   // ignore the other arguments and forward the condition as the result.
@@ -55,9 +58,11 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
     result = CreateNoMatchingOverloadError(frame->memory_manager(),
                                            builtin::kTernary);
   } else if (condition.BoolOrDie()) {
-    result = args.at(1);
+    result = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), args.at(1));
   } else {
-    result = args.at(2);
+    result = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), args.at(2));
   }
 
   frame->value_stack().Pop(args.size());

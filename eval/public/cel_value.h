@@ -46,6 +46,7 @@
 namespace cel::interop_internal {
 struct CelListAccess;
 struct CelMapAccess;
+struct CelValueAccess;
 }  // namespace cel::interop_internal
 
 namespace google::api::expr::runtime {
@@ -419,6 +420,8 @@ class CelValue {
   }
 
  private:
+  friend struct cel::interop_internal::CelValueAccess;
+
   ValueHolder value_;
 
   template <typename T, class = void>

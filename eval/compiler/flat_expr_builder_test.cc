@@ -1691,7 +1691,7 @@ TEST(FlatExprBuilderTest, Ternary) {
                                    CelValue::CreateInt64(1),
                                    CelValue::CreateInt64(2), &arena, &result));
     ASSERT_TRUE(result.IsUnknownSet());
-    EXPECT_THAT(&unknown_set, Eq(result.UnknownSetOrDie()));
+    EXPECT_THAT(unknown_set, Eq(*result.UnknownSetOrDie()));
   }
   // We should not merge unknowns
   {

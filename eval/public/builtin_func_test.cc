@@ -1048,7 +1048,7 @@ TEST_F(BuiltinsTest, TestTernaryErrorAsCondition) {
       PerformRun(builtin::kTernary, {}, args, &result_value));
 
   ASSERT_EQ(result_value.IsError(), true);
-  ASSERT_EQ(result_value.ErrorOrDie(), &cel_error);
+  ASSERT_EQ(*result_value.ErrorOrDie(), cel_error);
 }
 
 TEST_F(BuiltinsTest, TestTernaryStringAsCondition) {

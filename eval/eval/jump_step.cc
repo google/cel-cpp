@@ -6,6 +6,7 @@
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
 
@@ -37,7 +38,8 @@ class CondJumpStep : public JumpStepBase {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
-    CelValue value = frame->value_stack().Peek();
+    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), frame->value_stack().Peek());
 
     if (!leave_on_stack_) {
       frame->value_stack().Pop(1);
@@ -72,7 +74,8 @@ class BoolCheckJumpStep : public JumpStepBase {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
-    CelValue value = frame->value_stack().Peek();
+    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), frame->value_stack().Peek());
 
     if (value.IsError()) {
       return Jump(frame);

@@ -19,6 +19,7 @@
 
 #include "absl/status/status.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "re2/re2.h"
 
 namespace google::api::expr::runtime {
@@ -40,8 +41,10 @@ class RegexMatchStep final : public ExpressionStepBase {
                           "expression match");
     }
     auto input_args = frame->value_stack().GetSpan(kNumRegexMatchArguments);
-    const auto& subject = input_args[0];
-    const auto& pattern = input_args[1];
+    const auto& subject = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), input_args[0]);
+    const auto& pattern = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), input_args[1]);
     if (!subject.IsString()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "First argument for regular "

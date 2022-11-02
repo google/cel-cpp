@@ -10,6 +10,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/function.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
@@ -58,6 +60,9 @@ class CelFunction {
   // arguments supplied.
   // Method is called during runtime.
   bool MatchArguments(absl::Span<const CelValue> arguments) const;
+
+  bool MatchArguments(
+      absl::Span<const cel::Handle<cel::Value>> arguments) const;
 
   // CelFunction descriptor
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }

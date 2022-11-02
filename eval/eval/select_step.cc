@@ -12,6 +12,7 @@
 #include "absl/strings/string_view.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"
@@ -135,7 +136,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
                         "No arguments supplied for Select-type expression");
   }
 
-  const CelValue& arg = frame->value_stack().Peek();
+  CelValue arg = cel::interop_internal::ModernValueToLegacyValueOrDie(
+      frame->memory_manager(), frame->value_stack().Peek());
   const AttributeTrail& trail = frame->value_stack().PeekAttribute();
 
   if (arg.IsUnknownSet() || arg.IsError()) {

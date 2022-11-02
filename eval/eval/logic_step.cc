@@ -5,7 +5,10 @@
 
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -27,13 +30,16 @@ class LogicalOpStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status Calculate(ExecutionFrame* frame, absl::Span<const CelValue> args,
+  absl::Status Calculate(ExecutionFrame* frame,
+                         absl::Span<const cel::Handle<cel::Value>> args,
                          CelValue* result) const {
     bool bool_args[2];
     bool has_bool_args[2];
 
     for (size_t i = 0; i < args.size(); i++) {
-      has_bool_args[i] = args[i].GetValue(bool_args + i);
+      has_bool_args[i] = cel::interop_internal::ModernValueToLegacyValueOrDie(
+                             frame->memory_manager(), args[i])
+                             .GetValue(bool_args + i);
       if (has_bool_args[i] && shortcircuit_ == bool_args[i]) {
         *result = CelValue::CreateBool(bool_args[i]);
         return absl::OkStatus();
@@ -68,11 +74,13 @@ class LogicalOpStep : public ExpressionStepBase {
       }
     }
 
-    if (args[0].IsError()) {
-      *result = args[0];
+    if (args[0].Is<cel::ErrorValue>()) {
+      *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
+          frame->memory_manager(), args[0]);
       return absl::OkStatus();
-    } else if (args[1].IsError()) {
-      *result = args[1];
+    } else if (args[1].Is<cel::ErrorValue>()) {
+      *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
+          frame->memory_manager(), args[1]);
       return absl::OkStatus();
     }
 

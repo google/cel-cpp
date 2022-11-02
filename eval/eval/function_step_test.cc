@@ -372,7 +372,7 @@ TEST_P(FunctionStepTest,
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
-  EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
+  EXPECT_THAT(*value.ErrorOrDie(), Eq(error0));
 }
 
 TEST_P(FunctionStepTest, LazyFunctionTest) {
@@ -452,7 +452,7 @@ TEST_P(FunctionStepTest,
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
-  EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
+  EXPECT_THAT(*value.ErrorOrDie(), Eq(error0));
 }
 
 std::string TestNameFn(testing::TestParamInfo<UnknownProcessingOptions> opt) {
@@ -594,7 +594,7 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
-  ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());
+  ASSERT_EQ(*value.ErrorOrDie(), *error_value.ErrorOrDie());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -767,7 +767,7 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
-  ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());
+  ASSERT_EQ(*value.ErrorOrDie(), *error_value.ErrorOrDie());
 }
 
 class MessageFunction : public CelFunction {

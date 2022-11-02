@@ -25,4 +25,22 @@ bool CelFunction::MatchArguments(absl::Span<const CelValue> arguments) const {
   return true;
 }
 
+bool CelFunction::MatchArguments(
+    absl::Span<const cel::Handle<cel::Value>> arguments) const {
+  auto types_size = descriptor().types().size();
+
+  if (types_size != arguments.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < types_size; i++) {
+    const auto& value = arguments[i];
+    CelValue::Type arg_type = descriptor().types()[i];
+    if (value->kind() != arg_type && arg_type != CelValue::Type::kAny) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace google::api::expr::runtime

@@ -9,6 +9,7 @@
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/test_type_registry.h"
+#include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
@@ -44,7 +45,8 @@ class FakeConstExpressionStep : public ExpressionStep {
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    CelValue value = frame->value_stack().Peek();
+    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), frame->value_stack().Peek());
     frame->value_stack().Pop(1);
     EXPECT_TRUE(value.IsInt64());
     int64_t val = value.Int64OrDie();

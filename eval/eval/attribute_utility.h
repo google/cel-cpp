@@ -7,7 +7,9 @@
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
 #include "base/memory_manager.h"
+#include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
@@ -57,6 +59,9 @@ class AttributeUtility {
   // Returns pointer to merged set or nullptr, if there were no sets to merge.
   const UnknownSet* MergeUnknowns(absl::Span<const CelValue> args,
                                   const UnknownSet* initial_set) const;
+  const UnknownSet* MergeUnknowns(
+      absl::Span<const cel::Handle<cel::Value>> args,
+      const UnknownSet* initial_set) const;
 
   // Creates merged UnknownSet.
   // Merges together attributes from UnknownSets found in the args
@@ -68,6 +73,10 @@ class AttributeUtility {
                                   absl::Span<const AttributeTrail> attrs,
                                   const UnknownSet* initial_set,
                                   bool use_partial) const;
+  const UnknownSet* MergeUnknowns(
+      absl::Span<const cel::Handle<cel::Value>> args,
+      absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,
+      bool use_partial) const;
 
   // Create an initial UnknownSet from a single attribute.
   const UnknownSet* CreateUnknownSet(CelAttribute attr) const {
@@ -80,6 +89,14 @@ class AttributeUtility {
   const UnknownSet* CreateUnknownSet(const CelFunctionDescriptor& fn_descriptor,
                                      int64_t expr_id,
                                      absl::Span<const CelValue> args) const {
+    return memory_manager_
+        .New<UnknownSet>(UnknownFunctionResultSet(
+            UnknownFunctionResult(fn_descriptor, expr_id)))
+        .release();
+  }
+  const UnknownSet* CreateUnknownSet(
+      const CelFunctionDescriptor& fn_descriptor, int64_t expr_id,
+      absl::Span<const cel::Handle<cel::Value>> args) const {
     return memory_manager_
         .New<UnknownSet>(UnknownFunctionResultSet(
             UnknownFunctionResult(fn_descriptor, expr_id)))

@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "base/values/unknown_value.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
@@ -73,6 +74,35 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
       .release();
 }
 
+const UnknownSet* AttributeUtility::MergeUnknowns(
+    absl::Span<const cel::Handle<cel::Value>> args,
+    const UnknownSet* initial_set) const {
+  absl::optional<UnknownSet> result_set;
+
+  for (const auto& value : args) {
+    if (!value.Is<cel::UnknownValue>()) continue;
+
+    const auto& current_set = value.As<cel::UnknownValue>();
+    if (!result_set.has_value()) {
+      if (initial_set != nullptr) {
+        result_set.emplace(*initial_set);
+      } else {
+        result_set.emplace();
+      }
+    }
+    cel::base_internal::UnknownSetAccess::Add(
+        *result_set, UnknownSet(current_set->attribute_set(),
+                                current_set->function_result_set()));
+  }
+
+  if (!result_set.has_value()) {
+    return initial_set;
+  }
+
+  return memory_manager_.New<UnknownSet>(std::move(result_set).value())
+      .release();
+}
+
 // Creates merged UnknownAttributeSet.
 // Scans over the args collection, determines if there matches to unknown
 // patterns, merges attributes together with those from initial_set
@@ -117,4 +147,29 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
   }
   return MergeUnknowns(args, initial_set);
 }
+
+const UnknownSet* AttributeUtility::MergeUnknowns(
+    absl::Span<const cel::Handle<cel::Value>> args,
+    absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,
+    bool use_partial) const {
+  UnknownAttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
+  if (!attr_set.empty()) {
+    UnknownSet result_set(std::move(attr_set));
+    if (initial_set != nullptr) {
+      cel::base_internal::UnknownSetAccess::Add(result_set, *initial_set);
+    }
+    for (const auto& value : args) {
+      if (!value.Is<cel::UnknownValue>()) {
+        continue;
+      }
+      const auto& unknown_value = value.As<cel::UnknownValue>();
+      cel::base_internal::UnknownSetAccess::Add(
+          result_set, UnknownSet(unknown_value->attribute_set(),
+                                 unknown_value->function_result_set()));
+    }
+    return memory_manager_.New<UnknownSet>(std::move(result_set)).release();
+  }
+  return MergeUnknowns(args, initial_set);
+}
+
 }  // namespace google::api::expr::runtime

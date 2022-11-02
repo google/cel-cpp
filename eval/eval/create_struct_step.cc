@@ -11,6 +11,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "internal/status_macros.h"
@@ -58,7 +59,7 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
                                                     CelValue* result) const {
   int entries_size = entries_.size();
 
-  absl::Span<const CelValue> args = frame->value_stack().GetSpan(entries_size);
+  auto args = frame->value_stack().GetSpan(entries_size);
 
   if (frame->enable_unknowns()) {
     auto unknown_set = frame->attribute_utility().MergeUnknowns(
@@ -76,7 +77,8 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
 
   int index = 0;
   for (const auto& entry : entries_) {
-    const CelValue& arg = args[index++];
+    const CelValue& arg = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), args[index++]);
 
     CEL_RETURN_IF_ERROR(type_adapter_->SetField(
         entry.field_name, arg, frame->memory_manager(), instance));
@@ -106,8 +108,7 @@ absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
 
 absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
                                                 CelValue* result) const {
-  absl::Span<const CelValue> args =
-      frame->value_stack().GetSpan(2 * entry_count_);
+  auto args = frame->value_stack().GetSpan(2 * entry_count_);
 
   if (frame->enable_unknowns()) {
     const UnknownSet* unknown_set = frame->attribute_utility().MergeUnknowns(
@@ -125,9 +126,13 @@ absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
   for (size_t i = 0; i < entry_count_; i += 1) {
     int map_key_index = 2 * i;
     int map_value_index = map_key_index + 1;
-    const CelValue& map_key = args[map_key_index];
+    const CelValue& map_key =
+        cel::interop_internal::ModernValueToLegacyValueOrDie(
+            frame->memory_manager(), args[map_key_index]);
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
-    auto key_status = map_builder->Add(map_key, args[map_value_index]);
+    auto key_status = map_builder->Add(
+        map_key, cel::interop_internal::ModernValueToLegacyValueOrDie(
+                     frame->memory_manager(), args[map_value_index]));
     if (!key_status.ok()) {
       *result = CreateErrorValue(frame->memory_manager(), key_status);
       return absl::OkStatus();

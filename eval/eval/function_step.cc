@@ -15,10 +15,13 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
@@ -49,12 +52,13 @@ bool IsNonStrict(const CelFunction& function) {
 // Determine if the overload should be considered. Overloads that can consume
 // errors or unknown sets must be allowed as a non-strict function.
 bool ShouldAcceptOverload(const CelFunction* function,
-                          absl::Span<const CelValue> arguments) {
+                          absl::Span<const cel::Handle<cel::Value>> arguments) {
   if (function == nullptr) {
     return false;
   }
   for (size_t i = 0; i < arguments.size(); i++) {
-    if (arguments[i].IsUnknownSet() || arguments[i].IsError()) {
+    if (arguments[i].Is<cel::UnknownValue>() ||
+        arguments[i].Is<cel::ErrorValue>()) {
       return IsNonStrict(*function);
     }
   }
@@ -66,10 +70,10 @@ bool ShouldAcceptOverload(const CelFunction* function,
 // TODO(issues/52): See if this can be refactored to remove the eager
 // arguments copy.
 // Argument and attribute spans are expected to be equal length.
-std::vector<CelValue> CheckForPartialUnknowns(
-    ExecutionFrame* frame, absl::Span<const CelValue> args,
+std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
+    ExecutionFrame* frame, absl::Span<const cel::Handle<cel::Value>> args,
     absl::Span<const AttributeTrail> attrs) {
-  std::vector<CelValue> result;
+  std::vector<cel::Handle<cel::Value>> result;
   result.reserve(args.size());
   for (size_t i = 0; i < args.size(); i++) {
     auto attr_set = frame->attribute_utility().CheckForUnknowns(
@@ -78,7 +82,8 @@ std::vector<CelValue> CheckForPartialUnknowns(
       auto unknown_set = frame->memory_manager()
                              .New<UnknownSet>(std::move(attr_set))
                              .release();
-      result.push_back(CelValue::CreateUnknownSet(unknown_set));
+      result.push_back(
+          cel::interop_internal::CreateUnknownValueFromView(unknown_set));
     } else {
       result.push_back(args.at(i));
     }
@@ -110,7 +115,8 @@ class AbstractFunctionStep : public ExpressionStepBase {
   absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
 
   virtual absl::StatusOr<const CelFunction*> ResolveFunction(
-      absl::Span<const CelValue> args, const ExecutionFrame* frame) const = 0;
+      absl::Span<const cel::Handle<cel::Value>> args,
+      const ExecutionFrame* frame) const = 0;
 
  protected:
   std::string name_;
@@ -122,7 +128,7 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
   // Create Span object that contains input arguments to the function.
   auto input_args = frame->value_stack().GetSpan(num_arguments_);
 
-  std::vector<CelValue> unknowns_args;
+  std::vector<cel::Handle<cel::Value>> unknowns_args;
   // Preprocess args. If an argument is partially unknown, convert it to an
   // unknown attribute set.
   if (frame->enable_unknowns()) {
@@ -139,7 +145,11 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
   if (ShouldAcceptOverload(matched_function, input_args)) {
     google::protobuf::Arena* arena =
         ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
-    CEL_RETURN_IF_ERROR(matched_function->Evaluate(input_args, result, arena));
+    auto legacy_input_args =
+        cel::interop_internal::ModernValueToLegacyValueOrDie(
+            frame->memory_manager(), input_args);
+    CEL_RETURN_IF_ERROR(
+        matched_function->Evaluate(legacy_input_args, result, arena));
 
     if (frame->enable_unknown_function_results() &&
         IsUnknownFunctionResult(*result)) {
@@ -153,9 +163,10 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
     // Such absence can be caused by presence of CelError in arguments.
     // To enable behavior of functions that accept CelError( &&, || ), CelErrors
     // should be propagated along execution path.
-    for (const CelValue& arg : input_args) {
-      if (arg.IsError()) {
-        *result = arg;
+    for (const auto& arg : input_args) {
+      if (arg.Is<cel::ErrorValue>()) {
+        *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
+            frame->memory_manager(), arg);
         return absl::OkStatus();
       }
     }
@@ -171,11 +182,11 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
     }
 
     std::string arg_types;
-    for (const CelValue& arg : input_args) {
+    for (const auto& arg : input_args) {
       if (!arg_types.empty()) {
         absl::StrAppend(&arg_types, ", ");
       }
-      absl::StrAppend(&arg_types, CelValue::TypeName(arg.type()));
+      absl::StrAppend(&arg_types, CelValue::TypeName(arg->kind()));
     }
     // If no errors or unknowns in input args, create new CelError.
     *result = CreateNoMatchingOverloadError(
@@ -230,7 +241,7 @@ class EagerFunctionStep : public AbstractFunctionStep {
       : AbstractFunctionStep(name, num_args, expr_id), overloads_(overloads) {}
 
   absl::StatusOr<const CelFunction*> ResolveFunction(
-      absl::Span<const CelValue> input_args,
+      absl::Span<const cel::Handle<cel::Value>> input_args,
       const ExecutionFrame* frame) const override;
 
  private:
@@ -238,7 +249,8 @@ class EagerFunctionStep : public AbstractFunctionStep {
 };
 
 absl::StatusOr<const CelFunction*> EagerFunctionStep::ResolveFunction(
-    absl::Span<const CelValue> input_args, const ExecutionFrame* frame) const {
+    absl::Span<const cel::Handle<cel::Value>> input_args,
+    const ExecutionFrame* frame) const {
   const CelFunction* matched_function = nullptr;
 
   for (auto overload : overloads_) {
@@ -268,7 +280,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
         providers_(providers) {}
 
   absl::StatusOr<const CelFunction*> ResolveFunction(
-      absl::Span<const CelValue> input_args,
+      absl::Span<const cel::Handle<cel::Value>> input_args,
       const ExecutionFrame* frame) const override;
 
  private:
@@ -277,13 +289,15 @@ class LazyFunctionStep : public AbstractFunctionStep {
 };
 
 absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
-    absl::Span<const CelValue> input_args, const ExecutionFrame* frame) const {
+    absl::Span<const cel::Handle<cel::Value>> input_args,
+    const ExecutionFrame* frame) const {
   const CelFunction* matched_function = nullptr;
 
   std::vector<CelValue::Type> arg_types(num_arguments_);
 
-  std::transform(input_args.begin(), input_args.end(), arg_types.begin(),
-                 [](const CelValue& value) { return value.type(); });
+  std::transform(
+      input_args.begin(), input_args.end(), arg_types.begin(),
+      [](const cel::Handle<cel::Value>& value) { return value->kind(); });
 
   CelFunctionDescriptor matcher{name_, receiver_style_, arg_types};
 

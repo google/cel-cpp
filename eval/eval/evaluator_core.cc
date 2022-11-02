@@ -8,6 +8,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
@@ -181,7 +182,11 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
                     "Try to disable short-circuiting.";
       continue;
     }
-    auto status2 = callback(expr->id(), stack->Peek(), state->arena());
+    auto status2 =
+        callback(expr->id(),
+                 cel::interop_internal::ModernValueToLegacyValueOrDie(
+                     state->arena(), stack->Peek()),
+                 state->arena());
     if (!status2.ok()) {
       return status2;
     }
@@ -192,9 +197,10 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     return absl::Status(absl::StatusCode::kInternal,
                         "Stack error during evaluation");
   }
-  CelValue value = stack->Peek();
+  auto value = stack->Peek();
   stack->Pop(1);
-  return value;
+  return cel::interop_internal::ModernValueToLegacyValueOrDie(state->arena(),
+                                                              value);
 }
 
 }  // namespace google::api::expr::runtime

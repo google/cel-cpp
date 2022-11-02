@@ -818,7 +818,7 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
 
   ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
   ASSERT_TRUE(result.IsError());
-  EXPECT_THAT(result.ErrorOrDie(), Eq(&error));
+  EXPECT_THAT(*result.ErrorOrDie(), Eq(error));
 }
 
 TEST(SelectStepTest, DisableMissingAttributeOK) {

@@ -5,8 +5,10 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "base/handle.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/eval/mutable_list_impl.h"
+#include "eval/internal/interop.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 
 namespace google::api::expr::runtime {
@@ -40,9 +42,9 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   auto args = frame->value_stack().GetSpan(list_size_);
 
-  CelValue result;
+  cel::Handle<cel::Value> result;
   for (const auto& arg : args) {
-    if (arg.IsError()) {
+    if (arg.Is<cel::ErrorValue>()) {
       result = arg;
       frame->value_stack().Pop(list_size_);
       frame->value_stack().Push(result);
@@ -57,7 +59,8 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
         /*initial_set=*/nullptr,
         /*use_partial=*/true);
     if (unknown_set != nullptr) {
-      result = CelValue::CreateUnknownSet(unknown_set);
+      result = cel::interop_internal::LegacyValueToModernValueOrDie(
+          frame->memory_manager(), CelValue::CreateUnknownSet(unknown_set));
       frame->value_stack().Pop(list_size_);
       frame->value_stack().Push(result);
       return absl::OkStatus();
@@ -68,17 +71,18 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
   if (immutable_) {
     cel_list = frame->memory_manager()
                    .New<ContainerBackedListImpl>(
-                       std::vector<CelValue>(args.begin(), args.end()))
+                       cel::interop_internal::ModernValueToLegacyValueOrDie(
+                           frame->memory_manager(), args))
                    .release();
   } else {
     cel_list = frame->memory_manager()
                    .New<MutableListImpl>(
-                       std::vector<CelValue>(args.begin(), args.end()))
+                       cel::interop_internal::ModernValueToLegacyValueOrDie(
+                           frame->memory_manager(), args))
                    .release();
   }
-  result = CelValue::CreateList(cel_list);
   frame->value_stack().Pop(list_size_);
-  frame->value_stack().Push(result);
+  frame->value_stack().Push(CelValue::CreateList(cel_list));
   return absl::OkStatus();
 }
 

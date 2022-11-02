@@ -207,6 +207,10 @@ internal::TypeInfo CelMapAccess::TypeId(const CelMap& map) {
   return map.TypeId();
 }
 
+google::api::expr::runtime::CelValue CelValueAccess::CreateNullMessage() {
+  return google::api::expr::runtime::CelValue::CreateNullMessage();
+}
+
 Handle<StructType> LegacyStructTypeAccess::Create(uintptr_t message) {
   return base_internal::HandleFactory<StructType>::Make<
       base_internal::LegacyStructType>(message);
@@ -452,11 +456,16 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
         return absl::UnimplementedError(
             "only legacy struct types and values can be used for interop");
       }
-      return CelValue::CreateMessageWrapper(MessageWrapperAccess::Make(
-          LegacyStructValueAccess::Message(
-              *value.As<base_internal::LegacyStructValue>()),
-          LegacyStructValueAccess::TypeInfo(
-              *value.As<base_internal::LegacyStructValue>())));
+      uintptr_t message = LegacyStructValueAccess::Message(
+          *value.As<base_internal::LegacyStructValue>());
+      uintptr_t type_info = LegacyStructValueAccess::TypeInfo(
+          *value.As<base_internal::LegacyStructValue>());
+      if ((message & base_internal::kMessageWrapperPtrMask) == 0 &&
+          type_info == 0) {
+        return CelValueAccess::CreateNullMessage();
+      }
+      return CelValue::CreateMessageWrapper(
+          MessageWrapperAccess::Make(message, type_info));
     }
     case Kind::kUnknown: {
       if (base_internal::Metadata::IsTrivial(*value)) {
@@ -477,6 +486,11 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
 
 Handle<NullValue> CreateNullValue() {
   return HandleFactory<NullValue>::Make<NullValue>();
+}
+
+Handle<StructValue> CreateNullStructValue() {
+  return HandleFactory<StructValue>::Make<base_internal::LegacyStructValue>(
+      base_internal::kMessageWrapperTagMask, 0);
 }
 
 Handle<BoolValue> CreateBoolValue(bool value) {
@@ -534,6 +548,24 @@ Handle<Value> LegacyValueToModernValueOrDie(
       extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value);
 }
 
+std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
+    google::protobuf::Arena* arena,
+    absl::Span<const google::api::expr::runtime::CelValue> values) {
+  std::vector<Handle<Value>> modern_values;
+  modern_values.reserve(values.size());
+  for (const auto& value : values) {
+    modern_values.push_back(LegacyValueToModernValueOrDie(arena, value));
+  }
+  return modern_values;
+}
+
+std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
+    MemoryManager& memory_manager,
+    absl::Span<const google::api::expr::runtime::CelValue> values) {
+  return LegacyValueToModernValueOrDie(
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
+}
+
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, const Handle<Value>& value) {
   auto legacy_value = ToLegacyValue(arena, value);
@@ -545,6 +577,22 @@ google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     MemoryManager& memory_manager, const Handle<Value>& value) {
   return ModernValueToLegacyValueOrDie(
       extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value);
+}
+
+std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
+    google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values) {
+  std::vector<google::api::expr::runtime::CelValue> legacy_values;
+  legacy_values.reserve(values.size());
+  for (const auto& value : values) {
+    legacy_values.push_back(ModernValueToLegacyValueOrDie(arena, value));
+  }
+  return legacy_values;
+}
+
+std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
+    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values) {
+  return ModernValueToLegacyValueOrDie(
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
 }
 
 }  // namespace cel::interop_internal

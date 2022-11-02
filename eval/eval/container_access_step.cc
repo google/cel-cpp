@@ -7,8 +7,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "base/memory_manager.h"
+#include "base/value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -119,8 +121,10 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
   auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   AttributeTrail trail;
 
-  const CelValue& container = input_args[0];
-  const CelValue& key = input_args[1];
+  CelValue container = cel::interop_internal::ModernValueToLegacyValueOrDie(
+      frame->memory_manager(), input_args[0]);
+  CelValue key = cel::interop_internal::ModernValueToLegacyValueOrDie(
+      frame->memory_manager(), input_args[1]);
 
   if (frame->enable_unknowns()) {
     auto unknown_set =
@@ -148,8 +152,10 @@ ContainerAccessStep::ValueAttributePair ContainerAccessStep::PerformLookup(
   }
 
   for (const auto& value : input_args) {
-    if (value.IsError()) {
-      return {value, trail};
+    if (value.Is<cel::ErrorValue>()) {
+      return {cel::interop_internal::ModernValueToLegacyValueOrDie(
+                  frame->memory_manager(), value),
+              trail};
     }
   }
 
