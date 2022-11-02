@@ -149,6 +149,15 @@ Expr SourceFactory::NewSelect(
   return expr;
 }
 
+Expr SourceFactory::NewSelectForMacro(int64_t macro_id, const Expr& operand,
+                                      const std::string& field) {
+  Expr expr = NewExpr(NextMacroId(macro_id));
+  auto select_expr = expr.mutable_select_expr();
+  *select_expr->mutable_operand() = operand;
+  select_expr->set_field(field);
+  return expr;
+}
+
 Expr SourceFactory::NewPresenceTestForMacro(int64_t macro_id,
                                             const Expr& operand,
                                             const std::string& field) {
@@ -497,14 +506,18 @@ Expr SourceFactory::NewLiteralNull(antlr4::ParserRuleContext* ctx) {
   return expr;
 }
 
-Expr SourceFactory::ReportError(antlr4::ParserRuleContext* ctx,
-                                absl::string_view msg) {
+Expr SourceFactory::ReportError(int64_t expr_id, absl::string_view msg) {
   num_errors_ += 1;
-  Expr expr = NewExpr(ctx);
+  Expr expr = NewExpr(expr_id);
   if (errors_truncated_.size() < kMaxErrorsToReport) {
-    errors_truncated_.emplace_back(std::string(msg), positions_.at(expr.id()));
+    errors_truncated_.emplace_back(std::string(msg), positions_.at(expr_id));
   }
   return expr;
+}
+
+Expr SourceFactory::ReportError(antlr4::ParserRuleContext* ctx,
+                                absl::string_view msg) {
+  return ReportError(Id(ctx), msg);
 }
 
 Expr SourceFactory::ReportError(int32_t line, int32_t col,

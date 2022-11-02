@@ -106,6 +106,8 @@ class SourceFactory {
   Expr NewIdentForMacro(int64_t macro_id, const std::string& ident_name);
   Expr NewSelect(::cel_parser_internal::CelParser::SelectOrCallContext* ctx,
                  Expr& operand, const std::string& field);
+  Expr NewSelectForMacro(int64_t macro_id, const Expr& operand,
+                         const std::string& field);
   Expr NewPresenceTestForMacro(int64_t macro_id, const Expr& operand,
                                const std::string& field);
   Expr NewObject(int64_t obj_id, const std::string& type_name,
@@ -146,6 +148,7 @@ class SourceFactory {
   Expr NewLiteralBoolForMacro(int64_t macro_id, bool b);
   Expr NewLiteralNull(antlr4::ParserRuleContext* ctx);
 
+  Expr ReportError(int64_t expr_id, absl::string_view msg);
   Expr ReportError(antlr4::ParserRuleContext* ctx, absl::string_view msg);
   Expr ReportError(int32_t line, int32_t col, absl::string_view msg);
   Expr ReportError(const SourceLocation& loc, absl::string_view msg);

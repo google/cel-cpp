@@ -91,25 +91,16 @@ class Macro final {
   // Function name to match.
   absl::string_view function() const { return key().substr(0, key_.find(':')); }
 
-  ABSL_DEPRECATED("Use argument_count() instead.")
-  int argCount() const { return static_cast<int>(argument_count()); }
-
   // argument_count() for the function call.
   //
   // When the macro is a var-arg style macro, the return value will be zero, but
   // the MacroKey will contain a `*` where the arg count would have been.
   size_t argument_count() const { return arg_count_; }
 
-  ABSL_DEPRECATED("Use is_receiver_style() instead.")
-  bool isReceiverStyle() const { return receiver_style_; }
-
-  // IsReceiverStyle returns true if the macro matches a receiver style call.
+  // is_receiver_style returns true if the macro matches a receiver style call.
   bool is_receiver_style() const { return receiver_style_; }
 
   bool is_variadic() const { return var_arg_style_; }
-
-  ABSL_DEPRECATED("Use key() instead.")
-  std::string macroKey() const { return key_; }
 
   // key() returns the macro signatures accepted by this macro.
   //
@@ -122,14 +113,6 @@ class Macro final {
   // Expander returns the MacroExpander to apply when the macro key matches the
   // parsed call signature.
   const MacroExpander& expander() const { return *expander_; }
-
-  ABSL_DEPRECATED("Use Expand() instead.")
-  google::api::expr::v1alpha1::Expr expand(
-      const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
-      const google::api::expr::v1alpha1::Expr& target,
-      const std::vector<google::api::expr::v1alpha1::Expr>& args) {
-    return Expand(sf, macro_id, target, args);
-  }
 
   google::api::expr::v1alpha1::Expr Expand(
       const std::shared_ptr<SourceFactory>& sf, int64_t macro_id,
