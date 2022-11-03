@@ -719,6 +719,9 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:handle",
+        "//base:value",
+        "//eval/internal:errors",
         "//eval/internal:interop",
         "//eval/public:cel_builtins",
         "//eval/public:cel_value",

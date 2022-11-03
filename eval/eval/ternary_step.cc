@@ -2,18 +2,26 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
+#include "base/handle.h"
+#include "base/value.h"
+#include "base/values/bool_value.h"
+#include "base/values/error_value.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/unknown_attribute_set.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+inline constexpr size_t kTernaryStepCondition = 0;
+inline constexpr size_t kTernaryStepTrue = 1;
+inline constexpr size_t kTernaryStepFalse = 2;
 
 class TernaryStep : public ExpressionStepBase {
  public:
@@ -32,41 +40,36 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
   // Create Span object that contains input arguments to the function.
   auto args = frame->value_stack().GetSpan(3);
 
-  CelValue value;
-
-  const CelValue& condition =
-      cel::interop_internal::ModernValueToLegacyValueOrDie(
-          frame->memory_manager(), args.at(0));
+  const auto& condition = args[kTernaryStepCondition];
   // As opposed to regular functions, ternary treats unknowns or errors on the
   // condition (arg0) as blocking. If we get an error or unknown then we
   // ignore the other arguments and forward the condition as the result.
   if (frame->enable_unknowns()) {
     // Check if unknown?
-    if (condition.IsUnknownSet()) {
+    if (condition.Is<cel::UnknownValue>()) {
       frame->value_stack().Pop(2);
       return absl::OkStatus();
     }
   }
 
-  if (condition.IsError()) {
+  if (condition.Is<cel::ErrorValue>()) {
     frame->value_stack().Pop(2);
     return absl::OkStatus();
   }
 
-  CelValue result;
-  if (!condition.IsBool()) {
-    result = CreateNoMatchingOverloadError(frame->memory_manager(),
-                                           builtin::kTernary);
-  } else if (condition.BoolOrDie()) {
-    result = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), args.at(1));
+  cel::Handle<cel::Value> result;
+  if (!condition.Is<cel::BoolValue>()) {
+    result = cel::interop_internal::CreateErrorValueFromView(
+        cel::interop_internal::CreateNoMatchingOverloadError(
+            frame->memory_manager(), builtin::kTernary));
+  } else if (condition.As<cel::BoolValue>()->value()) {
+    result = args[kTernaryStepTrue];
   } else {
-    result = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), args.at(2));
+    result = args[kTernaryStepFalse];
   }
 
   frame->value_stack().Pop(args.size());
-  frame->value_stack().Push(result);
+  frame->value_stack().Push(std::move(result));
 
   return absl::OkStatus();
 }
