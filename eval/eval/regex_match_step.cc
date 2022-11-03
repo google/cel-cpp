@@ -18,8 +18,8 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "base/values/string_value.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/internal/interop.h"
 #include "re2/re2.h"
 
 namespace google::api::expr::runtime {
@@ -27,6 +27,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 inline constexpr int kNumRegexMatchArguments = 2;
+inline constexpr size_t kRegexMatchStepSubject = 0;
+inline constexpr size_t kRegexMatchStepPattern = 1;
 
 class RegexMatchStep final : public ExpressionStepBase {
  public:
@@ -41,26 +43,24 @@ class RegexMatchStep final : public ExpressionStepBase {
                           "expression match");
     }
     auto input_args = frame->value_stack().GetSpan(kNumRegexMatchArguments);
-    const auto& subject = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), input_args[0]);
-    const auto& pattern = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), input_args[1]);
-    if (!subject.IsString()) {
+    const auto& subject = input_args[kRegexMatchStepSubject];
+    const auto& pattern = input_args[kRegexMatchStepPattern];
+    if (!subject.Is<cel::StringValue>()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "First argument for regular "
                           "expression match must be a string");
     }
-    if (!pattern.IsString()) {
+    if (!pattern.Is<cel::StringValue>()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "Second argument for regular "
                           "expression match must be a string");
     }
-    if (re2_->pattern() != pattern.StringOrDie().value()) {
+    if (!pattern.As<cel::StringValue>()->Equals(re2_->pattern())) {
       return absl::Status(
           absl::StatusCode::kInternal,
           "Original pattern and supplied pattern are not the same");
     }
-    bool match = RE2::PartialMatch(subject.StringOrDie().value(), *re2_);
+    bool match = subject.As<cel::StringValue>()->Matches(*re2_);
     frame->value_stack().Pop(kNumRegexMatchArguments);
     frame->value_stack().Push(CelValue::CreateBool(match));
     return absl::OkStatus();

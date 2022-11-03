@@ -21,6 +21,7 @@
 #include "base/types/string_type.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
+#include "re2/re2.h"
 
 namespace cel {
 
@@ -156,6 +157,21 @@ class CompareVisitor<StringValue> final {
   const StringValue& ref_;
 };
 
+struct MatchesVisitor final {
+  const RE2& re;
+
+  bool operator()(const absl::Cord& value) const {
+    if (auto flat = value.TryFlat(); flat.has_value()) {
+      return RE2::PartialMatch(*flat, re);
+    }
+    return RE2::PartialMatch(static_cast<std::string>(value), re);
+  }
+
+  bool operator()(absl::string_view value) const {
+    return RE2::PartialMatch(value, re);
+  }
+};
+
 class HashValueVisitor final {
  public:
   explicit HashValueVisitor(absl::HashState state) : state_(std::move(state)) {}
@@ -202,6 +218,10 @@ int StringValue::Compare(const absl::Cord& string) const {
 
 int StringValue::Compare(const StringValue& string) const {
   return absl::visit(CompareVisitor<StringValue>(*this), string.rep());
+}
+
+bool StringValue::Matches(const RE2& re) const {
+  return absl::visit(MatchesVisitor{re}, rep());
 }
 
 std::string StringValue::ToString() const {

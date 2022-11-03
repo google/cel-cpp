@@ -30,6 +30,8 @@
 #include "base/types/string_type.h"
 #include "base/value.h"
 
+class RE2;
+
 namespace cel {
 
 class MemoryManager;
@@ -67,6 +69,8 @@ class StringValue : public Value {
   int Compare(absl::string_view string) const;
   int Compare(const absl::Cord& string) const;
   int Compare(const StringValue& string) const;
+
+  bool Matches(const RE2& re) const;
 
   std::string ToString() const;
 

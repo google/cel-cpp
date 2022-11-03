@@ -268,6 +268,7 @@ cc_library(
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 

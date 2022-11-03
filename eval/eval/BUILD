@@ -135,6 +135,7 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:value",
         "//eval/internal:interop",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

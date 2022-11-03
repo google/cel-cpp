@@ -1624,6 +1624,37 @@ INSTANTIATE_TEST_SUITE_P(
                          {"bar", "bar"},
                      })));
 
+struct StringMatchesTestCase final {
+  std::string pattern;
+  std::string subject;
+  bool matches;
+};
+
+using StringMatchesTest = BaseValueTest<StringMatchesTestCase>;
+
+TEST_P(StringMatchesTest, Matches) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  RE2 re(test_case().pattern);
+  EXPECT_EQ(
+      Must(value_factory.CreateStringValue(test_case().subject))->Matches(re),
+      test_case().matches);
+  EXPECT_EQ(
+      Must(value_factory.CreateStringValue(absl::Cord(test_case().subject)))
+          ->Matches(re),
+      test_case().matches);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    StringMatchesTest, StringMatchesTest,
+    testing::Combine(base_internal::MemoryManagerTestModeAll(),
+                     testing::ValuesIn<StringMatchesTestCase>({
+                         {"", "", true},
+                         {"foo", "foo", true},
+                         {"foo", "bar", false},
+                     })));
+
 struct StringSizeTestCase final {
   std::string data;
   size_t size;
