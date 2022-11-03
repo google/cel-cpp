@@ -2,15 +2,29 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
+#include "google/protobuf/arena.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
+#include "base/values/bool_value.h"
+#include "base/values/error_value.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+using ::cel::BoolValue;
+using ::cel::ErrorValue;
+using ::cel::Handle;
+using ::cel::UnknownValue;
+using ::cel::Value;
+using ::cel::interop_internal::CreateErrorValueFromView;
+using ::cel::interop_internal::CreateNoMatchingOverloadError;
 
 class JumpStep : public JumpStepBase {
  public:
@@ -38,14 +52,14 @@ class CondJumpStep : public JumpStepBase {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
-    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), frame->value_stack().Peek());
+    Handle<Value> value = frame->value_stack().Peek();
 
     if (!leave_on_stack_) {
       frame->value_stack().Pop(1);
     }
 
-    if (value.IsBool() && jump_condition_ == value.BoolOrDie()) {
+    if (value.Is<BoolValue>() &&
+        jump_condition_ == value.As<BoolValue>()->value()) {
       return Jump(frame);
     }
 
@@ -74,23 +88,23 @@ class BoolCheckJumpStep : public JumpStepBase {
       return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
     }
 
-    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
-        frame->memory_manager(), frame->value_stack().Peek());
+    const Handle<Value>& value = frame->value_stack().Peek();
 
-    if (value.IsError()) {
+    if (value.Is<BoolValue>()) {
+      return absl::OkStatus();
+    }
+
+    if (value.Is<ErrorValue>() || value.Is<UnknownValue>()) {
       return Jump(frame);
     }
 
-    if (value.IsUnknownSet()) {
-      return Jump(frame);
-    }
+    // Neither bool, error, nor unknown set.
+    Handle<Value> error_value =
+        CreateErrorValueFromView(CreateNoMatchingOverloadError(
+            frame->memory_manager(), "<jump_condition>"));
 
-    if (!value.IsBool()) {
-      CelValue error_value = CreateNoMatchingOverloadError(
-          frame->memory_manager(), "<jump_condition>");
-      frame->value_stack().PopAndPush(error_value);
-      return Jump(frame);
-    }
+    frame->value_stack().PopAndPush(std::move(error_value));
+    return Jump(frame);
 
     return absl::OkStatus();
   }

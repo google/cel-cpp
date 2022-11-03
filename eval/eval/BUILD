@@ -280,10 +280,16 @@ cc_library(
     deps = [
         ":evaluator_core",
         ":expression_step_base",
+        "//base:value",
+        "//eval/internal:errors",
         "//eval/internal:interop",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -304,6 +310,7 @@ cc_library(
         "//eval/public:cel_builtins",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
     ],
