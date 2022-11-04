@@ -170,6 +170,18 @@ class CondVisitor {
 };
 
 // Visitor managing the "&&" and "||" operatiions.
+// Implements short-circuiting if enabled.
+//
+// With short-circuiting enabled, generates a program like:
+//   +-------------+------------------------+-----------------------+
+//   | PC          | Step                   | Stack                 |
+//   +-------------+------------------------+-----------------------+
+//   | i + 0       | <Arg1>                 | arg1                  |
+//   | i + 1       | ConditionalJump i + 4  | arg1                  |
+//   | i + 2       | <Arg2>                 | arg1, arg2            |
+//   | i + 3       | BooleanOperator        | Op(arg1, arg2)        |
+//   | i + 4       | <rest of program>      | arg1 | Op(arg1, arg2) |
+//   +-------------+------------------------+------------------------+
 class BinaryCondVisitor : public CondVisitor {
  public:
   explicit BinaryCondVisitor(FlatExprVisitor* visitor, bool cond_value,
@@ -850,13 +862,12 @@ void BinaryCondVisitor::PreVisit(const cel::ast::internal::Expr* expr) {
 
 void BinaryCondVisitor::PostVisitArg(int arg_num,
                                      const cel::ast::internal::Expr* expr) {
-  if (!short_circuiting_) {
-    // nothing to do.
-    return;
-  }
-  if (arg_num == 0) {
+  if (short_circuiting_ && arg_num == 0) {
     // If first branch evaluation result is enough to determine output,
-    // jump over the second branch and provide result as final output.
+    // jump over the second branch and provide result of the first argument as
+    // final output.
+    // Retain a pointer to the jump step so we can update the target after
+    // planning the second argument.
     auto jump_step = CreateCondJumpStep(cond_value_, true, {}, expr->id());
     if (jump_step.ok()) {
       jump_step_ = Jump(visitor_->GetCurrentIndex(), jump_step->get());
@@ -866,11 +877,11 @@ void BinaryCondVisitor::PostVisitArg(int arg_num,
 }
 
 void BinaryCondVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
-  // TODO(issues/41): shortcircuit behavior is non-obvious: should add
-  // documentation and structure the code a bit better.
   visitor_->AddStep((cond_value_) ? CreateOrStep(expr->id())
                                   : CreateAndStep(expr->id()));
   if (short_circuiting_) {
+    // If shortcircuiting is enabled, point the conditional jump past the
+    // boolean operator step.
     jump_step_.set_target(visitor_->GetCurrentIndex());
   }
 }

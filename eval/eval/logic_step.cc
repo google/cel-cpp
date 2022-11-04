@@ -2,20 +2,31 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/values/bool_value.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/unknown_attribute_set.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using ::cel::BoolValue;
+using ::cel::Handle;
+using ::cel::Value;
+using ::cel::interop_internal::CreateBoolValue;
+using ::cel::interop_internal::CreateErrorValueFromView;
+using ::cel::interop_internal::CreateNoMatchingOverloadError;
+using ::cel::interop_internal::CreateUnknownValueFromView;
 
 class LogicalOpStep : public ExpressionStepBase {
  public:
@@ -30,32 +41,27 @@ class LogicalOpStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status Calculate(ExecutionFrame* frame,
-                         absl::Span<const cel::Handle<cel::Value>> args,
-                         CelValue* result) const {
+  Handle<Value> Calculate(ExecutionFrame* frame,
+                          absl::Span<const Handle<Value>> args) const {
     bool bool_args[2];
     bool has_bool_args[2];
 
     for (size_t i = 0; i < args.size(); i++) {
-      has_bool_args[i] = cel::interop_internal::ModernValueToLegacyValueOrDie(
-                             frame->memory_manager(), args[i])
-                             .GetValue(bool_args + i);
-      if (has_bool_args[i] && shortcircuit_ == bool_args[i]) {
-        *result = CelValue::CreateBool(bool_args[i]);
-        return absl::OkStatus();
+      has_bool_args[i] = args[i].Is<BoolValue>();
+      if (has_bool_args[i]) {
+        bool_args[i] = args[i].As<BoolValue>()->value();
+        if (bool_args[i] == shortcircuit_) {
+          return args[i];
+        }
       }
     }
 
     if (has_bool_args[0] && has_bool_args[1]) {
       switch (op_type_) {
         case OpType::AND:
-          *result = CelValue::CreateBool(bool_args[0] && bool_args[1]);
-          return absl::OkStatus();
-          break;
+          return CreateBoolValue(bool_args[0] && bool_args[1]);
         case OpType::OR:
-          *result = CelValue::CreateBool(bool_args[0] || bool_args[1]);
-          return absl::OkStatus();
-          break;
+          return CreateBoolValue(bool_args[0] || bool_args[1]);
       }
     }
 
@@ -67,28 +73,21 @@ class LogicalOpStep : public ExpressionStepBase {
       const UnknownSet* unknown_set =
           frame->attribute_utility().MergeUnknowns(args,
                                                    /*initial_set=*/nullptr);
-
       if (unknown_set) {
-        *result = CelValue::CreateUnknownSet(unknown_set);
-        return absl::OkStatus();
+        return CreateUnknownValueFromView(unknown_set);
       }
     }
 
     if (args[0].Is<cel::ErrorValue>()) {
-      *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
-          frame->memory_manager(), args[0]);
-      return absl::OkStatus();
+      return args[0];
     } else if (args[1].Is<cel::ErrorValue>()) {
-      *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
-          frame->memory_manager(), args[1]);
-      return absl::OkStatus();
+      return args[1];
     }
 
     // Fallback.
-    *result = CreateNoMatchingOverloadError(
+    return CreateErrorValueFromView(CreateNoMatchingOverloadError(
         frame->memory_manager(),
-        (op_type_ == OpType::OR) ? builtin::kOr : builtin::kAnd);
-    return absl::OkStatus();
+        (op_type_ == OpType::OR) ? builtin::kOr : builtin::kAnd));
   }
 
   const OpType op_type_;
@@ -103,18 +102,11 @@ absl::Status LogicalOpStep::Evaluate(ExecutionFrame* frame) const {
 
   // Create Span object that contains input arguments to the function.
   auto args = frame->value_stack().GetSpan(2);
-
-  CelValue value;
-
-  auto status = Calculate(frame, args, &value);
-  if (!status.ok()) {
-    return status;
-  }
-
+  Handle<Value> result = Calculate(frame, args);
   frame->value_stack().Pop(args.size());
-  frame->value_stack().Push(value);
+  frame->value_stack().Push(std::move(result));
 
-  return status;
+  return absl::OkStatus();
 }
 
 }  // namespace
