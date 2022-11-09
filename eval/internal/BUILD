@@ -21,6 +21,7 @@ cc_library(
     srcs = ["interop.cc"],
     hdrs = ["interop.h"],
     deps = [
+        ":activation_interface",
         "//base:type",
         "//base:type_factory",
         "//base:type_manager",
@@ -28,6 +29,7 @@ cc_library(
         "//base:value",
         "//base:value_factory",
         "//base/internal:message_wrapper",
+        "//eval/public:base_activation",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
         "//eval/public:unknown_set",
@@ -36,6 +38,7 @@ cc_library(
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -80,5 +83,16 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "activation_interface",
+    hdrs = ["activation_interface.h"],
+    deps = [
+        "//base:memory_manager",
+        "//base:value",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
     ],
 )

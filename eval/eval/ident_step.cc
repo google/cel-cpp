@@ -12,14 +12,22 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/unknown_attribute_set.h"
+#include "eval/internal/errors.h"
+#include "eval/internal/interop.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Handle;
+using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateMissingAttributeError;
+using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::cel::interop_internal::FromLegacyValue;
+using ::google::protobuf::Arena;
 
 class IdentStep : public ExpressionStepBase {
  public:
@@ -29,69 +37,74 @@ class IdentStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result,
-                          AttributeTrail* trail) const;
+  struct IdentResult {
+    Handle<Value> value;
+    AttributeTrail trail;
+  };
+
+  absl::StatusOr<IdentResult> DoEvaluate(ExecutionFrame* frame) const;
 
   std::string name_;
 };
 
-absl::Status IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
-                                   AttributeTrail* trail) const {
-  // Special case - iterator looked up in
-  if (frame->GetIterVar(name_, result)) {
-    const AttributeTrail* iter_trail;
-    if (frame->GetIterAttr(name_, &iter_trail)) {
-      *trail = *iter_trail;
-    }
-    return absl::OkStatus();
-  }
-
-  // TODO(issues/5): Update ValueProducer to support generic memory manager
-  // API.
+absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
+    ExecutionFrame* frame) const {
+  IdentResult result;
   google::protobuf::Arena* arena =
       ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
 
-  auto value = frame->activation().FindValue(name_, arena);
+  // Special case - comprehension variables mask any activation vars.
+  if (CelValue iter_var; frame->GetIterVar(name_, &iter_var)) {
+    CEL_ASSIGN_OR_RETURN(result.value, FromLegacyValue(arena, iter_var));
+    const AttributeTrail* iter_trail;
+    if (frame->GetIterAttr(name_, &iter_trail)) {
+      result.trail = *iter_trail;
+    }
+    return result;
+  }
 
   // Populate trails if either MissingAttributeError or UnknownPattern
   // is enabled.
   if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
-    *trail = AttributeTrail(name_);
+    result.trail = AttributeTrail(name_);
   }
 
   if (frame->enable_missing_attribute_errors() && !name_.empty() &&
-      frame->attribute_utility().CheckForMissingAttribute(*trail)) {
-    *result = CreateMissingAttributeError(frame->memory_manager(), name_);
-    return absl::OkStatus();
+      frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
+    result.value = cel::interop_internal::CreateErrorValueFromView(
+        CreateMissingAttributeError(frame->memory_manager(), name_));
+    return result;
   }
 
   if (frame->enable_unknowns()) {
-    if (frame->attribute_utility().CheckForUnknown(*trail, false)) {
+    if (frame->attribute_utility().CheckForUnknown(result.trail, false)) {
       auto unknown_set =
-          frame->attribute_utility().CreateUnknownSet(trail->attribute());
-      *result = CelValue::CreateUnknownSet(unknown_set);
-      return absl::OkStatus();
+          frame->attribute_utility().CreateUnknownSet(result.trail.attribute());
+      result.value = CreateUnknownValueFromView(unknown_set);
+      return result;
     }
   }
 
+  auto value = frame->modern_activation().ResolveVariable(
+      frame->memory_manager(), name_);
+
   if (value.has_value()) {
-    *result = value.value();
-  } else {
-    *result = CreateErrorValue(
-        frame->memory_manager(),
-        absl::StrCat("No value with name \"", name_, "\" found in Activation"));
+    result.value = std::move(value).value();
+    return result;
   }
 
-  return absl::OkStatus();
+  result.value = cel::interop_internal::CreateErrorValueFromView(
+      Arena::Create<absl::Status>(arena, absl::StatusCode::kUnknown,
+                                  absl::StrCat("No value with name \"", name_,
+                                               "\" found in Activation")));
+
+  return result;
 }
 
 absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
-  CelValue result;
-  AttributeTrail trail;
+  CEL_ASSIGN_OR_RETURN(IdentResult result, DoEvaluate(frame));
 
-  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result, &trail));
-
-  frame->value_stack().Push(result, std::move(trail));
+  frame->value_stack().Push(std::move(result.value), std::move(result.trail));
 
   return absl::OkStatus();
 }

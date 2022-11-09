@@ -7,16 +7,10 @@
 
 #include "absl/status/statusor.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/internal/interop.h"
-#include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
-#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
-
-using ::cel::extensions::ProtoMemoryManager;
 
 class ShadowableValueStep : public ExpressionStepBase {
  public:
@@ -34,16 +28,10 @@ class ShadowableValueStep : public ExpressionStepBase {
 };
 
 absl::Status ShadowableValueStep::Evaluate(ExecutionFrame* frame) const {
-  // TODO(issues/5): update ValueProducer to support generic MemoryManager
-  // API.
-  google::protobuf::Arena* arena =
-      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
-  auto var = frame->activation().FindValue(identifier_, arena);
+  auto var = frame->modern_activation().ResolveVariable(frame->memory_manager(),
+                                                        identifier_);
   if (var.has_value()) {
-    // TODO(issues/5): remove conversion after activation is migrated
-    CEL_ASSIGN_OR_RETURN(auto modern_value,
-                         cel::interop_internal::FromLegacyValue(arena, *var));
-    frame->value_stack().Push(std::move(modern_value));
+    frame->value_stack().Push(std::move(var).value());
   } else {
     frame->value_stack().Push(value_);
   }

@@ -21,13 +21,14 @@
 #include <vector>
 
 #include "google/protobuf/arena.h"
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "eval/internal/activation_interface.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
 
@@ -157,6 +158,22 @@ std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
     MemoryManager& memory_manager, absl::Span<const Handle<Value>> values);
 
 Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);
+
+// An Activation implementation that adapts the legacy version (based on
+// expr::CelValue) to the new cel::Handle based version. This implementation
+// must be scoped to an evaluation.
+class AdapterActivationImpl : public ActivationInterface {
+ public:
+  explicit AdapterActivationImpl(
+      const google::api::expr::runtime::BaseActivation& legacy_activation)
+      : legacy_activation_(legacy_activation) {}
+
+  absl::optional<Handle<Value>> ResolveVariable(
+      MemoryManager& manager, absl::string_view name) const override;
+
+ private:
+  const google::api::expr::runtime::BaseActivation& legacy_activation_;
+};
 
 }  // namespace cel::interop_internal
 

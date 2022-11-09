@@ -22,9 +22,11 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/internal/message_wrapper.h"
@@ -33,9 +35,11 @@
 #include "base/type_provider.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/struct_value.h"
+#include "eval/public/base_activation.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/unknown_set.h"
@@ -46,16 +50,17 @@ namespace cel::interop_internal {
 
 namespace {
 
-using base_internal::HandleFactory;
-using base_internal::InlinedStringViewBytesValue;
-using base_internal::InlinedStringViewStringValue;
-using base_internal::LegacyTypeValue;
-using google::api::expr::runtime::CelList;
-using google::api::expr::runtime::CelMap;
-using google::api::expr::runtime::CelValue;
-using google::api::expr::runtime::LegacyTypeInfoApis;
-using google::api::expr::runtime::MessageWrapper;
-using google::api::expr::runtime::UnknownSet;
+using ::cel::base_internal::HandleFactory;
+using ::cel::base_internal::InlinedStringViewBytesValue;
+using ::cel::base_internal::InlinedStringViewStringValue;
+using ::cel::base_internal::LegacyTypeValue;
+using ::cel::extensions::ProtoMemoryManager;
+using ::google::api::expr::runtime::CelList;
+using ::google::api::expr::runtime::CelMap;
+using ::google::api::expr::runtime::CelValue;
+using ::google::api::expr::runtime::LegacyTypeInfoApis;
+using ::google::api::expr::runtime::MessageWrapper;
+using ::google::api::expr::runtime::UnknownSet;
 
 class LegacyCelList final : public CelList {
  public:
@@ -593,6 +598,18 @@ std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
     MemoryManager& memory_manager, absl::Span<const Handle<Value>> values) {
   return ModernValueToLegacyValueOrDie(
       extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
+}
+
+absl::optional<Handle<Value>> AdapterActivationImpl::ResolveVariable(
+    MemoryManager& manager, absl::string_view name) const {
+  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(manager);
+
+  absl::optional<CelValue> legacy_value =
+      legacy_activation_.FindValue(name, arena);
+  if (!legacy_value.has_value()) {
+    return absl::nullopt;
+  }
+  return LegacyValueToModernValueOrDie(arena, *legacy_value);
 }
 
 }  // namespace cel::interop_internal

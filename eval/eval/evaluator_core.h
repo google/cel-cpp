@@ -28,6 +28,8 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
+#include "eval/internal/activation_interface.h"
+#include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
@@ -131,6 +133,7 @@ class ExecutionFrame {
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
+        modern_activation_(activation),
         type_registry_(*type_registry),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
@@ -187,6 +190,11 @@ class ExecutionFrame {
   // Returns reference to Activation
   const BaseActivation& activation() const { return activation_; }
 
+  // Returns reference to the modern API activation.
+  const cel::interop_internal::ActivationInterface& modern_activation() const {
+    return modern_activation_;
+  }
+
   // Creates a new frame for the iteration variables identified by iter_var_name
   // and accu_var_name.
   absl::Status PushIterFrame(absl::string_view iter_var_name,
@@ -239,6 +247,7 @@ class ExecutionFrame {
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   const ExecutionPath& execution_path_;
   const BaseActivation& activation_;
+  cel::interop_internal::AdapterActivationImpl modern_activation_;
   const CelTypeRegistry& type_registry_;
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
