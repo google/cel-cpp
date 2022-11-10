@@ -104,48 +104,45 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
                        /*enable_null_coercion=*/true,
                        /*enable_heterogeneous_numeric_lookups=*/true);
 
-  CelValue original = CelValue::CreateInt64(test_value);
+  auto original = cel::interop_internal::CreateIntValue(test_value);
   Expr ident;
   ident.mutable_ident_expr()->set_name("var");
 
   AttributeTrail original_trail =
       AttributeTrail(ident, manager)
           .Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager);
-  CelValue result;
-  const AttributeTrail* trail;
+  cel::Handle<cel::Value> result;
+  AttributeTrail trail;
 
   ASSERT_OK(frame.PushIterFrame(test_iter_var, test_accu_var));
 
   // Nothing is there yet
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result));
+  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, nullptr));
   ASSERT_OK(frame.SetIterVar(original, original_trail));
 
   // Nothing is there yet
-  ASSERT_FALSE(frame.GetIterVar(test_accu_var, &result));
-  ASSERT_OK(frame.SetAccuVar(CelValue::CreateBool(true)));
-  ASSERT_TRUE(frame.GetIterVar(test_accu_var, &result));
-  ASSERT_TRUE(result.IsBool());
-  EXPECT_EQ(result.BoolOrDie(), true);
+  ASSERT_FALSE(frame.GetIterVar(test_accu_var, &result, nullptr));
+  ASSERT_OK(frame.SetAccuVar(cel::interop_internal::CreateBoolValue(true)));
+  ASSERT_TRUE(frame.GetIterVar(test_accu_var, &result, nullptr));
+  ASSERT_TRUE(result.Is<cel::BoolValue>());
+  EXPECT_EQ(result.As<cel::BoolValue>()->value(), true);
 
   // Make sure its now there
-  ASSERT_TRUE(frame.GetIterVar(test_iter_var, &result));
-  ASSERT_TRUE(frame.GetIterAttr(test_iter_var, &trail));
+  ASSERT_TRUE(frame.GetIterVar(test_iter_var, &result, &trail));
 
-  int64_t result_value;
-  ASSERT_TRUE(result.GetValue(&result_value));
+  int64_t result_value = result.As<cel::IntValue>()->value();
   EXPECT_EQ(test_value, result_value);
-  ASSERT_TRUE(trail->attribute().has_variable_name());
-  ASSERT_EQ(trail->attribute().variable_name(), "var");
+  ASSERT_TRUE(trail.attribute().has_variable_name());
+  ASSERT_EQ(trail.attribute().variable_name(), "var");
 
   // Test that it goes away properly
   ASSERT_OK(frame.ClearIterVar());
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result));
-  ASSERT_FALSE(frame.GetIterAttr(test_iter_var, &trail));
+  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, &trail));
 
   ASSERT_OK(frame.PopIterFrame());
 
   // Access on empty stack ok, but no value.
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result));
+  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, nullptr));
 
   // Pop empty stack
   ASSERT_FALSE(frame.PopIterFrame().ok());

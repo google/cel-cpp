@@ -102,10 +102,6 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
         CreateNoMatchingOverloadError(frame->memory_manager(), "<iter_range>"));
     return frame->JumpTo(error_jump_offset_);
   }
-  const CelList* cel_list =
-      cel::interop_internal::ModernValueToLegacyValueOrDie(
-          frame->memory_manager(), iter_range)
-          .ListOrDie();
   AttributeTrail iter_range_attr = attr[POS_ITER_RANGE];
 
   // Get the current index off the stack.
@@ -126,25 +122,23 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   auto loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  CEL_RETURN_IF_ERROR(
-      frame->SetAccuVar(cel::interop_internal::ModernValueToLegacyValueOrDie(
-          frame->memory_manager(), loop_step)));
-  if (current_index >= cel_list->size() - 1) {
+  CEL_RETURN_IF_ERROR(frame->SetAccuVar(loop_step));
+  if (current_index >=
+      static_cast<int64_t>(iter_range.As<cel::ListValue>()->size()) - 1) {
     CEL_RETURN_IF_ERROR(frame->ClearIterVar());
     return frame->JumpTo(jump_offset_);
   }
-  frame->value_stack().Push(std::move(iter_range), iter_range_attr);
+  frame->value_stack().Push(iter_range, iter_range_attr);
   current_index += 1;
 
-  CelValue current_value =
-      (*cel_list).Get(cel::extensions::ProtoMemoryManager::CastToProtoArena(
-                          frame->memory_manager()),
-                      current_index);
+  CEL_ASSIGN_OR_RETURN(
+      auto current_value,
+      iter_range.As<cel::ListValue>()->Get(frame->memory_manager(),
+                                           static_cast<size_t>(current_index)));
   frame->value_stack().Push(
       cel::interop_internal::CreateIntValue(current_index));
   AttributeTrail iter_trail = iter_range_attr.Step(
-      CreateCelAttributeQualifier(CelValue::CreateInt64(current_index)),
-      frame->memory_manager());
+      cel::AttributeQualifier::OfInt(current_index), frame->memory_manager());
   frame->value_stack().Push(current_value, iter_trail);
   CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, std::move(iter_trail)));
   return absl::OkStatus();
@@ -240,20 +234,16 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
         frame->value_stack().GetAttributeSpan(1), nullptr,
         /*use_partial=*/true);
     if (unknown) {
-      frame->value_stack().PopAndPush(CelValue::CreateUnknownSet(unknown));
+      frame->value_stack().PopAndPush(
+          cel::interop_internal::CreateUnknownValueFromView(unknown));
       return absl::OkStatus();
     }
   }
 
-  CelValue map = cel::interop_internal::ModernValueToLegacyValueOrDie(
-      frame->memory_manager(), frame->value_stack().Peek());
-  auto list_keys = map.MapOrDie()->ListKeys(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(
-          frame->memory_manager()));
-  if (!list_keys.ok()) {
-    return std::move(list_keys).status();
-  }
-  frame->value_stack().PopAndPush(CelValue::CreateList(*list_keys));
+  CEL_ASSIGN_OR_RETURN(
+      auto list_keys, frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
+                          frame->memory_manager()));
+  frame->value_stack().PopAndPush(std::move(list_keys));
   return absl::OkStatus();
 }
 
@@ -261,9 +251,7 @@ absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  CelValue map_value = cel::interop_internal::ModernValueToLegacyValueOrDie(
-      frame->memory_manager(), frame->value_stack().Peek());
-  if (map_value.IsMap()) {
+  if (frame->value_stack().Peek().Is<cel::MapValue>()) {
     return ProjectKeys(frame);
   }
   return absl::OkStatus();

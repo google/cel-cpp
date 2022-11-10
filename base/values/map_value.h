@@ -36,6 +36,7 @@ namespace cel {
 
 class ListValue;
 class ValueFactory;
+class MemoryManager;
 
 // MapValue represents an instance of cel::MapType.
 class MapValue : public Value {
@@ -64,6 +65,10 @@ class MapValue : public Value {
   absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
+
+  ABSL_DEPRECATED("Use ListKeys(ValueFactory&) instead")
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      MemoryManager& memory_manager) const;
 
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(

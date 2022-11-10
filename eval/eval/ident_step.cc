@@ -26,7 +26,6 @@ using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateMissingAttributeError;
 using ::cel::interop_internal::CreateUnknownValueFromView;
-using ::cel::interop_internal::FromLegacyValue;
 using ::google::protobuf::Arena;
 
 class IdentStep : public ExpressionStepBase {
@@ -54,12 +53,7 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
       ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
 
   // Special case - comprehension variables mask any activation vars.
-  if (CelValue iter_var; frame->GetIterVar(name_, &iter_var)) {
-    CEL_ASSIGN_OR_RETURN(result.value, FromLegacyValue(arena, iter_var));
-    const AttributeTrail* iter_trail;
-    if (frame->GetIterAttr(name_, &iter_trail)) {
-      result.trail = *iter_trail;
-    }
+  if (frame->GetIterVar(name_, &result.value, &result.trail)) {
     return result;
   }
 

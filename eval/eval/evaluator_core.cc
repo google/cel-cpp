@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -50,9 +51,9 @@ const ExpressionStep* ExecutionFrame::Next() {
 absl::Status ExecutionFrame::PushIterFrame(absl::string_view iter_var_name,
                                            absl::string_view accu_var_name) {
   CelExpressionFlatEvaluationState::IterFrame frame;
-  frame.iter_var = {iter_var_name, absl::nullopt, AttributeTrail()};
-  frame.accu_var = {accu_var_name, absl::nullopt, AttributeTrail()};
-  state_->iter_stack().push_back(frame);
+  frame.iter_var = {iter_var_name, cel::Handle<cel::Value>(), AttributeTrail()};
+  frame.accu_var = {accu_var_name, cel::Handle<cel::Value>(), AttributeTrail()};
+  state_->iter_stack().push_back(std::move(frame));
   return absl::OkStatus();
 }
 
@@ -64,72 +65,66 @@ absl::Status ExecutionFrame::PopIterFrame() {
   return absl::OkStatus();
 }
 
-absl::Status ExecutionFrame::SetAccuVar(const CelValue& val) {
-  return SetAccuVar(val, AttributeTrail());
+absl::Status ExecutionFrame::SetAccuVar(cel::Handle<cel::Value> value) {
+  return SetAccuVar(std::move(value), AttributeTrail());
 }
 
-absl::Status ExecutionFrame::SetAccuVar(const CelValue& val,
+absl::Status ExecutionFrame::SetAccuVar(cel::Handle<cel::Value> value,
                                         AttributeTrail trail) {
   if (state_->iter_stack().empty()) {
     return InvalidIterationStateError();
   }
   auto& iter = state_->IterStackTop();
-  iter.accu_var.value = val;
-  iter.accu_var.attr_trail = trail;
+  iter.accu_var.value = std::move(value);
+  iter.accu_var.attr_trail = std::move(trail);
   return absl::OkStatus();
 }
 
-absl::Status ExecutionFrame::SetIterVar(const CelValue& val,
+absl::Status ExecutionFrame::SetIterVar(cel::Handle<cel::Value> value,
                                         AttributeTrail trail) {
   if (state_->iter_stack().empty()) {
     return InvalidIterationStateError();
   }
   auto& iter = state_->IterStackTop();
-  iter.iter_var.value = val;
-  iter.iter_var.attr_trail = trail;
+  iter.iter_var.value = std::move(value);
+  iter.iter_var.attr_trail = std::move(trail);
   return absl::OkStatus();
 }
 
-absl::Status ExecutionFrame::SetIterVar(const CelValue& val) {
-  return SetIterVar(val, AttributeTrail());
+absl::Status ExecutionFrame::SetIterVar(cel::Handle<cel::Value> value) {
+  return SetIterVar(std::move(value), AttributeTrail());
 }
 
 absl::Status ExecutionFrame::ClearIterVar() {
   if (state_->iter_stack().empty()) {
     return InvalidIterationStateError();
   }
-  state_->IterStackTop().iter_var.value.reset();
+  state_->IterStackTop().iter_var.value = cel::Handle<cel::Value>();
   return absl::OkStatus();
 }
 
-bool ExecutionFrame::GetIterVar(const std::string& name, CelValue* val) const {
+bool ExecutionFrame::GetIterVar(absl::string_view name,
+                                cel::Handle<cel::Value>* value,
+                                AttributeTrail* trail) const {
   for (auto iter = state_->iter_stack().rbegin();
        iter != state_->iter_stack().rend(); ++iter) {
     auto& frame = *iter;
-    if (frame.iter_var.value.has_value() && name == frame.iter_var.name) {
-      *val = *frame.iter_var.value;
+    if (frame.iter_var.value && name == frame.iter_var.name) {
+      if (value != nullptr) {
+        *value = frame.iter_var.value;
+      }
+      if (trail != nullptr) {
+        *trail = frame.iter_var.attr_trail;
+      }
       return true;
     }
-    if (frame.accu_var.value.has_value() && name == frame.accu_var.name) {
-      *val = *frame.accu_var.value;
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool ExecutionFrame::GetIterAttr(const std::string& name,
-                                 const AttributeTrail** val) const {
-  for (auto iter = state_->iter_stack().rbegin();
-       iter != state_->iter_stack().rend(); ++iter) {
-    auto& frame = *iter;
-    if (frame.iter_var.value.has_value() && name == frame.iter_var.name) {
-      *val = &frame.iter_var.attr_trail;
-      return true;
-    }
-    if (frame.accu_var.value.has_value() && name == frame.accu_var.name) {
-      *val = &frame.accu_var.attr_trail;
+    if (frame.accu_var.value && name == frame.accu_var.name) {
+      if (value != nullptr) {
+        *value = frame.accu_var.value;
+      }
+      if (trail != nullptr) {
+        *trail = frame.accu_var.attr_trail;
+      }
       return true;
     }
   }

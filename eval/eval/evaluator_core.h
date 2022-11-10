@@ -82,7 +82,7 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   struct ComprehensionVarEntry {
     absl::string_view name;
     // present if we're in part of the loop context where this can be accessed.
-    absl::optional<CelValue> value;
+    cel::Handle<cel::Value> value;
     AttributeTrail attr_trail;
   };
 
@@ -204,16 +204,16 @@ class ExecutionFrame {
   absl::Status PopIterFrame();
 
   // Sets the value of the accumuation variable
-  absl::Status SetAccuVar(const CelValue& val);
+  absl::Status SetAccuVar(cel::Handle<cel::Value> value);
 
   // Sets the value of the accumulation variable
-  absl::Status SetAccuVar(const CelValue& val, AttributeTrail trail);
+  absl::Status SetAccuVar(cel::Handle<cel::Value> value, AttributeTrail trail);
 
   // Sets the value of the iteration variable
-  absl::Status SetIterVar(const CelValue& val);
+  absl::Status SetIterVar(cel::Handle<cel::Value> value);
 
   // Sets the value of the iteration variable
-  absl::Status SetIterVar(const CelValue& val, AttributeTrail trail);
+  absl::Status SetIterVar(cel::Handle<cel::Value> value, AttributeTrail trail);
 
   // Clears the value of the iteration variable
   absl::Status ClearIterVar();
@@ -221,13 +221,8 @@ class ExecutionFrame {
   // Gets the current value of either an iteration variable or accumulation
   // variable.
   // Returns false if the variable is not yet set or has been cleared.
-  bool GetIterVar(const std::string& name, CelValue* val) const;
-
-  // Gets the current attribute trail of either an iteration variable or
-  // accumulation variable.
-  // Returns false if the variable is not currently in use (SetIterVar has not
-  // been called since init or last clear).
-  bool GetIterAttr(const std::string& name, const AttributeTrail** val) const;
+  bool GetIterVar(absl::string_view name, cel::Handle<cel::Value>* value,
+                  AttributeTrail* trail) const;
 
   // Increment iterations and return an error if the iteration budget is
   // exceeded

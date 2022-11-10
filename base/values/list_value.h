@@ -57,6 +57,10 @@ class ListValue : public Value {
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const;
 
+  ABSL_DEPRECATED("Use Get(ValueFactory&, size_t) instead")
+  absl::StatusOr<Handle<Value>> Get(MemoryManager& memory_manager,
+                                    size_t index) const;
+
   bool Equals(const Value& other) const;
 
   void HashValue(absl::HashState state) const;
