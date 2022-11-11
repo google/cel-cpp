@@ -5,23 +5,48 @@
 #include <string>
 #include <utility>
 
-#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "base/handle.h"
+#include "base/memory_manager.h"
+#include "base/value_factory.h"
+#include "base/values/error_value.h"
+#include "base/values/map_value.h"
+#include "base/values/null_value.h"
+#include "base/values/string_value.h"
+#include "base/values/struct_value.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/structs/legacy_type_adapter.h"
-#include "eval/public/structs/legacy_type_info_apis.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using ::cel::ErrorValue;
+using ::cel::Handle;
+using ::cel::Kind;
+using ::cel::MapValue;
+using ::cel::NullValue;
+using ::cel::StructValue;
+using ::cel::UnknownValue;
+using ::cel::Value;
+using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateBoolValue;
+using ::cel::interop_internal::CreateErrorValueFromView;
+using ::cel::interop_internal::CreateMissingAttributeError;
+using ::cel::interop_internal::CreateNoSuchKeyError;
+using ::cel::interop_internal::CreateStringValueFromView;
+using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::cel::interop_internal::MessageValueGetFieldWithWrapperAsProtoDefault;
+using ::google::protobuf::Arena;
 
 // Common error for cases where evaluation attempts to perform select operations
 // on an unsupported type.
@@ -51,9 +76,8 @@ class SelectStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status CreateValueFromField(const CelValue::MessageWrapper& msg,
-                                    cel::MemoryManager& manager,
-                                    CelValue* result) const;
+  absl::StatusOr<Handle<Value>> CreateValueFromField(
+      const Handle<StructValue>& msg, ExecutionFrame* frame) const;
 
   std::string field_;
   bool test_field_presence_;
@@ -61,73 +85,79 @@ class SelectStep : public ExpressionStepBase {
   ProtoWrapperTypeOptions unboxing_option_;
 };
 
-absl::Status SelectStep::CreateValueFromField(
-    const CelValue::MessageWrapper& msg, cel::MemoryManager& manager,
-    CelValue* result) const {
-  const LegacyTypeAccessApis* accessor =
-      msg.legacy_type_info()->GetAccessApis(msg);
-  if (accessor == nullptr) {
-    *result = CreateNoSuchFieldError(manager);
-    return absl::OkStatus();
+absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
+    const Handle<StructValue>& msg, ExecutionFrame* frame) const {
+  StructValue::FieldId field_id(field_);
+  switch (unboxing_option_) {
+    case ProtoWrapperTypeOptions::kUnsetProtoDefault:
+      return MessageValueGetFieldWithWrapperAsProtoDefault(
+          msg, frame->value_factory(), field_);
+    default:
+      return msg->GetField(frame->value_factory(), field_id);
   }
-  CEL_ASSIGN_OR_RETURN(
-      *result, accessor->GetField(field_, msg, unboxing_option_, manager));
-  return absl::OkStatus();
 }
 
-absl::optional<CelValue> CheckForMarkedAttributes(const AttributeTrail& trail,
-                                                  ExecutionFrame* frame) {
+absl::optional<Handle<Value>> CheckForMarkedAttributes(
+    const AttributeTrail& trail, ExecutionFrame* frame) {
+  Arena* arena = ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
+
   if (frame->enable_unknowns() &&
       frame->attribute_utility().CheckForUnknown(trail,
                                                  /*use_partial=*/false)) {
-    auto unknown_set = frame->memory_manager().New<UnknownSet>(
-        UnknownAttributeSet({trail.attribute()}));
-    return CelValue::CreateUnknownSet(unknown_set.release());
+    auto unknown_set = Arena::Create<UnknownSet>(
+        arena, UnknownAttributeSet({trail.attribute()}));
+    return CreateUnknownValueFromView(unknown_set);
   }
 
   if (frame->enable_missing_attribute_errors() &&
       frame->attribute_utility().CheckForMissingAttribute(trail)) {
     auto attribute_string = trail.attribute().AsString();
     if (attribute_string.ok()) {
-      return CreateMissingAttributeError(frame->memory_manager(),
-                                         *attribute_string);
+      return CreateErrorValueFromView(CreateMissingAttributeError(
+          frame->memory_manager(), *attribute_string));
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
     LOG(ERROR)
         << "Invalid attribute pattern matched select path: "
         << attribute_string.status().ToString();  // NOLINT: OSS compatibility
-    return CreateErrorValue(frame->memory_manager(), attribute_string.status());
+    return CreateErrorValueFromView(Arena::Create<absl::Status>(
+        arena, std::move(attribute_string).status()));
   }
 
   return absl::nullopt;
 }
 
-CelValue TestOnlySelect(const CelValue::MessageWrapper& msg,
-                        const std::string& field, cel::MemoryManager& manager) {
-  const LegacyTypeAccessApis* accessor =
-      msg.legacy_type_info()->GetAccessApis(msg);
-  if (accessor == nullptr) {
-    return CreateNoSuchFieldError(manager);
-  }
-  // Standard proto presence test for non-repeated fields.
-  absl::StatusOr<bool> result = accessor->HasField(field, msg);
+Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
+                             const std::string& field,
+                             cel::MemoryManager& memory_manager) {
+  StructValue::FieldId field_id(field);
+  Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
+
+  absl::StatusOr<bool> result = msg->HasField(field_id);
+
   if (!result.ok()) {
-    return CreateErrorValue(manager, std::move(result).status());
+    return CreateErrorValueFromView(
+        Arena::Create<absl::Status>(arena, std::move(result).status()));
   }
-  return CelValue::CreateBool(*result);
+  return CreateBoolValue(*result);
 }
 
-CelValue TestOnlySelect(const CelMap& map, const std::string& field_name,
-                        cel::MemoryManager& manager) {
+Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
+                             const std::string& field_name,
+                             cel::MemoryManager& manager) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence = map.Has(CelValue::CreateStringView(field_name));
+  auto presence = map->Has(CreateStringValueFromView(field_name));
+
   if (!presence.ok()) {
-    return CreateErrorValue(manager, presence.status());
+    Arena* arena = ProtoMemoryManager::CastToProtoArena(manager);
+    auto* status =
+        Arena::Create<absl::Status>(arena, std::move(presence).status());
+    return CreateErrorValueFromView(status);
   }
 
-  return CelValue::CreateBool(*presence);
+  return CreateBoolValue(*presence);
 }
 
 absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
@@ -136,16 +166,14 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
                         "No arguments supplied for Select-type expression");
   }
 
-  CelValue arg = cel::interop_internal::ModernValueToLegacyValueOrDie(
-      frame->memory_manager(), frame->value_stack().Peek());
+  const Handle<Value>& arg = frame->value_stack().Peek();
   const AttributeTrail& trail = frame->value_stack().PeekAttribute();
 
-  if (arg.IsUnknownSet() || arg.IsError()) {
+  if (arg.Is<UnknownValue>() || arg.Is<ErrorValue>()) {
     // Bubble up unknowns and errors.
     return absl::OkStatus();
   }
 
-  CelValue result;
   AttributeTrail result_trail;
 
   // Handle unknown resolution.
@@ -153,95 +181,65 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     result_trail = trail.Step(&field_, frame->memory_manager());
   }
 
-  if (arg.IsNull()) {
+  if (arg.Is<NullValue>()) {
     CelValue error_value =
         CreateErrorValue(frame->memory_manager(), "Message is NULL");
     frame->value_stack().PopAndPush(error_value, std::move(result_trail));
     return absl::OkStatus();
   }
 
-  if (!(arg.IsMap() || arg.IsMessage())) {
+  if (!(arg.Is<MapValue>() || arg.Is<StructValue>())) {
     return InvalidSelectTargetError();
   }
 
-  absl::optional<CelValue> marked_attribute_check =
+  absl::optional<Handle<Value>> marked_attribute_check =
       CheckForMarkedAttributes(result_trail, frame);
   if (marked_attribute_check.has_value()) {
-    frame->value_stack().PopAndPush(marked_attribute_check.value(),
+    frame->value_stack().PopAndPush(std::move(marked_attribute_check).value(),
                                     std::move(result_trail));
     return absl::OkStatus();
   }
 
-  // Nullness checks
-  switch (arg.type()) {
-    case CelValue::Type::kMap: {
-      if (arg.MapOrDie() == nullptr) {
-        frame->value_stack().PopAndPush(
-            CreateErrorValue(frame->memory_manager(), "Map is NULL"),
-            std::move(result_trail));
-        return absl::OkStatus();
-      }
-      break;
-    }
-    case CelValue::Type::kMessage: {
-      if (CelValue::MessageWrapper w;
-          arg.GetValue(&w) && w.message_ptr() == nullptr) {
-        frame->value_stack().PopAndPush(
-            CreateErrorValue(frame->memory_manager(), "Message is NULL"),
-            std::move(result_trail));
-        return absl::OkStatus();
-      }
-      break;
-    }
-    default:
-      // Should not be reached by construction.
-      return InvalidSelectTargetError();
-  }
-
   // Handle test only Select.
   if (test_field_presence_) {
-    if (arg.IsMap()) {
-      frame->value_stack().PopAndPush(
-          TestOnlySelect(*arg.MapOrDie(), field_, frame->memory_manager()));
-      return absl::OkStatus();
-    } else if (CelValue::MessageWrapper message; arg.GetValue(&message)) {
-      frame->value_stack().PopAndPush(
-          TestOnlySelect(message, field_, frame->memory_manager()));
-      return absl::OkStatus();
+    switch (arg->kind()) {
+      case Kind::kMap:
+        frame->value_stack().PopAndPush(TestOnlySelect(
+            arg.As<MapValue>(), field_, frame->memory_manager()));
+        return absl::OkStatus();
+      case Kind::kMessage:
+        frame->value_stack().PopAndPush(TestOnlySelect(
+            arg.As<StructValue>(), field_, frame->memory_manager()));
+        return absl::OkStatus();
+      default:
+        return InvalidSelectTargetError();
     }
   }
 
   // Normal select path.
   // Select steps can be applied to either maps or messages
-  switch (arg.type()) {
-    case CelValue::Type::kMessage: {
-      CelValue::MessageWrapper wrapper;
-      bool success = arg.GetValue(&wrapper);
-      ABSL_ASSERT(success);
-
-      CEL_RETURN_IF_ERROR(
-          CreateValueFromField(wrapper, frame->memory_manager(), &result));
-      frame->value_stack().PopAndPush(result, std::move(result_trail));
+  switch (arg->kind()) {
+    case Kind::kStruct: {
+      CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+                           CreateValueFromField(arg.As<StructValue>(), frame));
+      frame->value_stack().PopAndPush(std::move(result),
+                                      std::move(result_trail));
 
       return absl::OkStatus();
     }
     case CelValue::Type::kMap: {
-      // not null.
-      const CelMap& cel_map = *arg.MapOrDie();
-
-      CelValue field_name = CelValue::CreateString(&field_);
-      absl::optional<CelValue> lookup_result =
-          cel_map.Get(cel::extensions::ProtoMemoryManager::CastToProtoArena(
-                          frame->memory_manager()),
-                      field_name);
+      const auto& cel_map = arg.As<MapValue>();
+      auto cel_field = CreateStringValueFromView(field_);
+      CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+                           cel_map->Get(frame->value_factory(), cel_field));
 
       // If object is not found, we return Error, per CEL specification.
-      if (lookup_result.has_value()) {
-        result = *lookup_result;
-      } else {
-        result = CreateNoSuchKeyError(frame->memory_manager(), field_);
+      if (!result) {
+        result = CreateErrorValueFromView(
+            CreateNoSuchKeyError(frame->memory_manager(), field_));
       }
-      frame->value_stack().PopAndPush(result, std::move(result_trail));
+      frame->value_stack().PopAndPush(std::move(result),
+                                      std::move(result_trail));
       return absl::OkStatus();
     }
     default:

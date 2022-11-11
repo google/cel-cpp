@@ -21,10 +21,10 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/span.h"
 #include "base/ast.h"
 #include "base/memory_manager.h"
-#include "eval/compiler/resolver.h"
+#include "base/type_manager.h"
+#include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
@@ -105,6 +105,12 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   cel::MemoryManager& memory_manager() { return memory_manager_; }
 
+  cel::TypeFactory& type_factory() { return type_factory_; }
+
+  cel::TypeManager& type_manager() { return type_manager_; }
+
+  cel::ValueFactory& value_factory() { return value_factory_; }
+
  private:
   // TODO(issues/5): State owns a ProtoMemoryManager to adapt from the client
   // provided arena. In the future, clients will have to maintain the particular
@@ -113,6 +119,9 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   EvaluatorStack value_stack_;
   std::set<std::string> iter_variable_names_;
   std::vector<IterFrame> iter_stack_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
 };
 
 // ExecutionFrame provides context for expression evaluation.
@@ -180,6 +189,12 @@ class ExecutionFrame {
   }
 
   cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
+
+  cel::TypeFactory& type_factory() { return state_->type_factory(); }
+
+  cel::TypeManager& type_manager() { return state_->type_manager(); }
+
+  cel::ValueFactory& value_factory() { return state_->value_factory(); }
 
   const CelTypeRegistry& type_registry() { return type_registry_; }
 

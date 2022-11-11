@@ -22,6 +22,7 @@ cc_library(
     hdrs = ["interop.h"],
     deps = [
         ":activation_interface",
+        ":errors",
         "//base:type",
         "//base:type_factory",
         "//base:type_manager",
@@ -30,6 +31,7 @@ cc_library(
         "//base:value_factory",
         "//base/internal:message_wrapper",
         "//eval/public:base_activation",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
         "//eval/public:unknown_set",
@@ -37,7 +39,6 @@ cc_library(
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

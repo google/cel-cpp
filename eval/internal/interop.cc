@@ -39,7 +39,9 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/struct_value.h"
+#include "eval/internal/errors.h"
 #include "eval/public/base_activation.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/unknown_set.h"
@@ -58,8 +60,10 @@ using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
+using ::google::api::expr::runtime::LegacyTypeAccessApis;
 using ::google::api::expr::runtime::LegacyTypeInfoApis;
 using ::google::api::expr::runtime::MessageWrapper;
+using ::google::api::expr::runtime::ProtoWrapperTypeOptions;
 using ::google::api::expr::runtime::UnknownSet;
 
 class LegacyCelList final : public CelList {
@@ -201,6 +205,25 @@ class LegacyCelMap final : public CelMap {
 
   Handle<MapValue> impl_;
 };
+
+absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
+    const MessageWrapper& wrapper, absl::string_view field,
+    ProtoWrapperTypeOptions unbox_option, MemoryManager& memory_manager) {
+  const LegacyTypeAccessApis* access_api =
+      wrapper.legacy_type_info()->GetAccessApis(wrapper);
+
+  if (access_api == nullptr) {
+    return interop_internal::CreateErrorValueFromView(
+        interop_internal::CreateNoSuchFieldError(memory_manager, field));
+  }
+
+  CEL_ASSIGN_OR_RETURN(
+      auto legacy_value,
+      access_api->GetField(field, wrapper, unbox_option, memory_manager));
+  return FromLegacyValue(
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager),
+      legacy_value);
+}
 
 }  // namespace
 
@@ -612,22 +635,39 @@ absl::optional<Handle<Value>> AdapterActivationImpl::ResolveVariable(
   return LegacyValueToModernValueOrDie(arena, *legacy_value);
 }
 
+absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(
+    const Handle<StructValue>& struct_value, ValueFactory& value_factory,
+    absl::string_view field) {
+  if (struct_value.Is<base_internal::LegacyStructValue>()) {
+    const auto& legacy_value =
+        struct_value.As<base_internal::LegacyStructValue>();
+    auto wrapper = LegacyStructValueAccess::ToMessageWrapper(*legacy_value);
+    return LegacyStructGetFieldImpl(wrapper, field,
+                                    ProtoWrapperTypeOptions::kUnsetProtoDefault,
+                                    value_factory.memory_manager());
+  }
+
+  // Otherwise assume struct impl has the appropriate option set.
+  return struct_value->GetField(value_factory, StructValue::FieldId(field));
+}
+
 }  // namespace cel::interop_internal
 
 namespace cel::base_internal {
 
 namespace {
 
-using google::api::expr::runtime::CelList;
-using google::api::expr::runtime::CelMap;
-using google::api::expr::runtime::CelValue;
-using google::api::expr::runtime::LegacyTypeInfoApis;
-using google::api::expr::runtime::MessageWrapper;
-using google::api::expr::runtime::ProtoWrapperTypeOptions;
-using interop_internal::FromLegacyValue;
-using interop_internal::LegacyStructValueAccess;
-using interop_internal::MessageWrapperAccess;
-using interop_internal::ToLegacyValue;
+using ::cel::interop_internal::FromLegacyValue;
+using ::cel::interop_internal::LegacyStructValueAccess;
+using ::cel::interop_internal::MessageWrapperAccess;
+using ::cel::interop_internal::ToLegacyValue;
+using ::google::api::expr::runtime::CelList;
+using ::google::api::expr::runtime::CelMap;
+using ::google::api::expr::runtime::CelValue;
+using ::google::api::expr::runtime::LegacyTypeAccessApis;
+using ::google::api::expr::runtime::LegacyTypeInfoApis;
+using ::google::api::expr::runtime::MessageWrapper;
+using ::google::api::expr::runtime::ProtoWrapperTypeOptions;
 
 }  // namespace
 
@@ -652,12 +692,20 @@ bool MessageValueEquals(uintptr_t lhs_msg, uintptr_t lhs_type_info,
   if (!LegacyStructValue::Is(rhs)) {
     return false;
   }
-  return reinterpret_cast<const LegacyTypeInfoApis*>(lhs_type_info)
-      ->GetAccessApis(MessageWrapperAccess::Make(lhs_msg, lhs_type_info))
-      ->IsEqualTo(
-          MessageWrapperAccess::Make(lhs_msg, lhs_type_info),
-          LegacyStructValueAccess::ToMessageWrapper(
-              static_cast<const base_internal::LegacyStructValue&>(rhs)));
+  auto lhs_message_wrapper = MessageWrapperAccess::Make(lhs_msg, lhs_type_info);
+
+  const LegacyTypeAccessApis* access_api =
+      lhs_message_wrapper.legacy_type_info()->GetAccessApis(
+          lhs_message_wrapper);
+
+  if (access_api == nullptr) {
+    return false;
+  }
+
+  return access_api->IsEqualTo(
+      lhs_message_wrapper,
+      LegacyStructValueAccess::ToMessageWrapper(
+          static_cast<const base_internal::LegacyStructValue&>(rhs)));
 }
 
 absl::StatusOr<bool> MessageValueHasFieldByNumber(uintptr_t msg,
@@ -671,9 +719,15 @@ absl::StatusOr<bool> MessageValueHasFieldByName(uintptr_t msg,
                                                 uintptr_t type_info,
                                                 absl::string_view name) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
-  return reinterpret_cast<const LegacyTypeInfoApis*>(type_info)
-      ->GetAccessApis(wrapper)
-      ->HasField(name, wrapper);
+  const LegacyTypeAccessApis* access_api =
+      wrapper.legacy_type_info()->GetAccessApis(wrapper);
+
+  if (access_api == nullptr) {
+    return absl::NotFoundError(
+        absl::StrCat(interop_internal::kErrNoSuchField, ": ", name));
+  }
+
+  return access_api->HasField(name, wrapper);
 }
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
@@ -687,15 +741,10 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
     absl::string_view name) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
-  CEL_ASSIGN_OR_RETURN(
-      auto legacy_value,
-      reinterpret_cast<const LegacyTypeInfoApis*>(type_info)
-          ->GetAccessApis(wrapper)
-          ->GetField(name, wrapper, ProtoWrapperTypeOptions::kUnsetNull,
-                     value_factory.memory_manager()));
-  return FromLegacyValue(extensions::ProtoMemoryManager::CastToProtoArena(
-                             value_factory.memory_manager()),
-                         legacy_value);
+
+  return interop_internal::LegacyStructGetFieldImpl(
+      wrapper, name, ProtoWrapperTypeOptions::kUnsetNull,
+      value_factory.memory_manager());
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,

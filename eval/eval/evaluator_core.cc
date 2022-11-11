@@ -1,6 +1,7 @@
 #include "eval/eval/evaluator_core.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -8,12 +9,13 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
-#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -26,12 +28,17 @@ absl::Status InvalidIterationStateError() {
 
 }  // namespace
 
+// TODO(issues/5): cel::TypeFactory and family are setup here assuming legacy
+// value interop. Later, these will need to be configurable by clients.
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     size_t value_stack_size, const std::set<std::string>& iter_variable_names,
     google::protobuf::Arena* arena)
     : memory_manager_(arena),
       value_stack_(value_stack_size, memory_manager_),
-      iter_variable_names_(iter_variable_names) {}
+      iter_variable_names_(iter_variable_names),
+      type_factory_(memory_manager_),
+      type_manager_(type_factory_, cel::TypeProvider::Builtin()),
+      value_factory_(type_manager_) {}
 
 void CelExpressionFlatEvaluationState::Reset() {
   iter_stack_.clear();
