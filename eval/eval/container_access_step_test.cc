@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -13,7 +14,6 @@
 #include "eval/eval/ident_step.h"
 #include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
-#include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
@@ -24,7 +24,6 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
 
@@ -103,6 +102,16 @@ class ContainerAccessStepUniformityTest
 
   void SetUp() override {}
 
+  bool receiver_style() {
+    TestParamType params = GetParam();
+    return std::get<0>(params);
+  }
+
+  bool enable_unknown() {
+    TestParamType params = GetParam();
+    return std::get<1>(params);
+  }
+
   // Helper method. Looks up in registry and tests comparison operation.
   CelValue EvaluateAttribute(
       CelValue container, CelValue key, bool receiver_style,
@@ -119,10 +128,9 @@ TEST_P(ContainerAccessStepUniformityTest, TestListIndexAccess) {
                                     CelValue::CreateInt64(2),
                                     CelValue::CreateInt64(3)});
 
-  TestParamType param = GetParam();
   CelValue result = EvaluateAttribute(CelValue::CreateList(&cel_list),
                                       CelValue::CreateInt64(1),
-                                      std::get<0>(param), std::get<1>(param));
+                                      receiver_style(), enable_unknown());
 
   ASSERT_TRUE(result.IsInt64());
   ASSERT_EQ(result.Int64OrDie(), 2);
@@ -133,26 +141,24 @@ TEST_P(ContainerAccessStepUniformityTest, TestListIndexAccessOutOfBounds) {
                                     CelValue::CreateInt64(2),
                                     CelValue::CreateInt64(3)});
 
-  TestParamType param = GetParam();
-
   CelValue result = EvaluateAttribute(CelValue::CreateList(&cel_list),
                                       CelValue::CreateInt64(0),
-                                      std::get<0>(param), std::get<1>(param));
+                                      receiver_style(), enable_unknown());
 
   ASSERT_TRUE(result.IsInt64());
   result = EvaluateAttribute(CelValue::CreateList(&cel_list),
-                             CelValue::CreateInt64(2), std::get<0>(param),
-                             std::get<1>(param));
+                             CelValue::CreateInt64(2), receiver_style(),
+                             enable_unknown());
 
   ASSERT_TRUE(result.IsInt64());
   result = EvaluateAttribute(CelValue::CreateList(&cel_list),
-                             CelValue::CreateInt64(-1), std::get<0>(param),
-                             std::get<1>(param));
+                             CelValue::CreateInt64(-1), receiver_style(),
+                             enable_unknown());
 
   ASSERT_TRUE(result.IsError());
   result = EvaluateAttribute(CelValue::CreateList(&cel_list),
-                             CelValue::CreateInt64(3), std::get<0>(param),
-                             std::get<1>(param));
+                             CelValue::CreateInt64(3), receiver_style(),
+                             enable_unknown());
 
   ASSERT_TRUE(result.IsError());
 }
@@ -162,18 +168,14 @@ TEST_P(ContainerAccessStepUniformityTest, TestListIndexAccessNotAnInt) {
                                     CelValue::CreateInt64(2),
                                     CelValue::CreateInt64(3)});
 
-  TestParamType param = GetParam();
-
   CelValue result = EvaluateAttribute(CelValue::CreateList(&cel_list),
                                       CelValue::CreateUint64(1),
-                                      std::get<0>(param), std::get<1>(param));
+                                      receiver_style(), enable_unknown());
 
   ASSERT_TRUE(result.IsError());
 }
 
 TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccess) {
-  TestParamType param = GetParam();
-
   const std::string kKey0 = "testkey0";
   const std::string kKey1 = "testkey1";
   const std::string kKey2 = "testkey2";
@@ -184,15 +186,25 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccess) {
 
   CelValue result = EvaluateAttribute(
       CelProtoWrapper::CreateMessage(&cel_struct, &arena_),
-      CelValue::CreateString(&kKey0), std::get<0>(param), std::get<1>(param));
+      CelValue::CreateString(&kKey0), receiver_style(), enable_unknown());
 
   ASSERT_TRUE(result.IsString());
   ASSERT_EQ(result.StringOrDie().value(), "value0");
 }
 
-TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
-  TestParamType param = GetParam();
+TEST_P(ContainerAccessStepUniformityTest, TestBoolKeyType) {
+  CelMapBuilder cel_map;
+  ASSERT_OK(cel_map.Add(CelValue::CreateBool(true),
+                        CelValue::CreateStringView("value_true")));
 
+  CelValue result = EvaluateAttribute(CelValue::CreateMap(&cel_map),
+                                      CelValue::CreateBool(true),
+                                      receiver_style(), enable_unknown());
+
+  ASSERT_THAT(result, test::IsCelString("value_true"));
+}
+
+TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
   const std::string kKey0 = "testkey0";
   const std::string kKey1 = "testkey1";
   Struct cel_struct;
@@ -200,7 +212,7 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
 
   CelValue result = EvaluateAttribute(
       CelProtoWrapper::CreateMessage(&cel_struct, &arena_),
-      CelValue::CreateString(&kKey1), std::get<0>(param), std::get<1>(param));
+      CelValue::CreateString(&kKey1), receiver_style(), enable_unknown());
 
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(*result.ErrorOrDie(),
@@ -330,7 +342,7 @@ TEST_F(ContainerAccessStepTest, TestInvalidContainerType) {
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(*result.ErrorOrDie(),
               StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid container type: 'int64")));
+                       HasSubstr("Invalid container type: 'int")));
 }
 
 INSTANTIATE_TEST_SUITE_P(CombinedContainerTest,
