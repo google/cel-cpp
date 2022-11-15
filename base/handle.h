@@ -145,6 +145,22 @@ class Handle final : private base_internal::HandlePolicy<T> {
     std::swap(lhs.impl_, rhs.impl_);
   }
 
+  // Equality between handles is not the same as the equality defined by the
+  // Common Expression Language. Instead it is more of a trivial equality, with
+  // some kinds being compared by value and some kinds being compared by
+  // pointers.
+  //
+  // Types:
+  //
+  // All types are compared via their kinds and then their name.
+  //
+  // Values:
+  //
+  // Struct, List, and Map are compared by pointer, thus two independently
+  // constructed Struct(s), List(s), or Map(s) will not be equal even if their
+  // contents are the same. String and Bytes are compared by their contents. All
+  // other kinds are compared by value.
+
   bool operator==(const Handle<T>& other) const { return impl_ == other.impl_; }
 
   template <typename F>
