@@ -28,6 +28,8 @@
 #include "base/type_manager.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/error_value.h"
+#include "eval/internal/errors.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
@@ -39,11 +41,12 @@
 namespace cel::interop_internal {
 namespace {
 
-using google::api::expr::runtime::CelProtoWrapper;
-using google::api::expr::runtime::CelValue;
-using google::api::expr::runtime::ContainerBackedListImpl;
-using google::api::expr::runtime::UnknownSet;
+using ::google::api::expr::runtime::CelProtoWrapper;
+using ::google::api::expr::runtime::CelValue;
+using ::google::api::expr::runtime::ContainerBackedListImpl;
+using ::google::api::expr::runtime::UnknownSet;
 using testing::Eq;
+using testing::HasSubstr;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
@@ -189,6 +192,29 @@ TEST(ValueInterop, DurationToLegacy) {
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
   EXPECT_TRUE(legacy_value.IsDuration());
   EXPECT_EQ(legacy_value.DurationOrDie(), duration);
+}
+
+TEST(ValueInterop, CreateDurationOk) {
+  auto duration = absl::ZeroDuration() + absl::Seconds(1);
+  Handle<Value> value = CreateDurationValue(duration);
+  EXPECT_TRUE(value.Is<DurationValue>());
+  EXPECT_EQ(value.As<DurationValue>()->value(), duration);
+}
+
+TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
+  Handle<Value> value = CreateDurationValue(kDurationHigh);
+  EXPECT_TRUE(value.Is<ErrorValue>());
+  EXPECT_THAT(value.As<ErrorValue>()->value(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Duration is out of range")));
+}
+
+TEST(ValueInterop, CreateDurationOutOfRangeLow) {
+  Handle<Value> value = CreateDurationValue(kDurationLow);
+  EXPECT_TRUE(value.Is<ErrorValue>());
+  EXPECT_THAT(value.As<ErrorValue>()->value(),
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       HasSubstr("Duration is out of range")));
 }
 
 TEST(ValueInterop, TimestampFromLegacy) {

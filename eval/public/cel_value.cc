@@ -38,16 +38,6 @@ constexpr absl::string_view kListTypeName = "list";
 constexpr absl::string_view kMapTypeName = "map";
 constexpr absl::string_view kCelTypeTypeName = "type";
 
-// Exclusive bounds for valid duration values.
-constexpr absl::Duration kDurationHigh = absl::Seconds(315576000001);
-constexpr absl::Duration kDurationLow = absl::Seconds(-315576000001);
-
-const absl::Status* DurationOverflowError() {
-  static const auto* const kDurationOverflow = new absl::Status(
-      absl::StatusCode::kInvalidArgument, "Duration is out of range");
-  return kDurationOverflow;
-}
-
 struct DebugStringVisitor {
   google::protobuf::Arena* const arena;
 
@@ -118,8 +108,8 @@ struct DebugStringVisitor {
 }  // namespace
 
 CelValue CelValue::CreateDuration(absl::Duration value) {
-  if (value >= kDurationHigh || value <= kDurationLow) {
-    return CelValue(DurationOverflowError());
+  if (value >= interop::kDurationHigh || value <= interop::kDurationLow) {
+    return CelValue(interop::DurationOverflowError());
   }
   return CelValue(value);
 }

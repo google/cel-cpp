@@ -7,6 +7,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "base/memory_manager.h"
+#include "eval/internal/errors.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
@@ -20,7 +21,10 @@
 
 namespace google::api::expr::runtime {
 
+using ::cel::interop_internal::kDurationHigh;
+using ::cel::interop_internal::kDurationLow;
 using testing::Eq;
+using testing::HasSubstr;
 using cel::internal::StatusIs;
 
 class DummyMap : public CelMap {
@@ -175,6 +179,23 @@ TEST(CelValueTest, TestDouble) {
   EXPECT_TRUE(value.GetValue(&value2));
   EXPECT_DOUBLE_EQ(value2, 1);
   EXPECT_THAT(CountTypeMatch(value), Eq(1));
+}
+
+TEST(CelValueTest, TestDurationRangeCheck) {
+  EXPECT_THAT(CelValue::CreateDuration(absl::Seconds(1)),
+              test::IsCelDuration(absl::Seconds(1)));
+
+  EXPECT_THAT(
+      CelValue::CreateDuration(kDurationHigh),
+      test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
+                                HasSubstr("Duration is out of range"))));
+  EXPECT_THAT(
+      CelValue::CreateDuration(kDurationLow),
+      test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
+                                HasSubstr("Duration is out of range"))));
+
+  EXPECT_THAT(CelValue::CreateDuration(kDurationLow + absl::Seconds(1)),
+              test::IsCelDuration(kDurationLow + absl::Seconds(1)));
 }
 
 // This test verifies CelValue support of string type.

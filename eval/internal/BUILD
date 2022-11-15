@@ -55,6 +55,7 @@ cc_test(
     name = "interop_test",
     srcs = ["interop_test.cc"],
     deps = [
+        ":errors",
         ":interop",
         "//base:memory_manager",
         "//base:type_manager",

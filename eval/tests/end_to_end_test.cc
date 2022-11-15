@@ -294,6 +294,45 @@ TEST(EndToEndTest, StrictNullHandling) {
                        testing::HasSubstr("No matching overloads")));
 }
 
+TEST(EndToEndTest, OutOfRangeDurationConstant) {
+  InterpreterOptions options;
+  options.enable_timestamp_duration_overflow_errors = true;
+
+  Expr expr;
+  // Duration representable in absl::Duration, but out of range for CelValue
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"(
+          call_expr {
+          function: "type"
+          args {
+            const_expr {
+              duration_value {
+                seconds: 28552639587287040
+              }
+            }
+          }
+        })",
+      &expr));
+  SourceInfo info;
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder->CreateExpression(&expr, &info));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  const CelError* result_value;
+  ASSERT_TRUE(result.GetValue(&result_value)) << result.DebugString();
+  EXPECT_THAT(*result_value,
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       testing::HasSubstr("Duration is out of range")));
+}
+
 }  // namespace
 
 }  // namespace runtime

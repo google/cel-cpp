@@ -545,7 +545,10 @@ Handle<BytesValue> CreateBytesValueFromView(absl::string_view value) {
   return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(value);
 }
 
-Handle<DurationValue> CreateDurationValue(absl::Duration value) {
+Handle<Value> CreateDurationValue(absl::Duration value) {
+  if (value >= kDurationHigh || value <= kDurationLow) {
+    return CreateErrorValueFromView(DurationOverflowError());
+  }
   return HandleFactory<DurationValue>::Make<DurationValue>(value);
 }
 

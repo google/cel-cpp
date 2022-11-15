@@ -127,10 +127,13 @@ Handle<BytesValue> CreateBytesValueFromView(absl::string_view value);
 
 // Create a modern duration value, without validation. Should only be used
 // during interoperation.
-Handle<DurationValue> CreateDurationValue(absl::Duration value);
+// If value is out of CEL's supported range, returns an ErrorValue.
+Handle<Value> CreateDurationValue(absl::Duration value);
 
 // Create a modern timestamp value, without validation. Should only be used
 // during interoperation.
+// TODO(issues/5): Consider adding a check that the timestamp is in the
+// supported range for CEL.
 Handle<TimestampValue> CreateTimestampValue(absl::Time value);
 
 Handle<ErrorValue> CreateErrorValueFromView(const absl::Status* value);

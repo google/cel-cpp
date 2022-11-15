@@ -25,6 +25,12 @@ namespace cel::interop_internal {
 using ::cel::extensions::ProtoMemoryManager;
 using ::google::protobuf::Arena;
 
+const absl::Status* DurationOverflowError() {
+  static const auto* const kDurationOverflow = new absl::Status(
+      absl::StatusCode::kInvalidArgument, "Duration is out of range");
+  return kDurationOverflow;
+}
+
 const absl::Status* CreateNoMatchingOverloadError(cel::MemoryManager& manager,
                                                   absl::string_view fn) {
   return CreateNoMatchingOverloadError(

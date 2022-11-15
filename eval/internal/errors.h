@@ -35,6 +35,12 @@ constexpr absl::string_view kPayloadUrlMissingAttributePath =
 constexpr absl::string_view kPayloadUrlUnknownFunctionResult =
     "cel_is_unknown_function_result";
 
+const absl::Status* DurationOverflowError();
+
+// Exclusive bounds for valid duration values.
+constexpr absl::Duration kDurationHigh = absl::Seconds(315576000001);
+constexpr absl::Duration kDurationLow = absl::Seconds(-315576000001);
+
 // Factories for absl::Status values for well-known CEL errors.
 // Results are arena allocated raw pointers to support interop with cel::Handle
 // and expr::runtime::CelValue.
