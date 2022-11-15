@@ -188,13 +188,13 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
   if (maybe_idx.has_value()) {
     int64_t idx = *maybe_idx;
     if (idx < 0 || idx >= cel_list->size()) {
-      return absl::InvalidArgumentError(
+      return absl::UnknownError(
           absl::StrCat("Index error: index=", idx, " size=", cel_list->size()));
     }
     return cel_list->Get(frame->value_factory(), idx);
   }
 
-  return absl::InvalidArgumentError(
+  return absl::UnknownError(
       absl::StrCat("Index error: expected integer type, got ",
                    CelValue::TypeName(key->kind())));
 }
