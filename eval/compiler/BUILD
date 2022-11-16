@@ -200,14 +200,12 @@ cc_library(
     srcs = ["resolver.cc"],
     hdrs = ["resolver.h"],
     deps = [
-        "//eval/public:cel_builtins",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_type_registry",
         "//eval/public:cel_value",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

@@ -2,14 +2,13 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
-#include "google/protobuf/descriptor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {

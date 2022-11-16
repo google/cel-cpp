@@ -2,6 +2,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -28,7 +29,7 @@ class Resolver {
            const CelTypeRegistry* type_registry,
            bool resolve_qualified_type_identifiers = true);
 
-  ~Resolver() {}
+  ~Resolver() = default;
 
   // FindConstant will return an enum constant value or a type value if one
   // exists for the given name.
@@ -41,11 +42,6 @@ class Resolver {
   // provided value.
   absl::optional<CelValue> FindConstant(absl::string_view name,
                                         int64_t expr_id) const;
-
-  // FindDescriptor returns the protobuf message descriptor for the given name
-  // if one exists.
-  const google::protobuf::Descriptor* FindDescriptor(absl::string_view name,
-                                           int64_t expr_id) const;
 
   // FindTypeAdapter returns the adapter for the given type name if one exists,
   // following resolution rules for the expression container.
