@@ -42,10 +42,6 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
   const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:

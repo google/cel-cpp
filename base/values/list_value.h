@@ -104,10 +104,6 @@ class LegacyListValue final : public ListValue, public InlineData {
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const;
 
-  bool Equals(const Value& other) const;
-
-  void HashValue(absl::HashState state) const;
-
   constexpr uintptr_t value() const { return impl_; }
 
  private:
@@ -148,10 +144,6 @@ class AbstractListValue : public ListValue, public HeapData {
 
   virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                             size_t index) const = 0;
-
-  virtual bool Equals(const Value& other) const = 0;
-
-  virtual void HashValue(absl::HashState state) const = 0;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);

@@ -37,13 +37,4 @@ std::string EnumValue::DebugString() const {
   return absl::StrCat(type()->name(), ".", value);
 }
 
-bool EnumValue::Equals(const Value& other) const {
-  return kind() == other.kind() && type() == other.type() &&
-         number() == static_cast<const EnumValue&>(other).number();
-}
-
-void EnumValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), number());
-}
-
 }  // namespace cel

@@ -25,13 +25,8 @@ CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
 std::string TypeValue::DebugString() const { return std::string(name()); }
 
-bool TypeValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         name() == static_cast<const TypeValue&>(other).name();
-}
-
-void TypeValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), name());
+bool TypeValue::Equals(const TypeValue& other) const {
+  return name() == static_cast<const TypeValue&>(other).name();
 }
 
 absl::string_view TypeValue::name() const {

@@ -189,15 +189,6 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
   }
 
  private:
-  bool Equals(const Value& other) const override {
-    return Is(other) &&
-           value() == static_cast<const TestStructValue&>(other).value();
-  }
-
-  void HashValue(absl::HashState state) const override {
-    absl::HashState::combine(std::move(state), type(), value());
-  }
-
   TestStruct value_;
 
   CEL_DECLARE_STRUCT_VALUE(TestStructValue);
@@ -275,15 +266,6 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
   const std::vector<int64_t>& value() const { return elements_; }
 
  private:
-  bool Equals(const Value& other) const override {
-    return Is(other) &&
-           elements_ == static_cast<const TestListValue&>(other).elements_;
-  }
-
-  void HashValue(absl::HashState state) const override {
-    absl::HashState::combine(std::move(state), type(), elements_);
-  }
-
   std::vector<int64_t> elements_;
 
   CEL_DECLARE_LIST_VALUE(TestListValue);
@@ -342,15 +324,6 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   const std::map<std::string, int64_t>& value() const { return entries_; }
 
  private:
-  bool Equals(const Value& other) const override {
-    return Is(other) &&
-           entries_ == static_cast<const TestMapValue&>(other).entries_;
-  }
-
-  void HashValue(absl::HashState state) const override {
-    absl::HashState::combine(std::move(state), type(), entries_);
-  }
-
   std::map<std::string, int64_t> entries_;
 
   CEL_DECLARE_MAP_VALUE(TestMapValue);
@@ -536,7 +509,7 @@ INSTANTIATE_TEST_SUITE_P(
                return Must(value_factory.CreateEnumValue(
                    Must(type_factory.CreateEnumType<TestEnumType>()), 1));
              }},
-            {"Struct",
+            /*{"Struct",
              [](TypeFactory& type_factory,
                 ValueFactory& value_factory) -> Handle<Value> {
                return Must(value_factory.CreateStructValue<TestStructValue>(
@@ -556,7 +529,7 @@ INSTANTIATE_TEST_SUITE_P(
                    Must(type_factory.CreateMapType(type_factory.GetStringType(),
                                                    type_factory.GetIntType())),
                    std::map<std::string, int64_t>{}));
-             }},
+             }},*/
             {"Type",
              [](TypeFactory& type_factory,
                 ValueFactory& value_factory) -> Handle<Value> {
@@ -1999,9 +1972,6 @@ TEST_P(ValueTest, Struct) {
   EXPECT_TRUE(zero_value.Is<TestStructValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(
-      zero_value,
-      Must(value_factory.CreateStructValue<TestStructValue>(struct_type)));
   EXPECT_EQ(zero_value->kind(), Kind::kStruct);
   EXPECT_EQ(zero_value->type(), struct_type);
   EXPECT_EQ(zero_value.As<TestStructValue>()->value(), TestStruct{});
@@ -2108,8 +2078,6 @@ TEST_P(ValueTest, List) {
   EXPECT_TRUE(zero_value.Is<TestListValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Must(value_factory.CreateListValue<TestListValue>(
-                            list_type, std::vector<int64_t>{})));
   EXPECT_EQ(zero_value->kind(), Kind::kList);
   EXPECT_EQ(zero_value->type(), list_type);
   EXPECT_EQ(zero_value.As<TestListValue>()->value(), std::vector<int64_t>{});
@@ -2192,8 +2160,6 @@ TEST_P(ValueTest, Map) {
   EXPECT_TRUE(zero_value.Is<TestMapValue>());
   EXPECT_FALSE(zero_value.Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value, Must(value_factory.CreateMapValue<TestMapValue>(
-                            map_type, std::map<std::string, int64_t>{})));
   EXPECT_EQ(zero_value->kind(), Kind::kMap);
   EXPECT_EQ(zero_value->type(), map_type);
   EXPECT_EQ(zero_value.As<TestMapValue>()->value(),
@@ -2282,56 +2248,6 @@ TEST_P(MapValueTest, GetAndHas) {
 INSTANTIATE_TEST_SUITE_P(MapValueTest, MapValueTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
-
-TEST_P(ValueTest, SupportsAbslHash) {
-  TypeFactory type_factory(memory_manager());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  ASSERT_OK_AND_ASSIGN(auto struct_type,
-                       type_factory.CreateStructType<TestStructType>());
-  ASSERT_OK_AND_ASSIGN(auto enum_value,
-                       value_factory.CreateEnumValue(enum_type, 1));
-  ASSERT_OK_AND_ASSIGN(
-      auto struct_value,
-      value_factory.CreateStructValue<TestStructValue>(struct_type));
-  ASSERT_OK_AND_ASSIGN(auto list_type,
-                       type_factory.CreateListType(type_factory.GetIntType()));
-  ASSERT_OK_AND_ASSIGN(auto list_value,
-                       value_factory.CreateListValue<TestListValue>(
-                           list_type, std::vector<int64_t>{}));
-  ASSERT_OK_AND_ASSIGN(auto map_type,
-                       type_factory.CreateMapType(type_factory.GetStringType(),
-                                                  type_factory.GetIntType()));
-  ASSERT_OK_AND_ASSIGN(auto map_value,
-                       value_factory.CreateMapValue<TestMapValue>(
-                           map_type, std::map<std::string, int64_t>{}));
-  EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
-      Handle<Value>(value_factory.GetNullValue()),
-      Handle<Value>(value_factory.CreateErrorValue(absl::CancelledError())),
-      Handle<Value>(value_factory.CreateBoolValue(false)),
-      Handle<Value>(value_factory.CreateIntValue(0)),
-      Handle<Value>(value_factory.CreateUintValue(0)),
-      Handle<Value>(value_factory.CreateDoubleValue(0.0)),
-      Handle<Value>(
-          Must(value_factory.CreateDurationValue(absl::ZeroDuration()))),
-      Handle<Value>(
-          Must(value_factory.CreateTimestampValue(absl::UnixEpoch()))),
-      Handle<Value>(value_factory.GetBytesValue()),
-      Handle<Value>(Must(value_factory.CreateBytesValue("foo"))),
-      Handle<Value>(Must(value_factory.CreateBytesValue(absl::Cord("bar")))),
-      Handle<Value>(value_factory.GetStringValue()),
-      Handle<Value>(Must(value_factory.CreateStringValue("foo"))),
-      Handle<Value>(Must(value_factory.CreateStringValue(absl::Cord("bar")))),
-      Handle<Value>(enum_value),
-      Handle<Value>(struct_value),
-      Handle<Value>(list_value),
-      Handle<Value>(map_value),
-      Handle<Value>(value_factory.CreateTypeValue(type_factory.GetNullType())),
-      Handle<Value>(value_factory.CreateUnknownValue()),
-  }));
-}
 
 INSTANTIATE_TEST_SUITE_P(ValueTest, ValueTest,
                          base_internal::MemoryManagerTestModeAll(),

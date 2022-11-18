@@ -54,14 +54,6 @@ absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, value_factory, index);
 }
 
-bool ListValue::Equals(const Value& other) const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Equals, other);
-}
-
-void ListValue::HashValue(absl::HashState state) const {
-  CEL_INTERNAL_LIST_VALUE_DISPATCH(HashValue, std::move(state));
-}
-
 internal::TypeInfo ListValue::TypeId() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(TypeId);
 }
@@ -83,15 +75,6 @@ bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
 absl::StatusOr<Handle<Value>> LegacyListValue::Get(ValueFactory& value_factory,
                                                    size_t index) const {
   return LegacyListValueGet(impl_, value_factory, index);
-}
-
-bool LegacyListValue::Equals(const Value& other) const {
-  // Unimplemented.
-  return false;
-}
-
-void LegacyListValue::HashValue(absl::HashState state) const {
-  // Unimplemented.
 }
 
 AbstractListValue::AbstractListValue(Handle<ListType> type)

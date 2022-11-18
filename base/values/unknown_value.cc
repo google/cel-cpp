@@ -23,14 +23,6 @@ CEL_INTERNAL_VALUE_IMPL(UnknownValue);
 
 std::string UnknownValue::DebugString() const { return "*unknown*"; }
 
-void UnknownValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type());
-}
-
-bool UnknownValue::Equals(const Value& other) const {
-  return kind() == other.kind();
-}
-
 const AttributeSet& UnknownValue::attribute_set() const {
   return base_internal::Metadata::IsTrivial(*this)
              ? value_ptr_->unknown_attributes()

@@ -43,25 +43,6 @@ std::string StructValue::DebugString() const {
       ->DebugString();
 }
 
-void StructValue::HashValue(absl::HashState state) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    static_cast<const base_internal::LegacyStructValue*>(this)->HashValue(
-        std::move(state));
-    return;
-  }
-  static_cast<const base_internal::AbstractStructValue*>(this)->HashValue(
-      std::move(state));
-}
-
-bool StructValue::Equals(const Value& other) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)->Equals(
-        other);
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)->Equals(
-      other);
-}
-
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByName(
     ValueFactory& value_factory, absl::string_view name) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
@@ -154,14 +135,6 @@ Handle<StructType> LegacyStructValue::type() const {
 
 std::string LegacyStructValue::DebugString() const {
   return type()->DebugString();
-}
-
-void LegacyStructValue::HashValue(absl::HashState state) const {
-  MessageValueHash(msg_, type_info_, std::move(state));
-}
-
-bool LegacyStructValue::Equals(const Value& other) const {
-  return MessageValueEquals(msg_, type_info_, other);
 }
 
 absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByName(

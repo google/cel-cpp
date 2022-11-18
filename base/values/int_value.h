@@ -38,10 +38,6 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
 
   std::string DebugString() const;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
   using Base::value;
 
  private:

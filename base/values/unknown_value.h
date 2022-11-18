@@ -40,10 +40,6 @@ class UnknownValue final : public Value, public base_internal::InlineData {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
   const AttributeSet& attribute_set() const;
 
   const FunctionResultSet& function_result_set() const;

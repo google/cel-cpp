@@ -404,15 +404,6 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
   const std::vector<int64_t>& value() const { return elements_; }
 
  private:
-  bool Equals(const Value& other) const override {
-    return Is(other) &&
-           elements_ == static_cast<const TestListValue&>(other).elements_;
-  }
-
-  void HashValue(absl::HashState state) const override {
-    absl::HashState::combine(std::move(state), type(), elements_);
-  }
-
   std::vector<int64_t> elements_;
 
   CEL_DECLARE_LIST_VALUE(TestListValue);
@@ -517,15 +508,6 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   size_t size() const override { return entries_.size(); }
 
   bool empty() const override { return entries_.empty(); }
-
-  bool Equals(const Value& other) const override {
-    return Is(other) &&
-           entries_ == static_cast<const TestMapValue&>(other).entries_;
-  }
-
-  void HashValue(absl::HashState state) const override {
-    absl::HashState::combine(std::move(state), type(), entries_);
-  }
 
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     const Handle<Value>& key) const override {
@@ -681,16 +663,14 @@ TEST(ValueInterop, LegacyStructEquality) {
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  google::protobuf::Api lhs_api;
-  lhs_api.set_name("foo");
-  google::protobuf::Api rhs_api;
-  rhs_api.set_name("foo");
-  ASSERT_OK_AND_ASSIGN(auto lhs_value,
-                       FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(
-                                                   &lhs_api, &arena)));
-  ASSERT_OK_AND_ASSIGN(auto rhs_value,
-                       FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(
-                                                   &rhs_api, &arena)));
+  google::protobuf::Api api;
+  api.set_name("foo");
+  ASSERT_OK_AND_ASSIGN(
+      auto lhs_value,
+      FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(&api, &arena)));
+  ASSERT_OK_AND_ASSIGN(
+      auto rhs_value,
+      FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(&api, &arena)));
   EXPECT_EQ(lhs_value, rhs_value);
 }
 

@@ -47,10 +47,6 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
   constexpr int64_t number() const { return number_; }
 
   absl::string_view name() const;

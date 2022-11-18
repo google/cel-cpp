@@ -45,14 +45,6 @@ size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
 
 bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
 
-bool MapValue::Equals(const Value& other) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Equals, other);
-}
-
-void MapValue::HashValue(absl::HashState state) const {
-  CEL_INTERNAL_MAP_VALUE_DISPATCH(HashValue, std::move(state));
-}
-
 absl::StatusOr<Handle<Value>> MapValue::Get(ValueFactory& value_factory,
                                             const Handle<Value>& key) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
@@ -84,15 +76,6 @@ std::string LegacyMapValue::DebugString() const { return "map"; }
 size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
-
-bool LegacyMapValue::Equals(const Value& other) const {
-  // Unimplemented.
-  return false;
-}
-
-void LegacyMapValue::HashValue(absl::HashState state) const {
-  // Unimplemented.
-}
 
 absl::StatusOr<Handle<Value>> LegacyMapValue::Get(
     ValueFactory& value_factory, const Handle<Value>& key) const {

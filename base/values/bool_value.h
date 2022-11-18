@@ -41,10 +41,6 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
 
   std::string DebugString() const;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
   using Base::value;
 
  private:

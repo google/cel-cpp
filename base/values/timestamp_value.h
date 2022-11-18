@@ -41,10 +41,6 @@ class TimestampValue final
 
   std::string DebugString() const;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
   using Base::value;
 
  private:

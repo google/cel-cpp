@@ -39,10 +39,6 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
 
   std::string DebugString() const;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(NullValue);
 };

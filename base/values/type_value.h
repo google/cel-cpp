@@ -40,11 +40,9 @@ class TypeValue : public Value {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
   absl::string_view name() const;
+
+  bool Equals(const TypeValue& other) const;
 
  private:
   friend class ValueHandle;

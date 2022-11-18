@@ -55,10 +55,6 @@ class MapValue : public Value {
 
   bool empty() const;
 
-  bool Equals(const Value& other) const;
-
-  void HashValue(absl::HashState state) const;
-
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     const Handle<Value>& key) const;
 
@@ -112,10 +108,6 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   bool empty() const;
 
-  bool Equals(const Value& other) const;
-
-  void HashValue(absl::HashState state) const;
-
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     const Handle<Value>& key) const;
 
@@ -158,10 +150,6 @@ class AbstractMapValue : public MapValue, public HeapData {
   virtual size_t size() const = 0;
 
   virtual bool empty() const { return size() == 0; }
-
-  virtual bool Equals(const Value& other) const = 0;
-
-  virtual void HashValue(absl::HashState state) const = 0;
 
   virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                             const Handle<Value>& key) const = 0;

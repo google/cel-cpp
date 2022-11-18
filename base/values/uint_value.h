@@ -38,10 +38,6 @@ class UintValue final : public base_internal::SimpleValue<UintType, uint64_t> {
 
   std::string DebugString() const;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
   using Base::value;
 
  private:

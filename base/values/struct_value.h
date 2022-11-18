@@ -54,10 +54,6 @@ class StructValue : public Value {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
   absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
                                          FieldId field) const;
 
@@ -129,10 +125,6 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
  protected:
   absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
                                                absl::string_view name) const;
@@ -196,10 +188,6 @@ class AbstractStructValue : public StructValue, public HeapData {
   Handle<StructType> type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
-
-  virtual void HashValue(absl::HashState state) const = 0;
-
-  virtual bool Equals(const Value& other) const = 0;
 
  protected:
   explicit AbstractStructValue(Handle<StructType> type);

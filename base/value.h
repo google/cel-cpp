@@ -65,10 +65,6 @@ class Value : public base_internal::Data {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
  private:
   friend class ErrorValue;
   friend class BytesValue;
@@ -89,20 +85,6 @@ class Value : public base_internal::Data {
   Value& operator=(const Value&) = default;
   Value& operator=(Value&&) = default;
 };
-
-template <typename H>
-H AbslHashValue(H state, const Value& value) {
-  value.HashValue(absl::HashState::Create(&state));
-  return state;
-}
-
-inline bool operator==(const Value& lhs, const Value& rhs) {
-  return lhs.Equals(rhs);
-}
-
-inline bool operator!=(const Value& lhs, const Value& rhs) {
-  return !operator==(lhs, rhs);
-}
 
 }  // namespace cel
 
@@ -150,9 +132,9 @@ class ValueHandle final {
 
   bool Equals(const ValueHandle& other) const;
 
-  void HashValue(absl::HashState state) const;
-
  private:
+  static bool Equals(const Value& lhs, const Value& rhs, Kind kind);
+
   void CopyFrom(const ValueHandle& other);
 
   void MoveFrom(ValueHandle& other);
@@ -175,12 +157,6 @@ class ValueHandle final {
 
   AnyValue data_;
 };
-
-template <typename H>
-H AbslHashValue(H state, const ValueHandle& handle) {
-  handle.HashValue(absl::HashState::Create(&state));
-  return state;
-}
 
 inline bool operator==(const ValueHandle& lhs, const ValueHandle& rhs) {
   return lhs.Equals(rhs);
@@ -220,15 +196,6 @@ class SimpleValue : public Value, InlineData {
 
   Handle<T> type() const { return T::Get(); }
 
-  void HashValue(absl::HashState state) const {
-    absl::HashState::combine(std::move(state), type(), value());
-  }
-
-  bool Equals(const Value& other) const {
-    return type() == other.type() &&
-           value() == static_cast<const SimpleValue<T, U>&>(other).value();
-  }
-
   constexpr U value() const { return value_; }
 
  private:
@@ -262,12 +229,6 @@ class SimpleValue<NullType, void> : public Value, InlineData {
   constexpr Kind kind() const { return kKind; }
 
   Handle<NullType> type() const { return NullType::Get(); }
-
-  void HashValue(absl::HashState state) const {
-    absl::HashState::combine(std::move(state), type(), 0);
-  }
-
-  bool Equals(const Value& other) const { return kind() == other.kind(); }
 
  private:
   friend class ValueHandle;
