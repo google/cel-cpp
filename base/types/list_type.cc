@@ -30,19 +30,6 @@ std::string ListType::DebugString() const {
   return absl::StrCat(name(), "(", element()->DebugString(), ")");
 }
 
-bool ListType::Equals(const Type& other) const {
-  if (kind() != other.kind()) {
-    return false;
-  }
-  return element() == static_cast<const ListType&>(other).element();
-}
-
-void ListType::HashValue(absl::HashState state) const {
-  // We specifically hash the element first and then call the parent method to
-  // avoid hash suffix/prefix collisions.
-  absl::HashState::combine(std::move(state), element(), kind(), name());
-}
-
 const Handle<Type>& ListType::element() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyListType&>(*this).element();

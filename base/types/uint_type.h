@@ -39,10 +39,6 @@ class UintType final : public base_internal::SimpleType<Kind::kUint> {
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(UintType, UintValue);
 };

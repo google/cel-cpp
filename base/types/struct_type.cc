@@ -45,25 +45,6 @@ std::string StructType::DebugString() const {
       ->DebugString();
 }
 
-void StructType::HashValue(absl::HashState state) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    static_cast<const base_internal::LegacyStructType*>(this)->HashValue(
-        std::move(state));
-    return;
-  }
-  static_cast<const base_internal::AbstractStructType*>(this)->HashValue(
-      std::move(state));
-}
-
-bool StructType::Equals(const Type& other) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)->Equals(
-        other);
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)->Equals(
-      other);
-}
-
 internal::TypeInfo StructType::TypeId() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructType*>(this)->TypeId();
@@ -116,16 +97,6 @@ absl::string_view LegacyStructType::name() const {
   return MessageTypeName(msg_);
 }
 
-void LegacyStructType::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), kind(), name(), TypeId());
-}
-
-bool LegacyStructType::Equals(const Type& other) const {
-  return kind() == other.kind() &&
-         name() == static_cast<const StructType&>(other).name() &&
-         TypeId() == static_cast<const StructType&>(other).TypeId();
-}
-
 // Always returns an error.
 absl::StatusOr<absl::optional<StructType::Field>>
 LegacyStructType::FindFieldByName(TypeManager& type_manager,
@@ -148,16 +119,6 @@ AbstractStructType::AbstractStructType()
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
-}
-
-void AbstractStructType::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), kind(), name(), TypeId());
-}
-
-bool AbstractStructType::Equals(const Type& other) const {
-  return kind() == other.kind() &&
-         name() == static_cast<const StructType&>(other).name() &&
-         TypeId() == static_cast<const StructType&>(other).TypeId();
 }
 
 }  // namespace base_internal

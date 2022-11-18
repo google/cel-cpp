@@ -39,10 +39,6 @@ class IntType final : public base_internal::SimpleType<Kind::kInt> {
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(IntType, IntValue);
 };

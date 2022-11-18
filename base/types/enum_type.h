@@ -73,10 +73,6 @@ class EnumType : public Type, public base_internal::HeapData {
 
   std::string DebugString() const { return std::string(name()); }
 
-  virtual void HashValue(absl::HashState state) const;
-
-  virtual bool Equals(const Type& other) const;
-
   // Find the constant definition for the given identifier. If the constant does
   // not exist, an OK status and empty optional is returned. If the constant
   // exists, an OK status and the constant is returned. Otherwise an error is

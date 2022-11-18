@@ -225,6 +225,118 @@ void Type::HashValue(absl::HashState state) const {
 
 namespace base_internal {
 
+bool TypeHandle::Equals(const Type& lhs, const Type& rhs, Kind kind) {
+  switch (kind) {
+    case Kind::kNullType:
+      return true;
+    case Kind::kError:
+      return true;
+    case Kind::kDyn:
+      return true;
+    case Kind::kAny:
+      return true;
+    case Kind::kType:
+      return true;
+    case Kind::kBool:
+      return true;
+    case Kind::kInt:
+      return true;
+    case Kind::kUint:
+      return true;
+    case Kind::kDouble:
+      return true;
+    case Kind::kString:
+      return true;
+    case Kind::kBytes:
+      return true;
+    case Kind::kEnum:
+      return lhs.name() == rhs.name();
+    case Kind::kDuration:
+      return true;
+    case Kind::kTimestamp:
+      return true;
+    case Kind::kList:
+      return static_cast<const ListType&>(lhs).element() ==
+             static_cast<const ListType&>(rhs).element();
+    case Kind::kMap:
+      return static_cast<const MapType&>(lhs).key() ==
+                 static_cast<const MapType&>(rhs).key() &&
+             static_cast<const MapType&>(lhs).value() ==
+                 static_cast<const MapType&>(rhs).value();
+    case Kind::kStruct:
+      return lhs.name() == rhs.name();
+    case Kind::kUnknown:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void TypeHandle::HashValue(const Type& type, Kind kind, absl::HashState state) {
+  switch (kind) {
+    case Kind::kNullType:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kError:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kDyn:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kAny:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kType:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kBool:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kInt:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kUint:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kDouble:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kString:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kBytes:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kEnum:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kDuration:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kTimestamp:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kList:
+      absl::HashState::combine(std::move(state),
+                               static_cast<const ListType&>(type).element(),
+                               kind, type.name());
+      return;
+    case Kind::kMap:
+      absl::HashState::combine(
+          std::move(state), static_cast<const MapType&>(type).key(),
+          static_cast<const MapType&>(type).value(), kind, type.name());
+      return;
+    case Kind::kStruct:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    case Kind::kUnknown:
+      absl::HashState::combine(std::move(state), kind, type.name());
+      return;
+    default:
+      return;
+  }
+}
+
 bool TypeHandle::Equals(const TypeHandle& other) const {
   const auto* self = static_cast<const Type*>(data_.get());
   const auto* that = static_cast<const Type*>(other.data_.get());
@@ -234,13 +346,14 @@ bool TypeHandle::Equals(const TypeHandle& other) const {
   if (self == nullptr || that == nullptr) {
     return false;
   }
-  return self->Equals(*that);
+  Kind kind = self->kind();
+  return kind == that->kind() && Equals(*self, *that, kind);
 }
 
 void TypeHandle::HashValue(absl::HashState state) const {
   if (const auto* pointer = static_cast<const Type*>(data_.get());
       ABSL_PREDICT_TRUE(pointer != nullptr)) {
-    pointer->HashValue(std::move(state));
+    HashValue(*pointer, pointer->kind(), std::move(state));
   }
 }
 

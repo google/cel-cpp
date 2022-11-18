@@ -39,10 +39,6 @@ class UnknownType final : public base_internal::SimpleType<Kind::kUnknown> {
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(UnknownType, UnknownValue);
 };

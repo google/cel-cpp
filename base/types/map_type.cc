@@ -31,20 +31,6 @@ std::string MapType::DebugString() const {
                       value()->DebugString(), ")");
 }
 
-bool MapType::Equals(const Type& other) const {
-  if (kind() != other.kind()) {
-    return false;
-  }
-  return key() == static_cast<const MapType&>(other).key() &&
-         value() == static_cast<const MapType&>(other).value();
-}
-
-void MapType::HashValue(absl::HashState state) const {
-  // We specifically hash the element first and then call the parent method to
-  // avoid hash suffix/prefix collisions.
-  absl::HashState::combine(std::move(state), key(), value(), kind(), name());
-}
-
 const Handle<Type>& MapType::key() const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyMapType&>(*this).key();

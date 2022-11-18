@@ -79,20 +79,6 @@ class Type : public base_internal::Data {
   Type& operator=(Type&&) = default;
 };
 
-template <typename H>
-H AbslHashValue(H state, const Type& type) {
-  type.HashValue(absl::HashState::Create(&state));
-  return state;
-}
-
-inline bool operator==(const Type& lhs, const Type& rhs) {
-  return lhs.Equals(rhs);
-}
-
-inline bool operator!=(const Type& lhs, const Type& rhs) {
-  return !operator==(lhs, rhs);
-}
-
 }  // namespace cel
 
 // -----------------------------------------------------------------------------
@@ -142,6 +128,10 @@ class TypeHandle final {
   void HashValue(absl::HashState state) const;
 
  private:
+  static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
+
+  static void HashValue(const Type& type, Kind kind, absl::HashState state);
+
   void CopyFrom(const TypeHandle& other);
 
   void MoveFrom(TypeHandle& other);
@@ -284,12 +274,6 @@ class SimpleType : public Type, public InlineData {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const { return std::string(name()); }
-
-  void HashValue(absl::HashState state) const {
-    absl::HashState::combine(std::move(state), kind(), name());
-  }
-
-  bool Equals(const Type& other) const { return kind() == other.kind(); }
 
  private:
   friend class TypeHandle;

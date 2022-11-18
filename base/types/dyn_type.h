@@ -39,10 +39,6 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   friend class base_internal::LegacyListType;
   friend class base_internal::LegacyMapType;

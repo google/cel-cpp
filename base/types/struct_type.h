@@ -79,10 +79,6 @@ class StructType : public Type {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Type& other) const;
-
   // Find the field definition for the given identifier. If the field does
   // not exist, an OK status and empty optional is returned. If the field
   // exists, an OK status and the field is returned. Otherwise an error is
@@ -141,10 +137,6 @@ class LegacyStructType final : public StructType,
   // Always returns the same string.
   std::string DebugString() const { return std::string(name()); }
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Type& other) const;
-
  protected:
   // Always returns an error.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
@@ -188,10 +180,6 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   virtual absl::string_view name() const = 0;
 
   virtual std::string DebugString() const { return std::string(name()); }
-
-  virtual void HashValue(absl::HashState state) const;
-
-  virtual bool Equals(const Type& other) const;
 
  protected:
   AbstractStructType();

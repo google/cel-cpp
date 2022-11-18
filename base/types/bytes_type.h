@@ -39,10 +39,6 @@ class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(BytesType, BytesValue);
 };

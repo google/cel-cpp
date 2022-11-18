@@ -39,10 +39,6 @@ class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DoubleType, DoubleValue);
 };

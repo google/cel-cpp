@@ -45,10 +45,6 @@ class MapType : public Type {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Type& other) const;
-
   // Returns the type of the keys in the map.
   const Handle<Type>& key() const;
 
