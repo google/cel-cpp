@@ -25,11 +25,9 @@ constexpr absl::string_view kErrNoMatchingOverload =
     "No matching overloads found";
 constexpr absl::string_view kErrNoSuchField = "no_such_field";
 constexpr absl::string_view kErrNoSuchKey = "Key not found in map";
-constexpr absl::string_view kErrUnknownValue = "Unknown value ";
 // Error name for MissingAttributeError indicating that evaluation has
 // accessed an attribute whose value is undefined. go/terminal-unknown
 constexpr absl::string_view kErrMissingAttribute = "MissingAttributeError: ";
-constexpr absl::string_view kPayloadUrlUnknownPath = "unknown_path";
 constexpr absl::string_view kPayloadUrlMissingAttributePath =
     "missing_attribute_path";
 constexpr absl::string_view kPayloadUrlUnknownFunctionResult =

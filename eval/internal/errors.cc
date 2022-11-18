@@ -69,15 +69,6 @@ const absl::Status* CreateNoSuchKeyError(google::protobuf::Arena* arena,
                                      absl::StrCat(kErrNoSuchKey, " : ", key));
 }
 
-const absl::Status* CreateUnknownValueError(google::protobuf::Arena* arena,
-                                            absl::string_view unknown_path) {
-  auto* error =
-      Arena::Create<absl::Status>(arena, absl::StatusCode::kUnavailable,
-                                  absl::StrCat(kErrUnknownValue, unknown_path));
-  error->SetPayload(kPayloadUrlUnknownPath, absl::Cord(unknown_path));
-  return error;
-}
-
 const absl::Status* CreateMissingAttributeError(
     google::protobuf::Arena* arena, absl::string_view missing_attribute_path) {
   auto* error = Arena::Create<absl::Status>(

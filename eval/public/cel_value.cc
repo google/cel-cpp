@@ -281,23 +281,6 @@ bool CheckNoSuchKeyError(CelValue value) {
                                              interop::kErrNoSuchKey);
 }
 
-CelValue CreateUnknownValueError(google::protobuf::Arena* arena,
-                                 absl::string_view unknown_path) {
-  return CelValue::CreateError(
-      interop::CreateUnknownValueError(arena, unknown_path));
-}
-
-bool IsUnknownValueError(const CelValue& value) {
-  // TODO(issues/41): replace with the implementation of go/cel-known-unknowns
-  if (!value.IsError()) return false;
-  const CelError* error = value.ErrorOrDie();
-  if (error && error->code() == absl::StatusCode::kUnavailable) {
-    auto path = error->GetPayload(interop::kPayloadUrlUnknownPath);
-    return path.has_value();
-  }
-  return false;
-}
-
 CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
                                      absl::string_view missing_attribute_path) {
   return CelValue::CreateError(
