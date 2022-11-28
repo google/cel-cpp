@@ -58,6 +58,7 @@
 #include "eval/eval/select_step.h"
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
+#include "eval/internal/interop.h"
 #include "eval/public/ast_traverse_native.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/cel_builtins.h"
@@ -71,6 +72,7 @@ namespace {
 
 using ::cel::Handle;
 using ::cel::Value;
+using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Reference;
 using ::google::api::expr::v1alpha1::SourceInfo;
@@ -80,6 +82,8 @@ using Call = ::google::api::expr::v1alpha1::Expr::Call;
 using CreateList = ::google::api::expr::v1alpha1::Expr::CreateList;
 using CreateStruct = ::google::api::expr::v1alpha1::Expr::CreateStruct;
 using Comprehension = ::google::api::expr::v1alpha1::Expr::Comprehension;
+
+constexpr int64_t kExprIdNotFromAst = -1;
 
 template <typename ExprT>
 bool IsFunctionOverload(
@@ -962,27 +966,6 @@ void ExhaustiveTernaryCondVisitor::PostVisit(
   visitor_->AddStep(CreateTernaryStep(expr->id()));
 }
 
-const cel::ast::internal::Expr* Int64ConstImpl(int64_t value) {
-  cel::ast::internal::Expr* expr = new cel::ast::internal::Expr;
-  expr->mutable_const_expr().set_int64_value(value);
-  return expr;
-}
-
-const cel::ast::internal::Expr* MinusOne() {
-  static const cel::ast::internal::Expr* expr = Int64ConstImpl(-1);
-  return expr;
-}
-
-const cel::ast::internal::Expr* LoopStepDummy() {
-  static const cel::ast::internal::Expr* expr = Int64ConstImpl(-1);
-  return expr;
-}
-
-const cel::ast::internal::Expr* CurrentValueDummy() {
-  static const cel::ast::internal::Expr* expr = Int64ConstImpl(-20);
-  return expr;
-}
-
 // ComprehensionAccumulationReferences recursively walks an expression to count
 // the locations where the given accumulation var_name is referenced.
 //
@@ -1170,9 +1153,9 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
 }
 
 void ComprehensionVisitor::PreVisit(const cel::ast::internal::Expr*) {
-  const cel::ast::internal::Expr* dummy = LoopStepDummy();
-  visitor_->AddStep(CreateConstValueStep(ConvertConstant(dummy->const_expr()),
-                                         dummy->id(), false));
+  constexpr int64_t kLoopStepPlaceholder = -10;
+  visitor_->AddStep(CreateConstValueStep(CreateIntValue(kLoopStepPlaceholder),
+                                         kExprIdNotFromAst, false));
 }
 
 void ComprehensionVisitor::PostVisitArg(int arg_num,
@@ -1185,12 +1168,13 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
     case cel::ast::internal::ITER_RANGE: {
       // Post-process iter_range to list its keys if it's a map.
       visitor_->AddStep(CreateListKeysStep(expr->id()));
-      const cel::ast::internal::Expr* minus1 = MinusOne();
+      // Setup index stack position
+      visitor_->AddStep(
+          CreateConstValueStep(CreateIntValue(-1), kExprIdNotFromAst, false));
+      // Element at index.
+      constexpr int64_t kCurrentValuePlaceholder = -20;
       visitor_->AddStep(CreateConstValueStep(
-          ConvertConstant(minus1->const_expr()), minus1->id(), false));
-      const cel::ast::internal::Expr* dummy = CurrentValueDummy();
-      visitor_->AddStep(CreateConstValueStep(
-          ConvertConstant(dummy->const_expr()), dummy->id(), false));
+          CreateIntValue(kCurrentValuePlaceholder), kExprIdNotFromAst, false));
       break;
     }
     case cel::ast::internal::ACCU_INIT: {

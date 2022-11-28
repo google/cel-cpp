@@ -35,6 +35,7 @@ cc_library(
         "//eval/eval:select_step",
         "//eval/eval:shadowable_value_step",
         "//eval/eval:ternary_step",
+        "//eval/internal:interop",
         "//eval/public:ast_traverse_native",
         "//eval/public:ast_visitor_native",
         "//eval/public:cel_builtins",

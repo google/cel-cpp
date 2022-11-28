@@ -10,7 +10,6 @@
 #include "base/ast.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
