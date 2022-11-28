@@ -1,5 +1,6 @@
 #include "eval/public/cel_type_registry.h"
 
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -12,12 +13,16 @@
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
-#include "eval/public/cel_value.h"
+#include "eval/internal/interop.h"
 #include "internal/no_destructor.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using cel::Handle;
+using cel::Value;
+using cel::interop_internal::CreateTypeValueFromView;
 
 const absl::node_hash_set<std::string>& GetCoreTypes() {
   static const auto* const kCoreTypes =
@@ -135,15 +140,18 @@ absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
   return absl::nullopt;
 }
 
-absl::optional<CelValue> CelTypeRegistry::FindType(
+cel::Handle<cel::Value> CelTypeRegistry::FindType(
     absl::string_view fully_qualified_type_name) const {
+  // String canonical type names are interned in the node hash set.
+  // Some types are lazily provided by the registered type providers, so
+  // synchronization is needed to preserve const correctness.
   absl::MutexLock lock(&mutex_);
   // Searches through explicitly registered type names first.
   auto type = types_.find(fully_qualified_type_name);
   // The CelValue returned by this call will remain valid as long as the
   // CelExpression and associated builder stay in scope.
   if (type != types_.end()) {
-    return CelValue::CreateCelTypeView(*type);
+    return CreateTypeValueFromView(*type);
   }
 
   // By default falls back to looking at whether the type is provided by one
@@ -153,9 +161,10 @@ absl::optional<CelValue> CelTypeRegistry::FindType(
   if (adapter.has_value()) {
     auto [iter, inserted] =
         types_.insert(std::string(fully_qualified_type_name));
-    return CelValue::CreateCelTypeView(*iter);
+    return CreateTypeValueFromView(*iter);
   }
-  return absl::nullopt;
+
+  return cel::Handle<Value>();
 }
 
 }  // namespace google::api::expr::runtime

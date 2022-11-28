@@ -13,7 +13,8 @@
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "eval/public/cel_value.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 
 namespace google::api::expr::runtime {
@@ -40,7 +41,7 @@ class CelTypeRegistry {
 
   CelTypeRegistry();
 
-  ~CelTypeRegistry() {}
+  ~CelTypeRegistry() = default;
 
   // Register a fully qualified type name as a valid type for use within CEL
   // expressions.
@@ -80,7 +81,8 @@ class CelTypeRegistry {
       absl::string_view fully_qualified_type_name) const;
 
   // Find a type's CelValue instance by its fully qualified name.
-  absl::optional<CelValue> FindType(
+  // An empty handle is returned if not found.
+  cel::Handle<cel::Value> FindType(
       absl::string_view fully_qualified_type_name) const;
 
   // Return the set of enums configured within the type registry.

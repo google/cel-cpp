@@ -2,24 +2,28 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
+#include "base/values/int_value.h"
+#include "base/values/type_value.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::IntValue;
+using ::cel::TypeValue;
 using testing::Eq;
 
 class FakeFunction : public CelFunction {
@@ -75,15 +79,15 @@ TEST(ResolverTest, TestFindConstantEnum) {
                     &type_registry);
 
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
-  EXPECT_TRUE(enum_value.has_value());
-  EXPECT_TRUE(enum_value->IsInt64());
-  EXPECT_THAT(enum_value->Int64OrDie(), Eq(1L));
+  EXPECT_TRUE(enum_value);
+  EXPECT_TRUE(enum_value.Is<IntValue>());
+  EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
-  EXPECT_TRUE(enum_value.has_value());
-  EXPECT_TRUE(enum_value->IsInt64());
-  EXPECT_THAT(enum_value->Int64OrDie(), Eq(2L));
+  EXPECT_TRUE(enum_value);
+  EXPECT_TRUE(enum_value.Is<IntValue>());
+  EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(2L));
 }
 
 TEST(ResolverTest, TestFindConstantUnqualifiedType) {
@@ -92,9 +96,9 @@ TEST(ResolverTest, TestFindConstantUnqualifiedType) {
   Resolver resolver("cel", &func_registry, &type_registry);
 
   auto type_value = resolver.FindConstant("int", -1);
-  EXPECT_TRUE(type_value.has_value());
-  EXPECT_TRUE(type_value->IsCelType());
-  EXPECT_THAT(type_value->CelTypeOrDie().value(), Eq("int"));
+  EXPECT_TRUE(type_value);
+  EXPECT_TRUE(type_value.Is<TypeValue>());
+  EXPECT_THAT(type_value.As<TypeValue>()->name(), Eq("int"));
 }
 
 TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
@@ -109,9 +113,9 @@ TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
 
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
-  ASSERT_TRUE(type_value.has_value());
-  ASSERT_TRUE(type_value->IsCelType());
-  EXPECT_THAT(type_value->CelTypeOrDie().value(),
+  ASSERT_TRUE(type_value);
+  ASSERT_TRUE(type_value.Is<TypeValue>());
+  EXPECT_THAT(type_value.As<TypeValue>()->name(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
 
@@ -125,7 +129,7 @@ TEST(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
   Resolver resolver("", &func_registry, &type_registry, false);
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
-  EXPECT_FALSE(type_value.has_value());
+  EXPECT_FALSE(type_value);
 }
 
 TEST(ResolverTest, FindTypeAdapterBySimpleName) {

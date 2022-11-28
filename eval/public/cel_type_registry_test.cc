@@ -4,12 +4,13 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/message.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
-#include "eval/public/cel_value.h"
+#include "base/values/type_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
@@ -18,6 +19,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeValue;
 using testing::AllOf;
 using testing::Contains;
 using testing::Eq;
@@ -160,9 +162,9 @@ TEST(CelTypeRegistryTest, TestRegisterTypeName) {
   }
 
   auto type = registry.FindType("custom_type");
-  ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type->IsCelType());
-  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("custom_type"));
+  ASSERT_TRUE(type);
+  EXPECT_TRUE(type.Is<TypeValue>());
+  EXPECT_THAT(type.As<TypeValue>()->name(), Eq("custom_type"));
 }
 
 TEST(CelTypeRegistryTest, TestGetFirstTypeProviderSuccess) {
@@ -212,9 +214,9 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterNotFound) {
 TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("int");
-  ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type->IsCelType());
-  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("int"));
+  ASSERT_TRUE(type);
+  EXPECT_TRUE(type.Is<TypeValue>());
+  EXPECT_THAT(type.As<TypeValue>()->name(), Eq("int"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeAdapterTypeFound) {
@@ -224,15 +226,15 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterTypeFound) {
   registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
       std::vector<std::string>{"google.protobuf.Any"}));
   auto type = registry.FindType("google.protobuf.Any");
-  ASSERT_TRUE(type.has_value());
-  EXPECT_TRUE(type->IsCelType());
-  EXPECT_THAT(type->CelTypeOrDie().value(), Eq("google.protobuf.Any"));
+  ASSERT_TRUE(type);
+  EXPECT_TRUE(type.Is<TypeValue>());
+  EXPECT_THAT(type.As<TypeValue>()->name(), Eq("google.protobuf.Any"));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("missing.MessageType");
-  EXPECT_FALSE(type.has_value());
+  EXPECT_FALSE(type);
 }
 
 }  // namespace

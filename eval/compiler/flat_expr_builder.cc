@@ -64,14 +64,14 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/source_position.h"
 #include "eval/public/source_position_native.h"
-#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Handle;
+using ::cel::Value;
 using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::Reference;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using Ident = ::google::api::expr::v1alpha1::Expr::Ident;
@@ -162,7 +162,7 @@ class Jump {
 
 class CondVisitor {
  public:
-  virtual ~CondVisitor() {}
+  virtual ~CondVisitor() = default;
   virtual void PreVisit(const cel::ast::internal::Expr* expr) = 0;
   virtual void PostVisitArg(int arg_num,
                             const cel::ast::internal::Expr* expr) = 0;
@@ -346,8 +346,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
     // Attempt to resolve a select expression as a namespaced identifier for an
     // enum or type constant value.
-    absl::optional<google::api::expr::runtime::CelValue> const_value =
-        absl::nullopt;
     while (!namespace_stack_.empty()) {
       const auto& select_node = namespace_stack_.front();
       // Generate path in format "<ident>.<field 0>.<field 1>...".
@@ -359,13 +357,11 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       // qualified path present in the expression. Whether the identifier
       // can be resolved to a type instance depends on whether the option to
       // 'enable_qualified_type_identifiers' is set to true.
-      const_value = resolver_.FindConstant(qualified_path, select_expr->id());
-      if (const_value.has_value()) {
+      Handle<Value> const_value =
+          resolver_.FindConstant(qualified_path, select_expr->id());
+      if (const_value) {
         AddStep(CreateShadowableValueStep(
-            qualified_path,
-            cel::interop_internal::LegacyValueToModernValueOrDie(arena_,
-                                                                 *const_value),
-            select_expr->id()));
+            qualified_path, std::move(const_value), select_expr->id()));
         resolved_select_expr_ = select_expr;
         namespace_stack_.clear();
         return;
@@ -374,13 +370,10 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
 
     // Attempt to resolve a simple identifier as an enum or type constant value.
-    const_value = resolver_.FindConstant(path, expr->id());
-    if (const_value.has_value()) {
-      AddStep(CreateShadowableValueStep(
-          path,
-          cel::interop_internal::LegacyValueToModernValueOrDie(arena_,
-                                                               *const_value),
-          expr->id()));
+    Handle<Value> const_value = resolver_.FindConstant(path, expr->id());
+    if (const_value) {
+      AddStep(
+          CreateShadowableValueStep(path, std::move(const_value), expr->id()));
       return;
     }
 

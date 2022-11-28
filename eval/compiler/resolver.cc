@@ -8,10 +8,13 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "eval/public/cel_value.h"
+#include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
+
+using ::cel::Handle;
+using ::cel::Value;
+using ::cel::interop_internal::CreateIntValue;
 
 Resolver::Resolver(absl::string_view container,
                    const CelFunctionRegistry* function_registry,
@@ -55,7 +58,7 @@ Resolver::Resolver(absl::string_view container,
         // it will be resolved to "a.b.c.Name".
         auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
                                 enumerator.name);
-        enum_value_map_[key] = CelValue::CreateInt64(enumerator.number);
+        enum_value_map_[key] = CreateIntValue(enumerator.number);
       }
     }
   }
@@ -84,8 +87,8 @@ std::vector<std::string> Resolver::FullyQualifiedNames(absl::string_view name,
   return names;
 }
 
-absl::optional<CelValue> Resolver::FindConstant(absl::string_view name,
-                                                int64_t expr_id) const {
+Handle<Value> Resolver::FindConstant(absl::string_view name,
+                                     int64_t expr_id) const {
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
     // Attempt to resolve the fully qualified name to a known enum.
@@ -98,17 +101,18 @@ absl::optional<CelValue> Resolver::FindConstant(absl::string_view name,
     // not qualified, then it too may be returned as a constant value.
     if (resolve_qualified_type_identifiers_ || !absl::StrContains(name, ".")) {
       auto type_value = type_registry_->FindType(name);
-      if (type_value.has_value()) {
-        return *type_value;
+      if (type_value) {
+        return type_value;
       }
     }
   }
-  return absl::nullopt;
+
+  return Handle<Value>();
 }
 
 std::vector<const CelFunction*> Resolver::FindOverloads(
     absl::string_view name, bool receiver_style,
-    const std::vector<CelValue::Type>& types, int64_t expr_id) const {
+    const std::vector<cel::Kind>& types, int64_t expr_id) const {
   // Resolve the fully qualified names and then search the function registry
   // for possible matches.
   std::vector<const CelFunction*> funcs;
@@ -129,7 +133,7 @@ std::vector<const CelFunction*> Resolver::FindOverloads(
 
 std::vector<const CelFunctionProvider*> Resolver::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
-    const std::vector<CelValue::Type>& types, int64_t expr_id) const {
+    const std::vector<cel::Kind>& types, int64_t expr_id) const {
   // Resolve the fully qualified names and then search the function registry
   // for possible matches.
   std::vector<const CelFunctionProvider*> funcs;
