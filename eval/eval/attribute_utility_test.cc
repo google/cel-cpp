@@ -1,6 +1,9 @@
 #include "eval/eval/attribute_utility.h"
 
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -11,6 +14,9 @@
 namespace google::api::expr::runtime {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateBoolValue;
+using ::cel::interop_internal::CreateIntValue;
+using ::cel::interop_internal::CreateUnknownValueFromView;
 using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::NotNull;
@@ -88,11 +94,11 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   UnknownSet unknown_set0(UnknownAttributeSet({attribute0}));
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
   UnknownSet unknown_set2(UnknownAttributeSet({attribute1, attribute2}));
-  std::vector<CelValue> values = {
-      CelValue::CreateUnknownSet(&unknown_set0),
-      CelValue::CreateUnknownSet(&unknown_set1),
-      CelValue::CreateBool(true),
-      CelValue::CreateInt64(1),
+  std::vector<cel::Handle<cel::Value>> values = {
+      CreateUnknownValueFromView(&unknown_set0),
+      CreateUnknownValueFromView(&unknown_set1),
+      CreateBoolValue(true),
+      CreateIntValue(1),
   };
 
   const UnknownSet* unknown_set = utility.MergeUnknowns(values, nullptr);

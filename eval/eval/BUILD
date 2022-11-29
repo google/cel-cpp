@@ -695,12 +695,11 @@ cc_library(
     hdrs = ["attribute_utility.h"],
     deps = [
         ":attribute_trail",
+        "//base:functions",
         "//base:handle",
         "//base:memory_manager",
         "//base:value",
         "//eval/public:cel_attribute",
-        "//eval/public:cel_function",
-        "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "//eval/public:unknown_function_result_set",
         "//eval/public:unknown_set",
@@ -718,6 +717,7 @@ cc_test(
     ],
     deps = [
         ":attribute_utility",
+        "//eval/internal:interop",
         "//eval/public:cel_attribute",
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",

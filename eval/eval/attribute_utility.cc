@@ -3,7 +3,6 @@
 #include <utility>
 
 #include "base/values/unknown_value.h"
-#include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
 
@@ -48,32 +47,6 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
 // Scans over the args collection, merges any UnknownSets found in
 // it together with initial_set (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-const UnknownSet* AttributeUtility::MergeUnknowns(
-    absl::Span<const CelValue> args, const UnknownSet* initial_set) const {
-  absl::optional<UnknownSet> result_set;
-
-  for (const auto& value : args) {
-    if (!value.IsUnknownSet()) continue;
-
-    auto current_set = value.UnknownSetOrDie();
-    if (!result_set.has_value()) {
-      if (initial_set != nullptr) {
-        result_set.emplace(*initial_set);
-      } else {
-        result_set.emplace();
-      }
-    }
-    cel::base_internal::UnknownSetAccess::Add(*result_set, *current_set);
-  }
-
-  if (!result_set.has_value()) {
-    return initial_set;
-  }
-
-  return memory_manager_.New<UnknownSet>(std::move(result_set).value())
-      .release();
-}
-
 const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const cel::Handle<cel::Value>> args,
     const UnknownSet* initial_set) const {
@@ -127,27 +100,6 @@ UnknownAttributeSet AttributeUtility::CheckForUnknowns(
 // patterns, and attributes from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-const UnknownSet* AttributeUtility::MergeUnknowns(
-    absl::Span<const CelValue> args, absl::Span<const AttributeTrail> attrs,
-    const UnknownSet* initial_set, bool use_partial) const {
-  UnknownAttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
-  if (!attr_set.empty()) {
-    UnknownSet result_set(std::move(attr_set));
-    if (initial_set != nullptr) {
-      cel::base_internal::UnknownSetAccess::Add(result_set, *initial_set);
-    }
-    for (const auto& value : args) {
-      if (!value.IsUnknownSet()) {
-        continue;
-      }
-      cel::base_internal::UnknownSetAccess::Add(result_set,
-                                                *value.UnknownSetOrDie());
-    }
-    return memory_manager_.New<UnknownSet>(std::move(result_set)).release();
-  }
-  return MergeUnknowns(args, initial_set);
-}
-
 const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const cel::Handle<cel::Value>> args,
     absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,

@@ -7,13 +7,12 @@
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/function.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_function.h"
-#include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
@@ -57,8 +56,6 @@ class AttributeUtility {
   // Scans over the args collection, merges any UnknownAttributeSets found in
   // it together with initial_set (if initial_set is not null).
   // Returns pointer to merged set or nullptr, if there were no sets to merge.
-  const UnknownSet* MergeUnknowns(absl::Span<const CelValue> args,
-                                  const UnknownSet* initial_set) const;
   const UnknownSet* MergeUnknowns(
       absl::Span<const cel::Handle<cel::Value>> args,
       const UnknownSet* initial_set) const;
@@ -69,10 +66,6 @@ class AttributeUtility {
   // patterns, and attributes from initial_set
   // (if initial_set is not null).
   // Returns pointer to merged set or nullptr, if there were no sets to merge.
-  const UnknownSet* MergeUnknowns(absl::Span<const CelValue> args,
-                                  absl::Span<const AttributeTrail> attrs,
-                                  const UnknownSet* initial_set,
-                                  bool use_partial) const;
   const UnknownSet* MergeUnknowns(
       absl::Span<const cel::Handle<cel::Value>> args,
       absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,
@@ -86,16 +79,8 @@ class AttributeUtility {
   }
 
   // Create an initial UnknownSet from a single missing function call.
-  const UnknownSet* CreateUnknownSet(const CelFunctionDescriptor& fn_descriptor,
-                                     int64_t expr_id,
-                                     absl::Span<const CelValue> args) const {
-    return memory_manager_
-        .New<UnknownSet>(UnknownFunctionResultSet(
-            UnknownFunctionResult(fn_descriptor, expr_id)))
-        .release();
-  }
   const UnknownSet* CreateUnknownSet(
-      const CelFunctionDescriptor& fn_descriptor, int64_t expr_id,
+      const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
       absl::Span<const cel::Handle<cel::Value>> args) const {
     return memory_manager_
         .New<UnknownSet>(UnknownFunctionResultSet(
@@ -104,8 +89,8 @@ class AttributeUtility {
   }
 
  private:
-  const std::vector<CelAttributePattern>* unknown_patterns_;
-  const std::vector<CelAttributePattern>* missing_attribute_patterns_;
+  const std::vector<CelAttributePattern>* const unknown_patterns_;
+  const std::vector<CelAttributePattern>* const missing_attribute_patterns_;
   cel::MemoryManager& memory_manager_;
 };
 
