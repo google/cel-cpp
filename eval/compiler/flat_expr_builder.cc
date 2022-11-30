@@ -315,11 +315,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       return;
     }
 
-    auto value = ConvertConstant(*const_expr);
-    if (ValidateOrError(static_cast<bool>(value),
-                        "Unsupported constant type")) {
-      AddStep(CreateConstValueStep(std::move(value), expr->id()));
-    }
+    AddStep(CreateConstValueStep(*const_expr, expr->id()));
   }
 
   // Ident node handler.

@@ -15,15 +15,25 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::ast::internal::Constant;
+
 class ConstValueStep : public ExpressionStepBase {
  public:
   ConstValueStep(cel::Handle<cel::Value> value, int64_t expr_id,
                  bool comes_from_ast)
       : ExpressionStepBase(expr_id, comes_from_ast), value_(std::move(value)) {}
 
+  ConstValueStep(const Constant& expr, int64_t expr_id, bool comes_from_ast)
+      : ExpressionStepBase(expr_id, comes_from_ast),
+        const_expr_(expr),
+        value_(ConvertConstant(const_expr_)) {}
+
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
+  // Mainain a copy of the source constant to avoid lifecycle dependence on the
+  // ast after planning.
+  cel::ast::internal::Constant const_expr_;
   cel::Handle<cel::Value> value_;
 };
 
@@ -74,6 +84,11 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     cel::Handle<cel::Value> value, int64_t expr_id, bool comes_from_ast) {
   return std::make_unique<ConstValueStep>(std::move(value), expr_id,
                                           comes_from_ast);
+}
+
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+    const Constant& value, int64_t expr_id, bool comes_from_ast) {
+  return std::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
 }
 
 }  // namespace google::api::expr::runtime

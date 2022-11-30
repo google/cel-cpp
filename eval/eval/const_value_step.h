@@ -17,9 +17,16 @@ namespace google::api::expr::runtime {
 cel::Handle<cel::Value> ConvertConstant(
     const cel::ast::internal::Constant& const_expr);
 
-// Factory method for Constant - based Execution step
+// Factory method for Constant Value expression step.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     cel::Handle<cel::Value> value, int64_t expr_id, bool comes_from_ast = true);
+
+// Factory method for Constant AST node expression step.
+// Copies the Constant Expr node to avoid lifecycle dependency on source
+// expression.
+absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
+    const cel::ast::internal::Constant&, int64_t expr_id,
+    bool comes_from_ast = true);
 
 }  // namespace google::api::expr::runtime
 
