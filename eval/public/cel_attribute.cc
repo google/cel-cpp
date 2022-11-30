@@ -6,45 +6,10 @@
 #include <variant>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 
 namespace cel {
-namespace {
-
-using ::google::api::expr::runtime::CelValue;
-
-struct AttributeQualifierIsMatchVisitor final {
-  const CelValue& value;
-
-  bool operator()(const Kind& ignored) const {
-    static_cast<void>(ignored);
-    return false;
-  }
-
-  bool operator()(int64_t other) const {
-    int64_t value_value;
-    return value.GetValue(&value_value) && value_value == other;
-  }
-
-  bool operator()(uint64_t other) const {
-    uint64_t value_value;
-    return value.GetValue(&value_value) && value_value == other;
-  }
-
-  bool operator()(const std::string& other) const {
-    CelValue::StringHolder value_value;
-    return value.GetValue(&value_value) && value_value.value() == other;
-  }
-
-  bool operator()(bool other) const {
-    bool value_value;
-    return value.GetValue(&value_value) && value_value == other;
-  }
-};
-
-}  // namespace
 
 Attribute::Attribute(const google::api::expr::v1alpha1::Expr& variable,
                      std::vector<AttributeQualifier> qualifier_path)

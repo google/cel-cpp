@@ -16,6 +16,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/status/status.h"
+#include "absl/strings/escaping.h"
 #include "absl/strings/str_split.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
