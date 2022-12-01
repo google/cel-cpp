@@ -294,6 +294,15 @@ Handle<TypeValue> CreateTypeValueFromView(absl::string_view input) {
   return HandleFactory<TypeValue>::Make<LegacyTypeValue>(input);
 }
 
+Handle<ListValue> CreateLegacyListValue(const CelList* value) {
+  if (CelListAccess::TypeId(*value) == internal::TypeId<LegacyCelList>()) {
+    // Fast path.
+    return static_cast<const LegacyCelList*>(value)->value();
+  }
+  return HandleFactory<ListValue>::Make<base_internal::LegacyListValue>(
+      reinterpret_cast<uintptr_t>(value));
+}
+
 base_internal::StringValueRep GetStringValueRep(
     const Handle<StringValue>& value) {
   return value->rep();
@@ -330,16 +339,8 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
       return CreateDurationValue(legacy_value.DurationOrDie());
     case CelValue::Type::kTimestamp:
       return CreateTimestampValue(legacy_value.TimestampOrDie());
-    case CelValue::Type::kList: {
-      if (CelListAccess::TypeId(*legacy_value.ListOrDie()) ==
-          internal::TypeId<LegacyCelList>()) {
-        // Fast path.
-        return static_cast<const LegacyCelList*>(legacy_value.ListOrDie())
-            ->value();
-      }
-      return HandleFactory<ListValue>::Make<base_internal::LegacyListValue>(
-          reinterpret_cast<uintptr_t>(legacy_value.ListOrDie()));
-    }
+    case CelValue::Type::kList:
+      return CreateLegacyListValue(legacy_value.ListOrDie());
     case CelValue::Type::kMap: {
       if (CelMapAccess::TypeId(*legacy_value.MapOrDie()) ==
           internal::TypeId<LegacyCelMap>()) {

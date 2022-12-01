@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -14,6 +15,10 @@
 namespace google::api::expr::runtime {
 
 namespace {
+
+using ::cel::interop_internal::CreateLegacyListValue;
+using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
 
 class CreateListStep : public ExpressionStepBase {
  public:
@@ -47,7 +52,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     if (arg.Is<cel::ErrorValue>()) {
       result = arg;
       frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(result);
+      frame->value_stack().Push(std::move(result));
       return absl::OkStatus();
     }
   }
@@ -59,30 +64,30 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
         /*initial_set=*/nullptr,
         /*use_partial=*/true);
     if (unknown_set != nullptr) {
-      result = cel::interop_internal::LegacyValueToModernValueOrDie(
-          frame->memory_manager(), CelValue::CreateUnknownSet(unknown_set));
+      result = CreateUnknownValueFromView(unknown_set);
       frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(result);
+      frame->value_stack().Push(std::move(result));
       return absl::OkStatus();
     }
   }
 
-  CelList* cel_list;
   if (immutable_) {
-    cel_list = frame->memory_manager()
-                   .New<ContainerBackedListImpl>(
-                       cel::interop_internal::ModernValueToLegacyValueOrDie(
-                           frame->memory_manager(), args))
-                   .release();
+    // TODO(issues/5): switch to new cel::ListValue in phase 2
+    result = CreateLegacyListValue(
+        frame->memory_manager()
+            .New<ContainerBackedListImpl>(
+                ModernValueToLegacyValueOrDie(frame->memory_manager(), args))
+            .release());
   } else {
-    cel_list = frame->memory_manager()
-                   .New<MutableListImpl>(
-                       cel::interop_internal::ModernValueToLegacyValueOrDie(
-                           frame->memory_manager(), args))
-                   .release();
+    // TODO(issues/5): switch to new cel::ListValue in phase 2
+    result = CreateLegacyListValue(
+        frame->memory_manager()
+            .New<MutableListImpl>(
+                ModernValueToLegacyValueOrDie(frame->memory_manager(), args))
+            .release());
   }
   frame->value_stack().Pop(list_size_);
-  frame->value_stack().Push(CelValue::CreateList(cel_list));
+  frame->value_stack().Push(std::move(result));
   return absl::OkStatus();
 }
 

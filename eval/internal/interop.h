@@ -117,6 +117,9 @@ Handle<UintValue> CreateUintValue(uint64_t value);
 
 Handle<DoubleValue> CreateDoubleValue(double value);
 
+Handle<ListValue> CreateLegacyListValue(
+    const google::api::expr::runtime::CelList* value);
+
 // Create a modern string value, without validation or copying. Should only be
 // used during interoperation.
 Handle<StringValue> CreateStringValueFromView(absl::string_view value);
