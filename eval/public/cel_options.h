@@ -78,7 +78,7 @@ struct InterpreterOptions {
 
   // Enable list append within comprehensions. Note, this option is not safe
   // with hand-rolled ASTs.
-  int enable_comprehension_list_append = false;
+  bool enable_comprehension_list_append = false;
 
   // Enable RE2 match() overload.
   bool enable_regex = true;
