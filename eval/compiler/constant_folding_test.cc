@@ -4,12 +4,19 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
-#include "google/protobuf/util/message_differencer.h"
 #include "base/ast_utility.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
+#include "base/value_factory.h"
+#include "base/values/bool_value.h"
+#include "base/values/error_value.h"
+#include "base/values/int_value.h"
+#include "base/values/list_value.h"
+#include "base/values/string_value.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"
-#include "eval/public/cel_value.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 
@@ -17,8 +24,25 @@ namespace cel::ast::internal {
 
 namespace {
 
+using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::runtime::CelFunctionRegistry;
-using ::google::api::expr::runtime::CelValue;
+using ::google::protobuf::Arena;
+
+class ConstantFoldingTestWithValueFactory : public testing::Test {
+ public:
+  ConstantFoldingTestWithValueFactory()
+      : memory_manager_(&arena_),
+        type_factory_(memory_manager_),
+        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
+        value_factory_(type_manager_) {}
+
+ protected:
+  Arena arena_;
+  ProtoMemoryManager memory_manager_;
+  TypeFactory type_factory_;
+  TypeManager type_manager_;
+  ValueFactory value_factory_;
+};
 
 // Validate select is preserved as-is
 TEST(ConstantFoldingTest, Select) {
@@ -39,9 +63,9 @@ TEST(ConstantFoldingTest, Select) {
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
   EXPECT_EQ(out, native_expr);
   EXPECT_TRUE(idents.empty());
 }
@@ -72,9 +96,9 @@ TEST(ConstantFoldingTest, StructMessage) {
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -98,10 +122,10 @@ TEST(ConstantFoldingTest, StructMessage) {
   EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 2);
-  EXPECT_TRUE(idents["$v0"].IsString());
-  EXPECT_EQ(idents["$v0"].StringOrDie().value(), "value1");
-  EXPECT_TRUE(idents["$v1"].IsInt64());
-  EXPECT_EQ(idents["$v1"].Int64OrDie(), 12);
+  EXPECT_TRUE(idents["$v0"].Is<StringValue>());
+  EXPECT_EQ(idents["$v0"].As<StringValue>()->ToString(), "value1");
+  EXPECT_TRUE(idents["$v1"].Is<IntValue>());
+  EXPECT_EQ(idents["$v1"].As<IntValue>()->value(), 12);
 }
 
 // Validate struct creation is not folded but recursed into
@@ -128,9 +152,9 @@ TEST(ConstantFoldingTest, StructComprehension) {
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -153,13 +177,13 @@ TEST(ConstantFoldingTest, StructComprehension) {
   EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 3);
-  EXPECT_TRUE(idents["$v0"].IsString());
-  EXPECT_EQ(idents["$v0"].StringOrDie().value(), "y");
-  EXPECT_TRUE(idents["$v1"].IsString());
-  EXPECT_TRUE(idents["$v2"].IsString());
+  EXPECT_TRUE(idents["$v0"].Is<StringValue>());
+  EXPECT_EQ(idents["$v0"].As<StringValue>()->ToString(), "y");
+  EXPECT_TRUE(idents["$v1"].Is<StringValue>());
+  EXPECT_TRUE(idents["$v2"].Is<StringValue>());
 }
 
-TEST(ConstantFoldingTest, ListComprehension) {
+TEST_F(ConstantFoldingTestWithValueFactory, ListComprehension) {
   google::api::expr::v1alpha1::Expr expr;
   // [1, [2, 3]]
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -179,21 +203,23 @@ TEST(ConstantFoldingTest, ListComprehension) {
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   ASSERT_EQ(out.id(), 45);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
   auto value = idents[out.ident_expr().name()];
-  ASSERT_TRUE(value.IsList());
-  const auto& list = *value.ListOrDie();
-  ASSERT_EQ(list.size(), 2);
-  ASSERT_TRUE(list[0].IsInt64());
-  ASSERT_EQ(list[0].Int64OrDie(), 1);
-  ASSERT_TRUE(list[1].IsList());
-  ASSERT_EQ(list[1].ListOrDie()->size(), 2);
+  ASSERT_TRUE(value.Is<ListValue>());
+  const auto& list = value.As<ListValue>();
+  ASSERT_EQ(list->size(), 2);
+  ASSERT_OK_AND_ASSIGN(auto elem0, list->Get(value_factory_, 0));
+  ASSERT_OK_AND_ASSIGN(auto elem1, list->Get(value_factory_, 1));
+  ASSERT_TRUE(elem0.Is<IntValue>());
+  ASSERT_EQ(elem0.As<IntValue>()->value(), 1);
+  ASSERT_TRUE(elem1.Is<ListValue>());
+  ASSERT_EQ(elem1.As<ListValue>()->size(), 2);
 }
 
 // Validate that logic function application are not folded
@@ -218,16 +244,16 @@ TEST(ConstantFoldingTest, LogicApplication) {
   CelFunctionRegistry registry;
   ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   ASSERT_EQ(out.id(), 105);
   ASSERT_TRUE(out.has_call_expr());
   ASSERT_EQ(idents.size(), 2);
 }
 
-TEST(ConstantFoldingTest, FunctionApplication) {
+TEST_F(ConstantFoldingTestWithValueFactory, FunctionApplication) {
   google::api::expr::v1alpha1::Expr expr;
   // [1] + [2]
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -252,19 +278,19 @@ TEST(ConstantFoldingTest, FunctionApplication) {
   CelFunctionRegistry registry;
   ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   ASSERT_EQ(out.id(), 15);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
-  ASSERT_TRUE(idents[out.ident_expr().name()].IsList());
+  ASSERT_TRUE(idents[out.ident_expr().name()].Is<ListValue>());
 
-  const auto& list = *idents[out.ident_expr().name()].ListOrDie();
-  ASSERT_EQ(list.size(), 2);
-  ASSERT_EQ(list[0].Int64OrDie(), 1);
-  ASSERT_EQ(list[1].Int64OrDie(), 2);
+  const auto& list = idents[out.ident_expr().name()].As<ListValue>();
+  ASSERT_EQ(list->size(), 2);
+  ASSERT_EQ(list->Get(value_factory_, 0).value().As<IntValue>()->value(), 1);
+  ASSERT_EQ(list->Get(value_factory_, 1).value().As<IntValue>()->value(), 2);
 }
 
 TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
@@ -287,15 +313,15 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
   CelFunctionRegistry registry;
   ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   ASSERT_EQ(out.id(), 10);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
-  ASSERT_TRUE(idents[out.ident_expr().name()].IsInt64());
-  ASSERT_EQ(idents[out.ident_expr().name()].Int64OrDie(), 2);
+  ASSERT_TRUE(idents[out.ident_expr().name()].Is<IntValue>());
+  ASSERT_EQ(idents[out.ident_expr().name()].As<IntValue>()->value(), 2);
 }
 
 TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
@@ -321,14 +347,14 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
   CelFunctionRegistry registry;
   ASSERT_OK(RegisterBuiltinFunctions(&registry));
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   ASSERT_EQ(out.id(), 16);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
-  ASSERT_TRUE(CheckNoMatchingOverloadError(idents[out.ident_expr().name()]));
+  ASSERT_TRUE(idents[out.ident_expr().name()].Is<ErrorValue>());
 }
 
 // Validate that comprehension is recursed into
@@ -389,9 +415,9 @@ TEST(ConstantFoldingTest, MapComprehension) {
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
 
-  absl::flat_hash_map<std::string, CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, &out);
+  FoldConstants(native_expr, registry, &arena, idents, out);
 
   google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -448,12 +474,12 @@ TEST(ConstantFoldingTest, MapComprehension) {
   EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 6);
-  EXPECT_TRUE(idents["$v0"].IsBool());
-  EXPECT_TRUE(idents["$v1"].IsInt64());
-  EXPECT_TRUE(idents["$v2"].IsString());
-  EXPECT_TRUE(idents["$v3"].IsInt64());
-  EXPECT_TRUE(idents["$v4"].IsString());
-  EXPECT_TRUE(idents["$v5"].IsInt64());
+  EXPECT_TRUE(idents["$v0"].Is<BoolValue>());
+  EXPECT_TRUE(idents["$v1"].Is<IntValue>());
+  EXPECT_TRUE(idents["$v2"].Is<StringValue>());
+  EXPECT_TRUE(idents["$v3"].Is<IntValue>());
+  EXPECT_TRUE(idents["$v4"].Is<StringValue>());
+  EXPECT_TRUE(idents["$v5"].Is<IntValue>());
 }
 
 }  // namespace

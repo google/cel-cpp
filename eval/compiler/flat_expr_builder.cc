@@ -40,6 +40,7 @@
 #include "absl/types/variant.h"
 #include "base/ast.h"
 #include "base/ast_utility.h"
+#include "base/values/string_value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/compiler/resolver.h"
@@ -71,6 +72,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Handle;
+using ::cel::StringValue;
 using ::cel::Value;
 using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::CheckedExpr;
@@ -122,7 +124,7 @@ class RegexProgramBuilder final {
       : max_program_size_(max_program_size) {}
 
   absl::StatusOr<std::shared_ptr<const RE2>> BuildRegexProgram(
-      absl::string_view pattern) {
+      std::string pattern) {
     auto existing = programs_.find(pattern);
     if (existing != programs_.end()) {
       if (auto program = existing->second.lock(); program) {
@@ -137,7 +139,7 @@ class RegexProgramBuilder final {
     if (!program->ok()) {
       return absl::InvalidArgumentError("invalid_argument");
     }
-    programs_.insert({std::string(pattern), program});
+    programs_.insert({std::move(pattern), program});
     return program;
   }
 
@@ -264,8 +266,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   FlatExprVisitor(
       const google::api::expr::runtime::Resolver& resolver,
       google::api::expr::runtime::ExecutionPath* path, bool short_circuiting,
-      const absl::flat_hash_map<
-          std::string, google::api::expr::runtime::CelValue>& constant_idents,
+      const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
       google::protobuf::Arena* constant_arena, bool enable_comprehension,
       bool enable_comprehension_list_append,
       bool enable_comprehension_vulnerability_check,
@@ -336,11 +337,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     // Automatically replace constant idents with the backing CEL values.
     auto constant = constant_idents_.find(path);
     if (constant != constant_idents_.end()) {
-      // TODO(issues/5): this is temporary until migrating flat_expr_builder
-      AddStep(CreateConstValueStep(
-          cel::interop_internal::LegacyValueToModernValueOrDie(
-              constant_arena_, constant->second),
-          expr->id(), false));
+      AddStep(CreateConstValueStep(constant->second, expr->id(), false));
       return;
     }
 
@@ -778,18 +775,17 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
     auto const_value = constant_idents_.find(expr.ident_expr().name());
     return const_value != constant_idents_.end() &&
-           const_value->second.IsString();
+           const_value->second.Is<StringValue>();
   }
 
-  absl::string_view GetConstantString(
-      const cel::ast::internal::Expr& expr) const {
+  std::string GetConstantString(const cel::ast::internal::Expr& expr) const {
     ABSL_ASSERT(IsConstantString(expr));
     if (expr.has_const_expr()) {
       return expr.const_expr().string_value();
     }
     return constant_idents_.find(expr.ident_expr().name())
-        ->second.StringOrDie()
-        .value();
+        ->second.As<StringValue>()
+        ->ToString();
   }
 
   bool IsOptimizeableMatchesCall(
@@ -823,8 +819,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   bool short_circuiting_;
 
-  const absl::flat_hash_map<std::string, google::api::expr::runtime::CelValue>&
-      constant_idents_;
+  const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
   google::protobuf::Arena* constant_arena_;
 
   bool enable_comprehension_;
@@ -1280,7 +1275,7 @@ FlatExprBuilder::CreateExpressionImpl(
     native_reference_map_ptr = &native_reference_map;
   }
 
-  absl::flat_hash_map<std::string, google::api::expr::runtime::CelValue> idents;
+  absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
 
   // transformed expression preserving expression IDs
   bool rewrites_enabled = enable_qualified_identifier_rewrites_ ||
@@ -1304,8 +1299,8 @@ FlatExprBuilder::CreateExpressionImpl(
   cel::ast::internal::Expr const_fold_buffer;
   if (constant_folding_) {
     cel::ast::internal::FoldConstants(*effective_expr, *this->GetRegistry(),
-                                      constant_arena_, idents,
-                                      &const_fold_buffer);
+                                      constant_arena_, constant_idents,
+                                      const_fold_buffer);
     effective_expr = &const_fold_buffer;
   }
 
@@ -1313,8 +1308,8 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(
-      resolver, &execution_path, shortcircuiting_, idents, constant_arena_,
-      enable_comprehension_, enable_comprehension_list_append_,
+      resolver, &execution_path, shortcircuiting_, constant_idents,
+      constant_arena_, enable_comprehension_, enable_comprehension_list_append_,
       enable_comprehension_vulnerability_check_,
       enable_wrapper_type_null_unboxing_, &warnings_builder,
       &iter_variable_names, enable_regex_, enable_regex_precompilation_,
