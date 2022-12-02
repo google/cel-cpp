@@ -120,6 +120,9 @@ Handle<DoubleValue> CreateDoubleValue(double value);
 Handle<ListValue> CreateLegacyListValue(
     const google::api::expr::runtime::CelList* value);
 
+Handle<MapValue> CreateLegacyMapValue(
+    const google::api::expr::runtime::CelMap* value);
+
 // Create a modern string value, without validation or copying. Should only be
 // used during interoperation.
 Handle<StringValue> CreateStringValueFromView(absl::string_view value);
