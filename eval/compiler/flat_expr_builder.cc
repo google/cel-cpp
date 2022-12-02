@@ -1240,6 +1240,7 @@ FlatExprBuilder::CreateExpressionImpl(
   }
 
   // Convert the proto Expr type to the native representation.
+  // TODO(issues/5): move this to client responsibility.
   auto native_expr = cel::ast::internal::ToNative(*expr);
   if (!native_expr.ok()) {
     return native_expr.status();
@@ -1328,12 +1329,11 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::unique_ptr<CelExpression> expression_impl =
       std::make_unique<CelExpressionFlatImpl>(
-          nullptr, std::move(execution_path), GetTypeRegistry(),
+          std::move(execution_path), GetTypeRegistry(),
           comprehension_max_iterations_, std::move(iter_variable_names),
           enable_unknowns_, enable_unknown_function_results_,
           enable_missing_attribute_errors_, enable_null_coercion_,
-          enable_heterogeneous_equality_, std::move(rewrite_buffer),
-          std::move(arena));
+          enable_heterogeneous_equality_, std::move(arena));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

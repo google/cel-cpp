@@ -8,7 +8,6 @@
 #include "absl/strings/str_cat.h"
 #include "base/ast.h"
 #include "base/values/error_value.h"
-#include "eval/eval/const_value_step.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
@@ -54,6 +53,49 @@ absl::StatusOr<Handle<Value>> EvalLegacyFunction(
   return LegacyValueToModernValueOrDie(arena, result);
 }
 
+struct MakeConstantArenaSafeVisitor {
+  // TODO(issues/5): make the AST to runtime Value conversion work with
+  // non-arena based cel::MemoryManager.
+  google::protobuf::Arena* arena;
+
+  cel::Handle<cel::Value> operator()(
+      const cel::ast::internal::NullValue& value) {
+    return cel::interop_internal::CreateNullValue();
+  }
+  cel::Handle<cel::Value> operator()(bool value) {
+    return cel::interop_internal::CreateBoolValue(value);
+  }
+  cel::Handle<cel::Value> operator()(int64_t value) {
+    return cel::interop_internal::CreateIntValue(value);
+  }
+  cel::Handle<cel::Value> operator()(uint64_t value) {
+    return cel::interop_internal::CreateUintValue(value);
+  }
+  cel::Handle<cel::Value> operator()(double value) {
+    return cel::interop_internal::CreateDoubleValue(value);
+  }
+  cel::Handle<cel::Value> operator()(const std::string& value) {
+    const auto* arena_copy = Arena::Create<std::string>(arena, value);
+    return cel::interop_internal::CreateStringValueFromView(*arena_copy);
+  }
+  cel::Handle<cel::Value> operator()(const cel::ast::internal::Bytes& value) {
+    const auto* arena_copy = Arena::Create<std::string>(arena, value.bytes);
+    return cel::interop_internal::CreateBytesValueFromView(*arena_copy);
+  }
+  cel::Handle<cel::Value> operator()(const absl::Duration duration) {
+    return cel::interop_internal::CreateDurationValue(duration);
+  }
+  cel::Handle<cel::Value> operator()(const absl::Time timestamp) {
+    return cel::interop_internal::CreateTimestampValue(timestamp);
+  }
+};
+
+Handle<Value> MakeConstantArenaSafe(
+    google::protobuf::Arena* arena, const cel::ast::internal::Constant& const_expr) {
+  return absl::visit(MakeConstantArenaSafeVisitor{arena},
+                     const_expr.constant_kind());
+}
+
 class ConstantFoldingTransform {
  public:
   ConstantFoldingTransform(
@@ -65,8 +107,9 @@ class ConstantFoldingTransform {
         constant_idents_(constant_idents),
         counter_(0) {}
 
-  // Copies the expression by pulling out constant sub-expressions into
-  // Handle<Value> idents. Returns true if the expression is a constant.
+  // Copies the expression, replacing constant sub-expressions with identifiers
+  // mapping to Handle<Value> values. Returns true if this expression (including
+  // all subexpressions) is a constant.
   bool Transform(const Expr& expr, Expr& out);
 
   void MakeConstant(Handle<Value> value, Expr& out) {
@@ -90,7 +133,7 @@ class ConstantFoldingTransform {
     bool operator()(const Constant& constant) {
       // create a constant that references the input expression data
       // since the output expression is temporary
-      auto value = google::api::expr::runtime::ConvertConstant(constant);
+      auto value = MakeConstantArenaSafe(transform_.arena_, constant);
       if (value) {
         transform_.MakeConstant(std::move(value), out_);
         return true;
@@ -162,7 +205,8 @@ class ConstantFoldingTransform {
       }
 
       // compute function overload
-      // consider consolidating the logic with FunctionStep
+      // consider consolidating this logic with FunctionStep overload
+      // resolution.
       const CelFunction* matched_function = nullptr;
       for (auto overload : overloads) {
         if (overload->MatchArguments(arg_values)) {

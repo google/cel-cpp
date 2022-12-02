@@ -15,7 +15,6 @@
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -161,10 +160,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = std::make_unique<cel::ast::internal::Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {});
 
   Activation activation;
   google::protobuf::Arena arena;

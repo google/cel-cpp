@@ -2,6 +2,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
@@ -45,8 +46,8 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
-                                 &TestTypeRegistry(), 0, {}, enable_unknowns);
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
+                                 enable_unknowns);
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -78,8 +79,8 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
-                                 &TestTypeRegistry(), 0, {}, enable_unknowns);
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
+                                 enable_unknowns);
 
   return cel_expr.Evaluate(activation, arena);
 }
@@ -100,8 +101,7 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
-  CelExpressionFlatImpl cel_expr(&dummy_expr, std::move(path),
-                                 &TestTypeRegistry(), 0, {});
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {});
   Activation activation;
 
   google::protobuf::Arena arena;

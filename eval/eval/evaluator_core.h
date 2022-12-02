@@ -279,20 +279,17 @@ class CelExpressionFlatImpl : public CelExpression {
   // flattened AST tree. Max iterations dictates the maximum number of
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
-  // TODO(issues/5): Remove unused parameter \a root_expr.
-  CelExpressionFlatImpl(
-      ABSL_ATTRIBUTE_UNUSED const cel::ast::internal::Expr* root_expr,
-      ExecutionPath path, const CelTypeRegistry* type_registry,
-      int max_iterations, std::set<std::string> iter_variable_names,
-      bool enable_unknowns = false,
-      bool enable_unknown_function_results = false,
-      bool enable_missing_attribute_errors = false,
-      bool enable_null_coercion = true,
-      bool enable_heterogeneous_equality = false,
-      std::unique_ptr<cel::ast::internal::Expr> rewritten_expr = nullptr,
-      std::unique_ptr<const google::protobuf::Arena> arena = nullptr)
-      : rewritten_expr_(std::move(rewritten_expr)),
-        arena_(std::move(arena)),
+  CelExpressionFlatImpl(ExecutionPath path,
+                        const CelTypeRegistry* type_registry,
+                        int max_iterations,
+                        std::set<std::string> iter_variable_names,
+                        bool enable_unknowns = false,
+                        bool enable_unknown_function_results = false,
+                        bool enable_missing_attribute_errors = false,
+                        bool enable_null_coercion = true,
+                        bool enable_heterogeneous_equality = false,
+                        std::unique_ptr<const google::protobuf::Arena> arena = nullptr)
+      : arena_(std::move(arena)),
         path_(std::move(path)),
         type_registry_(*type_registry),
         max_iterations_(max_iterations),
@@ -331,8 +328,6 @@ class CelExpressionFlatImpl : public CelExpression {
                                  CelEvaluationListener callback) const override;
 
  private:
-  // Maintain lifecycle of a modified expression.
-  std::unique_ptr<cel::ast::internal::Expr> rewritten_expr_;
   // Arena used while builting the expression, must live as long.
   const std::unique_ptr<const google::protobuf::Arena> arena_;
   const ExecutionPath path_;

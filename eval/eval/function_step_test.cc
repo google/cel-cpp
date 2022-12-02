@@ -231,12 +231,9 @@ class FunctionStepTest
         break;
     }
     return std::make_unique<CelExpressionFlatImpl>(
-        &dummy_expr_, std::move(path), &TestTypeRegistry(), 0,
-        std::set<std::string>(), unknowns, unknown_function_results);
+        std::move(path), &TestTypeRegistry(), 0, std::set<std::string>(),
+        unknowns, unknown_function_results);
   }
-
- private:
-  Expr dummy_expr_;
 };
 
 TEST_P(FunctionStepTest, SimpleFunctionTest) {
@@ -488,12 +485,9 @@ class FunctionStepTestUnknowns
         break;
     }
     return std::make_unique<CelExpressionFlatImpl>(
-        &expr_, std::move(path), &TestTypeRegistry(), 0,
-        std::set<std::string>(), true, unknown_functions);
+        std::move(path), &TestTypeRegistry(), 0, std::set<std::string>(), true,
+        unknown_functions);
   }
-
- private:
-  Expr expr_;
 };
 
 TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
@@ -626,10 +620,8 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -671,10 +663,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -716,10 +706,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -756,10 +744,8 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -838,7 +824,6 @@ class FunctionStepNullCoercionTest : public testing::Test {
   }
 
  protected:
-  Expr dummy_expr_;
   Expr identifier_expr_;
   Expr call_expr_;
   Activation activation_;
@@ -860,8 +845,8 @@ TEST_F(FunctionStepNullCoercionTest, EnabledSupportsMessageOverloads) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true, true,
                              /*enable_null_coercion=*/true);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
@@ -884,8 +869,8 @@ TEST_F(FunctionStepNullCoercionTest, EnabledPrefersNullOverloads) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true, true,
                              /*enable_null_coercion=*/true);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
@@ -907,8 +892,8 @@ TEST_F(FunctionStepNullCoercionTest, EnabledNullMessageDoesNotEscape) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true, true,
                              /*enable_null_coercion=*/true);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
@@ -930,8 +915,8 @@ TEST_F(FunctionStepNullCoercionTest, Disabled) {
 
   path.push_back(std::move(call_step));
 
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true, true,
                              /*enable_null_coercion=*/false);
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
@@ -955,9 +940,8 @@ TEST(FunctionStepStrictnessTest,
                        MakeTestFunctionStep(call1, registry));
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
-  Expr placeholder_expr;
-  CelExpressionFlatImpl impl(&placeholder_expr, std::move(path),
-                             &TestTypeRegistry(), 0, {}, true, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true);
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
@@ -981,8 +965,8 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   Expr placeholder_expr;
-  CelExpressionFlatImpl impl(&placeholder_expr, std::move(path),
-                             &TestTypeRegistry(), 0, {}, true, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
+                             true);
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));

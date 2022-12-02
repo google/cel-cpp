@@ -138,13 +138,10 @@ cc_library(
     deps = [
         "//base:ast",
         "//base:value",
-        "//eval/eval:const_value_step",
         "//eval/internal:errors",
         "//eval/internal:interop",
         "//eval/public:cel_builtins",
-        "//eval/public:cel_function",
         "//eval/public:cel_function_registry",
-        "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_map",
