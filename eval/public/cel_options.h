@@ -127,7 +127,7 @@ struct InterpreterOptions {
   //
   // Note: This will be disabled by default in the future after clients that
   // depend on the legacy function resolution are identified.
-  bool enable_null_to_message_coercion = true;
+  bool enable_null_to_message_coercion = false;
 
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
   bool enable_heterogeneous_equality = true;
