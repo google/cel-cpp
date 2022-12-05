@@ -135,12 +135,6 @@ class CelExpressionBuilder {
   // expressions by registering them ahead of time.
   CelTypeRegistry* GetTypeRegistry() const { return type_registry_.get(); }
 
-  // Add Enum to the list of resolvable by the builder.
-  void ABSL_DEPRECATED("Use GetTypeRegistry()->Register() instead")
-      AddResolvableEnum(const google::protobuf::EnumDescriptor* enum_descriptor) {
-    type_registry_->Register(enum_descriptor);
-  }
-
   void set_container(std::string container) {
     container_ = std::move(container);
   }
