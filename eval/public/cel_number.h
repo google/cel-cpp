@@ -205,6 +205,18 @@ struct LosslessConvertibleToUintVisitor {
   constexpr bool operator()(int64_t value) const { return value >= 0; }
 };
 
+struct CelValueVisitor {
+  CelValue operator()(double value) const {
+    return CelValue::CreateDouble(value);
+  }
+  CelValue operator()(uint64_t value) const {
+    return CelValue::CreateUint64(value);
+  }
+  CelValue operator()(int64_t value) const {
+    return CelValue::CreateInt64(value);
+  }
+};
+
 }  // namespace internal
 
 // Utility class for CEL number operations.
@@ -289,6 +301,11 @@ class CelNumber {
 
   CEL_ABSL_VISIT_CONSTEXPR bool operator!=(CelNumber other) const {
     return Compare(other) != internal::ComparisonResult::kEqual;
+  }
+
+  // Adapt the CelNumber into a CelValue.
+  CelValue ToCelValue() const {
+    return absl::visit(internal::CelValueVisitor(), value_);
   }
 
  private:

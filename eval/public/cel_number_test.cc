@@ -18,6 +18,7 @@
 #include <limits>
 
 #include "absl/types/optional.h"
+#include "eval/public/cel_value.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -77,6 +78,17 @@ TEST(CelNumber, Conversions) {
   EXPECT_EQ(CelNumber::FromUint64(1).AsInt(), 1);
   EXPECT_EQ(CelNumber::FromDouble(1.0).AsUint(), 1);
   EXPECT_EQ(CelNumber::FromDouble(1.0).AsInt(), 1);
+}
+
+TEST(CelNumber, ToCelValue) {
+  EXPECT_TRUE(CelNumber::FromDouble(1.0).ToCelValue().IsDouble());
+  EXPECT_EQ(CelNumber::FromDouble(1.0).ToCelValue().DoubleOrDie(), 1.0);
+
+  EXPECT_TRUE(CelNumber::FromInt64(-42L).ToCelValue().IsInt64());
+  EXPECT_EQ(CelNumber::FromInt64(-42L).ToCelValue().Int64OrDie(), -42L);
+
+  EXPECT_TRUE(CelNumber::FromUint64(123u).ToCelValue().IsUint64());
+  EXPECT_EQ(CelNumber::FromUint64(123u).ToCelValue().Uint64OrDie(), 123u);
 }
 
 }  // namespace

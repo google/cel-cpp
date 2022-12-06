@@ -1232,6 +1232,7 @@ cc_test(
     srcs = ["cel_number_test.cc"],
     deps = [
         ":cel_number",
+        ":cel_value",
         "//internal:testing",
         "@com_google_absl//absl/types:optional",
     ],
