@@ -323,10 +323,10 @@ cc_test(
 )
 
 cc_library(
-    name = "ast",
-    srcs = ["ast.cc"],
+    name = "ast_internal",
+    srcs = ["ast_internal.cc"],
     hdrs = [
-        "ast.h",
+        "ast_internal.h",
     ],
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
@@ -339,12 +339,12 @@ cc_library(
 )
 
 cc_test(
-    name = "ast_test",
+    name = "ast_internal_test",
     srcs = [
-        "ast_test.cc",
+        "ast_internal_test.cc",
     ],
     deps = [
-        ":ast",
+        ":ast_internal",
         "//internal:testing",
         "@com_google_absl//absl/time",
     ],
@@ -355,7 +355,7 @@ cc_library(
     srcs = ["ast_utility.cc"],
     hdrs = ["ast_utility.h"],
     deps = [
-        ":ast",
+        ":ast_internal",
         "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/memory",
@@ -393,7 +393,7 @@ cc_test(
         "ast_utility_test.cc",
     ],
     deps = [
-        ":ast",
+        ":ast_internal",
         ":ast_utility",
         "//internal:testing",
         "@com_google_absl//absl/status",

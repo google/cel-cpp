@@ -18,7 +18,7 @@
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 
 namespace cel {
 namespace ast {

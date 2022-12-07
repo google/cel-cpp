@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "base/values/error_value.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"

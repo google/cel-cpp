@@ -6,7 +6,7 @@
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"

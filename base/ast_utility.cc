@@ -30,7 +30,7 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "internal/status_macros.h"
 
 namespace cel::ast::internal {

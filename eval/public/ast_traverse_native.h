@@ -17,7 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_NATIVE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_NATIVE_H_
 
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/public/ast_visitor_native.h"
 
 namespace cel::ast::internal {

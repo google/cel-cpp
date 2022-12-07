@@ -5,7 +5,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/public/cel_function_registry.h"
 
 namespace cel::ast::internal {

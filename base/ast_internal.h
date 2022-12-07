@@ -11,9 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#ifndef THIRD_PARTY_CEL_CPP_BASE_AST_H_
-#define THIRD_PARTY_CEL_CPP_BASE_AST_H_
+//
+// Type definitions for internal AST representation.
+// CEL users should not directly depend on the definitions here.
+#ifndef THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_
+#define THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_
 
 #include <cstdint>
 #include <limits>
@@ -61,7 +63,8 @@ using ConstantKind =
 
 class Constant {
  public:
-  constexpr Constant() {}
+  constexpr Constant() = default;
+
   explicit Constant(ConstantKind constant_kind)
       : constant_kind_(std::move(constant_kind)) {}
 
@@ -226,7 +229,7 @@ class Expr;
 // An identifier expression. e.g. `request`.
 class Ident {
  public:
-  Ident() {}
+  Ident() = default;
   explicit Ident(std::string name) : name_(std::move(name)) {}
 
   void set_name(std::string name) { name_ = std::move(name); }
@@ -246,7 +249,7 @@ class Ident {
 // A field selection expression. e.g. `request.auth`.
 class Select {
  public:
-  Select() {}
+  Select() = default;
   Select(std::unique_ptr<Expr> operand, std::string field,
          bool test_only = false)
       : operand_(std::move(operand)),
@@ -301,7 +304,7 @@ class Select {
 // (-- TODO(issues/5): Convert built-in globals to instance methods --)
 class Call {
  public:
-  Call();
+  Call() = default;
   Call(std::unique_ptr<Expr> target, std::string function,
        std::vector<Expr> args);
 
@@ -350,7 +353,7 @@ class Call {
 // --)
 class CreateList {
  public:
-  CreateList();
+  CreateList() = default;
   explicit CreateList(std::vector<Expr> elements);
 
   void set_elements(std::vector<Expr> elements);
@@ -377,7 +380,7 @@ class CreateStruct {
   class Entry {
    public:
     using KeyKind = absl::variant<std::string, std::unique_ptr<Expr>>;
-    Entry() {}
+    Entry() = default;
     Entry(int64_t id, KeyKind key_kind, std::unique_ptr<Expr> value)
         : id_(id), key_kind_(std::move(key_kind)), value_(std::move(value)) {}
 
@@ -451,7 +454,7 @@ class CreateStruct {
     std::unique_ptr<Expr> value_;
   };
 
-  CreateStruct() {}
+  CreateStruct() = default;
   CreateStruct(std::string message_name, std::vector<Entry> entries)
       : message_name_(std::move(message_name)), entries_(std::move(entries)) {}
 
@@ -528,7 +531,7 @@ class CreateStruct {
 // --)
 class Comprehension {
  public:
-  Comprehension() {}
+  Comprehension() = default;
   Comprehension(std::string iter_var, std::unique_ptr<Expr> iter_range,
                 std::string accu_var, std::unique_ptr<Expr> accu_init,
                 std::unique_ptr<Expr> loop_condition,
@@ -680,7 +683,7 @@ using ExprKind =
 // Move-only type.
 class Expr {
  public:
-  Expr() {}
+  Expr() = default;
   Expr(int64_t id, ExprKind expr_kind)
       : id_(id), expr_kind_(std::move(expr_kind)) {}
 
@@ -867,7 +870,7 @@ class Expr {
 // Source information collected at parse time.
 class SourceInfo {
  public:
-  SourceInfo() {}
+  SourceInfo() = default;
   SourceInfo(std::string syntax_version, std::string location,
              std::vector<int32_t> line_offsets,
              absl::flat_hash_map<int64_t, int32_t> positions,
@@ -961,7 +964,7 @@ class SourceInfo {
 // Move-only type.
 class ParsedExpr {
  public:
-  ParsedExpr() {}
+  ParsedExpr() = default;
   ParsedExpr(Expr expr, SourceInfo source_info)
       : expr_(std::move(expr)), source_info_(std::move(source_info)) {}
 
@@ -1037,7 +1040,7 @@ class Type;
 // List type with typed elements, e.g. `list<example.proto.MyMessage>`.
 class ListType {
  public:
-  ListType() {}
+  ListType() = default;
   explicit ListType(std::unique_ptr<Type> elem_type)
       : elem_type_(std::move(elem_type)) {}
 
@@ -1065,7 +1068,7 @@ class ListType {
 // Map type with parameterized key and value types, e.g. `map<string, int>`.
 class MapType {
  public:
-  MapType() {}
+  MapType() = default;
   MapType(std::unique_ptr<Type> key_type, std::unique_ptr<Type> value_type)
       : key_type_(std::move(key_type)), value_type_(std::move(value_type)) {}
 
@@ -1117,7 +1120,7 @@ class MapType {
 // --)
 class FunctionType {
  public:
-  FunctionType();
+  FunctionType() = default;
   FunctionType(std::unique_ptr<Type> result_type, std::vector<Type> arg_types);
 
   void set_result_type(std::unique_ptr<Type> result_type) {
@@ -1156,7 +1159,7 @@ class FunctionType {
 // TODO(issues/5): decide on final naming for this.
 class AbstractType {
  public:
-  AbstractType();
+  AbstractType() = default;
   AbstractType(std::string name, std::vector<Type> parameter_types);
 
   void set_name(std::string name) { name_ = std::move(name); }
@@ -1204,7 +1207,7 @@ class PrimitiveTypeWrapper {
 // example, `google.plus.Profile`.
 class MessageType {
  public:
-  MessageType() {}
+  MessageType() = default;
   explicit MessageType(std::string type) : type_(std::move(type)) {}
 
   void set_type(std::string type) { type_ = std::move(type); }
@@ -1226,7 +1229,7 @@ class MessageType {
 // named `E`.
 class ParamType {
  public:
-  ParamType() {}
+  ParamType() = default;
   explicit ParamType(std::string type) : type_(std::move(type)) {}
 
   void set_type(std::string type) { type_ = std::move(type); }
@@ -1259,7 +1262,7 @@ using TypeKind =
 // TODO(issues/5): align with value.proto
 class Type {
  public:
-  Type() {}
+  Type() = default;
   explicit Type(TypeKind type_kind) : type_kind_(std::move(type_kind)) {}
 
   Type(Type&& rhs) = default;
@@ -1430,7 +1433,7 @@ class Type {
 // Describes a resolved reference to a declaration.
 class Reference {
  public:
-  Reference() {}
+  Reference() = default;
 
   Reference(std::string name, std::vector<std::string> overload_id,
             Constant value)
@@ -1491,7 +1494,7 @@ class Reference {
 // Move-only type.
 class CheckedExpr {
  public:
-  CheckedExpr() {}
+  CheckedExpr() = default;
   CheckedExpr(absl::flat_hash_map<int64_t, Reference> reference_map,
               absl::flat_hash_map<int64_t, Type> type_map,
               SourceInfo source_info, std::string expr_version, Expr expr)
@@ -1590,8 +1593,6 @@ class CheckedExpr {
 // Implementation details
 ////////////////////////////////////////////////////////////////////////
 
-inline Call::Call() {}
-
 inline Call::Call(std::unique_ptr<Expr> target, std::string function,
                   std::vector<Expr> args)
     : target_(std::move(target)),
@@ -1599,8 +1600,6 @@ inline Call::Call(std::unique_ptr<Expr> target, std::string function,
       args_(std::move(args)) {}
 
 inline void Call::set_args(std::vector<Expr> args) { args_ = std::move(args); }
-
-inline CreateList::CreateList() {}
 
 inline CreateList::CreateList(std::vector<Expr> elements)
     : elements_(std::move(elements)) {}
@@ -1613,8 +1612,6 @@ inline bool CreateList::operator==(const CreateList& other) const {
   return elements_ == other.elements_;
 }
 
-inline FunctionType::FunctionType() {}
-
 inline FunctionType::FunctionType(std::unique_ptr<Type> result_type,
                                   std::vector<Type> arg_types)
     : result_type_(std::move(result_type)), arg_types_(std::move(arg_types)) {}
@@ -1622,8 +1619,6 @@ inline FunctionType::FunctionType(std::unique_ptr<Type> result_type,
 inline void FunctionType::set_arg_types(std::vector<Type> arg_types) {
   arg_types_ = std::move(arg_types);
 }
-
-inline AbstractType::AbstractType() {}
 
 inline AbstractType::AbstractType(std::string name,
                                   std::vector<Type> parameter_types)
@@ -1640,4 +1635,4 @@ inline bool AbstractType::operator==(const AbstractType& other) const {
 
 }  // namespace cel::ast::internal
 
-#endif  // THIRD_PARTY_CEL_CPP_BASE_AST_H_
+#endif  // THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_

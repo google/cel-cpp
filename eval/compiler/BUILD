@@ -18,7 +18,7 @@ cc_library(
         ":constant_folding",
         ":qualified_reference_resolver",
         ":resolver",
-        "//base:ast",
+        "//base:ast_internal",
         "//base:ast_utility",
         "//base:value",
         "//eval/eval:comprehension_step",
@@ -136,7 +136,7 @@ cc_library(
         "constant_folding.h",
     ],
     deps = [
-        "//base:ast",
+        "//base:ast_internal",
         "//base:value",
         "//eval/internal:errors",
         "//eval/internal:interop",
@@ -184,7 +184,7 @@ cc_library(
     ],
     deps = [
         ":resolver",
-        "//base:ast",
+        "//base:ast_internal",
         "//eval/eval:const_value_step",
         "//eval/eval:expression_build_warning",
         "//eval/public:ast_rewrite_native",

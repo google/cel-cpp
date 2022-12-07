@@ -6,7 +6,7 @@
 #include "google/protobuf/map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
 

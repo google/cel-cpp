@@ -21,7 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "base/memory_manager.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"

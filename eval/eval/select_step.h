@@ -7,7 +7,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/cel_value.h"
 
