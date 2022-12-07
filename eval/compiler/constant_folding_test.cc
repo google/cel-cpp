@@ -4,7 +4,6 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
-#include "base/ast_utility.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
@@ -16,6 +15,7 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -25,6 +25,7 @@ namespace cel::ast::internal {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::extensions::internal::ConvertProtoExprToNative;
 using ::google::api::expr::runtime::CelFunctionRegistry;
 using ::google::protobuf::Arena;
 
@@ -59,7 +60,7 @@ TEST(ConstantFoldingTest, Select) {
       test_only: true
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -91,7 +92,7 @@ TEST(ConstantFoldingTest, StructMessage) {
           message_name: "MyProto"
         })pb",
       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -117,7 +118,7 @@ TEST(ConstantFoldingTest, StructMessage) {
       message_name: "MyProto"
     })",
                                       &expected);
-  auto native_expected_expr = ToNative(expected).value();
+  auto native_expected_expr = ConvertProtoExprToNative(expected).value();
 
   EXPECT_EQ(out, native_expected_expr);
 
@@ -147,7 +148,7 @@ TEST(ConstantFoldingTest, StructComprehension) {
       }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -172,7 +173,7 @@ TEST(ConstantFoldingTest, StructComprehension) {
       }
     })",
                                       &expected);
-  auto native_expected_expr = ToNative(expected).value();
+  auto native_expected_expr = ConvertProtoExprToNative(expected).value();
 
   EXPECT_EQ(out, native_expected_expr);
 
@@ -198,7 +199,7 @@ TEST_F(ConstantFoldingTestWithValueFactory, ListComprehension) {
       }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -238,7 +239,7 @@ TEST(ConstantFoldingTest, LogicApplication) {
       }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -272,7 +273,7 @@ TEST_F(ConstantFoldingTestWithValueFactory, FunctionApplication) {
       }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -307,7 +308,7 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
         }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -341,7 +342,7 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
       }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -410,7 +411,7 @@ TEST(ConstantFoldingTest, MapComprehension) {
       }
     })",
                                       &expr);
-  auto native_expr = ToNative(expr).value();
+  auto native_expr = ConvertProtoExprToNative(expr).value();
 
   google::protobuf::Arena arena;
   CelFunctionRegistry registry;
@@ -469,7 +470,7 @@ TEST(ConstantFoldingTest, MapComprehension) {
       }
     })",
                                       &expected);
-  auto native_expected_expr = ToNative(expected).value();
+  auto native_expected_expr = ConvertProtoExprToNative(expected).value();
 
   EXPECT_EQ(out, native_expected_expr);
 

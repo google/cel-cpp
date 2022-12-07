@@ -351,25 +351,6 @@ cc_test(
 )
 
 cc_library(
-    name = "ast_utility",
-    srcs = ["ast_utility.cc"],
-    hdrs = ["ast_utility.h"],
-    deps = [
-        ":ast_internal",
-        "//internal:status_macros",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
-        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "functions",
     srcs = [
         "function.cc",
@@ -384,23 +365,5 @@ cc_library(
         ":kind",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_test(
-    name = "ast_utility_test",
-    srcs = [
-        "ast_utility_test.cc",
-    ],
-    deps = [
-        ":ast_internal",
-        ":ast_utility",
-        "//internal:testing",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
-        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
     ],
 )

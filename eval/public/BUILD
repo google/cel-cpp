@@ -829,7 +829,7 @@ cc_test(
         ":ast_rewrite_native",
         ":ast_visitor_native",
         ":source_position_native",
-        "//base:ast_utility",
+        "//extensions/protobuf:ast_converters",
         "//internal:testing",
         "//parser",
         "//testutil:util",

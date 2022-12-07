@@ -54,7 +54,7 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
   //
   // Note: underlying arena may be null.
   static google::protobuf::Arena* CastToProtoArena(MemoryManager& manager) {
-    return internal::down_cast<ProtoMemoryManager&>(manager).arena();
+    return cel::internal::down_cast<ProtoMemoryManager&>(manager).arena();
   }
 
  private:

@@ -39,7 +39,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal.h"
-#include "base/ast_utility.h"
 #include "base/values/string_value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
@@ -66,6 +65,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/source_position.h"
 #include "eval/public/source_position_native.h"
+#include "extensions/protobuf/ast_converters.h"
 
 namespace google::api::expr::runtime {
 
@@ -74,10 +74,14 @@ namespace {
 using ::cel::Handle;
 using ::cel::StringValue;
 using ::cel::Value;
+using ::cel::extensions::internal::ConvertProtoExprToNative;
+using ::cel::extensions::internal::ConvertProtoReferenceToNative;
+using ::cel::extensions::internal::ConvertProtoSourceInfoToNative;
 using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Reference;
 using ::google::api::expr::v1alpha1::SourceInfo;
+
 using Ident = ::google::api::expr::v1alpha1::Expr::Ident;
 using Select = ::google::api::expr::v1alpha1::Expr::Select;
 using Call = ::google::api::expr::v1alpha1::Expr::Call;
@@ -1241,7 +1245,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   // Convert the proto Expr type to the native representation.
   // TODO(issues/5): move this to client responsibility.
-  auto native_expr = cel::ast::internal::ToNative(*expr);
+  auto native_expr = ConvertProtoExprToNative(*expr);
   if (!native_expr.ok()) {
     return native_expr.status();
   }
@@ -1253,7 +1257,7 @@ FlatExprBuilder::CreateExpressionImpl(
   absl::StatusOr<cel::ast::internal::SourceInfo> native_source_info;
   cel::ast::internal::SourceInfo* native_source_info_ptr = nullptr;
   if (source_info != nullptr) {
-    native_source_info = cel::ast::internal::ToNative(*source_info);
+    native_source_info = ConvertProtoSourceInfoToNative(*source_info);
     if (!native_source_info.ok()) {
       return native_source_info.status();
     }
@@ -1267,7 +1271,7 @@ FlatExprBuilder::CreateExpressionImpl(
       native_reference_map_ptr = nullptr;
   if (reference_map != nullptr) {
     for (const auto& pair : *reference_map) {
-      auto native_reference = cel::ast::internal::ToNative(pair.second);
+      auto native_reference = ConvertProtoReferenceToNative(pair.second);
       if (!native_reference.ok()) {
         return native_reference.status();
       }

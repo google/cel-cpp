@@ -8,12 +8,12 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "base/ast_utility.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
@@ -25,6 +25,7 @@ namespace {
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::Reference;
 using ::cel::ast::internal::SourceInfo;
+using ::cel::extensions::internal::ConvertProtoExprToNative;
 using testing::Contains;
 using testing::ElementsAre;
 using testing::Eq;
@@ -81,7 +82,7 @@ MATCHER_P(StatusCodeIs, x, "") {
 Expr ParseTestProto(const std::string& pb) {
   google::api::expr::v1alpha1::Expr expr;
   EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(pb, &expr));
-  return cel::ast::internal::ToNative(expr).value();
+  return ConvertProtoExprToNative(expr).value();
 }
 
 TEST(ResolveReferences, Basic) {
@@ -113,7 +114,7 @@ TEST(ResolveReferences, Basic) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
@@ -180,7 +181,7 @@ TEST(ResolveReferences, NamespacedIdent) {
           }
         })pb",
       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, WarningOnPresenceTest) {
@@ -281,7 +282,7 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
@@ -318,7 +319,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, ConstReferenceSkipped) {
@@ -366,7 +367,7 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
 }
 
 constexpr char kExtensionAndExpr[] = R"(
@@ -615,7 +616,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
                                         }
                                       )pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -648,7 +649,7 @@ TEST(ResolveReferences,
                                         }
                                       )pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -701,7 +702,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(kReceiverCallHasExtensionAndExpr,
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -866,7 +867,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
           }
         })pb",
       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, ReferenceToId0Warns) {
@@ -907,7 +908,7 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
                                           field: "var"
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr, ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(
       warnings.warnings(),
       Contains(StatusIs(

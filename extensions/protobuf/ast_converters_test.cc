@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/ast_utility.h"
+#include "extensions/protobuf/ast_converters.h"
 
 #include <cstdint>
 #include <memory>
@@ -30,14 +30,16 @@
 #include "base/ast_internal.h"
 #include "internal/testing.h"
 
-namespace cel {
-namespace ast {
+namespace cel::extensions {
 namespace internal {
 namespace {
 
+using ::cel::ast::internal::NullValue;
+using ::cel::ast::internal::PrimitiveType;
+using ::cel::ast::internal::WellKnownType;
 using cel::internal::StatusIs;
 
-TEST(AstUtilityTest, IdentToNative) {
+TEST(AstConvertersTest, IdentToNative) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -45,13 +47,13 @@ TEST(AstUtilityTest, IdentToNative) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  auto native_expr = ConvertProtoExprToNative(expr);
 
   ASSERT_TRUE(native_expr->has_ident_expr());
   EXPECT_EQ(native_expr->ident_expr().name(), "name");
 }
 
-TEST(AstUtilityTest, SelectToNative) {
+TEST(AstConvertersTest, SelectToNative) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -63,7 +65,7 @@ TEST(AstUtilityTest, SelectToNative) {
       )pb",
       &expr));
 
-  ASSERT_OK_AND_ASSIGN(auto native_expr, ToNative(expr));
+  ASSERT_OK_AND_ASSIGN(auto native_expr, ConvertProtoExprToNative(expr));
 
   ASSERT_TRUE(native_expr.has_select_expr());
   auto& native_select = native_expr.select_expr();
@@ -73,7 +75,7 @@ TEST(AstUtilityTest, SelectToNative) {
   EXPECT_TRUE(native_select.test_only());
 }
 
-TEST(AstUtilityTest, CallToNative) {
+TEST(AstConvertersTest, CallToNative) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -86,7 +88,7 @@ TEST(AstUtilityTest, CallToNative) {
       )pb",
       &expr));
 
-  ASSERT_OK_AND_ASSIGN(auto native_expr, ToNative(expr));
+  ASSERT_OK_AND_ASSIGN(auto native_expr, ConvertProtoExprToNative(expr));
 
   ASSERT_TRUE(native_expr.has_call_expr());
   auto& native_call = native_expr.call_expr();
@@ -101,7 +103,7 @@ TEST(AstUtilityTest, CallToNative) {
   ASSERT_EQ(native_arg2.ident_expr().name(), "arg2");
 }
 
-TEST(AstUtilityTest, CreateListToNative) {
+TEST(AstConvertersTest, CreateListToNative) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -112,7 +114,7 @@ TEST(AstUtilityTest, CreateListToNative) {
       )pb",
       &expr));
 
-  ASSERT_OK_AND_ASSIGN(auto native_expr, ToNative(expr));
+  ASSERT_OK_AND_ASSIGN(auto native_expr, ConvertProtoExprToNative(expr));
 
   ASSERT_TRUE(native_expr.has_list_expr());
   auto& native_create_list = native_expr.list_expr();
@@ -124,7 +126,7 @@ TEST(AstUtilityTest, CreateListToNative) {
   ASSERT_EQ(native_elem2.ident_expr().name(), "elem2");
 }
 
-TEST(AstUtilityTest, CreateStructToNative) {
+TEST(AstConvertersTest, CreateStructToNative) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -143,7 +145,7 @@ TEST(AstUtilityTest, CreateStructToNative) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  auto native_expr = ConvertProtoExprToNative(expr);
 
   ASSERT_TRUE(native_expr->has_struct_expr());
   auto& native_struct = native_expr->struct_expr();
@@ -161,7 +163,7 @@ TEST(AstUtilityTest, CreateStructToNative) {
   ASSERT_EQ(native_entry2.value().ident_expr().name(), "value2");
 }
 
-TEST(AstUtilityTest, CreateStructError) {
+TEST(AstConvertersTest, CreateStructError) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -174,7 +176,7 @@ TEST(AstUtilityTest, CreateStructError) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  auto native_expr = ConvertProtoExprToNative(expr);
 
   EXPECT_EQ(native_expr.status().code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_expr.status().message(),
@@ -183,7 +185,7 @@ TEST(AstUtilityTest, CreateStructError) {
                   "google::api::expr::v1alpha1::Expr::CreateStruct::Entry::key_kind."));
 }
 
-TEST(AstUtilityTest, ComprehensionToNative) {
+TEST(AstConvertersTest, ComprehensionToNative) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -199,7 +201,7 @@ TEST(AstUtilityTest, ComprehensionToNative) {
       )pb",
       &expr));
 
-  auto native_expr = ToNative(expr);
+  auto native_expr = ConvertProtoExprToNative(expr);
 
   ASSERT_TRUE(native_expr->has_comprehension_expr());
   auto& native_comprehension = native_expr->comprehension_expr();
@@ -219,7 +221,7 @@ TEST(AstUtilityTest, ComprehensionToNative) {
   EXPECT_EQ(native_comprehension.result().ident_expr().name(), "result");
 }
 
-TEST(AstUtilityTest, ComplexityLimit) {
+TEST(AstConvertersTest, ComplexityLimit) {
   google::api::expr::v1alpha1::Expr expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -247,18 +249,18 @@ TEST(AstUtilityTest, ComplexityLimit) {
     expr = std::move(next);
   }
 
-  auto status_or = ToNative(expr);
+  auto status_or = ConvertProtoExprToNative(expr);
 
   EXPECT_THAT(status_or, StatusIs(absl::StatusCode::kInternal,
                                   testing::HasSubstr("max iterations")));
 }
 
-TEST(AstUtilityTest, ConstantToNative) {
+TEST(AstConvertersTest, ConstantToNative) {
   google::api::expr::v1alpha1::Expr expr;
   auto* constant = expr.mutable_const_expr();
   constant->set_null_value(google::protobuf::NULL_VALUE);
 
-  auto native_expr = ToNative(expr);
+  auto native_expr = ConvertProtoExprToNative(expr);
 
   ASSERT_TRUE(native_expr->has_const_expr());
   auto& native_constant = native_expr->const_expr();
@@ -266,7 +268,7 @@ TEST(AstUtilityTest, ConstantToNative) {
   EXPECT_EQ(native_constant.null_value(), NullValue::kNullValue);
 }
 
-TEST(AstUtilityTest, ConstantBoolTrueToNative) {
+TEST(AstConvertersTest, ConstantBoolTrueToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_bool_value(true);
 
@@ -276,7 +278,7 @@ TEST(AstUtilityTest, ConstantBoolTrueToNative) {
   EXPECT_TRUE(native_constant->bool_value());
 }
 
-TEST(AstUtilityTest, ConstantBoolFalseToNative) {
+TEST(AstConvertersTest, ConstantBoolFalseToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_bool_value(false);
 
@@ -286,7 +288,7 @@ TEST(AstUtilityTest, ConstantBoolFalseToNative) {
   EXPECT_FALSE(native_constant->bool_value());
 }
 
-TEST(AstUtilityTest, ConstantInt64ToNative) {
+TEST(AstConvertersTest, ConstantInt64ToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_int64_value(-23);
 
@@ -297,7 +299,7 @@ TEST(AstUtilityTest, ConstantInt64ToNative) {
   EXPECT_EQ(native_constant->int64_value(), -23);
 }
 
-TEST(AstUtilityTest, ConstantUint64ToNative) {
+TEST(AstConvertersTest, ConstantUint64ToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_uint64_value(23);
 
@@ -308,7 +310,7 @@ TEST(AstUtilityTest, ConstantUint64ToNative) {
   EXPECT_EQ(native_constant->uint64_value(), 23);
 }
 
-TEST(AstUtilityTest, ConstantDoubleToNative) {
+TEST(AstConvertersTest, ConstantDoubleToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_double_value(12.34);
 
@@ -318,7 +320,7 @@ TEST(AstUtilityTest, ConstantDoubleToNative) {
   EXPECT_EQ(native_constant->double_value(), 12.34);
 }
 
-TEST(AstUtilityTest, ConstantStringToNative) {
+TEST(AstConvertersTest, ConstantStringToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_string_value("string");
 
@@ -328,7 +330,7 @@ TEST(AstUtilityTest, ConstantStringToNative) {
   EXPECT_EQ(native_constant->string_value(), "string");
 }
 
-TEST(AstUtilityTest, ConstantBytesToNative) {
+TEST(AstConvertersTest, ConstantBytesToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.set_bytes_value("bytes");
 
@@ -338,7 +340,7 @@ TEST(AstUtilityTest, ConstantBytesToNative) {
   EXPECT_EQ(native_constant->bytes_value(), "bytes");
 }
 
-TEST(AstUtilityTest, ConstantDurationToNative) {
+TEST(AstConvertersTest, ConstantDurationToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.mutable_duration_value()->set_seconds(123);
   constant.mutable_duration_value()->set_nanos(456);
@@ -350,7 +352,7 @@ TEST(AstUtilityTest, ConstantDurationToNative) {
             absl::Seconds(123) + absl::Nanoseconds(456));
 }
 
-TEST(AstUtilityTest, ConstantTimestampToNative) {
+TEST(AstConvertersTest, ConstantTimestampToNative) {
   google::api::expr::v1alpha1::Constant constant;
   constant.mutable_timestamp_value()->set_seconds(123);
   constant.mutable_timestamp_value()->set_nanos(456);
@@ -362,7 +364,7 @@ TEST(AstUtilityTest, ConstantTimestampToNative) {
             absl::FromUnixSeconds(123) + absl::Nanoseconds(456));
 }
 
-TEST(AstUtilityTest, ConstantError) {
+TEST(AstConvertersTest, ConstantError) {
   auto native_constant = ConvertConstant(google::api::expr::v1alpha1::Constant());
 
   EXPECT_EQ(native_constant.status().code(),
@@ -371,14 +373,14 @@ TEST(AstUtilityTest, ConstantError) {
               ::testing::HasSubstr("Unsupported constant type"));
 }
 
-TEST(AstUtilityTest, ExprUnset) {
-  auto native_expr = ToNative(google::api::expr::v1alpha1::Expr());
+TEST(AstConvertersTest, ExprUnset) {
+  auto native_expr = ConvertProtoExprToNative(google::api::expr::v1alpha1::Expr());
 
   EXPECT_TRUE(
       absl::holds_alternative<absl::monostate>(native_expr->expr_kind()));
 }
 
-TEST(AstUtilityTest, SourceInfoToNative) {
+TEST(AstConvertersTest, SourceInfoToNative) {
   google::api::expr::v1alpha1::SourceInfo source_info;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -395,7 +397,7 @@ TEST(AstUtilityTest, SourceInfoToNative) {
       )pb",
       &source_info));
 
-  auto native_source_info = ToNative(source_info);
+  auto native_source_info = ConvertProtoSourceInfoToNative(source_info);
 
   EXPECT_EQ(native_source_info->syntax_version(), "version");
   EXPECT_EQ(native_source_info->location(), "location");
@@ -407,7 +409,7 @@ TEST(AstUtilityTest, SourceInfoToNative) {
             "name");
 }
 
-TEST(AstUtilityTest, ParsedExprToNative) {
+TEST(AstConvertersTest, ParsedExprToNative) {
   google::api::expr::v1alpha1::ParsedExpr parsed_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -427,7 +429,7 @@ TEST(AstUtilityTest, ParsedExprToNative) {
       )pb",
       &parsed_expr));
 
-  auto native_parsed_expr = ToNative(parsed_expr);
+  auto native_parsed_expr = ConvertProtoParsedExprToNative(parsed_expr);
 
   ASSERT_TRUE(native_parsed_expr->expr().has_ident_expr());
   ASSERT_EQ(native_parsed_expr->expr().ident_expr().name(), "name");
@@ -441,81 +443,81 @@ TEST(AstUtilityTest, ParsedExprToNative) {
   ASSERT_EQ(native_source_info.macro_calls().at(1).ident_expr().name(), "name");
 }
 
-TEST(AstUtilityTest, PrimitiveTypeUnspecifiedToNative) {
+TEST(AstConvertersTest, PrimitiveTypeUnspecifiedToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::PRIMITIVE_TYPE_UNSPECIFIED);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kPrimitiveTypeUnspecified);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeBoolToNative) {
+TEST(AstConvertersTest, PrimitiveTypeBoolToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::BOOL);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kBool);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeInt64ToNative) {
+TEST(AstConvertersTest, PrimitiveTypeInt64ToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::INT64);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kInt64);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeUint64ToNative) {
+TEST(AstConvertersTest, PrimitiveTypeUint64ToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::UINT64);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kUint64);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeDoubleToNative) {
+TEST(AstConvertersTest, PrimitiveTypeDoubleToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::DOUBLE);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kDouble);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeStringToNative) {
+TEST(AstConvertersTest, PrimitiveTypeStringToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::STRING);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kString);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeBytesToNative) {
+TEST(AstConvertersTest, PrimitiveTypeBytesToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(google::api::expr::v1alpha1::Type::BYTES);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_primitive());
   EXPECT_EQ(native_type->primitive(), PrimitiveType::kBytes);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeError) {
+TEST(AstConvertersTest, PrimitiveTypeError) {
   google::api::expr::v1alpha1::Type type;
   type.set_primitive(::google::api::expr::v1alpha1::Type_PrimitiveType(7));
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   EXPECT_EQ(native_type.status().code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_type.status().message(),
@@ -523,52 +525,52 @@ TEST(AstUtilityTest, PrimitiveTypeError) {
                                    "google::api::expr::v1alpha1::Type::PrimitiveType."));
 }
 
-TEST(AstUtilityTest, WellKnownTypeUnspecifiedToNative) {
+TEST(AstConvertersTest, WellKnownTypeUnspecifiedToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_well_known(google::api::expr::v1alpha1::Type::WELL_KNOWN_TYPE_UNSPECIFIED);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
   EXPECT_EQ(native_type->well_known(),
             WellKnownType::kWellKnownTypeUnspecified);
 }
 
-TEST(AstUtilityTest, WellKnownTypeAnyToNative) {
+TEST(AstConvertersTest, WellKnownTypeAnyToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_well_known(google::api::expr::v1alpha1::Type::ANY);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
   EXPECT_EQ(native_type->well_known(), WellKnownType::kAny);
 }
 
-TEST(AstUtilityTest, WellKnownTypeTimestampToNative) {
+TEST(AstConvertersTest, WellKnownTypeTimestampToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_well_known(google::api::expr::v1alpha1::Type::TIMESTAMP);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
   EXPECT_EQ(native_type->well_known(), WellKnownType::kTimestamp);
 }
 
-TEST(AstUtilityTest, WellKnownTypeDuraionToNative) {
+TEST(AstConvertersTest, WellKnownTypeDuraionToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_well_known(google::api::expr::v1alpha1::Type::DURATION);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_well_known());
   EXPECT_EQ(native_type->well_known(), WellKnownType::kDuration);
 }
 
-TEST(AstUtilityTest, WellKnownTypeError) {
+TEST(AstConvertersTest, WellKnownTypeError) {
   google::api::expr::v1alpha1::Type type;
   type.set_well_known(::google::api::expr::v1alpha1::Type_WellKnownType(4));
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   EXPECT_EQ(native_type.status().code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_type.status().message(),
@@ -576,12 +578,12 @@ TEST(AstUtilityTest, WellKnownTypeError) {
                                    "google::api::expr::v1alpha1::Type::WellKnownType."));
 }
 
-TEST(AstUtilityTest, ListTypeToNative) {
+TEST(AstConvertersTest, ListTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   type.mutable_list_type()->mutable_elem_type()->set_primitive(
       google::api::expr::v1alpha1::Type::BOOL);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_list_type());
   auto& native_list_type = native_type->list_type();
@@ -589,7 +591,7 @@ TEST(AstUtilityTest, ListTypeToNative) {
   EXPECT_EQ(native_list_type.elem_type().primitive(), PrimitiveType::kBool);
 }
 
-TEST(AstUtilityTest, MapTypeToNative) {
+TEST(AstConvertersTest, MapTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -600,7 +602,7 @@ TEST(AstUtilityTest, MapTypeToNative) {
       )pb",
       &type));
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_map_type());
   auto& native_map_type = native_type->map_type();
@@ -610,7 +612,7 @@ TEST(AstUtilityTest, MapTypeToNative) {
   EXPECT_EQ(native_map_type.value_type().primitive(), PrimitiveType::kDouble);
 }
 
-TEST(AstUtilityTest, FunctionTypeToNative) {
+TEST(AstConvertersTest, FunctionTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -622,7 +624,7 @@ TEST(AstUtilityTest, FunctionTypeToNative) {
       )pb",
       &type));
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_function());
   auto& native_function_type = native_type->function();
@@ -637,7 +639,7 @@ TEST(AstUtilityTest, FunctionTypeToNative) {
             PrimitiveType::kString);
 }
 
-TEST(AstUtilityTest, AbstractTypeToNative) {
+TEST(AstConvertersTest, AbstractTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -649,7 +651,7 @@ TEST(AstUtilityTest, AbstractTypeToNative) {
       )pb",
       &type));
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_abstract_type());
   auto& native_abstract_type = native_type->abstract_type();
@@ -662,67 +664,67 @@ TEST(AstUtilityTest, AbstractTypeToNative) {
             PrimitiveType::kString);
 }
 
-TEST(AstUtilityTest, DynamicTypeToNative) {
+TEST(AstConvertersTest, DynamicTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   type.mutable_dyn();
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_dyn());
 }
 
-TEST(AstUtilityTest, NullTypeToNative) {
+TEST(AstConvertersTest, NullTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_null(google::protobuf::NULL_VALUE);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_null());
   EXPECT_EQ(native_type->null(), NullValue::kNullValue);
 }
 
-TEST(AstUtilityTest, PrimitiveTypeWrapperToNative) {
+TEST(AstConvertersTest, PrimitiveTypeWrapperToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_wrapper(google::api::expr::v1alpha1::Type::BOOL);
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_wrapper());
   EXPECT_EQ(native_type->wrapper(), PrimitiveType::kBool);
 }
 
-TEST(AstUtilityTest, MessageTypeToNative) {
+TEST(AstConvertersTest, MessageTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_message_type("message");
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_message_type());
   EXPECT_EQ(native_type->message_type().type(), "message");
 }
 
-TEST(AstUtilityTest, ParamTypeToNative) {
+TEST(AstConvertersTest, ParamTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   type.set_type_param("param");
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_type_param());
   EXPECT_EQ(native_type->type_param().type(), "param");
 }
 
-TEST(AstUtilityTest, NestedTypeToNative) {
+TEST(AstConvertersTest, NestedTypeToNative) {
   google::api::expr::v1alpha1::Type type;
   type.mutable_type()->mutable_dyn();
 
-  auto native_type = ToNative(type);
+  auto native_type = ConvertProtoTypeToNative(type);
 
   ASSERT_TRUE(native_type->has_type());
   EXPECT_TRUE(native_type->type().has_dyn());
 }
 
-TEST(AstUtilityTest, TypeError) {
-  auto native_type = ToNative(google::api::expr::v1alpha1::Type());
+TEST(AstConvertersTest, TypeError) {
+  auto native_type = ConvertProtoTypeToNative(google::api::expr::v1alpha1::Type());
 
   EXPECT_EQ(native_type.status().code(), absl::StatusCode::kInvalidArgument);
   EXPECT_THAT(native_type.status().message(),
@@ -730,7 +732,7 @@ TEST(AstUtilityTest, TypeError) {
                   "Illegal type specified for google::api::expr::v1alpha1::Type."));
 }
 
-TEST(AstUtilityTest, ReferenceToNative) {
+TEST(AstConvertersTest, ReferenceToNative) {
   google::api::expr::v1alpha1::Reference reference;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -741,7 +743,7 @@ TEST(AstUtilityTest, ReferenceToNative) {
       )pb",
       &reference));
 
-  auto native_reference = ToNative(reference);
+  auto native_reference = ConvertProtoReferenceToNative(reference);
 
   EXPECT_EQ(native_reference->name(), "name");
   EXPECT_EQ(native_reference->overload_id(),
@@ -749,7 +751,7 @@ TEST(AstUtilityTest, ReferenceToNative) {
   EXPECT_TRUE(native_reference->value().bool_value());
 }
 
-TEST(AstUtilityTest, CheckedExprToNative) {
+TEST(AstConvertersTest, CheckedExprToNative) {
   google::api::expr::v1alpha1::CheckedExpr checked_expr;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -783,7 +785,7 @@ TEST(AstUtilityTest, CheckedExprToNative) {
       )pb",
       &checked_expr));
 
-  auto native_checked_expr = ToNative(checked_expr);
+  auto native_checked_expr = ConvertProtoCheckedExprToNative(checked_expr);
 
   EXPECT_EQ(native_checked_expr->reference_map().at(1).name(), "name");
   EXPECT_EQ(native_checked_expr->reference_map().at(1).overload_id(),
@@ -804,5 +806,4 @@ TEST(AstUtilityTest, CheckedExprToNative) {
 
 }  // namespace
 }  // namespace internal
-}  // namespace ast
-}  // namespace cel
+}  // namespace cel::extensions

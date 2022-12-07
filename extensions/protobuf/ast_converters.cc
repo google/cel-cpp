@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/ast_utility.h"
+#include "extensions/protobuf/ast_converters.h"
 
 #include <cstdint>
 #include <memory>
@@ -33,8 +33,36 @@
 #include "base/ast_internal.h"
 #include "internal/status_macros.h"
 
-namespace cel::ast::internal {
+namespace cel::extensions {
+namespace internal {
 namespace {
+
+using ::cel::ast::internal::AbstractType;
+using ::cel::ast::internal::Bytes;
+using ::cel::ast::internal::Call;
+using ::cel::ast::internal::CheckedExpr;
+using ::cel::ast::internal::Comprehension;
+using ::cel::ast::internal::Constant;
+using ::cel::ast::internal::CreateList;
+using ::cel::ast::internal::CreateStruct;
+using ::cel::ast::internal::DynamicType;
+using ::cel::ast::internal::ErrorType;
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::FunctionType;
+using ::cel::ast::internal::Ident;
+using ::cel::ast::internal::ListType;
+using ::cel::ast::internal::MapType;
+using ::cel::ast::internal::MessageType;
+using ::cel::ast::internal::NullValue;
+using ::cel::ast::internal::ParamType;
+using ::cel::ast::internal::ParsedExpr;
+using ::cel::ast::internal::PrimitiveType;
+using ::cel::ast::internal::PrimitiveTypeWrapper;
+using ::cel::ast::internal::Reference;
+using ::cel::ast::internal::Select;
+using ::cel::ast::internal::SourceInfo;
+using ::cel::ast::internal::Type;
+using ::cel::ast::internal::WellKnownType;
 
 constexpr int kMaxIterations = 1'000'000;
 
@@ -280,15 +308,16 @@ absl::StatusOr<Constant> ConvertConstant(
   }
 }
 
-absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr) {
+absl::StatusOr<Expr> ConvertProtoExprToNative(
+    const google::api::expr::v1alpha1::Expr& expr) {
   return ToNativeExprImpl(expr);
 }
 
-absl::StatusOr<SourceInfo> ToNative(
+absl::StatusOr<SourceInfo> ConvertProtoSourceInfoToNative(
     const google::api::expr::v1alpha1::SourceInfo& source_info) {
   absl::flat_hash_map<int64_t, Expr> macro_calls;
   for (const auto& pair : source_info.macro_calls()) {
-    auto native_expr = ToNative(pair.second);
+    auto native_expr = ConvertProtoExprToNative(pair.second);
     if (!native_expr.ok()) {
       return native_expr.status();
     }
@@ -303,13 +332,14 @@ absl::StatusOr<SourceInfo> ToNative(
       std::move(macro_calls));
 }
 
-absl::StatusOr<ParsedExpr> ToNative(
+absl::StatusOr<ParsedExpr> ConvertProtoParsedExprToNative(
     const google::api::expr::v1alpha1::ParsedExpr& parsed_expr) {
-  auto native_expr = ToNative(parsed_expr.expr());
+  auto native_expr = ConvertProtoExprToNative(parsed_expr.expr());
   if (!native_expr.ok()) {
     return native_expr.status();
   }
-  auto native_source_info = ToNative(parsed_expr.source_info());
+  auto native_source_info =
+      ConvertProtoSourceInfoToNative(parsed_expr.source_info());
   if (!native_source_info.ok()) {
     return native_source_info.status();
   }
@@ -361,7 +391,7 @@ absl::StatusOr<WellKnownType> ToNative(
 
 absl::StatusOr<ListType> ToNative(
     const google::api::expr::v1alpha1::Type::ListType& list_type) {
-  auto native_elem_type = ToNative(list_type.elem_type());
+  auto native_elem_type = ConvertProtoTypeToNative(list_type.elem_type());
   if (!native_elem_type.ok()) {
     return native_elem_type.status();
   }
@@ -370,11 +400,11 @@ absl::StatusOr<ListType> ToNative(
 
 absl::StatusOr<MapType> ToNative(
     const google::api::expr::v1alpha1::Type::MapType& map_type) {
-  auto native_key_type = ToNative(map_type.key_type());
+  auto native_key_type = ConvertProtoTypeToNative(map_type.key_type());
   if (!native_key_type.ok()) {
     return native_key_type.status();
   }
-  auto native_value_type = ToNative(map_type.value_type());
+  auto native_value_type = ConvertProtoTypeToNative(map_type.value_type());
   if (!native_value_type.ok()) {
     return native_value_type.status();
   }
@@ -387,13 +417,13 @@ absl::StatusOr<FunctionType> ToNative(
   std::vector<Type> arg_types;
   arg_types.reserve(function_type.arg_types_size());
   for (const auto& arg_type : function_type.arg_types()) {
-    auto native_arg = ToNative(arg_type);
+    auto native_arg = ConvertProtoTypeToNative(arg_type);
     if (!native_arg.ok()) {
       return native_arg.status();
     }
     arg_types.emplace_back(*(std::move(native_arg)));
   }
-  auto native_result = ToNative(function_type.result_type());
+  auto native_result = ConvertProtoTypeToNative(function_type.result_type());
   if (!native_result.ok()) {
     return native_result.status();
   }
@@ -405,7 +435,7 @@ absl::StatusOr<AbstractType> ToNative(
     const google::api::expr::v1alpha1::Type::AbstractType& abstract_type) {
   std::vector<Type> parameter_types;
   for (const auto& parameter_type : abstract_type.parameter_types()) {
-    auto native_parameter_type = ToNative(parameter_type);
+    auto native_parameter_type = ConvertProtoTypeToNative(parameter_type);
     if (!native_parameter_type.ok()) {
       return native_parameter_type.status();
     }
@@ -414,7 +444,8 @@ absl::StatusOr<AbstractType> ToNative(
   return AbstractType(abstract_type.name(), std::move(parameter_types));
 }
 
-absl::StatusOr<Type> ToNative(const google::api::expr::v1alpha1::Type& type) {
+absl::StatusOr<Type> ConvertProtoTypeToNative(
+    const google::api::expr::v1alpha1::Type& type) {
   switch (type.type_kind_case()) {
     case google::api::expr::v1alpha1::Type::kDyn:
       return Type(DynamicType());
@@ -467,7 +498,7 @@ absl::StatusOr<Type> ToNative(const google::api::expr::v1alpha1::Type& type) {
     case google::api::expr::v1alpha1::Type::kTypeParam:
       return Type(ParamType(type.type_param()));
     case google::api::expr::v1alpha1::Type::kType: {
-      auto native_type = ToNative(type.type());
+      auto native_type = ConvertProtoTypeToNative(type.type());
       if (!native_type.ok()) {
         return native_type.status();
       }
@@ -488,7 +519,7 @@ absl::StatusOr<Type> ToNative(const google::api::expr::v1alpha1::Type& type) {
   }
 }
 
-absl::StatusOr<Reference> ToNative(
+absl::StatusOr<Reference> ConvertProtoReferenceToNative(
     const google::api::expr::v1alpha1::Reference& reference) {
   Reference ret_val;
   ret_val.set_name(reference.name());
@@ -506,11 +537,11 @@ absl::StatusOr<Reference> ToNative(
   return ret_val;
 }
 
-absl::StatusOr<CheckedExpr> ToNative(
+absl::StatusOr<CheckedExpr> ConvertProtoCheckedExprToNative(
     const google::api::expr::v1alpha1::CheckedExpr& checked_expr) {
   CheckedExpr ret_val;
   for (const auto& pair : checked_expr.reference_map()) {
-    auto native_reference = ToNative(pair.second);
+    auto native_reference = ConvertProtoReferenceToNative(pair.second);
     if (!native_reference.ok()) {
       return native_reference.status();
     }
@@ -518,19 +549,20 @@ absl::StatusOr<CheckedExpr> ToNative(
                                             *(std::move(native_reference)));
   }
   for (const auto& pair : checked_expr.type_map()) {
-    auto native_type = ToNative(pair.second);
+    auto native_type = ConvertProtoTypeToNative(pair.second);
     if (!native_type.ok()) {
       return native_type.status();
     }
     ret_val.mutable_type_map().emplace(pair.first, *(std::move(native_type)));
   }
-  auto native_source_info = ToNative(checked_expr.source_info());
+  auto native_source_info =
+      ConvertProtoSourceInfoToNative(checked_expr.source_info());
   if (!native_source_info.ok()) {
     return native_source_info.status();
   }
   ret_val.set_source_info(*(std::move(native_source_info)));
   ret_val.set_expr_version(checked_expr.expr_version());
-  auto native_checked_expr = ToNative(checked_expr.expr());
+  auto native_checked_expr = ConvertProtoExprToNative(checked_expr.expr());
   if (!native_checked_expr.ok()) {
     return native_checked_expr.status();
   }
@@ -538,4 +570,5 @@ absl::StatusOr<CheckedExpr> ToNative(
   return ret_val;
 }
 
-}  // namespace cel::ast::internal
+}  // namespace internal
+}  // namespace cel::extensions

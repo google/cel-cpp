@@ -12,37 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_BASE_AST_UTILITY_H_
-#define THIRD_PARTY_CEL_CPP_BASE_AST_UTILITY_H_
+#ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_AST_CONVERTERS_H_
+#define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_AST_CONVERTERS_H_
+
+#include <memory>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast_internal.h"
 
-namespace cel {
-namespace ast {
-namespace internal {
+namespace cel::extensions::internal {
 
 // Utilities for converting protobuf CEL message types to their corresponding
 // internal C++ representations.
-absl::StatusOr<Expr> ToNative(const google::api::expr::v1alpha1::Expr& expr);
-absl::StatusOr<SourceInfo> ToNative(
+absl::StatusOr<ast::internal::Expr> ConvertProtoExprToNative(
+    const google::api::expr::v1alpha1::Expr& expr);
+absl::StatusOr<ast::internal::SourceInfo> ConvertProtoSourceInfoToNative(
     const google::api::expr::v1alpha1::SourceInfo& source_info);
-absl::StatusOr<ParsedExpr> ToNative(
+absl::StatusOr<ast::internal::ParsedExpr> ConvertProtoParsedExprToNative(
     const google::api::expr::v1alpha1::ParsedExpr& parsed_expr);
-absl::StatusOr<Type> ToNative(const google::api::expr::v1alpha1::Type& type);
-absl::StatusOr<Reference> ToNative(
+absl::StatusOr<ast::internal::Type> ConvertProtoTypeToNative(
+    const google::api::expr::v1alpha1::Type& type);
+absl::StatusOr<ast::internal::Reference> ConvertProtoReferenceToNative(
     const google::api::expr::v1alpha1::Reference& reference);
-absl::StatusOr<CheckedExpr> ToNative(
+absl::StatusOr<ast::internal::CheckedExpr> ConvertProtoCheckedExprToNative(
     const google::api::expr::v1alpha1::CheckedExpr& checked_expr);
 
 // Conversion utility for the protobuf constant CEL value representation.
-absl::StatusOr<Constant> ConvertConstant(
+absl::StatusOr<ast::internal::Constant> ConvertConstant(
     const google::api::expr::v1alpha1::Constant& constant);
 
-}  // namespace internal
-}  // namespace ast
-}  // namespace cel
+}  // namespace cel::extensions::internal
 
-#endif  // THIRD_PARTY_CEL_CPP_BASE_AST_UTILITY_H_
+#endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_AST_CONVERTERS_H_
