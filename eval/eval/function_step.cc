@@ -211,23 +211,6 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
     return status;
   }
 
-  // Handle legacy behavior where nullptr messages match the same overloads as
-  // null_type.
-  if (CheckNoMatchingOverloadError(result) && frame->enable_null_coercion() &&
-      frame->value_stack().CoerceNullValues(num_arguments_)) {
-    status = DoEvaluate(frame, &result);
-    if (!status.ok()) {
-      return status;
-    }
-
-    // If one of the arguments is returned, possible for a nullptr message to
-    // escape the backwards compatible call. Cast back to NullType.
-    if (const google::protobuf::Message * value;
-        result.GetValue(&value) && value == nullptr) {
-      result = CelValue::CreateNull();
-    }
-  }
-
   frame->value_stack().Pop(num_arguments_);
   frame->value_stack().Push(result);
 

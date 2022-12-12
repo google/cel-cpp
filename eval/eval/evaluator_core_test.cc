@@ -76,7 +76,6 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
                        /*enable_unknowns=*/false,
                        /*enable_unknown_funcion_results=*/false,
                        /*enable_missing_attribute_errors=*/false,
-                       /*enable_null_coercion=*/true,
                        /*enable_heterogeneous_numeric_lookups=*/true);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
@@ -100,7 +99,6 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
                        /*enable_unknowns=*/false,
                        /*enable_unknown_funcion_results=*/false,
                        /*enable_missing_attribute_errors=*/false,
-                       /*enable_null_coercion=*/true,
                        /*enable_heterogeneous_numeric_lookups=*/true);
 
   auto original = cel::interop_internal::CreateIntValue(test_value);

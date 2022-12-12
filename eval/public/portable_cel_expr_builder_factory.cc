@@ -49,7 +49,6 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
       options.enable_qualified_type_identifiers);
   builder->set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);
-  builder->set_enable_null_coercion(options.enable_null_to_message_coercion);
   builder->set_enable_wrapper_type_null_unboxing(
       options.enable_empty_wrapper_null_unboxing);
   builder->set_enable_heterogeneous_equality(

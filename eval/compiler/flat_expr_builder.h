@@ -105,16 +105,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_comprehension_vulnerability_check_ = enabled;
   }
 
-  // set_enable_null_coercion allows the evaluator to coerce null values into
-  // message types. This is a legacy behavior from implementing null type as a
-  // special case of messages.
-  //
-  // Note: this will be defaulted to disabled once any known dependencies on the
-  // old behavior are removed or explicitly opted-in.
-  void set_enable_null_coercion(bool enabled) {
-    enable_null_coercion_ = enabled;
-  }
-
   // If set_enable_wrapper_type_null_unboxing is enabled, the evaluator will
   // return null for well known wrapper type fields if they are unset.
   // The default is disabled and follows protobuf behavior (returning the
@@ -187,7 +177,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_qualified_type_identifiers_ = false;
   bool enable_comprehension_list_append_ = false;
   bool enable_comprehension_vulnerability_check_ = false;
-  bool enable_null_coercion_ = true;
   bool enable_wrapper_type_null_unboxing_ = false;
   bool enable_heterogeneous_equality_ = false;
   bool enable_qualified_identifier_rewrites_ = false;

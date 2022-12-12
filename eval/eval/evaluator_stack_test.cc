@@ -76,29 +76,6 @@ TEST(EvaluatorStackTest, Clear) {
   ASSERT_TRUE(stack.empty());
 }
 
-TEST(EvaluatorStackTest, CoerceNulls) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager manager(&arena);
-  EvaluatorStack stack(10, manager);
-  stack.Push(CelValue::CreateNull());
-  stack.Push(CelValue::CreateInt64(0));
-
-  auto stack_vars = cel::interop_internal::ModernValueToLegacyValueOrDie(
-      manager, stack.GetSpan(2));
-
-  EXPECT_TRUE(stack_vars.at(0).IsNull());
-  EXPECT_FALSE(stack_vars.at(0).IsMessage());
-  EXPECT_TRUE(stack_vars.at(1).IsInt64());
-
-  stack.CoerceNullValues(2);
-  stack_vars = cel::interop_internal::ModernValueToLegacyValueOrDie(
-      manager, stack.GetSpan(2));
-
-  EXPECT_TRUE(stack_vars.at(0).IsNull());
-  EXPECT_TRUE(stack_vars.at(0).IsMessage());
-  EXPECT_TRUE(stack_vars.at(1).IsInt64());
-}
-
 }  // namespace
 
 }  // namespace google::api::expr::runtime
