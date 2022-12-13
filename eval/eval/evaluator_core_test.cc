@@ -20,6 +20,7 @@
 namespace google::api::expr::runtime {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using testing::_;
@@ -30,7 +31,7 @@ using testing::Eq;
 class FakeConstExpressionStep : public ExpressionStep {
  public:
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    frame->value_stack().Push(CelValue::CreateInt64(0));
+    frame->value_stack().Push(CreateIntValue(0));
     return absl::OkStatus();
   }
 
@@ -49,7 +50,7 @@ class FakeIncrementExpressionStep : public ExpressionStep {
     frame->value_stack().Pop(1);
     EXPECT_TRUE(value.IsInt64());
     int64_t val = value.Int64OrDie();
-    frame->value_stack().Push(CelValue::CreateInt64(val + 1));
+    frame->value_stack().Push(CreateIntValue(val + 1));
     return absl::OkStatus();
   }
 

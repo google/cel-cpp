@@ -9,11 +9,17 @@
 #include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_attribute.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
+
+namespace {
+
+using ::cel::interop_internal::CreateErrorValueFromView;
+
+}  // namespace
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var
@@ -98,8 +104,9 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
       frame->value_stack().Push(std::move(iter_range));
       return frame->JumpTo(error_jump_offset_);
     }
-    frame->value_stack().Push(
-        CreateNoMatchingOverloadError(frame->memory_manager(), "<iter_range>"));
+    frame->value_stack().Push(CreateErrorValueFromView(
+        ::cel::interop_internal::CreateNoMatchingOverloadError(
+            frame->memory_manager(), "<iter_range>")));
     return frame->JumpTo(error_jump_offset_);
   }
   AttributeTrail iter_range_attr = attr[POS_ITER_RANGE];
@@ -176,8 +183,9 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
         loop_condition_value.Is<cel::UnknownValue>()) {
       frame->value_stack().Push(std::move(loop_condition_value));
     } else {
-      frame->value_stack().Push(CreateNoMatchingOverloadError(
-          frame->memory_manager(), "<loop_condition>"));
+      frame->value_stack().Push(CreateErrorValueFromView(
+          ::cel::interop_internal::CreateNoMatchingOverloadError(
+              frame->memory_manager(), "<loop_condition>")));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.

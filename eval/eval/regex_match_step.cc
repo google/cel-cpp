@@ -20,11 +20,14 @@
 #include "absl/status/status.h"
 #include "base/values/string_value.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "re2/re2.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using ::cel::interop_internal::CreateBoolValue;
 
 inline constexpr int kNumRegexMatchArguments = 2;
 inline constexpr size_t kRegexMatchStepSubject = 0;
@@ -62,7 +65,7 @@ class RegexMatchStep final : public ExpressionStepBase {
     }
     bool match = subject.As<cel::StringValue>()->Matches(*re2_);
     frame->value_stack().Pop(kNumRegexMatchArguments);
-    frame->value_stack().Push(CelValue::CreateBool(match));
+    frame->value_stack().Push(CreateBoolValue(match));
     return absl::OkStatus();
   }
 

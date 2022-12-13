@@ -19,7 +19,6 @@
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/expression_build_warning.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
@@ -28,7 +27,6 @@
 #include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
-#include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
@@ -38,6 +36,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::LegacyValueToModernValueOrDie;
+using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
 
 // Only non-strict functions are allowed to consume errors and unknown sets.
 bool IsNonStrict(const CelFunction& function) {
@@ -146,8 +146,7 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
     google::protobuf::Arena* arena =
         ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
     auto legacy_input_args =
-        cel::interop_internal::ModernValueToLegacyValueOrDie(
-            frame->memory_manager(), input_args);
+        ModernValueToLegacyValueOrDie(frame->memory_manager(), input_args);
     CEL_RETURN_IF_ERROR(
         matched_function->Evaluate(legacy_input_args, result, arena));
 
@@ -165,8 +164,7 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
     // should be propagated along execution path.
     for (const auto& arg : input_args) {
       if (arg.Is<cel::ErrorValue>()) {
-        *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
-            frame->memory_manager(), arg);
+        *result = ModernValueToLegacyValueOrDie(frame->memory_manager(), arg);
         return absl::OkStatus();
       }
     }
@@ -212,7 +210,8 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   frame->value_stack().Pop(num_arguments_);
-  frame->value_stack().Push(result);
+  frame->value_stack().Push(
+      LegacyValueToModernValueOrDie(frame->memory_manager(), result));
 
   return absl::OkStatus();
 }

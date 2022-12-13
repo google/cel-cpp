@@ -1,7 +1,10 @@
 #include "eval/eval/evaluator_stack.h"
 
+#include "base/type_factory.h"
+#include "base/type_manager.h"
+#include "base/type_provider.h"
 #include "base/value.h"
-#include "eval/internal/interop.h"
+#include "base/value_factory.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 
@@ -9,19 +12,26 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeFactory;
+using ::cel::TypeManager;
+using ::cel::TypeProvider;
+using ::cel::ValueFactory;
 using ::cel::extensions::ProtoMemoryManager;
 
 // Test Value Stack Push/Pop operation
 TEST(EvaluatorStackTest, StackPushPop) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
+  TypeFactory type_factory(manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
   google::api::expr::v1alpha1::Expr expr;
   expr.mutable_ident_expr()->set_name("name");
   CelAttribute attribute(expr, {});
-  EvaluatorStack stack(10, manager);
-  stack.Push(CelValue::CreateInt64(1));
-  stack.Push(CelValue::CreateInt64(2), AttributeTrail());
-  stack.Push(CelValue::CreateInt64(3), AttributeTrail(expr, manager));
+  EvaluatorStack stack(10);
+  stack.Push(value_factory.CreateIntValue(1));
+  stack.Push(value_factory.CreateIntValue(2), AttributeTrail());
+  stack.Push(value_factory.CreateIntValue(3), AttributeTrail(expr, manager));
 
   ASSERT_EQ(stack.Peek().As<cel::IntValue>()->value(), 3);
   ASSERT_FALSE(stack.PeekAttribute().empty());
@@ -42,18 +52,21 @@ TEST(EvaluatorStackTest, StackPushPop) {
 TEST(EvaluatorStackTest, StackBalanced) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
-  EvaluatorStack stack(10, manager);
+  TypeFactory type_factory(manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  EvaluatorStack stack(10);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
-  stack.Push(CelValue::CreateInt64(1));
+  stack.Push(value_factory.CreateIntValue(1));
   ASSERT_EQ(stack.size(), stack.attribute_size());
-  stack.Push(CelValue::CreateInt64(2), AttributeTrail());
-  stack.Push(CelValue::CreateInt64(3), AttributeTrail());
+  stack.Push(value_factory.CreateIntValue(2), AttributeTrail());
+  stack.Push(value_factory.CreateIntValue(3), AttributeTrail());
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
-  stack.PopAndPush(CelValue::CreateInt64(4), AttributeTrail());
+  stack.PopAndPush(value_factory.CreateIntValue(4), AttributeTrail());
   ASSERT_EQ(stack.size(), stack.attribute_size());
-  stack.PopAndPush(CelValue::CreateInt64(5));
+  stack.PopAndPush(value_factory.CreateIntValue(5));
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
   stack.Pop(3);
@@ -63,12 +76,15 @@ TEST(EvaluatorStackTest, StackBalanced) {
 TEST(EvaluatorStackTest, Clear) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
-  EvaluatorStack stack(10, manager);
+  TypeFactory type_factory(manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  EvaluatorStack stack(10);
   ASSERT_EQ(stack.size(), stack.attribute_size());
 
-  stack.Push(CelValue::CreateInt64(1));
-  stack.Push(CelValue::CreateInt64(2), AttributeTrail());
-  stack.Push(CelValue::CreateInt64(3), AttributeTrail());
+  stack.Push(value_factory.CreateIntValue(1));
+  stack.Push(value_factory.CreateIntValue(2), AttributeTrail());
+  stack.Push(value_factory.CreateIntValue(3), AttributeTrail());
   ASSERT_EQ(stack.size(), 3);
 
   stack.Clear();

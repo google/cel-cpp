@@ -40,6 +40,7 @@ using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateBoolValue;
+using ::cel::interop_internal::CreateError;
 using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateMissingAttributeError;
 using ::cel::interop_internal::CreateNoSuchKeyError;
@@ -182,9 +183,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   }
 
   if (arg.Is<NullValue>()) {
-    CelValue error_value =
-        CreateErrorValue(frame->memory_manager(), "Message is NULL");
-    frame->value_stack().PopAndPush(error_value, std::move(result_trail));
+    frame->value_stack().PopAndPush(
+        CreateErrorValueFromView(
+            CreateError(frame->memory_manager(), "Message is NULL")),
+        std::move(result_trail));
     return absl::OkStatus();
   }
 

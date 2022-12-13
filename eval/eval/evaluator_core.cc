@@ -34,7 +34,7 @@ CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     size_t value_stack_size, const std::set<std::string>& iter_variable_names,
     google::protobuf::Arena* arena)
     : memory_manager_(arena),
-      value_stack_(value_stack_size, memory_manager_),
+      value_stack_(value_stack_size),
       iter_variable_names_(iter_variable_names),
       type_factory_(memory_manager_),
       type_manager_(type_factory_, cel::TypeProvider::Builtin()),

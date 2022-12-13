@@ -7,11 +7,9 @@
 
 #include "absl/types/span.h"
 #include "base/handle.h"
-#include "base/memory_manager.h"
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
@@ -20,8 +18,8 @@ namespace google::api::expr::runtime {
 // stack as Span<>.
 class EvaluatorStack {
  public:
-  EvaluatorStack(size_t max_size, cel::MemoryManager& memory_manager)
-      : memory_manager_(memory_manager), max_size_(max_size), current_size_(0) {
+  explicit EvaluatorStack(size_t max_size)
+      : max_size_(max_size), current_size_(0) {
     Reserve(max_size);
   }
 
@@ -97,16 +95,8 @@ class EvaluatorStack {
   }
 
   // Put element on the top of the stack.
-  void Push(const CelValue& value) { Push(value, AttributeTrail()); }
-
   void Push(cel::Handle<cel::Value> value) {
     Push(std::move(value), AttributeTrail());
-  }
-
-  void Push(const CelValue& value, AttributeTrail attribute) {
-    Push(cel::interop_internal::LegacyValueToModernValueOrDie(memory_manager_,
-                                                              value),
-         std::move(attribute));
   }
 
   void Push(cel::Handle<cel::Value> value, AttributeTrail attribute) {
@@ -120,22 +110,8 @@ class EvaluatorStack {
 
   // Replace element on the top of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(const CelValue& value) {
-    PopAndPush(value, AttributeTrail());
-  }
-
-  // Replace element on the top of the stack.
-  // Checking that stack is not empty is caller's responsibility.
   void PopAndPush(cel::Handle<cel::Value> value) {
     PopAndPush(std::move(value), AttributeTrail());
-  }
-
-  // Replace element on the top of the stack.
-  // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(const CelValue& value, AttributeTrail attribute) {
-    PopAndPush(cel::interop_internal::LegacyValueToModernValueOrDie(
-                   memory_manager_, value),
-               std::move(attribute));
   }
 
   // Replace element on the top of the stack.
@@ -158,7 +134,6 @@ class EvaluatorStack {
   }
 
  private:
-  cel::MemoryManager& memory_manager_;
   std::vector<cel::Handle<cel::Value>> stack_;
   std::vector<AttributeTrail> attribute_stack_;
   const size_t max_size_;

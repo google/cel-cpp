@@ -103,4 +103,16 @@ const absl::Status* CreateUnknownFunctionResultError(
   return error;
 }
 
+const absl::Status* CreateError(google::protobuf::Arena* arena, absl::string_view message,
+                                absl::StatusCode code) {
+  return Arena::Create<absl::Status>(arena, code, message);
+}
+
+const absl::Status* CreateError(cel::MemoryManager& manager,
+                                absl::string_view message,
+                                absl::StatusCode code) {
+  return CreateError(extensions::ProtoMemoryManager::CastToProtoArena(manager),
+                     message, code);
+}
+
 }  // namespace cel::interop_internal

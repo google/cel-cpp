@@ -76,6 +76,14 @@ const absl::Status* CreateUnknownFunctionResultError(
 const absl::Status* CreateUnknownFunctionResultError(
     google::protobuf::Arena* arena, absl::string_view help_message);
 
+const absl::Status* CreateError(
+    google::protobuf::Arena* arena, absl::string_view message,
+    absl::StatusCode code = absl::StatusCode::kUnknown);
+
+const absl::Status* CreateError(
+    cel::MemoryManager& manager, absl::string_view message,
+    absl::StatusCode code = absl::StatusCode::kUnknown);
+
 }  // namespace cel::interop_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_ERRORS_H_
