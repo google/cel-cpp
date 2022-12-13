@@ -23,6 +23,7 @@
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
+#include "base/ast.h"
 #include "eval/public/cel_expression.h"
 
 namespace google::api::expr::runtime {
@@ -157,13 +158,16 @@ class FlatExprBuilder : public CelExpressionBuilder {
       const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
       std::vector<absl::Status>* warnings) const override;
 
+ private:
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info,
       const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
       std::vector<absl::Status>* warnings) const;
 
- private:
+  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
+      cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const;
+
   bool enable_unknowns_ = false;
   bool enable_unknown_function_results_ = false;
   bool enable_missing_attribute_errors_ = false;

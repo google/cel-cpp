@@ -38,7 +38,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/ast.h"
 #include "base/ast_internal.h"
+#include "base/internal/ast_impl.h"
 #include "base/values/string_value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
@@ -66,6 +68,7 @@
 #include "eval/public/source_position.h"
 #include "eval/public/source_position_native.h"
 #include "extensions/protobuf/ast_converters.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -74,6 +77,8 @@ namespace {
 using ::cel::Handle;
 using ::cel::StringValue;
 using ::cel::Value;
+using ::cel::ast::Ast;
+using ::cel::ast::internal::AstImpl;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
 using ::cel::extensions::internal::ConvertProtoReferenceToNative;
 using ::cel::extensions::internal::ConvertProtoSourceInfoToNative;
@@ -1229,71 +1234,67 @@ void ComprehensionVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const Expr* expr,
+                                  const SourceInfo* source_info,
+                                  std::vector<absl::Status>* warnings) const {
+  ABSL_ASSERT(expr != nullptr);
+  CEL_ASSIGN_OR_RETURN(
+      std::unique_ptr<Ast> converted_ast,
+      cel::extensions::CreateAstFromParsedExpr(*expr, source_info));
+  return CreateExpressionImpl(*converted_ast, warnings);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const Expr* expr,
+                                  const SourceInfo* source_info) const {
+  return CreateExpression(expr, source_info,
+                          /*warnings=*/nullptr);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr,
+                                  std::vector<absl::Status>* warnings) const {
+  ABSL_ASSERT(checked_expr != nullptr);
+  CEL_ASSIGN_OR_RETURN(
+      std::unique_ptr<Ast> converted_ast,
+      cel::extensions::CreateAstFromCheckedExpr(*checked_expr));
+  return CreateExpressionImpl(*converted_ast, warnings);
+}
+
+absl::StatusOr<std::unique_ptr<CelExpression>>
+FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr) const {
+  return CreateExpression(checked_expr, /*warnings=*/nullptr);
+}
+
+// TODO(issues/5): move ast conversion to client responsibility and
+// update pre-processing steps to work without mutating the input AST.
+absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpressionImpl(
-    const Expr* expr, const SourceInfo* source_info,
-    const google::protobuf::Map<int64_t, Reference>* reference_map,
-    std::vector<absl::Status>* warnings) const {
+    cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
   BuilderWarnings warnings_builder(fail_on_warnings_);
   Resolver resolver(container(), GetRegistry(), GetTypeRegistry(),
                     enable_qualified_type_identifiers_);
+  absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
+  auto& ast_impl = AstImpl::CastFromPublicAst(ast);
+  const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
 
   if (absl::StartsWith(container(), ".") || absl::EndsWith(container(), ".")) {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid expression container: '", container(), "'"));
   }
 
-  // Convert the proto Expr type to the native representation.
-  // TODO(issues/5): move this to client responsibility.
-  auto native_expr = ConvertProtoExprToNative(*expr);
-  if (!native_expr.ok()) {
-    return native_expr.status();
-  }
-  auto rewrite_buffer =
-      std::make_unique<cel::ast::internal::Expr>(*(std::move(native_expr)));
-  auto* effective_expr = rewrite_buffer.get();
-
-  // Convert the proto SourceInfo to the native representation.
-  absl::StatusOr<cel::ast::internal::SourceInfo> native_source_info;
-  cel::ast::internal::SourceInfo* native_source_info_ptr = nullptr;
-  if (source_info != nullptr) {
-    native_source_info = ConvertProtoSourceInfoToNative(*source_info);
-    if (!native_source_info.ok()) {
-      return native_source_info.status();
-    }
-    native_source_info_ptr = &native_source_info.value();
-  }
-
-  // Convert the proto reference_map to the native representation.
-  absl::flat_hash_map<int64_t, cel::ast::internal::Reference>
-      native_reference_map;
-  absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
-      native_reference_map_ptr = nullptr;
-  if (reference_map != nullptr) {
-    for (const auto& pair : *reference_map) {
-      auto native_reference = ConvertProtoReferenceToNative(pair.second);
-      if (!native_reference.ok()) {
-        return native_reference.status();
-      }
-      native_reference_map.emplace(pair.first, *(std::move(native_reference)));
-    }
-    native_reference_map_ptr = &native_reference_map;
-  }
-
-  absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
-
   // transformed expression preserving expression IDs
   bool rewrites_enabled = enable_qualified_identifier_rewrites_ ||
-                          (reference_map != nullptr && !reference_map->empty());
-
+                          !ast_impl.reference_map().empty();
   // TODO(issues/98): A type checker may perform these rewrites, but there
   // currently isn't a signal to expose that in an expression. If that becomes
   // available, we can skip the reference resolve step here if it's already
   // done.
   if (rewrites_enabled) {
     absl::StatusOr<bool> rewritten = ResolveReferences(
-        native_reference_map_ptr, resolver, native_source_info_ptr,
-        warnings_builder, effective_expr);
+        &ast_impl.reference_map(), resolver, &ast_impl.source_info(),
+        warnings_builder, &ast_impl.root_expr());
     if (!rewritten.ok()) {
       return rewritten.status();
     }
@@ -1303,9 +1304,9 @@ FlatExprBuilder::CreateExpressionImpl(
 
   cel::ast::internal::Expr const_fold_buffer;
   if (constant_folding_) {
-    cel::ast::internal::FoldConstants(*effective_expr, *this->GetRegistry(),
-                                      constant_arena_, constant_idents,
-                                      const_fold_buffer);
+    cel::ast::internal::FoldConstants(ast_impl.root_expr(),
+                                      *this->GetRegistry(), constant_arena_,
+                                      constant_idents, const_fold_buffer);
     effective_expr = &const_fold_buffer;
   }
 
@@ -1318,9 +1319,9 @@ FlatExprBuilder::CreateExpressionImpl(
       enable_comprehension_vulnerability_check_,
       enable_wrapper_type_null_unboxing_, &warnings_builder,
       &iter_variable_names, enable_regex_, enable_regex_precompilation_,
-      regex_max_program_size_, native_reference_map_ptr, arena.get());
+      regex_max_program_size_, &ast_impl.reference_map(), arena.get());
 
-  AstTraverse(effective_expr, native_source_info_ptr, &visitor);
+  AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();
@@ -1342,38 +1343,7 @@ FlatExprBuilder::CreateExpressionImpl(
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();
   }
-  return std::move(expression_impl);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const Expr* expr,
-                                  const SourceInfo* source_info,
-                                  std::vector<absl::Status>* warnings) const {
-  return CreateExpressionImpl(expr, source_info, /*reference_map=*/nullptr,
-                              warnings);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const Expr* expr,
-                                  const SourceInfo* source_info) const {
-  return CreateExpressionImpl(expr, source_info, /*reference_map=*/nullptr,
-                              /*warnings=*/nullptr);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr,
-                                  std::vector<absl::Status>* warnings) const {
-  return CreateExpressionImpl(&checked_expr->expr(),
-                              &checked_expr->source_info(),
-                              &checked_expr->reference_map(), warnings);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr) const {
-  return CreateExpressionImpl(&checked_expr->expr(),
-                              &checked_expr->source_info(),
-                              &checked_expr->reference_map(),
-                              /*warnings=*/nullptr);
+  return expression_impl;
 }
 
 }  // namespace google::api::expr::runtime

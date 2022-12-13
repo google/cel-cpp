@@ -367,3 +367,8 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "ast",
+    hdrs = ["ast.h"],
+)

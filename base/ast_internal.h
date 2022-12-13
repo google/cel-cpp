@@ -14,6 +14,7 @@
 //
 // Type definitions for internal AST representation.
 // CEL users should not directly depend on the definitions here.
+// TODO(issues/5): move to base/internal
 #ifndef THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_
 #define THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_
 

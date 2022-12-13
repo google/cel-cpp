@@ -30,7 +30,9 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
+#include "base/ast.h"
 #include "base/ast_internal.h"
+#include "base/internal/ast_impl.h"
 #include "internal/status_macros.h"
 
 namespace cel::extensions {
@@ -571,4 +573,34 @@ absl::StatusOr<CheckedExpr> ConvertProtoCheckedExprToNative(
 }
 
 }  // namespace internal
+
+absl::StatusOr<std::unique_ptr<ast::Ast>> CreateAstFromParsedExpr(
+    const google::api::expr::v1alpha1::Expr& expr,
+    const google::api::expr::v1alpha1::SourceInfo* source_info) {
+  CEL_ASSIGN_OR_RETURN(auto runtime_expr,
+                       internal::ConvertProtoExprToNative(expr));
+  cel::ast::internal::SourceInfo runtime_source_info;
+  if (source_info != nullptr) {
+    CEL_ASSIGN_OR_RETURN(
+        runtime_source_info,
+        internal::ConvertProtoSourceInfoToNative(*source_info));
+  }
+  return std::make_unique<cel::ast::internal::AstImpl>(
+      std::move(runtime_expr), std::move(runtime_source_info));
+}
+
+absl::StatusOr<std::unique_ptr<ast::Ast>> CreateAstFromParsedExpr(
+    const google::api::expr::v1alpha1::ParsedExpr& parsed_expr) {
+  CEL_ASSIGN_OR_RETURN(cel::ast::internal::ParsedExpr expr,
+                       internal::ConvertProtoParsedExprToNative(parsed_expr));
+  return std::make_unique<cel::ast::internal::AstImpl>(std::move(expr));
+}
+
+absl::StatusOr<std::unique_ptr<ast::Ast>> CreateAstFromCheckedExpr(
+    const google::api::expr::v1alpha1::CheckedExpr& checked_expr) {
+  CEL_ASSIGN_OR_RETURN(cel::ast::internal::CheckedExpr expr,
+                       internal::ConvertProtoCheckedExprToNative(checked_expr));
+  return std::make_unique<cel::ast::internal::AstImpl>(std::move(expr));
+}
+
 }  // namespace cel::extensions

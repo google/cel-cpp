@@ -806,4 +806,111 @@ TEST(AstConvertersTest, CheckedExprToNative) {
 
 }  // namespace
 }  // namespace internal
+
+namespace {
+
+TEST(AstUtilityTest, CheckedExprToAst) {
+  google::api::expr::v1alpha1::CheckedExpr checked_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        reference_map {
+          key: 1
+          value {
+            name: "name"
+            overload_id: "id1"
+            overload_id: "id2"
+            value { bool_value: true }
+          }
+        }
+        type_map {
+          key: 1
+          value { dyn {} }
+        }
+        source_info {
+          syntax_version: "version"
+          location: "location"
+          line_offsets: 1
+          line_offsets: 2
+          positions { key: 1 value: 2 }
+          positions { key: 3 value: 4 }
+          macro_calls {
+            key: 1
+            value { ident_expr { name: "name" } }
+          }
+        }
+        expr_version: "version"
+        expr { ident_expr { name: "expr" } }
+      )pb",
+      &checked_expr));
+
+  ASSERT_OK_AND_ASSIGN(auto ast, CreateAstFromCheckedExpr(checked_expr));
+
+  ASSERT_TRUE(ast->IsChecked());
+}
+
+TEST(AstUtilityTest, ParsedExprToAst) {
+  google::api::expr::v1alpha1::ParsedExpr parsed_expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        source_info {
+          syntax_version: "version"
+          location: "location"
+          line_offsets: 1
+          line_offsets: 2
+          positions { key: 1 value: 2 }
+          positions { key: 3 value: 4 }
+          macro_calls {
+            key: 1
+            value { ident_expr { name: "name" } }
+          }
+        }
+        expr { ident_expr { name: "expr" } }
+      )pb",
+      &parsed_expr));
+
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       cel::extensions::CreateAstFromParsedExpr(parsed_expr));
+}
+
+TEST(AstUtilityTest, ExprToAst) {
+  google::api::expr::v1alpha1::Expr expr;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        ident_expr { name: "expr" }
+      )pb",
+      &expr));
+
+  ASSERT_OK_AND_ASSIGN(auto ast,
+                       cel::extensions::CreateAstFromParsedExpr(expr));
+}
+
+TEST(AstUtilityTest, ExprAndSourceInfoToAst) {
+  google::api::expr::v1alpha1::Expr expr;
+  google::api::expr::v1alpha1::SourceInfo source_info;
+
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        syntax_version: "version"
+        location: "location"
+        line_offsets: 1
+        line_offsets: 2
+        positions { key: 1 value: 2 }
+        positions { key: 3 value: 4 }
+        macro_calls {
+          key: 1
+          value { ident_expr { name: "name" } }
+        }
+      )pb",
+      &source_info));
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        ident_expr { name: "expr" }
+      )pb",
+      &expr));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto ast, cel::extensions::CreateAstFromParsedExpr(expr, &source_info));
+}
+
+}  // namespace
 }  // namespace cel::extensions
