@@ -235,10 +235,6 @@ internal::TypeInfo CelMapAccess::TypeId(const CelMap& map) {
   return map.TypeId();
 }
 
-google::api::expr::runtime::CelValue CelValueAccess::CreateNullMessage() {
-  return google::api::expr::runtime::CelValue::CreateNullMessage();
-}
-
 Handle<StructType> LegacyStructTypeAccess::Create(uintptr_t message) {
   return base_internal::HandleFactory<StructType>::Make<
       base_internal::LegacyStructType>(message);
@@ -490,10 +486,6 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
           *value.As<base_internal::LegacyStructValue>());
       uintptr_t type_info = LegacyStructValueAccess::TypeInfo(
           *value.As<base_internal::LegacyStructValue>());
-      if ((message & base_internal::kMessageWrapperPtrMask) == 0 &&
-          type_info == 0) {
-        return CelValueAccess::CreateNullMessage();
-      }
       return CelValue::CreateMessageWrapper(
           MessageWrapperAccess::Make(message, type_info));
     }
@@ -516,11 +508,6 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
 
 Handle<NullValue> CreateNullValue() {
   return HandleFactory<NullValue>::Make<NullValue>();
-}
-
-Handle<StructValue> CreateNullStructValue() {
-  return HandleFactory<StructValue>::Make<base_internal::LegacyStructValue>(
-      base_internal::kMessageWrapperTagMask, 0);
 }
 
 Handle<BoolValue> CreateBoolValue(bool value) {

@@ -44,10 +44,6 @@ struct CelMapAccess final {
       const google::api::expr::runtime::CelMap& map);
 };
 
-struct CelValueAccess final {
-  static google::api::expr::runtime::CelValue CreateNullMessage();
-};
-
 struct LegacyStructTypeAccess final {
   static Handle<StructType> Create(uintptr_t message);
 };
@@ -106,8 +102,6 @@ absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
     google::protobuf::Arena* arena, const Handle<Value>& value);
 
 Handle<NullValue> CreateNullValue();
-
-Handle<StructValue> CreateNullStructValue();
 
 Handle<BoolValue> CreateBoolValue(bool value);
 

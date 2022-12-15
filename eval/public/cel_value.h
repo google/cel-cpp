@@ -46,7 +46,6 @@
 namespace cel::interop_internal {
 struct CelListAccess;
 struct CelMapAccess;
-struct CelValueAccess;
 }  // namespace cel::interop_internal
 
 namespace google::api::expr::runtime {
@@ -420,8 +419,6 @@ class CelValue {
   }
 
  private:
-  friend struct cel::interop_internal::CelValueAccess;
-
   ValueHolder value_;
 
   template <typename T, class = void>
@@ -485,13 +482,6 @@ class CelValue {
   // Value type T should be supported by specification of ValueHolder.
   template <class T>
   explicit CelValue(T value) : value_(value) {}
-
-  // This is provided for backwards compatibility with resolving null to message
-  // overloads.
-  static CelValue CreateNullMessage() {
-    return CelValue(
-        MessageWrapper(static_cast<const google::protobuf::Message*>(nullptr), nullptr));
-  }
 
   // Crashes with a null pointer error.
   static void CrashNullPointer(Type type) ABSL_ATTRIBUTE_COLD {
