@@ -1202,6 +1202,33 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "string_extension_func_registrar",
+    srcs = ["string_extension_func_registrar.cc"],
+    hdrs = ["string_extension_func_registrar.h"],
+    deps = [
+        ":cel_function",
+        ":cel_function_adapter",
+        ":cel_function_registry",
+        ":cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//internal:status_macros",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "string_extension_func_registrar_test",
+    srcs = ["string_extension_func_registrar_test.cc"],
+    deps = [
+        ":builtin_func_registrar",
+        ":cel_value",
+        ":string_extension_func_registrar",
+        "//internal:testing",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+    ],
+)
+
 cc_test(
     name = "portable_cel_expr_builder_factory_test",
     srcs = ["portable_cel_expr_builder_factory_test.cc"],
