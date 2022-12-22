@@ -45,6 +45,7 @@
 #include "absl/base/config.h"
 #include "absl/base/dynamic_annotations.h"
 #include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/numeric/bits.h"
 #include "absl/synchronization/mutex.h"
@@ -234,7 +235,7 @@ class GlobalMemoryManager final : public MemoryManager {
   void* Allocate(size_t size, size_t align) override {
     static_cast<void>(size);
     static_cast<void>(align);
-    ABSL_INTERNAL_UNREACHABLE;
+    ABSL_UNREACHABLE();
     return nullptr;
   }
 
@@ -242,7 +243,7 @@ class GlobalMemoryManager final : public MemoryManager {
   void OwnDestructor(void* pointer, void (*destructor)(void*)) override {
     static_cast<void>(pointer);
     static_cast<void>(destructor);
-    ABSL_INTERNAL_UNREACHABLE;
+    ABSL_UNREACHABLE();
   }
 };
 
