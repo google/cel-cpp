@@ -29,6 +29,7 @@
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
 #include "eval/internal/activation_interface.h"
+#include "eval/internal/adapter_activation_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"

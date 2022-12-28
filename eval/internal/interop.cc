@@ -40,7 +40,6 @@
 #include "base/values/map_value.h"
 #include "base/values/struct_value.h"
 #include "eval/internal/errors.h"
-#include "eval/public/base_activation.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
@@ -56,7 +55,6 @@ using ::cel::base_internal::HandleFactory;
 using ::cel::base_internal::InlinedStringViewBytesValue;
 using ::cel::base_internal::InlinedStringViewStringValue;
 using ::cel::base_internal::LegacyTypeValue;
-using ::cel::extensions::ProtoMemoryManager;
 using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
@@ -613,18 +611,6 @@ std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
     MemoryManager& memory_manager, absl::Span<const Handle<Value>> values) {
   return ModernValueToLegacyValueOrDie(
       extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
-}
-
-absl::optional<Handle<Value>> AdapterActivationImpl::ResolveVariable(
-    MemoryManager& manager, absl::string_view name) const {
-  google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(manager);
-
-  absl::optional<CelValue> legacy_value =
-      legacy_activation_.FindValue(name, arena);
-  if (!legacy_value.has_value()) {
-    return absl::nullopt;
-  }
-  return LegacyValueToModernValueOrDie(arena, *legacy_value);
 }
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(

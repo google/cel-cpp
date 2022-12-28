@@ -24,6 +24,7 @@ cc_library(
         "//base:type_provider",
         "//base:value_factory",
         "//eval/internal:activation_interface",
+        "//eval/internal:adapter_activation_impl",
         "//eval/internal:interop",
         "//eval/public:base_activation",
         "//eval/public:cel_attribute",
