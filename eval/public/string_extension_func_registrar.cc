@@ -18,6 +18,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "eval/public/cel_function_adapter.h"
 #include "eval/public/cel_value.h"
@@ -27,6 +28,8 @@
 namespace google::api::expr::runtime {
 
 using google::protobuf::Arena;
+
+constexpr char kEmptySeparator[] = "";
 
 CelValue SplitWithLimit(Arena* arena, const CelValue::StringHolder value,
                         const CelValue::StringHolder delimiter, int64_t limit) {
@@ -61,7 +64,44 @@ CelValue Split(Arena* arena, CelValue::StringHolder value,
   return SplitWithLimit(arena, value, delimiter, -1);
 }
 
-absl::Status RegisterStringExtensionFunctions(CelFunctionRegistry* registry) {
+CelValue::StringHolder JoinWithSeparator(Arena* arena, const CelValue& value,
+                                         absl::string_view separator) {
+  const CelList* cel_list = value.ListOrDie();
+  std::vector<std::string_view> string_list;
+  string_list.reserve(cel_list->size());
+  for (int i = 0; i < cel_list->size(); i++) {
+    string_list.push_back(cel_list->Get(arena, i).StringOrDie().value());
+  }
+  auto result =
+      Arena::Create<std::string>(arena, absl::StrJoin(string_list, separator));
+  return CelValue::StringHolder(result);
+}
+
+CelValue::StringHolder Join(Arena* arena, const CelValue& value) {
+  return JoinWithSeparator(arena, value, kEmptySeparator);
+}
+
+absl::Status RegisterStringExtensionFunctions(
+    CelFunctionRegistry* registry, const InterpreterOptions& options) {
+  if (options.enable_string_concat) {
+    CEL_RETURN_IF_ERROR(
+        (FunctionAdapter<CelValue::StringHolder, CelValue>::CreateAndRegister(
+            "join", true,
+            [](Arena* arena, CelValue value) -> CelValue::StringHolder {
+              return Join(arena, value);
+            },
+            registry)));
+    CEL_RETURN_IF_ERROR((
+        FunctionAdapter<CelValue::StringHolder, CelValue,
+                        CelValue::StringHolder>::
+            CreateAndRegister(
+                "join", true,
+                [](Arena* arena, CelValue value,
+                   CelValue::StringHolder separator) -> CelValue::StringHolder {
+                  return JoinWithSeparator(arena, value, separator.value());
+                },
+                registry)));
+  }
   CEL_RETURN_IF_ERROR(
       (FunctionAdapter<CelValue, CelValue::StringHolder,
                        CelValue::StringHolder>::
@@ -73,15 +113,16 @@ absl::Status RegisterStringExtensionFunctions(CelFunctionRegistry* registry) {
                },
                registry)));
 
-  auto status = FunctionAdapter<CelValue, CelValue::StringHolder,
-                                CelValue::StringHolder, int64_t>::
-      CreateAndRegister(
-          "split", true,
-          [](Arena* arena, CelValue::StringHolder str,
-             CelValue::StringHolder delimiter, int64_t limit) -> CelValue {
-            return SplitWithLimit(arena, str, delimiter, limit);
-          },
-          registry);
-  return status;
+  CEL_RETURN_IF_ERROR(
+      (FunctionAdapter<CelValue, CelValue::StringHolder, CelValue::StringHolder,
+                       int64_t>::
+           CreateAndRegister(
+               "split", true,
+               [](Arena* arena, CelValue::StringHolder str,
+                  CelValue::StringHolder delimiter, int64_t limit) -> CelValue {
+                 return SplitWithLimit(arena, str, delimiter, limit);
+               },
+               registry)));
+  return absl::OkStatus();
 }
 }  // namespace google::api::expr::runtime

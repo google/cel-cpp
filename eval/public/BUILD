@@ -1224,6 +1224,7 @@ cc_test(
         ":builtin_func_registrar",
         ":cel_value",
         ":string_extension_func_registrar",
+        "//eval/public/containers:container_backed_list_impl",
         "//internal:testing",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
     ],
