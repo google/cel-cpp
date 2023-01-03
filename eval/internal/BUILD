@@ -22,6 +22,7 @@ cc_library(
     hdrs = ["interop.h"],
     deps = [
         ":errors",
+        "//base:attributes",
         "//base:type",
         "//base:type_factory",
         "//base:type_manager",
@@ -90,10 +91,11 @@ cc_library(
     name = "activation_interface",
     hdrs = ["activation_interface.h"],
     deps = [
+        "//base:attributes",
         "//base:memory_manager",
         "//base:value",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

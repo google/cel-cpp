@@ -8,13 +8,12 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/function.h"
+#include "base/function_result.h"
+#include "base/function_result_set.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/public/cel_attribute.h"
-#include "eval/public/unknown_attribute_set.h"
-#include "eval/public/unknown_function_result_set.h"
 #include "eval/public/unknown_set.h"
 
 namespace google::api::expr::runtime {
@@ -27,8 +26,8 @@ namespace google::api::expr::runtime {
 class AttributeUtility {
  public:
   AttributeUtility(
-      const std::vector<CelAttributePattern>* unknown_patterns,
-      const std::vector<CelAttributePattern>* missing_attribute_patterns,
+      absl::Span<const cel::AttributePattern> unknown_patterns,
+      absl::Span<const cel::AttributePattern> missing_attribute_patterns,
       cel::MemoryManager& manager)
       : unknown_patterns_(unknown_patterns),
         missing_attribute_patterns_(missing_attribute_patterns),
@@ -72,7 +71,7 @@ class AttributeUtility {
       bool use_partial) const;
 
   // Create an initial UnknownSet from a single attribute.
-  const UnknownSet* CreateUnknownSet(CelAttribute attr) const {
+  const UnknownSet* CreateUnknownSet(cel::Attribute attr) const {
     return memory_manager_
         .New<UnknownSet>(UnknownAttributeSet({std::move(attr)}))
         .release();
@@ -83,14 +82,14 @@ class AttributeUtility {
       const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
       absl::Span<const cel::Handle<cel::Value>> args) const {
     return memory_manager_
-        .New<UnknownSet>(UnknownFunctionResultSet(
-            UnknownFunctionResult(fn_descriptor, expr_id)))
+        .New<UnknownSet>(
+            cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)))
         .release();
   }
 
  private:
-  const std::vector<CelAttributePattern>* const unknown_patterns_;
-  const std::vector<CelAttributePattern>* const missing_attribute_patterns_;
+  absl::Span<const cel::AttributePattern> unknown_patterns_;
+  absl::Span<const cel::AttributePattern> missing_attribute_patterns_;
   cel::MemoryManager& memory_manager_;
 };
 

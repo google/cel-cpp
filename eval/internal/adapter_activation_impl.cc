@@ -37,4 +37,14 @@ absl::optional<Handle<Value>> AdapterActivationImpl::ResolveVariable(
   return LegacyValueToModernValueOrDie(arena, *legacy_value);
 }
 
+absl::Span<const AttributePattern> AdapterActivationImpl::GetUnknownAttributes()
+    const {
+  return legacy_activation_.unknown_attribute_patterns();
+}
+
+absl::Span<const AttributePattern> AdapterActivationImpl::GetMissingAttributes()
+    const {
+  return legacy_activation_.missing_attribute_patterns();
+}
+
 }  // namespace cel::interop_internal

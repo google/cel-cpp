@@ -37,7 +37,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
-  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
   // no match for void trail
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), true));
@@ -88,7 +88,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   CelAttribute attribute1(unknown_expr1, {});
   CelAttribute attribute2(unknown_expr2, {});
 
-  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
 
   UnknownSet unknown_set0(UnknownAttributeSet({attribute0}));
@@ -138,7 +138,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   CelAttribute attribute1(unknown_expr1, {});
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
 
-  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
 
   UnknownSet unknown_attr_set(utility.CheckForUnknowns(
@@ -175,7 +175,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
   trail = trail.Step(
       CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
 
-  AttributeUtility utility0(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility0(unknown_patterns, missing_attribute_patterns,
                             manager);
   EXPECT_FALSE(utility0.CheckForMissingAttribute(trail));
 
@@ -183,7 +183,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
       "destination",
       {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("ip"))}));
 
-  AttributeUtility utility1(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility1(unknown_patterns, missing_attribute_patterns,
                             manager);
   EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
@@ -204,7 +204,7 @@ TEST(AttributeUtilityTest, CreateUnknownSet) {
       CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
 
   std::vector<CelAttributePattern> empty_patterns;
-  AttributeUtility utility(&empty_patterns, &empty_patterns, manager);
+  AttributeUtility utility(empty_patterns, empty_patterns, manager);
 
   const UnknownSet* set = utility.CreateUnknownSet(trail.attribute());
   EXPECT_EQ(*set->unknown_attributes().begin()->AsString(), "destination.ip");

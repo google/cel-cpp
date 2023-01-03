@@ -149,8 +149,8 @@ class ExecutionFrame {
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
         enable_heterogeneous_numeric_lookups_(
             enable_heterogeneous_numeric_lookups),
-        attribute_utility_(&activation.unknown_attribute_patterns(),
-                           &activation.missing_attribute_patterns(),
+        attribute_utility_(modern_activation_.GetUnknownAttributes(),
+                           modern_activation_.GetMissingAttributes(),
                            state->memory_manager()),
         max_iterations_(max_iterations),
         iterations_(0),

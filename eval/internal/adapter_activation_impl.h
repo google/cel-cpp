@@ -36,6 +36,10 @@ class AdapterActivationImpl : public ActivationInterface {
   absl::optional<Handle<Value>> ResolveVariable(
       MemoryManager& manager, absl::string_view name) const override;
 
+  absl::Span<const cel::AttributePattern> GetUnknownAttributes() const override;
+
+  absl::Span<const cel::AttributePattern> GetMissingAttributes() const override;
+
  private:
   const google::api::expr::runtime::BaseActivation& legacy_activation_;
 };

@@ -2,9 +2,8 @@
 
 #include <utility>
 
+#include "base/attribute_set.h"
 #include "base/values/unknown_value.h"
-#include "eval/public/unknown_attribute_set.h"
-#include "eval/public/unknown_set.h"
 
 namespace google::api::expr::runtime {
 
@@ -14,12 +13,12 @@ bool AttributeUtility::CheckForMissingAttribute(
     return false;
   }
 
-  for (const auto& pattern : *missing_attribute_patterns_) {
+  for (const auto& pattern : missing_attribute_patterns_) {
     // (b/161297249) Preserving existing behavior for now, will add a streamz
     // for partial match, follow up with tightening up which fields are exposed
     // to the condition (w/ ajay and jim)
     if (pattern.IsMatch(trail.attribute()) ==
-        CelAttributePattern::MatchType::FULL) {
+        cel::AttributePattern::MatchType::FULL) {
       return true;
     }
   }
@@ -32,11 +31,11 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
   if (trail.empty()) {
     return false;
   }
-  for (const auto& pattern : *unknown_patterns_) {
+  for (const auto& pattern : unknown_patterns_) {
     auto current_match = pattern.IsMatch(trail.attribute());
-    if (current_match == CelAttributePattern::MatchType::FULL ||
+    if (current_match == cel::AttributePattern::MatchType::FULL ||
         (use_partial &&
-         current_match == CelAttributePattern::MatchType::PARTIAL)) {
+         current_match == cel::AttributePattern::MatchType::PARTIAL)) {
       return true;
     }
   }
@@ -81,9 +80,9 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
 // patterns, merges attributes together with those from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-UnknownAttributeSet AttributeUtility::CheckForUnknowns(
+cel::AttributeSet AttributeUtility::CheckForUnknowns(
     absl::Span<const AttributeTrail> args, bool use_partial) const {
-  UnknownAttributeSet attribute_set;
+  cel::AttributeSet attribute_set;
 
   for (const auto& trail : args) {
     if (CheckForUnknown(trail, use_partial)) {
@@ -104,7 +103,7 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
     absl::Span<const cel::Handle<cel::Value>> args,
     absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,
     bool use_partial) const {
-  UnknownAttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
+  cel::AttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
   if (!attr_set.empty()) {
     UnknownSet result_set(std::move(attr_set));
     if (initial_set != nullptr) {
