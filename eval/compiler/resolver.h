@@ -50,13 +50,13 @@ class Resolver {
 
   // FindLazyOverloads returns the set, possibly empty, of lazy overloads
   // matching the given function signature.
-  std::vector<const CelFunctionProvider*> FindLazyOverloads(
+  std::vector<CelFunctionRegistry::LazyOverload> FindLazyOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 
   // FindOverloads returns the set, possibly empty, of eager function overloads
   // matching the given function signature.
-  std::vector<const CelFunction*> FindOverloads(
+  std::vector<CelFunctionRegistry::StaticOverload> FindOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 

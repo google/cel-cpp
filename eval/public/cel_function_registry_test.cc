@@ -1,6 +1,7 @@
 #include "eval/public/cel_function_registry.h"
 
 #include <memory>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -14,15 +15,17 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using testing::ElementsAre;
 using testing::Eq;
 using testing::HasSubstr;
 using testing::Property;
 using testing::SizeIs;
+using testing::Truly;
 using cel::internal::StatusIs;
 
 class NullLazyFunctionProvider : public virtual CelFunctionProvider {
  public:
-  NullLazyFunctionProvider() {}
+  NullLazyFunctionProvider() = default;
   // Just return nullptr indicating no matching function.
   absl::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& desc,
@@ -72,8 +75,30 @@ TEST(CelFunctionRegistryTest, LazyAndStaticFunctionShareDescriptorSpace) {
   ASSERT_OK(registry.RegisterLazyFunction(
       desc, std::make_unique<NullLazyFunctionProvider>()));
 
-  absl::Status status = registry.Register(std::make_unique<ConstCelFunction>());
+  absl::Status status = registry.Register(ConstCelFunction::MakeDescriptor(),
+                                          std::make_unique<ConstCelFunction>());
   EXPECT_FALSE(status.ok());
+}
+
+// Confirm that lazy and static functions share the same descriptor space:
+// i.e. you can't insert both a lazy function and a static function for the same
+// descriptors.
+TEST(CelFunctionRegistryTest, FindStaticOverloadsReturns) {
+  CelFunctionRegistry registry;
+  CelFunctionDescriptor desc = ConstCelFunction::MakeDescriptor();
+  ASSERT_OK(registry.Register(desc, std::make_unique<ConstCelFunction>(desc)));
+
+  std::vector<CelFunctionRegistry::StaticOverload> overloads =
+      registry.FindStaticOverloads(desc.name(), false, {});
+
+  EXPECT_THAT(
+      overloads,
+      ElementsAre(
+          Truly([](const CelFunctionRegistry::StaticOverload overload) -> bool {
+            return overload.descriptor->name() == "ConstFunction" &&
+                   overload.implementation != nullptr;
+          })))
+      << "Expected single ConstFunction()";
 }
 
 TEST(CelFunctionRegistryTest, ListFunctions) {
@@ -82,7 +107,8 @@ TEST(CelFunctionRegistryTest, ListFunctions) {
 
   ASSERT_OK(registry.RegisterLazyFunction(
       lazy_function_desc, std::make_unique<NullLazyFunctionProvider>()));
-  EXPECT_OK(registry.Register(std::make_unique<ConstCelFunction>()));
+  EXPECT_OK(registry.Register(ConstCelFunction::MakeDescriptor(),
+                              std::make_unique<ConstCelFunction>()));
 
   auto registered_functions = registry.ListFunctions();
 
@@ -115,10 +141,10 @@ TEST(CelFunctionRegistryTest, CanRegisterNonStrictFunction) {
                                      /*receiver_style=*/false,
                                      {CelValue::Type::kAny},
                                      /*is_strict=*/false);
-    ASSERT_OK(
-        registry.Register(std::make_unique<ConstCelFunction>(descriptor)));
-    EXPECT_THAT(registry.FindOverloads("NonStrictFunction", false,
-                                       {CelValue::Type::kAny}),
+    ASSERT_OK(registry.Register(
+        descriptor, std::make_unique<ConstCelFunction>(descriptor)));
+    EXPECT_THAT(registry.FindStaticOverloads("NonStrictFunction", false,
+                                             {CelValue::Type::kAny}),
                 SizeIs(1));
   }
   {
@@ -149,8 +175,8 @@ TEST_P(NonStrictRegistrationFailTest,
   if (existing_function_is_lazy) {
     ASSERT_OK(registry.RegisterLazyFunction(descriptor));
   } else {
-    ASSERT_OK(
-        registry.Register(std::make_unique<ConstCelFunction>(descriptor)));
+    ASSERT_OK(registry.Register(
+        descriptor, std::make_unique<ConstCelFunction>(descriptor)));
   }
   CelFunctionDescriptor new_descriptor(
       "OverloadedFunction",
@@ -160,8 +186,8 @@ TEST_P(NonStrictRegistrationFailTest,
   if (new_function_is_lazy) {
     status = registry.RegisterLazyFunction(new_descriptor);
   } else {
-    status =
-        registry.Register(std::make_unique<ConstCelFunction>(new_descriptor));
+    status = registry.Register(
+        new_descriptor, std::make_unique<ConstCelFunction>(new_descriptor));
   }
   EXPECT_THAT(status, StatusIs(absl::StatusCode::kAlreadyExists,
                                HasSubstr("Only one overload")));
@@ -179,8 +205,8 @@ TEST_P(NonStrictRegistrationFailTest,
   if (existing_function_is_lazy) {
     ASSERT_OK(registry.RegisterLazyFunction(descriptor));
   } else {
-    ASSERT_OK(
-        registry.Register(std::make_unique<ConstCelFunction>(descriptor)));
+    ASSERT_OK(registry.Register(
+        descriptor, std::make_unique<ConstCelFunction>(descriptor)));
   }
   CelFunctionDescriptor new_descriptor(
       "OverloadedFunction",
@@ -190,8 +216,8 @@ TEST_P(NonStrictRegistrationFailTest,
   if (new_function_is_lazy) {
     status = registry.RegisterLazyFunction(new_descriptor);
   } else {
-    status =
-        registry.Register(std::make_unique<ConstCelFunction>(new_descriptor));
+    status = registry.Register(
+        new_descriptor, std::make_unique<ConstCelFunction>(new_descriptor));
   }
   EXPECT_THAT(status, StatusIs(absl::StatusCode::kAlreadyExists,
                                HasSubstr("Only one overload")));
@@ -208,8 +234,8 @@ TEST_P(NonStrictRegistrationFailTest, CanRegisterStrictFunctionsWithoutLimit) {
   if (existing_function_is_lazy) {
     ASSERT_OK(registry.RegisterLazyFunction(descriptor));
   } else {
-    ASSERT_OK(
-        registry.Register(std::make_unique<ConstCelFunction>(descriptor)));
+    ASSERT_OK(registry.Register(
+        descriptor, std::make_unique<ConstCelFunction>(descriptor)));
   }
   CelFunctionDescriptor new_descriptor(
       "OverloadedFunction",
@@ -219,8 +245,8 @@ TEST_P(NonStrictRegistrationFailTest, CanRegisterStrictFunctionsWithoutLimit) {
   if (new_function_is_lazy) {
     status = registry.RegisterLazyFunction(new_descriptor);
   } else {
-    status =
-        registry.Register(std::make_unique<ConstCelFunction>(new_descriptor));
+    status = registry.Register(
+        new_descriptor, std::make_unique<ConstCelFunction>(new_descriptor));
   }
   EXPECT_OK(status);
 }

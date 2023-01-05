@@ -18,6 +18,7 @@
 #include "base/function.h"
 #include "base/function_interface.h"
 #include "base/handle.h"
+#include "base/kind.h"
 #include "base/value.h"
 #include "base/values/error_value.h"
 #include "eval/eval/attribute_trail.h"
@@ -29,10 +30,10 @@
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -42,10 +43,6 @@ namespace {
 using ::cel::FunctionEvaluationContext;
 using ::cel::Handle;
 using ::cel::Value;
-using ::cel::extensions::ProtoMemoryManager;
-using ::cel::interop_internal::LegacyValueToModernValueOrDie;
-using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
-
 // Only non-strict functions are allowed to consume errors and unknown sets.
 bool IsNonStrict(const cel::FunctionDescriptor& descriptor) {
   // Special case: built-in function "@not_strictly_false" is treated as
@@ -65,6 +62,25 @@ bool ShouldAcceptOverload(const cel::FunctionDescriptor& descriptor,
       return IsNonStrict(descriptor);
     }
   }
+  return true;
+}
+
+bool ArgumentKindsMatch(const cel::FunctionDescriptor& descriptor,
+                        absl::Span<const cel::Handle<cel::Value>> arguments) {
+  auto types_size = descriptor.types().size();
+
+  if (types_size != arguments.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < types_size; i++) {
+    const auto& arg = arguments[i];
+    cel::Kind param_kind = descriptor.types()[i];
+    if (arg->kind() != param_kind && param_kind != CelValue::Type::kAny) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -110,6 +126,17 @@ bool IsUnknownFunctionResultError(const Handle<Value>& result) {
   return payload.has_value() && payload.value() == "true";
 }
 
+// Simple wrapper around a function resolution result. A function call should
+// resolve to a single function implementation and a descriptor or none.
+struct ResolveResult {
+  static ResolveResult NoOverload() { return ResolveResult{}; }
+
+  bool IsPresent() const { return descriptor != nullptr; }
+
+  const cel::FunctionDescriptor* descriptor;
+  const cel::Function* implementation;
+};
+
 // Implementation of ExpressionStep that finds suitable CelFunction overload and
 // invokes it. Abstract base class standardizes behavior between lazy and eager
 // function bindings. Derived classes provide ResolveFunction behavior.
@@ -133,7 +160,7 @@ class AbstractFunctionStep : public ExpressionStepBase {
   // cel::ErrorValue.
   absl::StatusOr<Handle<Value>> DoEvaluate(ExecutionFrame* frame) const;
 
-  virtual absl::StatusOr<const CelFunction*> ResolveFunction(
+  virtual absl::StatusOr<ResolveResult> ResolveFunction(
       absl::Span<const cel::Handle<cel::Value>> args,
       const ExecutionFrame* frame) const = 0;
 
@@ -157,21 +184,22 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
   }
 
   // Derived class resolves to a single function overload or none.
-  CEL_ASSIGN_OR_RETURN(const CelFunction* matched_function,
+  CEL_ASSIGN_OR_RETURN(ResolveResult matched_function,
                        ResolveFunction(input_args, frame));
 
   // Overload found and is allowed to consume the arguments.
-  if (matched_function != nullptr &&
-      ShouldAcceptOverload(matched_function->descriptor(), input_args)) {
+  if (matched_function.IsPresent() &&
+      ShouldAcceptOverload(*matched_function.descriptor, input_args)) {
     FunctionEvaluationContext context(frame->value_factory());
 
-    CEL_ASSIGN_OR_RETURN(Handle<Value> result,
-                         matched_function->Invoke(context, input_args));
+    CEL_ASSIGN_OR_RETURN(
+        Handle<Value> result,
+        matched_function.implementation->Invoke(context, input_args));
 
     if (frame->enable_unknown_function_results() &&
         IsUnknownFunctionResultError(result)) {
       auto unknown_set = frame->attribute_utility().CreateUnknownSet(
-          matched_function->descriptor(), id(), input_args);
+          *matched_function.descriptor, id(), input_args);
       return cel::interop_internal::CreateUnknownValueFromView(unknown_set);
     }
     return result;
@@ -229,35 +257,36 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
 
 class EagerFunctionStep : public AbstractFunctionStep {
  public:
-  EagerFunctionStep(std::vector<const CelFunction*>& overloads,
+  EagerFunctionStep(std::vector<CelFunctionRegistry::StaticOverload> overloads,
                     const std::string& name, size_t num_args, int64_t expr_id)
-      : AbstractFunctionStep(name, num_args, expr_id), overloads_(overloads) {}
+      : AbstractFunctionStep(name, num_args, expr_id),
+        overloads_(std::move(overloads)) {}
 
-  absl::StatusOr<const CelFunction*> ResolveFunction(
+  absl::StatusOr<ResolveResult> ResolveFunction(
       absl::Span<const cel::Handle<cel::Value>> input_args,
       const ExecutionFrame* frame) const override;
 
  private:
-  std::vector<const CelFunction*> overloads_;
+  std::vector<CelFunctionRegistry::StaticOverload> overloads_;
 };
 
-absl::StatusOr<const CelFunction*> EagerFunctionStep::ResolveFunction(
+absl::StatusOr<ResolveResult> EagerFunctionStep::ResolveFunction(
     absl::Span<const cel::Handle<cel::Value>> input_args,
     const ExecutionFrame* frame) const {
-  const CelFunction* matched_function = nullptr;
+  ResolveResult result = ResolveResult::NoOverload();
 
-  for (auto overload : overloads_) {
-    if (overload->MatchArguments(input_args)) {
+  for (const auto& overload : overloads_) {
+    if (ArgumentKindsMatch(*overload.descriptor, input_args)) {
       // More than one overload matches our arguments.
-      if (matched_function != nullptr) {
+      if (result.IsPresent()) {
         return absl::Status(absl::StatusCode::kInternal,
                             "Cannot resolve overloads");
       }
 
-      matched_function = overload;
+      result = ResolveResult{overload.descriptor, overload.implementation};
     }
   }
-  return matched_function;
+  return result;
 }
 
 class LazyFunctionStep : public AbstractFunctionStep {
@@ -266,25 +295,25 @@ class LazyFunctionStep : public AbstractFunctionStep {
   // at runtime.
   LazyFunctionStep(const std::string& name, size_t num_args,
                    bool receiver_style,
-                   std::vector<const CelFunctionProvider*>& providers,
+                   std::vector<CelFunctionRegistry::LazyOverload> providers,
                    int64_t expr_id)
       : AbstractFunctionStep(name, num_args, expr_id),
         receiver_style_(receiver_style),
-        providers_(providers) {}
+        providers_(std::move(providers)) {}
 
-  absl::StatusOr<const CelFunction*> ResolveFunction(
+  absl::StatusOr<ResolveResult> ResolveFunction(
       absl::Span<const cel::Handle<cel::Value>> input_args,
       const ExecutionFrame* frame) const override;
 
  private:
   bool receiver_style_;
-  std::vector<const CelFunctionProvider*> providers_;
+  std::vector<CelFunctionRegistry::LazyOverload> providers_;
 };
 
-absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
+absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
     absl::Span<const cel::Handle<cel::Value>> input_args,
     const ExecutionFrame* frame) const {
-  const CelFunction* matched_function = nullptr;
+  ResolveResult result = ResolveResult::NoOverload();
 
   std::vector<CelValue::Type> arg_types(num_arguments_);
 
@@ -296,46 +325,44 @@ absl::StatusOr<const CelFunction*> LazyFunctionStep::ResolveFunction(
 
   const BaseActivation& activation = frame->activation();
   for (auto provider : providers_) {
-    auto status = provider->GetFunction(matcher, activation);
-    if (!status.ok()) {
-      return status;
-    }
-    auto overload = status.value();
+    CEL_ASSIGN_OR_RETURN(auto overload,
+                         provider.provider->GetFunction(matcher, activation));
+
     if (overload != nullptr && overload->MatchArguments(input_args)) {
+      const cel::Function* impl = overload;
       // More than one overload matches our arguments.
-      if (matched_function != nullptr) {
+      if (result.IsPresent()) {
         return absl::Status(absl::StatusCode::kInternal,
                             "Cannot resolve overloads");
       }
 
-      matched_function = overload;
+      result = ResolveResult{&overload->descriptor(), impl};
     }
   }
 
-  return matched_function;
+  return result;
 }
 
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call_expr, int64_t expr_id,
-    std::vector<const CelFunctionProvider*>& lazy_overloads) {
+    std::vector<CelFunctionRegistry::LazyOverload> lazy_overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr.function();
-  std::vector<CelValue::Type> args(num_args, CelValue::Type::kAny);
   return std::make_unique<LazyFunctionStep>(name, num_args, receiver_style,
-                                            lazy_overloads, expr_id);
+                                            std::move(lazy_overloads), expr_id);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call_expr, int64_t expr_id,
-    std::vector<const CelFunction*>& overloads) {
+    std::vector<CelFunctionRegistry::StaticOverload> overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr.function();
-  return std::make_unique<EagerFunctionStep>(overloads, name, num_args,
-                                             expr_id);
+  return std::make_unique<EagerFunctionStep>(std::move(overloads), name,
+                                             num_args, expr_id);
 }
 
 }  // namespace google::api::expr::runtime

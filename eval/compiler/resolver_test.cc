@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
 #include "base/values/int_value.h"
@@ -191,12 +189,12 @@ TEST(ResolverTest, TestFindOverloads) {
   auto overloads =
       resolver.FindOverloads("fake_func", false, ArgumentsMatcher(0));
   EXPECT_THAT(overloads.size(), Eq(1));
-  EXPECT_THAT(overloads[0]->descriptor().name(), Eq("fake_func"));
+  EXPECT_THAT(overloads[0].descriptor->name(), Eq("fake_func"));
 
   overloads =
       resolver.FindOverloads("fake_ns_func", false, ArgumentsMatcher(0));
   EXPECT_THAT(overloads.size(), Eq(1));
-  EXPECT_THAT(overloads[0]->descriptor().name(), Eq("cel.fake_ns_func"));
+  EXPECT_THAT(overloads[0].descriptor->name(), Eq("cel.fake_ns_func"));
 }
 
 TEST(ResolverTest, TestFindLazyOverloads) {

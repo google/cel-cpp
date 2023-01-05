@@ -198,13 +198,13 @@ std::vector<CelValue::Type> ArgumentMatcher(const Call& call) {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
     const Call& call, const CelFunctionRegistry& registry) {
   auto argument_matcher = ArgumentMatcher(call);
-  auto lazy_overloads = registry.FindLazyOverloads(
+  auto lazy_overloads = registry.ModernFindLazyOverloads(
       call.function(), call.has_target(), argument_matcher);
   if (!lazy_overloads.empty()) {
     return CreateFunctionStep(call, GetExprId(), lazy_overloads);
   }
-  auto overloads = registry.FindOverloads(call.function(), call.has_target(),
-                                          argument_matcher);
+  auto overloads = registry.FindStaticOverloads(
+      call.function(), call.has_target(), argument_matcher);
   return CreateFunctionStep(call, GetExprId(), overloads);
 }
 
@@ -327,6 +327,48 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   EXPECT_THAT(*value.ErrorOrDie(),
               StatusIs(absl::StatusCode::kUnknown,
                        testing::HasSubstr("_+_(int64, uint64)")));
+}
+
+// Test situation when no overloads match input arguments during evaluation.
+TEST_P(FunctionStepTest, TestNoMatchingOverloadsUnexpectedArgCount) {
+  ExecutionPath path;
+  BuilderWarnings warnings;
+
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
+
+  Call call1 = ConstFunction::MakeCall("Const3");
+
+  // expect overloads for {int64_t, int64_t} but get call for {int64_t, int64_t, int64_t}.
+  Call add_call = AddFunction::MakeCall();
+  add_call.mutable_args().emplace_back();
+
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(call1, registry));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto step3,
+      CreateFunctionStep(add_call, -1,
+                         registry.FindStaticOverloads(
+                             add_call.function(), false,
+                             {cel::Kind::kInt64, cel::Kind::kInt64})));
+
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+  path.push_back(std::move(step3));
+
+  std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsError());
+  EXPECT_THAT(*value.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       testing::HasSubstr("_+_(int64, int64, int64)")));
 }
 
 // Test situation when no overloads match input arguments during evaluation

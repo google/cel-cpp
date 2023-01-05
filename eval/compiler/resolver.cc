@@ -9,6 +9,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/internal/interop.h"
+#include "eval/public/cel_function_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -110,12 +111,12 @@ Handle<Value> Resolver::FindConstant(absl::string_view name,
   return Handle<Value>();
 }
 
-std::vector<const CelFunction*> Resolver::FindOverloads(
+std::vector<CelFunctionRegistry::StaticOverload> Resolver::FindOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<cel::Kind>& types, int64_t expr_id) const {
   // Resolve the fully qualified names and then search the function registry
   // for possible matches.
-  std::vector<const CelFunction*> funcs;
+  std::vector<CelFunctionRegistry::StaticOverload> funcs;
   auto names = FullyQualifiedNames(name, expr_id);
   for (auto it = names.begin(); it != names.end(); it++) {
     // Only one set of overloads is returned along the namespace hierarchy as
@@ -123,7 +124,7 @@ std::vector<const CelFunction*> Resolver::FindOverloads(
     // resolution, meaning the most specific definition wins. This is different
     // from how C++ namespaces work, as they will accumulate the overload set
     // over the namespace hierarchy.
-    funcs = function_registry_->FindOverloads(*it, receiver_style, types);
+    funcs = function_registry_->FindStaticOverloads(*it, receiver_style, types);
     if (!funcs.empty()) {
       return funcs;
     }
@@ -131,15 +132,16 @@ std::vector<const CelFunction*> Resolver::FindOverloads(
   return funcs;
 }
 
-std::vector<const CelFunctionProvider*> Resolver::FindLazyOverloads(
+std::vector<CelFunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<cel::Kind>& types, int64_t expr_id) const {
   // Resolve the fully qualified names and then search the function registry
   // for possible matches.
-  std::vector<const CelFunctionProvider*> funcs;
+  std::vector<CelFunctionRegistry::LazyOverload> funcs;
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
-    funcs = function_registry_->FindLazyOverloads(name, receiver_style, types);
+    funcs = function_registry_->ModernFindLazyOverloads(name, receiver_style,
+                                                        types);
     if (!funcs.empty()) {
       return funcs;
     }

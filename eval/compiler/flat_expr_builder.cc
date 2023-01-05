@@ -79,12 +79,8 @@ using ::cel::StringValue;
 using ::cel::Value;
 using ::cel::ast::Ast;
 using ::cel::ast::internal::AstImpl;
-using ::cel::extensions::internal::ConvertProtoExprToNative;
-using ::cel::extensions::internal::ConvertProtoReferenceToNative;
-using ::cel::extensions::internal::ConvertProtoSourceInfoToNative;
 using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::Reference;
 using ::google::api::expr::v1alpha1::SourceInfo;
 
 using Ident = ::google::api::expr::v1alpha1::Expr::Ident;
@@ -568,7 +564,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     auto lazy_overloads = resolver_.FindLazyOverloads(
         function, receiver_style, arguments_matcher, expr->id());
     if (!lazy_overloads.empty()) {
-      AddStep(CreateFunctionStep(*call_expr, expr->id(), lazy_overloads));
+      AddStep(CreateFunctionStep(*call_expr, expr->id(),
+                                 std::move(lazy_overloads)));
       return;
     }
 
@@ -587,7 +584,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         return;
       }
     }
-    AddStep(CreateFunctionStep(*call_expr, expr->id(), overloads));
+    AddStep(CreateFunctionStep(*call_expr, expr->id(), std::move(overloads)));
   }
 
   void PreVisitComprehension(
