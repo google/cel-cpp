@@ -15,11 +15,15 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "base/function.h"
+#include "base/function_interface.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/values/error_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_builtins.h"
@@ -35,13 +39,15 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::FunctionEvaluationContext;
+using ::cel::Handle;
+using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::LegacyValueToModernValueOrDie;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
 
 // Only non-strict functions are allowed to consume errors and unknown sets.
-bool IsNonStrict(const CelFunction& function) {
-  const CelFunctionDescriptor& descriptor = function.descriptor();
+bool IsNonStrict(const cel::FunctionDescriptor& descriptor) {
   // Special case: built-in function "@not_strictly_false" is treated as
   // non-strict.
   return !descriptor.is_strict() ||
@@ -51,15 +57,12 @@ bool IsNonStrict(const CelFunction& function) {
 
 // Determine if the overload should be considered. Overloads that can consume
 // errors or unknown sets must be allowed as a non-strict function.
-bool ShouldAcceptOverload(const CelFunction* function,
+bool ShouldAcceptOverload(const cel::FunctionDescriptor& descriptor,
                           absl::Span<const cel::Handle<cel::Value>> arguments) {
-  if (function == nullptr) {
-    return false;
-  }
   for (size_t i = 0; i < arguments.size(); i++) {
     if (arguments[i].Is<cel::UnknownValue>() ||
         arguments[i].Is<cel::ErrorValue>()) {
-      return IsNonStrict(*function);
+      return IsNonStrict(descriptor);
     }
   }
   return true;
@@ -92,6 +95,21 @@ std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
   return result;
 }
 
+bool IsUnknownFunctionResultError(const Handle<Value>& result) {
+  if (!result.Is<cel::ErrorValue>()) {
+    return false;
+  }
+
+  const auto& status = result.As<cel::ErrorValue>()->value();
+
+  if (status.code() != absl::StatusCode::kUnavailable) {
+    return false;
+  }
+  auto payload = status.GetPayload(
+      cel::interop_internal::kPayloadUrlUnknownFunctionResult);
+  return payload.has_value() && payload.value() == "true";
+}
+
 // Implementation of ExpressionStep that finds suitable CelFunction overload and
 // invokes it. Abstract base class standardizes behavior between lazy and eager
 // function bindings. Derived classes provide ResolveFunction behavior.
@@ -111,8 +129,9 @@ class AbstractFunctionStep : public ExpressionStepBase {
   //
   // A non-ok result is an unrecoverable error, either from an illegal
   // evaluation state or forwarded from an extension function. Errors where
-  // evaluation can reasonably condition are returned in the result.
-  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  // evaluation can reasonably condition are returned in the result as a
+  // cel::ErrorValue.
+  absl::StatusOr<Handle<Value>> DoEvaluate(ExecutionFrame* frame) const;
 
   virtual absl::StatusOr<const CelFunction*> ResolveFunction(
       absl::Span<const cel::Handle<cel::Value>> args,
@@ -123,8 +142,8 @@ class AbstractFunctionStep : public ExpressionStepBase {
   size_t num_arguments_;
 };
 
-absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
-                                              CelValue* result) const {
+absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
+    ExecutionFrame* frame) const {
   // Create Span object that contains input arguments to the function.
   auto input_args = frame->value_stack().GetSpan(num_arguments_);
 
@@ -142,56 +161,54 @@ absl::Status AbstractFunctionStep::DoEvaluate(ExecutionFrame* frame,
                        ResolveFunction(input_args, frame));
 
   // Overload found and is allowed to consume the arguments.
-  if (ShouldAcceptOverload(matched_function, input_args)) {
-    google::protobuf::Arena* arena =
-        ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
-    auto legacy_input_args =
-        ModernValueToLegacyValueOrDie(frame->memory_manager(), input_args);
-    CEL_RETURN_IF_ERROR(
-        matched_function->Evaluate(legacy_input_args, result, arena));
+  if (matched_function != nullptr &&
+      ShouldAcceptOverload(matched_function->descriptor(), input_args)) {
+    FunctionEvaluationContext context(frame->value_factory());
+
+    CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+                         matched_function->Invoke(context, input_args));
 
     if (frame->enable_unknown_function_results() &&
-        IsUnknownFunctionResult(*result)) {
+        IsUnknownFunctionResultError(result)) {
       auto unknown_set = frame->attribute_utility().CreateUnknownSet(
           matched_function->descriptor(), id(), input_args);
-      *result = CelValue::CreateUnknownSet(unknown_set);
+      return cel::interop_internal::CreateUnknownValueFromView(unknown_set);
     }
-  } else {
-    // No matching overloads.
-    // We should not treat absense of overloads as non-recoverable error.
-    // Such absence can be caused by presence of CelError in arguments.
-    // To enable behavior of functions that accept CelError( &&, || ), CelErrors
-    // should be propagated along execution path.
-    for (const auto& arg : input_args) {
-      if (arg.Is<cel::ErrorValue>()) {
-        *result = ModernValueToLegacyValueOrDie(frame->memory_manager(), arg);
-        return absl::OkStatus();
-      }
-    }
-
-    if (frame->enable_unknowns()) {
-      // Already converted partial unknowns to unknown sets so just merge.
-      auto unknown_set =
-          frame->attribute_utility().MergeUnknowns(input_args, nullptr);
-      if (unknown_set != nullptr) {
-        *result = CelValue::CreateUnknownSet(unknown_set);
-        return absl::OkStatus();
-      }
-    }
-
-    std::string arg_types;
-    for (const auto& arg : input_args) {
-      if (!arg_types.empty()) {
-        absl::StrAppend(&arg_types, ", ");
-      }
-      absl::StrAppend(&arg_types, CelValue::TypeName(arg->kind()));
-    }
-    // If no errors or unknowns in input args, create new CelError.
-    *result = CreateNoMatchingOverloadError(
-        frame->memory_manager(), absl::StrCat(name_, "(", arg_types, ")"));
+    return result;
   }
 
-  return absl::OkStatus();
+  // No matching overloads.
+  // Such absence can be caused by presence of CelError in arguments.
+  // To enable behavior of functions that accept CelError( &&, || ), CelErrors
+  // should be propagated along execution path.
+  for (const auto& arg : input_args) {
+    if (arg.Is<cel::ErrorValue>()) {
+      return arg;
+    }
+  }
+
+  if (frame->enable_unknowns()) {
+    // Already converted partial unknowns to unknown sets so just merge.
+    auto unknown_set =
+        frame->attribute_utility().MergeUnknowns(input_args, nullptr);
+    if (unknown_set != nullptr) {
+      return cel::interop_internal::CreateUnknownValueFromView(unknown_set);
+    }
+  }
+
+  std::string arg_types;
+  for (const auto& arg : input_args) {
+    if (!arg_types.empty()) {
+      absl::StrAppend(&arg_types, ", ");
+    }
+    absl::StrAppend(&arg_types, CelValue::TypeName(arg->kind()));
+  }
+
+  // If no errors or unknowns in input args, create new CelError for missing
+  // overlaod.
+  return cel::interop_internal::CreateErrorValueFromView(
+      cel::interop_internal::CreateNoMatchingOverloadError(
+          frame->memory_manager(), absl::StrCat(name_, "(", arg_types, ")")));
 }
 
 absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
@@ -199,19 +216,13 @@ absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
 
-  CelValue result;
-
   // DoEvaluate may return a status for non-recoverable errors  (e.g.
   // unexpected typing, illegal expression state). Application errors that can
   // reasonably be handled as a cel error will appear in the result value.
-  auto status = DoEvaluate(frame, &result);
-  if (!status.ok()) {
-    return status;
-  }
+  CEL_ASSIGN_OR_RETURN(auto result, DoEvaluate(frame));
 
   frame->value_stack().Pop(num_arguments_);
-  frame->value_stack().Push(
-      LegacyValueToModernValueOrDie(frame->memory_manager(), result));
+  frame->value_stack().Push(std::move(result));
 
   return absl::OkStatus();
 }

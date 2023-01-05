@@ -182,12 +182,17 @@ cc_library(
     ],
     deps = [
         ":cel_value",
+        "//base:function_interface",
         "//base:functions",
         "//base:handle",
         "//base:value",
+        "//eval/internal:interop",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

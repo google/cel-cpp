@@ -330,9 +330,6 @@ cc_library(
     ],
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
     ],
@@ -371,4 +368,14 @@ cc_library(
 cc_library(
     name = "ast",
     hdrs = ["ast.h"],
+)
+
+cc_library(
+    name = "function_interface",
+    hdrs = ["function_interface.h"],
+    deps = [
+        ":value",
+        ":value_factory",
+        "@com_google_absl//absl/types:span",
+    ],
 )
