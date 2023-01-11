@@ -159,3 +159,30 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "function_adapter",
+    hdrs = [
+        "function_adapter.h",
+    ],
+    deps = [
+        "//base:kind",
+        "//base:value",
+        "//base:value_factory",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "function_adapter_test",
+    srcs = ["function_adapter_test.cc"],
+    deps = [
+        ":function_adapter",
+        "//base:memory_manager",
+        "//base:value",
+        "//base:value_factory",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+    ],
+)

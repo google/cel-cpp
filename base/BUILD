@@ -379,3 +379,34 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "function_adapter",
+    hdrs = ["function_adapter.h"],
+    deps = [
+        ":function_interface",
+        ":functions",
+        "//base/internal:function_adapter",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_test(
+    name = "function_adapter_test",
+    srcs = ["function_adapter_test.cc"],
+    deps = [
+        ":function_adapter",
+        ":function_interface",
+        ":functions",
+        ":handle",
+        ":kind",
+        ":memory_manager",
+        ":type_factory",
+        ":type_provider",
+        ":value",
+        ":value_factory",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
