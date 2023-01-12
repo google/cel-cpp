@@ -60,15 +60,12 @@ namespace cel {
 //    std::unique_ptr<CelExpressionBuilder> builder;
 //    // Initialize Expression builder with built-ins as needed.
 //
-//    CEL_ASSIGN_OR_RETURN(std::unique_ptr<cel::Function> cel_function,
-//      UnaryFunctionAdapter<double, double, double>::WrapFunction(
-//        &SquareDifference));
-//
 //    CEL_RETURN_IF_ERROR(
-//      builder->Register(
+//      builder->GetRegistry()->Register(
 //        UnaryFunctionAdapter<double, double, double>::CreateDescriptor(
 //          "sq_diff", /*receiver_style=*/false),
-//        std::move(cel_function)));
+//        BinaryFunctionAdapter<double, double, double>::WrapFunction(
+//          &SquareDifference)));
 //  }
 //
 // example CEL expression:
@@ -79,8 +76,7 @@ class BinaryFunctionAdapter {
  public:
   using FunctionType = std::function<T(ValueFactory&, U, V)>;
 
-  static absl::StatusOr<std::unique_ptr<cel::Function>> WrapFunction(
-      FunctionType fn) {
+  static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<BinaryFunctionImpl>(std::move(fn));
   }
 
@@ -131,13 +127,11 @@ class BinaryFunctionAdapter {
 //  {
 //    std::unique_ptr<CelExpressionBuilder> builder;
 //
-//    CEL_ASSIGN_OR_RETURN(auto cel_function,
-//      UnaryFunctionAdapter<double, double>::WrapFunction(&Invert));
-//
 //    CEL_RETURN_IF_ERROR(
-//      builder->Register(
+//      builder->GetRegistry()->Register(
 //        UnaryFunctionAdapter<double, double>::CreateDescriptor("inv",
-//        /*receiver_style=*/false), std::move(cel_function)));
+//        /*receiver_style=*/false),
+//         UnaryFunctionAdapter<double, double>::WrapFunction(&Invert)));
 //  }
 //  // example CEL expression
 //  inv(4) == 1/4 [true]
@@ -146,8 +140,7 @@ class UnaryFunctionAdapter {
  public:
   using FunctionType = std::function<T(ValueFactory&, U)>;
 
-  static absl::StatusOr<std::unique_ptr<cel::Function>> WrapFunction(
-      FunctionType fn) {
+  static std::unique_ptr<cel::Function> WrapFunction(FunctionType fn) {
     return std::make_unique<UnaryFunctionImpl>(std::move(fn));
   }
 

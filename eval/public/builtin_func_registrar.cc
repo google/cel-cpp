@@ -30,6 +30,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "base/function_adapter.h"
+#include "base/value.h"
+#include "base/value_factory.h"
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
@@ -53,6 +56,11 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::BinaryFunctionAdapter;
+using ::cel::Handle;
+using ::cel::UnaryFunctionAdapter;
+using ::cel::Value;
+using ::cel::ValueFactory;
 using ::cel::internal::EncodeDurationToString;
 using ::cel::internal::EncodeTimeToString;
 using ::cel::internal::MaxTimestamp;
@@ -63,157 +71,212 @@ const absl::Time kMaxTime = MaxTimestamp();
 
 // Template functions providing arithmetic operations
 template <class Type>
-CelValue Add(Arena*, Type v0, Type v1);
+Handle<Value> Add(ValueFactory&, Type v0, Type v1);
 
 template <>
-CelValue Add<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
+Handle<Value> Add<int64_t>(ValueFactory& value_factory, int64_t v0,
+                           int64_t v1) {
   auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
-    return CreateErrorValue(arena, sum.status());
+    return value_factory.CreateErrorValue(sum.status());
   }
-  return CelValue::CreateInt64(*sum);
+  return value_factory.CreateIntValue(*sum);
 }
 
 template <>
-CelValue Add<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
+Handle<Value> Add<uint64_t>(ValueFactory& value_factory, uint64_t v0,
+                            uint64_t v1) {
   auto sum = cel::internal::CheckedAdd(v0, v1);
   if (!sum.ok()) {
-    return CreateErrorValue(arena, sum.status());
+    return value_factory.CreateErrorValue(sum.status());
   }
-  return CelValue::CreateUint64(*sum);
+  return value_factory.CreateUintValue(*sum);
 }
 
 template <>
-CelValue Add<double>(Arena*, double v0, double v1) {
-  return CelValue::CreateDouble(v0 + v1);
+Handle<Value> Add<double>(ValueFactory& value_factory, double v0, double v1) {
+  return value_factory.CreateDoubleValue(v0 + v1);
 }
 
 template <class Type>
-CelValue Sub(Arena*, Type v0, Type v1);
+Handle<Value> Sub(ValueFactory&, Type v0, Type v1);
 
 template <>
-CelValue Sub<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
+Handle<Value> Sub<int64_t>(ValueFactory& value_factory, int64_t v0,
+                           int64_t v1) {
   auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
-    return CreateErrorValue(arena, diff.status());
+    return value_factory.CreateErrorValue(diff.status());
   }
-  return CelValue::CreateInt64(*diff);
+  return value_factory.CreateIntValue(*diff);
 }
 
 template <>
-CelValue Sub<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
+Handle<Value> Sub<uint64_t>(ValueFactory& value_factory, uint64_t v0,
+                            uint64_t v1) {
   auto diff = cel::internal::CheckedSub(v0, v1);
   if (!diff.ok()) {
-    return CreateErrorValue(arena, diff.status());
+    return value_factory.CreateErrorValue(diff.status());
   }
-  return CelValue::CreateUint64(*diff);
+  return value_factory.CreateUintValue(*diff);
 }
 
 template <>
-CelValue Sub<double>(Arena*, double v0, double v1) {
-  return CelValue::CreateDouble(v0 - v1);
+Handle<Value> Sub<double>(ValueFactory& value_factory, double v0, double v1) {
+  return value_factory.CreateDoubleValue(v0 - v1);
 }
 
 template <class Type>
-CelValue Mul(Arena*, Type v0, Type v1);
+Handle<Value> Mul(ValueFactory&, Type v0, Type v1);
 
 template <>
-CelValue Mul<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
+Handle<Value> Mul<int64_t>(ValueFactory& value_factory, int64_t v0,
+                           int64_t v1) {
   auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
-    return CreateErrorValue(arena, prod.status());
+    return value_factory.CreateErrorValue(prod.status());
   }
-  return CelValue::CreateInt64(*prod);
+  return value_factory.CreateIntValue(*prod);
 }
 
 template <>
-CelValue Mul<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
+Handle<Value> Mul<uint64_t>(ValueFactory& value_factory, uint64_t v0,
+                            uint64_t v1) {
   auto prod = cel::internal::CheckedMul(v0, v1);
   if (!prod.ok()) {
-    return CreateErrorValue(arena, prod.status());
+    return value_factory.CreateErrorValue(prod.status());
   }
-  return CelValue::CreateUint64(*prod);
+  return value_factory.CreateUintValue(*prod);
 }
 
 template <>
-CelValue Mul<double>(Arena*, double v0, double v1) {
-  return CelValue::CreateDouble(v0 * v1);
+Handle<Value> Mul<double>(ValueFactory& value_factory, double v0, double v1) {
+  return value_factory.CreateDoubleValue(v0 * v1);
 }
 
 template <class Type>
-CelValue Div(Arena* arena, Type v0, Type v1);
+Handle<Value> Div(ValueFactory&, Type v0, Type v1);
 
 // Division operations for integer types should check for
 // division by 0
 template <>
-CelValue Div<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
+Handle<Value> Div<int64_t>(ValueFactory& value_factory, int64_t v0,
+                           int64_t v1) {
   auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
-    return CreateErrorValue(arena, quot.status());
+    return value_factory.CreateErrorValue(quot.status());
   }
-  return CelValue::CreateInt64(*quot);
+  return value_factory.CreateIntValue(*quot);
 }
 
 // Division operations for integer types should check for
 // division by 0
 template <>
-CelValue Div<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
+Handle<Value> Div<uint64_t>(ValueFactory& value_factory, uint64_t v0,
+                            uint64_t v1) {
   auto quot = cel::internal::CheckedDiv(v0, v1);
   if (!quot.ok()) {
-    return CreateErrorValue(arena, quot.status());
+    return value_factory.CreateErrorValue(quot.status());
   }
-  return CelValue::CreateUint64(*quot);
+  return value_factory.CreateUintValue(*quot);
 }
 
 template <>
-CelValue Div<double>(Arena*, double v0, double v1) {
+Handle<Value> Div<double>(ValueFactory& value_factory, double v0, double v1) {
   static_assert(std::numeric_limits<double>::is_iec559,
                 "Division by zero for doubles must be supported");
 
   // For double, division will result in +/- inf
-  return CelValue::CreateDouble(v0 / v1);
+  return value_factory.CreateDoubleValue(v0 / v1);
 }
 
 // Modulo operation
 template <class Type>
-CelValue Modulo(Arena* arena, Type v0, Type v1);
+Handle<Value> Modulo(ValueFactory& value_factory, Type v0, Type v1);
 
 // Modulo operations for integer types should check for
 // division by 0
 template <>
-CelValue Modulo<int64_t>(Arena* arena, int64_t v0, int64_t v1) {
+Handle<Value> Modulo<int64_t>(ValueFactory& value_factory, int64_t v0,
+                              int64_t v1) {
   auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
-    return CreateErrorValue(arena, mod.status());
+    return value_factory.CreateErrorValue(mod.status());
   }
-  return CelValue::CreateInt64(*mod);
+  return value_factory.CreateIntValue(*mod);
 }
 
 template <>
-CelValue Modulo<uint64_t>(Arena* arena, uint64_t v0, uint64_t v1) {
+Handle<Value> Modulo<uint64_t>(ValueFactory& value_factory, uint64_t v0,
+                               uint64_t v1) {
   auto mod = cel::internal::CheckedMod(v0, v1);
   if (!mod.ok()) {
-    return CreateErrorValue(arena, mod.status());
+    return value_factory.CreateErrorValue(mod.status());
   }
-  return CelValue::CreateUint64(*mod);
+  return value_factory.CreateUintValue(*mod);
 }
 
 // Helper method
 // Registers all arithmetic functions for template parameter type.
 template <class Type>
 absl::Status RegisterArithmeticFunctionsForType(CelFunctionRegistry* registry) {
-  using FunctionAdapter = PortableBinaryFunctionAdapter<CelValue, Type, Type>;
+  using FunctionAdapter = cel::BinaryFunctionAdapter<Handle<Value>, Type, Type>;
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kAdd, false, Add<Type>)));
+      FunctionAdapter::CreateDescriptor(builtin::kAdd, false),
+      FunctionAdapter::WrapFunction(&Add<Type>)));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kSubtract, false, Sub<Type>)));
+      FunctionAdapter::CreateDescriptor(builtin::kSubtract, false),
+      FunctionAdapter::WrapFunction(&Sub<Type>)));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kMultiply, false, Mul<Type>)));
+      FunctionAdapter::CreateDescriptor(builtin::kMultiply, false),
+      FunctionAdapter::WrapFunction(&Mul<Type>)));
 
   return registry->Register(
-      FunctionAdapter::Create(builtin::kDivide, false, Div<Type>));
+      FunctionAdapter::CreateDescriptor(builtin::kDivide, false),
+      FunctionAdapter::WrapFunction(&Div<Type>));
+}
+
+// Register basic Arithmetic functions for numeric types.
+absl::Status RegisterNumericArithmeticFunctions(
+    CelFunctionRegistry* registry, const InterpreterOptions& options) {
+  CEL_RETURN_IF_ERROR(RegisterArithmeticFunctionsForType<int64_t>(registry));
+  CEL_RETURN_IF_ERROR(RegisterArithmeticFunctionsForType<uint64_t>(registry));
+  CEL_RETURN_IF_ERROR(RegisterArithmeticFunctionsForType<double>(registry));
+
+  // Modulo
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, int64_t, int64_t>::CreateDescriptor(
+          builtin::kModulo, false),
+      BinaryFunctionAdapter<Handle<Value>, int64_t, int64_t>::WrapFunction(
+          &Modulo<int64_t>)));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, uint64_t,
+                            uint64_t>::CreateDescriptor(builtin::kModulo,
+                                                        false),
+      BinaryFunctionAdapter<Handle<Value>, uint64_t, uint64_t>::WrapFunction(
+          &Modulo<uint64_t>)));
+
+  // Negation group
+  CEL_RETURN_IF_ERROR(registry->Register(
+      UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
+          builtin::kNeg, false),
+      UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
+          [](ValueFactory& value_factory, int64_t value) -> Handle<Value> {
+            auto inv = cel::internal::CheckedNegation(value);
+            if (!inv.ok()) {
+              return value_factory.CreateErrorValue(inv.status());
+            }
+            return value_factory.CreateIntValue(*inv);
+          })));
+
+  return registry->Register(
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(builtin::kNeg,
+                                                             false),
+      UnaryFunctionAdapter<double, double>::WrapFunction(
+          [](ValueFactory&, double value) -> double { return -value; }));
 }
 
 template <class T>
@@ -1221,29 +1284,10 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           &RegisterEqualityFunctions,
           &RegisterComparisonFunctions,
           &RegisterLogicalFunctions,
+          &RegisterNumericArithmeticFunctions,
+          &RegisterConversionFunctions,
       },
       options));
-
-  // Negation group
-  absl::Status status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, int64_t>::Create(
-          builtin::kNeg, false, [](Arena* arena, int64_t value) -> CelValue {
-            auto inv = cel::internal::CheckedNegation(value);
-            if (!inv.ok()) {
-              return CreateErrorValue(arena, inv.status());
-            }
-            return CelValue::CreateInt64(*inv);
-          }));
-  if (!status.ok()) return status;
-
-  status =
-      registry->Register(PortableUnaryFunctionAdapter<double, double>::Create(
-          builtin::kNeg, false,
-          [](Arena*, double value) -> double { return -value; }));
-  if (!status.ok()) return status;
-
-  status = RegisterConversionFunctions(registry, options);
-  if (!status.ok()) return status;
 
   // String size
   auto size_func = [](Arena* arena, CelValue::StringHolder value) -> CelValue {
@@ -1257,7 +1301,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   };
   // receiver style = true/false
   // Support global and receiver style size() operations on strings.
-  status = registry->Register(
+  absl::Status status = registry->Register(
       PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
           builtin::kSize, true, size_func));
   if (!status.ok()) return status;
@@ -1312,16 +1356,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
 
   // Register set membership tests with the 'in' operator and its variants.
   status = RegisterSetMembershipFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  // basic Arithmetic functions for numeric types
-  status = RegisterArithmeticFunctionsForType<int64_t>(registry);
-  if (!status.ok()) return status;
-
-  status = RegisterArithmeticFunctionsForType<uint64_t>(registry);
-  if (!status.ok()) return status;
-
-  status = RegisterArithmeticFunctionsForType<double>(registry);
   if (!status.ok()) return status;
 
   bool enable_timestamp_duration_overflow_errors =
@@ -1488,17 +1522,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   status = RegisterStringFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  // Modulo
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, int64_t, int64_t>::Create(
-          builtin::kModulo, false, Modulo<int64_t>));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, uint64_t, uint64_t>::Create(
-          builtin::kModulo, false, Modulo<uint64_t>));
   if (!status.ok()) return status;
 
   status = RegisterTimestampFunctions(registry, options);
