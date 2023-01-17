@@ -20,6 +20,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/time/time.h"
 #include "base/function.h"
 #include "base/function_interface.h"
 #include "base/handle.h"
@@ -31,6 +32,7 @@
 #include "base/values/bool_value.h"
 #include "base/values/double_value.h"
 #include "base/values/int_value.h"
+#include "base/values/timestamp_value.h"
 #include "base/values/uint_value.h"
 #include "internal/testing.h"
 
@@ -107,6 +109,39 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
 
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_EQ(result.As<BoolValue>()->value(), false);
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
+  using FunctionAdapter = UnaryFunctionAdapter<absl::Time, absl::Time>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory&, absl::Time x) -> absl::Time {
+        return x + absl::Minutes(1);
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateTimestampValue(absl::UnixEpoch()));
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<TimestampValue>());
+  EXPECT_EQ(result.As<TimestampValue>()->value(),
+            absl::UnixEpoch() + absl::Minutes(1));
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
+  using FunctionAdapter = UnaryFunctionAdapter<absl::Duration, absl::Duration>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory&, absl::Duration x) -> absl::Duration {
+        return x + absl::Seconds(2);
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateDurationValue(absl::Seconds(6)));
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<DurationValue>());
+  EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(8));
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
@@ -243,6 +278,29 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorBool) {
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kBool));
 }
 
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorTimestamp) {
+  FunctionDescriptor desc =
+      UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+                           absl::Time>::CreateDescriptor("AddMinute", false);
+
+  EXPECT_EQ(desc.name(), "AddMinute");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kTimestamp));
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorDuration) {
+  FunctionDescriptor desc =
+      UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+                           absl::Duration>::CreateDescriptor("AddFiveSeconds",
+                                                             false);
+
+  EXPECT_EQ(desc.name(), "AddFiveSeconds");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kDuration));
+}
+
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorAny) {
   FunctionDescriptor desc =
       UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
@@ -304,6 +362,49 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
 
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_EQ(result.As<BoolValue>()->value(), true);
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionTimestamp) {
+  using FunctionAdapter =
+      BinaryFunctionAdapter<absl::Time, absl::Time, absl::Time>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory&, absl::Time x, absl::Time y) -> absl::Time {
+        return x > y ? x : y;
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateTimestampValue(absl::UnixEpoch() +
+                                                            absl::Seconds(1)));
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateTimestampValue(absl::UnixEpoch() +
+                                                            absl::Seconds(2)));
+
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<TimestampValue>());
+  EXPECT_EQ(result.As<TimestampValue>()->value(),
+            absl::UnixEpoch() + absl::Seconds(2));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDuration) {
+  using FunctionAdapter =
+      BinaryFunctionAdapter<absl::Duration, absl::Duration, absl::Duration>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory&, absl::Duration x, absl::Duration y) -> absl::Duration {
+        return x > y ? x : y;
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateDurationValue(absl::Seconds(5)));
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateDurationValue(absl::Seconds(2)));
+
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<DurationValue>());
+  EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(5));
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
@@ -430,6 +531,28 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorBool) {
   EXPECT_TRUE(desc.is_strict());
   EXPECT_FALSE(desc.receiver_style());
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kBool, Kind::kBool));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorTimestamp) {
+  FunctionDescriptor desc =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
+                            absl::Time>::CreateDescriptor("Max", false);
+
+  EXPECT_EQ(desc.name(), "Max");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kTimestamp, Kind::kTimestamp));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorDuration) {
+  FunctionDescriptor desc =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
+                            absl::Duration>::CreateDescriptor("Max", false);
+
+  EXPECT_EQ(desc.name(), "Max");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kDuration, Kind::kDuration));
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorAny) {

@@ -21,10 +21,13 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/time/time.h"
 #include "base/kind.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
+#include "base/values/duration_value.h"
 #include "base/values/int_value.h"
+#include "base/values/timestamp_value.h"
 #include "base/values/uint_value.h"
 #include "internal/status_macros.h"
 
@@ -63,6 +66,16 @@ constexpr Kind AdaptedKind<double>() {
 template <>
 constexpr Kind AdaptedKind<bool>() {
   return Kind::kBool;
+}
+
+template <>
+constexpr Kind AdaptedKind<absl::Time>() {
+  return Kind::kTimestamp;
+}
+
+template <>
+constexpr Kind AdaptedKind<absl::Duration>() {
+  return Kind::kDuration;
 }
 
 template <>
@@ -110,6 +123,22 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
+  absl::Status operator()(absl::Time* out) {
+    if (!input.Is<TimestampValue>()) {
+      return absl::InvalidArgumentError("expected timestamp value");
+    }
+    *out = input.As<TimestampValue>()->value();
+    return absl::OkStatus();
+  }
+
+  absl::Status operator()(absl::Duration* out) {
+    if (!input.Is<DurationValue>()) {
+      return absl::InvalidArgumentError("expected duration value");
+    }
+    *out = input.As<DurationValue>()->value();
+    return absl::OkStatus();
+  }
+
   absl::Status operator()(Handle<Value>* out) {
     *out = input;
     return absl::OkStatus();
@@ -135,6 +164,14 @@ struct AdaptedToHandleVisitor {
 
   absl::StatusOr<Handle<Value>> operator()(bool in) {
     return value_factory.CreateBoolValue(in);
+  }
+
+  absl::StatusOr<Handle<Value>> operator()(absl::Time in) {
+    return value_factory.CreateTimestampValue(in);
+  }
+
+  absl::StatusOr<Handle<Value>> operator()(absl::Duration in) {
+    return value_factory.CreateDurationValue(in);
   }
 
   absl::StatusOr<Handle<Value>> operator()(Handle<Value> in) {

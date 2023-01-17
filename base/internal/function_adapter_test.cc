@@ -15,9 +15,11 @@
 #include "base/internal/function_adapter.h"
 
 #include "absl/status/status.h"
+#include "absl/time/time.h"
 #include "base/memory_manager.h"
 #include "base/value_factory.h"
 #include "base/values/double_value.h"
+#include "base/values/duration_value.h"
 #include "base/values/int_value.h"
 #include "base/values/uint_value.h"
 #include "internal/testing.h"
@@ -33,6 +35,11 @@ static_assert(AdaptedKind<uint64_t>() == Kind::kUint,
 static_assert(AdaptedKind<double>() == Kind::kDouble,
               "double adapts to double");
 static_assert(AdaptedKind<bool>() == Kind::kBool, "bool adapts to bool");
+static_assert(AdaptedKind<absl::Time>() == Kind::kTimestamp,
+              "timestamp adapts to absl::Time");
+static_assert(AdaptedKind<absl::Duration>() == Kind::kDuration,
+              "duration adapts to absl::Duration");
+
 static_assert(AdaptedKind<Handle<Value>>() == Kind::kAny,
               "any adapts to Handle<Value>");
 
@@ -125,6 +132,45 @@ TEST_F(HandleToAdaptedVisitorTest, BoolWrongKind) {
       StatusIs(absl::StatusCode::kInvalidArgument, "expected bool value"));
 }
 
+TEST_F(HandleToAdaptedVisitorTest, Timestamp) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateTimestampValue(absl::UnixEpoch() +
+                                                            absl::Seconds(1)));
+
+  absl::Time out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out, absl::UnixEpoch() + absl::Seconds(1));
+}
+
+TEST_F(HandleToAdaptedVisitorTest, TimestampWrongKind) {
+  Handle<Value> v = value_factory().CreateUintValue(10);
+
+  absl::Time out;
+  EXPECT_THAT(
+      HandleToAdaptedVisitor{v}(&out),
+      StatusIs(absl::StatusCode::kInvalidArgument, "expected timestamp value"));
+}
+
+TEST_F(HandleToAdaptedVisitorTest, Duration) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateDurationValue(absl::Seconds(5)));
+
+  absl::Duration out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out, absl::Seconds(5));
+}
+
+TEST_F(HandleToAdaptedVisitorTest, DurationWrongKind) {
+  Handle<Value> v = value_factory().CreateUintValue(10);
+
+  absl::Duration out;
+  EXPECT_THAT(
+      HandleToAdaptedVisitor{v}(&out),
+      StatusIs(absl::StatusCode::kInvalidArgument, "expected duration value"));
+}
+
 class AdaptedToHandleVisitorTest : public ValueFactoryTestBase {};
 
 TEST_F(AdaptedToHandleVisitorTest, Int) {
@@ -165,6 +211,27 @@ TEST_F(AdaptedToHandleVisitorTest, Bool) {
 
   ASSERT_TRUE(result.Is<BoolValue>());
   EXPECT_EQ(result.As<BoolValue>()->value(), true);
+}
+
+TEST_F(AdaptedToHandleVisitorTest, Timestamp) {
+  absl::Time value = absl::UnixEpoch() + absl::Seconds(10);
+
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       AdaptedToHandleVisitor{value_factory()}(value));
+
+  ASSERT_TRUE(result.Is<TimestampValue>());
+  EXPECT_EQ(result.As<TimestampValue>()->value(),
+            absl::UnixEpoch() + absl::Seconds(10));
+}
+
+TEST_F(AdaptedToHandleVisitorTest, Duration) {
+  absl::Duration value = absl::Seconds(5);
+
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       AdaptedToHandleVisitor{value_factory()}(value));
+
+  ASSERT_TRUE(result.Is<DurationValue>());
+  EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(5));
 }
 
 TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {

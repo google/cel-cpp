@@ -171,6 +171,7 @@ cc_library(
         "//base:value_factory",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -184,5 +185,6 @@ cc_test(
         "//base:value_factory",
         "//internal:testing",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
     ],
 )
