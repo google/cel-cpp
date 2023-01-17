@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "base/kind.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "base/values/int_value.h"
 #include "base/values/uint_value.h"
 #include "internal/status_macros.h"
@@ -57,6 +58,11 @@ constexpr Kind AdaptedKind<uint64_t>() {
 template <>
 constexpr Kind AdaptedKind<double>() {
   return Kind::kDouble;
+}
+
+template <>
+constexpr Kind AdaptedKind<bool>() {
+  return Kind::kBool;
 }
 
 template <>
@@ -96,6 +102,14 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
+  absl::Status operator()(bool* out) {
+    if (!input.Is<BoolValue>()) {
+      return absl::InvalidArgumentError("expected bool value");
+    }
+    *out = input.As<BoolValue>()->value();
+    return absl::OkStatus();
+  }
+
   absl::Status operator()(Handle<Value>* out) {
     *out = input;
     return absl::OkStatus();
@@ -117,6 +131,10 @@ struct AdaptedToHandleVisitor {
 
   absl::StatusOr<Handle<Value>> operator()(double in) {
     return value_factory.CreateDoubleValue(in);
+  }
+
+  absl::StatusOr<Handle<Value>> operator()(bool in) {
+    return value_factory.CreateBoolValue(in);
   }
 
   absl::StatusOr<Handle<Value>> operator()(Handle<Value> in) {

@@ -32,6 +32,7 @@ static_assert(AdaptedKind<uint64_t>() == Kind::kUint,
               "uint adapts to uint64_t");
 static_assert(AdaptedKind<double>() == Kind::kDouble,
               "double adapts to double");
+static_assert(AdaptedKind<bool>() == Kind::kBool, "bool adapts to bool");
 static_assert(AdaptedKind<Handle<Value>>() == Kind::kAny,
               "any adapts to Handle<Value>");
 
@@ -106,6 +107,24 @@ TEST_F(HandleToAdaptedVisitorTest, DoubleWrongKind) {
       StatusIs(absl::StatusCode::kInvalidArgument, "expected double value"));
 }
 
+TEST_F(HandleToAdaptedVisitorTest, Bool) {
+  Handle<Value> v = value_factory().CreateBoolValue(false);
+
+  bool out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out, false);
+}
+
+TEST_F(HandleToAdaptedVisitorTest, BoolWrongKind) {
+  Handle<Value> v = value_factory().CreateUintValue(10);
+
+  bool out;
+  EXPECT_THAT(
+      HandleToAdaptedVisitor{v}(&out),
+      StatusIs(absl::StatusCode::kInvalidArgument, "expected bool value"));
+}
+
 class AdaptedToHandleVisitorTest : public ValueFactoryTestBase {};
 
 TEST_F(AdaptedToHandleVisitorTest, Int) {
@@ -136,6 +155,16 @@ TEST_F(AdaptedToHandleVisitorTest, Uint) {
 
   ASSERT_TRUE(result.Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 10);
+}
+
+TEST_F(AdaptedToHandleVisitorTest, Bool) {
+  bool value = true;
+
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       AdaptedToHandleVisitor{value_factory()}(value));
+
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_EQ(result.As<BoolValue>()->value(), true);
 }
 
 TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {

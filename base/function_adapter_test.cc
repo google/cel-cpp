@@ -28,6 +28,7 @@
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "base/values/double_value.h"
 #include "base/values/int_value.h"
 #include "base/values/uint_value.h"
@@ -94,6 +95,18 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
 
   ASSERT_TRUE(result.Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 42);
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
+  using FunctionAdapter = UnaryFunctionAdapter<bool, bool>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory&, bool x) -> bool { return !x; });
+
+  std::vector<Handle<Value>> args{value_factory().CreateBoolValue(true)};
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_EQ(result.As<BoolValue>()->value(), false);
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
@@ -219,6 +232,17 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorUint) {
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kUint64));
 }
 
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorBool) {
+  FunctionDescriptor desc =
+      UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+                           bool>::CreateDescriptor("Not", false);
+
+  EXPECT_EQ(desc.name(), "Not");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kBool));
+}
+
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorAny) {
   FunctionDescriptor desc =
       UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
@@ -267,6 +291,19 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
 
   ASSERT_TRUE(result.Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 42);
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
+  using FunctionAdapter = BinaryFunctionAdapter<bool, bool, bool>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory&, bool x, bool y) -> bool { return x != y; });
+
+  std::vector<Handle<Value>> args{value_factory().CreateBoolValue(false),
+                                  value_factory().CreateBoolValue(true)};
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<BoolValue>());
+  EXPECT_EQ(result.As<BoolValue>()->value(), true);
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
@@ -382,6 +419,17 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorUint) {
   EXPECT_TRUE(desc.is_strict());
   EXPECT_FALSE(desc.receiver_style());
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kUint64, Kind::kUint64));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorBool) {
+  FunctionDescriptor desc =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, bool,
+                            bool>::CreateDescriptor("Xor", false);
+
+  EXPECT_EQ(desc.name(), "Xor");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kBool, Kind::kBool));
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorAny) {
