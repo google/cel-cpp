@@ -20,6 +20,25 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "allocator",
+    hdrs = ["allocator.h"],
+    deps = [
+        ":memory_manager",
+        "@com_google_absl//absl/base:core_headers",
+    ],
+)
+
+cc_test(
+    name = "allocator_test",
+    srcs = ["allocator_test.cc"],
+    deps = [
+        ":allocator",
+        ":memory_manager",
+        "//internal:testing",
+    ],
+)
+
+cc_library(
     name = "attributes",
     srcs = [
         "attribute.cc",

@@ -27,6 +27,8 @@
 
 namespace cel {
 
+template <typename T>
+class Allocator;
 class MemoryManager;
 class GlobalMemoryManager;
 class ArenaMemoryManager;
@@ -89,6 +91,8 @@ class MemoryManager {
  private:
   friend class GlobalMemoryManager;
   friend class ArenaMemoryManager;
+  template <typename T>
+  friend class Allocator;
 
   // Only for use by GlobalMemoryManager and ArenaMemoryManager.
   explicit MemoryManager(bool allocation_only)
