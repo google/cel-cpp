@@ -31,6 +31,11 @@ const absl::Status* DurationOverflowError() {
   return kDurationOverflow;
 }
 
+absl::Status CreateNoMatchingOverloadError(absl::string_view fn) {
+  return absl::UnknownError(
+      absl::StrCat(kErrNoMatchingOverload, fn.empty() ? "" : " : ", fn));
+}
+
 const absl::Status* CreateNoMatchingOverloadError(cel::MemoryManager& manager,
                                                   absl::string_view fn) {
   return CreateNoMatchingOverloadError(
@@ -39,9 +44,7 @@ const absl::Status* CreateNoMatchingOverloadError(cel::MemoryManager& manager,
 
 const absl::Status* CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
                                                   absl::string_view fn) {
-  return Arena::Create<absl::Status>(
-      arena, absl::StatusCode::kUnknown,
-      absl::StrCat(kErrNoMatchingOverload, fn.empty() ? "" : " : ", fn));
+  return Arena::Create<absl::Status>(arena, CreateNoMatchingOverloadError(fn));
 }
 
 const absl::Status* CreateNoSuchFieldError(cel::MemoryManager& manager,

@@ -27,7 +27,6 @@
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_function_registry.h"
@@ -43,14 +42,6 @@ namespace {
 using ::cel::FunctionEvaluationContext;
 using ::cel::Handle;
 using ::cel::Value;
-// Only non-strict functions are allowed to consume errors and unknown sets.
-bool IsNonStrict(const cel::FunctionDescriptor& descriptor) {
-  // Special case: built-in function "@not_strictly_false" is treated as
-  // non-strict.
-  return !descriptor.is_strict() ||
-         descriptor.name() == builtin::kNotStrictlyFalse ||
-         descriptor.name() == builtin::kNotStrictlyFalseDeprecated;
-}
 
 // Determine if the overload should be considered. Overloads that can consume
 // errors or unknown sets must be allowed as a non-strict function.
@@ -59,7 +50,7 @@ bool ShouldAcceptOverload(const cel::FunctionDescriptor& descriptor,
   for (size_t i = 0; i < arguments.size(); i++) {
     if (arguments[i].Is<cel::UnknownValue>() ||
         arguments[i].Is<cel::ErrorValue>()) {
-      return IsNonStrict(descriptor);
+      return !descriptor.is_strict();
     }
   }
   return true;

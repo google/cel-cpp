@@ -81,10 +81,11 @@ class BinaryFunctionAdapter {
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
-                                             bool receiver_style) {
+                                             bool receiver_style,
+                                             bool is_strict = true) {
     return FunctionDescriptor(
         name, receiver_style,
-        {internal::AdaptedKind<U>(), internal::AdaptedKind<V>()});
+        {internal::AdaptedKind<U>(), internal::AdaptedKind<V>()}, is_strict);
   }
 
  private:
@@ -145,9 +146,10 @@ class UnaryFunctionAdapter {
   }
 
   static FunctionDescriptor CreateDescriptor(absl::string_view name,
-                                             bool receiver_style) {
+                                             bool receiver_style,
+                                             bool is_strict = true) {
     return FunctionDescriptor(name, receiver_style,
-                              {internal::AdaptedKind<U>()});
+                              {internal::AdaptedKind<U>()}, is_strict);
   }
 
  private:

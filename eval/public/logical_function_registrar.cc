@@ -24,50 +24,70 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/function.h"
+#include "base/function_adapter.h"
+#include "base/value_factory.h"
+#include "base/values/bool_value.h"
+#include "base/values/error_value.h"
+#include "base/values/unknown_value.h"
+#include "eval/internal/errors.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/portable_cel_function_adapter.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
+namespace {
 
-using ::google::protobuf::Arena;
+using ::cel::BoolValue;
+using ::cel::ErrorValue;
+using ::cel::Handle;
+using ::cel::UnaryFunctionAdapter;
+using ::cel::UnknownValue;
+using ::cel::Value;
+using ::cel::ValueFactory;
+using ::cel::interop_internal::CreateNoMatchingOverloadError;
+
+Handle<Value> NotStrictlyFalseImpl(ValueFactory& value_factory,
+                                   const Handle<Value>& value) {
+  if (value.Is<BoolValue>()) {
+    return value;
+  }
+
+  if (value.Is<ErrorValue>() || value.Is<UnknownValue>()) {
+    return value_factory.CreateBoolValue(true);
+  }
+
+  // Should only accept bool unknown or error.
+  return value_factory.CreateErrorValue(
+      CreateNoMatchingOverloadError(builtin::kNotStrictlyFalse));
+}
+
+}  // namespace
 
 absl::Status RegisterLogicalFunctions(CelFunctionRegistry* registry,
                                       const InterpreterOptions& options) {
   // logical NOT
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
-          builtin::kNot, false,
-          [](Arena*, bool value) -> bool { return !value; })));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      UnaryFunctionAdapter<bool, bool>::CreateDescriptor(builtin::kNot, false),
+      UnaryFunctionAdapter<bool, bool>::WrapFunction(
+          [](ValueFactory&, bool value) -> bool { return !value; })));
 
   // Strictness
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
-          builtin::kNotStrictlyFalse, false,
-          [](Arena*, bool value) -> bool { return value; })));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::CreateDescriptor(
+          builtin::kNotStrictlyFalse, /*receiver_style=*/false,
+          /*is_strict=*/false),
+      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::WrapFunction(
+          &NotStrictlyFalseImpl)));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<bool, const CelError*>::Create(
-          builtin::kNotStrictlyFalse, false,
-          [](Arena*, const CelError*) -> bool { return true; })));
+      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::CreateDescriptor(
+          builtin::kNotStrictlyFalseDeprecated, /*receiver_style=*/false,
+          /*is_strict=*/false),
 
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<bool, const UnknownSet*>::Create(
-          builtin::kNotStrictlyFalse, false,
-          [](Arena*, const UnknownSet*) -> bool { return true; })));
-
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableUnaryFunctionAdapter<bool, bool>::Create(
-          builtin::kNotStrictlyFalseDeprecated, false,
-          [](Arena*, bool value) -> bool { return value; })));
-
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableUnaryFunctionAdapter<bool, const CelError*>::Create(
-          builtin::kNotStrictlyFalseDeprecated, false,
-          [](Arena*, const CelError*) -> bool { return true; })));
+      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::WrapFunction(
+          &NotStrictlyFalseImpl)));
 
   return absl::OkStatus();
 }

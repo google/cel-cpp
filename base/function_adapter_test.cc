@@ -312,6 +312,18 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorAny) {
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kAny));
 }
 
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorNonStrict) {
+  FunctionDescriptor desc =
+      UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>, Handle<Value>>::
+          CreateDescriptor("Increment", false,
+                           /*is_strict=*/false);
+
+  EXPECT_EQ(desc.name(), "Increment");
+  EXPECT_FALSE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kAny));
+}
+
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionInt) {
   using FunctionAdapter = BinaryFunctionAdapter<int64_t, int64_t, int64_t>;
   std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
@@ -561,6 +573,17 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorAny) {
                             Handle<Value>>::CreateDescriptor("Add", false);
   EXPECT_EQ(desc.name(), "Add");
   EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kAny, Kind::kAny));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorNonStrict) {
+  FunctionDescriptor desc =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, Handle<Value>,
+                            Handle<Value>>::CreateDescriptor("Add", false,
+                                                             false);
+  EXPECT_EQ(desc.name(), "Add");
+  EXPECT_FALSE(desc.is_strict());
   EXPECT_FALSE(desc.receiver_style());
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kAny, Kind::kAny));
 }

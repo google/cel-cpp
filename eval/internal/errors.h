@@ -40,9 +40,11 @@ constexpr absl::Duration kDurationHigh = absl::Seconds(315576000001);
 constexpr absl::Duration kDurationLow = absl::Seconds(-315576000001);
 
 // Factories for absl::Status values for well-known CEL errors.
-// Results are arena allocated raw pointers to support interop with cel::Handle
+// const pointer Results are arena allocated to support interop with cel::Handle
 // and expr::runtime::CelValue.
 // Memory manager implementation is assumed to be google::protobuf::Arena.
+absl::Status CreateNoMatchingOverloadError(absl::string_view fn);
+
 const absl::Status* CreateNoMatchingOverloadError(cel::MemoryManager& manager,
                                                   absl::string_view fn);
 
