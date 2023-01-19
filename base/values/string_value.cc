@@ -15,10 +15,10 @@
 #include "base/values/string_value.h"
 
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/strings/string_view.h"
 #include "base/types/string_type.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
@@ -259,7 +259,7 @@ absl::Cord StringValue::ToCord() const {
   }
 }
 
-std::string StringValue::DebugString(std::string_view value) {
+std::string StringValue::DebugString(absl::string_view value) {
   return internal::FormatStringLiteral(value);
 }
 

@@ -18,7 +18,6 @@
 #include <atomic>
 #include <cstddef>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "absl/base/attributes.h"
@@ -53,7 +52,7 @@ class BytesValue : public Value {
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
-      std::string_view value);
+      absl::string_view value);
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
       const absl::Cord& value);

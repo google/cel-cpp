@@ -15,12 +15,12 @@
 #include "base/values/bytes_value.h"
 
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/bytes_type.h"
 #include "internal/strings.h"
@@ -236,7 +236,7 @@ absl::Cord BytesValue::ToCord() const {
   }
 }
 
-std::string BytesValue::DebugString(std::string_view value) {
+std::string BytesValue::DebugString(absl::string_view value) {
   return internal::FormatBytesLiteral(value);
 }
 
