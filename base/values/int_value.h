@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "base/types/int_type.h"
 #include "base/value.h"
 
@@ -28,6 +29,8 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
   using Base = base_internal::SimpleValue<IntType, int64_t>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(int64_t value);
+
   using Base::kKind;
 
   using Base::Is;

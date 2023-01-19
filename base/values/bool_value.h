@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "base/types/bool_type.h"
 #include "base/value.h"
 
@@ -27,6 +28,8 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
   using Base = base_internal::SimpleValue<BoolType, bool>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(bool value);
+
   using Base::kKind;
 
   using Base::Is;

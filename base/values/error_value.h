@@ -21,7 +21,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
-#include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -32,6 +31,9 @@ namespace cel {
 
 class ErrorValue final : public Value, public base_internal::InlineData {
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      const absl::Status& value);
+
   static constexpr Kind kKind = ErrorType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }

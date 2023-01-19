@@ -61,11 +61,15 @@ absl::StatusOr<absl::Duration> ParseDuration(absl::string_view input);
 
 absl::StatusOr<std::string> FormatDuration(absl::Duration duration);
 
+std::string DebugStringDuration(absl::Duration duration);
+
 absl::Status ValidateTimestamp(absl::Time timestamp);
 
 absl::StatusOr<absl::Time> ParseTimestamp(absl::string_view input);
 
 absl::StatusOr<std::string> FormatTimestamp(absl::Time timestamp);
+
+std::string DebugStringTimestamp(absl::Time timestamp);
 
 }  // namespace cel::internal
 

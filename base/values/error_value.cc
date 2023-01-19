@@ -14,19 +14,19 @@
 
 #include "base/values/error_value.h"
 
-#include <algorithm>
 #include <string>
-#include <utility>
 
-#include "absl/container/inlined_vector.h"
-#include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
+#include "absl/status/status.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(ErrorValue);
 
-std::string ErrorValue::DebugString() const { return value().ToString(); }
+std::string ErrorValue::DebugString(const absl::Status& value) {
+  return value.ToString();
+}
+
+std::string ErrorValue::DebugString() const { return DebugString(value()); }
 
 const absl::Status& ErrorValue::value() const {
   return base_internal::Metadata::IsTrivial(*this) ? *value_ptr_ : value_;

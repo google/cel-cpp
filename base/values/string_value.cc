@@ -15,6 +15,7 @@
 #include "base/values/string_value.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "absl/base/macros.h"
@@ -31,11 +32,11 @@ namespace {
 
 struct StringValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
-    return internal::FormatStringLiteral(value);
+    return StringValue::DebugString(value);
   }
 
   std::string operator()(const absl::Cord& value) const {
-    return internal::FormatStringLiteral(static_cast<std::string>(value));
+    return StringValue::DebugString(value);
   }
 };
 
@@ -256,6 +257,14 @@ absl::Cord StringValue::ToCord() const {
       return absl::Cord(
           static_cast<const base_internal::StringStringValue*>(this)->value_);
   }
+}
+
+std::string StringValue::DebugString(std::string_view value) {
+  return internal::FormatStringLiteral(value);
+}
+
+std::string StringValue::DebugString(const absl::Cord& value) {
+  return internal::FormatStringLiteral(static_cast<std::string>(value));
 }
 
 std::string StringValue::DebugString() const {

@@ -24,17 +24,17 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(DoubleValue);
 
-std::string DoubleValue::DebugString() const {
-  if (std::isfinite(value())) {
-    if (std::floor(value()) != value()) {
+std::string DoubleValue::DebugString(double value) {
+  if (std::isfinite(value)) {
+    if (std::floor(value) != value) {
       // The double is not representable as a whole number, so use
       // absl::StrCat which will add decimal places.
-      return absl::StrCat(value());
+      return absl::StrCat(value);
     }
     // absl::StrCat historically would represent 0.0 as 0, and we want the
     // decimal places so ZetaSQL correctly assumes the type as double
     // instead of int64_t.
-    std::string stringified = absl::StrCat(value());
+    std::string stringified = absl::StrCat(value);
     if (!absl::StrContains(stringified, '.')) {
       absl::StrAppend(&stringified, ".0");
     } else {
@@ -42,13 +42,15 @@ std::string DoubleValue::DebugString() const {
     }
     return stringified;
   }
-  if (std::isnan(value())) {
+  if (std::isnan(value)) {
     return "nan";
   }
-  if (std::signbit(value())) {
+  if (std::signbit(value)) {
     return "-infinity";
   }
   return "+infinity";
 }
+
+std::string DoubleValue::DebugString() const { return DebugString(value()); }
 
 }  // namespace cel

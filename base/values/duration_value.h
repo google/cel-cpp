@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/time/time.h"
 #include "base/types/duration_type.h"
 #include "base/value.h"
@@ -29,6 +30,9 @@ class DurationValue final
   using Base = base_internal::SimpleValue<DurationType, absl::Duration>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      absl::Duration value);
+
   using Base::kKind;
 
   using Base::Is;

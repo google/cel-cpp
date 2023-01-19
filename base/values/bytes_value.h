@@ -18,8 +18,10 @@
 #include <atomic>
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -49,6 +51,12 @@ class BytesValue : public Value {
                                                    const BytesValue& rhs);
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      std::string_view value);
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      const absl::Cord& value);
 
   constexpr Kind kind() const { return kKind; }
 

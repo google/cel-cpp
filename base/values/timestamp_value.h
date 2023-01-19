@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/time/time.h"
 #include "base/types/timestamp_type.h"
 #include "base/value.h"
@@ -29,6 +30,8 @@ class TimestampValue final
   using Base = base_internal::SimpleValue<TimestampType, absl::Time>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(absl::Time value);
+
   using Base::kKind;
 
   using Base::Is;

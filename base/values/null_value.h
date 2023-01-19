@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "base/types/null_type.h"
 #include "base/value.h"
 
@@ -27,6 +28,8 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
   using Base = base_internal::SimpleValue<NullType, void>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString();
+
   using Base::kKind;
 
   using Base::Is;
@@ -36,8 +39,6 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
   using Base::kind;
 
   using Base::type;
-
-  std::string DebugString() const;
 
  private:
   CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(NullValue);

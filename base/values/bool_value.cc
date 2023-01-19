@@ -20,8 +20,10 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(BoolValue);
 
-std::string BoolValue::DebugString() const {
-  return value() ? "true" : "false";
+std::string BoolValue::DebugString(bool value) {
+  return value ? "true" : "false";
 }
+
+std::string BoolValue::DebugString() const { return DebugString(value()); }
 
 }  // namespace cel

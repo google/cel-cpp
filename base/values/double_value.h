@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "base/types/double_type.h"
 #include "base/value.h"
 
@@ -28,6 +29,8 @@ class DoubleValue final
   using Base = base_internal::SimpleValue<DoubleType, double>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(double value);
+
   using Base::kKind;
 
   using Base::Is;

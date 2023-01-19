@@ -15,6 +15,7 @@
 #include "base/values/bytes_value.h"
 
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "absl/base/attributes.h"
@@ -32,11 +33,11 @@ namespace {
 
 struct BytesValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
-    return internal::FormatBytesLiteral(value);
+    return BytesValue::DebugString(value);
   }
 
   std::string operator()(const absl::Cord& value) const {
-    return internal::FormatBytesLiteral(static_cast<std::string>(value));
+    return BytesValue::DebugString(value);
   }
 };
 
@@ -233,6 +234,14 @@ absl::Cord BytesValue::ToCord() const {
       return absl::Cord(
           static_cast<const base_internal::StringBytesValue*>(this)->value_);
   }
+}
+
+std::string BytesValue::DebugString(std::string_view value) {
+  return internal::FormatBytesLiteral(value);
+}
+
+std::string BytesValue::DebugString(const absl::Cord& value) {
+  return internal::FormatBytesLiteral(static_cast<std::string>(value));
 }
 
 std::string BytesValue::DebugString() const {

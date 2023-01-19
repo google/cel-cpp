@@ -21,8 +21,6 @@
 #include <string>
 
 #include "absl/status/status.h"
-#include "absl/strings/match.h"
-#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/time/time.h"
@@ -68,6 +66,10 @@ absl::StatusOr<std::string> FormatDuration(absl::Duration duration) {
   return absl::FormatDuration(duration);
 }
 
+std::string DebugStringDuration(absl::Duration duration) {
+  return absl::FormatDuration(duration);
+}
+
 absl::Status ValidateTimestamp(absl::Time timestamp) {
   if (timestamp < MinTimestamp()) {
     return absl::InvalidArgumentError(
@@ -100,6 +102,10 @@ absl::StatusOr<absl::Time> ParseTimestamp(absl::string_view input) {
 
 absl::StatusOr<std::string> FormatTimestamp(absl::Time timestamp) {
   CEL_RETURN_IF_ERROR(ValidateTimestamp(timestamp));
+  return RawFormatTimestamp(timestamp);
+}
+
+std::string DebugStringTimestamp(absl::Time timestamp) {
   return RawFormatTimestamp(timestamp);
 }
 
