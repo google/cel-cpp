@@ -308,6 +308,7 @@ cc_library(
         "//base:value",
         "//base:value_factory",
         "//eval/eval:mutable_list_impl",
+        "//eval/internal:interop",
         "//eval/public/containers:container_backed_list_impl",
         "//internal:casts",
         "//internal:overflow",

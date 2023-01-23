@@ -34,6 +34,7 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "eval/eval/mutable_list_impl.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
@@ -540,24 +541,6 @@ CelValue CreateDurationFromString(Arena* arena,
   }
 
   return CelValue::CreateDuration(d);
-}
-
-CelValue GetHours(Arena*, absl::Duration duration) {
-  return CelValue::CreateInt64(absl::ToInt64Hours(duration));
-}
-
-CelValue GetMinutes(Arena*, absl::Duration duration) {
-  return CelValue::CreateInt64(absl::ToInt64Minutes(duration));
-}
-
-CelValue GetSeconds(Arena*, absl::Duration duration) {
-  return CelValue::CreateInt64(absl::ToInt64Seconds(duration));
-}
-
-CelValue GetMilliseconds(Arena*, absl::Duration duration) {
-  int64_t millis_per_second = 1000L;
-  return CelValue::CreateInt64(absl::ToInt64Milliseconds(duration) %
-                               millis_per_second);
 }
 
 bool StringContains(Arena*, CelValue::StringHolder value,
@@ -1275,6 +1258,214 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   return RegisterUintConversionFunctions(registry, options);
 }
 
+absl::Status RegisterCheckedTimeArithmeticFunctions(
+    CelFunctionRegistry* registry) {
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Time,
+                            absl::Duration>::CreateDescriptor(builtin::kAdd,
+                                                              false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
+                            absl::Duration>::
+          WrapFunction([](ValueFactory& value_factory, absl::Time t1,
+                          absl::Duration d2) -> absl::StatusOr<Handle<Value>> {
+            auto sum = cel::internal::CheckedAdd(t1, d2);
+            if (!sum.ok()) {
+              return value_factory.CreateErrorValue(sum.status());
+            }
+            return value_factory.CreateTimestampValue(*sum);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
+                            absl::Time>::CreateDescriptor(builtin::kAdd, false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
+                            absl::Time>::
+          WrapFunction([](ValueFactory& value_factory, absl::Duration d2,
+                          absl::Time t1) -> absl::StatusOr<Handle<Value>> {
+            auto sum = cel::internal::CheckedAdd(t1, d2);
+            if (!sum.ok()) {
+              return value_factory.CreateErrorValue(sum.status());
+            }
+            return value_factory.CreateTimestampValue(*sum);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
+                            absl::Duration>::CreateDescriptor(builtin::kAdd,
+                                                              false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
+                            absl::Duration>::
+          WrapFunction([](ValueFactory& value_factory, absl::Duration d1,
+                          absl::Duration d2) -> absl::StatusOr<Handle<Value>> {
+            auto sum = cel::internal::CheckedAdd(d1, d2);
+            if (!sum.ok()) {
+              return value_factory.CreateErrorValue(sum.status());
+            }
+            return value_factory.CreateDurationValue(*sum);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<
+          absl::StatusOr<Handle<Value>>, absl::Time,
+          absl::Duration>::CreateDescriptor(builtin::kSubtract, false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
+                            absl::Duration>::
+          WrapFunction([](ValueFactory& value_factory, absl::Time t1,
+                          absl::Duration d2) -> absl::StatusOr<Handle<Value>> {
+            auto diff = cel::internal::CheckedSub(t1, d2);
+            if (!diff.ok()) {
+              return value_factory.CreateErrorValue(diff.status());
+            }
+            return value_factory.CreateTimestampValue(*diff);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
+                            absl::Time>::CreateDescriptor(builtin::kSubtract,
+                                                          false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
+                            absl::Time>::
+          WrapFunction([](ValueFactory& value_factory, absl::Time t1,
+                          absl::Time t2) -> absl::StatusOr<Handle<Value>> {
+            auto diff = cel::internal::CheckedSub(t1, t2);
+            if (!diff.ok()) {
+              return value_factory.CreateErrorValue(diff.status());
+            }
+            return value_factory.CreateDurationValue(*diff);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<
+          absl::StatusOr<Handle<Value>>, absl::Duration,
+          absl::Duration>::CreateDescriptor(builtin::kSubtract, false),
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
+                            absl::Duration>::
+          WrapFunction([](ValueFactory& value_factory, absl::Duration d1,
+                          absl::Duration d2) -> absl::StatusOr<Handle<Value>> {
+            auto diff = cel::internal::CheckedSub(d1, d2);
+            if (!diff.ok()) {
+              return value_factory.CreateErrorValue(diff.status());
+            }
+            return value_factory.CreateDurationValue(*diff);
+          })));
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterUncheckedTimeArithmeticFunctions(
+    CelFunctionRegistry* registry) {
+  // TODO(issues/5): deprecate unchecked time math functions when clients no
+  // longer depend on them.
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Time,
+                            absl::Duration>::CreateDescriptor(builtin::kAdd,
+                                                              false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
+          WrapFunction([](ValueFactory&, absl::Time t1,
+                          absl::Duration d2) -> Handle<Value> {
+            return cel::interop_internal::CreateTimestampValue(t1 + d2);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration,
+                            absl::Time>::CreateDescriptor(builtin::kAdd, false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Time>::
+          WrapFunction([](ValueFactory&, absl::Duration d2,
+                          absl::Time t1) -> Handle<Value> {
+            return cel::interop_internal::CreateTimestampValue(t1 + d2);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration,
+                            absl::Duration>::CreateDescriptor(builtin::kAdd,
+                                                              false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
+          WrapFunction([](ValueFactory&, absl::Duration d1,
+                          absl::Duration d2) -> Handle<Value> {
+            return cel::interop_internal::CreateDurationValue(d1 + d2);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
+          CreateDescriptor(builtin::kSubtract, false),
+
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
+          WrapFunction(
+
+              [](ValueFactory&, absl::Time t1,
+                 absl::Duration d2) -> Handle<Value> {
+                return cel::interop_internal::CreateTimestampValue(t1 - d2);
+              })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Time,
+                            absl::Time>::CreateDescriptor(builtin::kSubtract,
+                                                          false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Time>::
+          WrapFunction(
+
+              [](ValueFactory&, absl::Time t1, absl::Time t2) -> Handle<Value> {
+                return cel::interop_internal::CreateDurationValue(t1 - t2);
+              })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
+          CreateDescriptor(builtin::kSubtract, false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
+          WrapFunction([](ValueFactory&, absl::Duration d1,
+                          absl::Duration d2) -> Handle<Value> {
+            return cel::interop_internal::CreateDurationValue(d1 - d2);
+          })));
+
+  return absl::OkStatus();
+}
+
+absl::Status RegisterTimeFunctions(CelFunctionRegistry* registry,
+                                   const InterpreterOptions& options) {
+  CEL_RETURN_IF_ERROR(RegisterTimestampFunctions(registry, options));
+
+  // Special arithmetic operators for Timestamp and Duration
+  if (options.enable_timestamp_duration_overflow_errors) {
+    CEL_RETURN_IF_ERROR(RegisterCheckedTimeArithmeticFunctions(registry));
+  } else {
+    CEL_RETURN_IF_ERROR(RegisterUncheckedTimeArithmeticFunctions(registry));
+  }
+
+  // duration breakdown accessor functions
+  using DurationAccessorFunction =
+      UnaryFunctionAdapter<int64_t, absl::Duration>;
+  CEL_RETURN_IF_ERROR(registry->Register(
+      DurationAccessorFunction::CreateDescriptor(builtin::kHours, true),
+      DurationAccessorFunction::WrapFunction(
+          [](ValueFactory&, absl::Duration d) -> int64_t {
+            return absl::ToInt64Hours(d);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      DurationAccessorFunction::CreateDescriptor(builtin::kMinutes, true),
+      DurationAccessorFunction::WrapFunction(
+          [](ValueFactory&, absl::Duration d) -> int64_t {
+            return absl::ToInt64Minutes(d);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      DurationAccessorFunction::CreateDescriptor(builtin::kSeconds, true),
+      DurationAccessorFunction::WrapFunction(
+          [](ValueFactory&, absl::Duration d) -> int64_t {
+            return absl::ToInt64Seconds(d);
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      DurationAccessorFunction::CreateDescriptor(builtin::kMilliseconds, true),
+      DurationAccessorFunction::WrapFunction(
+          [](ValueFactory&, absl::Duration d) -> int64_t {
+            constexpr int64_t millis_per_second = 1000L;
+            return absl::ToInt64Milliseconds(d) % millis_per_second;
+          })));
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
@@ -1286,6 +1477,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           &RegisterLogicalFunctions,
           &RegisterNumericArithmeticFunctions,
           &RegisterConversionFunctions,
+          &RegisterTimeFunctions,
       },
       options));
 
@@ -1358,104 +1550,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = RegisterSetMembershipFunctions(registry, options);
   if (!status.ok()) return status;
 
-  bool enable_timestamp_duration_overflow_errors =
-      options.enable_timestamp_duration_overflow_errors;
-  // Special arithmetic operators for Timestamp and Duration
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, absl::Time, absl::Duration>::
-          Create(
-              builtin::kAdd, false,
-              [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
-                if (enable_timestamp_duration_overflow_errors) {
-                  auto sum = cel::internal::CheckedAdd(t1, d2);
-                  if (!sum.ok()) {
-                    return CreateErrorValue(arena, sum.status());
-                  }
-                  return CelValue::CreateTimestamp(*sum);
-                }
-                return CelValue::CreateTimestamp(t1 + d2);
-              }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, absl::Duration, absl::Time>::
-          Create(
-              builtin::kAdd, false,
-              [=](Arena* arena, absl::Duration d2, absl::Time t1) -> CelValue {
-                if (enable_timestamp_duration_overflow_errors) {
-                  auto sum = cel::internal::CheckedAdd(t1, d2);
-                  if (!sum.ok()) {
-                    return CreateErrorValue(arena, sum.status());
-                  }
-                  return CelValue::CreateTimestamp(*sum);
-                }
-                return CelValue::CreateTimestamp(t1 + d2);
-              }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, absl::Duration, absl::Duration>::
-          Create(builtin::kAdd, false,
-                 [=](Arena* arena, absl::Duration d1,
-                     absl::Duration d2) -> CelValue {
-                   if (enable_timestamp_duration_overflow_errors) {
-                     auto sum = cel::internal::CheckedAdd(d1, d2);
-                     if (!sum.ok()) {
-                       return CreateErrorValue(arena, sum.status());
-                     }
-                     return CelValue::CreateDuration(*sum);
-                   }
-                   return CelValue::CreateDuration(d1 + d2);
-                 }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, absl::Time, absl::Duration>::
-          Create(
-              builtin::kSubtract, false,
-              [=](Arena* arena, absl::Time t1, absl::Duration d2) -> CelValue {
-                if (enable_timestamp_duration_overflow_errors) {
-                  auto diff = cel::internal::CheckedSub(t1, d2);
-                  if (!diff.ok()) {
-                    return CreateErrorValue(arena, diff.status());
-                  }
-                  return CelValue::CreateTimestamp(*diff);
-                }
-                return CelValue::CreateTimestamp(t1 - d2);
-              }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, absl::Time, absl::Time>::Create(
-          builtin::kSubtract, false,
-          [=](Arena* arena, absl::Time t1, absl::Time t2) -> CelValue {
-            if (enable_timestamp_duration_overflow_errors) {
-              auto diff = cel::internal::CheckedSub(t1, t2);
-              if (!diff.ok()) {
-                return CreateErrorValue(arena, diff.status());
-              }
-              return CelValue::CreateDuration(*diff);
-            }
-            return CelValue::CreateDuration(t1 - t2);
-          }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<CelValue, absl::Duration, absl::Duration>::
-          Create(builtin::kSubtract, false,
-                 [=](Arena* arena, absl::Duration d1,
-                     absl::Duration d2) -> CelValue {
-                   if (enable_timestamp_duration_overflow_errors) {
-                     auto diff = cel::internal::CheckedSub(d1, d2);
-                     if (!diff.ok()) {
-                       return CreateErrorValue(arena, diff.status());
-                     }
-                     return CelValue::CreateDuration(*diff);
-                   }
-                   return CelValue::CreateDuration(d1 - d2);
-                 }));
-  if (!status.ok()) return status;
-
   // Concat group
   if (options.enable_string_concat) {
     status =
@@ -1522,42 +1616,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   if (!status.ok()) return status;
 
   status = RegisterStringFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  status = RegisterTimestampFunctions(registry, options);
-  if (!status.ok()) return status;
-
-  // duration functions
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
-          builtin::kHours, true,
-          [](Arena* arena, absl::Duration d) -> CelValue {
-            return GetHours(arena, d);
-          }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
-          builtin::kMinutes, true,
-          [](Arena* arena, absl::Duration d) -> CelValue {
-            return GetMinutes(arena, d);
-          }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
-          builtin::kSeconds, true,
-          [](Arena* arena, absl::Duration d) -> CelValue {
-            return GetSeconds(arena, d);
-          }));
-  if (!status.ok()) return status;
-
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, absl::Duration>::Create(
-          builtin::kMilliseconds, true,
-          [](Arena* arena, absl::Duration d) -> CelValue {
-            return GetMilliseconds(arena, d);
-          }));
   if (!status.ok()) return status;
 
   return registry->Register(
