@@ -31,8 +31,11 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "base/function_adapter.h"
+#include "base/handle.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bytes_value.h"
+#include "base/values/string_value.h"
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
@@ -58,7 +61,9 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::BinaryFunctionAdapter;
+using ::cel::BytesValue;
 using ::cel::Handle;
+using ::cel::StringValue;
 using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
 using ::cel::ValueFactory;
@@ -366,19 +371,19 @@ const CelList* AppendList(Arena* arena, const CelList* value1,
 }
 
 // Concatenation for StringHolder type.
-CelValue::StringHolder ConcatString(Arena* arena, CelValue::StringHolder value1,
-                                    CelValue::StringHolder value2) {
-  auto concatenated = Arena::Create<std::string>(
-      arena, absl::StrCat(value1.value(), value2.value()));
-  return CelValue::StringHolder(concatenated);
+absl::StatusOr<Handle<StringValue>> ConcatString(
+    ValueFactory& factory, const Handle<StringValue>& value1,
+    const Handle<StringValue>& value2) {
+  return factory.CreateStringValue(
+      absl::StrCat(value1->ToString(), value2->ToString()));
 }
 
 // Concatenation for BytesHolder type.
-CelValue::BytesHolder ConcatBytes(Arena* arena, CelValue::BytesHolder value1,
-                                  CelValue::BytesHolder value2) {
-  auto concatenated = Arena::Create<std::string>(
-      arena, absl::StrCat(value1.value(), value2.value()));
-  return CelValue::BytesHolder(concatenated);
+absl::StatusOr<Handle<cel::BytesValue>> ConcatBytes(
+    ValueFactory& factory, const Handle<BytesValue>& value1,
+    const Handle<BytesValue>& value2) {
+  return factory.CreateBytesValue(
+      absl::StrCat(value1->ToString(), value2->ToString()));
 }
 
 // Concatenation for CelList type.
@@ -543,19 +548,19 @@ CelValue CreateDurationFromString(Arena* arena,
   return CelValue::CreateDuration(d);
 }
 
-bool StringContains(Arena*, CelValue::StringHolder value,
-                    CelValue::StringHolder substr) {
-  return absl::StrContains(value.value(), substr.value());
+bool StringContains(ValueFactory&, const Handle<StringValue>& value,
+                    const Handle<StringValue>& substr) {
+  return absl::StrContains(value->ToString(), substr->ToString());
 }
 
-bool StringEndsWith(Arena*, CelValue::StringHolder value,
-                    CelValue::StringHolder suffix) {
-  return absl::EndsWith(value.value(), suffix.value());
+bool StringEndsWith(ValueFactory&, const Handle<StringValue>& value,
+                    const Handle<StringValue>& suffix) {
+  return absl::EndsWith(value->ToString(), suffix->ToString());
 }
 
-bool StringStartsWith(Arena*, CelValue::StringHolder value,
-                      CelValue::StringHolder prefix) {
-  return absl::StartsWith(value.value(), prefix.value());
+bool StringStartsWith(ValueFactory&, const Handle<StringValue>& value,
+                      const Handle<StringValue>& prefix) {
+  return absl::StartsWith(value->ToString(), prefix->ToString());
 }
 
 absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
@@ -728,46 +733,126 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
 
 absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
                                      const InterpreterOptions& options) {
-  auto status = registry->Register(
-      PortableBinaryFunctionAdapter<
-          bool, CelValue::StringHolder,
-          CelValue::StringHolder>::Create(builtin::kStringContains, false,
-                                          StringContains));
-  if (!status.ok()) return status;
+  // Basic substring tests (contains, startsWith, endsWith)
+  for (bool receiver_style : {true, false}) {
+    CEL_RETURN_IF_ERROR(registry->Register(
+        BinaryFunctionAdapter<bool, const Handle<StringValue>&,
+                              const Handle<StringValue>&>::
+            CreateDescriptor(builtin::kStringContains, receiver_style),
+        BinaryFunctionAdapter<
+            bool, const Handle<StringValue>&,
+            const Handle<StringValue>&>::WrapFunction(StringContains)));
 
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<
-          bool, CelValue::StringHolder,
-          CelValue::StringHolder>::Create(builtin::kStringContains, true,
-                                          StringContains));
-  if (!status.ok()) return status;
+    CEL_RETURN_IF_ERROR(registry->Register(
+        BinaryFunctionAdapter<bool, const Handle<StringValue>&,
+                              const Handle<StringValue>&>::
+            CreateDescriptor(builtin::kStringEndsWith, receiver_style),
+        BinaryFunctionAdapter<
+            bool, const Handle<StringValue>&,
+            const Handle<StringValue>&>::WrapFunction(StringEndsWith)));
 
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<
-          bool, CelValue::StringHolder,
-          CelValue::StringHolder>::Create(builtin::kStringEndsWith, false,
-                                          StringEndsWith));
-  if (!status.ok()) return status;
+    CEL_RETURN_IF_ERROR(registry->Register(
+        BinaryFunctionAdapter<bool, const Handle<StringValue>&,
+                              const Handle<StringValue>&>::
+            CreateDescriptor(builtin::kStringStartsWith, receiver_style),
+        BinaryFunctionAdapter<
+            bool, const Handle<StringValue>&,
+            const Handle<StringValue>&>::WrapFunction(StringStartsWith)));
+  }
 
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<
-          bool, CelValue::StringHolder,
-          CelValue::StringHolder>::Create(builtin::kStringEndsWith, true,
-                                          StringEndsWith));
-  if (!status.ok()) return status;
+  // matches function if enabled.
+  if (options.enable_regex) {
+    auto regex_matches =
+        [max_size = options.regex_max_program_size](
+            ValueFactory& value_factory, const Handle<StringValue>& target,
+            const Handle<StringValue>& regex) -> Handle<Value> {
+      RE2 re2(regex->ToString());
+      if (max_size > 0 && re2.ProgramSize() > max_size) {
+        return value_factory.CreateErrorValue(
+            absl::InvalidArgumentError("exceeded RE2 max program size"));
+      }
+      if (!re2.ok()) {
+        return value_factory.CreateErrorValue(
+            absl::InvalidArgumentError("invalid regex for match"));
+      }
+      return value_factory.CreateBoolValue(
+          RE2::PartialMatch(target->ToString(), re2));
+    };
 
-  status = registry->Register(
-      PortableBinaryFunctionAdapter<
-          bool, CelValue::StringHolder,
-          CelValue::StringHolder>::Create(builtin::kStringStartsWith, false,
-                                          StringStartsWith));
-  if (!status.ok()) return status;
+    // bind str.matches(re) and matches(str, re)
+    for (bool receiver_style : {true, false}) {
+      using MatchFnAdapter =
+          BinaryFunctionAdapter<Handle<Value>, const Handle<StringValue>&,
+                                const Handle<StringValue>&>;
+      CEL_RETURN_IF_ERROR(
+          registry->Register(MatchFnAdapter::CreateDescriptor(
+                                 builtin::kRegexMatch, receiver_style),
+                             MatchFnAdapter::WrapFunction(regex_matches)));
+    }
+  }  // if options.enable_regex
 
-  return registry->Register(
-      PortableBinaryFunctionAdapter<
-          bool, CelValue::StringHolder,
-          CelValue::StringHolder>::Create(builtin::kStringStartsWith, true,
-                                          StringStartsWith));
+  // string concatenation if enabled
+  if (options.enable_string_concat) {
+    using StrCatFnAdapter =
+        BinaryFunctionAdapter<absl::StatusOr<Handle<StringValue>>,
+                              const Handle<StringValue>&,
+                              const Handle<StringValue>&>;
+    CEL_RETURN_IF_ERROR(registry->Register(
+        StrCatFnAdapter::CreateDescriptor(builtin::kAdd, false),
+        StrCatFnAdapter::WrapFunction(&ConcatString)));
+
+    using BytesCatFnAdapter =
+        BinaryFunctionAdapter<absl::StatusOr<Handle<BytesValue>>,
+                              const Handle<BytesValue>&,
+                              const Handle<BytesValue>&>;
+    CEL_RETURN_IF_ERROR(registry->Register(
+        BytesCatFnAdapter::CreateDescriptor(builtin::kAdd, false),
+        BytesCatFnAdapter::WrapFunction(&ConcatBytes)));
+  }
+
+  // String size
+  auto size_func = [](ValueFactory& value_factory,
+                      const Handle<StringValue>& value) -> Handle<Value> {
+    auto [count, valid] = ::cel::internal::Utf8Validate(value->ToString());
+    if (!valid) {
+      return value_factory.CreateErrorValue(
+          absl::InvalidArgumentError("invalid utf-8 string"));
+    }
+    return value_factory.CreateIntValue(count);
+  };
+
+  // receiver style = true/false
+  // Support global and receiver style size() operations on strings.
+  using StrSizeFnAdapter =
+      UnaryFunctionAdapter<Handle<Value>, const Handle<StringValue>&>;
+  CEL_RETURN_IF_ERROR(
+      registry->Register(StrSizeFnAdapter::CreateDescriptor(
+                             builtin::kSize, /*receiver_style=*/true),
+                         StrSizeFnAdapter::WrapFunction(size_func)));
+  CEL_RETURN_IF_ERROR(
+      registry->Register(StrSizeFnAdapter::CreateDescriptor(
+                             builtin::kSize, /*receiver_style=*/false),
+                         StrSizeFnAdapter::WrapFunction(size_func)));
+
+  // Bytes size
+  auto bytes_size_func = [](ValueFactory&,
+                            const Handle<BytesValue>& value) -> int64_t {
+    return value->size();
+  };
+  // receiver style = true/false
+  // Support global and receiver style size() operations on bytes.
+  using BytesSizeFnAdapter =
+      UnaryFunctionAdapter<int64_t, const Handle<BytesValue>&>;
+  CEL_RETURN_IF_ERROR(
+      registry->Register(BytesSizeFnAdapter::CreateDescriptor(
+                             builtin::kSize, /*receiver_style=*/true),
+                         BytesSizeFnAdapter::WrapFunction(bytes_size_func)));
+  CEL_RETURN_IF_ERROR(
+      registry->Register(BytesSizeFnAdapter::CreateDescriptor(
+                             builtin::kSize, /*receiver_style=*/false),
+                         BytesSizeFnAdapter::WrapFunction(bytes_size_func)));
+
+  return absl::OkStatus();
 }
 
 absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
@@ -1478,44 +1563,9 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
           &RegisterNumericArithmeticFunctions,
           &RegisterConversionFunctions,
           &RegisterTimeFunctions,
+          &RegisterStringFunctions,
       },
       options));
-
-  // String size
-  auto size_func = [](Arena* arena, CelValue::StringHolder value) -> CelValue {
-    absl::string_view str = value.value();
-    auto [count, valid] = ::cel::internal::Utf8Validate(str);
-    if (!valid) {
-      return CreateErrorValue(arena, "invalid utf-8 string",
-                              absl::StatusCode::kInvalidArgument);
-    }
-    return CelValue::CreateInt64(static_cast<int64_t>(count));
-  };
-  // receiver style = true/false
-  // Support global and receiver style size() operations on strings.
-  absl::Status status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
-          builtin::kSize, true, size_func));
-  if (!status.ok()) return status;
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<CelValue, CelValue::StringHolder>::Create(
-          builtin::kSize, false, size_func));
-  if (!status.ok()) return status;
-
-  // Bytes size
-  auto bytes_size_func = [](Arena*, CelValue::BytesHolder value) -> int64_t {
-    return value.value().size();
-  };
-  // receiver style = true/false
-  // Support global and receiver style size() operations on bytes.
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<int64_t, CelValue::BytesHolder>::Create(
-          builtin::kSize, true, bytes_size_func));
-  if (!status.ok()) return status;
-  status = registry->Register(
-      PortableUnaryFunctionAdapter<int64_t, CelValue::BytesHolder>::Create(
-          builtin::kSize, false, bytes_size_func));
-  if (!status.ok()) return status;
 
   // List size
   auto list_size_func = [](Arena*, const CelList* cel_list) -> int64_t {
@@ -1523,7 +1573,7 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   };
   // receiver style = true/false
   // Support both the global and receiver style size() for lists.
-  status = registry->Register(
+  auto status = registry->Register(
       PortableUnaryFunctionAdapter<int64_t, const CelList*>::Create(
           builtin::kSize, true, list_size_func));
   if (!status.ok()) return status;
@@ -1550,22 +1600,6 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
   status = RegisterSetMembershipFunctions(registry, options);
   if (!status.ok()) return status;
 
-  // Concat group
-  if (options.enable_string_concat) {
-    status =
-        registry->Register(PortableBinaryFunctionAdapter<
-                           CelValue::StringHolder, CelValue::StringHolder,
-                           CelValue::StringHolder>::Create(builtin::kAdd, false,
-                                                           ConcatString));
-    if (!status.ok()) return status;
-
-    status = registry->Register(
-        PortableBinaryFunctionAdapter<
-            CelValue::BytesHolder, CelValue::BytesHolder,
-            CelValue::BytesHolder>::Create(builtin::kAdd, false, ConcatBytes));
-    if (!status.ok()) return status;
-  }
-
   if (options.enable_list_concat) {
     status = registry->Register(
         PortableBinaryFunctionAdapter<const CelList*, const CelList*,
@@ -1575,47 +1609,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
     if (!status.ok()) return status;
   }
 
-  // Global matches function.
-  if (options.enable_regex) {
-    auto regex_matches = [max_size = options.regex_max_program_size](
-                             Arena* arena, CelValue::StringHolder target,
-                             CelValue::StringHolder regex) -> CelValue {
-      RE2 re2(regex.value());
-      if (max_size > 0 && re2.ProgramSize() > max_size) {
-        return CreateErrorValue(arena, "exceeded RE2 max program size",
-                                absl::StatusCode::kInvalidArgument);
-      }
-      if (!re2.ok()) {
-        return CreateErrorValue(arena, "invalid_argument",
-                                absl::StatusCode::kInvalidArgument);
-      }
-      return CelValue::CreateBool(RE2::PartialMatch(target.value(), re2));
-    };
-
-    status = registry->Register(
-        PortableBinaryFunctionAdapter<
-            CelValue, CelValue::StringHolder,
-            CelValue::StringHolder>::Create(builtin::kRegexMatch, false,
-                                            regex_matches));
-    if (!status.ok()) return status;
-
-    // Receiver-style matches function.
-    status = registry->Register(
-        PortableBinaryFunctionAdapter<
-            CelValue, CelValue::StringHolder,
-            CelValue::StringHolder>::Create(builtin::kRegexMatch, true,
-                                            regex_matches));
-    if (!status.ok()) return status;
-  }
-
   status =
       registry->Register(PortableBinaryFunctionAdapter<
                          const CelList*, const CelList*,
                          const CelList*>::Create(builtin::kRuntimeListAppend,
                                                  false, AppendList));
-  if (!status.ok()) return status;
-
-  status = RegisterStringFunctions(registry, options);
   if (!status.ok()) return status;
 
   return registry->Register(
