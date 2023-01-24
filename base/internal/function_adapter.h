@@ -25,6 +25,7 @@
 #include "base/kind.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
+#include "base/values/bytes_value.h"
 #include "base/values/duration_value.h"
 #include "base/values/int_value.h"
 #include "base/values/timestamp_value.h"
@@ -79,13 +80,33 @@ constexpr Kind AdaptedKind<absl::Duration>() {
 }
 
 template <>
+constexpr Kind AdaptedKind<Handle<Value>>() {
+  return Kind::kAny;
+}
+
+template <>
+constexpr Kind AdaptedKind<Handle<StringValue>>() {
+  return Kind::kString;
+}
+
+template <>
+constexpr Kind AdaptedKind<Handle<BytesValue>>() {
+  return Kind::kBytes;
+}
+
+template <>
 constexpr Kind AdaptedKind<const Handle<Value>&>() {
   return Kind::kAny;
 }
 
 template <>
-constexpr Kind AdaptedKind<Handle<Value>>() {
-  return Kind::kAny;
+constexpr Kind AdaptedKind<const Handle<StringValue>&>() {
+  return Kind::kString;
+}
+
+template <>
+constexpr Kind AdaptedKind<const Handle<BytesValue>&>() {
+  return Kind::kBytes;
 }
 
 // Adapt a Handle<Value> to its corresponding argument type in a wrapped c++
@@ -144,6 +165,30 @@ struct HandleToAdaptedVisitor {
     return absl::OkStatus();
   }
 
+  absl::Status operator()(const Handle<Value>** out) {
+    *out = &input;
+    return absl::OkStatus();
+  }
+
+  // Used to implement adapter for pass by const reference functions.
+  template <typename T>
+  absl::Status operator()(const Handle<T>** out) {
+    if (!input.Is<T>()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("expected ", KindToString(T::kKind), " value"));
+    }
+    *out = &(input.As<T>());
+    return absl::OkStatus();
+  }
+
+  template <typename T>
+  absl::Status operator()(Handle<T>* out) {
+    const Handle<T>* out_ptr;
+    CEL_RETURN_IF_ERROR(this->operator()(&out_ptr));
+    *out = *out_ptr;
+    return absl::OkStatus();
+  }
+
   const Handle<Value>& input;
 };
 
@@ -174,8 +219,11 @@ struct AdaptedToHandleVisitor {
     return value_factory.CreateDurationValue(in);
   }
 
-  absl::StatusOr<Handle<Value>> operator()(Handle<Value> in) {
-    return std::move(in);
+  absl::StatusOr<Handle<Value>> operator()(Handle<Value> in) { return in; }
+
+  template <typename T>
+  absl::StatusOr<Handle<Value>> operator()(Handle<T> in) {
+    return in;
   }
 
   // Special case for StatusOr<T> return value -- wrap the underlying value if

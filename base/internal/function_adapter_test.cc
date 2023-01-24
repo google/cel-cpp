@@ -18,9 +18,11 @@
 #include "absl/time/time.h"
 #include "base/memory_manager.h"
 #include "base/value_factory.h"
+#include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
 #include "base/values/duration_value.h"
 #include "base/values/int_value.h"
+#include "base/values/string_value.h"
 #include "base/values/uint_value.h"
 #include "internal/testing.h"
 
@@ -39,9 +41,13 @@ static_assert(AdaptedKind<absl::Time>() == Kind::kTimestamp,
               "timestamp adapts to absl::Time");
 static_assert(AdaptedKind<absl::Duration>() == Kind::kDuration,
               "duration adapts to absl::Duration");
-
+// Handle types.
 static_assert(AdaptedKind<Handle<Value>>() == Kind::kAny,
               "any adapts to Handle<Value>");
+static_assert(AdaptedKind<Handle<StringValue>>() == Kind::kString,
+              "string adapts to Handle<String>");
+static_assert(AdaptedKind<Handle<BytesValue>>() == Kind::kBytes,
+              "bytes adapts to Handle<Bytes>");
 
 class ValueFactoryTestBase : public testing::Test {
  public:
@@ -171,6 +177,64 @@ TEST_F(HandleToAdaptedVisitorTest, DurationWrongKind) {
       StatusIs(absl::StatusCode::kInvalidArgument, "expected duration value"));
 }
 
+TEST_F(HandleToAdaptedVisitorTest, String) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateStringValue("string"));
+
+  Handle<StringValue> out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out->ToString(), "string");
+}
+
+TEST_F(HandleToAdaptedVisitorTest, StringPtr) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateStringValue("string"));
+
+  const Handle<StringValue>* out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ((*out)->ToString(), "string");
+}
+
+TEST_F(HandleToAdaptedVisitorTest, StringWrongKind) {
+  Handle<Value> v = value_factory().CreateUintValue(10);
+
+  Handle<StringValue> out;
+  EXPECT_THAT(
+      HandleToAdaptedVisitor{v}(&out),
+      StatusIs(absl::StatusCode::kInvalidArgument, "expected string value"));
+}
+
+TEST_F(HandleToAdaptedVisitorTest, Bytes) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateBytesValue("bytes"));
+
+  Handle<BytesValue> out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out->ToString(), "bytes");
+}
+
+TEST_F(HandleToAdaptedVisitorTest, BytesPtr) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateBytesValue("bytes"));
+
+  const Handle<BytesValue>* out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ((*out)->ToString(), "bytes");
+}
+
+TEST_F(HandleToAdaptedVisitorTest, BytesWrongKind) {
+  Handle<Value> v = value_factory().CreateUintValue(10);
+
+  Handle<BytesValue> out;
+  EXPECT_THAT(
+      HandleToAdaptedVisitor{v}(&out),
+      StatusIs(absl::StatusCode::kInvalidArgument, "expected bytes value"));
+}
+
 class AdaptedToHandleVisitorTest : public ValueFactoryTestBase {};
 
 TEST_F(AdaptedToHandleVisitorTest, Int) {
@@ -232,6 +296,28 @@ TEST_F(AdaptedToHandleVisitorTest, Duration) {
 
   ASSERT_TRUE(result.Is<DurationValue>());
   EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(5));
+}
+
+TEST_F(AdaptedToHandleVisitorTest, String) {
+  ASSERT_OK_AND_ASSIGN(Handle<StringValue> value,
+                       value_factory().CreateStringValue("str"));
+
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       AdaptedToHandleVisitor{value_factory()}(value));
+
+  ASSERT_TRUE(result.Is<StringValue>());
+  EXPECT_EQ(result.As<StringValue>()->ToString(), "str");
+}
+
+TEST_F(AdaptedToHandleVisitorTest, Bytes) {
+  ASSERT_OK_AND_ASSIGN(Handle<BytesValue> value,
+                       value_factory().CreateBytesValue("bytes"));
+
+  ASSERT_OK_AND_ASSIGN(auto result,
+                       AdaptedToHandleVisitor{value_factory()}(value));
+
+  ASSERT_TRUE(result.Is<BytesValue>());
+  EXPECT_EQ(result.As<BytesValue>()->ToString(), "bytes");
 }
 
 TEST_F(AdaptedToHandleVisitorTest, StatusOrValue) {

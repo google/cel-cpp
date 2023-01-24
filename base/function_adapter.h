@@ -29,6 +29,25 @@
 #include "base/internal/function_adapter.h"
 
 namespace cel {
+namespace internal {
+
+template <typename T>
+struct AdaptedTypeTraits {
+  using AssignableType = T;
+
+  static T ToArg(AssignableType v) { return v; }
+};
+
+// Specialization for cref parameters without forcing a temporary copy of the
+// underlying handle argument.
+template <typename T>
+struct AdaptedTypeTraits<const T&> {
+  using AssignableType = const T*;
+
+  static const T& ToArg(AssignableType v) { return *ABSL_DIE_IF_NULL(v); }
+};
+
+}  // namespace internal
 
 // Adapter class for generating CEL extension functions from a two argument
 // function. Generates an implementation of the cel::Function interface that
@@ -95,16 +114,19 @@ class BinaryFunctionAdapter {
     absl::StatusOr<Handle<Value>> Invoke(
         const FunctionEvaluationContext& context,
         absl::Span<const Handle<Value>> args) const override {
+      using Arg1Traits = internal::AdaptedTypeTraits<U>;
+      using Arg2Traits = internal::AdaptedTypeTraits<V>;
       if (args.size() != 2) {
         return absl::InvalidArgumentError(
             "unexpected number of arguments for binary function");
       }
-      U arg1;
-      V arg2;
+      typename Arg1Traits::AssignableType arg1;
+      typename Arg2Traits::AssignableType arg2;
       CEL_RETURN_IF_ERROR(internal::HandleToAdaptedVisitor{args[0]}(&arg1));
       CEL_RETURN_IF_ERROR(internal::HandleToAdaptedVisitor{args[1]}(&arg2));
 
-      T result = fn_(context.value_factory(), arg1, arg2);
+      T result = fn_(context.value_factory(), Arg1Traits::ToArg(arg1),
+                     Arg2Traits::ToArg(arg2));
 
       return internal::AdaptedToHandleVisitor{context.value_factory()}(
           std::move(result));
@@ -159,15 +181,16 @@ class UnaryFunctionAdapter {
     absl::StatusOr<Handle<Value>> Invoke(
         const FunctionEvaluationContext& context,
         absl::Span<const Handle<Value>> args) const override {
+      using ArgTraits = internal::AdaptedTypeTraits<U>;
       if (args.size() != 1) {
         return absl::InvalidArgumentError(
             "unexpected number of arguments for unary function");
       }
-      U arg1;
+      typename ArgTraits::AssignableType arg1;
 
       CEL_RETURN_IF_ERROR(internal::HandleToAdaptedVisitor{args[0]}(&arg1));
 
-      T result = fn_(context.value_factory(), arg1);
+      T result = fn_(context.value_factory(), ArgTraits::ToArg(arg1));
 
       return internal::AdaptedToHandleVisitor{context.value_factory()}(
           std::move(result));

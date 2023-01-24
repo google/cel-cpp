@@ -30,6 +30,7 @@
 #include "base/type_provider.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
+#include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
 #include "base/values/int_value.h"
 #include "base/values/timestamp_value.h"
@@ -142,6 +143,42 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
 
   ASSERT_TRUE(result.Is<DurationValue>());
   EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(8));
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
+  using FunctionAdapter =
+      UnaryFunctionAdapter<Handle<StringValue>, Handle<StringValue>>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory& value_factory,
+         const Handle<StringValue>& x) -> Handle<StringValue> {
+        return value_factory.CreateStringValue("pre_" + x->ToString()).value();
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateStringValue("string"));
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<StringValue>());
+  EXPECT_EQ(result.As<StringValue>()->ToString(), "pre_string");
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
+  using FunctionAdapter =
+      UnaryFunctionAdapter<Handle<BytesValue>, Handle<BytesValue>>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory& value_factory,
+         const Handle<BytesValue>& x) -> Handle<BytesValue> {
+        return value_factory.CreateBytesValue("pre_" + x->ToString()).value();
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateBytesValue("bytes"));
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<BytesValue>());
+  EXPECT_EQ(result.As<BytesValue>()->ToString(), "pre_bytes");
 }
 
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
@@ -301,6 +338,30 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorDuration) {
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kDuration));
 }
 
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorString) {
+  FunctionDescriptor desc =
+      UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+                           Handle<StringValue>>::CreateDescriptor("Prepend",
+                                                                  false);
+
+  EXPECT_EQ(desc.name(), "Prepend");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kString));
+}
+
+TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorBytes) {
+  FunctionDescriptor desc =
+      UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
+                           Handle<BytesValue>>::CreateDescriptor("Prepend",
+                                                                 false);
+
+  EXPECT_EQ(desc.name(), "Prepend");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kBytes));
+}
+
 TEST_F(FunctionAdapterTest, UnaryFunctionAdapterCreateDescriptorAny) {
   FunctionDescriptor desc =
       UnaryFunctionAdapter<absl::StatusOr<Handle<Value>>,
@@ -417,6 +478,52 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDuration) {
 
   ASSERT_TRUE(result.Is<DurationValue>());
   EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(5));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionString) {
+  using FunctionAdapter =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<StringValue>>,
+                            const Handle<StringValue>&,
+                            const Handle<StringValue>&>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory& value_factory, const Handle<StringValue>& x,
+         const Handle<StringValue>& y) -> absl::StatusOr<Handle<StringValue>> {
+        return value_factory.CreateStringValue(x->ToString() + y->ToString());
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateStringValue("abc"));
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateStringValue("def"));
+
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<StringValue>());
+  EXPECT_EQ(result.As<StringValue>()->ToString(), "abcdef");
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
+  using FunctionAdapter =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<BytesValue>>,
+                            const Handle<BytesValue>&,
+                            const Handle<BytesValue>&>;
+  std::unique_ptr<Function> wrapped = FunctionAdapter::WrapFunction(
+      [](ValueFactory& value_factory, const Handle<BytesValue>& x,
+         const Handle<BytesValue>& y) -> absl::StatusOr<Handle<BytesValue>> {
+        return value_factory.CreateBytesValue(x->ToString() + y->ToString());
+      });
+
+  std::vector<Handle<Value>> args;
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateBytesValue("abc"));
+  ASSERT_OK_AND_ASSIGN(args.emplace_back(),
+                       value_factory().CreateBytesValue("def"));
+
+  ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
+
+  ASSERT_TRUE(result.Is<BytesValue>());
+  EXPECT_EQ(result.As<BytesValue>()->ToString(), "abcdef");
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
@@ -565,6 +672,30 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorDuration) {
   EXPECT_TRUE(desc.is_strict());
   EXPECT_FALSE(desc.receiver_style());
   EXPECT_THAT(desc.types(), ElementsAre(Kind::kDuration, Kind::kDuration));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorString) {
+  FunctionDescriptor desc =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, Handle<StringValue>,
+                            Handle<StringValue>>::CreateDescriptor("Concat",
+                                                                   false);
+
+  EXPECT_EQ(desc.name(), "Concat");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kString, Kind::kString));
+}
+
+TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorBytes) {
+  FunctionDescriptor desc =
+      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, Handle<BytesValue>,
+                            Handle<BytesValue>>::CreateDescriptor("Concat",
+                                                                  false);
+
+  EXPECT_EQ(desc.name(), "Concat");
+  EXPECT_TRUE(desc.is_strict());
+  EXPECT_FALSE(desc.receiver_style());
+  EXPECT_THAT(desc.types(), ElementsAre(Kind::kBytes, Kind::kBytes));
 }
 
 TEST_F(FunctionAdapterTest, BinaryFunctionAdapterCreateDescriptorAny) {
