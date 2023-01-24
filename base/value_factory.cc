@@ -167,6 +167,18 @@ absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(
                                                              std::move(value));
 }
 
+Handle<StringValue> ValueFactory::CreateUncheckedStringValue(
+    std::string value) {
+  // Avoid persisting empty strings which may have underlying storage after
+  // mutating.
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+
+  return HandleFactory<StringValue>::Make<StringStringValue>(memory_manager(),
+                                                             std::move(value));
+}
+
 absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(
     absl::Cord value) {
   if (value.empty()) {

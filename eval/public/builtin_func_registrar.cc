@@ -370,15 +370,15 @@ const CelList* AppendList(Arena* arena, const CelList* value1,
   return mutable_list;
 }
 
-// Concatenation for StringHolder type.
+// Concatenation for string type.
 absl::StatusOr<Handle<StringValue>> ConcatString(
     ValueFactory& factory, const Handle<StringValue>& value1,
     const Handle<StringValue>& value2) {
-  return factory.CreateStringValue(
+  return factory.CreateUncheckedStringValue(
       absl::StrCat(value1->ToString(), value2->ToString()));
 }
 
-// Concatenation for BytesHolder type.
+// Concatenation for bytes type.
 absl::StatusOr<Handle<cel::BytesValue>> ConcatBytes(
     ValueFactory& factory, const Handle<BytesValue>& value1,
     const Handle<BytesValue>& value2) {

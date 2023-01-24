@@ -144,6 +144,12 @@ class ValueFactory final {
   absl::StatusOr<Handle<StringValue>> CreateStringValue(std::string value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  // Create a string value from a caller validated utf-8 string.
+  // This is appropriate for generating strings from other CEL strings that have
+  // already been validated as utf-8.
+  Handle<StringValue> CreateUncheckedStringValue(std::string value)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   absl::StatusOr<Handle<StringValue>> CreateStringValue(absl::Cord value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
