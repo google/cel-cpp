@@ -34,10 +34,17 @@
 namespace cel {
 
 class ValueFactory;
+class ListValueBuilderInterface;
+template <typename T>
+class ListValueBuilder;
 
 // ListValue represents an instance of cel::ListType.
 class ListValue : public Value {
  public:
+  using BuilderInterface = ListValueBuilderInterface;
+  template <typename T>
+  using Builder = ListValueBuilder<T>;
+
   static constexpr Kind kKind = ListType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }

@@ -48,7 +48,15 @@ class Allocator final {
 
   explicit Allocator(
       ABSL_ATTRIBUTE_LIFETIME_BOUND MemoryManager& memory_manager)
-      : memory_manager_(memory_manager) {}
+      : memory_manager_(memory_manager),
+        allocation_only_(memory_manager.allocation_only_) {}
+
+  Allocator(const Allocator&) = default;
+
+  template <typename U>
+  explicit Allocator(const Allocator<U>& other)
+      : memory_manager_(other.memory_manager_),
+        allocation_only_(other.allocation_only_) {}
 
   pointer allocate(size_type n) {
     if (!memory_manager_.allocation_only_) {
@@ -64,7 +72,7 @@ class Allocator final {
   }
 
   void deallocate(pointer p, size_type n) {
-    if (!memory_manager_.allocation_only_) {
+    if (!allocation_only_) {
       ::operator delete(static_cast<void*>(p), n * sizeof(T),
                         static_cast<std::align_val_t>(alignof(T)));
     }
@@ -96,18 +104,27 @@ class Allocator final {
     p->~U();
   }
 
-  template <typename U, typename V>
-  friend bool operator==(const Allocator<U>& lhs, const Allocator<V>& rhs) {
-    return &lhs.memory_manager_ == &rhs.memory_manager_;
+  template <typename U>
+  bool operator==(const Allocator<U>& rhs) const {
+    return &memory_manager_ == &rhs.memory_manager_;
   }
 
-  template <typename U, typename V>
-  friend bool operator!=(const Allocator<U>& lhs, const Allocator<V>& rhs) {
-    return &lhs.memory_manager_ != &rhs.memory_manager_;
+  template <typename U>
+  bool operator!=(const Allocator<U>& rhs) const {
+    return &memory_manager_ != &rhs.memory_manager_;
   }
 
  private:
+  template <typename U>
+  friend class Allocator;
+
   MemoryManager& memory_manager_;
+  // Ugh. This is here because of legacy behavior. MemoryManager& is guaranteed
+  // to exist during allocation, but not necessarily during deallocation. So we
+  // store the member variable from MemoryManager. This can go away once
+  // CelValue and friends are entirely gone and everybody is instantiating their
+  // own MemoryManager.
+  bool allocation_only_;
 };
 
 }  // namespace cel
