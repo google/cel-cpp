@@ -379,7 +379,7 @@ void TypeHandle::CopyFrom(const TypeHandle& other) {
 
 void TypeHandle::MoveFrom(TypeHandle& other) {
   // data_ is currently uninitialized.
-  if (data_.IsStoredInline()) {
+  if (other.data_.IsStoredInline()) {
     if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
       // Type currently has only trivially copyable inline
       // representations.
