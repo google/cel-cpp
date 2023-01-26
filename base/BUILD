@@ -237,12 +237,16 @@ cc_library(
     srcs = [
         "value.cc",
         "value_factory.cc",
-    ] + glob(["values/*.cc"]),
+    ] + glob(
+        ["values/*.cc"],
+        exclude = ["values/*_test.cc"],
+    ),
     hdrs = [
         "value.h",
         "value_factory.h",
     ] + glob(["values/*.h"]),
     deps = [
+        ":allocator",
         ":attributes",
         ":functions",
         ":handle",
@@ -284,7 +288,7 @@ cc_test(
     srcs = [
         "value_factory_test.cc",
         "value_test.cc",
-    ],
+    ] + glob(["values/*_test.cc"]),
     deps = [
         ":memory_manager",
         ":type",
