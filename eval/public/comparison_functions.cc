@@ -25,160 +25,178 @@
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "base/function_adapter.h"
+#include "base/handle.h"
+#include "base/value_factory.h"
+#include "base/values/bytes_value.h"
+#include "base/values/string_value.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/portable_cel_function_adapter.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-using ::google::protobuf::Arena;
+using ::cel::BinaryFunctionAdapter;
+using ::cel::BytesValue;
+using ::cel::Handle;
+using ::cel::StringValue;
+using ::cel::ValueFactory;
 
 // Comparison template functions
 template <class Type>
-bool LessThan(Arena*, Type t1, Type t2) {
+bool LessThan(ValueFactory&, Type t1, Type t2) {
   return (t1 < t2);
 }
 
 template <class Type>
-bool LessThanOrEqual(Arena*, Type t1, Type t2) {
+bool LessThanOrEqual(ValueFactory&, Type t1, Type t2) {
   return (t1 <= t2);
 }
 
 template <class Type>
-bool GreaterThan(Arena* arena, Type t1, Type t2) {
-  return LessThan(arena, t2, t1);
+bool GreaterThan(ValueFactory& factory, Type t1, Type t2) {
+  return LessThan(factory, t2, t1);
 }
 
 template <class Type>
-bool GreaterThanOrEqual(Arena* arena, Type t1, Type t2) {
-  return LessThanOrEqual(arena, t2, t1);
+bool GreaterThanOrEqual(ValueFactory& factory, Type t1, Type t2) {
+  return LessThanOrEqual(factory, t2, t1);
+}
+
+// String value comparions specializations
+template <>
+bool LessThan(ValueFactory&, const Handle<StringValue>& t1,
+              const Handle<StringValue>& t2) {
+  return t1->Compare(*t2) < 0;
+}
+
+template <>
+bool LessThanOrEqual(ValueFactory&, const Handle<StringValue>& t1,
+                     const Handle<StringValue>& t2) {
+  return t1->Compare(*t2) <= 0;
+}
+
+template <>
+bool GreaterThan(ValueFactory&, const Handle<StringValue>& t1,
+                 const Handle<StringValue>& t2) {
+  return t1->Compare(*t2) > 0;
+}
+
+template <>
+bool GreaterThanOrEqual(ValueFactory&, const Handle<StringValue>& t1,
+                        const Handle<StringValue>& t2) {
+  return t1->Compare(*t2) >= 0;
+}
+
+// bytes value comparions specializations
+template <>
+bool LessThan(ValueFactory&, const Handle<BytesValue>& t1,
+              const Handle<BytesValue>& t2) {
+  return t1->Compare(*t2) < 0;
+}
+
+template <>
+bool LessThanOrEqual(ValueFactory&, const Handle<BytesValue>& t1,
+                     const Handle<BytesValue>& t2) {
+  return t1->Compare(*t2) <= 0;
+}
+
+template <>
+bool GreaterThan(ValueFactory&, const Handle<BytesValue>& t1,
+                 const Handle<BytesValue>& t2) {
+  return t1->Compare(*t2) > 0;
+}
+
+template <>
+bool GreaterThanOrEqual(ValueFactory&, const Handle<BytesValue>& t1,
+                        const Handle<BytesValue>& t2) {
+  return t1->Compare(*t2) >= 0;
 }
 
 // Duration comparison specializations
 template <>
-bool LessThan(Arena*, absl::Duration t1, absl::Duration t2) {
+bool LessThan(ValueFactory&, absl::Duration t1, absl::Duration t2) {
   return absl::operator<(t1, t2);
 }
 
 template <>
-bool LessThanOrEqual(Arena*, absl::Duration t1, absl::Duration t2) {
+bool LessThanOrEqual(ValueFactory&, absl::Duration t1, absl::Duration t2) {
   return absl::operator<=(t1, t2);
 }
 
 template <>
-bool GreaterThan(Arena*, absl::Duration t1, absl::Duration t2) {
+bool GreaterThan(ValueFactory&, absl::Duration t1, absl::Duration t2) {
   return absl::operator>(t1, t2);
 }
 
 template <>
-bool GreaterThanOrEqual(Arena*, absl::Duration t1, absl::Duration t2) {
+bool GreaterThanOrEqual(ValueFactory&, absl::Duration t1, absl::Duration t2) {
   return absl::operator>=(t1, t2);
 }
 
 // Timestamp comparison specializations
 template <>
-bool LessThan(Arena*, absl::Time t1, absl::Time t2) {
+bool LessThan(ValueFactory&, absl::Time t1, absl::Time t2) {
   return absl::operator<(t1, t2);
 }
 
 template <>
-bool LessThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
+bool LessThanOrEqual(ValueFactory&, absl::Time t1, absl::Time t2) {
   return absl::operator<=(t1, t2);
 }
 
 template <>
-bool GreaterThan(Arena*, absl::Time t1, absl::Time t2) {
+bool GreaterThan(ValueFactory&, absl::Time t1, absl::Time t2) {
   return absl::operator>(t1, t2);
 }
 
 template <>
-bool GreaterThanOrEqual(Arena*, absl::Time t1, absl::Time t2) {
+bool GreaterThanOrEqual(ValueFactory&, absl::Time t1, absl::Time t2) {
   return absl::operator>=(t1, t2);
 }
 
 template <typename T, typename U>
-bool CrossNumericLessThan(Arena* arena, T t, U u) {
+bool CrossNumericLessThan(ValueFactory&, T t, U u) {
   return CelNumber(t) < CelNumber(u);
 }
 
 template <typename T, typename U>
-bool CrossNumericGreaterThan(Arena* arena, T t, U u) {
+bool CrossNumericGreaterThan(ValueFactory&, T t, U u) {
   return CelNumber(t) > CelNumber(u);
 }
 
 template <typename T, typename U>
-bool CrossNumericLessOrEqualTo(Arena* arena, T t, U u) {
+bool CrossNumericLessOrEqualTo(ValueFactory&, T t, U u) {
   return CelNumber(t) <= CelNumber(u);
 }
 
 template <typename T, typename U>
-bool CrossNumericGreaterOrEqualTo(Arena* arena, T t, U u) {
+bool CrossNumericGreaterOrEqualTo(ValueFactory&, T t, U u) {
   return CelNumber(t) >= CelNumber(u);
 }
 
-template <typename Type, typename Op>
-std::function<CelValue(Arena*, Type, Type)> WrapComparison(Op op) {
-  return [op = std::move(op)](Arena* arena, Type lhs, Type rhs) -> CelValue {
-    absl::optional<bool> result = op(lhs, rhs);
-
-    if (result.has_value()) {
-      return CelValue::CreateBool(*result);
-    }
-
-    return CreateNoMatchingOverloadError(arena);
-  };
-}
-
-
-template <typename T, typename U>
-absl::Status RegisterSymmetricFunction(
-    absl::string_view name, std::function<bool(google::protobuf::Arena*, T, U)> fn,
-    CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<bool, T, U>::Create(name, false, fn)));
-
-  // the symmetric version
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableBinaryFunctionAdapter<bool, U, T>::Create(
-          name, false,
-          [fn](google::protobuf::Arena* arena, U u, T t) { return fn(arena, t, u); })));
-
-  return absl::OkStatus();
-}
-
-template <class Type>
-absl::Status RegisterOrderingFunctionsForType(CelFunctionRegistry* registry) {
-  using FunctionAdapter = PortableBinaryFunctionAdapter<bool, Type, Type>;
-  // Less than
-  // Extra paranthesis needed for Macros with multiple template arguments.
-  CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kLess, false, LessThan<Type>)));
-
-  // Less than or Equal
-  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
-      builtin::kLessOrEqual, false, LessThanOrEqual<Type>)));
-
-  // Greater than
-  CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kGreater, false, GreaterThan<Type>)));
-
-  // Greater than or Equal
-  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
-      builtin::kGreaterOrEqual, false, GreaterThanOrEqual<Type>)));
-
-  return absl::OkStatus();
-}
-
-// Registers all comparison functions for template parameter type.
 template <class Type>
 absl::Status RegisterComparisonFunctionsForType(CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<Type>(registry));
+  using FunctionAdapter = BinaryFunctionAdapter<bool, Type, Type>;
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::CreateDescriptor(builtin::kLess, false),
+      FunctionAdapter::WrapFunction(LessThan<Type>)));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::CreateDescriptor(builtin::kLessOrEqual, false),
+      FunctionAdapter::WrapFunction(LessThanOrEqual<Type>)));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::CreateDescriptor(builtin::kGreater, false),
+      FunctionAdapter::WrapFunction(GreaterThan<Type>)));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::CreateDescriptor(builtin::kGreaterOrEqual, false),
+      FunctionAdapter::WrapFunction(GreaterThanOrEqual<Type>)));
 
   return absl::OkStatus();
 }
@@ -194,10 +212,10 @@ absl::Status RegisterHomogenousComparisonFunctions(
   CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<double>(registry));
 
   CEL_RETURN_IF_ERROR(
-      RegisterComparisonFunctionsForType<CelValue::StringHolder>(registry));
+      RegisterComparisonFunctionsForType<const Handle<StringValue>&>(registry));
 
   CEL_RETURN_IF_ERROR(
-      RegisterComparisonFunctionsForType<CelValue::BytesHolder>(registry));
+      RegisterComparisonFunctionsForType<const Handle<BytesValue>&>(registry));
 
   CEL_RETURN_IF_ERROR(
       RegisterComparisonFunctionsForType<absl::Duration>(registry));
@@ -209,18 +227,23 @@ absl::Status RegisterHomogenousComparisonFunctions(
 
 template <typename T, typename U>
 absl::Status RegisterCrossNumericComparisons(CelFunctionRegistry* registry) {
-  using FunctionAdapter = PortableBinaryFunctionAdapter<bool, T, U>;
-  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
-      builtin::kLess, /*receiver_style=*/false, &CrossNumericLessThan<T, U>)));
+  using FunctionAdapter = BinaryFunctionAdapter<bool, T, U>;
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kGreater, /*receiver_style=*/false,
-                              &CrossNumericGreaterThan<T, U>)));
-  CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
-      builtin::kGreaterOrEqual, /*receiver_style=*/false,
-      &CrossNumericGreaterOrEqualTo<T, U>)));
+      FunctionAdapter::CreateDescriptor(builtin::kLess,
+                                        /*receiver_style=*/false),
+      FunctionAdapter::WrapFunction(&CrossNumericLessThan<T, U>)));
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::Create(builtin::kLessOrEqual, /*receiver_style=*/false,
-                              &CrossNumericLessOrEqualTo<T, U>)));
+      FunctionAdapter::CreateDescriptor(builtin::kGreater,
+                                        /*receiver_style=*/false),
+      FunctionAdapter::WrapFunction(&CrossNumericGreaterThan<T, U>)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::CreateDescriptor(builtin::kGreaterOrEqual,
+                                        /*receiver_style=*/false),
+      FunctionAdapter::WrapFunction(&CrossNumericGreaterOrEqualTo<T, U>)));
+  CEL_RETURN_IF_ERROR(registry->Register(
+      FunctionAdapter::CreateDescriptor(builtin::kLessOrEqual,
+                                        /*receiver_style=*/false),
+      FunctionAdapter::WrapFunction(&CrossNumericLessOrEqualTo<T, U>)));
   return absl::OkStatus();
 }
 
@@ -242,17 +265,17 @@ absl::Status RegisterHeterogeneousComparisonFunctions(
   CEL_RETURN_IF_ERROR(
       (RegisterCrossNumericComparisons<int64_t, uint64_t>(registry)));
 
-  CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<bool>(registry));
-  CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<int64_t>(registry));
-  CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<uint64_t>(registry));
-  CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<double>(registry));
+  CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<bool>(registry));
+  CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<int64_t>(registry));
+  CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<uint64_t>(registry));
+  CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<double>(registry));
   CEL_RETURN_IF_ERROR(
-      RegisterOrderingFunctionsForType<CelValue::StringHolder>(registry));
+      RegisterComparisonFunctionsForType<const Handle<StringValue>&>(registry));
   CEL_RETURN_IF_ERROR(
-      RegisterOrderingFunctionsForType<CelValue::BytesHolder>(registry));
+      RegisterComparisonFunctionsForType<const Handle<BytesValue>&>(registry));
   CEL_RETURN_IF_ERROR(
-      RegisterOrderingFunctionsForType<absl::Duration>(registry));
-  CEL_RETURN_IF_ERROR(RegisterOrderingFunctionsForType<absl::Time>(registry));
+      RegisterComparisonFunctionsForType<absl::Duration>(registry));
+  CEL_RETURN_IF_ERROR(RegisterComparisonFunctionsForType<absl::Time>(registry));
 
   return absl::OkStatus();
 }
@@ -262,8 +285,6 @@ absl::Status RegisterHeterogeneousComparisonFunctions(
 absl::Status RegisterComparisonFunctions(CelFunctionRegistry* registry,
                                          const InterpreterOptions& options) {
   if (options.enable_heterogeneous_equality) {
-    // Heterogeneous equality uses one generic overload that delegates to the
-    // right equality implementation at runtime.
     CEL_RETURN_IF_ERROR(RegisterHeterogeneousComparisonFunctions(registry));
   } else {
     CEL_RETURN_IF_ERROR(RegisterHomogenousComparisonFunctions(registry));
