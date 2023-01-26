@@ -85,7 +85,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
       std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
                          std::is_same<F, T>>,
       Handle<F>&>
-  As() & noexcept ABSL_MUST_USE_RESULT {
+  As() noexcept ABSL_MUST_USE_RESULT {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
@@ -107,31 +107,8 @@ class Handle final : private base_internal::HandlePolicy<T> {
   std::enable_if_t<
       std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
                          std::is_same<F, T>>,
-      Handle<F>&&>
-  As() && noexcept ABSL_MUST_USE_RESULT {
-    static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
-                  "Handle<T> and Handle<F> must have the same "
-                  "implementation type");
-    ABSL_ASSERT(this->template Is<F>());
-    // Handle<T> and Handle<F> have the same underlying layout
-    // representation, as ensured via the first static_assert, and they have
-    // compatible types such that F is the base of T or T is the base of F, as
-    // ensured via SFINAE on the return value and the second static_assert. Thus
-    // we can saftley reinterpret_cast.
-    return std::move(*reinterpret_cast<Handle<F>*>(this));
-  }
-
-  // Reinterpret the handle of type `T` as type `F`. `T` must be derived from
-  // `F`, `F` must be derived from `T`, or `F` must be the same as `T`.
-  //
-  // Handle<Resource> handle;
-  // handle.As<const SubResource>()->SubMethod();
-  template <typename F>
-  std::enable_if_t<
-      std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
-                         std::is_same<F, T>>,
       const Handle<F>&>
-  As() const& noexcept ABSL_MUST_USE_RESULT {
+  As() const noexcept ABSL_MUST_USE_RESULT {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
@@ -142,29 +119,6 @@ class Handle final : private base_internal::HandlePolicy<T> {
     // ensured via SFINAE on the return value and the second static_assert. Thus
     // we can saftley reinterpret_cast.
     return *reinterpret_cast<const Handle<F>*>(this);
-  }
-
-  // Reinterpret the handle of type `T` as type `F`. `T` must be derived from
-  // `F`, `F` must be derived from `T`, or `F` must be the same as `T`.
-  //
-  // Handle<Resource> handle;
-  // handle.As<const SubResource>()->SubMethod();
-  template <typename F>
-  std::enable_if_t<
-      std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
-                         std::is_same<F, T>>,
-      const Handle<F>&&>
-  As() const&& noexcept ABSL_MUST_USE_RESULT {
-    static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
-                  "Handle<T> and Handle<F> must have the same "
-                  "implementation type");
-    ABSL_ASSERT(this->template Is<F>());
-    // Handle<T> and Handle<F> have the same underlying layout
-    // representation, as ensured via the first static_assert, and they have
-    // compatible types such that F is the base of T or T is the base of F, as
-    // ensured via SFINAE on the return value and the second static_assert. Thus
-    // we can saftley reinterpret_cast.
-    return std::move(*reinterpret_cast<const Handle<F>*>(this));
   }
 
   // Is checks wether `T` is an instance of `F`.

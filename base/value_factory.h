@@ -85,23 +85,15 @@ class ValueFactory final {
   Handle<ErrorValue> CreateErrorValue(absl::Status status)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Handle<BoolValue> CreateBoolValue(bool value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<BoolValue>::Make<BoolValue>(value);
-  }
+  Handle<BoolValue> CreateBoolValue(bool value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Handle<IntValue> CreateIntValue(int64_t value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<IntValue>::Make<IntValue>(value);
-  }
+  Handle<IntValue> CreateIntValue(int64_t value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Handle<UintValue> CreateUintValue(uint64_t value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<UintValue>::Make<UintValue>(value);
-  }
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Handle<DoubleValue> CreateDoubleValue(double value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<DoubleValue>::Make<DoubleValue>(value);
-  }
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Handle<BytesValue> GetBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return GetEmptyBytesValue();
@@ -176,20 +168,8 @@ class ValueFactory final {
   absl::StatusOr<Handle<DurationValue>> CreateDurationValue(
       absl::Duration value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Handle<DurationValue> CreateUncheckedDurationValue(absl::Duration value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<DurationValue>::Make<DurationValue>(
-        value);
-  }
-
   absl::StatusOr<Handle<TimestampValue>> CreateTimestampValue(absl::Time value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  Handle<TimestampValue> CreateUncheckedTimestampValue(absl::Time value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::HandleFactory<TimestampValue>::Make<TimestampValue>(
-        value);
-  }
 
   absl::StatusOr<Handle<EnumValue>> CreateEnumValue(
       const Handle<EnumType>& enum_type,

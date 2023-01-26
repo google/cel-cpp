@@ -117,6 +117,22 @@ absl::StatusOr<Handle<BytesValue>> BytesValue::Concat(
   return value_factory.CreateBytesValue(std::move(cord));
 }
 
+Handle<BoolValue> ValueFactory::CreateBoolValue(bool value) {
+  return HandleFactory<BoolValue>::Make<BoolValue>(value);
+}
+
+Handle<IntValue> ValueFactory::CreateIntValue(int64_t value) {
+  return HandleFactory<IntValue>::Make<IntValue>(value);
+}
+
+Handle<UintValue> ValueFactory::CreateUintValue(uint64_t value) {
+  return HandleFactory<UintValue>::Make<UintValue>(value);
+}
+
+Handle<DoubleValue> ValueFactory::CreateDoubleValue(double value) {
+  return HandleFactory<DoubleValue>::Make<DoubleValue>(value);
+}
+
 absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValue(
     std::string value) {
   if (value.empty()) {
