@@ -154,6 +154,15 @@ inline internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type) {
 
 }  // namespace base_internal
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<EnumType> {
+  using value_type = EnumValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_ENUM_TYPE_H_

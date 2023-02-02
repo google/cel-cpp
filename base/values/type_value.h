@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -106,6 +105,30 @@ class ModernTypeValue final : public TypeValue, InlineData {
   ModernTypeValue& operator=(ModernTypeValue&&) = default;
 
   Handle<Type> value_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<TypeValue> {
+  using type = TypeValue;
+
+  using type_type = TypeType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
 };
 
 }  // namespace base_internal

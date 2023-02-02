@@ -45,6 +45,15 @@ class UintType final : public base_internal::SimpleType<Kind::kUint> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(UintType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<UintType> {
+  using value_type = UintValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_UINT_TYPE_H_

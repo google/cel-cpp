@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -258,6 +257,15 @@ namespace base_internal {
 inline internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type) {
   return struct_type.TypeId();
 }
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<StructType> {
+  using value_type = StructValue;
+};
 
 }  // namespace base_internal
 

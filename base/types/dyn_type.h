@@ -48,6 +48,15 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(DynType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<DynType> {
+  using value_type = DynValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_DYN_TYPE_H_

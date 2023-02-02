@@ -46,6 +46,30 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(NullValue);
 
+namespace base_internal {
+
+template <>
+struct ValueTraits<NullValue> {
+  using type = NullValue;
+
+  using type_type = NullType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_NULL_VALUE_H_

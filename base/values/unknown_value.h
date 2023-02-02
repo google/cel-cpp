@@ -19,7 +19,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "base/attribute_set.h"
 #include "base/function_result_set.h"
 #include "base/internal/unknown_set.h"
@@ -97,6 +96,30 @@ class UnknownValue final : public Value, public base_internal::InlineData {
 };
 
 CEL_INTERNAL_VALUE_DECL(UnknownValue);
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<UnknownValue> {
+  using type = UnknownValue;
+
+  using type_type = UnknownType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

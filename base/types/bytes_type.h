@@ -45,6 +45,15 @@ class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(BytesType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<BytesType> {
+  using value_type = BytesValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_BYTES_TYPE_H_

@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -30,6 +29,7 @@ namespace cel {
 
 class MemoryManager;
 class TypeFactory;
+class MapValue;
 
 // MapType represents a map type. A map is container of key and value pairs
 // where each key appears at most once.
@@ -105,6 +105,15 @@ class ModernMapType final : public MapType, public HeapData {
 
   const Handle<Type> key_;
   const Handle<Type> value_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<MapType> {
+  using value_type = MapValue;
 };
 
 }  // namespace base_internal

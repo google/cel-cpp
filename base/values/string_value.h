@@ -108,6 +108,16 @@ class StringValue : public Value {
 
 CEL_INTERNAL_VALUE_DECL(StringValue);
 
+template <typename H>
+H AbslHashValue(H state, const StringValue& value) {
+  value.HashValue(absl::HashState::Create(&state));
+  return state;
+}
+
+inline bool operator==(const StringValue& lhs, const StringValue& rhs) {
+  return lhs.Equals(rhs);
+}
+
 namespace base_internal {
 
 // Implementation of StringValue that is stored inlined within a handle. Since
@@ -173,6 +183,30 @@ class StringStringValue final : public StringValue, public HeapData {
   explicit StringStringValue(std::string value);
 
   std::string value_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<StringValue> {
+  using type = StringValue;
+
+  using type_type = StringType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
 };
 
 }  // namespace base_internal

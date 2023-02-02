@@ -45,6 +45,15 @@ class IntType final : public base_internal::SimpleType<Kind::kInt> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(IntType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<IntType> {
+  using value_type = IntValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_INT_TYPE_H_

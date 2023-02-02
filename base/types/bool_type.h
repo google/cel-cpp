@@ -45,6 +45,15 @@ class BoolType final : public base_internal::SimpleType<Kind::kBool> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(BoolType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<BoolType> {
+  using value_type = BoolValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_

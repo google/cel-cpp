@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -70,6 +69,30 @@ class EnumValue final : public Value, public base_internal::InlineData {
 };
 
 CEL_INTERNAL_VALUE_DECL(EnumValue);
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<EnumValue> {
+  using type = EnumValue;
+
+  using type_type = EnumType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

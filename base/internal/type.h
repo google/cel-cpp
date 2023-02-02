@@ -26,6 +26,7 @@
 
 namespace cel {
 
+class Value;
 class EnumType;
 class StructType;
 
@@ -69,6 +70,13 @@ static_assert(kTypeInlineAlign <= alignof(std::max_align_t),
               "Alignment of an inline type should not be overaligned.");
 
 using AnyType = AnyData<kTypeInlineSize, kTypeInlineAlign>;
+
+// Metaprogramming utility for interacting with Type.
+//
+// TypeTraits<T>::type is an alias for T.
+// TypeTraits<T>::value_type is the corresponding Value for T.
+template <typename T>
+struct TypeTraits;
 
 }  // namespace base_internal
 

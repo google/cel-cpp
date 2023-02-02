@@ -169,6 +169,30 @@ class StringBytesValue final : public BytesValue, public HeapData {
 
 }  // namespace base_internal
 
+namespace base_internal {
+
+template <>
+struct ValueTraits<BytesValue> {
+  using type = BytesValue;
+
+  using type_type = BytesType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_BYTES_VALUE_H_

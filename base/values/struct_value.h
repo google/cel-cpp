@@ -262,6 +262,30 @@ inline internal::TypeInfo GetStructValueTypeId(
 
 }  // namespace base_internal
 
+namespace base_internal {
+
+template <>
+struct ValueTraits<StructValue> {
+  using type = StructValue;
+
+  using type_type = StructType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_STRUCT_VALUE_H_

@@ -55,6 +55,39 @@ class DurationValue final
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(DurationValue);
 
+inline bool operator==(const DurationValue& lhs, const DurationValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<DurationValue> {
+  using type = DurationValue;
+
+  using type_type = DurationType;
+
+  using underlying_type = absl::Duration;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_DURATION_VALUE_H_

@@ -54,6 +54,39 @@ class TimestampValue final
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(TimestampValue);
 
+inline bool operator==(const TimestampValue& lhs, const TimestampValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<TimestampValue> {
+  using type = TimestampValue;
+
+  using type_type = TimestampType;
+
+  using underlying_type = absl::Time;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_TIMESTAMP_VALUE_H_

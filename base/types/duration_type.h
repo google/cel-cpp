@@ -45,6 +45,15 @@ class DurationType final : public base_internal::SimpleType<Kind::kDuration> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(DurationType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<DurationType> {
+  using value_type = DurationValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_DURATION_TYPE_H_

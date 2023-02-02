@@ -45,6 +45,15 @@ class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(DoubleType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<DoubleType> {
+  using value_type = DoubleValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_DOUBLE_TYPE_H_

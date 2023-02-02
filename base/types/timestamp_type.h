@@ -45,6 +45,15 @@ class TimestampType final : public base_internal::SimpleType<Kind::kTimestamp> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(TimestampType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<TimestampType> {
+  using value_type = TimestampValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_TIMESTAMP_TYPE_H_

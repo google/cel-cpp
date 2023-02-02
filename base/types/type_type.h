@@ -45,6 +45,15 @@ class TypeType final : public base_internal::SimpleType<Kind::kType> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(TypeType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<TypeType> {
+  using value_type = TypeValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_TYPE_TYPE_H_

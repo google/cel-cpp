@@ -57,6 +57,39 @@ class DoubleValue final
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(DoubleValue);
 
+inline bool operator==(const DoubleValue& lhs, const DoubleValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<DoubleValue> {
+  using type = DoubleValue;
+
+  using type_type = DoubleType;
+
+  using underlying_type = double;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_DOUBLE_VALUE_H_

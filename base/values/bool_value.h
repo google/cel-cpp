@@ -54,6 +54,44 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(BoolValue);
 
+template <typename H>
+H AbslHashValue(H state, const BoolValue& value) {
+  return H::combine(std::move(state), value.value());
+}
+
+inline bool operator==(const BoolValue& lhs, const BoolValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<BoolValue> {
+  using type = BoolValue;
+
+  using type_type = BoolType;
+
+  using underlying_type = bool;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_BOOL_VALUE_H_

@@ -45,6 +45,15 @@ class NullType final : public base_internal::SimpleType<Kind::kNullType> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(NullType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<NullType> {
+  using value_type = NullValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_NULL_TYPE_H_

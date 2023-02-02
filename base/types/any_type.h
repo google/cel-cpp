@@ -45,6 +45,15 @@ class AnyType final : public base_internal::SimpleType<Kind::kAny> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(AnyType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<AnyType> {
+  using value_type = AnyValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_ANY_TYPE_H_

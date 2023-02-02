@@ -100,6 +100,35 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
 CEL_INTERNAL_VALUE_DECL(ErrorValue);
 
+namespace base_internal {
+
+template <>
+struct ValueTraits<ErrorValue> {
+  using type = ErrorValue;
+
+  using type_type = ErrorType;
+
+  using underlying_type = absl::Status;
+
+  static std::string DebugString(const underlying_type& value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUES_ERROR_VALUE_H_

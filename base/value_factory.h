@@ -353,6 +353,40 @@ class TypedStructValueFactory final {
   const Handle<StructType>& struct_type_;
 };
 
+namespace base_internal {
+
+inline Handle<BoolValue> ValueTraits<BoolValue>::Wrap(
+    ValueFactory& value_factory, bool value) {
+  return value_factory.CreateBoolValue(value);
+}
+
+inline Handle<IntValue> ValueTraits<IntValue>::Wrap(ValueFactory& value_factory,
+                                                    int64_t value) {
+  return value_factory.CreateIntValue(value);
+}
+
+inline Handle<UintValue> ValueTraits<UintValue>::Wrap(
+    ValueFactory& value_factory, uint64_t value) {
+  return value_factory.CreateUintValue(value);
+}
+
+inline Handle<DoubleValue> ValueTraits<DoubleValue>::Wrap(
+    ValueFactory& value_factory, double value) {
+  return value_factory.CreateDoubleValue(value);
+}
+
+inline Handle<DurationValue> ValueTraits<DurationValue>::Wrap(
+    ValueFactory& value_factory, absl::Duration value) {
+  return value_factory.CreateUncheckedDurationValue(value);
+}
+
+inline Handle<TimestampValue> ValueTraits<TimestampValue>::Wrap(
+    ValueFactory& value_factory, absl::Time value) {
+  return value_factory.CreateUncheckedTimestampValue(value);
+}
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_VALUE_FACTORY_H_

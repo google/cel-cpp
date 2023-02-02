@@ -45,6 +45,15 @@ class ErrorType final : public base_internal::SimpleType<Kind::kError> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(ErrorType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<ErrorType> {
+  using value_type = ErrorValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_ERROR_TYPE_H_

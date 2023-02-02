@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -29,6 +28,7 @@
 namespace cel {
 
 class MemoryManager;
+class ListValue;
 
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
@@ -98,6 +98,15 @@ class ModernListType final : public ListType, public HeapData {
   explicit ModernListType(Handle<Type> element);
 
   const Handle<Type> element_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<ListType> {
+  using value_type = ListValue;
 };
 
 }  // namespace base_internal

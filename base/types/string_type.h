@@ -45,6 +45,15 @@ class StringType final : public base_internal::SimpleType<Kind::kString> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(StringType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<StringType> {
+  using value_type = StringValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_STRING_TYPE_H_

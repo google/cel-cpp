@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -36,6 +37,7 @@
 
 namespace cel {
 
+class Type;
 class BytesValue;
 class StringValue;
 class StructValue;
@@ -101,6 +103,16 @@ static_assert(kValueInlineAlign <= alignof(std::max_align_t),
               "Alignment of an inline value should not be overaligned.");
 
 using AnyValue = AnyData<kValueInlineSize, kValueInlineAlign>;
+
+// Metaprogramming utility for interacting with Value.
+//
+// ValueTraits<T>::type is an alias for T.
+// ValueTraits<T>::type_type is the corresponding Type for T.
+// ValueTraits<T>::underlying_type is the underlying C++ primitive for T if it
+// exists, otherwise void. ValueTraits<T>::DebugString accepts type or
+// underlying_type and returns the debug string.
+template <typename T>
+struct ValueTraits;
 
 class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;

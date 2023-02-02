@@ -45,6 +45,15 @@ class UnknownType final : public base_internal::SimpleType<Kind::kUnknown> {
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(UnknownType);
 
+namespace base_internal {
+
+template <>
+struct TypeTraits<UnknownType> {
+  using value_type = UnknownValue;
+};
+
+}  // namespace base_internal
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_TYPES_UNKNOWN_TYPE_H_
