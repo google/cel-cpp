@@ -19,11 +19,13 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/allocator.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -173,6 +175,88 @@ inline internal::TypeInfo GetListValueTypeId(const ListValue& list_value) {
   return list_value.TypeId();
 }
 
+class DynamicListValue final : public AbstractListValue {
+ public:
+  DynamicListValue(Handle<ListType> type,
+                   std::vector<Handle<Value>, Allocator<Handle<Value>>> storage)
+      : AbstractListValue(std::move(type)), storage_(std::move(storage)) {}
+
+  std::string DebugString() const override {
+    size_t count = size();
+    std::string out;
+    out.push_back('[');
+    if (count != 0) {
+      out.append(storage_[0]->DebugString());
+      for (size_t index = 1; index < count; index++) {
+        out.append(", ");
+        out.append(storage_[index]->DebugString());
+      }
+    }
+    out.push_back(']');
+    return out;
+  }
+
+  size_t size() const override { return storage_.size(); }
+
+  bool empty() const override { return storage_.empty(); }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const override {
+    static_cast<void>(value_factory);
+    return storage_[index];
+  }
+
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<DynamicListValue>();
+  }
+
+ private:
+  std::vector<Handle<Value>, Allocator<Handle<Value>>> storage_;
+};
+
+template <typename T>
+class StaticListValue final : public AbstractListValue {
+ public:
+  using value_traits = ValueTraits<T>;
+  using underlying_type = typename value_traits::underlying_type;
+
+  StaticListValue(
+      Handle<ListType> type,
+      std::vector<underlying_type, Allocator<underlying_type>> storage)
+      : AbstractListValue(std::move(type)), storage_(std::move(storage)) {}
+
+  std::string DebugString() const override {
+    size_t count = size();
+    std::string out;
+    out.push_back('[');
+    if (count != 0) {
+      out.append(value_traits::DebugString(storage_[0]));
+      for (size_t index = 1; index < count; index++) {
+        out.append(", ");
+        out.append(value_traits::DebugString(storage_[index]));
+      }
+    }
+    out.push_back(']');
+    return out;
+  }
+
+  size_t size() const override { return storage_.size(); }
+
+  bool empty() const override { return storage_.empty(); }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const override {
+    return value_traits::Wrap(value_factory, storage_[index]);
+  }
+
+  internal::TypeInfo TypeId() const override {
+    return internal::TypeId<StaticListValue<T>>();
+  }
+
+ private:
+  std::vector<underlying_type, Allocator<underlying_type>> storage_;
+};
+
 }  // namespace base_internal
 
 #define CEL_LIST_VALUE_CLASS ::cel::base_internal::AbstractListValue
@@ -202,6 +286,30 @@ CEL_INTERNAL_VALUE_DECL(ListValue);
 // CEL_IMPLEMENT_LIST_VALUE(MyListValue);
 #define CEL_IMPLEMENT_LIST_VALUE(list_value) \
   CEL_INTERNAL_IMPLEMENT_VALUE(List, list_value)
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<ListValue> {
+  using type = ListValue;
+
+  using type_type = ListType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

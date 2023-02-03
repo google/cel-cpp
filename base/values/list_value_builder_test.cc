@@ -69,7 +69,8 @@ TEST(ListValueBuilder, Bool) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto list_builder = ListValueBuilder<BoolValue>(value_factory);
+  auto list_builder =
+      ListValueBuilder<BoolValue>(value_factory, type_factory.GetBoolType());
   auto value = value_factory.CreateBoolValue(true).As<Value>();
   EXPECT_OK(list_builder.Add(false));
   EXPECT_OK(list_builder.Add(value));  // lvalue
@@ -94,7 +95,8 @@ TEST(ListValueBuilder, Int) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto list_builder = ListValueBuilder<IntValue>(value_factory);
+  auto list_builder =
+      ListValueBuilder<IntValue>(value_factory, type_factory.GetIntType());
   auto value = value_factory.CreateIntValue(1).As<Value>();
   EXPECT_OK(list_builder.Add(0));
   EXPECT_OK(list_builder.Add(value));  // lvalue
@@ -119,7 +121,8 @@ TEST(ListValueBuilder, Uint) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto list_builder = ListValueBuilder<UintValue>(value_factory);
+  auto list_builder =
+      ListValueBuilder<UintValue>(value_factory, type_factory.GetUintType());
   auto value = value_factory.CreateUintValue(1).As<Value>();
   EXPECT_OK(list_builder.Add(0));
   EXPECT_OK(list_builder.Add(value));  // lvalue
@@ -144,7 +147,8 @@ TEST(ListValueBuilder, Double) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto list_builder = ListValueBuilder<DoubleValue>(value_factory);
+  auto list_builder = ListValueBuilder<DoubleValue>(
+      value_factory, type_factory.GetDoubleType());
   auto value = value_factory.CreateDoubleValue(1.0).As<Value>();
   EXPECT_OK(list_builder.Add(0.0));
   EXPECT_OK(list_builder.Add(value));  // lvalue
@@ -169,7 +173,8 @@ TEST(ListValueBuilder, Duration) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto list_builder = ListValueBuilder<DurationValue>(value_factory);
+  auto list_builder = ListValueBuilder<DurationValue>(
+      value_factory, type_factory.GetDurationType());
   auto value =
       value_factory.CreateUncheckedDurationValue(absl::Seconds(1)).As<Value>();
   EXPECT_OK(list_builder.Add(absl::ZeroDuration()));
@@ -196,7 +201,8 @@ TEST(ListValueBuilder, Timestamp) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto list_builder = ListValueBuilder<TimestampValue>(value_factory);
+  auto list_builder = ListValueBuilder<TimestampValue>(
+      value_factory, type_factory.GetTimestampType());
   auto value =
       value_factory
           .CreateUncheckedTimestampValue(absl::UnixEpoch() + absl::Seconds(1))

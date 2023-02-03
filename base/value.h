@@ -237,6 +237,19 @@ class SimpleValue<NullType, void> : public Value, InlineData {
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 };
 
+template <>
+struct ValueTraits<Value> {
+  using type = Value;
+
+  using type_type = Type;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const Value& value) {
+    return value.DebugString();
+  }
+};
+
 }  // namespace base_internal
 
 CEL_INTERNAL_VALUE_DECL(Value);

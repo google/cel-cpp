@@ -34,6 +34,7 @@
 
 namespace cel {
 
+class Value;
 class EnumType;
 class StructType;
 class ListType;
@@ -280,6 +281,13 @@ class SimpleType : public Type, public InlineData {
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
+};
+
+template <>
+struct TypeTraits<Type> {
+  using type = Type;
+
+  using value_type = Value;
 };
 
 }  // namespace base_internal
