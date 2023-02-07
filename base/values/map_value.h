@@ -18,11 +18,12 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/hash/hash.h"
+#include "absl/container/node_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
@@ -30,6 +31,7 @@
 #include "base/type.h"
 #include "base/types/map_type.h"
 #include "base/value.h"
+#include "base/values/list_value.h"
 #include "internal/rtti.h"
 
 namespace cel {
@@ -37,10 +39,17 @@ namespace cel {
 class ListValue;
 class ValueFactory;
 class MemoryManager;
+class MapValueBuilderInterface;
+template <typename K, typename V>
+class MapValueBuilder;
 
 // MapValue represents an instance of cel::MapType.
 class MapValue : public Value {
  public:
+  using BuilderInterface = MapValueBuilderInterface;
+  template <typename K, typename V>
+  using Builder = MapValueBuilder<K, V>;
+
   static constexpr Kind kKind = MapType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
@@ -203,6 +212,30 @@ inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
 // CEL_IMPLEMENT_MAP_VALUE(MyMapValue);
 #define CEL_IMPLEMENT_MAP_VALUE(map_value) \
   CEL_INTERNAL_IMPLEMENT_VALUE(Map, map_value)
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<MapValue> {
+  using type = MapValue;
+
+  using type_type = MapType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

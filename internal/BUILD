@@ -35,6 +35,12 @@ cc_library(
 )
 
 cc_library(
+    name = "linked_hash_map",
+    hdrs = ["linked_hash_map.h"],
+    deps = ["@com_google_absl//absl/container:flat_hash_set"],
+)
+
+cc_library(
     name = "launder",
     hdrs = ["launder.h"],
     deps = [
