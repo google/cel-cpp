@@ -221,6 +221,10 @@ class CelValue {
 
   static CelValue CreateDuration(absl::Duration value);
 
+  static CelValue CreateUncheckedDuration(absl::Duration value) {
+    return CelValue(value);
+  }
+
   static CelValue CreateTimestamp(absl::Time value) { return CelValue(value); }
 
   static CelValue CreateList(const CelList* value) {

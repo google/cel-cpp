@@ -93,11 +93,12 @@ base_internal::BytesValueRep GetBytesValueRep(const Handle<BytesValue>& value);
 // Converts a legacy CEL value to the new CEL value representation.
 absl::StatusOr<Handle<Value>> FromLegacyValue(
     google::protobuf::Arena* arena,
-    const google::api::expr::runtime::CelValue& legacy_value);
+    const google::api::expr::runtime::CelValue& legacy_value,
+    bool unchecked = false);
 
 // Converts a new CEL value to the legacy CEL value representation.
 absl::StatusOr<google::api::expr::runtime::CelValue> ToLegacyValue(
-    google::protobuf::Arena* arena, const Handle<Value>& value);
+    google::protobuf::Arena* arena, const Handle<Value>& value, bool unchecked = false);
 
 Handle<NullValue> CreateNullValue();
 
@@ -126,7 +127,7 @@ Handle<BytesValue> CreateBytesValueFromView(absl::string_view value);
 // Create a modern duration value, without validation. Should only be used
 // during interoperation.
 // If value is out of CEL's supported range, returns an ErrorValue.
-Handle<Value> CreateDurationValue(absl::Duration value);
+Handle<Value> CreateDurationValue(absl::Duration value, bool unchecked = false);
 
 // Create a modern timestamp value, without validation. Should only be used
 // during interoperation.
@@ -144,29 +145,35 @@ Handle<UnknownValue> CreateUnknownValueFromView(
 // guaranteed that all modern and legacy values are interoperable, and the
 // memory manager is google::protobuf::Arena.
 Handle<Value> LegacyValueToModernValueOrDie(
-    google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value);
+    google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value,
+    bool unchecked = false);
 Handle<Value> LegacyValueToModernValueOrDie(
     MemoryManager& memory_manager,
-    const google::api::expr::runtime::CelValue& value);
+    const google::api::expr::runtime::CelValue& value, bool unchecked = false);
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
     google::protobuf::Arena* arena,
-    absl::Span<const google::api::expr::runtime::CelValue> values);
+    absl::Span<const google::api::expr::runtime::CelValue> values,
+    bool unchecked = false);
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
     MemoryManager& memory_manager,
-    absl::Span<const google::api::expr::runtime::CelValue> values);
+    absl::Span<const google::api::expr::runtime::CelValue> values,
+    bool unchecked = false);
 
 // Convert a modern value to a legacy value, CHECK failing if its not possible.
 // This should only be used during rewritting of the evaluator when it is
 // guaranteed that all modern and legacy values are interoperable, and the
 // memory manager is google::protobuf::Arena.
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    google::protobuf::Arena* arena, const Handle<Value>& value);
+    google::protobuf::Arena* arena, const Handle<Value>& value, bool unchecked = false);
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, const Handle<Value>& value);
+    MemoryManager& memory_manager, const Handle<Value>& value,
+    bool unchecked = false);
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
-    google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values);
+    google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values,
+    bool unchecked = false);
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values);
+    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values,
+    bool unchecked = false);
 
 Handle<TypeValue> CreateTypeValueFromView(absl::string_view input);
 

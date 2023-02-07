@@ -111,7 +111,7 @@ CelValue CelValue::CreateDuration(absl::Duration value) {
   if (value >= interop::kDurationHigh || value <= interop::kDurationLow) {
     return CelValue(interop::DurationOverflowError());
   }
-  return CelValue(value);
+  return CreateUncheckedDuration(value);
 }
 
 // TODO(issues/136): These don't match the CEL runtime typenames. They should

@@ -168,7 +168,6 @@ cc_library(
     deps = [
         "//base:kind",
         "//base:value",
-        "//base:value_factory",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",

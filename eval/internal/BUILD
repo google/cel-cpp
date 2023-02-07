@@ -22,13 +22,8 @@ cc_library(
     hdrs = ["interop.h"],
     deps = [
         ":errors",
-        "//base:attributes",
         "//base:type",
-        "//base:type_factory",
-        "//base:type_manager",
-        "//base:type_provider",
         "//base:value",
-        "//base:value_factory",
         "//base/internal:message_wrapper",
         "//eval/public:cel_options",
         "//eval/public:cel_value",

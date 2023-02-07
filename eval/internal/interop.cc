@@ -316,7 +316,8 @@ base_internal::BytesValueRep GetBytesValueRep(const Handle<BytesValue>& value) {
 }
 
 absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
-                                              const CelValue& legacy_value) {
+                                              const CelValue& legacy_value,
+                                              bool unchecked) {
   switch (legacy_value.type()) {
     case CelValue::Type::kNullType:
       return CreateNullValue();
@@ -339,7 +340,7 @@ absl::StatusOr<Handle<Value>> FromLegacyValue(google::protobuf::Arena* arena,
           MessageWrapperAccess::TypeInfo(wrapper));
     }
     case CelValue::Type::kDuration:
-      return CreateDurationValue(legacy_value.DurationOrDie());
+      return CreateDurationValue(legacy_value.DurationOrDie(), unchecked);
     case CelValue::Type::kTimestamp:
       return CreateTimestampValue(legacy_value.TimestampOrDie());
     case CelValue::Type::kList:
@@ -411,7 +412,8 @@ struct UnknownValueAccess final {
 };
 
 absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
-                                       const Handle<Value>& value) {
+                                       const Handle<Value>& value,
+                                       bool unchecked) {
   switch (value->kind()) {
     case Kind::kNullType:
       return CelValue::CreateNull();
@@ -454,7 +456,10 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case Kind::kEnum:
       break;
     case Kind::kDuration:
-      return CelValue::CreateDuration(value.As<DurationValue>()->value());
+      return unchecked
+                 ? CelValue::CreateUncheckedDuration(
+                       value.As<DurationValue>()->value())
+                 : CelValue::CreateDuration(value.As<DurationValue>()->value());
     case Kind::kTimestamp:
       return CelValue::CreateTimestamp(value.As<TimestampValue>()->value());
     case Kind::kList: {
@@ -532,8 +537,8 @@ Handle<BytesValue> CreateBytesValueFromView(absl::string_view value) {
   return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(value);
 }
 
-Handle<Value> CreateDurationValue(absl::Duration value) {
-  if (value >= kDurationHigh || value <= kDurationLow) {
+Handle<Value> CreateDurationValue(absl::Duration value, bool unchecked) {
+  if (!unchecked && (value >= kDurationHigh || value <= kDurationLow)) {
     return CreateErrorValueFromView(DurationOverflowError());
   }
   return HandleFactory<DurationValue>::Make<DurationValue>(value);
@@ -553,64 +558,74 @@ Handle<UnknownValue> CreateUnknownValueFromView(
 }
 
 Handle<Value> LegacyValueToModernValueOrDie(
-    google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value) {
-  auto modern_value = FromLegacyValue(arena, value);
+    google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value,
+    bool unchecked) {
+  auto modern_value = FromLegacyValue(arena, value, unchecked);
   CHECK_OK(modern_value);  // Crash OK
   return std::move(modern_value).value();
 }
 
 Handle<Value> LegacyValueToModernValueOrDie(
     MemoryManager& memory_manager,
-    const google::api::expr::runtime::CelValue& value) {
+    const google::api::expr::runtime::CelValue& value, bool unchecked) {
   return LegacyValueToModernValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value);
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value,
+      unchecked);
 }
 
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
     google::protobuf::Arena* arena,
-    absl::Span<const google::api::expr::runtime::CelValue> values) {
+    absl::Span<const google::api::expr::runtime::CelValue> values,
+    bool unchecked) {
   std::vector<Handle<Value>> modern_values;
   modern_values.reserve(values.size());
   for (const auto& value : values) {
-    modern_values.push_back(LegacyValueToModernValueOrDie(arena, value));
+    modern_values.push_back(
+        LegacyValueToModernValueOrDie(arena, value, unchecked));
   }
   return modern_values;
 }
 
 std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
     MemoryManager& memory_manager,
-    absl::Span<const google::api::expr::runtime::CelValue> values) {
+    absl::Span<const google::api::expr::runtime::CelValue> values,
+    bool unchecked) {
   return LegacyValueToModernValueOrDie(
       extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
 }
 
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    google::protobuf::Arena* arena, const Handle<Value>& value) {
-  auto legacy_value = ToLegacyValue(arena, value);
+    google::protobuf::Arena* arena, const Handle<Value>& value, bool unchecked) {
+  auto legacy_value = ToLegacyValue(arena, value, unchecked);
   CHECK_OK(legacy_value);  // Crash OK
   return std::move(legacy_value).value();
 }
 
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, const Handle<Value>& value) {
+    MemoryManager& memory_manager, const Handle<Value>& value, bool unchecked) {
   return ModernValueToLegacyValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value);
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), value,
+      unchecked);
 }
 
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
-    google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values) {
+    google::protobuf::Arena* arena, absl::Span<const Handle<Value>> values,
+    bool unchecked) {
   std::vector<google::api::expr::runtime::CelValue> legacy_values;
   legacy_values.reserve(values.size());
   for (const auto& value : values) {
-    legacy_values.push_back(ModernValueToLegacyValueOrDie(arena, value));
+    legacy_values.push_back(
+        ModernValueToLegacyValueOrDie(arena, value, unchecked));
   }
   return legacy_values;
 }
 
 std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
-    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values) {
+    MemoryManager& memory_manager, absl::Span<const Handle<Value>> values,
+    bool unchecked) {
   return ModernValueToLegacyValueOrDie(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values);
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager), values,
+      unchecked);
 }
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(

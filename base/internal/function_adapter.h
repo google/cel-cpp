@@ -212,11 +212,15 @@ struct AdaptedToHandleVisitor {
   }
 
   absl::StatusOr<Handle<Value>> operator()(absl::Time in) {
-    return value_factory.CreateTimestampValue(in);
+    // Type matching may have already occurred. Its to late to change up the
+    // type and return an error.
+    return value_factory.CreateUncheckedTimestampValue(in);
   }
 
   absl::StatusOr<Handle<Value>> operator()(absl::Duration in) {
-    return value_factory.CreateDurationValue(in);
+    // Type matching may have already occurred. Its to late to change up the
+    // type and return an error.
+    return value_factory.CreateUncheckedDurationValue(in);
   }
 
   absl::StatusOr<Handle<Value>> operator()(Handle<Value> in) { return in; }

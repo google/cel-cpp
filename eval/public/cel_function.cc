@@ -61,13 +61,13 @@ absl::StatusOr<Handle<Value>> CelFunction::Invoke(
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(
       context.value_factory().memory_manager());
   std::vector<CelValue> legacy_args = ModernValueToLegacyValueOrDie(
-      context.value_factory().memory_manager(), arguments);
+      context.value_factory().memory_manager(), arguments, true);
   CelValue legacy_result;
 
   CEL_RETURN_IF_ERROR(Evaluate(legacy_args, &legacy_result, arena));
 
-  return cel::interop_internal::LegacyValueToModernValueOrDie(arena,
-                                                              legacy_result);
+  return cel::interop_internal::LegacyValueToModernValueOrDie(
+      arena, legacy_result, /*unchecked=*/true);
 }
 
 }  // namespace google::api::expr::runtime
