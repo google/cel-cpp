@@ -80,3 +80,31 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "type",
+    srcs = [
+        "enum_type.cc",
+    ],
+    hdrs = [
+        "enum_type.h",
+    ],
+    deps = [
+        "//base:type",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "type_test",
+    srcs = ["enum_type_test.cc"],
+    deps = [
+        ":type",
+        "//base:kind",
+        "//base:memory_manager",
+        "//base:type",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
