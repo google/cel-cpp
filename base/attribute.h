@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"

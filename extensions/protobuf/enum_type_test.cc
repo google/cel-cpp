@@ -15,11 +15,11 @@
 #include "extensions/protobuf/enum_type.h"
 
 #include "google/protobuf/type.pb.h"
-#include "google/protobuf/generated_enum_reflection.h"
 #include "base/kind.h"
 #include "base/memory_manager.h"
 #include "base/type_factory.h"
 #include "internal/testing.h"
+#include "google/protobuf/generated_enum_reflection.h"
 
 namespace cel::extensions {
 namespace {

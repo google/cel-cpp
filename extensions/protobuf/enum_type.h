@@ -15,11 +15,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_ENUM_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_ENUM_TYPE_H_
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/generated_enum_reflection.h"
 #include "base/type_factory.h"
 #include "base/types/enum_type.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/generated_enum_reflection.h"
 #include "google/protobuf/generated_enum_util.h"
 
 namespace cel::extensions {
