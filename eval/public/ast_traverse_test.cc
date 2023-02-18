@@ -42,8 +42,21 @@ class MockAstVisitor : public AstVisitor {
   MOCK_METHOD(void, PostVisitExpr,
               (const Expr* expr, const SourcePosition* position), (override));
 
+  // Constant node handler.
+  MOCK_METHOD(void, PreVisitConst,
+              (const Constant* const_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+
+  // Constant node handler.
   MOCK_METHOD(void, PostVisitConst,
               (const Constant* const_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+
+  // Ident node handler.
+  MOCK_METHOD(void, PreVisitIdent,
+              (const Ident* ident_expr, const Expr* expr,
                const SourcePosition* position),
               (override));
 
@@ -105,8 +118,20 @@ class MockAstVisitor : public AstVisitor {
               (override));
 
   // CreateList node handler group
+  MOCK_METHOD(void, PreVisitCreateList,
+              (const CreateList* list_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+
+  // CreateList node handler group
   MOCK_METHOD(void, PostVisitCreateList,
               (const CreateList* list_expr, const Expr* expr,
+               const SourcePosition* position),
+              (override));
+
+  // CreateStruct node handler group
+  MOCK_METHOD(void, PreVisitCreateStruct,
+              (const CreateStruct* struct_expr, const Expr* expr,
                const SourcePosition* position),
               (override));
 
@@ -124,6 +149,7 @@ TEST(AstCrawlerTest, CheckCrawlConstant) {
   Expr expr;
   auto const_expr = expr.mutable_const_expr();
 
+  EXPECT_CALL(handler, PreVisitConst(const_expr, &expr, _)).Times(1);
   EXPECT_CALL(handler, PostVisitConst(const_expr, &expr, _)).Times(1);
 
   AstTraverse(&expr, &source_info, &handler);
@@ -136,6 +162,7 @@ TEST(AstCrawlerTest, CheckCrawlIdent) {
   Expr expr;
   auto ident_expr = expr.mutable_ident_expr();
 
+  EXPECT_CALL(handler, PreVisitIdent(ident_expr, &expr, _)).Times(1);
   EXPECT_CALL(handler, PostVisitIdent(ident_expr, &expr, _)).Times(1);
 
   AstTraverse(&expr, &source_info, &handler);
@@ -390,6 +417,7 @@ TEST(AstCrawlerTest, CheckCreateList) {
 
   testing::InSequence seq;
 
+  EXPECT_CALL(handler, PreVisitCreateList(list_expr, &expr, _)).Times(1);
   EXPECT_CALL(handler, PostVisitConst(const_expr, arg0, _)).Times(1);
   EXPECT_CALL(handler, PostVisitIdent(ident_expr, arg1, _)).Times(1);
   EXPECT_CALL(handler, PostVisitCreateList(list_expr, &expr, _)).Times(1);
@@ -411,6 +439,7 @@ TEST(AstCrawlerTest, CheckCreateStruct) {
 
   testing::InSequence seq;
 
+  EXPECT_CALL(handler, PreVisitCreateStruct(struct_expr, &expr, _)).Times(1);
   EXPECT_CALL(handler, PostVisitConst(key, &entry0->map_key(), _)).Times(1);
   EXPECT_CALL(handler, PostVisitIdent(value, &entry0->value(), _)).Times(1);
   EXPECT_CALL(handler, PostVisitCreateStruct(struct_expr, &expr, _)).Times(1);

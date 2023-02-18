@@ -124,11 +124,23 @@ struct PreVisitor {
     const SourcePosition position(expr->id(), record.source_info);
     visitor->PreVisitExpr(expr, &position);
     switch (expr->expr_kind_case()) {
+      case Expr::kConstExpr:
+        visitor->PreVisitConst(&expr->const_expr(), expr, &position);
+        break;
+      case Expr::kIdentExpr:
+        visitor->PreVisitIdent(&expr->ident_expr(), expr, &position);
+        break;
       case Expr::kSelectExpr:
         visitor->PreVisitSelect(&expr->select_expr(), expr, &position);
         break;
       case Expr::kCallExpr:
         visitor->PreVisitCall(&expr->call_expr(), expr, &position);
+        break;
+      case Expr::kListExpr:
+        visitor->PreVisitCreateList(&expr->list_expr(), expr, &position);
+        break;
+      case Expr::kStructExpr:
+        visitor->PreVisitCreateStruct(&expr->struct_expr(), expr, &position);
         break;
       case Expr::kComprehensionExpr:
         visitor->PreVisitComprehension(&expr->comprehension_expr(), expr,
