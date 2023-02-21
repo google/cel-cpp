@@ -21,6 +21,7 @@
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "base/type.h"
 #include "base/type_factory.h"
@@ -47,15 +48,16 @@ class TypeManager final {
 
   TypeProvider& type_provider() const { return type_provider_; }
 
-  absl::StatusOr<Handle<Type>> ResolveType(absl::string_view name);
+  absl::StatusOr<absl::optional<Handle<Type>>> ResolveType(
+      absl::string_view name);
 
  private:
   TypeFactory& type_factory_;
   TypeProvider& type_provider_;
 
-  mutable absl::Mutex mutex_;
+  absl::Mutex mutex_;
   // std::string as the key because we also cache types which do not exist.
-  mutable absl::flat_hash_map<std::string, Handle<Type>> types_
+  absl::flat_hash_map<absl::string_view, Handle<Type>> types_
       ABSL_GUARDED_BY(mutex_);
 };
 

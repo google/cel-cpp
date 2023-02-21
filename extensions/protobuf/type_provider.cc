@@ -14,12 +14,13 @@
 
 #include "extensions/protobuf/type_provider.h"
 
+#include "absl/types/optional.h"
 #include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/struct_type.h"
 
 namespace cel::extensions {
 
-absl::StatusOr<Handle<Type>> ProtoTypeProvider::ProvideType(
+absl::StatusOr<absl::optional<Handle<Type>>> ProtoTypeProvider::ProvideType(
     TypeFactory& type_factory, absl::string_view name) const {
   {
     const auto* desc = pool_->FindMessageTypeByName(std::string(name));
@@ -31,7 +32,7 @@ absl::StatusOr<Handle<Type>> ProtoTypeProvider::ProvideType(
   if (desc != nullptr) {
     return ProtoEnumType::Create(type_factory, desc);
   }
-  return Handle<Type>();
+  return absl::nullopt;
 }
 
 }  // namespace cel::extensions

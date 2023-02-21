@@ -19,9 +19,6 @@
 #include <functional>
 #include <utility>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "base/type_factory.h"
 #include "internal/no_destructor.h"
 
@@ -58,7 +55,7 @@ class BuiltinTypeProvider final : public TypeProvider {
         });
   }
 
-  absl::StatusOr<Handle<Type>> ProvideType(
+  absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
       TypeFactory& type_factory, absl::string_view name) const override {
     auto existing = std::lower_bound(
         types_.begin(), types_.end(), name,
@@ -66,7 +63,7 @@ class BuiltinTypeProvider final : public TypeProvider {
           return lhs.first < rhs;
         });
     if (existing == types_.end() || existing->first != name) {
-      return Handle<Type>();
+      return absl::nullopt;
     }
     return (existing->second)(type_factory);
   }

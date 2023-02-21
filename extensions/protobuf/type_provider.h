@@ -17,6 +17,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/die_if_null.h"
+#include "absl/types/optional.h"
 #include "base/type_provider.h"
 #include "google/protobuf/descriptor.h"
 
@@ -31,7 +32,7 @@ class ProtoTypeProvider final : public TypeProvider {
       ABSL_ATTRIBUTE_LIFETIME_BOUND const google::protobuf::DescriptorPool* pool)
       : pool_(ABSL_DIE_IF_NULL(pool)) {}  // Crash OK
 
-  absl::StatusOr<Handle<Type>> ProvideType(
+  absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
       TypeFactory& type_factory, absl::string_view name) const override;
 
  private:

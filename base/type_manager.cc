@@ -14,16 +14,16 @@
 
 #include "base/type_manager.h"
 
-#include <string>
 #include <utility>
 
-#include "absl/status/status.h"
+#include "absl/base/macros.h"
 #include "absl/synchronization/mutex.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
-absl::StatusOr<Handle<Type>> TypeManager::ResolveType(absl::string_view name) {
+absl::StatusOr<absl::optional<Handle<Type>>> TypeManager::ResolveType(
+    absl::string_view name) {
   {
     // Check for builtin types first.
     CEL_ASSIGN_OR_RETURN(
@@ -33,16 +33,22 @@ absl::StatusOr<Handle<Type>> TypeManager::ResolveType(absl::string_view name) {
     }
   }
   // Check with the type registry.
-  absl::MutexLock lock(&mutex_);
-  auto existing = types_.find(name);
-  if (existing == types_.end()) {
-    // Delegate to TypeRegistry implementation.
-    CEL_ASSIGN_OR_RETURN(auto type,
-                         type_provider().ProvideType(type_factory(), name));
-    ABSL_ASSERT(!type || type->name() == name);
-    existing = types_.insert({std::string(name), std::move(type)}).first;
+  {
+    absl::ReaderMutexLock lock(&mutex_);
+    auto existing = types_.find(name);
+    if (existing != types_.end()) {
+      return existing->second;
+    }
   }
-  return existing->second;
+  // Delegate to TypeRegistry implementation.
+  CEL_ASSIGN_OR_RETURN(auto type,
+                       type_provider().ProvideType(type_factory(), name));
+  if (!type) {
+    return absl::nullopt;
+  }
+  ABSL_ASSERT(name == (*type)->name());
+  absl::WriterMutexLock lock(&mutex_);
+  return types_.insert({(*type)->name(), std::move(*type)}).first->second;
 }
 
 }  // namespace cel

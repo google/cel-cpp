@@ -15,6 +15,7 @@
 #include "extensions/protobuf/struct_type.h"
 
 #include <limits>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
@@ -67,7 +68,11 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
       const auto* desc = field_desc->message_type();
       CEL_ASSIGN_OR_RETURN(auto type,
                            type_manager.ResolveType(desc->full_name()));
-      if (ABSL_PREDICT_FALSE(!type.Is<ProtoStructType>())) {
+      if (ABSL_PREDICT_FALSE(!type)) {
+        return absl::InternalError(absl::StrCat(
+            "Type implementation missing for \"", desc->full_name(), "\""));
+      }
+      if (ABSL_PREDICT_FALSE(!(*type).Is<ProtoStructType>())) {
         // All types present in protocol buffer messages should either be
         // appropriate builtin CEL types or other protocol buffer types. In
         // theory someone could resolve this to their custom non protocol buffer
@@ -76,7 +81,7 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
         return absl::InternalError(absl::StrCat(
             "Unexpected type implementation for \"", desc->full_name(), "\""));
       }
-      return type;
+      return std::move(*type);
     }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       return type_manager.type_factory().GetBytesType();
@@ -84,7 +89,11 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
       const auto* desc = field_desc->enum_type();
       CEL_ASSIGN_OR_RETURN(auto type,
                            type_manager.ResolveType(desc->full_name()));
-      if (ABSL_PREDICT_FALSE(!type.Is<ProtoEnumType>())) {
+      if (ABSL_PREDICT_FALSE(!type)) {
+        return absl::InternalError(absl::StrCat(
+            "Type implementation missing for \"", desc->full_name(), "\""));
+      }
+      if (ABSL_PREDICT_FALSE(!(*type).Is<ProtoEnumType>())) {
         // All types present in protocol buffer messages should either be
         // appropriate builtin CEL types or other protocol buffer types. In
         // theory someone could resolve this to their custom non protocol buffer
@@ -93,7 +102,7 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
         return absl::InternalError(absl::StrCat(
             "Unexpected type implementation for \"", desc->full_name(), "\""));
       }
-      return type;
+      return std::move(*type);
     }
   }
 }

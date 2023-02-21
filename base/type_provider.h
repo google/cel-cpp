@@ -19,6 +19,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/type.h"
 
@@ -48,8 +49,8 @@ class TypeProvider {
   // available.
   //
   // An empty handle is returned if the provider cannot find the requested type.
-  virtual absl::StatusOr<Handle<Type>> ProvideType(TypeFactory&,
-                                                   absl::string_view) const {
+  virtual absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
+      TypeFactory&, absl::string_view) const {
     return absl::UnimplementedError("ProvideType is not yet implemented");
   }
 };

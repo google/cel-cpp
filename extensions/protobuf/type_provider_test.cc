@@ -33,10 +33,11 @@ TEST(ProtoTypeProvider, Enum) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
                        type_manager.ResolveType("google.protobuf.Field.Kind"));
-  EXPECT_TRUE(type.Is<EnumType>());
-  EXPECT_TRUE(type.Is<ProtoEnumType>());
-  EXPECT_EQ(type->kind(), Kind::kEnum);
-  EXPECT_EQ(&(type.As<ProtoEnumType>()->descriptor()),
+  ASSERT_TRUE(type);
+  EXPECT_TRUE((*type).Is<EnumType>());
+  EXPECT_TRUE((*type).Is<ProtoEnumType>());
+  EXPECT_EQ((*type)->kind(), Kind::kEnum);
+  EXPECT_EQ(&((*type).As<ProtoEnumType>()->descriptor()),
             google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>());
 }
 
@@ -46,10 +47,11 @@ TEST(ProtoTypeProvider, Struct) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
                        type_manager.ResolveType("google.protobuf.Field"));
-  EXPECT_TRUE(type.Is<StructType>());
-  EXPECT_TRUE(type.Is<ProtoStructType>());
-  EXPECT_EQ(type->kind(), Kind::kStruct);
-  EXPECT_EQ(&(type.As<ProtoStructType>()->descriptor()),
+  ASSERT_TRUE(type);
+  EXPECT_TRUE((*type).Is<StructType>());
+  EXPECT_TRUE((*type).Is<ProtoStructType>());
+  EXPECT_EQ((*type)->kind(), Kind::kStruct);
+  EXPECT_EQ(&((*type).As<ProtoStructType>()->descriptor()),
             google::protobuf::Field::descriptor());
 }
 
