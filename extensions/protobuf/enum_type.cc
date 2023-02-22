@@ -28,7 +28,7 @@ ProtoEnumType::FindConstantByName(absl::string_view name) const {
     return absl::nullopt;
   }
   ABSL_ASSERT(value_desc->name() == name);
-  return Constant{value_desc->name(), value_desc->number()};
+  return Constant{value_desc->name(), value_desc->number(), value_desc};
 }
 
 absl::StatusOr<absl::optional<ProtoEnumType::Constant>>
@@ -44,7 +44,7 @@ ProtoEnumType::FindConstantByNumber(int64_t number) const {
     return absl::nullopt;
   }
   ABSL_ASSERT(value_desc->number() == number);
-  return Constant{value_desc->name(), value_desc->number()};
+  return Constant{value_desc->name(), value_desc->number(), value_desc};
 }
 
 }  // namespace cel::extensions

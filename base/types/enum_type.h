@@ -135,13 +135,17 @@ class EnumType : public Type, public base_internal::HeapData {
   CEL_INTERNAL_IMPLEMENT_TYPE(Enum, enum_type)
 
 struct EnumType::Constant final {
-  explicit Constant(absl::string_view name, int64_t number)
+  explicit Constant(absl::string_view name, int64_t number,
+                    const void* hint = nullptr)
       : name(name), number(number) {}
 
   // The unqualified enumeration value name.
   absl::string_view name;
   // The enumeration value number.
   int64_t number;
+  // Some implementation-specific data that can be laundered to the value
+  // implementation for this type to perform optimizations.
+  const void* hint = nullptr;
 };
 
 CEL_INTERNAL_TYPE_DECL(EnumType);

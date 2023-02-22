@@ -239,8 +239,9 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   CEL_INTERNAL_IMPLEMENT_TYPE(Struct, struct_type)
 
 struct StructType::Field final {
-  explicit Field(absl::string_view name, int64_t number, Handle<Type> type)
-      : name(name), number(number), type(std::move(type)) {}
+  explicit Field(absl::string_view name, int64_t number, Handle<Type> type,
+                 const void* hint = nullptr)
+      : name(name), number(number), type(std::move(type)), hint(hint) {}
 
   // The field name.
   absl::string_view name;
@@ -248,6 +249,9 @@ struct StructType::Field final {
   int64_t number;
   // The field type;
   Handle<Type> type;
+  // Some implementation-specific data that can be laundered to the value
+  // implementation for this type to enable potential optimizations.
+  const void* hint = nullptr;
 };
 
 CEL_INTERNAL_TYPE_DECL(StructType);

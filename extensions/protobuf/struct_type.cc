@@ -142,7 +142,8 @@ ProtoStructType::FindFieldByName(TypeManager& type_manager,
   }
   CEL_ASSIGN_OR_RETURN(auto type,
                        FieldDescriptorToType(type_manager, field_desc));
-  return Field{field_desc->name(), field_desc->number(), std::move(type)};
+  return Field{field_desc->name(), field_desc->number(), std::move(type),
+               field_desc};
 }
 
 absl::StatusOr<absl::optional<ProtoStructType::Field>>
@@ -160,7 +161,8 @@ ProtoStructType::FindFieldByNumber(TypeManager& type_manager,
   }
   CEL_ASSIGN_OR_RETURN(auto type,
                        FieldDescriptorToType(type_manager, field_desc));
-  return Field{field_desc->name(), field_desc->number(), std::move(type)};
+  return Field{field_desc->name(), field_desc->number(), std::move(type),
+               field_desc};
 }
 
 }  // namespace cel::extensions
