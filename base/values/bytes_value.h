@@ -116,7 +116,8 @@ class InlinedCordBytesValue final : public BytesValue, public InlineData {
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | AsInlineVariant(InlinedBytesValueVariant::kCord) |
+      (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedCordBytesValue(absl::Cord value)
       : InlineData(kMetadata), value_(std::move(value)) {}
@@ -131,8 +132,6 @@ class InlinedCordBytesValue final : public BytesValue, public InlineData {
 
 // Implementation of BytesValue that is stored inlined within a handle. This
 // class is inheritently unsafe and care should be taken when using it.
-// Typically this should only be used for empty strings or data that is static
-// and lives for the duration of a program.
 class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
@@ -140,19 +139,90 @@ class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedStringViewBytesValue(absl::string_view value)
-      : InlineData(kMetadata), value_(value) {}
+      : InlinedStringViewBytesValue(value, nullptr) {}
 
-  InlinedStringViewBytesValue(const InlinedStringViewBytesValue&) = default;
-  InlinedStringViewBytesValue(InlinedStringViewBytesValue&&) = default;
-  InlinedStringViewBytesValue& operator=(const InlinedStringViewBytesValue&) =
-      default;
-  InlinedStringViewBytesValue& operator=(InlinedStringViewBytesValue&&) =
-      default;
+  // Constructs `InlinedStringViewBytesValue` backed by `value` which is owned
+  // by `owner`. `owner` may be nullptr, in which case `value` has no owner and
+  // must live for the duration of the underlying `MemoryManager`.
+  InlinedStringViewBytesValue(absl::string_view value, const Data* owner)
+      : InlinedStringViewBytesValue(
+            value, owner,
+            owner == nullptr || !Metadata::IsArenaAllocated(*owner)) {}
+
+  InlinedStringViewBytesValue(absl::string_view value, const Data* owner,
+                              bool trivial)
+      : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
+                   AsInlineVariant(InlinedBytesValueVariant::kStringView)),
+        value_(value),
+        owner_(trivial ? nullptr : owner) {
+    if (owner_ != nullptr) {
+      Metadata::Ref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewBytesValue(const InlinedStringViewBytesValue& other)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedBytesValueVariant::kStringView)),
+        value_(other.value_),
+        owner_(other.owner_) {
+    if (owner_ != nullptr) {
+      Metadata::Ref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewBytesValue(InlinedStringViewBytesValue&& other)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedBytesValueVariant::kStringView)),
+        value_(other.value_),
+        owner_(other.owner_) {
+    other.value_ = absl::string_view();
+    other.owner_ = nullptr;
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  ~InlinedStringViewBytesValue() {
+    if (owner_ != nullptr) {
+      Metadata::Unref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewBytesValue& operator=(
+      const InlinedStringViewBytesValue& other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      if (other.owner_ != nullptr) {
+        Metadata::Ref(*other.owner_);
+      }
+      if (owner_ != nullptr) {
+        Metadata::Unref(*owner_);
+      }
+      value_ = other.value_;
+      owner_ = other.owner_;
+    }
+    return *this;
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewBytesValue& operator=(InlinedStringViewBytesValue&& other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      if (owner_ != nullptr) {
+        Metadata::Unref(*owner_);
+      }
+      value_ = other.value_;
+      owner_ = other.owner_;
+      other.value_ = absl::string_view();
+      other.owner_ = nullptr;
+    }
+    return *this;
+  }
 
   absl::string_view value_;
+  const Data* owner_;
 };
 
 // Implementation of BytesValue that uses std::string and is allocated on the

@@ -63,6 +63,10 @@ inline constexpr uintptr_t kReferenceCountMax =
 // trivially copyable/moveable/destructible.
 inline constexpr uintptr_t kTrivial = 1 << 8;
 
+inline constexpr int kInlineVariantShift = 12;
+inline constexpr uintptr_t kInlineVariantBits = uintptr_t{0xf}
+                                                << kInlineVariantShift;
+
 // We assert some expectations we have around alignment, size, and trivial
 // destructability.
 static_assert(sizeof(uintptr_t) == sizeof(std::atomic<uintptr_t>),
@@ -71,6 +75,12 @@ static_assert(sizeof(void*) == sizeof(uintptr_t),
               "void* and uintptr_t must have the same size");
 static_assert(std::is_trivially_destructible_v<std::atomic<uintptr_t>>,
               "std::atomic<uintptr_t> must be trivially destructible");
+
+template <typename E>
+constexpr uintptr_t AsInlineVariant(E value) {
+  ABSL_ASSERT(static_cast<uintptr_t>(value) <= 15);
+  return static_cast<uintptr_t>(value) << kInlineVariantShift;
+}
 
 enum class DataLocality {
   kNull = 0,
@@ -243,6 +253,13 @@ class Metadata final {
     return count == 1;
   }
 
+  template <typename E>
+  static E GetInlineVariant(const Data& data) {
+    ABSL_ASSERT(IsStoredInline(data));
+    return static_cast<E>((VirtualPointer(data) & kInlineVariantBits) >>
+                          kInlineVariantShift);
+  }
+
   static bool IsUnique(const Data& data) {
     ABSL_ASSERT(IsReferenceCounted(data));
     return ((ReferenceCount(data).fetch_add(1, std::memory_order_acquire)) &
@@ -332,6 +349,12 @@ struct AnyData final {
 
   DataLocality locality() const {
     return static_cast<DataLocality>(pointer() & kPointerBits);
+  }
+
+  template <typename E>
+  E inline_variant() const {
+    return static_cast<E>((pointer() & kInlineVariantBits) >>
+                          kInlineVariantShift);
   }
 
   bool IsNull() const { return pointer() == 0; }

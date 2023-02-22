@@ -241,8 +241,25 @@ absl::Cord StringValue::ToCord() const {
                 ->value_,
             []() {});
       } else {
-        return static_cast<const base_internal::InlinedCordStringValue*>(this)
-            ->value_;
+        switch (base_internal::Metadata::GetInlineVariant<
+                base_internal::InlinedStringValueVariant>(*this)) {
+          case base_internal::InlinedStringValueVariant::kCord:
+            return static_cast<const base_internal::InlinedCordStringValue*>(
+                       this)
+                ->value_;
+          case base_internal::InlinedStringValueVariant::kStringView: {
+            const base_internal::Data* owner =
+                static_cast<const base_internal::InlinedStringViewStringValue*>(
+                    this)
+                    ->owner_;
+            base_internal::Metadata::Ref(*owner);
+            return absl::MakeCordFromExternal(
+                static_cast<const base_internal::InlinedStringViewStringValue*>(
+                    this)
+                    ->value_,
+                [owner]() { base_internal::Metadata::Unref(*owner); });
+          }
+        }
       }
     case base_internal::DataLocality::kReferenceCounted:
       base_internal::Metadata::Ref(*this);
@@ -295,11 +312,22 @@ base_internal::StringValueRep StringValue::rep() const {
                 this)
                 ->value_);
       } else {
-        return base_internal::StringValueRep(
-            absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
-            std::cref(
-                static_cast<const base_internal::InlinedCordStringValue*>(this)
-                    ->value_));
+        switch (base_internal::Metadata::GetInlineVariant<
+                base_internal::InlinedStringValueVariant>(*this)) {
+          case base_internal::InlinedStringValueVariant::kCord:
+            return base_internal::StringValueRep(
+                absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
+                std::cref(
+                    static_cast<const base_internal::InlinedCordStringValue*>(
+                        this)
+                        ->value_));
+          case base_internal::InlinedStringValueVariant::kStringView:
+            return base_internal::StringValueRep(
+                absl::in_place_type<absl::string_view>,
+                static_cast<const base_internal::InlinedStringViewStringValue*>(
+                    this)
+                    ->value_);
+        }
       }
     case base_internal::DataLocality::kReferenceCounted:
       ABSL_FALLTHROUGH_INTENDED;

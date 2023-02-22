@@ -131,7 +131,8 @@ class InlinedCordStringValue final : public StringValue, public InlineData {
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | AsInlineVariant(InlinedStringValueVariant::kCord) |
+      (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedCordStringValue(absl::Cord value)
       : InlineData(kMetadata), value_(std::move(value)) {}
@@ -146,30 +147,99 @@ class InlinedCordStringValue final : public StringValue, public InlineData {
 
 // Implementation of StringValue that is stored inlined within a handle. This
 // class is inheritently unsafe and care should be taken when using it.
-// Typically this should only be used for empty strings or data that is static
-// and lives for the duration of a program.
 class InlinedStringViewStringValue final : public StringValue,
                                            public InlineData {
  private:
   friend class StringValue;
-  friend class ValueFactory;
   template <size_t Size, size_t Align>
   friend class AnyData;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedStringViewStringValue(absl::string_view value)
-      : InlineData(kMetadata), value_(value) {}
+      : InlinedStringViewStringValue(value, nullptr) {}
 
-  InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
-  InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
-  InlinedStringViewStringValue& operator=(const InlinedStringViewStringValue&) =
-      default;
-  InlinedStringViewStringValue& operator=(InlinedStringViewStringValue&&) =
-      default;
+  // Constructs `InlinedStringViewStringValue` backed by `value` which is owned
+  // by `owner`. `owner` may be nullptr, in which case `value` has no owner and
+  // must live for the duration of the underlying `MemoryManager`.
+  InlinedStringViewStringValue(absl::string_view value, const Data* owner)
+      : InlinedStringViewStringValue(
+            value, owner,
+            owner == nullptr || !Metadata::IsArenaAllocated(*owner)) {}
+
+  InlinedStringViewStringValue(absl::string_view value, const Data* owner,
+                               bool trivial)
+      : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
+                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+        value_(value),
+        owner_(trivial ? nullptr : owner) {
+    if (owner_ != nullptr) {
+      Metadata::Ref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue(const InlinedStringViewStringValue& other)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+        value_(other.value_),
+        owner_(other.owner_) {
+    if (owner_ != nullptr) {
+      Metadata::Ref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue(InlinedStringViewStringValue&& other)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+        value_(other.value_),
+        owner_(other.owner_) {
+    other.value_ = absl::string_view();
+    other.owner_ = nullptr;
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  ~InlinedStringViewStringValue() {
+    if (owner_ != nullptr) {
+      Metadata::Unref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue& operator=(
+      const InlinedStringViewStringValue& other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      if (other.owner_ != nullptr) {
+        Metadata::Ref(*other.owner_);
+      }
+      if (owner_ != nullptr) {
+        Metadata::Unref(*owner_);
+      }
+      value_ = other.value_;
+      owner_ = other.owner_;
+    }
+    return *this;
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue& operator=(
+      InlinedStringViewStringValue&& other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      if (owner_ != nullptr) {
+        Metadata::Unref(*owner_);
+      }
+      value_ = other.value_;
+      owner_ = other.owner_;
+      other.value_ = absl::string_view();
+      other.owner_ = nullptr;
+    }
+    return *this;
+  }
 
   absl::string_view value_;
+  const Data* owner_;
 };
 
 // Implementation of StringValue that uses std::string and is allocated on the

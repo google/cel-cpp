@@ -18,7 +18,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/base/macros.h"
 #include "base/internal/message_wrapper.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
@@ -234,14 +233,32 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
               *static_cast<const UnknownValue*>(other.data_.get_inline()));
           return;
         case Kind::kString:
-          data_.ConstructInline<InlinedCordStringValue>(
-              *static_cast<const InlinedCordStringValue*>(
-                  other.data_.get_inline()));
+          switch (other.data_.inline_variant<InlinedStringValueVariant>()) {
+            case InlinedStringValueVariant::kCord:
+              data_.ConstructInline<InlinedCordStringValue>(
+                  *static_cast<const InlinedCordStringValue*>(
+                      other.data_.get_inline()));
+              break;
+            case InlinedStringValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewStringValue>(
+                  *static_cast<const InlinedStringViewStringValue*>(
+                      other.data_.get_inline()));
+              break;
+          }
           return;
         case Kind::kBytes:
-          data_.ConstructInline<InlinedCordBytesValue>(
-              *static_cast<const InlinedCordBytesValue*>(
-                  other.data_.get_inline()));
+          switch (other.data_.inline_variant<InlinedBytesValueVariant>()) {
+            case InlinedBytesValueVariant::kCord:
+              data_.ConstructInline<InlinedCordBytesValue>(
+                  *static_cast<const InlinedCordBytesValue*>(
+                      other.data_.get_inline()));
+              break;
+            case InlinedBytesValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewBytesValue>(
+                  *static_cast<const InlinedStringViewBytesValue*>(
+                      other.data_.get_inline()));
+              break;
+          }
           return;
         case Kind::kType:
           data_.ConstructInline<base_internal::ModernTypeValue>(
@@ -283,14 +300,36 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
           other.data_.Destruct<UnknownValue>();
           break;
         case Kind::kString:
-          data_.ConstructInline<InlinedCordStringValue>(std::move(
-              *static_cast<InlinedCordStringValue*>(other.data_.get_inline())));
-          other.data_.Destruct<InlinedCordStringValue>();
+          switch (other.data_.inline_variant<InlinedStringValueVariant>()) {
+            case InlinedStringValueVariant::kCord:
+              data_.ConstructInline<InlinedCordStringValue>(
+                  std::move(*static_cast<InlinedCordStringValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedCordStringValue>();
+              break;
+            case InlinedStringValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewStringValue>(
+                  std::move(*static_cast<InlinedStringViewStringValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedStringViewStringValue>();
+              break;
+          }
           break;
         case Kind::kBytes:
-          data_.ConstructInline<InlinedCordBytesValue>(std::move(
-              *static_cast<InlinedCordBytesValue*>(other.data_.get_inline())));
-          other.data_.Destruct<InlinedCordBytesValue>();
+          switch (other.data_.inline_variant<InlinedBytesValueVariant>()) {
+            case InlinedBytesValueVariant::kCord:
+              data_.ConstructInline<InlinedCordBytesValue>(
+                  std::move(*static_cast<InlinedCordBytesValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedCordBytesValue>();
+              break;
+            case InlinedBytesValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewBytesValue>(
+                  std::move(*static_cast<InlinedStringViewBytesValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedStringViewBytesValue>();
+              break;
+          }
           break;
         case Kind::kType:
           data_.ConstructInline<ModernTypeValue>(std::move(
@@ -341,10 +380,24 @@ void ValueHandle::Destruct() {
             data_.Destruct<UnknownValue>();
             return;
           case Kind::kString:
-            data_.Destruct<InlinedCordStringValue>();
+            switch (data_.inline_variant<InlinedStringValueVariant>()) {
+              case InlinedStringValueVariant::kCord:
+                data_.Destruct<InlinedCordStringValue>();
+                break;
+              case InlinedStringValueVariant::kStringView:
+                data_.Destruct<InlinedStringViewStringValue>();
+                break;
+            }
             return;
           case Kind::kBytes:
-            data_.Destruct<InlinedCordBytesValue>();
+            switch (data_.inline_variant<InlinedBytesValueVariant>()) {
+              case InlinedBytesValueVariant::kCord:
+                data_.Destruct<InlinedCordBytesValue>();
+                break;
+              case InlinedBytesValueVariant::kStringView:
+                data_.Destruct<InlinedStringViewBytesValue>();
+                break;
+            }
             return;
           case Kind::kType:
             data_.Destruct<ModernTypeValue>();

@@ -135,6 +135,20 @@ using BytesValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
 struct UnknownSetImpl;
 
+// Enumeration used to differentiate between BytesValue's multiple inline
+// non-trivial implementations.
+enum class InlinedBytesValueVariant {
+  kCord = 0,
+  kStringView,
+};
+
+// Enumeration used to differentiate between StringValue's multiple inline
+// non-trivial implementations.
+enum class InlinedStringValueVariant {
+  kCord = 0,
+  kStringView,
+};
+
 }  // namespace base_internal
 
 namespace interop_internal {
