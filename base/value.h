@@ -24,7 +24,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
-#include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
@@ -194,7 +193,7 @@ class SimpleValue : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Handle<T> type() const { return T::Get(); }
+  const Handle<T>& type() const { return T::Get(); }
 
   constexpr U value() const { return value_; }
 
@@ -228,7 +227,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
 
   constexpr Kind kind() const { return kKind; }
 
-  Handle<NullType> type() const { return NullType::Get(); }
+  const Handle<NullType>& type() const { return NullType::Get(); }
 
  private:
   friend class ValueHandle;

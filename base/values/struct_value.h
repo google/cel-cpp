@@ -185,7 +185,7 @@ class AbstractStructValue : public StructValue, public HeapData {
                internal::TypeId<LegacyStructValue>();
   }
 
-  Handle<StructType> type() const { return type_; }
+  const Handle<StructType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 

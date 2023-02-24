@@ -38,11 +38,16 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  static std::string DebugString(const EnumType& type, int64_t value);
+
+  static std::string DebugString(const EnumType& type,
+                                 const EnumType::Constant& value);
+
   using ConstantId = EnumType::ConstantId;
 
   constexpr Kind kind() const { return kKind; }
 
-  Handle<EnumType> type() const { return type_; }
+  const Handle<EnumType>& type() const { return type_; }
 
   std::string DebugString() const;
 

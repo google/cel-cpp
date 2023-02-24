@@ -25,8 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/hash/hash.h"
-#include "absl/hash/hash_testing.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -2252,6 +2250,17 @@ INSTANTIATE_TEST_SUITE_P(MapValueTest, MapValueTest,
 INSTANTIATE_TEST_SUITE_P(ValueTest, ValueTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
+
+TEST(EnumValueTest, UnknownConstantDebugString) {
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  EXPECT_EQ(EnumValue::DebugString(*enum_type, 3), "test_enum.TestEnum(3)");
+  EXPECT_EQ(EnumValue::DebugString(*enum_type, EnumType::Constant("", 3)),
+            "test_enum.TestEnum(3)");
+}
 
 Handle<NullValue> DefaultNullValue(ValueFactory& value_factory) {
   return value_factory.GetNullValue();

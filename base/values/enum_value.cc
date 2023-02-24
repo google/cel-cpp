@@ -17,24 +17,39 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/optimization.h"
+
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(EnumValue);
 
 absl::string_view EnumValue::name() const {
   auto constant = type()->FindConstantByNumber(number());
-  if (!constant.ok() || !constant->has_value()) {
+  if (ABSL_PREDICT_FALSE(!constant.ok() || !constant->has_value())) {
     return absl::string_view();
   }
   return (*constant)->name;
 }
 
-std::string EnumValue::DebugString() const {
-  auto value = name();
-  if (value.empty()) {
-    return absl::StrCat(type()->name(), "(", number(), ")");
+std::string EnumValue::DebugString(const EnumType& type, int64_t value) {
+  auto status_or_constant = type.FindConstantByNumber(value);
+  if (ABSL_PREDICT_FALSE(!status_or_constant.ok() ||
+                         !(*status_or_constant).has_value())) {
+    return absl::StrCat(type.name(), "(", value, ")");
   }
-  return absl::StrCat(type()->name(), ".", value);
+  return DebugString(type, **status_or_constant);
+}
+
+std::string EnumValue::DebugString(const EnumType& type,
+                                   const EnumType::Constant& value) {
+  if (ABSL_PREDICT_FALSE(value.name.empty())) {
+    return absl::StrCat(type.name(), "(", value.number, ")");
+  }
+  return absl::StrCat(type.name(), ".", value.name);
+}
+
+std::string EnumValue::DebugString() const {
+  return DebugString(*type(), number());
 }
 
 }  // namespace cel

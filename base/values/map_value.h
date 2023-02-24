@@ -152,7 +152,7 @@ class AbstractMapValue : public MapValue, public HeapData {
                internal::TypeId<LegacyMapValue>();
   }
 
-  Handle<MapType> type() const { return type_; }
+  const Handle<MapType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
