@@ -15,11 +15,32 @@
 #include "extensions/protobuf/enum_type.h"
 
 #include <limits>
+#include <utility>
 
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "internal/status_macros.h"
 
 namespace cel::extensions {
+
+absl::StatusOr<Handle<ProtoEnumType>> ProtoEnumType::Resolve(
+    TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor) {
+  CEL_ASSIGN_OR_RETURN(auto type,
+                       type_manager.ResolveType(descriptor.full_name()));
+  if (ABSL_PREDICT_FALSE(!type.has_value())) {
+    return absl::InternalError(
+        absl::StrCat("Missing protocol buffer enum type implementation for \"",
+                     descriptor.full_name(), "\""));
+  }
+  if (ABSL_PREDICT_FALSE(!(*type).Is<ProtoEnumType>())) {
+    return absl::InternalError(absl::StrCat(
+        "Unexpected protocol buffer enum type implementation for \"",
+        descriptor.full_name(), "\""));
+  }
+  return std::move(*type).As<ProtoEnumType>();
+}
 
 absl::StatusOr<absl::optional<ProtoEnumType::Constant>>
 ProtoEnumType::FindConstantByName(absl::string_view name) const {

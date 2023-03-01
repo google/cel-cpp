@@ -29,6 +29,23 @@
 
 namespace cel::extensions {
 
+absl::StatusOr<Handle<ProtoStructType>> ProtoStructType::Resolve(
+    TypeManager& type_manager, const google::protobuf::Descriptor& descriptor) {
+  CEL_ASSIGN_OR_RETURN(auto type,
+                       type_manager.ResolveType(descriptor.full_name()));
+  if (ABSL_PREDICT_FALSE(!type.has_value())) {
+    return absl::InternalError(absl::StrCat(
+        "Missing protocol buffer message type implementation for \"",
+        descriptor.full_name(), "\""));
+  }
+  if (ABSL_PREDICT_FALSE(!type->Is<ProtoStructType>())) {
+    return absl::InternalError(absl::StrCat(
+        "Unexpected protocol buffer message type implementation for \"",
+        descriptor.full_name(), "\""));
+  }
+  return std::move(*type).As<ProtoStructType>();
+}
+
 namespace {
 
 absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(

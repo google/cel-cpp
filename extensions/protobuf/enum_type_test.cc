@@ -18,6 +18,8 @@
 #include "base/kind.h"
 #include "base/memory_manager.h"
 #include "base/type_factory.h"
+#include "base/type_manager.h"
+#include "extensions/protobuf/type_provider.h"
 #include "internal/testing.h"
 #include "google/protobuf/generated_enum_reflection.h"
 
@@ -26,9 +28,11 @@ namespace {
 
 TEST(ProtoEnumType, CreateStatically) {
   TypeFactory type_factory(MemoryManager::Global());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Create<google::protobuf::Field::Kind>(type_factory));
+      ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
   EXPECT_TRUE(type.Is<EnumType>());
   EXPECT_TRUE(type.Is<ProtoEnumType>());
   EXPECT_EQ(type->kind(), Kind::kEnum);
@@ -39,11 +43,13 @@ TEST(ProtoEnumType, CreateStatically) {
 
 TEST(ProtoEnumType, CreateDynamically) {
   TypeFactory type_factory(MemoryManager::Global());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Create(
-          type_factory,
-          google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>()));
+      ProtoEnumType::Resolve(
+          type_manager,
+          *google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>()));
   EXPECT_TRUE(type.Is<EnumType>());
   EXPECT_TRUE(type.Is<ProtoEnumType>());
   EXPECT_EQ(type->kind(), Kind::kEnum);
@@ -54,9 +60,11 @@ TEST(ProtoEnumType, CreateDynamically) {
 
 TEST(ProtoEnumType, FindConstantByName) {
   TypeFactory type_factory(MemoryManager::Global());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Create<google::protobuf::Field::Kind>(type_factory));
+      ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
   ASSERT_OK_AND_ASSIGN(auto constant,
                        type->FindConstant(EnumType::ConstantId("TYPE_STRING")));
   ASSERT_TRUE(constant.has_value());
@@ -66,9 +74,11 @@ TEST(ProtoEnumType, FindConstantByName) {
 
 TEST(ProtoEnumType, FindConstantByNumber) {
   TypeFactory type_factory(MemoryManager::Global());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Create<google::protobuf::Field::Kind>(type_factory));
+      ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
   ASSERT_OK_AND_ASSIGN(auto constant,
                        type->FindConstant(EnumType::ConstantId(9)));
   ASSERT_TRUE(constant.has_value());

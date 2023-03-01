@@ -25,12 +25,12 @@ absl::StatusOr<absl::optional<Handle<Type>>> ProtoTypeProvider::ProvideType(
   {
     const auto* desc = pool_->FindMessageTypeByName(std::string(name));
     if (desc != nullptr) {
-      return ProtoStructType::Create(type_factory, desc);
+      return type_factory.CreateStructType<ProtoStructType>(desc, factory_);
     }
   }
   const auto* desc = pool_->FindEnumTypeByName(name);
   if (desc != nullptr) {
-    return ProtoEnumType::Create(type_factory, desc);
+    return type_factory.CreateEnumType<ProtoEnumType>(desc);
   }
   return absl::nullopt;
 }

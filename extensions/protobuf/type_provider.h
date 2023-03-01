@@ -20,23 +20,37 @@
 #include "absl/types/optional.h"
 #include "base/type_provider.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
 class ProtoTypeProvider final : public TypeProvider {
  public:
   ProtoTypeProvider()
-      : ProtoTypeProvider(google::protobuf::DescriptorPool::generated_pool()) {}
+      : ProtoTypeProvider(google::protobuf::DescriptorPool::generated_pool(),
+                          google::protobuf::MessageFactory::generated_factory()) {}
 
   explicit ProtoTypeProvider(
       ABSL_ATTRIBUTE_LIFETIME_BOUND const google::protobuf::DescriptorPool* pool)
-      : pool_(ABSL_DIE_IF_NULL(pool)) {}  // Crash OK
+      : pool_(ABSL_DIE_IF_NULL(pool)),  // Crash OK
+        dynamic_factory_(pool),
+        factory_(&dynamic_factory_.value()) {}
+
+  ProtoTypeProvider(
+      ABSL_ATTRIBUTE_LIFETIME_BOUND const google::protobuf::DescriptorPool* pool,
+      ABSL_ATTRIBUTE_LIFETIME_BOUND google::protobuf::MessageFactory* factory)
+      : pool_(ABSL_DIE_IF_NULL(pool)),  // Crash OK
+        dynamic_factory_(absl::nullopt),
+        factory_(ABSL_DIE_IF_NULL(factory)) {}  // Crash OK
 
   absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
       TypeFactory& type_factory, absl::string_view name) const override;
 
  private:
   const google::protobuf::DescriptorPool* const pool_;
+  absl::optional<google::protobuf::DynamicMessageFactory> dynamic_factory_;
+  google::protobuf::MessageFactory* const factory_;
 };
 
 }  // namespace cel::extensions

@@ -21,14 +21,16 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
-#include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/types/struct_type.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions {
 
-class ProtoStructType : public CEL_STRUCT_TYPE_CLASS {
+class ProtoTypeProvider;
+
+class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
  private:
   template <typename T, typename R>
   using EnableIfDerivedMessage =
@@ -39,71 +41,43 @@ class ProtoStructType : public CEL_STRUCT_TYPE_CLASS {
  public:
   template <typename T>
   static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructType>>>
-  Create(TypeFactory& type_factory);
+  Resolve(TypeManager& type_manager) {
+    return Resolve(type_manager, *T::descriptor());
+  }
 
-  static absl::StatusOr<Handle<ProtoStructType>> Create(
-      TypeFactory& type_factory, const google::protobuf::Descriptor* descriptor);
+  static absl::StatusOr<Handle<ProtoStructType>> Resolve(
+      TypeManager& type_manager, const google::protobuf::Descriptor& descriptor);
 
-  absl::string_view name() const final { return descriptor().full_name(); }
+  absl::string_view name() const override { return descriptor().full_name(); }
 
-  virtual const google::protobuf::Descriptor& descriptor() const = 0;
+  const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
 
  protected:
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
-      TypeManager& type_manager, absl::string_view name) const final;
+      TypeManager& type_manager, absl::string_view name) const override;
 
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
-      TypeManager& type_manager, int64_t number) const final;
+      TypeManager& type_manager, int64_t number) const override;
 
  private:
+  friend class ProtoTypeProvider;
+  friend class cel::MemoryManager;
+
+  ProtoStructType(const google::protobuf::Descriptor* descriptor,
+                  google::protobuf::MessageFactory* factory)
+      : descriptor_(ABSL_DIE_IF_NULL(descriptor)),  // Crash OK.
+        factory_(ABSL_DIE_IF_NULL(factory)) {}      // Crash OK.
+
   // Called by CEL_IMPLEMENT_STRUCT_TYPE() and Is() to perform type checking.
-  internal::TypeInfo TypeId() const final {
+  internal::TypeInfo TypeId() const override {
     return internal::TypeId<ProtoStructType>();
   }
-};
 
-namespace proto_internal {
-
-template <typename T>
-class StaticProtoStructType final : public ProtoStructType {
- public:
-  static_assert(std::is_base_of_v<google::protobuf::Message, T>);
-
-  StaticProtoStructType() = default;
-
-  const google::protobuf::Descriptor& descriptor() const override {
-    return *T::descriptor();
-  }
-};
-
-class DynamicProtoStructType final : public ProtoStructType {
- public:
-  explicit DynamicProtoStructType(const google::protobuf::Descriptor* descriptor)
-      : descriptor_(ABSL_DIE_IF_NULL(descriptor)) {}  // Crash OK
-
-  const google::protobuf::Descriptor& descriptor() const override { return *descriptor_; }
-
- private:
   const google::protobuf::Descriptor* const descriptor_;
+  google::protobuf::MessageFactory* const factory_;
 };
-
-}  // namespace proto_internal
-
-template <typename T>
-inline ProtoStructType::EnableIfDerivedMessage<
-    T, absl::StatusOr<Handle<ProtoStructType>>>
-ProtoStructType::Create(TypeFactory& type_factory) {
-  return type_factory
-      .CreateStructType<proto_internal::StaticProtoStructType<T>>();
-}
-
-inline absl::StatusOr<Handle<ProtoStructType>> ProtoStructType::Create(
-    TypeFactory& type_factory, const google::protobuf::Descriptor* descriptor) {
-  return type_factory.CreateStructType<proto_internal::DynamicProtoStructType>(
-      descriptor);
-}
 
 }  // namespace cel::extensions
 

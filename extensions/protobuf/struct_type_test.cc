@@ -31,9 +31,11 @@ using TestAllTypes = google::api::expr::test::v1::proto3::TestAllTypes;
 
 TEST(ProtoStructType, CreateStatically) {
   TypeFactory type_factory(MemoryManager::Global());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   EXPECT_TRUE(type.Is<StructType>());
   EXPECT_TRUE(type.Is<ProtoStructType>());
   EXPECT_EQ(type->kind(), Kind::kStruct);
@@ -43,9 +45,11 @@ TEST(ProtoStructType, CreateStatically) {
 
 TEST(ProtoStructType, CreateDynamically) {
   TypeFactory type_factory(MemoryManager::Global());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
-      auto type, ProtoStructType::Create(
-                     type_factory, google::protobuf::Field::descriptor()));
+      auto type, ProtoStructType::Resolve(
+                     type_manager, *google::protobuf::Field::descriptor()));
   EXPECT_TRUE(type.Is<StructType>());
   EXPECT_TRUE(type.Is<ProtoStructType>());
   EXPECT_EQ(type->kind(), Kind::kStruct);
@@ -59,7 +63,7 @@ TEST(ProtoStructType, FindFieldByName) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field,
       type->FindField(type_manager, StructType::FieldId("default_value")));
@@ -75,7 +79,7 @@ TEST(ProtoStructType, FindFieldByNumber) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   ASSERT_OK_AND_ASSIGN(auto field,
                        type->FindField(type_manager, StructType::FieldId(11)));
   ASSERT_TRUE(field.has_value());
@@ -90,7 +94,7 @@ TEST(ProtoStructType, EnumField) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field,
       type->FindField(type_manager, StructType::FieldId("cardinality")));
@@ -105,7 +109,7 @@ TEST(ProtoStructType, BoolField) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field, type->FindField(type_manager, StructType::FieldId("packed")));
   ASSERT_TRUE(field.has_value());
@@ -118,7 +122,7 @@ TEST(ProtoStructType, IntField) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field,
       type->FindField(type_manager, StructType::FieldId("oneof_index")));
@@ -131,7 +135,8 @@ TEST(ProtoStructType, StringListField) {
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
-      auto type, ProtoStructType::Create<google::protobuf::Type>(type_factory));
+      auto type,
+      ProtoStructType::Resolve<google::protobuf::Type>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field, type->FindField(type_manager, StructType::FieldId("oneofs")));
   ASSERT_TRUE(field.has_value());
@@ -146,7 +151,7 @@ TEST(ProtoStructType, StructListField) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoStructType::Create<google::protobuf::Field>(type_factory));
+      ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field,
       type->FindField(type_manager, StructType::FieldId("options")));
@@ -161,7 +166,7 @@ TEST(ProtoStructType, MapField) {
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(auto type,
-                       ProtoStructType::Create<TestAllTypes>(type_factory));
+                       ProtoStructType::Resolve<TestAllTypes>(type_manager));
   ASSERT_OK_AND_ASSIGN(
       auto field,
       type->FindField(type_manager, StructType::FieldId("map_string_string")));
