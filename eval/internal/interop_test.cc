@@ -617,10 +617,12 @@ TEST(ValueInterop, StructFromLegacy) {
   EXPECT_EQ(value->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->name(), "google.protobuf.Api");
-  EXPECT_THAT(value.As<StructValue>()->HasField(StructValue::FieldId("name")),
+  EXPECT_THAT(value.As<StructValue>()->HasField(type_manager,
+                                                StructValue::FieldId("name")),
               IsOkAndHolds(Eq(true)));
-  EXPECT_THAT(value.As<StructValue>()->HasField(StructValue::FieldId(1)),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_THAT(
+      value.As<StructValue>()->HasField(type_manager, StructValue::FieldId(1)),
+      StatusIs(absl::StatusCode::kUnimplemented));
   ASSERT_OK_AND_ASSIGN(auto value_name_field,
                        value.As<StructValue>()->GetField(
                            value_factory, StructValue::FieldId("name")));

@@ -10,6 +10,7 @@
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
+#include "base/type_manager.h"
 #include "base/value_factory.h"
 #include "base/values/error_value.h"
 #include "base/values/map_value.h"
@@ -131,11 +132,12 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
 
 Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
                              const std::string& field,
-                             cel::MemoryManager& memory_manager) {
+                             cel::MemoryManager& memory_manager,
+                             cel::TypeManager& type_manager) {
   StructValue::FieldId field_id(field);
   Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
 
-  absl::StatusOr<bool> result = msg->HasField(field_id);
+  absl::StatusOr<bool> result = msg->HasField(type_manager, field_id);
 
   if (!result.ok()) {
     return CreateErrorValueFromView(
@@ -210,8 +212,9 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
             arg.As<MapValue>(), field_, frame->memory_manager()));
         return absl::OkStatus();
       case Kind::kMessage:
-        frame->value_stack().PopAndPush(TestOnlySelect(
-            arg.As<StructValue>(), field_, frame->memory_manager()));
+        frame->value_stack().PopAndPush(
+            TestOnlySelect(arg.As<StructValue>(), field_,
+                           frame->memory_manager(), frame->type_manager()));
         return absl::OkStatus();
       default:
         return InvalidSelectTargetError();

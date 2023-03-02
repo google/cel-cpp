@@ -18,7 +18,6 @@
 #include <utility>
 
 #include "absl/base/macros.h"
-#include "absl/status/status.h"
 #include "base/internal/data.h"
 #include "base/internal/message_wrapper.h"
 #include "base/types/struct_type.h"
@@ -63,22 +62,24 @@ absl::StatusOr<Handle<Value>> StructValue::GetFieldByNumber(
       ->GetFieldByNumber(value_factory, number);
 }
 
-absl::StatusOr<bool> StructValue::HasFieldByName(absl::string_view name) const {
+absl::StatusOr<bool> StructValue::HasFieldByName(TypeManager& type_manager,
+                                                 absl::string_view name) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->HasFieldByName(name);
+        ->HasFieldByName(type_manager, name);
   }
   return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->HasFieldByName(name);
+      ->HasFieldByName(type_manager, name);
 }
 
-absl::StatusOr<bool> StructValue::HasFieldByNumber(int64_t number) const {
+absl::StatusOr<bool> StructValue::HasFieldByNumber(TypeManager& type_manager,
+                                                   int64_t number) const {
   if (base_internal::Metadata::IsStoredInline(*this)) {
     return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->HasFieldByNumber(number);
+        ->HasFieldByNumber(type_manager, number);
   }
   return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->HasFieldByNumber(number);
+      ->HasFieldByNumber(type_manager, number);
 }
 
 internal::TypeInfo StructValue::TypeId() const {
@@ -103,13 +104,14 @@ struct StructValue::GetFieldVisitor final {
 
 struct StructValue::HasFieldVisitor final {
   const StructValue& struct_value;
+  TypeManager& type_manager;
 
   absl::StatusOr<bool> operator()(absl::string_view name) const {
-    return struct_value.HasFieldByName(name);
+    return struct_value.HasFieldByName(type_manager, name);
   }
 
   absl::StatusOr<bool> operator()(int64_t number) const {
-    return struct_value.HasFieldByNumber(number);
+    return struct_value.HasFieldByNumber(type_manager, number);
   }
 };
 
@@ -118,8 +120,9 @@ absl::StatusOr<Handle<Value>> StructValue::GetField(ValueFactory& value_factory,
   return absl::visit(GetFieldVisitor{*this, value_factory}, field.data_);
 }
 
-absl::StatusOr<bool> StructValue::HasField(FieldId field) const {
-  return absl::visit(HasFieldVisitor{*this}, field.data_);
+absl::StatusOr<bool> StructValue::HasField(TypeManager& type_manager,
+                                           FieldId field) const {
+  return absl::visit(HasFieldVisitor{*this, type_manager}, field.data_);
 }
 
 namespace base_internal {
@@ -148,11 +151,12 @@ absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByNumber(
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByName(
-    absl::string_view name) const {
+    TypeManager& type_manager, absl::string_view name) const {
   return MessageValueHasFieldByName(msg_, type_info_, name);
 }
 
-absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(int64_t number) const {
+absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(
+    TypeManager& type_manager, int64_t number) const {
   return MessageValueHasFieldByNumber(msg_, type_info_, number);
 }
 

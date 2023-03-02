@@ -158,7 +158,8 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
     }
   }
 
-  absl::StatusOr<bool> HasFieldByName(absl::string_view name) const override {
+  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
+                                      absl::string_view name) const override {
     if (name == "bool_field") {
       return true;
     } else if (name == "int_field") {
@@ -171,7 +172,8 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
     return absl::NotFoundError("");
   }
 
-  absl::StatusOr<bool> HasFieldByNumber(int64_t number) const override {
+  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
+                                        int64_t number) const override {
     switch (number) {
       case 0:
         return true;
@@ -2024,7 +2026,7 @@ TEST_P(StructValueTest, GetField) {
   EXPECT_THAT(struct_value->GetField(value_factory,
                                      StructValue::FieldId("missing_field")),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(4)),
+  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(4)),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -2037,25 +2039,30 @@ TEST_P(StructValueTest, HasField) {
   ASSERT_OK_AND_ASSIGN(
       auto struct_value,
       value_factory.CreateStructValue<TestStructValue>(struct_type));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("bool_field")),
+  EXPECT_THAT(
+      struct_value->HasField(type_manager, StructValue::FieldId("bool_field")),
+      IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(0)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(0)),
+  EXPECT_THAT(
+      struct_value->HasField(type_manager, StructValue::FieldId("int_field")),
+      IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(1)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("int_field")),
+  EXPECT_THAT(
+      struct_value->HasField(type_manager, StructValue::FieldId("uint_field")),
+      IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(2)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(1)),
+  EXPECT_THAT(struct_value->HasField(type_manager,
+                                     StructValue::FieldId("double_field")),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("uint_field")),
+  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(3)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(2)),
-              IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("double_field")),
-              IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(3)),
-              IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId("missing_field")),
+  EXPECT_THAT(struct_value->HasField(type_manager,
+                                     StructValue::FieldId("missing_field")),
               StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_value->HasField(StructValue::FieldId(4)),
+  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(4)),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
