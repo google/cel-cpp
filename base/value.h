@@ -94,6 +94,17 @@ namespace cel {
 
 namespace base_internal {
 
+class ValueHandle;
+
+class ValueMetadata final {
+ public:
+  ValueMetadata() = delete;
+
+  static void Ref(const Value& value);
+
+  static void Unref(const Value& value);
+};
+
 class ValueHandle final {
  public:
   ValueHandle() = default;
@@ -132,6 +143,8 @@ class ValueHandle final {
   bool Equals(const ValueHandle& other) const;
 
  private:
+  friend class ValueMetadata;
+
   static bool Equals(const Value& lhs, const Value& rhs, Kind kind);
 
   void CopyFrom(const ValueHandle& other);
@@ -153,6 +166,8 @@ class ValueHandle final {
   void Destruct();
 
   void Delete() const;
+
+  static void Delete(Kind kind, const Value& value);
 
   AnyValue data_;
 };

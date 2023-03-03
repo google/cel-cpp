@@ -419,29 +419,36 @@ void ValueHandle::Destruct() {
 }
 
 void ValueHandle::Delete() const {
-  switch (data_.kind_heap()) {
+  Delete(data_.kind_heap(), *static_cast<const Value*>(data_.get_heap()));
+}
+
+void ValueHandle::Delete(Kind kind, const Value& value) {
+  switch (kind) {
     case Kind::kList:
-      delete static_cast<AbstractListValue*>(
-          static_cast<ListValue*>(static_cast<Value*>(data_.get_heap())));
+      delete static_cast<const AbstractListValue*>(&value);
       return;
     case Kind::kMap:
-      delete static_cast<AbstractMapValue*>(
-          static_cast<MapValue*>(static_cast<Value*>(data_.get_heap())));
+      delete static_cast<const AbstractMapValue*>(&value);
       return;
     case Kind::kStruct:
-      delete static_cast<AbstractStructValue*>(
-          static_cast<Value*>(data_.get_heap()));
+      delete static_cast<const AbstractStructValue*>(&value);
       return;
     case Kind::kString:
-      delete static_cast<StringStringValue*>(
-          static_cast<Value*>(data_.get_heap()));
+      delete static_cast<const StringStringValue*>(&value);
       return;
     case Kind::kBytes:
-      delete static_cast<StringBytesValue*>(
-          static_cast<Value*>(data_.get_heap()));
+      delete static_cast<const StringBytesValue*>(&value);
       return;
     default:
       internal::unreachable();
+  }
+}
+
+void ValueMetadata::Ref(const Value& value) { Metadata::Ref(value); }
+
+void ValueMetadata::Unref(const Value& value) {
+  if (Metadata::Unref(value)) {
+    ValueHandle::Delete(Metadata::KindHeap(value), value);
   }
 }
 

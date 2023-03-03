@@ -147,12 +147,12 @@ class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
   // Constructs `InlinedStringViewBytesValue` backed by `value` which is owned
   // by `owner`. `owner` may be nullptr, in which case `value` has no owner and
   // must live for the duration of the underlying `MemoryManager`.
-  InlinedStringViewBytesValue(absl::string_view value, const Data* owner)
+  InlinedStringViewBytesValue(absl::string_view value, const Value* owner)
       : InlinedStringViewBytesValue(
             value, owner,
             owner == nullptr || !Metadata::IsArenaAllocated(*owner)) {}
 
-  InlinedStringViewBytesValue(absl::string_view value, const Data* owner,
+  InlinedStringViewBytesValue(absl::string_view value, const Value* owner,
                               bool trivial)
       : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
                    AsInlineVariant(InlinedBytesValueVariant::kStringView)),
@@ -185,44 +185,17 @@ class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
   }
 
   // Only called when owner_ was, at some point, not nullptr.
-  ~InlinedStringViewBytesValue() {
-    if (owner_ != nullptr) {
-      Metadata::Unref(*owner_);
-    }
-  }
+  ~InlinedStringViewBytesValue();
 
   // Only called when owner_ was, at some point, not nullptr.
   InlinedStringViewBytesValue& operator=(
-      const InlinedStringViewBytesValue& other) {
-    if (ABSL_PREDICT_TRUE(this != &other)) {
-      if (other.owner_ != nullptr) {
-        Metadata::Ref(*other.owner_);
-      }
-      if (owner_ != nullptr) {
-        Metadata::Unref(*owner_);
-      }
-      value_ = other.value_;
-      owner_ = other.owner_;
-    }
-    return *this;
-  }
+      const InlinedStringViewBytesValue& other);
 
   // Only called when owner_ was, at some point, not nullptr.
-  InlinedStringViewBytesValue& operator=(InlinedStringViewBytesValue&& other) {
-    if (ABSL_PREDICT_TRUE(this != &other)) {
-      if (owner_ != nullptr) {
-        Metadata::Unref(*owner_);
-      }
-      value_ = other.value_;
-      owner_ = other.owner_;
-      other.value_ = absl::string_view();
-      other.owner_ = nullptr;
-    }
-    return *this;
-  }
+  InlinedStringViewBytesValue& operator=(InlinedStringViewBytesValue&& other);
 
   absl::string_view value_;
-  const Data* owner_;
+  const Value* owner_;
 };
 
 // Implementation of BytesValue that uses std::string and is allocated on the

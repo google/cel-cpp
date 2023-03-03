@@ -248,7 +248,7 @@ absl::Cord StringValue::ToCord() const {
                        this)
                 ->value_;
           case base_internal::InlinedStringValueVariant::kStringView: {
-            const base_internal::Data* owner =
+            const Value* owner =
                 static_cast<const base_internal::InlinedStringViewStringValue*>(
                     this)
                     ->owner_;
@@ -257,7 +257,7 @@ absl::Cord StringValue::ToCord() const {
                 static_cast<const base_internal::InlinedStringViewStringValue*>(
                     this)
                     ->value_,
-                [owner]() { base_internal::Metadata::Unref(*owner); });
+                [owner]() { base_internal::ValueMetadata::Unref(*owner); });
           }
         }
       }
@@ -348,6 +348,41 @@ StringStringValue::StringStringValue(std::string value)
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
+
+InlinedStringViewStringValue::~InlinedStringViewStringValue() {
+  if (owner_ != nullptr) {
+    ValueMetadata::Unref(*owner_);
+  }
+}
+
+InlinedStringViewStringValue& InlinedStringViewStringValue::operator=(
+    const InlinedStringViewStringValue& other) {
+  if (ABSL_PREDICT_TRUE(this != &other)) {
+    if (other.owner_ != nullptr) {
+      Metadata::Ref(*other.owner_);
+    }
+    if (owner_ != nullptr) {
+      ValueMetadata::Unref(*owner_);
+    }
+    value_ = other.value_;
+    owner_ = other.owner_;
+  }
+  return *this;
+}
+
+InlinedStringViewStringValue& InlinedStringViewStringValue::operator=(
+    InlinedStringViewStringValue&& other) {
+  if (ABSL_PREDICT_TRUE(this != &other)) {
+    if (owner_ != nullptr) {
+      ValueMetadata::Unref(*owner_);
+    }
+    value_ = other.value_;
+    owner_ = other.owner_;
+    other.value_ = absl::string_view();
+    other.owner_ = nullptr;
+  }
+  return *this;
 }
 
 }  // namespace base_internal

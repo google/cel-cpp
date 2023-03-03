@@ -200,6 +200,13 @@ class Metadata final {
         kKindMask);
   }
 
+  static ::cel::Kind KindHeap(const Data& data) {
+    ABSL_ASSERT(!IsNull(data) && !IsStoredInline(data));
+    return static_cast<cel::Kind>(
+        (ReferenceCount(data).load(std::memory_order_relaxed) >> kKindShift) &
+        kKindMask);
+  }
+
   static DataLocality Locality(const Data& data) {
     // We specifically do not use `IsArenaAllocated()` and
     // `IsReferenceCounted()` here due to performance reasons. This code is
@@ -244,7 +251,7 @@ class Metadata final {
     ABSL_ASSERT(count > 0 && count < kReferenceCountMax);
   }
 
-  static bool Unref(const Data& data) {
+  ABSL_MUST_USE_RESULT static bool Unref(const Data& data) {
     ABSL_ASSERT(IsReferenceCounted(data));
     const auto count =
         (ReferenceCount(data).fetch_sub(1, std::memory_order_seq_cst)) &
@@ -378,7 +385,7 @@ struct AnyData final {
     Metadata::Ref(*get_heap());
   }
 
-  bool Unref() const {
+  ABSL_MUST_USE_RESULT bool Unref() const {
     ABSL_ASSERT(IsReferenceCounted());
     // We do not need to apply the pointer mask, we know this is reference
     // counted.
