@@ -233,9 +233,22 @@ CelValue CreateErrorValue(cel::MemoryManager& manager,
   return CreateErrorValue(arena, message, error_code);
 }
 
+CelValue CreateErrorValue(cel::MemoryManager& manager,
+                          const absl::Status& status) {
+  // TODO(issues/5): assume arena-style allocator while migrating to new
+  // value type.
+  Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(manager);
+  return CreateErrorValue(arena, status);
+}
+
 CelValue CreateErrorValue(Arena* arena, absl::string_view message,
                           absl::StatusCode error_code) {
   CelError* error = Arena::Create<CelError>(arena, error_code, message);
+  return CelValue::CreateError(error);
+}
+
+CelValue CreateErrorValue(Arena* arena, const absl::Status& status) {
+  CelError* error = Arena::Create<CelError>(arena, status);
   return CelValue::CreateError(error);
 }
 

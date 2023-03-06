@@ -644,17 +644,12 @@ CelValue CreateErrorValue(
     absl::StatusCode error_code = absl::StatusCode::kUnknown);
 
 // Utility method for generating a CelValue from an absl::Status.
-inline CelValue CreateErrorValue(cel::MemoryManager& manager
-                                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                                 const absl::Status& status) {
-  return CreateErrorValue(manager, status.message(), status.code());
-}
+CelValue CreateErrorValue(cel::MemoryManager& manager
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                          const absl::Status& status);
 
 // Utility method for generating a CelValue from an absl::Status.
-inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
-                                 const absl::Status& status) {
-  return CreateErrorValue(arena, status.message(), status.code());
-}
+CelValue CreateErrorValue(google::protobuf::Arena* arena, const absl::Status& status);
 
 // Create an error for failed overload resolution, optionally including the name
 // of the function.

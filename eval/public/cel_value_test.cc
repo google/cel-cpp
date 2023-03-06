@@ -335,6 +335,15 @@ TEST(CelValueTest, SpecialErrorFactories) {
   error = CreateNoMatchingOverloadError(manager, "function");
   EXPECT_THAT(error, test::IsCelError(StatusIs(absl::StatusCode::kUnknown)));
   EXPECT_TRUE(CheckNoMatchingOverloadError(error));
+
+  absl::Status error_status = absl::InternalError("internal error");
+  error_status.SetPayload("CreateErrorValuePreservesFullStatusMessage",
+                          absl::Cord("more information"));
+  error = CreateErrorValue(manager, error_status);
+  EXPECT_THAT(error, test::IsCelError(error_status));
+
+  error = CreateErrorValue(&arena, error_status);
+  EXPECT_THAT(error, test::IsCelError(error_status));
 }
 
 TEST(CelValueTest, MissingAttributeErrorsDeprecated) {
@@ -438,5 +447,4 @@ TEST(CelValueTest, Size) {
   // CelValue performance degrades when it becomes larger.
   static_assert(sizeof(CelValue) <= 3 * sizeof(uintptr_t));
 }
-
 }  // namespace google::api::expr::runtime
