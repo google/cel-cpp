@@ -55,8 +55,12 @@ const absl::Status* CreateNoSuchFieldError(cel::MemoryManager& manager,
 
 const absl::Status* CreateNoSuchFieldError(google::protobuf::Arena* arena,
                                            absl::string_view field) {
-  return Arena::Create<absl::Status>(
-      arena, absl::StatusCode::kNotFound,
+  return Arena::Create<absl::Status>(arena, CreateNoSuchFieldError(field));
+}
+
+absl::Status CreateNoSuchFieldError(absl::string_view field) {
+  return absl::Status(
+      absl::StatusCode::kNotFound,
       absl::StrCat(kErrNoSuchField, field.empty() ? "" : " : ", field));
 }
 

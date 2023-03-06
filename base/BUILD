@@ -105,6 +105,7 @@ cc_library(
         "//base/internal:data",
         "//base/internal:memory_manager",
         "//internal:no_destructor",
+        "//internal:rtti",
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:dynamic_annotations",

@@ -57,6 +57,8 @@ const absl::Status* CreateNoSuchFieldError(cel::MemoryManager& manager,
 const absl::Status* CreateNoSuchFieldError(google::protobuf::Arena* arena,
                                            absl::string_view field);
 
+absl::Status CreateNoSuchFieldError(absl::string_view field);
+
 const absl::Status* CreateNoSuchKeyError(cel::MemoryManager& manager,
                                          absl::string_view key);
 

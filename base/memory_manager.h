@@ -24,6 +24,7 @@
 #include "base/internal/data.h"
 #include "base/internal/memory_manager.h"
 #include "base/managed_memory.h"
+#include "internal/rtti.h"
 
 namespace cel {
 
@@ -32,6 +33,10 @@ class Allocator;
 class MemoryManager;
 class GlobalMemoryManager;
 class ArenaMemoryManager;
+
+namespace extensions {
+class ProtoMemoryManager;
+}
 
 // `MemoryManager` is an abstraction over memory management that supports
 // different allocation strategies.
@@ -91,6 +96,7 @@ class MemoryManager {
  private:
   friend class GlobalMemoryManager;
   friend class ArenaMemoryManager;
+  friend class extensions::ProtoMemoryManager;
   template <typename T>
   friend class Allocator;
 
@@ -108,12 +114,10 @@ class MemoryManager {
   // implementation.
   virtual void OwnDestructor(void* pointer, void (*destruct)(void*)) = 0;
 
+  virtual internal::TypeInfo TypeId() const { return internal::TypeInfo(); }
+
   const bool allocation_only_;
 };
-
-namespace extensions {
-class ProtoMemoryManager;
-}
 
 // Base class for all arena-based memory managers.
 class ArenaMemoryManager : public MemoryManager {

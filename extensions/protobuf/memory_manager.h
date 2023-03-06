@@ -20,10 +20,9 @@
 #include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
-#include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "base/memory_manager.h"
 #include "internal/casts.h"
+#include "internal/rtti.h"
 
 namespace cel::extensions {
 
@@ -32,6 +31,10 @@ namespace cel::extensions {
 // `google::protobuf::Arena` is still alive.
 class ProtoMemoryManager final : public ArenaMemoryManager {
  public:
+  static bool Is(const MemoryManager& manager) {
+    return manager.TypeId() == cel::internal::TypeId<ProtoMemoryManager>();
+  }
+
   // Passing a nullptr is highly discouraged, but supported for backwards
   // compatibility. If `arena` is a nullptr, `ProtoMemoryManager` acts like
   // `MemoryManager::Default()` and then must outlive all allocations.
@@ -54,6 +57,7 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
   //
   // Note: underlying arena may be null.
   static google::protobuf::Arena* CastToProtoArena(MemoryManager& manager) {
+    ABSL_ASSERT(Is(manager));
     return cel::internal::down_cast<ProtoMemoryManager&>(manager).arena();
   }
 
@@ -61,6 +65,10 @@ class ProtoMemoryManager final : public ArenaMemoryManager {
   void* Allocate(size_t size, size_t align) override;
 
   void OwnDestructor(void* pointer, void (*destruct)(void*)) override;
+
+  cel::internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeId<ProtoMemoryManager>();
+  }
 
   google::protobuf::Arena* const arena_;
 };

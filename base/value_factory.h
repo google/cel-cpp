@@ -54,12 +54,9 @@
 
 namespace cel {
 
-namespace interop_internal {
-absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
-    cel::ValueFactory& value_factory, absl::string_view input);
-absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
-    cel::ValueFactory& value_factory, absl::string_view input);
-}  // namespace interop_internal
+namespace base_internal {
+struct ValueFactoryAccess;
+}  // namespace base_internal
 
 class ValueFactory final {
  private:
@@ -232,6 +229,15 @@ class ValueFactory final {
   }
 
   template <typename T, typename... Args>
+  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
+      Handle<StructType>&& struct_type,
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<T>::template Make<
+        std::remove_const_t<T>>(memory_manager(), std::move(struct_type),
+                                std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename... Args>
   EnableIfBaseOfT<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
       const Handle<ListType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -241,11 +247,27 @@ class ValueFactory final {
   }
 
   template <typename T, typename... Args>
+  EnableIfBaseOfT<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
+      Handle<ListType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<T>::template Make<
+        std::remove_const_t<T>>(memory_manager(), std::move(type),
+                                std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename... Args>
   EnableIfBaseOfT<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
       const Handle<MapType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
         std::remove_const_t<T>>(memory_manager(), type,
+                                std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename... Args>
+  EnableIfBaseOfT<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
+      Handle<MapType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<T>::template Make<
+        std::remove_const_t<T>>(memory_manager(), std::move(type),
                                 std::forward<Args>(args)...);
   }
 
@@ -277,12 +299,7 @@ class ValueFactory final {
  private:
   friend class BytesValue;
   friend class StringValue;
-  friend absl::StatusOr<Handle<StringValue>>
-  interop_internal::CreateStringValueFromView(cel::ValueFactory& value_factory,
-                                              absl::string_view input);
-  friend absl::StatusOr<Handle<BytesValue>>
-  interop_internal::CreateBytesValueFromView(cel::ValueFactory& value_factory,
-                                             absl::string_view input);
+  friend struct base_internal::ValueFactoryAccess;
 
   Handle<BytesValue> GetEmptyBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -293,6 +310,26 @@ class ValueFactory final {
 
   absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<Handle<BytesValue>> CreateMemberBytesValue(
+      absl::string_view value,
+      const Value* owner) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    if (value.empty()) {
+      return GetEmptyBytesValue();
+    }
+    return base_internal::HandleFactory<BytesValue>::template Make<
+        base_internal::InlinedStringViewBytesValue>(value, owner);
+  }
+
+  absl::StatusOr<Handle<StringValue>> CreateMemberStringValue(
+      absl::string_view value,
+      const Value* owner) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    if (value.empty()) {
+      return GetEmptyStringValue();
+    }
+    return base_internal::HandleFactory<StringValue>::template Make<
+        base_internal::InlinedStringViewStringValue>(value, owner);
+  }
 
   TypeManager& type_manager_;
 };
@@ -353,6 +390,9 @@ class TypedStructValueFactory final {
   const Handle<StructType>& struct_type_;
 };
 
+// -----------------------------------------------------------------------------
+// Implementation details
+
 namespace base_internal {
 
 inline Handle<BoolValue> ValueTraits<BoolValue>::Wrap(
@@ -384,6 +424,20 @@ inline Handle<TimestampValue> ValueTraits<TimestampValue>::Wrap(
     ValueFactory& value_factory, absl::Time value) {
   return value_factory.CreateUncheckedTimestampValue(value);
 }
+
+struct ValueFactoryAccess {
+  static absl::StatusOr<Handle<BytesValue>> CreateMemberBytesValue(
+      ValueFactory& value_factory, absl::string_view value,
+      const Value* owner) {
+    return value_factory.CreateMemberBytesValue(value, owner);
+  }
+
+  static absl::StatusOr<Handle<StringValue>> CreateMemberStringValue(
+      ValueFactory& value_factory, absl::string_view value,
+      const Value* owner) {
+    return value_factory.CreateMemberStringValue(value, owner);
+  }
+};
 
 }  // namespace base_internal
 

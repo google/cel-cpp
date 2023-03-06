@@ -26,9 +26,8 @@ cc_library(
     deps = [
         "//base:memory_manager",
         "//internal:casts",
+        "//internal:rtti",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -120,6 +119,48 @@ cc_test(
         "//base:memory_manager",
         "//base:type",
         "//internal:testing",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "value",
+    srcs = ["struct_value.cc"],
+    hdrs = ["struct_value.h"],
+    deps = [
+        ":memory_manager",
+        ":type",
+        "//base:value",
+        "//eval/internal:errors",
+        "//eval/internal:interop",
+        "//internal:casts",
+        "//internal:rtti",
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "value_test",
+    srcs = [
+        "struct_value_test.cc",
+    ],
+    deps = [
+        ":type",
+        ":value",
+        "//base:memory_manager",
+        "//base:type",
+        "//base:value",
+        "//base/internal:memory_manager_testing",
+        "//internal:testing",
+        "@com_google_absl//absl/types:optional",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
