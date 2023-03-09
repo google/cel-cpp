@@ -16,6 +16,9 @@
 
 #include <utility>
 
+#include "google/protobuf/duration.pb.h"
+#include "google/protobuf/timestamp.pb.h"
+#include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/memory_manager.h"
@@ -290,6 +293,50 @@ TEST_P(ProtoStructValueTest, StringHasField) {
               IsOkAndHolds(Eq(true)));
 }
 
+TEST_P(ProtoStructValueTest, DurationHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(
+                  type_manager, ProtoStructType::FieldId("single_duration")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(value_factory,
+                               CreateTestMessage([](TestAllTypes& message) {
+                                 message.mutable_single_duration();
+                               })));
+  EXPECT_THAT(value_with->HasField(type_manager,
+                                   ProtoStructType::FieldId("single_duration")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, TimestampHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(
+                  type_manager, ProtoStructType::FieldId("single_timestamp")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(value_factory,
+                               CreateTestMessage([](TestAllTypes& message) {
+                                 message.mutable_single_timestamp();
+                               })));
+  EXPECT_THAT(value_with->HasField(
+                  type_manager, ProtoStructType::FieldId("single_timestamp")),
+              IsOkAndHolds(Eq(true)));
+}
+
 TEST_P(ProtoStructValueTest, EnumHasField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
@@ -529,6 +576,50 @@ TEST_P(ProtoStructValueTest, StringListHasField) {
                                })));
   EXPECT_THAT(value_with->HasField(type_manager,
                                    ProtoStructType::FieldId("repeated_string")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, DurationListHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(
+                  type_manager, ProtoStructType::FieldId("repeated_duration")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.add_repeated_duration()->set_seconds(1);
+          })));
+  EXPECT_THAT(value_with->HasField(
+                  type_manager, ProtoStructType::FieldId("repeated_duration")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, TimestampListHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(
+                  type_manager, ProtoStructType::FieldId("repeated_timestamp")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.add_repeated_timestamp()->set_seconds(1);
+          })));
+  EXPECT_THAT(value_with->HasField(
+                  type_manager, ProtoStructType::FieldId("repeated_timestamp")),
               IsOkAndHolds(Eq(true)));
 }
 
@@ -797,6 +888,57 @@ TEST_P(ProtoStructValueTest, StringGetField) {
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("single_string")));
   EXPECT_EQ(field.As<StringValue>()->ToString(), "foo");
+}
+
+TEST_P(ProtoStructValueTest, DurationGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(value_factory,
+                              ProtoStructType::FieldId("single_duration")));
+  EXPECT_EQ(field.As<DurationValue>()->value(), absl::ZeroDuration());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.mutable_single_duration()->set_seconds(1);
+          })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory,
+                                  ProtoStructType::FieldId("single_duration")));
+  EXPECT_EQ(field.As<DurationValue>()->value(), absl::Seconds(1));
+}
+
+TEST_P(ProtoStructValueTest, TimestampGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(value_factory,
+                              ProtoStructType::FieldId("single_timestamp")));
+  EXPECT_EQ(field.As<TimestampValue>()->value(), absl::UnixEpoch());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.mutable_single_timestamp()->set_seconds(1);
+          })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(
+                 value_factory, ProtoStructType::FieldId("single_timestamp")));
+  EXPECT_EQ(field.As<TimestampValue>()->value(),
+            absl::UnixEpoch() + absl::Seconds(1));
 }
 
 TEST_P(ProtoStructValueTest, EnumGetField) {
@@ -1202,6 +1344,85 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
   EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
 }
 
+TEST_P(ProtoStructValueTest, DurationListGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(value_factory,
+                              ProtoStructType::FieldId("repeated_duration")));
+  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_EQ(field.As<ListValue>()->size(), 0);
+  EXPECT_TRUE(field.As<ListValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "[]");
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.add_repeated_duration()->set_seconds(1);
+            message.add_repeated_duration()->set_seconds(2);
+          })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(
+                 value_factory, ProtoStructType::FieldId("repeated_duration")));
+  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_EQ(field.As<ListValue>()->size(), 2);
+  EXPECT_FALSE(field.As<ListValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "[1s, 2s]");
+  ASSERT_OK_AND_ASSIGN(auto field_value,
+                       field.As<ListValue>()->Get(value_factory, 0));
+  EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(1));
+  ASSERT_OK_AND_ASSIGN(field_value,
+                       field.As<ListValue>()->Get(value_factory, 1));
+  EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(2));
+}
+
+TEST_P(ProtoStructValueTest, TimestampListGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value_without,
+      ProtoStructValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(value_factory,
+                              ProtoStructType::FieldId("repeated_timestamp")));
+  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_EQ(field.As<ListValue>()->size(), 0);
+  EXPECT_TRUE(field.As<ListValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "[]");
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoStructValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.add_repeated_timestamp()->set_seconds(1);
+            message.add_repeated_timestamp()->set_seconds(2);
+          })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
+                                                     "repeated_timestamp")));
+  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_EQ(field.As<ListValue>()->size(), 2);
+  EXPECT_FALSE(field.As<ListValue>()->empty());
+  EXPECT_EQ(field->DebugString(),
+            "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
+  ASSERT_OK_AND_ASSIGN(auto field_value,
+                       field.As<ListValue>()->Get(value_factory, 0));
+  EXPECT_EQ(field_value.As<TimestampValue>()->value(),
+            absl::UnixEpoch() + absl::Seconds(1));
+  ASSERT_OK_AND_ASSIGN(field_value,
+                       field.As<ListValue>()->Get(value_factory, 1));
+  EXPECT_EQ(field_value.As<TimestampValue>()->value(),
+            absl::UnixEpoch() + absl::Seconds(2));
+}
+
 TEST_P(ProtoStructValueTest, EnumListGetField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
@@ -1309,6 +1530,8 @@ TEST_P(ProtoStructValueTest, DebugString) {
             message.set_single_string("foo");
             message.set_standalone_enum(TestAllTypes::BAR);
             message.mutable_standalone_message()->set_bb(1);
+            message.mutable_single_duration()->set_seconds(1);
+            message.mutable_single_timestamp()->set_seconds(1);
           })));
   EXPECT_EQ(
       value->DebugString(),
@@ -1320,7 +1543,8 @@ TEST_P(ProtoStructValueTest, DebugString) {
       "standalone_message: "
       "google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 1}, "
       "standalone_enum: "
-      "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR}");
+      "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
+      "single_duration: 1s, single_timestamp: 1970-01-01T00:00:01Z}");
 }
 
 TEST_P(ProtoStructValueTest, ListDebugString) {
@@ -1354,6 +1578,10 @@ TEST_P(ProtoStructValueTest, ListDebugString) {
             message.add_repeated_nested_enum(TestAllTypes::BAR);
             message.add_repeated_nested_message()->set_bb(1);
             message.add_repeated_nested_message()->set_bb(2);
+            message.add_repeated_duration()->set_seconds(1);
+            message.add_repeated_duration()->set_seconds(2);
+            message.add_repeated_timestamp()->set_seconds(1);
+            message.add_repeated_timestamp()->set_seconds(2);
           })));
   EXPECT_EQ(
       value->DebugString(),
@@ -1367,7 +1595,9 @@ TEST_P(ProtoStructValueTest, ListDebugString) {
       "google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}], "
       "repeated_nested_enum: "
       "[google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
-      "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR]}");
+      "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR], repeated_"
+      "duration: [1s, 2s], repeated_timestamp: [1970-01-01T00:00:01Z, "
+      "1970-01-01T00:00:02Z]}");
 }
 
 TEST_P(ProtoStructValueTest, StaticValue) {

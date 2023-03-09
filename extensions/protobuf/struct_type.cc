@@ -89,7 +89,9 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
         return absl::InternalError(absl::StrCat(
             "Type implementation missing for \"", desc->full_name(), "\""));
       }
-      if (ABSL_PREDICT_FALSE(!(*type).Is<ProtoStructType>())) {
+      if (ABSL_PREDICT_FALSE(!((*type).Is<ProtoStructType>() ||
+                               (*type).Is<DurationType>() ||
+                               (*type).Is<TimestampType>()))) {
         // All types present in protocol buffer messages should either be
         // appropriate builtin CEL types or other protocol buffer types. In
         // theory someone could resolve this to their custom non protocol buffer

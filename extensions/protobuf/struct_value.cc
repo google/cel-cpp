@@ -25,6 +25,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/time.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
@@ -38,6 +39,7 @@
 #include "eval/internal/interop.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "internal/unreachable.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/reflection.h"
@@ -159,6 +161,75 @@ google::protobuf::Message* ProtoStructValue::value(google::protobuf::Arena& aren
 }
 
 namespace {
+
+absl::StatusOr<absl::Duration> AbslDurationFromProto(
+    const google::protobuf::Message& message) {
+  const auto* desc = message.GetDescriptor();
+  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing descriptor"));
+  }
+  const auto* reflect = message.GetReflection();
+  if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing reflection"));
+  }
+  // seconds is field number 1 on google.protobuf.Duration and
+  // google.protobuf.Timestamp.
+  const auto* seconds_field = desc->FindFieldByNumber(1);
+  if (ABSL_PREDICT_FALSE(seconds_field == nullptr)) {
+    return absl::InternalError(absl::StrCat(
+        message.GetTypeName(), " missing seconds field descriptor"));
+  }
+  if (ABSL_PREDICT_FALSE(seconds_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_INT64)) {
+    return absl::InternalError(absl::StrCat(
+        message.GetTypeName(), " has unexpected seconds field type: ",
+        seconds_field->cpp_type_name()));
+  }
+  // nanos is field number 2 on google.protobuf.Duration and
+  // google.protobuf.Timestamp.
+  const auto* nanos_field = desc->FindFieldByNumber(2);
+  if (ABSL_PREDICT_FALSE(nanos_field == nullptr)) {
+    return absl::InternalError(
+        absl::StrCat(message.GetTypeName(), " missing nanos field descriptor"));
+  }
+  if (ABSL_PREDICT_FALSE(nanos_field->cpp_type() !=
+                         google::protobuf::FieldDescriptor::CPPTYPE_INT32)) {
+    return absl::InternalError(absl::StrCat(
+        message.GetTypeName(),
+        " has unexpected nanos field type: ", nanos_field->cpp_type_name()));
+  }
+  return absl::Seconds(reflect->GetInt64(message, seconds_field)) +
+         absl::Nanoseconds(reflect->GetInt32(message, nanos_field));
+}
+
+absl::StatusOr<absl::Duration> AbslDurationFromDurationProto(
+    const google::protobuf::Message& message) {
+  return AbslDurationFromProto(message);
+}
+
+absl::StatusOr<absl::Time> AbslTimeFromTimestampProto(
+    const google::protobuf::Message& message) {
+  CEL_ASSIGN_OR_RETURN(auto duration, AbslDurationFromProto(message));
+  return absl::UnixEpoch() + duration;
+}
+
+std::string DurationValueDebugStringFromProto(const google::protobuf::Message& message) {
+  auto duration_or_status = AbslDurationFromDurationProto(message);
+  if (ABSL_PREDICT_FALSE(!duration_or_status.ok())) {
+    return std::string("**duration**");
+  }
+  return DurationValue::DebugString(*duration_or_status);
+}
+
+std::string TimestampValueDebugStringFromProto(const google::protobuf::Message& message) {
+  auto time_or_status = AbslTimeFromTimestampProto(message);
+  if (ABSL_PREDICT_FALSE(!time_or_status.ok())) {
+    return std::string("**timestamp**");
+  }
+  return TimestampValue::DebugString(*time_or_status);
+}
 
 template <typename T, typename P>
 class ParsedProtoListValue;
@@ -416,6 +487,100 @@ class ParsedProtoListValue<StringValue, std::string>
 };
 
 template <>
+class ParsedProtoListValue<DurationValue, google::protobuf::Message>
+    : public CEL_LIST_VALUE_CLASS {
+ public:
+  ParsedProtoListValue(Handle<ListType> type,
+                       google::protobuf::RepeatedFieldRef<google::protobuf::Message> fields)
+      : CEL_LIST_VALUE_CLASS(std::move(type)), fields_(std::move(fields)) {}
+
+  std::string DebugString() const final {
+    std::string out;
+    out.push_back('[');
+    auto field = fields_.begin();
+    if (field != fields_.end()) {
+      out.append(DurationValueDebugStringFromProto(*field));
+      ++field;
+      for (; field != fields_.end(); ++field) {
+        out.append(", ");
+        out.append(DurationValueDebugStringFromProto(*field));
+      }
+    }
+    out.push_back(']');
+    return out;
+  }
+
+  size_t size() const final { return fields_.size(); }
+
+  bool empty() const final { return fields_.empty(); }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const final {
+    std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
+    CEL_ASSIGN_OR_RETURN(auto duration,
+                         AbslDurationFromDurationProto(fields_.Get(
+                             static_cast<int>(index), scratch.get())));
+    scratch.reset();
+    return value_factory.CreateUncheckedDurationValue(duration);
+  }
+
+ private:
+  internal::TypeInfo TypeId() const final {
+    return internal::TypeId<
+        ParsedProtoListValue<DurationValue, google::protobuf::Message>>();
+  }
+
+  const google::protobuf::RepeatedFieldRef<google::protobuf::Message> fields_;
+};
+
+template <>
+class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
+    : public CEL_LIST_VALUE_CLASS {
+ public:
+  ParsedProtoListValue(Handle<ListType> type,
+                       google::protobuf::RepeatedFieldRef<google::protobuf::Message> fields)
+      : CEL_LIST_VALUE_CLASS(std::move(type)), fields_(std::move(fields)) {}
+
+  std::string DebugString() const final {
+    std::string out;
+    out.push_back('[');
+    auto field = fields_.begin();
+    if (field != fields_.end()) {
+      out.append(TimestampValueDebugStringFromProto(*field));
+      ++field;
+      for (; field != fields_.end(); ++field) {
+        out.append(", ");
+        out.append(TimestampValueDebugStringFromProto(*field));
+      }
+    }
+    out.push_back(']');
+    return out;
+  }
+
+  size_t size() const final { return fields_.size(); }
+
+  bool empty() const final { return fields_.empty(); }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const final {
+    std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
+    CEL_ASSIGN_OR_RETURN(
+        auto time, AbslTimeFromTimestampProto(
+                       fields_.Get(static_cast<int>(index), scratch.get())));
+    scratch.reset();
+    return value_factory.CreateUncheckedTimestampValue(time);
+  }
+
+ private:
+  internal::TypeInfo TypeId() const final {
+    return internal::TypeId<
+        ParsedProtoListValue<TimestampValue, google::protobuf::Message>>();
+  }
+
+  const google::protobuf::RepeatedFieldRef<google::protobuf::Message> fields_;
+};
+
+template <>
 class ParsedProtoListValue<EnumValue, int32_t> : public CEL_LIST_VALUE_CLASS {
  public:
   ParsedProtoListValue(Handle<ListType> type,
@@ -598,6 +763,18 @@ void ProtoDebugStringSingular(std::string& out, const google::protobuf::Message&
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      if (field_desc->message_type()->full_name() ==
+          "google.protobuf.Duration") {
+        out.append(DurationValueDebugStringFromProto(
+            reflect->GetMessage(message, field_desc)));
+        break;
+      }
+      if (field_desc->message_type()->full_name() ==
+          "google.protobuf.Timestamp") {
+        out.append(TimestampValueDebugStringFromProto(
+            reflect->GetMessage(message, field_desc)));
+        break;
+      }
       out.append(ProtoStructValue::DebugString(
           reflect->GetMessage(message, field_desc)));
       break;
@@ -750,15 +927,26 @@ void ProtoDebugStringRepeated(std::string& out, const google::protobuf::Message&
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
+      using DebugStringer = std::string (*)(const google::protobuf::Message&);
+      DebugStringer debug_stringer;
+      if (field_desc->message_type()->full_name() ==
+          "google.protobuf.Duration") {
+        debug_stringer = DurationValueDebugStringFromProto;
+      } else if (field_desc->message_type()->full_name() ==
+                 "google.protobuf.Timestamp") {
+        debug_stringer = TimestampValueDebugStringFromProto;
+      } else {
+        debug_stringer = ProtoStructValue::DebugString;
+      }
       auto fields =
           reflect->GetRepeatedFieldRef<google::protobuf::Message>(message, field_desc);
       auto field = fields.begin();
       if (field != fields.end()) {
-        out.append(ProtoStructValue::DebugString(*field));
+        out.append((*debug_stringer)(*field));
         ++field;
         for (; field != fields.end(); ++field) {
           out.append(", ");
-          out.append(ProtoStructValue::DebugString(*field));
+          out.append((*debug_stringer)(*field));
         }
       }
     } break;
@@ -1208,17 +1396,54 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
-        return value_factory.CreateListValue<
-            ReffedParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>(
-            field.type.As<ListType>(),
-            reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(), &field_desc),
-            this);
-      } else {
-        return value_factory.CreateListValue<
-            ArenaParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>(
-            field.type.As<ListType>(),
-            reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(), &field_desc));
+      switch (field.type.As<ListType>()->element()->kind()) {
+        case Kind::kDuration:
+          if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
+            return value_factory.CreateListValue<
+                ReffedParsedProtoListValue<DurationValue, google::protobuf::Message>>(
+                field.type.As<ListType>(),
+                reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
+                                                             &field_desc),
+                this);
+          } else {
+            return value_factory.CreateListValue<
+                ArenaParsedProtoListValue<DurationValue, google::protobuf::Message>>(
+                field.type.As<ListType>(),
+                reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
+                                                             &field_desc));
+          }
+        case Kind::kTimestamp:
+          if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
+            return value_factory.CreateListValue<
+                ReffedParsedProtoListValue<TimestampValue, google::protobuf::Message>>(
+                field.type.As<ListType>(),
+                reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
+                                                             &field_desc),
+                this);
+          } else {
+            return value_factory.CreateListValue<
+                ArenaParsedProtoListValue<TimestampValue, google::protobuf::Message>>(
+                field.type.As<ListType>(),
+                reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
+                                                             &field_desc));
+          }
+        case Kind::kStruct:
+          if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
+            return value_factory.CreateListValue<
+                ReffedParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>(
+                field.type.As<ListType>(),
+                reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
+                                                             &field_desc),
+                this);
+          } else {
+            return value_factory.CreateListValue<
+                ArenaParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>(
+                field.type.As<ListType>(),
+                reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
+                                                             &field_desc));
+          }
+        default:
+          cel::internal::unreachable();
       }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
@@ -1302,9 +1527,26 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      return DynamicMemberParsedProtoStructValue::Create(
-          value_factory, field.type.As<ProtoStructType>(), this,
-          &(reflect.GetMessage(value(), &field_desc)));
+      switch (field.type->kind()) {
+        case Kind::kDuration: {
+          CEL_ASSIGN_OR_RETURN(auto duration,
+                               AbslDurationFromDurationProto(reflect.GetMessage(
+                                   value(), &field_desc, type()->factory_)));
+          return value_factory.CreateUncheckedDurationValue(duration);
+        }
+        case Kind::kTimestamp: {
+          CEL_ASSIGN_OR_RETURN(auto timestamp,
+                               AbslTimeFromTimestampProto(reflect.GetMessage(
+                                   value(), &field_desc, type()->factory_)));
+          return value_factory.CreateUncheckedTimestampValue(timestamp);
+        }
+        case Kind::kStruct:
+          return DynamicMemberParsedProtoStructValue::Create(
+              value_factory, field.type.As<ProtoStructType>(), this,
+              &(reflect.GetMessage(value(), &field_desc)));
+        default:
+          cel::internal::unreachable();
+      }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       if (field_desc.options().ctype() == google::protobuf::FieldOptions::CORD &&
           !field_desc.is_extension()) {

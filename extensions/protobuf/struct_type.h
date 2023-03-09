@@ -30,6 +30,9 @@ namespace cel::extensions {
 
 class ProtoTypeProvider;
 class ProtoStructValue;
+namespace proto_internal {
+class ParsedProtoStructValue;
+}
 
 class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
  private:
@@ -65,6 +68,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
  private:
   friend class ProtoTypeProvider;
   friend class ProtoStructValue;
+  friend class proto_internal::ParsedProtoStructValue;
   friend class cel::MemoryManager;
 
   ProtoStructType(const google::protobuf::Descriptor* descriptor,
