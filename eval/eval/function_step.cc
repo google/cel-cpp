@@ -316,6 +316,13 @@ absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
 
   const BaseActivation& activation = frame->activation();
   for (auto provider : providers_) {
+    // The LazyFunctionStep has so far only resolved by function shape, check
+    // that the runtime argument kinds agree with the specific descriptor for
+    // the provider candidates.
+    if (!ArgumentKindsMatch(*provider.descriptor, input_args)) {
+      continue;
+    }
+
     CEL_ASSIGN_OR_RETURN(auto overload,
                          provider.provider->GetFunction(matcher, activation));
 
