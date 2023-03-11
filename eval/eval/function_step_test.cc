@@ -1,14 +1,16 @@
 #include "eval/eval/function_step.h"
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
+#include "base/ast_internal.h"
+#include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/ident_step.h"
@@ -19,6 +21,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_function_result_set.h"
@@ -419,7 +422,6 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   Activation activation;
   CelFunctionRegistry registry;
   BuilderWarnings warnings;
-
   ASSERT_OK(
       registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3")));
   ASSERT_OK(activation.InsertFunction(
@@ -449,6 +451,65 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsInt64());
   EXPECT_THAT(value.Int64OrDie(), Eq(5));
+}
+
+TEST_P(FunctionStepTest, LazyFunctionOverloadingTest) {
+  ExecutionPath path;
+  Activation activation;
+  CelFunctionRegistry registry;
+  BuilderWarnings warnings;
+  auto floor_int = PortableUnaryFunctionAdapter<int64_t, int64_t>::Create(
+      "Floor", false, [](google::protobuf::Arena*, int64_t val) { return val; });
+  auto floor_double = PortableUnaryFunctionAdapter<int64_t, double>::Create(
+      "Floor", false,
+      [](google::protobuf::Arena*, double val) { return std::floor(val); });
+
+  ASSERT_OK(registry.RegisterLazyFunction(floor_int->descriptor()));
+  ASSERT_OK(activation.InsertFunction(std::move(floor_int)));
+  ASSERT_OK(registry.RegisterLazyFunction(floor_double->descriptor()));
+  ASSERT_OK(activation.InsertFunction(std::move(floor_double)));
+  ASSERT_OK(registry.Register(
+      PortableBinaryFunctionAdapter<bool, int64_t, int64_t>::Create(
+          "_<_", false, [](google::protobuf::Arena*, int64_t lhs, int64_t rhs) -> bool {
+            return lhs < rhs;
+          })));
+
+  cel::ast::internal::Constant lhs;
+  lhs.set_int64_value(20);
+  cel::ast::internal::Constant rhs;
+  rhs.set_double_value(21.9);
+
+  cel::ast::internal::Call call1;
+  call1.mutable_args().emplace_back();
+  call1.set_function("Floor");
+  cel::ast::internal::Call call2;
+  call2.mutable_args().emplace_back();
+  call2.set_function("Floor");
+
+  cel::ast::internal::Call lt_call;
+  lt_call.mutable_args().emplace_back();
+  lt_call.mutable_args().emplace_back();
+  lt_call.set_function("_<_");
+
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateConstValueStep(lhs, -1));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, CreateConstValueStep(rhs, -1));
+  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(lt_call, registry));
+
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+  path.push_back(std::move(step3));
+  path.push_back(std::move(step4));
+
+  std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
+
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsBool());
+  EXPECT_TRUE(value.BoolOrDie());
 }
 
 // Test situation when no overloads match input arguments during evaluation
