@@ -48,7 +48,7 @@
 
 namespace cel::extensions {
 
-namespace proto_internal {
+namespace protobuf_internal {
 
 namespace {
 
@@ -136,7 +136,7 @@ DynamicMemberParsedProtoStructValue::Create(ValueFactory& value_factory,
 
 }  // namespace
 
-}  // namespace proto_internal
+}  // namespace protobuf_internal
 
 std::unique_ptr<google::protobuf::Message> ProtoStructValue::value(
     google::protobuf::MessageFactory& message_factory) const {
@@ -586,11 +586,13 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
     out.push_back('[');
     auto field = fields_.begin();
     if (field != fields_.end()) {
-      out.append(proto_internal::ParsedProtoStructValue::DebugString(*field));
+      out.append(
+          protobuf_internal::ParsedProtoStructValue::DebugString(*field));
       ++field;
       for (; field != fields_.end(); ++field) {
         out.append(", ");
-        out.append(proto_internal::ParsedProtoStructValue::DebugString(*field));
+        out.append(
+            protobuf_internal::ParsedProtoStructValue::DebugString(*field));
       }
     }
     out.push_back(']');
@@ -608,7 +610,7 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
     if (&field != scratch.get()) {
       // Scratch was not used, we can avoid copying.
       scratch.reset();
-      return proto_internal::DynamicMemberParsedProtoStructValue::Create(
+      return protobuf_internal::DynamicMemberParsedProtoStructValue::Create(
           value_factory, type()->element().As<StructType>(), this, &field);
     }
     if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
@@ -621,13 +623,13 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
         message->CopyFrom(*scratch);
         scratch.reset();
         return value_factory.CreateStructValue<
-            proto_internal::ArenaDynamicParsedProtoStructValue>(
+            protobuf_internal::ArenaDynamicParsedProtoStructValue>(
             type()->element().As<ProtoStructType>(), message);
       }
     }
-    return value_factory
-        .CreateStructValue<proto_internal::HeapDynamicParsedProtoStructValue>(
-            type()->element().As<ProtoStructType>(), scratch.release());
+    return value_factory.CreateStructValue<
+        protobuf_internal::HeapDynamicParsedProtoStructValue>(
+        type()->element().As<ProtoStructType>(), scratch.release());
   }
 
  private:
@@ -725,7 +727,7 @@ void ProtoDebugStringSingular(std::string& out, const google::protobuf::Message&
             reflect->GetMessage(message, field_desc)));
         break;
       }
-      out.append(proto_internal::ParsedProtoStructValue::DebugString(
+      out.append(protobuf_internal::ParsedProtoStructValue::DebugString(
           reflect->GetMessage(message, field_desc)));
       break;
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
@@ -886,7 +888,7 @@ void ProtoDebugStringRepeated(std::string& out, const google::protobuf::Message&
                  "google.protobuf.Timestamp") {
         debug_stringer = TimestampValueDebugStringFromProto;
       } else {
-        debug_stringer = proto_internal::ParsedProtoStructValue::DebugString;
+        debug_stringer = protobuf_internal::ParsedProtoStructValue::DebugString;
       }
       auto fields =
           reflect->GetRepeatedFieldRef<google::protobuf::Message>(message, field_desc);
@@ -1003,7 +1005,7 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
         }
       }
       return value_factory.CreateStructValue<
-          proto_internal::ArenaDynamicParsedProtoStructValue>(type, value);
+          protobuf_internal::ArenaDynamicParsedProtoStructValue>(type, value);
     }
   }
   std::unique_ptr<google::protobuf::Message> value;
@@ -1028,10 +1030,8 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
           "cel: failed to deserialize protocol buffer message");
     }
   }
-  auto status_or_message =
-      value_factory
-          .CreateStructValue<proto_internal::HeapDynamicParsedProtoStructValue>(
-              type, value.get());
+  auto status_or_message = value_factory.CreateStructValue<
+      protobuf_internal::HeapDynamicParsedProtoStructValue>(type, value.get());
   if (ABSL_PREDICT_FALSE(!status_or_message.ok())) {
     return status_or_message.status();
   }
@@ -1084,7 +1084,7 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
         }
       }
       return value_factory.CreateStructValue<
-          proto_internal::ArenaDynamicParsedProtoStructValue>(type, value);
+          protobuf_internal::ArenaDynamicParsedProtoStructValue>(type, value);
     }
   }
   std::unique_ptr<google::protobuf::Message> value;
@@ -1115,10 +1115,8 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
           "cel: failed to deserialize protocol buffer message");
     }
   }
-  auto status_or_message =
-      value_factory
-          .CreateStructValue<proto_internal::HeapDynamicParsedProtoStructValue>(
-              type, value.get());
+  auto status_or_message = value_factory.CreateStructValue<
+      protobuf_internal::HeapDynamicParsedProtoStructValue>(type, value.get());
   if (ABSL_PREDICT_FALSE(!status_or_message.ok())) {
     return status_or_message.status();
   }
@@ -1126,7 +1124,7 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
   return std::move(status_or_message).value();
 }
 
-namespace proto_internal {
+namespace protobuf_internal {
 
 std::string ParsedProtoStructValue::DebugString(
     const google::protobuf::Message& message) {
@@ -1553,6 +1551,6 @@ absl::StatusOr<bool> ParsedProtoStructValue::HasField(
   return reflect->HasField(value(), field_desc);
 }
 
-}  // namespace proto_internal
+}  // namespace protobuf_internal
 
 }  // namespace cel::extensions

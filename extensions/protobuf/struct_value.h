@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_STRUCT_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_STRUCT_VALUE_H_
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -141,7 +140,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
 // -----------------------------------------------------------------------------
 // Implementation details
 
-namespace proto_internal {
+namespace protobuf_internal {
 
 // Base class of all implementations of `ProtoStructValue` that operate on
 // parsed protocol buffer messages.
@@ -265,7 +264,7 @@ class ArenaDynamicParsedProtoStructValue final
   }
 };
 
-}  // namespace proto_internal
+}  // namespace protobuf_internal
 
 template <typename T>
 inline ProtoStructValue::EnableIfDerivedMessage<
@@ -281,12 +280,12 @@ ProtoStructValue::Create(ValueFactory& value_factory, T&& value) {
       auto* arena_value = google::protobuf::Arena::CreateMessage<T>(arena);
       *arena_value = std::forward<T>(value);
       return value_factory.CreateStructValue<
-          proto_internal::ArenaDynamicParsedProtoStructValue>(std::move(type),
-                                                              arena_value);
+          protobuf_internal::ArenaDynamicParsedProtoStructValue>(
+          std::move(type), arena_value);
     }
   }
   return value_factory
-      .CreateStructValue<proto_internal::StaticParsedProtoStructValue<T>>(
+      .CreateStructValue<protobuf_internal::StaticParsedProtoStructValue<T>>(
           std::move(type), std::forward<T>(value));
 }
 

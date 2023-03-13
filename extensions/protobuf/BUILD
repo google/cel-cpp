@@ -127,10 +127,12 @@ cc_test(
 cc_library(
     name = "value",
     srcs = [
+        "enum_value.cc",
         "struct_value.cc",
         "value.cc",
     ],
     hdrs = [
+        "enum_value.h",
         "struct_value.h",
         "value.h",
     ],

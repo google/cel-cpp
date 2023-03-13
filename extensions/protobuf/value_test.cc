@@ -19,15 +19,19 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
+#include "extensions/protobuf/enum_value.h"
 #include "extensions/protobuf/internal/testing.h"
 #include "extensions/protobuf/type_provider.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "google/protobuf/generated_enum_reflection.h"
 
 namespace cel::extensions {
 namespace {
 
+using testing::Eq;
 using testing::EqualsProto;
+using testing::Optional;
 
 using TestAllTypes = ::google::api::expr::test::v1::proto3::TestAllTypes;
 
@@ -165,7 +169,13 @@ TEST_P(ProtoValueTest, Enum) {
   TestAllTypes::NestedEnum enum_proto = TestAllTypes::BAR;
   ASSERT_OK_AND_ASSIGN(auto enum_value,
                        ProtoValue::Create(value_factory, enum_proto));
-  EXPECT_EQ(enum_value->number(), static_cast<int64_t>(TestAllTypes::BAR));
+  EXPECT_TRUE(ProtoEnumValue::Is(enum_value));
+  EXPECT_EQ(
+      ProtoEnumValue::descriptor(enum_value),
+      google::protobuf::GetEnumDescriptor<TestAllTypes::NestedEnum>()->FindValueByNumber(
+          enum_proto));
+  EXPECT_THAT(ProtoEnumValue::value<TestAllTypes::NestedEnum>(enum_value),
+              Optional(Eq(enum_proto)));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueTest,
