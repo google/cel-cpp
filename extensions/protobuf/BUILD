@@ -126,9 +126,13 @@ cc_test(
 
 cc_library(
     name = "value",
-    srcs = ["struct_value.cc"],
+    srcs = [
+        "struct_value.cc",
+        "value.cc",
+    ],
     hdrs = [
         "struct_value.h",
+        "value.h",
     ],
     deps = [
         ":memory_manager",
@@ -136,6 +140,7 @@ cc_library(
         "//base:value",
         "//eval/internal:errors",
         "//eval/internal:interop",
+        "//extensions/protobuf/internal:time",
         "//internal:casts",
         "//internal:rtti",
         "//internal:status_macros",
@@ -144,6 +149,7 @@ cc_library(
         "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
@@ -155,14 +161,15 @@ cc_test(
     name = "value_test",
     srcs = [
         "struct_value_test.cc",
+        "value_test.cc",
     ],
     deps = [
         ":type",
         ":value",
-        "//base:memory_manager",
         "//base:type",
         "//base:value",
         "//base/internal:memory_manager_testing",
+        "//extensions/protobuf/internal:testing",
         "//internal:testing",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",

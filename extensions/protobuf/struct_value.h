@@ -39,6 +39,8 @@
 
 namespace cel::extensions {
 
+class ProtoValue;
+
 // ProtoStructValue is an implementation of StructValue using protocol buffer
 // messages. ProtoStructValue can represented parsed or
 // serialized protocol buffer messages. Currently only parsed protocol buffer
@@ -54,18 +56,6 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
 
  public:
   using CEL_STRUCT_VALUE_CLASS::DebugString;
-
-  static std::string DebugString(const google::protobuf::Message& message);
-
-  template <typename T>
-  static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructValue>>>
-  Create(ValueFactory& value_factory, T&& value);
-
-  static absl::StatusOr<Handle<ProtoStructValue>> Create(
-      ValueFactory& value_factory, const google::protobuf::Message& message);
-
-  static absl::StatusOr<Handle<ProtoStructValue>> Create(
-      ValueFactory& value_factory, google::protobuf::Message&& message);
 
   const Handle<ProtoStructType>& type() const {
     return CEL_STRUCT_VALUE_CLASS::type().As<ProtoStructType>();
@@ -131,6 +121,18 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
                                         google::protobuf::Arena* arena) const = 0;
 
  private:
+  friend class ProtoValue;
+
+  template <typename T>
+  static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructValue>>>
+  Create(ValueFactory& value_factory, T&& value);
+
+  static absl::StatusOr<Handle<ProtoStructValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::Message& message);
+
+  static absl::StatusOr<Handle<ProtoStructValue>> Create(
+      ValueFactory& value_factory, google::protobuf::Message&& message);
+
   internal::TypeInfo TypeId() const final {
     return internal::TypeId<ProtoStructValue>();
   }
@@ -145,6 +147,8 @@ namespace proto_internal {
 // parsed protocol buffer messages.
 class ParsedProtoStructValue : public ProtoStructValue {
  public:
+  static std::string DebugString(const google::protobuf::Message& message);
+
   std::string DebugString() const final;
 
  protected:

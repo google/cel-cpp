@@ -25,3 +25,32 @@ cc_library(
     hdrs = ["map_reflection.h"],
     deps = ["@com_google_protobuf//:protobuf"],
 )
+
+cc_library(
+    name = "testing",
+    testonly = True,
+    hdrs = ["testing.h"],
+    deps = [
+        "//base:memory_manager",
+        "//base/internal:memory_manager_testing",
+        "//extensions/protobuf:memory_manager",
+        "//internal:testing",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "time",
+    srcs = ["time.cc"],
+    hdrs = ["time.h"],
+    deps = [
+        "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

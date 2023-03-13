@@ -37,6 +37,7 @@
 #include "base/values/uint_value.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
+#include "extensions/protobuf/internal/time.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/unreachable.h"
@@ -162,61 +163,9 @@ google::protobuf::Message* ProtoStructValue::value(google::protobuf::Arena& aren
 
 namespace {
 
-absl::StatusOr<absl::Duration> AbslDurationFromProto(
-    const google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  const auto* reflect = message.GetReflection();
-  if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing reflection"));
-  }
-  // seconds is field number 1 on google.protobuf.Duration and
-  // google.protobuf.Timestamp.
-  const auto* seconds_field = desc->FindFieldByNumber(1);
-  if (ABSL_PREDICT_FALSE(seconds_field == nullptr)) {
-    return absl::InternalError(absl::StrCat(
-        message.GetTypeName(), " missing seconds field descriptor"));
-  }
-  if (ABSL_PREDICT_FALSE(seconds_field->cpp_type() !=
-                         google::protobuf::FieldDescriptor::CPPTYPE_INT64)) {
-    return absl::InternalError(absl::StrCat(
-        message.GetTypeName(), " has unexpected seconds field type: ",
-        seconds_field->cpp_type_name()));
-  }
-  // nanos is field number 2 on google.protobuf.Duration and
-  // google.protobuf.Timestamp.
-  const auto* nanos_field = desc->FindFieldByNumber(2);
-  if (ABSL_PREDICT_FALSE(nanos_field == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing nanos field descriptor"));
-  }
-  if (ABSL_PREDICT_FALSE(nanos_field->cpp_type() !=
-                         google::protobuf::FieldDescriptor::CPPTYPE_INT32)) {
-    return absl::InternalError(absl::StrCat(
-        message.GetTypeName(),
-        " has unexpected nanos field type: ", nanos_field->cpp_type_name()));
-  }
-  return absl::Seconds(reflect->GetInt64(message, seconds_field)) +
-         absl::Nanoseconds(reflect->GetInt32(message, nanos_field));
-}
-
-absl::StatusOr<absl::Duration> AbslDurationFromDurationProto(
-    const google::protobuf::Message& message) {
-  return AbslDurationFromProto(message);
-}
-
-absl::StatusOr<absl::Time> AbslTimeFromTimestampProto(
-    const google::protobuf::Message& message) {
-  CEL_ASSIGN_OR_RETURN(auto duration, AbslDurationFromProto(message));
-  return absl::UnixEpoch() + duration;
-}
-
 std::string DurationValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto duration_or_status = AbslDurationFromDurationProto(message);
+  auto duration_or_status =
+      protobuf_internal::AbslDurationFromDurationProto(message);
   if (ABSL_PREDICT_FALSE(!duration_or_status.ok())) {
     return std::string("**duration**");
   }
@@ -224,7 +173,7 @@ std::string DurationValueDebugStringFromProto(const google::protobuf::Message& m
 }
 
 std::string TimestampValueDebugStringFromProto(const google::protobuf::Message& message) {
-  auto time_or_status = AbslTimeFromTimestampProto(message);
+  auto time_or_status = protobuf_internal::AbslTimeFromTimestampProto(message);
   if (ABSL_PREDICT_FALSE(!time_or_status.ok())) {
     return std::string("**timestamp**");
   }
@@ -517,9 +466,10 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
   absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
-    CEL_ASSIGN_OR_RETURN(auto duration,
-                         AbslDurationFromDurationProto(fields_.Get(
-                             static_cast<int>(index), scratch.get())));
+    CEL_ASSIGN_OR_RETURN(
+        auto duration,
+        protobuf_internal::AbslDurationFromDurationProto(
+            fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
     return value_factory.CreateUncheckedDurationValue(duration);
   }
@@ -565,7 +515,7 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
-        auto time, AbslTimeFromTimestampProto(
+        auto time, protobuf_internal::AbslTimeFromTimestampProto(
                        fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
     return value_factory.CreateUncheckedTimestampValue(time);
@@ -636,11 +586,11 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
     out.push_back('[');
     auto field = fields_.begin();
     if (field != fields_.end()) {
-      out.append(ProtoStructValue::DebugString(*field));
+      out.append(proto_internal::ParsedProtoStructValue::DebugString(*field));
       ++field;
       for (; field != fields_.end(); ++field) {
         out.append(", ");
-        out.append(ProtoStructValue::DebugString(*field));
+        out.append(proto_internal::ParsedProtoStructValue::DebugString(*field));
       }
     }
     out.push_back(']');
@@ -775,7 +725,7 @@ void ProtoDebugStringSingular(std::string& out, const google::protobuf::Message&
             reflect->GetMessage(message, field_desc)));
         break;
       }
-      out.append(ProtoStructValue::DebugString(
+      out.append(proto_internal::ParsedProtoStructValue::DebugString(
           reflect->GetMessage(message, field_desc)));
       break;
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
@@ -936,7 +886,7 @@ void ProtoDebugStringRepeated(std::string& out, const google::protobuf::Message&
                  "google.protobuf.Timestamp") {
         debug_stringer = TimestampValueDebugStringFromProto;
       } else {
-        debug_stringer = ProtoStructValue::DebugString;
+        debug_stringer = proto_internal::ParsedProtoStructValue::DebugString;
       }
       auto fields =
           reflect->GetRepeatedFieldRef<google::protobuf::Message>(message, field_desc);
@@ -1176,7 +1126,10 @@ absl::StatusOr<Handle<ProtoStructValue>> ProtoStructValue::Create(
   return std::move(status_or_message).value();
 }
 
-std::string ProtoStructValue::DebugString(const google::protobuf::Message& message) {
+namespace proto_internal {
+
+std::string ParsedProtoStructValue::DebugString(
+    const google::protobuf::Message& message) {
   std::string out;
   out.append(message.GetTypeName());
   out.push_back('{');
@@ -1202,10 +1155,8 @@ std::string ProtoStructValue::DebugString(const google::protobuf::Message& messa
   return out;
 }
 
-namespace proto_internal {
-
 std::string ParsedProtoStructValue::DebugString() const {
-  return ProtoStructValue::DebugString(value());
+  return ParsedProtoStructValue::DebugString(value());
 }
 
 google::protobuf::Message* ParsedProtoStructValue::ValuePointer(
@@ -1529,15 +1480,17 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
       switch (field.type->kind()) {
         case Kind::kDuration: {
-          CEL_ASSIGN_OR_RETURN(auto duration,
-                               AbslDurationFromDurationProto(reflect.GetMessage(
-                                   value(), &field_desc, type()->factory_)));
+          CEL_ASSIGN_OR_RETURN(
+              auto duration,
+              protobuf_internal::AbslDurationFromDurationProto(
+                  reflect.GetMessage(value(), &field_desc, type()->factory_)));
           return value_factory.CreateUncheckedDurationValue(duration);
         }
         case Kind::kTimestamp: {
-          CEL_ASSIGN_OR_RETURN(auto timestamp,
-                               AbslTimeFromTimestampProto(reflect.GetMessage(
-                                   value(), &field_desc, type()->factory_)));
+          CEL_ASSIGN_OR_RETURN(
+              auto timestamp,
+              protobuf_internal::AbslTimeFromTimestampProto(
+                  reflect.GetMessage(value(), &field_desc, type()->factory_)));
           return value_factory.CreateUncheckedTimestampValue(timestamp);
         }
         case Kind::kStruct:
