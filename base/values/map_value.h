@@ -15,17 +15,15 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_MAP_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_MAP_VALUE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <string>
-#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -64,8 +62,11 @@ class MapValue : public Value {
 
   bool empty() const;
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const;
+  // Retrieves the value corresponding to the given key. If the key does not
+  // exist, an empty optional is returned. If the given key type is not
+  // compatible with the expected key type, an error is returned.
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const;
 
   absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
@@ -94,8 +95,9 @@ namespace base_internal {
 
 ABSL_ATTRIBUTE_WEAK size_t LegacyMapValueSize(uintptr_t impl);
 ABSL_ATTRIBUTE_WEAK bool LegacyMapValueEmpty(uintptr_t impl);
-ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> LegacyMapValueGet(
-    uintptr_t impl, ValueFactory& value_factory, const Handle<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<absl::optional<Handle<Value>>>
+LegacyMapValueGet(uintptr_t impl, ValueFactory& value_factory,
+                  const Handle<Value>& key);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> LegacyMapValueHas(
     uintptr_t impl, const Handle<Value>& key);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
@@ -117,8 +119,8 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const;
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const;
 
   absl::StatusOr<bool> Has(const Handle<Value>& key) const;
 
@@ -160,8 +162,8 @@ class AbstractMapValue : public MapValue, public HeapData {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                            const Handle<Value>& key) const = 0;
+  virtual absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const = 0;
 
   virtual absl::StatusOr<bool> Has(const Handle<Value>& key) const = 0;
 

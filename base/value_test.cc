@@ -15,7 +15,6 @@
 #include "base/value.h"
 
 #include <algorithm>
-#include <cmath>
 #include <functional>
 #include <limits>
 #include <map>
@@ -284,14 +283,14 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   size_t size() const override { return entries_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     if (!key.Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
     auto entry = entries_.find(key.As<StringValue>()->ToString());
     if (entry == entries_.end()) {
-      return absl::NotFoundError("");
+      return absl::nullopt;
     }
     return value_factory.CreateIntValue(entry->second);
   }
@@ -332,7 +331,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 CEL_IMPLEMENT_MAP_VALUE(TestMapValue);
 
 template <typename T>
-Handle<T> Must(absl::StatusOr<Handle<T>> status_or_handle) {
+T Must(absl::StatusOr<T> status_or_handle) {
   return std::move(status_or_handle).value();
 }
 
@@ -2245,7 +2244,7 @@ TEST_P(MapValueTest, GetAndHas) {
               StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(map_value->Get(value_factory,
                              Must(value_factory.CreateStringValue("missing"))),
-              StatusIs(absl::StatusCode::kNotFound));
+              IsOkAndHolds(Eq(absl::nullopt)));
   EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(false));
 }

@@ -481,8 +481,8 @@ TEST(ValueInterop, MapFromLegacy) {
   EXPECT_THAT(value.As<MapValue>()->Has(entry_key), IsOkAndHolds(Eq(true)));
   ASSERT_OK_AND_ASSIGN(auto entry_value,
                        value.As<MapValue>()->Get(value_factory, entry_key));
-  EXPECT_TRUE(entry_value.Is<StringValue>());
-  EXPECT_EQ(entry_value.As<StringValue>()->ToString(), "foo");
+  EXPECT_TRUE((*entry_value).Is<StringValue>());
+  EXPECT_EQ((*entry_value).As<StringValue>()->ToString(), "foo");
 }
 
 class TestMapValue final : public CEL_MAP_VALUE_CLASS {
@@ -509,11 +509,11 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   bool empty() const override { return entries_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     auto existing = entries_.find(key.As<IntValue>()->value());
     if (existing == entries_.end()) {
-      return Handle<Value>();
+      return absl::nullopt;
     }
     return value_factory.CreateStringValue(existing->second);
   }

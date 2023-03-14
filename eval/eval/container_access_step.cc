@@ -1,6 +1,5 @@
 #include "eval/eval/container_access_step.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -131,28 +130,28 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
       if (key.Is<UintValue>()) {
-        CEL_ASSIGN_OR_RETURN(Handle<Value> maybe_value,
+        CEL_ASSIGN_OR_RETURN(auto maybe_value,
                              cel_map->Get(frame->value_factory(), key));
-        if (maybe_value) {
-          return maybe_value;
+        if (maybe_value.has_value()) {
+          return std::move(maybe_value).value();
         }
       }
       // double / int / uint -> int
       if (number->LosslessConvertibleToInt()) {
-        CEL_ASSIGN_OR_RETURN(Handle<Value> maybe_value,
+        CEL_ASSIGN_OR_RETURN(auto maybe_value,
                              cel_map->Get(frame->value_factory(),
                                           CreateIntValue(number->AsInt())));
-        if (maybe_value) {
-          return maybe_value;
+        if (maybe_value.has_value()) {
+          return std::move(maybe_value).value();
         }
       }
       // double / int -> uint
       if (number->LosslessConvertibleToUint()) {
-        CEL_ASSIGN_OR_RETURN(Handle<Value> maybe_value,
+        CEL_ASSIGN_OR_RETURN(auto maybe_value,
                              cel_map->Get(frame->value_factory(),
                                           CreateUintValue(number->AsUint())));
-        if (maybe_value) {
-          return maybe_value;
+        if (maybe_value.has_value()) {
+          return std::move(maybe_value).value();
         }
       }
       return CreateErrorValueFromView(
@@ -162,10 +161,10 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
 
   CEL_RETURN_IF_ERROR(CheckMapKeyType(key));
 
-  CEL_ASSIGN_OR_RETURN(Handle<Value> maybe_value,
+  CEL_ASSIGN_OR_RETURN(auto maybe_value,
                        cel_map->Get(frame->value_factory(), key));
-  if (maybe_value) {
-    return maybe_value;
+  if (maybe_value.has_value()) {
+    return std::move(maybe_value).value();
   }
 
   return CreateErrorValueFromView(

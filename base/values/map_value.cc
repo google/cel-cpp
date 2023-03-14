@@ -45,8 +45,8 @@ size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
 
 bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
 
-absl::StatusOr<Handle<Value>> MapValue::Get(ValueFactory& value_factory,
-                                            const Handle<Value>& key) const {
+absl::StatusOr<absl::optional<Handle<Value>>> MapValue::Get(
+    ValueFactory& value_factory, const Handle<Value>& key) const {
   return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
 }
 
@@ -77,7 +77,7 @@ size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
 
-absl::StatusOr<Handle<Value>> LegacyMapValue::Get(
+absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValue::Get(
     ValueFactory& value_factory, const Handle<Value>& key) const {
   return LegacyMapValueGet(impl_, value_factory, key);
 }

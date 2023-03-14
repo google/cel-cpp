@@ -235,15 +235,15 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     case CelValue::Type::kMap: {
       const auto& cel_map = arg.As<MapValue>();
       auto cel_field = CreateStringValueFromView(field_);
-      CEL_ASSIGN_OR_RETURN(Handle<Value> result,
+      CEL_ASSIGN_OR_RETURN(auto result,
                            cel_map->Get(frame->value_factory(), cel_field));
 
       // If object is not found, we return Error, per CEL specification.
-      if (!result) {
+      if (!result.has_value()) {
         result = CreateErrorValueFromView(
             CreateNoSuchKeyError(frame->memory_manager(), field_));
       }
-      frame->value_stack().PopAndPush(std::move(result),
+      frame->value_stack().PopAndPush(std::move(result).value(),
                                       std::move(result_trail));
       return absl::OkStatus();
     }

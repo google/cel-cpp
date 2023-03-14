@@ -216,12 +216,12 @@ class DynamicMapValue final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     static_cast<void>(value_factory);
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
-      return Handle<Value>();
+      return absl::nullopt;
     }
     return existing->second;
   }
@@ -292,11 +292,11 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     auto existing = storage_.find(key.As<K>()->value());
     if (existing == storage_.end()) {
-      return Handle<Value>();
+      return absl::nullopt;
     }
     return existing->second;
   }
@@ -363,11 +363,11 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
-      return Handle<Value>();
+      return absl::nullopt;
     }
     return ValueTraits<V>::Wrap(value_factory, existing->second);
   }
@@ -438,11 +438,11 @@ class StaticMapValue final : public AbstractMapValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    const Handle<Value>& key) const override {
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const override {
     auto existing = storage_.find(key.As<K>()->value());
     if (existing == storage_.end()) {
-      return Handle<Value>();
+      return absl::nullopt;
     }
     return ValueTraits<V>::Wrap(value_factory, existing->second);
   }

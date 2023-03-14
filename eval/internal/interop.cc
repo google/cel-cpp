@@ -14,14 +14,11 @@
 
 #include "eval/internal/interop.h"
 
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "google/protobuf/arena.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/message_lite.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -147,10 +144,10 @@ class LegacyCelMap final : public CelMap {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, modern_value.status()));
     }
-    if (!*modern_value) {
+    if (!(*modern_value).has_value()) {
       return absl::nullopt;
     }
-    auto legacy_value = ToLegacyValue(arena, *modern_value);
+    auto legacy_value = ToLegacyValue(arena, **modern_value);
     if (!legacy_value.ok()) {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, legacy_value.status()));
@@ -765,16 +762,15 @@ bool LegacyMapValueEmpty(uintptr_t impl) {
   return reinterpret_cast<const CelMap*>(impl)->empty();
 }
 
-absl::StatusOr<Handle<Value>> LegacyMapValueGet(uintptr_t impl,
-                                                ValueFactory& value_factory,
-                                                const Handle<Value>& key) {
+absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValueGet(
+    uintptr_t impl, ValueFactory& value_factory, const Handle<Value>& key) {
   auto* arena = extensions::ProtoMemoryManager::CastToProtoArena(
       value_factory.memory_manager());
   CEL_ASSIGN_OR_RETURN(auto legacy_key, ToLegacyValue(arena, key));
   auto legacy_value =
       reinterpret_cast<const CelMap*>(impl)->Get(arena, legacy_key);
   if (!legacy_value.has_value()) {
-    return Handle<Value>();
+    return absl::nullopt;
   }
   return FromLegacyValue(arena, *legacy_value);
 }
