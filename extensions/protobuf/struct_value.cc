@@ -21,11 +21,16 @@
 #include <vector>
 
 #include "google/protobuf/descriptor.pb.h"
+#include "absl/base/attributes.h"
+#include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/container/btree_set.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "base/allocator.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
@@ -37,11 +42,15 @@
 #include "base/values/uint_value.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
+#include "extensions/protobuf/enum_type.h"
+#include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/time.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "extensions/protobuf/struct_type.h"
 #include "internal/status_macros.h"
 #include "internal/unreachable.h"
 #include "google/protobuf/descriptor.h"
+#include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/reflection.h"
 #include "google/protobuf/repeated_ptr_field.h"
@@ -666,6 +675,440 @@ class ReffedParsedProtoListValue final : public ParsedProtoListValue<T, P> {
   const Value* owner_;
 };
 
+void ProtoDebugStringMapKey(std::string& out, const google::protobuf::MapKey& key) {
+  switch (key.type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      out.append(IntValue::DebugString(key.GetInt64Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      out.append(IntValue::DebugString(key.GetInt32Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      out.append(UintValue::DebugString(key.GetUInt64Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      out.append(UintValue::DebugString(key.GetUInt32Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+      out.append(StringValue::DebugString(key.GetStringValue()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      out.append(BoolValue::DebugString(key.GetBoolValue()));
+      break;
+    default:
+      // Unreachable because protobuf is extremely unlikely to introduce
+      // additional supported key types.
+      ABSL_UNREACHABLE();
+  }
+}
+
+void ProtoDebugStringMapValue(std::string& out,
+                              const google::protobuf::FieldDescriptor& field,
+                              const google::protobuf::MapValueConstRef& value) {
+  switch (field.cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      out.append(IntValue::DebugString(value.GetInt64Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      out.append(IntValue::DebugString(value.GetInt32Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      out.append(UintValue::DebugString(value.GetUInt64Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      out.append(UintValue::DebugString(value.GetUInt32Value()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+      if (field.type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+        out.append(BytesValue::DebugString(value.GetStringValue()));
+      } else {
+        out.append(StringValue::DebugString(value.GetStringValue()));
+      }
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      out.append(BoolValue::DebugString(value.GetBoolValue()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+      out.append(DoubleValue::DebugString(value.GetFloatValue()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+      out.append(DoubleValue::DebugString(value.GetDoubleValue()));
+      break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
+      const auto* desc = field.enum_type();
+      const auto* value_desc = desc->FindValueByNumber(value.GetEnumValue());
+      out.append(desc->full_name());
+      if (value_desc != nullptr) {
+        out.push_back('.');
+        out.append(value_desc->name());
+      } else {
+        out.push_back('(');
+        out.append(absl::StrCat(value.GetEnumValue()));
+        out.push_back(')');
+      }
+    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+      out.append(protobuf_internal::ParsedProtoStructValue::DebugString(
+          value.GetMessageValue()));
+      break;
+  }
+}
+
+void ProtoDebugStringMapValue(std::string& out,
+                              const google::protobuf::Reflection& reflect,
+                              const google::protobuf::Message& message,
+                              const google::protobuf::FieldDescriptor& field,
+                              const google::protobuf::FieldDescriptor& value_desc,
+                              const google::protobuf::MapKey& key) {
+  google::protobuf::MapValueConstRef value;
+  bool success =
+      protobuf_internal::LookupMapValue(reflect, message, field, key, &value);
+  ABSL_ASSERT(success);
+  ProtoDebugStringMapValue(out, value_desc, value);
+}
+
+void ProtoDebugStringMap(std::string& out, const google::protobuf::Message& message,
+                         const google::protobuf::Reflection* reflect,
+                         const google::protobuf::FieldDescriptor* field_desc) {
+  absl::btree_set<google::protobuf::MapKey> sorted_keys;
+  {
+    auto begin = protobuf_internal::MapBegin(*reflect, message, *field_desc);
+    auto end = protobuf_internal::MapEnd(*reflect, message, *field_desc);
+    for (; begin != end; ++begin) {
+      sorted_keys.insert(begin.GetKey());
+    }
+  }
+  const auto* value_desc = field_desc->message_type()->map_value();
+  out.push_back('{');
+  auto key = sorted_keys.begin();
+  auto key_end = sorted_keys.end();
+  if (key != key_end) {
+    ProtoDebugStringMapKey(out, *key);
+    out.append(": ");
+    ProtoDebugStringMapValue(out, *reflect, message, *field_desc, *value_desc,
+                             *key);
+    ++key;
+    for (; key != key_end; ++key) {
+      out.append(", ");
+      ProtoDebugStringMapKey(out, *key);
+      out.append(": ");
+      ProtoDebugStringMapValue(out, *reflect, message, *field_desc, *value_desc,
+                               *key);
+    }
+  }
+  out.push_back('}');
+}
+
+absl::StatusOr<Handle<Value>> FromProtoMapKey(ValueFactory& value_factory,
+                                              const google::protobuf::MapKey& key,
+                                              const Value* owner) {
+  switch (key.type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      return value_factory.CreateIntValue(key.GetInt64Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      return value_factory.CreateIntValue(key.GetInt32Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      return value_factory.CreateUintValue(key.GetUInt64Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      return value_factory.CreateUintValue(key.GetUInt32Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+
+      if (cel::base_internal::Metadata::IsReferenceCounted(*owner)) {
+        return cel::base_internal::ValueFactoryAccess::CreateMemberStringValue(
+            value_factory, key.GetStringValue(), owner);
+      }
+      return interop_internal::CreateStringValueFromView(key.GetStringValue());
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      return value_factory.CreateBoolValue(key.GetBoolValue());
+    default:
+      // Unreachable because protobuf is extremely unlikely to introduce
+      // additional supported key types.
+      ABSL_UNREACHABLE();
+  }
+}
+
+// Transform Value into MapKey. Requires that value is compatible with protocol
+// buffer map key.
+bool ToProtoMapKey(google::protobuf::MapKey& key, const Handle<Value>& value,
+                   const google::protobuf::FieldDescriptor& field) {
+  switch (value->kind()) {
+    case Kind::kBool:
+      key.SetBoolValue(value.As<BoolValue>()->value());
+      break;
+    case Kind::kInt: {
+      int64_t cpp_key = value.As<IntValue>()->value();
+      const auto* key_desc = field.message_type()->map_key();
+      switch (key_desc->cpp_type()) {
+        case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+          key.SetInt64Value(cpp_key);
+          break;
+        case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+          if (cpp_key < std::numeric_limits<int32_t>::min() ||
+              cpp_key > std::numeric_limits<int32_t>::max()) {
+            return false;
+          }
+          key.SetInt32Value(static_cast<int32_t>(cpp_key));
+          break;
+        default:
+          ABSL_UNREACHABLE();
+      }
+    } break;
+    case Kind::kUint: {
+      uint64_t cpp_key = value.As<UintValue>()->value();
+      const auto* key_desc = field.message_type()->map_key();
+      switch (key_desc->cpp_type()) {
+        case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+          key.SetUInt64Value(cpp_key);
+          break;
+        case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+          if (cpp_key > std::numeric_limits<uint32_t>::max()) {
+            return false;
+          }
+          key.SetUInt32Value(static_cast<uint32_t>(cpp_key));
+          break;
+        default:
+          ABSL_UNREACHABLE();
+      }
+    } break;
+    case Kind::kString:
+      key.SetStringValue(value.As<StringValue>()->ToString());
+      break;
+    default:
+      // Unreachable because protobuf is extremely unlikely to introduce
+      // additional supported key types.
+      ABSL_UNREACHABLE();
+  }
+  return true;
+}
+
+absl::StatusOr<Handle<Value>> FromProtoMapValue(
+    ValueFactory& value_factory, const google::protobuf::MapValueConstRef& value,
+    const google::protobuf::FieldDescriptor& field, const Value* owner) {
+  const auto* value_desc = field.message_type()->map_value();
+  switch (value_desc->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      return value_factory.CreateBoolValue(value.GetBoolValue());
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      return value_factory.CreateIntValue(value.GetInt64Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      return value_factory.CreateIntValue(value.GetInt32Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      return value_factory.CreateUintValue(value.GetUInt64Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      return value_factory.CreateUintValue(value.GetUInt32Value());
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+      return value_factory.CreateDoubleValue(value.GetFloatValue());
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+      return value_factory.CreateDoubleValue(value.GetDoubleValue());
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
+      if (value_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
+        if (cel::base_internal::Metadata::IsReferenceCounted(*owner)) {
+          return cel::base_internal::ValueFactoryAccess::CreateMemberBytesValue(
+              value_factory, value.GetStringValue(), owner);
+        }
+        return interop_internal::CreateBytesValueFromView(
+            value.GetStringValue());
+      } else {
+        if (cel::base_internal::Metadata::IsReferenceCounted(*owner)) {
+          return cel::base_internal::ValueFactoryAccess::
+              CreateMemberStringValue(value_factory, value.GetStringValue(),
+                                      owner);
+        }
+        return interop_internal::CreateStringValueFromView(
+            value.GetStringValue());
+      }
+    }
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
+      CEL_ASSIGN_OR_RETURN(auto type,
+                           ProtoEnumType::Resolve(value_factory.type_manager(),
+                                                  *value_desc->enum_type()));
+      return value_factory.CreateEnumValue(std::move(type),
+                                           value.GetEnumValue());
+    }
+    case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
+      CEL_ASSIGN_OR_RETURN(
+          auto type, ProtoStructType::Resolve(value_factory.type_manager(),
+                                              *value_desc->message_type()));
+      return protobuf_internal::DynamicMemberParsedProtoStructValue::Create(
+          value_factory, std::move(type), owner, &value.GetMessageValue());
+    }
+  }
+}
+
+class ParsedProtoMapValueKeysList : public CEL_LIST_VALUE_CLASS {
+ public:
+  ParsedProtoMapValueKeysList(
+      Handle<ListType> type,
+      std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys)
+      : CEL_LIST_VALUE_CLASS(std::move(type)), keys_(std::move(keys)) {}
+
+  std::string DebugString() const final {
+    std::string out;
+    out.push_back('[');
+    auto element = keys_.begin();
+    if (element != keys_.end()) {
+      ProtoDebugStringMapKey(out, *element);
+      ++element;
+      for (; element != keys_.end(); ++element) {
+        out.append(", ");
+        ProtoDebugStringMapKey(out, *element);
+      }
+    }
+    out.push_back(']');
+    return out;
+  }
+
+  size_t size() const final { return keys_.size(); }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const final {
+    return FromProtoMapKey(value_factory, keys_[index], this);
+  }
+
+ private:
+  internal::TypeInfo TypeId() const final {
+    return internal::TypeId<ParsedProtoMapValueKeysList>();
+  }
+
+  const std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys_;
+};
+
+class ArenaParsedProtoMapValueKeysList final
+    : public ParsedProtoMapValueKeysList {
+ public:
+  using ParsedProtoMapValueKeysList::ParsedProtoMapValueKeysList;
+};
+
+class ReffedParsedProtoMapValueKeysList final
+    : public ParsedProtoMapValueKeysList {
+ public:
+  ReffedParsedProtoMapValueKeysList(
+      Handle<ListType> type,
+      std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys,
+      const Value* owner)
+      : ParsedProtoMapValueKeysList(std::move(type), std::move(keys)),
+        owner_(owner) {
+    cel::base_internal::ValueMetadata::Ref(*owner_);
+  }
+
+  ~ReffedParsedProtoMapValueKeysList() override {
+    cel::base_internal::ValueMetadata::Unref(*owner_);
+  }
+
+ private:
+  const Value* const owner_;
+};
+
+class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
+ public:
+  ParsedProtoMapValue(Handle<MapType> type, const google::protobuf::Message& message,
+                      const google::protobuf::FieldDescriptor& field)
+      : CEL_MAP_VALUE_CLASS(std::move(type)),
+        message_(message),
+        field_(field) {}
+
+  std::string DebugString() const final {
+    std::string out;
+    ProtoDebugStringMap(out, message_, &reflection(), &field_);
+    return out;
+  }
+
+  size_t size() const final {
+    return protobuf_internal::MapSize(reflection(), message_, field_);
+  }
+
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      ValueFactory& value_factory, const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "map key type mismatch, expected: ", type()->key()->DebugString(),
+          " got: ", key->type()->DebugString()));
+    }
+    google::protobuf::MapKey proto_key;
+    if (ABSL_PREDICT_FALSE(!ToProtoMapKey(proto_key, key, field_))) {
+      return absl::InvalidArgumentError(
+          "unable to convert value to protocol buffer map key");
+    }
+    google::protobuf::MapValueConstRef proto_value;
+    if (!protobuf_internal::LookupMapValue(reflection(), message_, field_,
+                                           proto_key, &proto_value)) {
+      return absl::nullopt;
+    }
+    return FromProtoMapValue(value_factory, proto_value, field_, this);
+  }
+
+  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
+    if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "map key type mismatch, expected: ", type()->key()->DebugString(),
+          " got: ", type()->value()->DebugString()));
+    }
+    google::protobuf::MapKey proto_key;
+    if (ABSL_PREDICT_FALSE(!ToProtoMapKey(proto_key, key, field_))) {
+      return absl::InvalidArgumentError(
+          "unable to convert value to protocol buffer map key");
+    }
+    return protobuf_internal::ContainsMapKey(reflection(), message_, field_,
+                                             proto_key);
+  }
+
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      ValueFactory& value_factory) const final {
+    CEL_ASSIGN_OR_RETURN(
+        auto list_type,
+        value_factory.type_factory().CreateListType(type()->key()));
+    std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys(
+        Allocator<google::protobuf::MapKey>(value_factory.memory_manager()));
+    keys.reserve(size());
+    auto begin = protobuf_internal::MapBegin(reflection(), message_, field_);
+    auto end = protobuf_internal::MapEnd(reflection(), message_, field_);
+    for (; begin != end; ++begin) {
+      keys.push_back(begin.GetKey());
+    }
+    if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
+      return value_factory.CreateListValue<ReffedParsedProtoMapValueKeysList>(
+          std::move(list_type), std::move(keys), this);
+    }
+    return value_factory.CreateListValue<ArenaParsedProtoMapValueKeysList>(
+        std::move(list_type), std::move(keys));
+  }
+
+ private:
+  internal::TypeInfo TypeId() const final {
+    return internal::TypeId<ParsedProtoMapValue>();
+  }
+
+  const google::protobuf::Reflection& reflection() const {
+    return *ABSL_DIE_IF_NULL(message_.GetReflection());  // Crash OK
+  }
+
+  const google::protobuf::Message& message_;
+  const google::protobuf::FieldDescriptor& field_;
+};
+
+class ArenaParsedProtoMapValue final : public ParsedProtoMapValue {
+ public:
+  using ParsedProtoMapValue::ParsedProtoMapValue;
+};
+
+class ReffedParsedProtoMapValue final : public ParsedProtoMapValue {
+ public:
+  ReffedParsedProtoMapValue(Handle<MapType> type,
+                            const google::protobuf::Message& message,
+                            const google::protobuf::FieldDescriptor& field,
+                            const Value* owner)
+      : ParsedProtoMapValue(std::move(type), message, field), owner_(owner) {
+    cel::base_internal::ValueMetadata::Ref(*owner_);
+  }
+
+  ~ReffedParsedProtoMapValue() override {
+    cel::base_internal::ValueMetadata::Unref(*owner_);
+  }
+
+ private:
+  const Value* owner_;
+};
+
 void ProtoDebugStringSingular(std::string& out, const google::protobuf::Message& message,
                               const google::protobuf::Reflection* reflect,
                               const google::protobuf::FieldDescriptor* field_desc) {
@@ -751,15 +1194,6 @@ void ProtoDebugStringSingular(std::string& out, const google::protobuf::Message&
       }
     } break;
   }
-}
-
-void ProtoDebugStringMap(std::string& out, const google::protobuf::Message& message,
-                         const google::protobuf::Reflection* reflect,
-                         const google::protobuf::FieldDescriptor* field_desc) {
-  out.append("**unimplemented**");
-  static_cast<void>(message);
-  static_cast<void>(reflect);
-  static_cast<void>(field_desc);
 }
 
 void ProtoDebugStringRepeated(std::string& out, const google::protobuf::Message& message,
@@ -1218,9 +1652,13 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetMapField(
     ValueFactory& value_factory, const StructType::Field& field,
     const google::protobuf::Reflection& reflect,
     const google::protobuf::FieldDescriptor& field_desc) const {
-  return absl::UnimplementedError(
-      "cel: access to protocol buffer message map fields is not yet "
-      "implemented");
+  if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
+    return value_factory.CreateMapValue<ReffedParsedProtoMapValue>(
+        field.type.As<MapType>(), value(), field_desc, this);
+  } else {
+    return value_factory.CreateMapValue<ArenaParsedProtoMapValue>(
+        field.type.As<MapType>(), value(), field_desc);
+  }
 }
 
 absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(

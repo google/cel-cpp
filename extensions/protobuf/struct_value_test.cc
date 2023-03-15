@@ -18,6 +18,7 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "base/internal/memory_manager_testing.h"
@@ -40,6 +41,7 @@ namespace {
 
 using testing::Eq;
 using testing::EqualsProto;
+using testing::status::CanonicalStatusIs;
 using cel::internal::IsOkAndHolds;
 
 using TestAllTypes = ::google::api::expr::test::v1::proto3::TestAllTypes;
@@ -56,6 +58,27 @@ TestAllTypes CreateTestMessage(Func&& func) {
   TestAllTypes message;
   std::forward<Func>(func)(message);
   return message;
+}
+
+TestAllTypes::NestedMessage CreateTestNestedMessage(int bb) {
+  TestAllTypes::NestedMessage nested_message;
+  nested_message.set_bb(bb);
+  return nested_message;
+}
+
+template <typename T>
+Handle<T> Must(Handle<T> handle) {
+  return handle;
+}
+
+template <typename T>
+Handle<T> Must(absl::optional<T> optional) {
+  return std::move(optional).value();
+}
+
+template <typename T>
+T Must(absl::StatusOr<T> status_or) {
+  return Must(std::move(status_or).value());
 }
 
 TEST_P(ProtoStructValueTest, BoolHasField) {
@@ -1419,6 +1442,1117 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
   message.set_bb(2);
   EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
               EqualsProto(message));
+}
+
+template <typename MutableMapField, typename Pair>
+void TestMapHasField(MemoryManager& memory_manager,
+                     absl::string_view map_field_name,
+                     MutableMapField mutable_map_field, Pair&& pair) {
+  TypeFactory type_factory(memory_manager);
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(type_manager,
+                                      ProtoStructType::FieldId(map_field_name)),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(
+          value_factory, CreateTestMessage([&mutable_map_field,
+                                            pair = std::forward<Pair>(pair)](
+                                               TestAllTypes& message) mutable {
+            (message.*mutable_map_field)()->insert(std::forward<Pair>(pair));
+          })));
+  EXPECT_THAT(value_with->HasField(type_manager,
+                                   ProtoStructType::FieldId(map_field_name)),
+              IsOkAndHolds(Eq(true)));
+}
+
+template <typename T, typename MutableMapField, typename Creator,
+          typename Valuer, typename Pair, typename Key>
+void TestMapGetField(MemoryManager& memory_manager,
+                     absl::string_view map_field_name,
+                     absl::string_view debug_string,
+                     MutableMapField mutable_map_field, Creator creator,
+                     Valuer valuer, const Pair& pair1, const Pair& pair2,
+                     const Key& missing_key) {
+  TypeFactory type_factory(memory_manager);
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field, value_without->GetField(
+                      value_factory, ProtoStructType::FieldId(map_field_name)));
+  EXPECT_TRUE(field->Is<MapValue>());
+  EXPECT_EQ(field.As<MapValue>()->size(), 0);
+  EXPECT_TRUE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "{}");
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([&mutable_map_field, &pair1, &pair2](
+                                               TestAllTypes& message) mutable {
+                           (message.*mutable_map_field)()->insert(pair1);
+                           (message.*mutable_map_field)()->insert(pair2);
+                         })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory,
+                                  ProtoStructType::FieldId(map_field_name)));
+  EXPECT_TRUE(field->Is<MapValue>());
+  EXPECT_EQ(field.As<MapValue>()->size(), 2);
+  EXPECT_FALSE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field->DebugString(), debug_string);
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<MapValue>()->Get(value_factory,
+                                Must((value_factory.*creator)(pair1.first))));
+  if constexpr (std::is_same_v<T, ProtoStructValue>) {
+    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+                EqualsProto(pair1.second));
+  } else {
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair1.second);
+  }
+  EXPECT_THAT(
+      field.As<MapValue>()->Has(Must((value_factory.*creator)(pair1.first))),
+      IsOkAndHolds(Eq(true)));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<MapValue>()->Get(value_factory,
+                                Must((value_factory.*creator)(pair2.first))));
+  if constexpr (std::is_same_v<T, ProtoStructValue>) {
+    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+                EqualsProto(pair2.second));
+  } else {
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair2.second);
+  }
+  EXPECT_THAT(
+      field.As<MapValue>()->Has(Must((value_factory.*creator)(pair2.first))),
+      IsOkAndHolds(Eq(true)));
+  if constexpr (!std::is_null_pointer_v<Key>) {
+    EXPECT_THAT(field.As<MapValue>()->Get(
+                    value_factory, Must((value_factory.*creator)(missing_key))),
+                IsOkAndHolds(Eq(absl::nullopt)));
+  }
+  EXPECT_THAT(field.As<MapValue>()->Get(
+                  value_factory,
+                  value_factory.CreateErrorValue(absl::CancelledError())),
+              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(field.As<MapValue>()->Has(
+                  value_factory.CreateErrorValue(absl::CancelledError())),
+              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+  ASSERT_OK_AND_ASSIGN(auto keys,
+                       field.As<MapValue>()->ListKeys(value_factory));
+  EXPECT_EQ(keys->size(), 2);
+  EXPECT_FALSE(keys->empty());
+  EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
+  EXPECT_OK(keys->Get(value_factory, 0));
+}
+
+template <typename T, typename MutableMapField, typename Valuer, typename Pair,
+          typename Key>
+void TestStringMapGetField(MemoryManager& memory_manager,
+                           absl::string_view map_field_name,
+                           absl::string_view debug_string,
+                           MutableMapField mutable_map_field, Valuer valuer,
+                           const Pair& pair1, const Pair& pair2,
+                           const Key& missing_key) {
+  TypeFactory type_factory(memory_manager);
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field, value_without->GetField(
+                      value_factory, ProtoStructType::FieldId(map_field_name)));
+  EXPECT_TRUE(field->Is<MapValue>());
+  EXPECT_EQ(field.As<MapValue>()->size(), 0);
+  EXPECT_TRUE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "{}");
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([&mutable_map_field, &pair1, &pair2](
+                                               TestAllTypes& message) mutable {
+                           (message.*mutable_map_field)()->insert(pair1);
+                           (message.*mutable_map_field)()->insert(pair2);
+                         })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory,
+                                  ProtoStructType::FieldId(map_field_name)));
+  EXPECT_TRUE(field->Is<MapValue>());
+  EXPECT_EQ(field.As<MapValue>()->size(), 2);
+  EXPECT_FALSE(field.As<MapValue>()->empty());
+  EXPECT_EQ(field->DebugString(), debug_string);
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<MapValue>()->Get(
+          value_factory, Must(value_factory.CreateStringValue(pair1.first))));
+  if constexpr (std::is_same_v<T, ProtoStructValue>) {
+    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+                EqualsProto(pair1.second));
+  } else {
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair1.second);
+  }
+  EXPECT_THAT(field.As<MapValue>()->Has(
+                  Must(value_factory.CreateStringValue(pair1.first))),
+              IsOkAndHolds(Eq(true)));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<MapValue>()->Get(
+          value_factory, Must(value_factory.CreateStringValue(pair2.first))));
+  if constexpr (std::is_same_v<T, ProtoStructValue>) {
+    EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
+                EqualsProto(pair2.second));
+  } else {
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair2.second);
+  }
+  EXPECT_THAT(field.As<MapValue>()->Has(
+                  Must(value_factory.CreateStringValue(pair2.first))),
+              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      field.As<MapValue>()->Get(
+          value_factory, Must(value_factory.CreateStringValue(missing_key))),
+      IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(field.As<MapValue>()->Get(
+                  value_factory,
+                  value_factory.CreateErrorValue(absl::CancelledError())),
+              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+  EXPECT_THAT(field.As<MapValue>()->Has(
+                  value_factory.CreateErrorValue(absl::CancelledError())),
+              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+  ASSERT_OK_AND_ASSIGN(auto keys,
+                       field.As<MapValue>()->ListKeys(value_factory));
+  EXPECT_EQ(keys->size(), 2);
+  EXPECT_FALSE(keys->empty());
+  EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
+  EXPECT_OK(keys->Get(value_factory, 0));
+}
+
+TEST_P(ProtoStructValueTest, BoolBoolMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_bool",
+                  &TestAllTypes::mutable_map_bool_bool,
+                  std::make_pair(true, true));
+}
+
+TEST_P(ProtoStructValueTest, BoolInt32MapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_int32",
+                  &TestAllTypes::mutable_map_bool_int32,
+                  std::make_pair(true, 1));
+}
+
+TEST_P(ProtoStructValueTest, BoolInt64MapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_int64",
+                  &TestAllTypes::mutable_map_bool_int64,
+                  std::make_pair(true, 1));
+}
+
+TEST_P(ProtoStructValueTest, BoolUint32MapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_uint32",
+                  &TestAllTypes::mutable_map_bool_uint32,
+                  std::make_pair(true, 1u));
+}
+
+TEST_P(ProtoStructValueTest, BoolUint64MapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_uint64",
+                  &TestAllTypes::mutable_map_bool_uint64,
+                  std::make_pair(true, 1u));
+}
+
+TEST_P(ProtoStructValueTest, BoolFloatMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_float",
+                  &TestAllTypes::mutable_map_bool_float,
+                  std::make_pair(true, 1.0f));
+}
+
+TEST_P(ProtoStructValueTest, BoolDoubleMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_double",
+                  &TestAllTypes::mutable_map_bool_double,
+                  std::make_pair(true, 1.0));
+}
+
+TEST_P(ProtoStructValueTest, BoolBytesMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_bytes",
+                  &TestAllTypes::mutable_map_bool_bytes,
+                  std::make_pair(true, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, BoolStringMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_string",
+                  &TestAllTypes::mutable_map_bool_string,
+                  std::make_pair(true, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, BoolEnumMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_enum",
+                  &TestAllTypes::mutable_map_bool_enum,
+                  std::make_pair(true, TestAllTypes::BAR));
+}
+
+TEST_P(ProtoStructValueTest, BoolMessageMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_message",
+                  &TestAllTypes::mutable_map_bool_message,
+                  std::make_pair(true, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Int32BoolMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_bool",
+                  &TestAllTypes::mutable_map_int32_bool,
+                  std::make_pair(1, true));
+}
+
+TEST_P(ProtoStructValueTest, Int32Int32MapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_int32",
+                  &TestAllTypes::mutable_map_int32_int32, std::make_pair(1, 1));
+}
+
+TEST_P(ProtoStructValueTest, Int32Int64MapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_int64",
+                  &TestAllTypes::mutable_map_int32_int64, std::make_pair(1, 1));
+}
+
+TEST_P(ProtoStructValueTest, Int32Uint32MapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_uint32",
+                  &TestAllTypes::mutable_map_int32_uint32,
+                  std::make_pair(1, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Int32Uint64MapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_uint64",
+                  &TestAllTypes::mutable_map_int32_uint64,
+                  std::make_pair(1, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Int32FloatMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_float",
+                  &TestAllTypes::mutable_map_int32_float,
+                  std::make_pair(1, 1.0f));
+}
+
+TEST_P(ProtoStructValueTest, Int32DoubleMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_double",
+                  &TestAllTypes::mutable_map_int32_double,
+                  std::make_pair(1, 1.0));
+}
+
+TEST_P(ProtoStructValueTest, Int32BytesMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_bytes",
+                  &TestAllTypes::mutable_map_int32_bytes,
+                  std::make_pair(1, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Int32StringMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_string",
+                  &TestAllTypes::mutable_map_int32_string,
+                  std::make_pair(1, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Int32EnumMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_enum",
+                  &TestAllTypes::mutable_map_int32_enum,
+                  std::make_pair(1, TestAllTypes::BAR));
+}
+
+TEST_P(ProtoStructValueTest, Int32MessageMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_message",
+                  &TestAllTypes::mutable_map_int32_message,
+                  std::make_pair(1, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Int64BoolMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_bool",
+                  &TestAllTypes::mutable_map_int64_bool,
+                  std::make_pair(1, true));
+}
+
+TEST_P(ProtoStructValueTest, Int64Int32MapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_int32",
+                  &TestAllTypes::mutable_map_int64_int32, std::make_pair(1, 1));
+}
+
+TEST_P(ProtoStructValueTest, Int64Int64MapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_int64",
+                  &TestAllTypes::mutable_map_int64_int64, std::make_pair(1, 1));
+}
+
+TEST_P(ProtoStructValueTest, Int64Uint32MapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_uint32",
+                  &TestAllTypes::mutable_map_int64_uint32,
+                  std::make_pair(1, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Int64Uint64MapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_uint64",
+                  &TestAllTypes::mutable_map_int64_uint64,
+                  std::make_pair(1, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Int64FloatMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_float",
+                  &TestAllTypes::mutable_map_int64_float,
+                  std::make_pair(1, 1.0f));
+}
+
+TEST_P(ProtoStructValueTest, Int64DoubleMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_double",
+                  &TestAllTypes::mutable_map_int64_double,
+                  std::make_pair(1, 1.0));
+}
+
+TEST_P(ProtoStructValueTest, Int64BytesMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_bytes",
+                  &TestAllTypes::mutable_map_int64_bytes,
+                  std::make_pair(1, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Int64StringMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_string",
+                  &TestAllTypes::mutable_map_int64_string,
+                  std::make_pair(1, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Int64EnumMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_enum",
+                  &TestAllTypes::mutable_map_int64_enum,
+                  std::make_pair(1, TestAllTypes::BAR));
+}
+
+TEST_P(ProtoStructValueTest, Int64MessageMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_message",
+                  &TestAllTypes::mutable_map_int64_message,
+                  std::make_pair(1, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32BoolMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_bool",
+                  &TestAllTypes::mutable_map_uint32_bool,
+                  std::make_pair(1u, true));
+}
+
+TEST_P(ProtoStructValueTest, Uint32Int32MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_int32",
+                  &TestAllTypes::mutable_map_uint32_int32,
+                  std::make_pair(1u, 1));
+}
+
+TEST_P(ProtoStructValueTest, Uint32Int64MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_int64",
+                  &TestAllTypes::mutable_map_uint32_int64,
+                  std::make_pair(1u, 1));
+}
+
+TEST_P(ProtoStructValueTest, Uint32Uint32MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_uint32",
+                  &TestAllTypes::mutable_map_uint32_uint32,
+                  std::make_pair(1u, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Uint32Uint64MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_uint64",
+                  &TestAllTypes::mutable_map_uint32_uint64,
+                  std::make_pair(1u, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Uint32FloatMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_float",
+                  &TestAllTypes::mutable_map_uint32_float,
+                  std::make_pair(1u, 1.0f));
+}
+
+TEST_P(ProtoStructValueTest, Uint32DoubleMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_double",
+                  &TestAllTypes::mutable_map_uint32_double,
+                  std::make_pair(1u, 1.0));
+}
+
+TEST_P(ProtoStructValueTest, Uint32BytesMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_bytes",
+                  &TestAllTypes::mutable_map_uint32_bytes,
+                  std::make_pair(1u, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Uint32StringMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_string",
+                  &TestAllTypes::mutable_map_uint32_string,
+                  std::make_pair(1u, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Uint32EnumMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_enum",
+                  &TestAllTypes::mutable_map_uint32_enum,
+                  std::make_pair(1u, TestAllTypes::BAR));
+}
+
+TEST_P(ProtoStructValueTest, Uint32MessageMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_message",
+                  &TestAllTypes::mutable_map_uint32_message,
+                  std::make_pair(1u, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64BoolMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_bool",
+                  &TestAllTypes::mutable_map_uint64_bool,
+                  std::make_pair(1u, true));
+}
+
+TEST_P(ProtoStructValueTest, Uint64Int32MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_int32",
+                  &TestAllTypes::mutable_map_uint64_int32,
+                  std::make_pair(1u, 1));
+}
+
+TEST_P(ProtoStructValueTest, Uint64Int64MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_int64",
+                  &TestAllTypes::mutable_map_uint64_int64,
+                  std::make_pair(1u, 1));
+}
+
+TEST_P(ProtoStructValueTest, Uint64Uint32MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_uint32",
+                  &TestAllTypes::mutable_map_uint64_uint32,
+                  std::make_pair(1u, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Uint64Uint64MapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_uint64",
+                  &TestAllTypes::mutable_map_uint64_uint64,
+                  std::make_pair(1u, 1u));
+}
+
+TEST_P(ProtoStructValueTest, Uint64FloatMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_float",
+                  &TestAllTypes::mutable_map_uint64_float,
+                  std::make_pair(1u, 1.0f));
+}
+
+TEST_P(ProtoStructValueTest, Uint64DoubleMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_double",
+                  &TestAllTypes::mutable_map_uint64_double,
+                  std::make_pair(1u, 1.0));
+}
+
+TEST_P(ProtoStructValueTest, Uint64BytesMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_bytes",
+                  &TestAllTypes::mutable_map_uint64_bytes,
+                  std::make_pair(1u, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Uint64StringMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_string",
+                  &TestAllTypes::mutable_map_uint64_string,
+                  std::make_pair(1u, "foo"));
+}
+
+TEST_P(ProtoStructValueTest, Uint64EnumMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_enum",
+                  &TestAllTypes::mutable_map_uint64_enum,
+                  std::make_pair(1u, TestAllTypes::BAR));
+}
+
+TEST_P(ProtoStructValueTest, Uint64MessageMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_message",
+                  &TestAllTypes::mutable_map_uint64_message,
+                  std::make_pair(1u, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, StringBoolMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_bool",
+                  &TestAllTypes::mutable_map_string_bool,
+                  std::make_pair("foo", true));
+}
+
+TEST_P(ProtoStructValueTest, StringInt32MapHasField) {
+  TestMapHasField(memory_manager(), "map_string_int32",
+                  &TestAllTypes::mutable_map_string_int32,
+                  std::make_pair("foo", 1));
+}
+
+TEST_P(ProtoStructValueTest, StringInt64MapHasField) {
+  TestMapHasField(memory_manager(), "map_string_int64",
+                  &TestAllTypes::mutable_map_string_int64,
+                  std::make_pair("foo", 1));
+}
+
+TEST_P(ProtoStructValueTest, StringUint32MapHasField) {
+  TestMapHasField(memory_manager(), "map_string_uint32",
+                  &TestAllTypes::mutable_map_string_uint32,
+                  std::make_pair("foo", 1u));
+}
+
+TEST_P(ProtoStructValueTest, StringUint64MapHasField) {
+  TestMapHasField(memory_manager(), "map_string_uint64",
+                  &TestAllTypes::mutable_map_string_uint64,
+                  std::make_pair("foo", 1u));
+}
+
+TEST_P(ProtoStructValueTest, StringFloatMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_float",
+                  &TestAllTypes::mutable_map_string_float,
+                  std::make_pair("foo", 1.0f));
+}
+
+TEST_P(ProtoStructValueTest, StringDoubleMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_double",
+                  &TestAllTypes::mutable_map_string_double,
+                  std::make_pair("foo", 1.0));
+}
+
+TEST_P(ProtoStructValueTest, StringBytesMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_bytes",
+                  &TestAllTypes::mutable_map_string_bytes,
+                  std::make_pair("foo", "foo"));
+}
+
+TEST_P(ProtoStructValueTest, StringStringMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_string",
+                  &TestAllTypes::mutable_map_string_string,
+                  std::make_pair("foo", "foo"));
+}
+
+TEST_P(ProtoStructValueTest, StringEnumMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_enum",
+                  &TestAllTypes::mutable_map_string_enum,
+                  std::make_pair("foo", TestAllTypes::BAR));
+}
+
+TEST_P(ProtoStructValueTest, StringMessageMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_message",
+                  &TestAllTypes::mutable_map_string_message,
+                  std::make_pair("foo", TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, BoolBoolMapGetField) {
+  TestMapGetField<BoolValue>(
+      memory_manager(), "map_bool_bool", "{false: true, true: false}",
+      &TestAllTypes::mutable_map_bool_bool, &ValueFactory::CreateBoolValue,
+      &BoolValue::value, std::make_pair(false, true),
+      std::make_pair(true, false), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolInt32MapGetField) {
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_bool_int32", "{false: 1, true: 0}",
+      &TestAllTypes::mutable_map_bool_int32, &ValueFactory::CreateBoolValue,
+      &IntValue::value, std::make_pair(false, 1), std::make_pair(true, 0),
+      nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolInt64MapGetField) {
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_bool_int64", "{false: 1, true: 0}",
+      &TestAllTypes::mutable_map_bool_int64, &ValueFactory::CreateBoolValue,
+      &IntValue::value, std::make_pair(false, 1), std::make_pair(true, 0),
+      nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolUint32MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_bool_uint32", "{false: 1u, true: 0u}",
+      &TestAllTypes::mutable_map_bool_uint32, &ValueFactory::CreateBoolValue,
+      &UintValue::value, std::make_pair(false, 1u), std::make_pair(true, 0u),
+      nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolUint64MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_bool_uint64", "{false: 1u, true: 0u}",
+      &TestAllTypes::mutable_map_bool_uint64, &ValueFactory::CreateBoolValue,
+      &UintValue::value, std::make_pair(false, 1u), std::make_pair(true, 0u),
+      nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolFloatMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_bool_float", "{false: 1.0, true: 0.0}",
+      &TestAllTypes::mutable_map_bool_float, &ValueFactory::CreateBoolValue,
+      &DoubleValue::value, std::make_pair(false, 1.0f),
+      std::make_pair(true, 0.0f), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolDoubleMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_bool_double", "{false: 1.0, true: 0.0}",
+      &TestAllTypes::mutable_map_bool_double, &ValueFactory::CreateBoolValue,
+      &DoubleValue::value, std::make_pair(false, 1.0),
+      std::make_pair(true, 0.0), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolBytesMapGetField) {
+  TestMapGetField<BytesValue>(
+      memory_manager(), "map_bool_bytes", "{false: b\"bar\", true: b\"foo\"}",
+      &TestAllTypes::mutable_map_bool_bytes, &ValueFactory::CreateBoolValue,
+      &BytesValue::ToString, std::make_pair(false, "bar"),
+      std::make_pair(true, "foo"), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolStringMapGetField) {
+  TestMapGetField<StringValue>(
+      memory_manager(), "map_bool_string", "{false: \"bar\", true: \"foo\"}",
+      &TestAllTypes::mutable_map_bool_string, &ValueFactory::CreateBoolValue,
+      &StringValue::ToString, std::make_pair(false, "bar"),
+      std::make_pair(true, "foo"), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolEnumMapGetField) {
+  TestMapGetField<EnumValue>(
+      memory_manager(), "map_bool_enum",
+      "{false: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
+      "true: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
+      &TestAllTypes::mutable_map_bool_enum, &ValueFactory::CreateBoolValue,
+      &EnumValue::number, std::make_pair(false, TestAllTypes::BAR),
+      std::make_pair(true, TestAllTypes::FOO), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolMessageMapGetField) {
+  TestMapGetField<ProtoStructValue>(
+      memory_manager(), "map_bool_message",
+      "{false: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "1}, "
+      "true: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}}",
+      &TestAllTypes::mutable_map_bool_message, &ValueFactory::CreateBoolValue,
+      nullptr, std::make_pair(false, CreateTestNestedMessage(1)),
+      std::make_pair(true, CreateTestNestedMessage(2)), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, Int32BoolMapGetField) {
+  TestMapGetField<BoolValue>(
+      memory_manager(), "map_int32_bool", "{0: true, 1: false}",
+      &TestAllTypes::mutable_map_int32_bool, &ValueFactory::CreateIntValue,
+      &BoolValue::value, std::make_pair(0, true), std::make_pair(1, false), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32Int32MapGetField) {
+  TestMapGetField<IntValue>(memory_manager(), "map_int32_int32", "{0: 1, 1: 0}",
+                            &TestAllTypes::mutable_map_int32_int32,
+                            &ValueFactory::CreateIntValue, &IntValue::value,
+                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32Int64MapGetField) {
+  TestMapGetField<IntValue>(memory_manager(), "map_int32_int64", "{0: 1, 1: 0}",
+                            &TestAllTypes::mutable_map_int32_int64,
+                            &ValueFactory::CreateIntValue, &IntValue::value,
+                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32Uint32MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_int32_uint32", "{0: 1u, 1: 0u}",
+      &TestAllTypes::mutable_map_int32_uint32, &ValueFactory::CreateIntValue,
+      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32Uint64MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_int32_uint64", "{0: 1u, 1: 0u}",
+      &TestAllTypes::mutable_map_int32_uint64, &ValueFactory::CreateIntValue,
+      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32FloatMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_int32_float", "{0: 1.0, 1: 0.0}",
+      &TestAllTypes::mutable_map_int32_float, &ValueFactory::CreateIntValue,
+      &DoubleValue::value, std::make_pair(0, 1.0f), std::make_pair(1, 0.0f), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32DoubleMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_int32_double", "{0: 1.0, 1: 0.0}",
+      &TestAllTypes::mutable_map_int32_double, &ValueFactory::CreateIntValue,
+      &DoubleValue::value, std::make_pair(0, 1.0), std::make_pair(1, 0.0), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32BytesMapGetField) {
+  TestMapGetField<BytesValue>(
+      memory_manager(), "map_int32_bytes", "{0: b\"bar\", 1: b\"foo\"}",
+      &TestAllTypes::mutable_map_int32_bytes, &ValueFactory::CreateIntValue,
+      &BytesValue::ToString, std::make_pair(0, "bar"), std::make_pair(1, "foo"),
+      2);
+}
+
+TEST_P(ProtoStructValueTest, Int32StringMapGetField) {
+  TestMapGetField<StringValue>(
+      memory_manager(), "map_int32_string", "{0: \"bar\", 1: \"foo\"}",
+      &TestAllTypes::mutable_map_int32_string, &ValueFactory::CreateIntValue,
+      &StringValue::ToString, std::make_pair(0, "bar"),
+      std::make_pair(1, "foo"), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32EnumMapGetField) {
+  TestMapGetField<EnumValue>(
+      memory_manager(), "map_int32_enum",
+      "{0: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
+      "1: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
+      &TestAllTypes::mutable_map_int32_enum, &ValueFactory::CreateIntValue,
+      &EnumValue::number, std::make_pair(0, TestAllTypes::BAR),
+      std::make_pair(1, TestAllTypes::FOO), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32MessageMapGetField) {
+  TestMapGetField<ProtoStructValue>(
+      memory_manager(), "map_int32_message",
+      "{0: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "1}, "
+      "1: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}}",
+      &TestAllTypes::mutable_map_int32_message, &ValueFactory::CreateIntValue,
+      nullptr, std::make_pair(0, CreateTestNestedMessage(1)),
+      std::make_pair(1, CreateTestNestedMessage(2)), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64BoolMapGetField) {
+  TestMapGetField<BoolValue>(
+      memory_manager(), "map_int64_bool", "{0: true, 1: false}",
+      &TestAllTypes::mutable_map_int64_bool, &ValueFactory::CreateIntValue,
+      &BoolValue::value, std::make_pair(0, true), std::make_pair(1, false), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64Int32MapGetField) {
+  TestMapGetField<IntValue>(memory_manager(), "map_int64_int32", "{0: 1, 1: 0}",
+                            &TestAllTypes::mutable_map_int64_int32,
+                            &ValueFactory::CreateIntValue, &IntValue::value,
+                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64Int64MapGetField) {
+  TestMapGetField<IntValue>(memory_manager(), "map_int64_int64", "{0: 1, 1: 0}",
+                            &TestAllTypes::mutable_map_int64_int64,
+                            &ValueFactory::CreateIntValue, &IntValue::value,
+                            std::make_pair(0, 1), std::make_pair(1, 0), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64Uint32MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_int64_uint32", "{0: 1u, 1: 0u}",
+      &TestAllTypes::mutable_map_int64_uint32, &ValueFactory::CreateIntValue,
+      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64Uint64MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_int64_uint64", "{0: 1u, 1: 0u}",
+      &TestAllTypes::mutable_map_int64_uint64, &ValueFactory::CreateIntValue,
+      &UintValue::value, std::make_pair(0, 1u), std::make_pair(1, 0u), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64FloatMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_int64_float", "{0: 1.0, 1: 0.0}",
+      &TestAllTypes::mutable_map_int64_float, &ValueFactory::CreateIntValue,
+      &DoubleValue::value, std::make_pair(0, 1.0f), std::make_pair(1, 0.0f), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64DoubleMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_int64_double", "{0: 1.0, 1: 0.0}",
+      &TestAllTypes::mutable_map_int64_double, &ValueFactory::CreateIntValue,
+      &DoubleValue::value, std::make_pair(0, 1.0), std::make_pair(1, 0.0), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64BytesMapGetField) {
+  TestMapGetField<BytesValue>(
+      memory_manager(), "map_int64_bytes", "{0: b\"bar\", 1: b\"foo\"}",
+      &TestAllTypes::mutable_map_int64_bytes, &ValueFactory::CreateIntValue,
+      &BytesValue::ToString, std::make_pair(0, "bar"), std::make_pair(1, "foo"),
+      2);
+}
+
+TEST_P(ProtoStructValueTest, Int64StringMapGetField) {
+  TestMapGetField<StringValue>(
+      memory_manager(), "map_int64_string", "{0: \"bar\", 1: \"foo\"}",
+      &TestAllTypes::mutable_map_int64_string, &ValueFactory::CreateIntValue,
+      &StringValue::ToString, std::make_pair(0, "bar"),
+      std::make_pair(1, "foo"), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64EnumMapGetField) {
+  TestMapGetField<EnumValue>(
+      memory_manager(), "map_int64_enum",
+      "{0: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
+      "1: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
+      &TestAllTypes::mutable_map_int64_enum, &ValueFactory::CreateIntValue,
+      &EnumValue::number, std::make_pair(0, TestAllTypes::BAR),
+      std::make_pair(1, TestAllTypes::FOO), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64MessageMapGetField) {
+  TestMapGetField<ProtoStructValue>(
+      memory_manager(), "map_int64_message",
+      "{0: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "1}, "
+      "1: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}}",
+      &TestAllTypes::mutable_map_int64_message, &ValueFactory::CreateIntValue,
+      nullptr, std::make_pair(0, CreateTestNestedMessage(1)),
+      std::make_pair(1, CreateTestNestedMessage(2)), 2);
+}
+
+TEST_P(ProtoStructValueTest, Uint32BoolMapGetField) {
+  TestMapGetField<BoolValue>(
+      memory_manager(), "map_uint32_bool", "{0u: true, 1u: false}",
+      &TestAllTypes::mutable_map_uint32_bool, &ValueFactory::CreateUintValue,
+      &BoolValue::value, std::make_pair(0u, true), std::make_pair(1u, false),
+      2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32Int32MapGetField) {
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_uint32_int32", "{0u: 1, 1u: 0}",
+      &TestAllTypes::mutable_map_uint32_int32, &ValueFactory::CreateUintValue,
+      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32Int64MapGetField) {
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_uint32_int64", "{0u: 1, 1u: 0}",
+      &TestAllTypes::mutable_map_uint32_int64, &ValueFactory::CreateUintValue,
+      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32Uint32MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_uint32_uint32", "{0u: 1u, 1u: 0u}",
+      &TestAllTypes::mutable_map_uint32_uint32, &ValueFactory::CreateUintValue,
+      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32Uint64MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_uint32_uint64", "{0u: 1u, 1u: 0u}",
+      &TestAllTypes::mutable_map_uint32_uint64, &ValueFactory::CreateUintValue,
+      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32FloatMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_uint32_float", "{0u: 1.0, 1u: 0.0}",
+      &TestAllTypes::mutable_map_uint32_float, &ValueFactory::CreateUintValue,
+      &DoubleValue::value, std::make_pair(0u, 1.0f), std::make_pair(1u, 0.0f),
+      2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32DoubleMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_uint32_double", "{0u: 1.0, 1u: 0.0}",
+      &TestAllTypes::mutable_map_uint32_double, &ValueFactory::CreateUintValue,
+      &DoubleValue::value, std::make_pair(0u, 1.0), std::make_pair(1u, 0.0),
+      2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32BytesMapGetField) {
+  TestMapGetField<BytesValue>(
+      memory_manager(), "map_uint32_bytes", "{0u: b\"bar\", 1u: b\"foo\"}",
+      &TestAllTypes::mutable_map_uint32_bytes, &ValueFactory::CreateUintValue,
+      &BytesValue::ToString, std::make_pair(0u, "bar"),
+      std::make_pair(1u, "foo"), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32StringMapGetField) {
+  TestMapGetField<StringValue>(
+      memory_manager(), "map_uint32_string", "{0u: \"bar\", 1u: \"foo\"}",
+      &TestAllTypes::mutable_map_uint32_string, &ValueFactory::CreateUintValue,
+      &StringValue::ToString, std::make_pair(0u, "bar"),
+      std::make_pair(1u, "foo"), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32EnumMapGetField) {
+  TestMapGetField<EnumValue>(
+      memory_manager(), "map_uint32_enum",
+      "{0u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
+      "1u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
+      &TestAllTypes::mutable_map_uint32_enum, &ValueFactory::CreateUintValue,
+      &EnumValue::number, std::make_pair(0u, TestAllTypes::BAR),
+      std::make_pair(1u, TestAllTypes::FOO), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32MessageMapGetField) {
+  TestMapGetField<ProtoStructValue>(
+      memory_manager(), "map_uint32_message",
+      "{0u: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "1}, "
+      "1u: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}}",
+      &TestAllTypes::mutable_map_uint32_message, &ValueFactory::CreateUintValue,
+      nullptr, std::make_pair(0u, CreateTestNestedMessage(1)),
+      std::make_pair(1u, CreateTestNestedMessage(2)), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64BoolMapGetField) {
+  TestMapGetField<BoolValue>(
+      memory_manager(), "map_uint64_bool", "{0u: true, 1u: false}",
+      &TestAllTypes::mutable_map_uint64_bool, &ValueFactory::CreateUintValue,
+      &BoolValue::value, std::make_pair(0u, true), std::make_pair(1u, false),
+      2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64Int32MapGetField) {
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_uint64_int32", "{0u: 1, 1u: 0}",
+      &TestAllTypes::mutable_map_uint64_int32, &ValueFactory::CreateUintValue,
+      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64Int64MapGetField) {
+  TestMapGetField<IntValue>(
+      memory_manager(), "map_uint64_int64", "{0u: 1, 1u: 0}",
+      &TestAllTypes::mutable_map_uint64_int64, &ValueFactory::CreateUintValue,
+      &IntValue::value, std::make_pair(0u, 1), std::make_pair(1u, 0), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64Uint32MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_uint64_uint32", "{0u: 1u, 1u: 0u}",
+      &TestAllTypes::mutable_map_uint64_uint32, &ValueFactory::CreateUintValue,
+      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64Uint64MapGetField) {
+  TestMapGetField<UintValue>(
+      memory_manager(), "map_uint64_uint64", "{0u: 1u, 1u: 0u}",
+      &TestAllTypes::mutable_map_uint64_uint64, &ValueFactory::CreateUintValue,
+      &UintValue::value, std::make_pair(0u, 1u), std::make_pair(1u, 0u), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64FloatMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_uint64_float", "{0u: 1.0, 1u: 0.0}",
+      &TestAllTypes::mutable_map_uint64_float, &ValueFactory::CreateUintValue,
+      &DoubleValue::value, std::make_pair(0u, 1.0f), std::make_pair(1u, 0.0f),
+      2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64DoubleMapGetField) {
+  TestMapGetField<DoubleValue>(
+      memory_manager(), "map_uint64_double", "{0u: 1.0, 1u: 0.0}",
+      &TestAllTypes::mutable_map_uint64_double, &ValueFactory::CreateUintValue,
+      &DoubleValue::value, std::make_pair(0u, 1.0), std::make_pair(1u, 0.0),
+      2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64BytesMapGetField) {
+  TestMapGetField<BytesValue>(
+      memory_manager(), "map_uint64_bytes", "{0u: b\"bar\", 1u: b\"foo\"}",
+      &TestAllTypes::mutable_map_uint64_bytes, &ValueFactory::CreateUintValue,
+      &BytesValue::ToString, std::make_pair(0u, "bar"),
+      std::make_pair(1u, "foo"), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64StringMapGetField) {
+  TestMapGetField<StringValue>(
+      memory_manager(), "map_uint64_string", "{0u: \"bar\", 1u: \"foo\"}",
+      &TestAllTypes::mutable_map_uint64_string, &ValueFactory::CreateUintValue,
+      &StringValue::ToString, std::make_pair(0u, "bar"),
+      std::make_pair(1u, "foo"), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64EnumMapGetField) {
+  TestMapGetField<EnumValue>(
+      memory_manager(), "map_uint64_enum",
+      "{0u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR, "
+      "1u: google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO}",
+      &TestAllTypes::mutable_map_uint64_enum, &ValueFactory::CreateUintValue,
+      &EnumValue::number, std::make_pair(0u, TestAllTypes::BAR),
+      std::make_pair(1u, TestAllTypes::FOO), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64MessageMapGetField) {
+  TestMapGetField<ProtoStructValue>(
+      memory_manager(), "map_uint64_message",
+      "{0u: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "1}, "
+      "1u: google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}}",
+      &TestAllTypes::mutable_map_uint64_message, &ValueFactory::CreateUintValue,
+      nullptr, std::make_pair(0u, CreateTestNestedMessage(1)),
+      std::make_pair(1u, CreateTestNestedMessage(2)), 2u);
+}
+
+TEST_P(ProtoStructValueTest, StringBoolMapGetField) {
+  TestStringMapGetField<BoolValue>(
+      memory_manager(), "map_string_bool", "{\"bar\": true, \"baz\": false}",
+      &TestAllTypes::mutable_map_string_bool, &BoolValue::value,
+      std::make_pair("bar", true), std::make_pair("baz", false), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringInt32MapGetField) {
+  TestStringMapGetField<IntValue>(
+      memory_manager(), "map_string_int32", "{\"bar\": 1, \"baz\": 0}",
+      &TestAllTypes::mutable_map_string_int32, &IntValue::value,
+      std::make_pair("bar", 1), std::make_pair("baz", 0), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringInt64MapGetField) {
+  TestStringMapGetField<IntValue>(
+      memory_manager(), "map_string_int64", "{\"bar\": 1, \"baz\": 0}",
+      &TestAllTypes::mutable_map_string_int64, &IntValue::value,
+      std::make_pair("bar", 1), std::make_pair("baz", 0), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringUint32MapGetField) {
+  TestStringMapGetField<UintValue>(
+      memory_manager(), "map_string_uint32", "{\"bar\": 1u, \"baz\": 0u}",
+      &TestAllTypes::mutable_map_string_uint32, &UintValue::value,
+      std::make_pair("bar", 1u), std::make_pair("baz", 0u), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringUint64MapGetField) {
+  TestStringMapGetField<UintValue>(
+      memory_manager(), "map_string_uint64", "{\"bar\": 1u, \"baz\": 0u}",
+      &TestAllTypes::mutable_map_string_uint64, &UintValue::value,
+      std::make_pair("bar", 1u), std::make_pair("baz", 0u), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringFloatMapGetField) {
+  TestStringMapGetField<DoubleValue>(
+      memory_manager(), "map_string_float", "{\"bar\": 1.0, \"baz\": 0.0}",
+      &TestAllTypes::mutable_map_string_float, &DoubleValue::value,
+      std::make_pair("bar", 1.0f), std::make_pair("baz", 0.0f), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringDoubleMapGetField) {
+  TestStringMapGetField<DoubleValue>(
+      memory_manager(), "map_string_double", "{\"bar\": 1.0, \"baz\": 0.0}",
+      &TestAllTypes::mutable_map_string_double, &DoubleValue::value,
+      std::make_pair("bar", 1.0), std::make_pair("baz", 0.0), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringBytesMapGetField) {
+  TestStringMapGetField<BytesValue>(
+      memory_manager(), "map_string_bytes",
+      "{\"bar\": b\"baz\", \"baz\": b\"bar\"}",
+      &TestAllTypes::mutable_map_string_bytes, &BytesValue::ToString,
+      std::make_pair("bar", "baz"), std::make_pair("baz", "bar"), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringStringMapGetField) {
+  TestStringMapGetField<StringValue>(
+      memory_manager(), "map_string_string",
+      "{\"bar\": \"baz\", \"baz\": \"bar\"}",
+      &TestAllTypes::mutable_map_string_string, &StringValue::ToString,
+      std::make_pair("bar", "baz"), std::make_pair("baz", "bar"), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringEnumMapGetField) {
+  TestStringMapGetField<EnumValue>(
+      memory_manager(), "map_string_enum",
+      "{\"bar\": google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
+      "\"baz\": google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR}",
+      &TestAllTypes::mutable_map_string_enum, &EnumValue::number,
+      std::make_pair("bar", TestAllTypes::FOO),
+      std::make_pair("baz", TestAllTypes::BAR), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringMessageMapGetField) {
+  TestStringMapGetField<ProtoStructValue>(
+      memory_manager(), "map_string_message",
+      "{\"bar\": google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "1}, "
+      "\"baz\": google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: "
+      "2}}",
+      &TestAllTypes::mutable_map_string_message, nullptr,
+      std::make_pair("bar", CreateTestNestedMessage(1)),
+      std::make_pair("baz", CreateTestNestedMessage(2)), "foo");
 }
 
 TEST_P(ProtoStructValueTest, DebugString) {

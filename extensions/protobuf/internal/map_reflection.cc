@@ -30,6 +30,30 @@ class CelMapReflectionFriend final {
                              const FieldDescriptor& field, const MapKey& key) {
     return reflection.ContainsMapKey(message, &field, key);
   }
+
+  static int MapSize(const google::protobuf::Reflection& reflection,
+                     const google::protobuf::Message& message,
+                     const google::protobuf::FieldDescriptor& field) {
+    return reflection.MapSize(message, &field);
+  }
+
+  static google::protobuf::MapIterator MapBegin(const google::protobuf::Reflection& reflection,
+                                      const google::protobuf::Message& message,
+                                      const google::protobuf::FieldDescriptor& field) {
+    return reflection.MapBegin(
+        const_cast<  // NOLINT(google3-runtime-proto-const-cast)
+            google::protobuf::Message*>(&message),
+        &field);
+  }
+
+  static google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflection,
+                                    const google::protobuf::Message& message,
+                                    const google::protobuf::FieldDescriptor& field) {
+    return reflection.MapEnd(
+        const_cast<  // NOLINT(google3-runtime-proto-const-cast)
+            google::protobuf::Message*>(&message),
+        &field);
+  }
 };
 
 }  // namespace google::protobuf::expr
@@ -51,6 +75,27 @@ bool ContainsMapKey(const google::protobuf::Reflection& reflection,
                     const google::protobuf::MapKey& key) {
   return google::protobuf::expr::CelMapReflectionFriend::ContainsMapKey(
       reflection, message, field, key);
+}
+
+int MapSize(const google::protobuf::Reflection& reflection,
+            const google::protobuf::Message& message,
+            const google::protobuf::FieldDescriptor& field) {
+  return google::protobuf::expr::CelMapReflectionFriend::MapSize(reflection, message,
+                                                       field);
+}
+
+google::protobuf::MapIterator MapBegin(const google::protobuf::Reflection& reflection,
+                             const google::protobuf::Message& message,
+                             const google::protobuf::FieldDescriptor& field) {
+  return google::protobuf::expr::CelMapReflectionFriend::MapBegin(reflection, message,
+                                                        field);
+}
+
+google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflection,
+                           const google::protobuf::Message& message,
+                           const google::protobuf::FieldDescriptor& field) {
+  return google::protobuf::expr::CelMapReflectionFriend::MapEnd(reflection, message,
+                                                      field);
 }
 
 }  // namespace cel::extensions::protobuf_internal

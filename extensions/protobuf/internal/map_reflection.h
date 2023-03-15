@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MAP_REFLECTION_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MAP_REFLECTION_H_
 
+#include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
 
 #ifndef GOOGLE_PROTOBUF_HAS_CEL_MAP_REFLECTION_FRIEND
@@ -32,6 +33,18 @@ bool ContainsMapKey(const google::protobuf::Reflection& reflection,
                     const google::protobuf::Message& message,
                     const google::protobuf::FieldDescriptor& field,
                     const google::protobuf::MapKey& key);
+
+int MapSize(const google::protobuf::Reflection& reflection,
+            const google::protobuf::Message& message,
+            const google::protobuf::FieldDescriptor& field);
+
+google::protobuf::MapIterator MapBegin(const google::protobuf::Reflection& reflection,
+                             const google::protobuf::Message& message,
+                             const google::protobuf::FieldDescriptor& field);
+
+google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflection,
+                           const google::protobuf::Message& message,
+                           const google::protobuf::FieldDescriptor& field);
 
 }  // namespace cel::extensions::protobuf_internal
 
