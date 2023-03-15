@@ -50,6 +50,8 @@ class Type : public base_internal::Data {
  public:
   static bool Is(const Type& type ABSL_ATTRIBUTE_UNUSED) { return true; }
 
+  static const Type& Cast(const Type& type) { return type; }
+
   // Returns the type kind.
   Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
@@ -70,6 +72,16 @@ class Type : public base_internal::Data {
     static_assert(!std::is_reference_v<T>, "T must not be a reference");
     static_assert(std::is_base_of_v<Type, T>, "T must be derived from Type");
     return T::Is(*this);
+  }
+
+  template <typename T>
+  const T& As() const {
+    static_assert(!std::is_const_v<T>, "T must not be const");
+    static_assert(!std::is_volatile_v<T>, "T must not be volatile");
+    static_assert(!std::is_pointer_v<T>, "T must not be a pointer");
+    static_assert(!std::is_reference_v<T>, "T must not be a reference");
+    static_assert(std::is_base_of_v<Type, T>, "T must be derived from Type");
+    return T::Cast(*this);
   }
 
  private:
@@ -270,6 +282,8 @@ class SimpleType : public Type, public InlineData {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
+  using Type::Is;
+
   constexpr SimpleType() : InlineData(kMetadata) {}
 
   SimpleType(const SimpleType&) = default;
@@ -282,8 +296,6 @@ class SimpleType : public Type, public InlineData {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const { return std::string(name()); }
-
-  using Type::Is;
 
  private:
   friend class TypeHandle;

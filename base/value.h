@@ -49,6 +49,8 @@ class Value : public base_internal::Data {
  public:
   static bool Is(const Value& value ABSL_ATTRIBUTE_UNUSED) { return true; }
 
+  static const Value& Cast(const Value& value) { return value; }
+
   // Returns the kind of the value. This is equivalent to `type().kind()` but
   // faster in many scenarios. As such it should be preffered when only the kind
   // is required.
@@ -67,6 +69,16 @@ class Value : public base_internal::Data {
     static_assert(!std::is_reference_v<T>, "T must not be a reference");
     static_assert(std::is_base_of_v<Value, T>, "T must be derived from Value");
     return T::Is(*this);
+  }
+
+  template <typename T>
+  const T& As() const {
+    static_assert(!std::is_const_v<T>, "T must not be const");
+    static_assert(!std::is_volatile_v<T>, "T must not be volatile");
+    static_assert(!std::is_pointer_v<T>, "T must not be a pointer");
+    static_assert(!std::is_reference_v<T>, "T must not be a reference");
+    static_assert(std::is_base_of_v<Value, T>, "T must be derived from Value");
+    return T::Cast(*this);
   }
 
  private:

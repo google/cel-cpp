@@ -38,6 +38,13 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const EnumValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const EnumValue&>(value);
+  }
+
   static std::string DebugString(const EnumType& type, int64_t value);
 
   static std::string DebugString(const EnumType& type,
@@ -54,8 +61,6 @@ class EnumValue final : public Value, public base_internal::InlineData {
   constexpr int64_t number() const { return number_; }
 
   absl::string_view name() const;
-
-  using Value::Is;
 
  private:
   friend class base_internal::ValueHandle;

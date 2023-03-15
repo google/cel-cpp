@@ -33,6 +33,11 @@ class NullType final : public base_internal::SimpleType<Kind::kNullType> {
 
   using Base::Is;
 
+  static const NullType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const NullType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

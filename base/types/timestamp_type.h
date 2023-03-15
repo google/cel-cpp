@@ -33,6 +33,11 @@ class TimestampType final : public base_internal::SimpleType<Kind::kTimestamp> {
 
   using Base::Is;
 
+  static const TimestampType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const TimestampType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

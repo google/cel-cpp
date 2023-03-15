@@ -52,6 +52,13 @@ class StringValue : public Value {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const StringValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const StringValue&>(value);
+  }
+
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
       absl::string_view value);
 
@@ -85,8 +92,6 @@ class StringValue : public Value {
   void HashValue(absl::HashState state) const;
 
   bool Equals(const Value& other) const;
-
-  using Value::Is;
 
  private:
   friend class base_internal::ValueHandle;

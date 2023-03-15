@@ -86,15 +86,20 @@ struct TypeTraits;
 
 #define CEL_INTERNAL_TYPE_IMPL(name) template class Handle<name>
 
-#define CEL_INTERNAL_DECLARE_TYPE(base, derived) \
- public:                                         \
-  static bool Is(const ::cel::Type& type);       \
-                                                 \
-  using ::cel::base##Type::Is;                   \
-                                                 \
- private:                                        \
-  friend class ::cel::base_internal::TypeHandle; \
-                                                 \
+#define CEL_INTERNAL_DECLARE_TYPE(base, derived)      \
+ public:                                              \
+  static bool Is(const ::cel::Type& type);            \
+                                                      \
+  using ::cel::base##Type::Is;                        \
+                                                      \
+  static const derived& Cast(const cel::Type& type) { \
+    ABSL_ASSERT(Is(type));                            \
+    return static_cast<const derived&>(type);         \
+  }                                                   \
+                                                      \
+ private:                                             \
+  friend class ::cel::base_internal::TypeHandle;      \
+                                                      \
   ::cel::internal::TypeInfo TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_TYPE(base, derived)                            \

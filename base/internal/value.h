@@ -172,15 +172,20 @@ struct UnknownValueAccess;
 
 #define CEL_INTERNAL_VALUE_IMPL(name) template class Handle<name>
 
-#define CEL_INTERNAL_DECLARE_VALUE(base, derived) \
- public:                                          \
-  static bool Is(const ::cel::Value& value);      \
-                                                  \
-  using ::cel::base##Value::Is;                   \
-                                                  \
- private:                                         \
-  friend class ::cel::base_internal::ValueHandle; \
-                                                  \
+#define CEL_INTERNAL_DECLARE_VALUE(base, derived)       \
+ public:                                                \
+  static bool Is(const ::cel::Value& value);            \
+                                                        \
+  using ::cel::base##Value::Is;                         \
+                                                        \
+  static const derived& Cast(const cel::Value& value) { \
+    ABSL_ASSERT(Is(value));                             \
+    return static_cast<const derived&>(value);          \
+  }                                                     \
+                                                        \
+ private:                                               \
+  friend class ::cel::base_internal::ValueHandle;       \
+                                                        \
   ::cel::internal::TypeInfo TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_VALUE(base, derived)                           \

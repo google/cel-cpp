@@ -33,6 +33,13 @@ class TypeValue : public Value {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const TypeValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const TypeValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
   Handle<TypeType> type() const { return TypeType::Get(); }
@@ -42,8 +49,6 @@ class TypeValue : public Value {
   absl::string_view name() const;
 
   bool Equals(const TypeValue& other) const;
-
-  using Value::Is;
 
  private:
   friend class ValueHandle;

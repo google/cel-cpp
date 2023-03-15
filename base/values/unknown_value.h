@@ -32,17 +32,22 @@ class UnknownValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const UnknownValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const UnknownValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
-  Handle<UnknownType> type() const { return UnknownType::Get(); }
+  const Handle<UnknownType>& type() const { return UnknownType::Get(); }
 
   std::string DebugString() const;
 
   const AttributeSet& attribute_set() const;
 
   const FunctionResultSet& function_result_set() const;
-
-  using Value::Is;
 
  private:
   friend class ValueHandle;

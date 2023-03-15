@@ -33,6 +33,11 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
 
   using Base::Is;
 
+  static const DynType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const DynType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

@@ -41,6 +41,11 @@ class ProtoEnumType final : public EnumType {
 
   using EnumType::Is;
 
+  static const ProtoEnumType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const ProtoEnumType&>(type);
+  }
+
   template <typename T>
   static EnableIfEnum<T, absl::StatusOr<Handle<ProtoEnumType>>> Resolve(
       TypeManager& type_manager) {

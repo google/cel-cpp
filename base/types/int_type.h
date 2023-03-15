@@ -33,6 +33,11 @@ class IntType final : public base_internal::SimpleType<Kind::kInt> {
 
   using Base::Is;
 
+  static const IntType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const IntType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

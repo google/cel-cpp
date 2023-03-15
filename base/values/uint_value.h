@@ -35,6 +35,11 @@ class UintValue final : public base_internal::SimpleValue<UintType, uint64_t> {
 
   using Base::Is;
 
+  static const UintValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const UintValue&>(value);
+  }
+
   using Base::kind;
 
   using Base::type;

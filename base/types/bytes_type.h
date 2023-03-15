@@ -33,6 +33,11 @@ class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
 
   using Base::Is;
 
+  static const BytesType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const BytesType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

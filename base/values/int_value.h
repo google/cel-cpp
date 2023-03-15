@@ -35,6 +35,11 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
 
   using Base::Is;
 
+  static const IntValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const IntValue&>(value);
+  }
+
   using Base::kind;
 
   using Base::type;

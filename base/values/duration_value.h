@@ -37,6 +37,11 @@ class DurationValue final
 
   using Base::Is;
 
+  static const DurationValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const DurationValue&>(value);
+  }
+
   static Handle<DurationValue> Zero(ValueFactory& value_factory);
 
   using Base::kind;

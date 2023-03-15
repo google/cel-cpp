@@ -33,6 +33,11 @@ class BoolType final : public base_internal::SimpleType<Kind::kBool> {
 
   using Base::Is;
 
+  static const BoolType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const BoolType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

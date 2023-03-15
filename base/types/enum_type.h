@@ -67,6 +67,11 @@ class EnumType : public Type, public base_internal::HeapData {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
+  static const EnumType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const EnumType&>(type);
+  }
+
   Kind kind() const { return kKind; }
 
   virtual absl::string_view name() const = 0;

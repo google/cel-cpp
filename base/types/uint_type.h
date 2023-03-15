@@ -33,6 +33,11 @@ class UintType final : public base_internal::SimpleType<Kind::kUint> {
 
   using Base::Is;
 
+  static const UintType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const UintType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

@@ -33,6 +33,11 @@ class UnknownType final : public base_internal::SimpleType<Kind::kUnknown> {
 
   using Base::Is;
 
+  static const UnknownType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const UnknownType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

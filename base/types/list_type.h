@@ -47,6 +47,11 @@ class ListType : public Type {
 
   using Type::Is;
 
+  static const ListType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const ListType&>(type);
+  }
+
  private:
   friend class MemoryManager;
   friend class TypeFactory;

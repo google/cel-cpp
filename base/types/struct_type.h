@@ -71,6 +71,13 @@ class StructType : public Type {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
+  using Type::Is;
+
+  static const StructType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const StructType&>(type);
+  }
+
   Kind kind() const { return kKind; }
 
   absl::string_view name() const;
@@ -83,8 +90,6 @@ class StructType : public Type {
   // returned.
   absl::StatusOr<absl::optional<Field>> FindField(TypeManager& type_manager,
                                                   FieldId id) const;
-
-  using Type::Is;
 
  protected:
   // Called by FindField.
@@ -132,12 +137,17 @@ class LegacyStructType final : public StructType,
                internal::TypeId<LegacyStructType>();
   }
 
+  using StructType::Is;
+
+  static const LegacyStructType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const LegacyStructType&>(type);
+  }
+
   absl::string_view name() const;
 
   // Always returns the same string.
   std::string DebugString() const { return std::string(name()); }
-
-  using StructType::Is;
 
  protected:
   // Always returns an error.
@@ -179,11 +189,16 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
                internal::TypeId<LegacyStructType>();
   }
 
+  using StructType::Is;
+
+  static const AbstractStructType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const AbstractStructType&>(type);
+  }
+
   virtual absl::string_view name() const = 0;
 
   virtual std::string DebugString() const { return std::string(name()); }
-
-  using StructType::Is;
 
  protected:
   AbstractStructType();

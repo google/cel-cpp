@@ -34,6 +34,11 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
 
   using Base::Is;
 
+  static const NullValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const NullValue&>(value);
+  }
+
   static Handle<NullValue> Get(ValueFactory& value_factory);
 
   using Base::kind;

@@ -34,6 +34,11 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
 
   using Base::Is;
 
+  static const BoolValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const BoolValue&>(value);
+  }
+
   static Handle<BoolValue> False(ValueFactory& value_factory);
 
   static Handle<BoolValue> True(ValueFactory& value_factory);

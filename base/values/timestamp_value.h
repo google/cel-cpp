@@ -36,6 +36,11 @@ class TimestampValue final
 
   using Base::Is;
 
+  static const TimestampValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const TimestampValue&>(value);
+  }
+
   static Handle<TimestampValue> UnixEpoch(ValueFactory& value_factory);
 
   using Base::kind;

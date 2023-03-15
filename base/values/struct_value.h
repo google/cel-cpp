@@ -45,6 +45,13 @@ class StructValue : public Value {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const StructValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const StructValue&>(value);
+  }
+
   using FieldId = StructType::FieldId;
 
   constexpr Kind kind() const { return kKind; }
@@ -57,8 +64,6 @@ class StructValue : public Value {
                                          FieldId field) const;
 
   absl::StatusOr<bool> HasField(TypeManager& type_manager, FieldId field) const;
-
-  using Value::Is;
 
  protected:
   absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
@@ -124,6 +129,13 @@ class LegacyStructValue final : public StructValue, public InlineData {
                internal::TypeId<LegacyStructValue>();
   }
 
+  using StructValue::Is;
+
+  static const LegacyStructValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const LegacyStructValue&>(value);
+  }
+
   Handle<StructType> type() const;
 
   std::string DebugString() const;
@@ -140,8 +152,6 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
                                         int64_t number) const;
-
-  using StructValue::Is;
 
  private:
   struct GetFieldVisitor;
@@ -192,11 +202,16 @@ class AbstractStructValue : public StructValue, public HeapData {
                internal::TypeId<LegacyStructValue>();
   }
 
+  using StructValue::Is;
+
+  static const AbstractStructValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const AbstractStructValue&>(value);
+  }
+
   const Handle<StructType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
-
-  using StructValue::Is;
 
  protected:
   explicit AbstractStructValue(Handle<StructType> type);

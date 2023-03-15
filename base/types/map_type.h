@@ -37,6 +37,13 @@ class MapType : public Type {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
+  using Type::Is;
+
+  static const MapType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const MapType&>(type);
+  }
+
   Kind kind() const { return kKind; }
 
   absl::string_view name() const { return KindToString(kind()); }
@@ -48,8 +55,6 @@ class MapType : public Type {
 
   // Returns the type of the values in the map.
   const Handle<Type>& value() const;
-
-  using Type::Is;
 
  private:
   friend class MemoryManager;

@@ -38,6 +38,13 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const ErrorValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const ErrorValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
   Handle<ErrorType> type() const { return ErrorType::Get(); }
@@ -45,8 +52,6 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   std::string DebugString() const;
 
   const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  using Value::Is;
 
  private:
   friend class ValueHandle;

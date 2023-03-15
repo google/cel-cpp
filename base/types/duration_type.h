@@ -33,6 +33,11 @@ class DurationType final : public base_internal::SimpleType<Kind::kDuration> {
 
   using Base::Is;
 
+  static const DurationType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const DurationType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

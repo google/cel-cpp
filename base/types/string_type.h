@@ -33,6 +33,11 @@ class StringType final : public base_internal::SimpleType<Kind::kString> {
 
   using Base::Is;
 
+  static const StringType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const StringType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

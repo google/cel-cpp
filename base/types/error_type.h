@@ -33,6 +33,11 @@ class ErrorType final : public base_internal::SimpleType<Kind::kError> {
 
   using Base::Is;
 
+  static const ErrorType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const ErrorType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

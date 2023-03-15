@@ -91,6 +91,9 @@ class Handle final : private base_internal::HandlePolicy<T> {
                   "implementation type");
     ABSL_ASSERT(static_cast<bool>(*this) &&
                 static_cast<T&>(*impl_.get()).template Is<F>());
+#ifndef NDEBUG
+    static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
+#endif
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
@@ -115,6 +118,9 @@ class Handle final : private base_internal::HandlePolicy<T> {
                   "implementation type");
     ABSL_ASSERT(static_cast<bool>(*this) &&
                 static_cast<T&>(*impl_.get()).template Is<F>());
+#ifndef NDEBUG
+    static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
+#endif
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
@@ -139,6 +145,9 @@ class Handle final : private base_internal::HandlePolicy<T> {
                   "implementation type");
     ABSL_ASSERT(static_cast<bool>(*this) &&
                 static_cast<T&>(*impl_.get()).template Is<F>());
+#ifndef NDEBUG
+    static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
+#endif
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
@@ -163,6 +172,9 @@ class Handle final : private base_internal::HandlePolicy<T> {
                   "implementation type");
     ABSL_ASSERT(static_cast<bool>(*this) &&
                 static_cast<T&>(*impl_.get()).template Is<F>());
+#ifndef NDEBUG
+    static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
+#endif
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as

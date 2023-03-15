@@ -50,6 +50,13 @@ class ListValue : public Value {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const ListValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const ListValue&>(value);
+  }
+
   // TODO(issues/5): implement iterators so we can have cheap concated lists
 
   Handle<ListType> type() const;
@@ -72,8 +79,6 @@ class ListValue : public Value {
   bool Equals(const Value& other) const;
 
   void HashValue(absl::HashState state) const;
-
-  using Value::Is;
 
  private:
   friend class base_internal::LegacyListValue;
@@ -103,6 +108,13 @@ class LegacyListValue final : public ListValue, public InlineData {
                internal::TypeId<LegacyListValue>();
   }
 
+  using ListValue::Is;
+
+  static const LegacyListValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const LegacyListValue&>(value);
+  }
+
   Handle<ListType> type() const;
 
   std::string DebugString() const;
@@ -115,8 +127,6 @@ class LegacyListValue final : public ListValue, public InlineData {
                                     size_t index) const;
 
   constexpr uintptr_t value() const { return impl_; }
-
-  using ListValue::Is;
 
  private:
   friend class base_internal::ValueHandle;
@@ -146,6 +156,13 @@ class AbstractListValue : public ListValue, public HeapData {
                internal::TypeId<LegacyListValue>();
   }
 
+  using ListValue::Is;
+
+  static const AbstractListValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const AbstractListValue&>(value);
+  }
+
   const Handle<ListType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
@@ -156,8 +173,6 @@ class AbstractListValue : public ListValue, public HeapData {
 
   virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                             size_t index) const = 0;
-
-  using ListValue::Is;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);

@@ -50,6 +50,13 @@ class MapValue : public Value {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const MapValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const MapValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
   Handle<MapType> type() const;
@@ -73,8 +80,6 @@ class MapValue : public Value {
   ABSL_DEPRECATED("Use ListKeys(ValueFactory&) instead")
   absl::StatusOr<Handle<ListValue>> ListKeys(
       MemoryManager& memory_manager) const;
-
-  using Value::Is;
 
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
@@ -111,6 +116,13 @@ class LegacyMapValue final : public MapValue, public InlineData {
                internal::TypeId<LegacyMapValue>();
   }
 
+  using MapValue::Is;
+
+  static const LegacyMapValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const LegacyMapValue&>(value);
+  }
+
   Handle<MapType> type() const;
 
   std::string DebugString() const;
@@ -127,8 +139,6 @@ class LegacyMapValue final : public MapValue, public InlineData {
   absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
 
   constexpr uintptr_t value() const { return impl_; }
-
-  using MapValue::Is;
 
  private:
   friend class base_internal::ValueHandle;
@@ -156,6 +166,13 @@ class AbstractMapValue : public MapValue, public HeapData {
                internal::TypeId<LegacyMapValue>();
   }
 
+  using MapValue::Is;
+
+  static const AbstractMapValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const AbstractMapValue&>(value);
+  }
+
   const Handle<MapType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
@@ -171,8 +188,6 @@ class AbstractMapValue : public MapValue, public HeapData {
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;
-
-  using MapValue::Is;
 
  protected:
   explicit AbstractMapValue(Handle<MapType> type);

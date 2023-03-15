@@ -33,6 +33,11 @@ class AnyType final : public base_internal::SimpleType<Kind::kAny> {
 
   using Base::Is;
 
+  static const AnyType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const AnyType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;

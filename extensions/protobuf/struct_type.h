@@ -53,6 +53,11 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
 
   using CEL_STRUCT_TYPE_CLASS::Is;
 
+  static const ProtoStructType& Cast(const Type& type) {
+    ABSL_ASSERT(Is(type));
+    return static_cast<const ProtoStructType&>(type);
+  }
+
   template <typename T>
   static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructType>>>
   Resolve(TypeManager& type_manager) {

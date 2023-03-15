@@ -35,6 +35,11 @@ class DoubleValue final
 
   using Base::Is;
 
+  static const DoubleValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const DoubleValue&>(value);
+  }
+
   static Handle<DoubleValue> NaN(ValueFactory& value_factory);
 
   static Handle<DoubleValue> PositiveInfinity(ValueFactory& value_factory);
