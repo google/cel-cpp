@@ -245,7 +245,7 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
   explicit TestListValue(const Handle<ListType>& type,
                          std::vector<int64_t> elements)
       : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {
-    ABSL_ASSERT(type->element().Is<IntType>());
+    ABSL_ASSERT(type->element()->Is<IntType>());
   }
 
   size_t size() const override { return elements_.size(); }
@@ -277,15 +277,15 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   explicit TestMapValue(const Handle<MapType>& type,
                         std::map<std::string, int64_t> entries)
       : CEL_MAP_VALUE_CLASS(type), entries_(std::move(entries)) {
-    ABSL_ASSERT(type->key().Is<StringType>());
-    ABSL_ASSERT(type->value().Is<IntType>());
+    ABSL_ASSERT(type->key()->Is<StringType>());
+    ABSL_ASSERT(type->value()->Is<IntType>());
   }
 
   size_t size() const override { return entries_.size(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
       ValueFactory& value_factory, const Handle<Value>& key) const override {
-    if (!key.Is<StringValue>()) {
+    if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
     auto entry = entries_.find(key.As<StringValue>()->ToString());
@@ -296,7 +296,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
-    if (!key.Is<StringValue>()) {
+    if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
     auto entry = entries_.find(key.As<StringValue>()->ToString());
@@ -666,8 +666,8 @@ TEST_P(ValueTest, Error) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto error_value = value_factory.CreateErrorValue(absl::CancelledError());
-  EXPECT_TRUE(error_value.Is<ErrorValue>());
-  EXPECT_FALSE(error_value.Is<NullValue>());
+  EXPECT_TRUE(error_value->Is<ErrorValue>());
+  EXPECT_FALSE(error_value->Is<NullValue>());
   EXPECT_EQ(error_value, error_value);
   EXPECT_EQ(error_value,
             value_factory.CreateErrorValue(absl::CancelledError()));
@@ -679,8 +679,8 @@ TEST_P(ValueTest, Bool) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto false_value = BoolValue::False(value_factory);
-  EXPECT_TRUE(false_value.Is<BoolValue>());
-  EXPECT_FALSE(false_value.Is<NullValue>());
+  EXPECT_TRUE(false_value->Is<BoolValue>());
+  EXPECT_FALSE(false_value->Is<NullValue>());
   EXPECT_EQ(false_value, false_value);
   EXPECT_EQ(false_value, value_factory.CreateBoolValue(false));
   EXPECT_EQ(false_value->kind(), Kind::kBool);
@@ -688,8 +688,8 @@ TEST_P(ValueTest, Bool) {
   EXPECT_FALSE(false_value->value());
 
   auto true_value = BoolValue::True(value_factory);
-  EXPECT_TRUE(true_value.Is<BoolValue>());
-  EXPECT_FALSE(true_value.Is<NullValue>());
+  EXPECT_TRUE(true_value->Is<BoolValue>());
+  EXPECT_FALSE(true_value->Is<NullValue>());
   EXPECT_EQ(true_value, true_value);
   EXPECT_EQ(true_value, value_factory.CreateBoolValue(true));
   EXPECT_EQ(true_value->kind(), Kind::kBool);
@@ -705,8 +705,8 @@ TEST_P(ValueTest, Int) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateIntValue(0);
-  EXPECT_TRUE(zero_value.Is<IntValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<IntValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateIntValue(0));
   EXPECT_EQ(zero_value->kind(), Kind::kInt);
@@ -714,8 +714,8 @@ TEST_P(ValueTest, Int) {
   EXPECT_EQ(zero_value->value(), 0);
 
   auto one_value = value_factory.CreateIntValue(1);
-  EXPECT_TRUE(one_value.Is<IntValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<IntValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, value_factory.CreateIntValue(1));
   EXPECT_EQ(one_value->kind(), Kind::kInt);
@@ -731,8 +731,8 @@ TEST_P(ValueTest, Uint) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateUintValue(0);
-  EXPECT_TRUE(zero_value.Is<UintValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<UintValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateUintValue(0));
   EXPECT_EQ(zero_value->kind(), Kind::kUint);
@@ -740,8 +740,8 @@ TEST_P(ValueTest, Uint) {
   EXPECT_EQ(zero_value->value(), 0);
 
   auto one_value = value_factory.CreateUintValue(1);
-  EXPECT_TRUE(one_value.Is<UintValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<UintValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, value_factory.CreateUintValue(1));
   EXPECT_EQ(one_value->kind(), Kind::kUint);
@@ -757,8 +757,8 @@ TEST_P(ValueTest, Double) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateDoubleValue(0.0);
-  EXPECT_TRUE(zero_value.Is<DoubleValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<DoubleValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateDoubleValue(0.0));
   EXPECT_EQ(zero_value->kind(), Kind::kDouble);
@@ -766,8 +766,8 @@ TEST_P(ValueTest, Double) {
   EXPECT_EQ(zero_value->value(), 0.0);
 
   auto one_value = value_factory.CreateDoubleValue(1.0);
-  EXPECT_TRUE(one_value.Is<DoubleValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<DoubleValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, value_factory.CreateDoubleValue(1.0));
   EXPECT_EQ(one_value->kind(), Kind::kDouble);
@@ -784,8 +784,8 @@ TEST_P(ValueTest, Duration) {
   ValueFactory value_factory(type_manager);
   auto zero_value =
       Must(value_factory.CreateDurationValue(absl::ZeroDuration()));
-  EXPECT_TRUE(zero_value.Is<DurationValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<DurationValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateDurationValue(absl::ZeroDuration())));
@@ -795,8 +795,8 @@ TEST_P(ValueTest, Duration) {
 
   auto one_value = Must(value_factory.CreateDurationValue(
       absl::ZeroDuration() + absl::Nanoseconds(1)));
-  EXPECT_TRUE(one_value.Is<DurationValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<DurationValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), Kind::kDuration);
   EXPECT_EQ(one_value->type(), type_factory.GetDurationType());
@@ -814,8 +814,8 @@ TEST_P(ValueTest, Timestamp) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateTimestampValue(absl::UnixEpoch()));
-  EXPECT_TRUE(zero_value.Is<TimestampValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<TimestampValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateTimestampValue(absl::UnixEpoch())));
@@ -825,8 +825,8 @@ TEST_P(ValueTest, Timestamp) {
 
   auto one_value = Must(value_factory.CreateTimestampValue(
       absl::UnixEpoch() + absl::Nanoseconds(1)));
-  EXPECT_TRUE(one_value.Is<TimestampValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<TimestampValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), Kind::kTimestamp);
   EXPECT_EQ(one_value->type(), type_factory.GetTimestampType());
@@ -844,8 +844,8 @@ TEST_P(ValueTest, BytesFromString) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue(std::string("0")));
-  EXPECT_TRUE(zero_value.Is<BytesValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<BytesValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue(std::string("0"))));
   EXPECT_EQ(zero_value->kind(), Kind::kBytes);
@@ -853,8 +853,8 @@ TEST_P(ValueTest, BytesFromString) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateBytesValue(std::string("1")));
-  EXPECT_TRUE(one_value.Is<BytesValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<BytesValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue(std::string("1"))));
   EXPECT_EQ(one_value->kind(), Kind::kBytes);
@@ -871,8 +871,8 @@ TEST_P(ValueTest, BytesFromStringView) {
   ValueFactory value_factory(type_manager);
   auto zero_value =
       Must(value_factory.CreateBytesValue(absl::string_view("0")));
-  EXPECT_TRUE(zero_value.Is<BytesValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<BytesValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateBytesValue(absl::string_view("0"))));
@@ -881,8 +881,8 @@ TEST_P(ValueTest, BytesFromStringView) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateBytesValue(absl::string_view("1")));
-  EXPECT_TRUE(one_value.Is<BytesValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<BytesValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value,
             Must(value_factory.CreateBytesValue(absl::string_view("1"))));
@@ -899,8 +899,8 @@ TEST_P(ValueTest, BytesFromCord) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue(absl::Cord("0")));
-  EXPECT_TRUE(zero_value.Is<BytesValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<BytesValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue(absl::Cord("0"))));
   EXPECT_EQ(zero_value->kind(), Kind::kBytes);
@@ -908,8 +908,8 @@ TEST_P(ValueTest, BytesFromCord) {
   EXPECT_EQ(zero_value->ToCord(), "0");
 
   auto one_value = Must(value_factory.CreateBytesValue(absl::Cord("1")));
-  EXPECT_TRUE(one_value.Is<BytesValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<BytesValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue(absl::Cord("1"))));
   EXPECT_EQ(one_value->kind(), Kind::kBytes);
@@ -925,8 +925,8 @@ TEST_P(ValueTest, BytesFromLiteral) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue("0"));
-  EXPECT_TRUE(zero_value.Is<BytesValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<BytesValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue("0")));
   EXPECT_EQ(zero_value->kind(), Kind::kBytes);
@@ -934,8 +934,8 @@ TEST_P(ValueTest, BytesFromLiteral) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateBytesValue("1"));
-  EXPECT_TRUE(one_value.Is<BytesValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<BytesValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue("1")));
   EXPECT_EQ(one_value->kind(), Kind::kBytes);
@@ -951,8 +951,8 @@ TEST_P(ValueTest, BytesFromExternal) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateBytesValue("0", []() {}));
-  EXPECT_TRUE(zero_value.Is<BytesValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<BytesValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue("0", []() {})));
   EXPECT_EQ(zero_value->kind(), Kind::kBytes);
@@ -960,8 +960,8 @@ TEST_P(ValueTest, BytesFromExternal) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateBytesValue("1", []() {}));
-  EXPECT_TRUE(one_value.Is<BytesValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<BytesValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue("1", []() {})));
   EXPECT_EQ(one_value->kind(), Kind::kBytes);
@@ -977,8 +977,8 @@ TEST_P(ValueTest, StringFromString) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue(std::string("0")));
-  EXPECT_TRUE(zero_value.Is<StringValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<StringValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateStringValue(std::string("0"))));
@@ -987,8 +987,8 @@ TEST_P(ValueTest, StringFromString) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateStringValue(std::string("1")));
-  EXPECT_TRUE(one_value.Is<StringValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<StringValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue(std::string("1"))));
   EXPECT_EQ(one_value->kind(), Kind::kString);
@@ -1005,8 +1005,8 @@ TEST_P(ValueTest, StringFromStringView) {
   ValueFactory value_factory(type_manager);
   auto zero_value =
       Must(value_factory.CreateStringValue(absl::string_view("0")));
-  EXPECT_TRUE(zero_value.Is<StringValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<StringValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateStringValue(absl::string_view("0"))));
@@ -1016,8 +1016,8 @@ TEST_P(ValueTest, StringFromStringView) {
 
   auto one_value =
       Must(value_factory.CreateStringValue(absl::string_view("1")));
-  EXPECT_TRUE(one_value.Is<StringValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<StringValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value,
             Must(value_factory.CreateStringValue(absl::string_view("1"))));
@@ -1034,8 +1034,8 @@ TEST_P(ValueTest, StringFromCord) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue(absl::Cord("0")));
-  EXPECT_TRUE(zero_value.Is<StringValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<StringValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue(absl::Cord("0"))));
   EXPECT_EQ(zero_value->kind(), Kind::kString);
@@ -1043,8 +1043,8 @@ TEST_P(ValueTest, StringFromCord) {
   EXPECT_EQ(zero_value->ToCord(), "0");
 
   auto one_value = Must(value_factory.CreateStringValue(absl::Cord("1")));
-  EXPECT_TRUE(one_value.Is<StringValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<StringValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue(absl::Cord("1"))));
   EXPECT_EQ(one_value->kind(), Kind::kString);
@@ -1060,8 +1060,8 @@ TEST_P(ValueTest, StringFromLiteral) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue("0"));
-  EXPECT_TRUE(zero_value.Is<StringValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<StringValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue("0")));
   EXPECT_EQ(zero_value->kind(), Kind::kString);
@@ -1069,8 +1069,8 @@ TEST_P(ValueTest, StringFromLiteral) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateStringValue("1"));
-  EXPECT_TRUE(one_value.Is<StringValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<StringValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue("1")));
   EXPECT_EQ(one_value->kind(), Kind::kString);
@@ -1086,8 +1086,8 @@ TEST_P(ValueTest, StringFromExternal) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = Must(value_factory.CreateStringValue("0", []() {}));
-  EXPECT_TRUE(zero_value.Is<StringValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<StringValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue("0", []() {})));
   EXPECT_EQ(zero_value->kind(), Kind::kString);
@@ -1095,8 +1095,8 @@ TEST_P(ValueTest, StringFromExternal) {
   EXPECT_EQ(zero_value->ToString(), "0");
 
   auto one_value = Must(value_factory.CreateStringValue("1", []() {}));
-  EXPECT_TRUE(one_value.Is<StringValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<StringValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue("1", []() {})));
   EXPECT_EQ(one_value->kind(), Kind::kString);
@@ -1112,8 +1112,8 @@ TEST_P(ValueTest, Type) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto null_value = value_factory.CreateTypeValue(type_factory.GetNullType());
-  EXPECT_TRUE(null_value.Is<TypeValue>());
-  EXPECT_FALSE(null_value.Is<NullValue>());
+  EXPECT_TRUE(null_value->Is<TypeValue>());
+  EXPECT_FALSE(null_value->Is<NullValue>());
   EXPECT_EQ(null_value, null_value);
   EXPECT_EQ(null_value,
             value_factory.CreateTypeValue(type_factory.GetNullType()));
@@ -1122,8 +1122,8 @@ TEST_P(ValueTest, Type) {
   EXPECT_EQ(null_value->name(), "null_type");
 
   auto int_value = value_factory.CreateTypeValue(type_factory.GetIntType());
-  EXPECT_TRUE(int_value.Is<TypeValue>());
-  EXPECT_FALSE(int_value.Is<NullValue>());
+  EXPECT_TRUE(int_value->Is<TypeValue>());
+  EXPECT_FALSE(int_value->Is<NullValue>());
   EXPECT_EQ(int_value, int_value);
   EXPECT_EQ(int_value,
             value_factory.CreateTypeValue(type_factory.GetIntType()));
@@ -1140,8 +1140,8 @@ TEST_P(ValueTest, Unknown) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto zero_value = value_factory.CreateUnknownValue();
-  EXPECT_TRUE(zero_value.Is<UnknownValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<UnknownValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateUnknownValue());
   EXPECT_EQ(zero_value->kind(), Kind::kUnknown);
@@ -1905,8 +1905,8 @@ TEST_P(ValueTest, Enum) {
                        type_factory.CreateEnumType<TestEnumType>());
   ASSERT_OK_AND_ASSIGN(auto one_value,
                        value_factory.CreateEnumValue(enum_type, "VALUE1"));
-  EXPECT_TRUE(one_value.Is<EnumValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<EnumValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value,
             Must(value_factory.CreateEnumValue(enum_type, "VALUE1")));
@@ -1917,8 +1917,8 @@ TEST_P(ValueTest, Enum) {
 
   ASSERT_OK_AND_ASSIGN(auto two_value,
                        value_factory.CreateEnumValue(enum_type, "VALUE2"));
-  EXPECT_TRUE(two_value.Is<EnumValue>());
-  EXPECT_FALSE(two_value.Is<NullValue>());
+  EXPECT_TRUE(two_value->Is<EnumValue>());
+  EXPECT_FALSE(two_value->Is<NullValue>());
   EXPECT_EQ(two_value, two_value);
   EXPECT_EQ(two_value->kind(), Kind::kEnum);
   EXPECT_EQ(two_value->type(), enum_type);
@@ -1967,9 +1967,9 @@ TEST_P(ValueTest, Struct) {
   ASSERT_OK_AND_ASSIGN(
       auto zero_value,
       value_factory.CreateStructValue<TestStructValue>(struct_type));
-  EXPECT_TRUE(zero_value.Is<StructValue>());
-  EXPECT_TRUE(zero_value.Is<TestStructValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<StructValue>());
+  EXPECT_TRUE(zero_value->Is<TestStructValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value->kind(), Kind::kStruct);
   EXPECT_EQ(zero_value->type(), struct_type);
@@ -1978,9 +1978,9 @@ TEST_P(ValueTest, Struct) {
   ASSERT_OK_AND_ASSIGN(auto one_value,
                        value_factory.CreateStructValue<TestStructValue>(
                            struct_type, TestStruct{true, 1, 1, 1.0}));
-  EXPECT_TRUE(one_value.Is<StructValue>());
-  EXPECT_TRUE(one_value.Is<TestStructValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<StructValue>());
+  EXPECT_TRUE(one_value->Is<TestStructValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), Kind::kStruct);
   EXPECT_EQ(one_value->type(), struct_type);
@@ -2078,9 +2078,9 @@ TEST_P(ValueTest, List) {
   ASSERT_OK_AND_ASSIGN(auto zero_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{}));
-  EXPECT_TRUE(zero_value.Is<ListValue>());
-  EXPECT_TRUE(zero_value.Is<TestListValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<ListValue>());
+  EXPECT_TRUE(zero_value->Is<TestListValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value->kind(), Kind::kList);
   EXPECT_EQ(zero_value->type(), list_type);
@@ -2089,9 +2089,9 @@ TEST_P(ValueTest, List) {
   ASSERT_OK_AND_ASSIGN(auto one_value,
                        value_factory.CreateListValue<TestListValue>(
                            list_type, std::vector<int64_t>{1}));
-  EXPECT_TRUE(one_value.Is<ListValue>());
-  EXPECT_TRUE(one_value.Is<TestListValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<ListValue>());
+  EXPECT_TRUE(one_value->Is<TestListValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), Kind::kList);
   EXPECT_EQ(one_value->type(), list_type);
@@ -2160,9 +2160,9 @@ TEST_P(ValueTest, Map) {
   ASSERT_OK_AND_ASSIGN(auto zero_value,
                        value_factory.CreateMapValue<TestMapValue>(
                            map_type, std::map<std::string, int64_t>{}));
-  EXPECT_TRUE(zero_value.Is<MapValue>());
-  EXPECT_TRUE(zero_value.Is<TestMapValue>());
-  EXPECT_FALSE(zero_value.Is<NullValue>());
+  EXPECT_TRUE(zero_value->Is<MapValue>());
+  EXPECT_TRUE(zero_value->Is<TestMapValue>());
+  EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value->kind(), Kind::kMap);
   EXPECT_EQ(zero_value->type(), map_type);
@@ -2173,9 +2173,9 @@ TEST_P(ValueTest, Map) {
       auto one_value,
       value_factory.CreateMapValue<TestMapValue>(
           map_type, std::map<std::string, int64_t>{{"foo", 1}}));
-  EXPECT_TRUE(one_value.Is<MapValue>());
-  EXPECT_TRUE(one_value.Is<TestMapValue>());
-  EXPECT_FALSE(one_value.Is<NullValue>());
+  EXPECT_TRUE(one_value->Is<MapValue>());
+  EXPECT_TRUE(one_value->Is<TestMapValue>());
+  EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value->kind(), Kind::kMap);
   EXPECT_EQ(one_value->type(), map_type);

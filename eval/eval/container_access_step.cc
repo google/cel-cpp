@@ -129,7 +129,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
     if (number.has_value()) {
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
-      if (key.Is<UintValue>()) {
+      if (key->Is<UintValue>()) {
         CEL_ASSIGN_OR_RETURN(auto maybe_value,
                              cel_map->Get(frame->value_factory(), key));
         if (maybe_value.has_value()) {
@@ -180,7 +180,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
     if (number.has_value() && number->LosslessConvertibleToInt()) {
       maybe_idx = number->AsInt();
     }
-  } else if (key.Is<IntValue>()) {
+  } else if (key->Is<IntValue>()) {
     maybe_idx = key.As<IntValue>()->value();
   }
 
@@ -233,7 +233,7 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
   }
 
   for (const auto& value : input_args) {
-    if (value.Is<cel::ErrorValue>()) {
+    if (value->Is<cel::ErrorValue>()) {
       return {value, std::move(trail)};
     }
   }

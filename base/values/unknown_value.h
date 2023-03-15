@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 
-#include <memory>
 #include <string>
 #include <utility>
 
@@ -42,6 +41,8 @@ class UnknownValue final : public Value, public base_internal::InlineData {
   const AttributeSet& attribute_set() const;
 
   const FunctionResultSet& function_result_set() const;
+
+  using Value::Is;
 
  private:
   friend class ValueHandle;

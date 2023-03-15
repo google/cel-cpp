@@ -21,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
+#include "base/type.h"
 #include "base/type_manager.h"
 #include "base/types/struct_type.h"
 #include "google/protobuf/descriptor.h"
@@ -43,6 +44,15 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
                        R>;
 
  public:
+  static bool Is(const Type& type) {
+    return type.kind() == Kind::kStruct &&
+           cel::base_internal::GetStructTypeTypeId(
+               static_cast<const StructType&>(type)) ==
+               cel::internal::TypeId<ProtoStructType>();
+  }
+
+  using CEL_STRUCT_TYPE_CLASS::Is;
+
   template <typename T>
   static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructType>>>
   Resolve(TypeManager& type_manager) {

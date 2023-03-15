@@ -16,7 +16,6 @@
 #define THIRD_PARTY_CEL_CPP_BASE_VALUE_FACTORY_H_
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -332,62 +331,6 @@ class ValueFactory final {
   }
 
   TypeManager& type_manager_;
-};
-
-// TypedEnumValueFactory creates EnumValue scoped to a specific EnumType. Used
-// with EnumType::NewInstance.
-class TypedEnumValueFactory final {
- private:
-  template <typename T, typename U, typename V>
-  using EnableIfBaseOfT =
-      std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
-
- public:
-  TypedEnumValueFactory(
-      ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const Handle<EnumType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : value_factory_(value_factory), enum_type_(enum_type) {}
-
-  absl::StatusOr<Handle<EnumValue>> CreateEnumValue(int64_t number)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_factory_.CreateEnumValue(enum_type_, number);
-  }
-
-  template <typename T>
-  std::enable_if_t<std::is_enum_v<T>, absl::StatusOr<Handle<EnumValue>>>
-  CreateEnumValue(T value) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return CreateEnumValue(static_cast<int64_t>(value));
-  }
-
- private:
-  ValueFactory& value_factory_;
-  const Handle<EnumType>& enum_type_;
-};
-
-// TypedStructValueFactory creates StructValue scoped to a specific StructType.
-// Used with StructType::NewInstance.
-class TypedStructValueFactory final {
- private:
-  template <typename T, typename U, typename V>
-  using EnableIfBaseOfT =
-      std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
-
- public:
-  TypedStructValueFactory(
-      ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-      const Handle<StructType>& enum_type ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : value_factory_(value_factory), struct_type_(enum_type) {}
-
-  template <typename T, typename... Args>
-  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
-      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return value_factory_.CreateStructValue<T>(struct_type_,
-                                               std::forward<Args>(args)...);
-  }
-
- private:
-  ValueFactory& value_factory_;
-  const Handle<StructType>& struct_type_;
 };
 
 // -----------------------------------------------------------------------------

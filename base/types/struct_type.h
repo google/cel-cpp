@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_STRUCT_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_STRUCT_TYPE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -85,6 +84,8 @@ class StructType : public Type {
   absl::StatusOr<absl::optional<Field>> FindField(TypeManager& type_manager,
                                                   FieldId id) const;
 
+  using Type::Is;
+
  protected:
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
@@ -136,6 +137,8 @@ class LegacyStructType final : public StructType,
   // Always returns the same string.
   std::string DebugString() const { return std::string(name()); }
 
+  using StructType::Is;
+
  protected:
   // Always returns an error.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
@@ -179,6 +182,8 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   virtual absl::string_view name() const = 0;
 
   virtual std::string DebugString() const { return std::string(name()); }
+
+  using StructType::Is;
 
  protected:
   AbstractStructType();

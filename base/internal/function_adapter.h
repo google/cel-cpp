@@ -113,7 +113,7 @@ constexpr Kind AdaptedKind<const Handle<BytesValue>&>() {
 // function.
 struct HandleToAdaptedVisitor {
   absl::Status operator()(int64_t* out) {
-    if (!input.Is<IntValue>()) {
+    if (!input->Is<IntValue>()) {
       return absl::InvalidArgumentError("expected int value");
     }
     *out = input.As<IntValue>()->value();
@@ -121,7 +121,7 @@ struct HandleToAdaptedVisitor {
   }
 
   absl::Status operator()(uint64_t* out) {
-    if (!input.Is<UintValue>()) {
+    if (!input->Is<UintValue>()) {
       return absl::InvalidArgumentError("expected uint value");
     }
     *out = input.As<UintValue>()->value();
@@ -129,7 +129,7 @@ struct HandleToAdaptedVisitor {
   }
 
   absl::Status operator()(double* out) {
-    if (!input.Is<DoubleValue>()) {
+    if (!input->Is<DoubleValue>()) {
       return absl::InvalidArgumentError("expected double value");
     }
     *out = input.As<DoubleValue>()->value();
@@ -137,7 +137,7 @@ struct HandleToAdaptedVisitor {
   }
 
   absl::Status operator()(bool* out) {
-    if (!input.Is<BoolValue>()) {
+    if (!input->Is<BoolValue>()) {
       return absl::InvalidArgumentError("expected bool value");
     }
     *out = input.As<BoolValue>()->value();
@@ -145,7 +145,7 @@ struct HandleToAdaptedVisitor {
   }
 
   absl::Status operator()(absl::Time* out) {
-    if (!input.Is<TimestampValue>()) {
+    if (!input->Is<TimestampValue>()) {
       return absl::InvalidArgumentError("expected timestamp value");
     }
     *out = input.As<TimestampValue>()->value();
@@ -153,7 +153,7 @@ struct HandleToAdaptedVisitor {
   }
 
   absl::Status operator()(absl::Duration* out) {
-    if (!input.Is<DurationValue>()) {
+    if (!input->Is<DurationValue>()) {
       return absl::InvalidArgumentError("expected duration value");
     }
     *out = input.As<DurationValue>()->value();
@@ -173,7 +173,7 @@ struct HandleToAdaptedVisitor {
   // Used to implement adapter for pass by const reference functions.
   template <typename T>
   absl::Status operator()(const Handle<T>** out) {
-    if (!input.Is<T>()) {
+    if (!input->Is<T>()) {
       return absl::InvalidArgumentError(
           absl::StrCat("expected ", KindToString(T::kKind), " value"));
     }

@@ -50,11 +50,11 @@ using ::cel::interop_internal::CreateNoMatchingOverloadError;
 
 Handle<Value> NotStrictlyFalseImpl(ValueFactory& value_factory,
                                    const Handle<Value>& value) {
-  if (value.Is<BoolValue>()) {
+  if (value->Is<BoolValue>()) {
     return value;
   }
 
-  if (value.Is<ErrorValue>() || value.Is<UnknownValue>()) {
+  if (value->Is<ErrorValue>() || value->Is<UnknownValue>()) {
     return value_factory.CreateBoolValue(true);
   }
 

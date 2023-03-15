@@ -47,7 +47,7 @@ class LogicalOpStep : public ExpressionStepBase {
     bool has_bool_args[2];
 
     for (size_t i = 0; i < args.size(); i++) {
-      has_bool_args[i] = args[i].Is<BoolValue>();
+      has_bool_args[i] = args[i]->Is<BoolValue>();
       if (has_bool_args[i]) {
         bool_args[i] = args[i].As<BoolValue>()->value();
         if (bool_args[i] == shortcircuit_) {
@@ -78,9 +78,9 @@ class LogicalOpStep : public ExpressionStepBase {
       }
     }
 
-    if (args[0].Is<cel::ErrorValue>()) {
+    if (args[0]->Is<cel::ErrorValue>()) {
       return args[0];
-    } else if (args[1].Is<cel::ErrorValue>()) {
+    } else if (args[1]->Is<cel::ErrorValue>()) {
       return args[1];
     }
 

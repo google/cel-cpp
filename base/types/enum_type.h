@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_ENUM_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_ENUM_TYPE_H_
 
-#include <atomic>
-#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -64,6 +62,8 @@ class EnumType : public Type, public base_internal::HeapData {
   };
 
   static constexpr Kind kKind = Kind::kEnum;
+
+  using Type::Is;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 

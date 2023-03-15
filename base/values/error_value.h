@@ -46,6 +46,8 @@ class ErrorValue final : public Value, public base_internal::InlineData {
 
   const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  using Value::Is;
+
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>

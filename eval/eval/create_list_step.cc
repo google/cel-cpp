@@ -49,7 +49,7 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   cel::Handle<cel::Value> result;
   for (const auto& arg : args) {
-    if (arg.Is<cel::ErrorValue>()) {
+    if (arg->Is<cel::ErrorValue>()) {
       result = arg;
       frame->value_stack().Pop(list_size_);
       frame->value_stack().Push(std::move(result));

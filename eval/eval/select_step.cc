@@ -172,7 +172,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   const Handle<Value>& arg = frame->value_stack().Peek();
   const AttributeTrail& trail = frame->value_stack().PeekAttribute();
 
-  if (arg.Is<UnknownValue>() || arg.Is<ErrorValue>()) {
+  if (arg->Is<UnknownValue>() || arg->Is<ErrorValue>()) {
     // Bubble up unknowns and errors.
     return absl::OkStatus();
   }
@@ -184,7 +184,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     result_trail = trail.Step(&field_, frame->memory_manager());
   }
 
-  if (arg.Is<NullValue>()) {
+  if (arg->Is<NullValue>()) {
     frame->value_stack().PopAndPush(
         CreateErrorValueFromView(
             CreateError(frame->memory_manager(), "Message is NULL")),
@@ -192,7 +192,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     return absl::OkStatus();
   }
 
-  if (!(arg.Is<MapValue>() || arg.Is<StructValue>())) {
+  if (!(arg->Is<MapValue>() || arg->Is<StructValue>())) {
     return InvalidSelectTargetError();
   }
 

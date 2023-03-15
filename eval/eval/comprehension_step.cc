@@ -97,10 +97,10 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 
   // Get range from the stack.
   auto iter_range = state[POS_ITER_RANGE];
-  if (!iter_range.Is<cel::ListValue>()) {
+  if (!iter_range->Is<cel::ListValue>()) {
     frame->value_stack().Pop(5);
-    if (iter_range.Is<cel::ErrorValue>() ||
-        iter_range.Is<cel::UnknownValue>()) {
+    if (iter_range->Is<cel::ErrorValue>() ||
+        iter_range->Is<cel::UnknownValue>()) {
       frame->value_stack().Push(std::move(iter_range));
       return frame->JumpTo(error_jump_offset_);
     }
@@ -113,7 +113,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
 
   // Get the current index off the stack.
   const auto& current_index_value = state[POS_CURRENT_INDEX];
-  if (!current_index_value.Is<cel::IntValue>()) {
+  if (!current_index_value->Is<cel::IntValue>()) {
     return absl::InternalError(
         absl::StrCat("ComprehensionNextStep: want int64_t, got ",
                      CelValue::TypeName(current_index_value->kind())));
@@ -177,10 +177,10 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   auto loop_condition_value = frame->value_stack().Peek();
-  if (!loop_condition_value.Is<cel::BoolValue>()) {
+  if (!loop_condition_value->Is<cel::BoolValue>()) {
     frame->value_stack().Pop(5);
-    if (loop_condition_value.Is<cel::ErrorValue>() ||
-        loop_condition_value.Is<cel::UnknownValue>()) {
+    if (loop_condition_value->Is<cel::ErrorValue>() ||
+        loop_condition_value->Is<cel::UnknownValue>()) {
       frame->value_stack().Push(std::move(loop_condition_value));
     } else {
       frame->value_stack().Push(CreateErrorValueFromView(
@@ -259,7 +259,7 @@ absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  if (frame->value_stack().Peek().Is<cel::MapValue>()) {
+  if (frame->value_stack().Peek()->Is<cel::MapValue>()) {
     return ProjectKeys(frame);
   }
   return absl::OkStatus();

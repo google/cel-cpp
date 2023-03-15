@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_ENUM_TYPE_H_
 
 #include "absl/log/die_if_null.h"
+#include "base/type.h"
 #include "base/type_manager.h"
 #include "base/types/enum_type.h"
 #include "google/protobuf/descriptor.h"
@@ -32,6 +33,14 @@ class ProtoEnumType final : public EnumType {
   using EnableIfEnum = std::enable_if_t<google::protobuf::is_proto_enum<T>::value, R>;
 
  public:
+  static bool Is(const Type& type) {
+    return type.kind() == Kind::kEnum &&
+           cel::base_internal::GetEnumTypeTypeId(static_cast<const EnumType&>(
+               type)) == cel::internal::TypeId<ProtoEnumType>();
+  }
+
+  using EnumType::Is;
+
   template <typename T>
   static EnableIfEnum<T, absl::StatusOr<Handle<ProtoEnumType>>> Resolve(
       TypeManager& type_manager) {

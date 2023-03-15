@@ -937,7 +937,7 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_bool")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -951,7 +951,7 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_bool")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[true, false]");
@@ -974,7 +974,7 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_int32")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -988,7 +988,7 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_int32")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1, 0]");
@@ -1011,7 +1011,7 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_int64")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1025,7 +1025,7 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_int64")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1, 0]");
@@ -1048,7 +1048,7 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_uint32")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1062,7 +1062,7 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_uint32")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1u, 0u]");
@@ -1085,7 +1085,7 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_uint64")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1099,7 +1099,7 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_uint64")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1u, 0u]");
@@ -1122,7 +1122,7 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_float")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1136,7 +1136,7 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_float")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
@@ -1159,7 +1159,7 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_double")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1173,7 +1173,7 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_double")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
@@ -1196,7 +1196,7 @@ TEST_P(ProtoStructValueTest, BytesListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_bytes")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1210,7 +1210,7 @@ TEST_P(ProtoStructValueTest, BytesListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_bytes")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
@@ -1233,7 +1233,7 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_string")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1247,7 +1247,7 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory,
                                   ProtoStructType::FieldId("repeated_string")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
@@ -1270,7 +1270,7 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_duration")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1284,7 +1284,7 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(
                  value_factory, ProtoStructType::FieldId("repeated_duration")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1s, 2s]");
@@ -1307,7 +1307,7 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
       auto field,
       value_without->GetField(value_factory,
                               ProtoStructType::FieldId("repeated_timestamp")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1321,7 +1321,7 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory, ProtoStructType::FieldId(
                                                      "repeated_timestamp")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(),
@@ -1347,7 +1347,7 @@ TEST_P(ProtoStructValueTest, EnumListGetField) {
       auto field,
       value_without->GetField(
           value_factory, ProtoStructType::FieldId("repeated_nested_enum")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1361,7 +1361,7 @@ TEST_P(ProtoStructValueTest, EnumListGetField) {
   ASSERT_OK_AND_ASSIGN(
       field, value_with->GetField(value_factory, ProtoStructType::FieldId(
                                                      "repeated_nested_enum")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(),
@@ -1386,7 +1386,7 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
       auto field,
       value_without->GetField(
           value_factory, ProtoStructType::FieldId("repeated_nested_message")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[]");
@@ -1401,7 +1401,7 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
       field,
       value_with->GetField(
           value_factory, ProtoStructType::FieldId("repeated_nested_message")));
-  EXPECT_TRUE(field.Is<ListValue>());
+  EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(
@@ -1518,7 +1518,7 @@ TEST_P(ProtoStructValueTest, StaticValue) {
   ValueFactory value_factory(type_manager);
   TestAllTypes message = CreateTestMessage();
   ASSERT_OK_AND_ASSIGN(auto value, ProtoValue::Create(value_factory, message));
-  EXPECT_TRUE(value.Is<ProtoStructValue>());
+  EXPECT_TRUE(value->Is<ProtoStructValue>());
   TestAllTypes scratch;
   EXPECT_THAT(*value->value(scratch), EqualsProto(message));
 }
@@ -1533,7 +1533,7 @@ TEST_P(ProtoStructValueTest, DynamicLValue) {
       auto value,
       ProtoValue::Create(value_factory,
                          static_cast<const google::protobuf::Message&>(message)));
-  EXPECT_TRUE(value.Is<ProtoStructValue>());
+  EXPECT_TRUE(value->Is<ProtoStructValue>());
   TestAllTypes scratch;
   EXPECT_THAT(*value.As<ProtoStructValue>()->value(scratch),
               EqualsProto(message));
@@ -1548,7 +1548,7 @@ TEST_P(ProtoStructValueTest, DynamicRValue) {
       auto value,
       ProtoValue::Create(value_factory,
                          static_cast<google::protobuf::Message&&>(CreateTestMessage())));
-  EXPECT_TRUE(value.Is<ProtoStructValue>());
+  EXPECT_TRUE(value->Is<ProtoStructValue>());
 }
 
 void BuildDescriptorDatabase(google::protobuf::SimpleDescriptorDatabase* database) {
@@ -1580,7 +1580,7 @@ TEST_P(ProtoStructValueTest, DynamicLValueDifferentDescriptors) {
   ASSERT_TRUE(prototype != nullptr);
   ASSERT_OK_AND_ASSIGN(auto value,
                        ProtoValue::Create(value_factory, *prototype));
-  EXPECT_TRUE(value.Is<ProtoStructValue>());
+  EXPECT_TRUE(value->Is<ProtoStructValue>());
 }
 
 TEST_P(ProtoStructValueTest, DynamicRValueDifferentDescriptors) {
@@ -1601,7 +1601,7 @@ TEST_P(ProtoStructValueTest, DynamicRValueDifferentDescriptors) {
   ASSERT_OK_AND_ASSIGN(auto value,
                        ProtoValue::Create(value_factory, std::move(*message)));
   delete message;
-  EXPECT_TRUE(value.Is<ProtoStructValue>());
+  EXPECT_TRUE(value->Is<ProtoStructValue>());
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoStructValueTest, ProtoStructValueTest,

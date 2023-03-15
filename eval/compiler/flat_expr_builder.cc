@@ -781,7 +781,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
     auto const_value = constant_idents_.find(expr.ident_expr().name());
     return const_value != constant_idents_.end() &&
-           const_value->second.Is<StringValue>();
+           const_value->second->Is<StringValue>();
   }
 
   std::string GetConstantString(const cel::ast::internal::Expr& expr) const {

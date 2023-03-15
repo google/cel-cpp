@@ -15,18 +15,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUE_H_
 
-#include <atomic>
 #include <cstdint>
-#include <functional>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/value.h"  // IWYU pragma: export
 #include "base/kind.h"
@@ -63,6 +58,16 @@ class Value : public base_internal::Data {
   Handle<Type> type() const;
 
   std::string DebugString() const;
+
+  template <typename T>
+  bool Is() const {
+    static_assert(!std::is_const_v<T>, "T must not be const");
+    static_assert(!std::is_volatile_v<T>, "T must not be volatile");
+    static_assert(!std::is_pointer_v<T>, "T must not be a pointer");
+    static_assert(!std::is_reference_v<T>, "T must not be a reference");
+    static_assert(std::is_base_of_v<Value, T>, "T must be derived from Value");
+    return T::Is(*this);
+  }
 
  private:
   friend class ErrorValue;
@@ -212,6 +217,8 @@ class SimpleValue : public Value, InlineData {
 
   constexpr U value() const { return value_; }
 
+  using Value::Is;
+
  private:
   friend class ValueHandle;
 
@@ -243,6 +250,8 @@ class SimpleValue<NullType, void> : public Value, InlineData {
   constexpr Kind kind() const { return kKind; }
 
   const Handle<NullType>& type() const { return NullType::Get(); }
+
+  using Value::Is;
 
  private:
   friend class ValueHandle;

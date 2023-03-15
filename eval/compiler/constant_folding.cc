@@ -217,7 +217,7 @@ class ConstantFoldingTransform {
           matched_function->descriptor().is_strict()) {
         // propagate argument errors up the expression
         for (Handle<Value>& arg : arg_values) {
-          if (arg.Is<ErrorValue>()) {
+          if (arg->Is<ErrorValue>()) {
             transform_.MakeConstant(std::move(arg), out_);
             return true;
           }

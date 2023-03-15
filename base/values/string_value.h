@@ -15,7 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -86,6 +85,8 @@ class StringValue : public Value {
   void HashValue(absl::HashState state) const;
 
   bool Equals(const Value& other) const;
+
+  using Value::Is;
 
  private:
   friend class base_internal::ValueHandle;

@@ -58,7 +58,7 @@ TEST(ValueInterop, NullFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateNull();
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<NullValue>());
+  EXPECT_TRUE(value->Is<NullValue>());
 }
 
 TEST(ValueInterop, NullToLegacy) {
@@ -80,7 +80,7 @@ TEST(ValueInterop, BoolFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateBool(true);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<BoolValue>());
+  EXPECT_TRUE(value->Is<BoolValue>());
   EXPECT_TRUE(value.As<BoolValue>()->value());
 }
 
@@ -104,7 +104,7 @@ TEST(ValueInterop, IntFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateInt64(1);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<IntValue>());
+  EXPECT_TRUE(value->Is<IntValue>());
   EXPECT_EQ(value.As<IntValue>()->value(), 1);
 }
 
@@ -128,7 +128,7 @@ TEST(ValueInterop, UintFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateUint64(1);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<UintValue>());
+  EXPECT_TRUE(value->Is<UintValue>());
   EXPECT_EQ(value.As<UintValue>()->value(), 1);
 }
 
@@ -152,7 +152,7 @@ TEST(ValueInterop, DoubleFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateDouble(1.0);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<DoubleValue>());
+  EXPECT_TRUE(value->Is<DoubleValue>());
   EXPECT_EQ(value.As<DoubleValue>()->value(), 1.0);
 }
 
@@ -177,7 +177,7 @@ TEST(ValueInterop, DurationFromLegacy) {
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   auto legacy_value = CelValue::CreateDuration(duration);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<DurationValue>());
+  EXPECT_TRUE(value->Is<DurationValue>());
   EXPECT_EQ(value.As<DurationValue>()->value(), duration);
 }
 
@@ -197,13 +197,13 @@ TEST(ValueInterop, DurationToLegacy) {
 TEST(ValueInterop, CreateDurationOk) {
   auto duration = absl::ZeroDuration() + absl::Seconds(1);
   Handle<Value> value = CreateDurationValue(duration);
-  EXPECT_TRUE(value.Is<DurationValue>());
+  EXPECT_TRUE(value->Is<DurationValue>());
   EXPECT_EQ(value.As<DurationValue>()->value(), duration);
 }
 
 TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
   Handle<Value> value = CreateDurationValue(kDurationHigh);
-  EXPECT_TRUE(value.Is<ErrorValue>());
+  EXPECT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(value.As<ErrorValue>()->value(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Duration is out of range")));
@@ -211,7 +211,7 @@ TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
 
 TEST(ValueInterop, CreateDurationOutOfRangeLow) {
   Handle<Value> value = CreateDurationValue(kDurationLow);
-  EXPECT_TRUE(value.Is<ErrorValue>());
+  EXPECT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(value.As<ErrorValue>()->value(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("Duration is out of range")));
@@ -226,7 +226,7 @@ TEST(ValueInterop, TimestampFromLegacy) {
   auto timestamp = absl::UnixEpoch() + absl::Seconds(1);
   auto legacy_value = CelValue::CreateTimestamp(timestamp);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<TimestampValue>());
+  EXPECT_TRUE(value->Is<TimestampValue>());
   EXPECT_EQ(value.As<TimestampValue>()->value(), timestamp);
 }
 
@@ -253,7 +253,7 @@ TEST(ValueInterop, ErrorFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateError(&error);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<ErrorValue>());
+  EXPECT_TRUE(value->Is<ErrorValue>());
   EXPECT_EQ(value.As<ErrorValue>()->value(), error);
 }
 
@@ -262,7 +262,7 @@ TEST(ValueInterop, TypeFromLegacy) {
   auto legacy_value = CelValue::CreateCelTypeView("struct.that.does.not.Exist");
   ASSERT_OK_AND_ASSIGN(auto modern_value,
                        FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(modern_value.Is<TypeValue>());
+  EXPECT_TRUE(modern_value->Is<TypeValue>());
   EXPECT_EQ(modern_value.As<TypeValue>()->name(), "struct.that.does.not.Exist");
 }
 
@@ -293,7 +293,7 @@ TEST(ValueInterop, StringFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateStringView("test");
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<StringValue>());
+  EXPECT_TRUE(value->Is<StringValue>());
   EXPECT_EQ(value.As<StringValue>()->ToString(), "test");
 }
 
@@ -330,7 +330,7 @@ TEST(ValueInterop, BytesFromLegacy) {
   ValueFactory value_factory(type_manager);
   auto legacy_value = CelValue::CreateBytesView("test");
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<BytesValue>());
+  EXPECT_TRUE(value->Is<BytesValue>());
   EXPECT_EQ(value.As<BytesValue>()->ToString(), "test");
 }
 
@@ -371,11 +371,11 @@ TEST(ValueInterop, ListFromLegacy) {
               std::vector<CelValue>{CelValue::CreateInt64(0)})
           .release());
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<ListValue>());
+  EXPECT_TRUE(value->Is<ListValue>());
   EXPECT_EQ(value.As<ListValue>()->size(), 1);
   ASSERT_OK_AND_ASSIGN(auto element,
                        value.As<ListValue>()->Get(value_factory, 0));
-  EXPECT_TRUE(element.Is<IntValue>());
+  EXPECT_TRUE(element->Is<IntValue>());
   EXPECT_EQ(element.As<IntValue>()->value(), 0);
 }
 
@@ -384,7 +384,7 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
   explicit TestListValue(const Handle<ListType>& type,
                          std::vector<int64_t> elements)
       : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {
-    ABSL_ASSERT(type->element().Is<IntType>());
+    ABSL_ASSERT(type->element()->Is<IntType>());
   }
 
   size_t size() const override { return elements_.size(); }
@@ -475,13 +475,13 @@ TEST(ValueInterop, MapFromLegacy) {
                             CelValue::CreateStringView("foo")));
   auto legacy_value = CelValue::CreateMap(legacy_map);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<MapValue>());
+  EXPECT_TRUE(value->Is<MapValue>());
   EXPECT_EQ(value.As<MapValue>()->size(), 1);
   auto entry_key = value_factory.CreateIntValue(1);
   EXPECT_THAT(value.As<MapValue>()->Has(entry_key), IsOkAndHolds(Eq(true)));
   ASSERT_OK_AND_ASSIGN(auto entry_value,
                        value.As<MapValue>()->Get(value_factory, entry_key));
-  EXPECT_TRUE((*entry_value).Is<StringValue>());
+  EXPECT_TRUE((*entry_value)->Is<StringValue>());
   EXPECT_EQ((*entry_value).As<StringValue>()->ToString(), "foo");
 }
 
@@ -626,7 +626,7 @@ TEST(ValueInterop, StructFromLegacy) {
   ASSERT_OK_AND_ASSIGN(auto value_name_field,
                        value.As<StructValue>()->GetField(
                            value_factory, StructValue::FieldId("name")));
-  ASSERT_TRUE(value_name_field.Is<StringValue>());
+  ASSERT_TRUE(value_name_field->Is<StringValue>());
   EXPECT_EQ(value_name_field.As<StringValue>()->ToString(), "foo");
   EXPECT_THAT(
       value.As<StructValue>()->GetField(value_factory, StructValue::FieldId(1)),
@@ -688,7 +688,7 @@ TEST(ValueInterop, UnknownFromLegacy) {
   UnknownSet unknown_set(attributes, function_results);
   auto legacy_value = CelValue::CreateUnknownSet(&unknown_set);
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
-  EXPECT_TRUE(value.Is<UnknownValue>());
+  EXPECT_TRUE(value->Is<UnknownValue>());
   EXPECT_EQ(value.As<UnknownValue>()->attribute_set(), attributes);
   EXPECT_EQ(value.As<UnknownValue>()->function_result_set(), function_results);
 }

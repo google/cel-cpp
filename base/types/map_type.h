@@ -15,10 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <string>
-#include <utility>
 
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
@@ -50,6 +48,8 @@ class MapType : public Type {
 
   // Returns the type of the values in the map.
   const Handle<Type>& value() const;
+
+  using Type::Is;
 
  private:
   friend class MemoryManager;

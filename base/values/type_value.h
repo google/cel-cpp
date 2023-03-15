@@ -43,6 +43,8 @@ class TypeValue : public Value {
 
   bool Equals(const TypeValue& other) const;
 
+  using Value::Is;
+
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>

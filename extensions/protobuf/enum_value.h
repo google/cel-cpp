@@ -30,7 +30,7 @@ namespace cel::extensions {
 class ProtoEnumValue final {
  public:
   static bool Is(const EnumValue& value) {
-    return value.type().Is<ProtoEnumType>();
+    return value.type()->Is<ProtoEnumType>();
   }
   static bool Is(const Handle<EnumValue>& value) { return Is(*value); }
 

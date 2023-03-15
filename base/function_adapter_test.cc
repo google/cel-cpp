@@ -72,7 +72,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionInt) {
   std::vector<Handle<Value>> args{value_factory().CreateIntValue(40)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<IntValue>());
+  ASSERT_TRUE(result->Is<IntValue>());
   EXPECT_EQ(result.As<IntValue>()->value(), 42);
 }
 
@@ -84,7 +84,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDouble) {
   std::vector<Handle<Value>> args{value_factory().CreateDoubleValue(40.0)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<DoubleValue>());
+  ASSERT_TRUE(result->Is<DoubleValue>());
   EXPECT_EQ(result.As<DoubleValue>()->value(), 80.0);
 }
 
@@ -96,7 +96,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionUint) {
   std::vector<Handle<Value>> args{value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<UintValue>());
+  ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 42);
 }
 
@@ -108,7 +108,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBool) {
   std::vector<Handle<Value>> args{value_factory().CreateBoolValue(true)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<BoolValue>());
+  ASSERT_TRUE(result->Is<BoolValue>());
   EXPECT_EQ(result.As<BoolValue>()->value(), false);
 }
 
@@ -124,7 +124,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionTimestamp) {
                        value_factory().CreateTimestampValue(absl::UnixEpoch()));
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<TimestampValue>());
+  ASSERT_TRUE(result->Is<TimestampValue>());
   EXPECT_EQ(result.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Minutes(1));
 }
@@ -141,7 +141,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionDuration) {
                        value_factory().CreateDurationValue(absl::Seconds(6)));
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<DurationValue>());
+  ASSERT_TRUE(result->Is<DurationValue>());
   EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(8));
 }
 
@@ -159,7 +159,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionString) {
                        value_factory().CreateStringValue("string"));
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<StringValue>());
+  ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.As<StringValue>()->ToString(), "pre_string");
 }
 
@@ -177,7 +177,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionBytes) {
                        value_factory().CreateBytesValue("bytes"));
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<BytesValue>());
+  ASSERT_TRUE(result->Is<BytesValue>());
   EXPECT_EQ(result.As<BytesValue>()->ToString(), "pre_bytes");
 }
 
@@ -191,7 +191,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionAny) {
   std::vector<Handle<Value>> args{value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<UintValue>());
+  ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 42);
 }
 
@@ -206,7 +206,7 @@ TEST_F(FunctionAdapterTest, UnaryFunctionAdapterWrapFunctionReturnError) {
   std::vector<Handle<Value>> args{value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<ErrorValue>());
+  ASSERT_TRUE(result->Is<ErrorValue>());
   EXPECT_THAT(result.As<ErrorValue>()->value(),
               StatusIs(absl::StatusCode::kInvalidArgument, "test_error"));
 }
@@ -394,7 +394,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionInt) {
                                   value_factory().CreateIntValue(21)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<IntValue>());
+  ASSERT_TRUE(result->Is<IntValue>());
   EXPECT_EQ(result.As<IntValue>()->value(), 42);
 }
 
@@ -407,7 +407,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDouble) {
                                   value_factory().CreateDoubleValue(2.0)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<DoubleValue>());
+  ASSERT_TRUE(result->Is<DoubleValue>());
   EXPECT_EQ(result.As<DoubleValue>()->value(), 80.0);
 }
 
@@ -420,7 +420,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionUint) {
                                   value_factory().CreateUintValue(2)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<UintValue>());
+  ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 42);
 }
 
@@ -433,7 +433,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBool) {
                                   value_factory().CreateBoolValue(true)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<BoolValue>());
+  ASSERT_TRUE(result->Is<BoolValue>());
   EXPECT_EQ(result.As<BoolValue>()->value(), true);
 }
 
@@ -455,7 +455,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionTimestamp) {
 
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<TimestampValue>());
+  ASSERT_TRUE(result->Is<TimestampValue>());
   EXPECT_EQ(result.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Seconds(2));
 }
@@ -476,7 +476,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionDuration) {
 
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<DurationValue>());
+  ASSERT_TRUE(result->Is<DurationValue>());
   EXPECT_EQ(result.As<DurationValue>()->value(), absl::Seconds(5));
 }
 
@@ -499,7 +499,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionString) {
 
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<StringValue>());
+  ASSERT_TRUE(result->Is<StringValue>());
   EXPECT_EQ(result.As<StringValue>()->ToString(), "abcdef");
 }
 
@@ -522,7 +522,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionBytes) {
 
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<BytesValue>());
+  ASSERT_TRUE(result->Is<BytesValue>());
   EXPECT_EQ(result.As<BytesValue>()->ToString(), "abcdef");
 }
 
@@ -540,7 +540,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionAny) {
                                   value_factory().CreateDoubleValue(2)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<UintValue>());
+  ASSERT_TRUE(result->Is<UintValue>());
   EXPECT_EQ(result.As<UintValue>()->value(), 42);
 }
 
@@ -557,7 +557,7 @@ TEST_F(FunctionAdapterTest, BinaryFunctionAdapterWrapFunctionReturnError) {
                                   value_factory().CreateUintValue(44)};
   ASSERT_OK_AND_ASSIGN(auto result, wrapped->Invoke(test_context(), args));
 
-  ASSERT_TRUE(result.Is<ErrorValue>());
+  ASSERT_TRUE(result->Is<ErrorValue>());
   EXPECT_THAT(result.As<ErrorValue>()->value(),
               StatusIs(absl::StatusCode::kInvalidArgument, "test_error"));
 }

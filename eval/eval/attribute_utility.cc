@@ -52,7 +52,7 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
   absl::optional<UnknownSet> result_set;
 
   for (const auto& value : args) {
-    if (!value.Is<cel::UnknownValue>()) continue;
+    if (!value->Is<cel::UnknownValue>()) continue;
 
     const auto& current_set = value.As<cel::UnknownValue>();
     if (!result_set.has_value()) {
@@ -110,7 +110,7 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
       cel::base_internal::UnknownSetAccess::Add(result_set, *initial_set);
     }
     for (const auto& value : args) {
-      if (!value.Is<cel::UnknownValue>()) {
+      if (!value->Is<cel::UnknownValue>()) {
         continue;
       }
       const auto& unknown_value = value.As<cel::UnknownValue>();

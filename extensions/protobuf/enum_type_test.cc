@@ -33,8 +33,8 @@ TEST(ProtoEnumType, CreateStatically) {
   ASSERT_OK_AND_ASSIGN(
       auto type,
       ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
-  EXPECT_TRUE(type.Is<EnumType>());
-  EXPECT_TRUE(type.Is<ProtoEnumType>());
+  EXPECT_TRUE(type->Is<EnumType>());
+  EXPECT_TRUE(type->Is<ProtoEnumType>());
   EXPECT_EQ(type->kind(), Kind::kEnum);
   EXPECT_EQ(type->name(), "google.protobuf.Field.Kind");
   EXPECT_EQ(&type->descriptor(),
@@ -50,8 +50,8 @@ TEST(ProtoEnumType, CreateDynamically) {
       ProtoEnumType::Resolve(
           type_manager,
           *google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>()));
-  EXPECT_TRUE(type.Is<EnumType>());
-  EXPECT_TRUE(type.Is<ProtoEnumType>());
+  EXPECT_TRUE(type->Is<EnumType>());
+  EXPECT_TRUE(type->Is<ProtoEnumType>());
   EXPECT_EQ(type->kind(), Kind::kEnum);
   EXPECT_EQ(type->name(), "google.protobuf.Field.Kind");
   EXPECT_EQ(&type->descriptor(),

@@ -34,7 +34,7 @@ absl::StatusOr<Handle<ProtoEnumType>> ProtoEnumType::Resolve(
         absl::StrCat("Missing protocol buffer enum type implementation for \"",
                      descriptor.full_name(), "\""));
   }
-  if (ABSL_PREDICT_FALSE(!(*type).Is<ProtoEnumType>())) {
+  if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoEnumType>())) {
     return absl::InternalError(absl::StrCat(
         "Unexpected protocol buffer enum type implementation for \"",
         descriptor.full_name(), "\""));

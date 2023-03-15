@@ -55,6 +55,8 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   absl::string_view name() const;
 
+  using Value::Is;
+
  private:
   friend class base_internal::ValueHandle;
   template <size_t Size, size_t Align>

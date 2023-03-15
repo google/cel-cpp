@@ -48,8 +48,8 @@ using ::cel::Value;
 bool ShouldAcceptOverload(const cel::FunctionDescriptor& descriptor,
                           absl::Span<const cel::Handle<cel::Value>> arguments) {
   for (size_t i = 0; i < arguments.size(); i++) {
-    if (arguments[i].Is<cel::UnknownValue>() ||
-        arguments[i].Is<cel::ErrorValue>()) {
+    if (arguments[i]->Is<cel::UnknownValue>() ||
+        arguments[i]->Is<cel::ErrorValue>()) {
       return !descriptor.is_strict();
     }
   }
@@ -103,7 +103,7 @@ std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
 }
 
 bool IsUnknownFunctionResultError(const Handle<Value>& result) {
-  if (!result.Is<cel::ErrorValue>()) {
+  if (!result->Is<cel::ErrorValue>()) {
     return false;
   }
 
@@ -201,7 +201,7 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
   // To enable behavior of functions that accept CelError( &&, || ), CelErrors
   // should be propagated along execution path.
   for (const auto& arg : input_args) {
-    if (arg.Is<cel::ErrorValue>()) {
+    if (arg->Is<cel::ErrorValue>()) {
       return arg;
     }
   }

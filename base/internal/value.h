@@ -176,6 +176,8 @@ struct UnknownValueAccess;
  public:                                          \
   static bool Is(const ::cel::Value& value);      \
                                                   \
+  using ::cel::base##Value::Is;                   \
+                                                  \
  private:                                         \
   friend class ::cel::base_internal::ValueHandle; \
                                                   \

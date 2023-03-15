@@ -46,19 +46,19 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
   // ignore the other arguments and forward the condition as the result.
   if (frame->enable_unknowns()) {
     // Check if unknown?
-    if (condition.Is<cel::UnknownValue>()) {
+    if (condition->Is<cel::UnknownValue>()) {
       frame->value_stack().Pop(2);
       return absl::OkStatus();
     }
   }
 
-  if (condition.Is<cel::ErrorValue>()) {
+  if (condition->Is<cel::ErrorValue>()) {
     frame->value_stack().Pop(2);
     return absl::OkStatus();
   }
 
   cel::Handle<cel::Value> result;
-  if (!condition.Is<cel::BoolValue>()) {
+  if (!condition->Is<cel::BoolValue>()) {
     result = cel::interop_internal::CreateErrorValueFromView(
         cel::interop_internal::CreateNoMatchingOverloadError(
             frame->memory_manager(), builtin::kTernary));

@@ -48,12 +48,12 @@ class RegexMatchStep final : public ExpressionStepBase {
     auto input_args = frame->value_stack().GetSpan(kNumRegexMatchArguments);
     const auto& subject = input_args[kRegexMatchStepSubject];
     const auto& pattern = input_args[kRegexMatchStepPattern];
-    if (!subject.Is<cel::StringValue>()) {
+    if (!subject->Is<cel::StringValue>()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "First argument for regular "
                           "expression match must be a string");
     }
-    if (!pattern.Is<cel::StringValue>()) {
+    if (!pattern->Is<cel::StringValue>()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "Second argument for regular "
                           "expression match must be a string");

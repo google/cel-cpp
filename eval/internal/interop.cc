@@ -460,7 +460,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case Kind::kTimestamp:
       return CelValue::CreateTimestamp(value.As<TimestampValue>()->value());
     case Kind::kList: {
-      if (value.Is<base_internal::LegacyListValue>()) {
+      if (value->Is<base_internal::LegacyListValue>()) {
         // Fast path.
         return CelValue::CreateList(reinterpret_cast<const CelList*>(
             value.As<base_internal::LegacyListValue>()->value()));
@@ -469,7 +469,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
           google::protobuf::Arena::Create<LegacyCelList>(arena, value.As<ListValue>()));
     }
     case Kind::kMap: {
-      if (value.Is<base_internal::LegacyMapValue>()) {
+      if (value->Is<base_internal::LegacyMapValue>()) {
         // Fast path.
         return CelValue::CreateMap(reinterpret_cast<const CelMap*>(
             value.As<base_internal::LegacyMapValue>()->value()));
@@ -478,7 +478,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
           google::protobuf::Arena::Create<LegacyCelMap>(arena, value.As<MapValue>()));
     }
     case Kind::kStruct: {
-      if (!value.Is<base_internal::LegacyStructValue>()) {
+      if (!value->Is<base_internal::LegacyStructValue>()) {
         return absl::UnimplementedError(
             "only legacy struct types and values can be used for interop");
       }
@@ -628,7 +628,7 @@ std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
 absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(
     const Handle<StructValue>& struct_value, ValueFactory& value_factory,
     absl::string_view field) {
-  if (struct_value.Is<base_internal::LegacyStructValue>()) {
+  if (struct_value->Is<base_internal::LegacyStructValue>()) {
     const auto& legacy_value =
         struct_value.As<base_internal::LegacyStructValue>();
     auto wrapper = LegacyStructValueAccess::ToMessageWrapper(*legacy_value);

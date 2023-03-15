@@ -163,7 +163,7 @@ TEST(CelTypeRegistryTest, TestRegisterTypeName) {
 
   auto type = registry.FindType("custom_type");
   ASSERT_TRUE(type);
-  EXPECT_TRUE(type.Is<TypeValue>());
+  EXPECT_TRUE(type->Is<TypeValue>());
   EXPECT_THAT(type.As<TypeValue>()->name(), Eq("custom_type"));
 }
 
@@ -215,7 +215,7 @@ TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
   CelTypeRegistry registry;
   auto type = registry.FindType("int");
   ASSERT_TRUE(type);
-  EXPECT_TRUE(type.Is<TypeValue>());
+  EXPECT_TRUE(type->Is<TypeValue>());
   EXPECT_THAT(type.As<TypeValue>()->name(), Eq("int"));
 }
 
@@ -227,7 +227,7 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterTypeFound) {
       std::vector<std::string>{"google.protobuf.Any"}));
   auto type = registry.FindType("google.protobuf.Any");
   ASSERT_TRUE(type);
-  EXPECT_TRUE(type.Is<TypeValue>());
+  EXPECT_TRUE(type->Is<TypeValue>());
   EXPECT_THAT(type.As<TypeValue>()->name(), Eq("google.protobuf.Any"));
 }
 

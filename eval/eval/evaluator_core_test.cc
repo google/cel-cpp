@@ -122,7 +122,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   ASSERT_FALSE(frame.GetIterVar(test_accu_var, &result, nullptr));
   ASSERT_OK(frame.SetAccuVar(cel::interop_internal::CreateBoolValue(true)));
   ASSERT_TRUE(frame.GetIterVar(test_accu_var, &result, nullptr));
-  ASSERT_TRUE(result.Is<cel::BoolValue>());
+  ASSERT_TRUE(result->Is<cel::BoolValue>());
   EXPECT_EQ(result.As<cel::BoolValue>()->value(), true);
 
   // Make sure its now there

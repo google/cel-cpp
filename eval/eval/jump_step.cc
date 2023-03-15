@@ -58,7 +58,7 @@ class CondJumpStep : public JumpStepBase {
       frame->value_stack().Pop(1);
     }
 
-    if (value.Is<BoolValue>() &&
+    if (value->Is<BoolValue>() &&
         jump_condition_ == value.As<BoolValue>()->value()) {
       return Jump(frame);
     }
@@ -90,11 +90,11 @@ class BoolCheckJumpStep : public JumpStepBase {
 
     const Handle<Value>& value = frame->value_stack().Peek();
 
-    if (value.Is<BoolValue>()) {
+    if (value->Is<BoolValue>()) {
       return absl::OkStatus();
     }
 
-    if (value.Is<ErrorValue>() || value.Is<UnknownValue>()) {
+    if (value->Is<ErrorValue>() || value->Is<UnknownValue>()) {
       return Jump(frame);
     }
 

@@ -24,7 +24,6 @@
 #include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "absl/utility/utility.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
@@ -44,8 +43,6 @@ class TypeProvider;
 class TypeManager;
 
 class ValueFactory;
-class TypedEnumValueFactory;
-class TypedStructValueFactory;
 
 // A representation of a CEL type that enables introspection, for program
 // construction, of types.
@@ -64,6 +61,16 @@ class Type : public base_internal::Data {
   void HashValue(absl::HashState state) const;
 
   bool Equals(const Type& other) const;
+
+  template <typename T>
+  bool Is() const {
+    static_assert(!std::is_const_v<T>, "T must not be const");
+    static_assert(!std::is_volatile_v<T>, "T must not be volatile");
+    static_assert(!std::is_pointer_v<T>, "T must not be a pointer");
+    static_assert(!std::is_reference_v<T>, "T must not be a reference");
+    static_assert(std::is_base_of_v<Type, T>, "T must be derived from Type");
+    return T::Is(*this);
+  }
 
  private:
   friend class EnumType;
@@ -275,6 +282,8 @@ class SimpleType : public Type, public InlineData {
   constexpr absl::string_view name() const { return kName; }
 
   std::string DebugString() const { return std::string(name()); }
+
+  using Type::Is;
 
  private:
   friend class TypeHandle;

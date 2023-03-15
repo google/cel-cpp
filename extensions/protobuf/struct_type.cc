@@ -38,7 +38,7 @@ absl::StatusOr<Handle<ProtoStructType>> ProtoStructType::Resolve(
         "Missing protocol buffer message type implementation for \"",
         descriptor.full_name(), "\""));
   }
-  if (ABSL_PREDICT_FALSE(!type->Is<ProtoStructType>())) {
+  if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoStructType>())) {
     return absl::InternalError(absl::StrCat(
         "Unexpected protocol buffer message type implementation for \"",
         descriptor.full_name(), "\""));
@@ -89,9 +89,9 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
         return absl::InternalError(absl::StrCat(
             "Type implementation missing for \"", desc->full_name(), "\""));
       }
-      if (ABSL_PREDICT_FALSE(!((*type).Is<ProtoStructType>() ||
-                               (*type).Is<DurationType>() ||
-                               (*type).Is<TimestampType>()))) {
+      if (ABSL_PREDICT_FALSE(!((*type)->Is<ProtoStructType>() ||
+                               (*type)->Is<DurationType>() ||
+                               (*type)->Is<TimestampType>()))) {
         // All types present in protocol buffer messages should either be
         // appropriate builtin CEL types or other protocol buffer types. In
         // theory someone could resolve this to their custom non protocol buffer
@@ -112,7 +112,7 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
         return absl::InternalError(absl::StrCat(
             "Type implementation missing for \"", desc->full_name(), "\""));
       }
-      if (ABSL_PREDICT_FALSE(!(*type).Is<ProtoEnumType>())) {
+      if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoEnumType>())) {
         // All types present in protocol buffer messages should either be
         // appropriate builtin CEL types or other protocol buffer types. In
         // theory someone could resolve this to their custom non protocol buffer

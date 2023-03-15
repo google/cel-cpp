@@ -90,6 +90,8 @@ struct TypeTraits;
  public:                                         \
   static bool Is(const ::cel::Type& type);       \
                                                  \
+  using ::cel::base##Type::Is;                   \
+                                                 \
  private:                                        \
   friend class ::cel::base_internal::TypeHandle; \
                                                  \

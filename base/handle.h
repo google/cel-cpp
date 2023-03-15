@@ -89,7 +89,8 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(this->template Is<F>());
+    ABSL_ASSERT(static_cast<bool>(*this) &&
+                static_cast<T&>(*impl_.get()).template Is<F>());
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
@@ -112,7 +113,8 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(this->template Is<F>());
+    ABSL_ASSERT(static_cast<bool>(*this) &&
+                static_cast<T&>(*impl_.get()).template Is<F>());
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
@@ -135,7 +137,8 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(this->template Is<F>());
+    ABSL_ASSERT(static_cast<bool>(*this) &&
+                static_cast<T&>(*impl_.get()).template Is<F>());
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
@@ -158,20 +161,14 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(this->template Is<F>());
+    ABSL_ASSERT(static_cast<bool>(*this) &&
+                static_cast<T&>(*impl_.get()).template Is<F>());
     // Handle<T> and Handle<F> have the same underlying layout
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
     // ensured via SFINAE on the return value and the second static_assert. Thus
     // we can saftley reinterpret_cast.
     return std::move(*reinterpret_cast<const Handle<F>*>(this));
-  }
-
-  // Is checks wether `T` is an instance of `F`.
-  template <typename F>
-  bool Is() const noexcept {
-    base_internal::HandlePolicy<F>{};
-    return static_cast<bool>(*this) && F::Is(static_cast<const T&>(**this));
   }
 
   T& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {

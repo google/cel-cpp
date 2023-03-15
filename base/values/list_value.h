@@ -24,7 +24,6 @@
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "base/allocator.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -74,6 +73,8 @@ class ListValue : public Value {
 
   void HashValue(absl::HashState state) const;
 
+  using Value::Is;
+
  private:
   friend class base_internal::LegacyListValue;
   friend class base_internal::AbstractListValue;
@@ -115,6 +116,8 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   constexpr uintptr_t value() const { return impl_; }
 
+  using ListValue::Is;
+
  private:
   friend class base_internal::ValueHandle;
   friend class cel::ListValue;
@@ -153,6 +156,8 @@ class AbstractListValue : public ListValue, public HeapData {
 
   virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
                                             size_t index) const = 0;
+
+  using ListValue::Is;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);

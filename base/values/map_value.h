@@ -20,9 +20,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
-#include "absl/container/node_hash_map.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -76,6 +74,8 @@ class MapValue : public Value {
   absl::StatusOr<Handle<ListValue>> ListKeys(
       MemoryManager& memory_manager) const;
 
+  using Value::Is;
+
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
       const MapValue& map_value);
@@ -128,6 +128,8 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   constexpr uintptr_t value() const { return impl_; }
 
+  using MapValue::Is;
+
  private:
   friend class base_internal::ValueHandle;
   friend class cel::MapValue;
@@ -169,6 +171,8 @@ class AbstractMapValue : public MapValue, public HeapData {
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       ValueFactory& value_factory) const = 0;
+
+  using MapValue::Is;
 
  protected:
   explicit AbstractMapValue(Handle<MapType> type);

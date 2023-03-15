@@ -36,8 +36,8 @@ TEST(ProtoStructType, CreateStatically) {
   ASSERT_OK_AND_ASSIGN(
       auto type,
       ProtoStructType::Resolve<google::protobuf::Field>(type_manager));
-  EXPECT_TRUE(type.Is<StructType>());
-  EXPECT_TRUE(type.Is<ProtoStructType>());
+  EXPECT_TRUE(type->Is<StructType>());
+  EXPECT_TRUE(type->Is<ProtoStructType>());
   EXPECT_EQ(type->kind(), Kind::kStruct);
   EXPECT_EQ(type->name(), "google.protobuf.Field");
   EXPECT_EQ(&type->descriptor(), google::protobuf::Field::descriptor());
@@ -50,8 +50,8 @@ TEST(ProtoStructType, CreateDynamically) {
   ASSERT_OK_AND_ASSIGN(
       auto type, ProtoStructType::Resolve(
                      type_manager, *google::protobuf::Field::descriptor()));
-  EXPECT_TRUE(type.Is<StructType>());
-  EXPECT_TRUE(type.Is<ProtoStructType>());
+  EXPECT_TRUE(type->Is<StructType>());
+  EXPECT_TRUE(type->Is<ProtoStructType>());
   EXPECT_EQ(type->kind(), Kind::kStruct);
   EXPECT_EQ(type->name(), "google.protobuf.Field");
   EXPECT_EQ(&type->descriptor(), google::protobuf::Field::descriptor());
@@ -99,7 +99,7 @@ TEST(ProtoStructType, EnumField) {
       auto field,
       type->FindField(type_manager, StructType::FieldId("cardinality")));
   ASSERT_TRUE(field.has_value());
-  EXPECT_TRUE(field->type.Is<EnumType>());
+  EXPECT_TRUE(field->type->Is<EnumType>());
   EXPECT_EQ(field->type->name(), "google.protobuf.Field.Cardinality");
 }
 
@@ -140,7 +140,7 @@ TEST(ProtoStructType, StringListField) {
   ASSERT_OK_AND_ASSIGN(
       auto field, type->FindField(type_manager, StructType::FieldId("oneofs")));
   ASSERT_TRUE(field.has_value());
-  EXPECT_TRUE(field->type.Is<ListType>());
+  EXPECT_TRUE(field->type->Is<ListType>());
   EXPECT_EQ(field->type.As<ListType>()->element(),
             type_factory.GetStringType());
 }
@@ -156,7 +156,7 @@ TEST(ProtoStructType, StructListField) {
       auto field,
       type->FindField(type_manager, StructType::FieldId("options")));
   ASSERT_TRUE(field.has_value());
-  EXPECT_TRUE(field->type.Is<ListType>());
+  EXPECT_TRUE(field->type->Is<ListType>());
   EXPECT_EQ(field->type.As<ListType>()->element()->name(),
             "google.protobuf.Option");
 }
@@ -171,7 +171,7 @@ TEST(ProtoStructType, MapField) {
       auto field,
       type->FindField(type_manager, StructType::FieldId("map_string_string")));
   ASSERT_TRUE(field.has_value());
-  EXPECT_TRUE(field->type.Is<MapType>());
+  EXPECT_TRUE(field->type->Is<MapType>());
   EXPECT_EQ(field->type.As<MapType>()->key(), type_factory.GetStringType());
   EXPECT_EQ(field->type.As<MapType>()->value(), type_factory.GetStringType());
 }

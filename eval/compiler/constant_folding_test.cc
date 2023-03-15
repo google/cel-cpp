@@ -123,9 +123,9 @@ TEST(ConstantFoldingTest, StructMessage) {
   EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 2);
-  EXPECT_TRUE(idents["$v0"].Is<StringValue>());
+  EXPECT_TRUE(idents["$v0"]->Is<StringValue>());
   EXPECT_EQ(idents["$v0"].As<StringValue>()->ToString(), "value1");
-  EXPECT_TRUE(idents["$v1"].Is<IntValue>());
+  EXPECT_TRUE(idents["$v1"]->Is<IntValue>());
   EXPECT_EQ(idents["$v1"].As<IntValue>()->value(), 12);
 }
 
@@ -178,10 +178,10 @@ TEST(ConstantFoldingTest, StructComprehension) {
   EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 3);
-  EXPECT_TRUE(idents["$v0"].Is<StringValue>());
+  EXPECT_TRUE(idents["$v0"]->Is<StringValue>());
   EXPECT_EQ(idents["$v0"].As<StringValue>()->ToString(), "y");
-  EXPECT_TRUE(idents["$v1"].Is<StringValue>());
-  EXPECT_TRUE(idents["$v2"].Is<StringValue>());
+  EXPECT_TRUE(idents["$v1"]->Is<StringValue>());
+  EXPECT_TRUE(idents["$v2"]->Is<StringValue>());
 }
 
 TEST_F(ConstantFoldingTestWithValueFactory, ListComprehension) {
@@ -212,14 +212,14 @@ TEST_F(ConstantFoldingTestWithValueFactory, ListComprehension) {
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
   auto value = idents[out.ident_expr().name()];
-  ASSERT_TRUE(value.Is<ListValue>());
+  ASSERT_TRUE(value->Is<ListValue>());
   const auto& list = value.As<ListValue>();
   ASSERT_EQ(list->size(), 2);
   ASSERT_OK_AND_ASSIGN(auto elem0, list->Get(value_factory_, 0));
   ASSERT_OK_AND_ASSIGN(auto elem1, list->Get(value_factory_, 1));
-  ASSERT_TRUE(elem0.Is<IntValue>());
+  ASSERT_TRUE(elem0->Is<IntValue>());
   ASSERT_EQ(elem0.As<IntValue>()->value(), 1);
-  ASSERT_TRUE(elem1.Is<ListValue>());
+  ASSERT_TRUE(elem1->Is<ListValue>());
   ASSERT_EQ(elem1.As<ListValue>()->size(), 2);
 }
 
@@ -286,7 +286,7 @@ TEST_F(ConstantFoldingTestWithValueFactory, FunctionApplication) {
   ASSERT_EQ(out.id(), 15);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
-  ASSERT_TRUE(idents[out.ident_expr().name()].Is<ListValue>());
+  ASSERT_TRUE(idents[out.ident_expr().name()]->Is<ListValue>());
 
   const auto& list = idents[out.ident_expr().name()].As<ListValue>();
   ASSERT_EQ(list->size(), 2);
@@ -321,7 +321,7 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
   ASSERT_EQ(out.id(), 10);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
-  ASSERT_TRUE(idents[out.ident_expr().name()].Is<IntValue>());
+  ASSERT_TRUE(idents[out.ident_expr().name()]->Is<IntValue>());
   ASSERT_EQ(idents[out.ident_expr().name()].As<IntValue>()->value(), 2);
 }
 
@@ -355,7 +355,7 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
   ASSERT_EQ(out.id(), 16);
   ASSERT_TRUE(out.has_ident_expr());
   ASSERT_EQ(idents.size(), 1);
-  ASSERT_TRUE(idents[out.ident_expr().name()].Is<ErrorValue>());
+  ASSERT_TRUE(idents[out.ident_expr().name()]->Is<ErrorValue>());
 }
 
 // Validate that comprehension is recursed into
@@ -475,12 +475,12 @@ TEST(ConstantFoldingTest, MapComprehension) {
   EXPECT_EQ(out, native_expected_expr);
 
   EXPECT_EQ(idents.size(), 6);
-  EXPECT_TRUE(idents["$v0"].Is<BoolValue>());
-  EXPECT_TRUE(idents["$v1"].Is<IntValue>());
-  EXPECT_TRUE(idents["$v2"].Is<StringValue>());
-  EXPECT_TRUE(idents["$v3"].Is<IntValue>());
-  EXPECT_TRUE(idents["$v4"].Is<StringValue>());
-  EXPECT_TRUE(idents["$v5"].Is<IntValue>());
+  EXPECT_TRUE(idents["$v0"]->Is<BoolValue>());
+  EXPECT_TRUE(idents["$v1"]->Is<IntValue>());
+  EXPECT_TRUE(idents["$v2"]->Is<StringValue>());
+  EXPECT_TRUE(idents["$v3"]->Is<IntValue>());
+  EXPECT_TRUE(idents["$v4"]->Is<StringValue>());
+  EXPECT_TRUE(idents["$v5"]->Is<IntValue>());
 }
 
 }  // namespace
