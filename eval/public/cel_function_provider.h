@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_function.h"
@@ -12,8 +13,13 @@ namespace google::api::expr::runtime {
 // CelFunctionProvider is an interface for providers of lazy CelFunctions (i.e.
 // implementation isn't available until evaluation time based on the
 // activation).
-class CelFunctionProvider {
+
+class ABSL_DEPRECATED(
+    "Do not add new implementations. Prefer using the default implementation "
+    "provided by CelFunctionRegistry.") CelFunctionProvider {
  public:
+  virtual ~CelFunctionProvider() = default;
+
   // Returns a ptr to a |CelFunction| based on the provided |Activation|. Given
   // the same activation, this should return the same CelFunction. The
   // CelFunction ptr is assumed to be stable for the life of the Activation.
@@ -21,7 +27,6 @@ class CelFunctionProvider {
   virtual absl::StatusOr<const CelFunction*> GetFunction(
       const CelFunctionDescriptor& descriptor,
       const BaseActivation& activation) const = 0;
-  virtual ~CelFunctionProvider() {}
 };
 
 // Create a CelFunctionProvider that just looks up the functions inserted in the

@@ -274,6 +274,7 @@ cc_library(
     deps = [
         ":base_activation",
         ":cel_function",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status:statusor",
     ],
 )
@@ -692,13 +693,12 @@ cc_library(
         "//base:function_interface",
         "//base:functions",
         "//base:kind",
-        "//base:type_factory",
-        "//base:type_manager",
-        "//base:type_provider",
-        "//base:value_factory",
+        "//base:type",
+        "//base:value",
         "//eval/internal:interop",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:node_hash_map",
     ],
 )

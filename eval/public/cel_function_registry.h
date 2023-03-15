@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/container/node_hash_map.h"
 #include "base/function.h"
 #include "base/kind.h"
@@ -56,6 +57,9 @@ class CelFunctionRegistry {
   // Register a lazily provided function. CelFunctionProvider is used to get
   // a CelFunction ptr at evaluation time. The registry takes ownership of the
   // factory.
+  ABSL_DEPRECATED(
+      "Deprecated, prefer using the default implementation provided"
+      " by the Descriptor only overload.")
   absl::Status RegisterLazyFunction(
       const CelFunctionDescriptor& descriptor,
       std::unique_ptr<CelFunctionProvider> factory);
