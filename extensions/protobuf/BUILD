@@ -85,11 +85,13 @@ cc_library(
     srcs = [
         "enum_type.cc",
         "struct_type.cc",
+        "type.cc",
         "type_provider.cc",
     ],
     hdrs = [
         "enum_type.h",
         "struct_type.h",
+        "type.h",
         "type_provider.h",
     ],
     deps = [

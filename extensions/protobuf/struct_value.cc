@@ -47,6 +47,7 @@
 #include "extensions/protobuf/internal/time.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/struct_type.h"
+#include "extensions/protobuf/type.h"
 #include "internal/status_macros.h"
 #include "internal/unreachable.h"
 #include "google/protobuf/descriptor.h"
@@ -189,12 +190,52 @@ std::string TimestampValueDebugStringFromProto(const google::protobuf::Message& 
   return TimestampValue::DebugString(*time_or_status);
 }
 
-template <typename T, typename P>
+template <typename T, typename P = void>
 class ParsedProtoListValue;
-template <typename T, typename P>
+template <typename T, typename P = void>
 class ArenaParsedProtoListValue;
-template <typename T, typename P>
+template <typename T, typename P = void>
 class ReffedParsedProtoListValue;
+
+template <>
+class ParsedProtoListValue<NullValue> : public CEL_LIST_VALUE_CLASS {
+ public:
+  ParsedProtoListValue(Handle<ListType> type, size_t size)
+      : CEL_LIST_VALUE_CLASS(std::move(type)), size_(size) {}
+
+  std::string DebugString() const final {
+    std::string out;
+    out.push_back('[');
+    size_t field = 0;
+    if (field != size_) {
+      out.append(NullValue::DebugString());
+      ++field;
+      for (; field != size_; ++field) {
+        out.append(", ");
+        out.append(NullValue::DebugString());
+      }
+    }
+    out.push_back(']');
+    return out;
+  }
+
+  size_t size() const final { return size_; }
+
+  bool empty() const final { return size_ == 0; }
+
+  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+                                    size_t index) const final {
+    ABSL_ASSERT(index < size_);
+    return value_factory.GetNullValue();
+  }
+
+ private:
+  internal::TypeInfo TypeId() const final {
+    return internal::TypeId<ParsedProtoListValue<NullValue>>();
+  }
+
+  const size_t size_;
+};
 
 template <>
 class ParsedProtoListValue<BoolValue, bool> : public CEL_LIST_VALUE_CLASS {
@@ -675,6 +716,34 @@ class ReffedParsedProtoListValue final : public ParsedProtoListValue<T, P> {
   const Value* owner_;
 };
 
+void ProtoDebugStringEnum(std::string& out, const google::protobuf::EnumDescriptor& desc,
+                          int32_t value) {
+  if (desc.full_name() == "google.protobuf.NullValue") {
+    out.append(NullValue::DebugString());
+    return;
+  }
+  const auto* value_desc = desc.FindValueByNumber(value);
+  if (value_desc != nullptr) {
+    absl::StrAppend(&out, desc.full_name(), ".", value_desc->name());
+    return;
+  }
+  absl::StrAppend(&out, desc.full_name(), "(", value, ")");
+}
+
+void ProtoDebugStringStruct(std::string& out, const google::protobuf::Message& value) {
+  const auto* desc = value.GetDescriptor();
+  const auto& full_name = desc->full_name();
+  if (full_name == "google.protobuf.Duration") {
+    out.append(DurationValueDebugStringFromProto(value));
+    return;
+  }
+  if (full_name == "google.protobuf.Timestamp") {
+    out.append(TimestampValueDebugStringFromProto(value));
+    return;
+  }
+  out.append(protobuf_internal::ParsedProtoStructValue::DebugString(value));
+}
+
 void ProtoDebugStringMapKey(std::string& out, const google::protobuf::MapKey& key) {
   switch (key.type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
@@ -734,22 +803,11 @@ void ProtoDebugStringMapValue(std::string& out,
     case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
       out.append(DoubleValue::DebugString(value.GetDoubleValue()));
       break;
-    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
-      const auto* desc = field.enum_type();
-      const auto* value_desc = desc->FindValueByNumber(value.GetEnumValue());
-      out.append(desc->full_name());
-      if (value_desc != nullptr) {
-        out.push_back('.');
-        out.append(value_desc->name());
-      } else {
-        out.push_back('(');
-        out.append(absl::StrCat(value.GetEnumValue()));
-        out.push_back(')');
-      }
-    } break;
+    case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+      ProtoDebugStringEnum(out, *field.enum_type(), value.GetEnumValue());
+      break;
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
-      out.append(protobuf_internal::ParsedProtoStructValue::DebugString(
-          value.GetMessageValue()));
+      ProtoDebugStringStruct(out, value.GetMessageValue());
       break;
   }
 }
@@ -920,17 +978,48 @@ absl::StatusOr<Handle<Value>> FromProtoMapValue(
     }
     case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
       CEL_ASSIGN_OR_RETURN(auto type,
-                           ProtoEnumType::Resolve(value_factory.type_manager(),
-                                                  *value_desc->enum_type()));
-      return value_factory.CreateEnumValue(std::move(type),
-                                           value.GetEnumValue());
+                           ProtoType::Resolve(value_factory.type_manager(),
+                                              *value_desc->enum_type()));
+      switch (type->kind()) {
+        case Kind::kNullType:
+          return value_factory.GetNullValue();
+        case Kind::kEnum:
+          return value_factory.CreateEnumValue(
+              std::move(type).As<ProtoEnumType>(), value.GetEnumValue());
+        default:
+          return absl::InternalError(absl::StrCat(
+              "Unexpected protocol buffer type implementation for \"",
+              value_desc->message_type()->full_name(),
+              "\": ", type->DebugString()));
+      }
     }
     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
-      CEL_ASSIGN_OR_RETURN(
-          auto type, ProtoStructType::Resolve(value_factory.type_manager(),
+      CEL_ASSIGN_OR_RETURN(auto type,
+                           ProtoType::Resolve(value_factory.type_manager(),
                                               *value_desc->message_type()));
-      return protobuf_internal::DynamicMemberParsedProtoStructValue::Create(
-          value_factory, std::move(type), owner, &value.GetMessageValue());
+      switch (type->kind()) {
+        case Kind::kDuration: {
+          CEL_ASSIGN_OR_RETURN(auto duration,
+                               protobuf_internal::AbslDurationFromDurationProto(
+                                   value.GetMessageValue()));
+          return value_factory.CreateUncheckedDurationValue(duration);
+        }
+        case Kind::kTimestamp: {
+          CEL_ASSIGN_OR_RETURN(auto time,
+                               protobuf_internal::AbslTimeFromTimestampProto(
+                                   value.GetMessageValue()));
+          return value_factory.CreateUncheckedTimestampValue(time);
+        }
+        case Kind::kStruct:
+          return protobuf_internal::DynamicMemberParsedProtoStructValue::Create(
+              value_factory, std::move(type).As<ProtoStructType>(), owner,
+              &value.GetMessageValue());
+        default:
+          return absl::InternalError(absl::StrCat(
+              "Unexpected protocol buffer type implementation for \"",
+              value_desc->message_type()->full_name(),
+              "\": ", type->DebugString()));
+      }
     }
   }
 }
@@ -1158,41 +1247,17 @@ void ProtoDebugStringSingular(std::string& out, const google::protobuf::Message&
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
-      if (field_desc->message_type()->full_name() ==
-          "google.protobuf.Duration") {
-        out.append(DurationValueDebugStringFromProto(
-            reflect->GetMessage(message, field_desc)));
-        break;
-      }
-      if (field_desc->message_type()->full_name() ==
-          "google.protobuf.Timestamp") {
-        out.append(TimestampValueDebugStringFromProto(
-            reflect->GetMessage(message, field_desc)));
-        break;
-      }
-      out.append(protobuf_internal::ParsedProtoStructValue::DebugString(
-          reflect->GetMessage(message, field_desc)));
+      ProtoDebugStringStruct(out, reflect->GetMessage(message, field_desc));
       break;
     case google::protobuf::FieldDescriptor::TYPE_BYTES: {
       std::string scratch;
       out.append(BytesValue::DebugString(
           reflect->GetStringReference(message, field_desc, &scratch)));
     } break;
-    case google::protobuf::FieldDescriptor::TYPE_ENUM: {
-      const auto* desc = reflect->GetEnum(message, field_desc);
-      out.append(field_desc->enum_type()->full_name());
-      if (ABSL_PREDICT_TRUE(desc != nullptr)) {
-        out.push_back('.');
-        out.append(desc->name());
-      } else {
-        // Fallback when the number doesn't have a corresponding symbol,
-        // potentially due to having a different version of the descriptor.
-        out.push_back('(');
-        out.append(
-            IntValue::DebugString(reflect->GetEnumValue(message, field_desc)));
-        out.push_back(')');
-      }
-    } break;
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      ProtoDebugStringEnum(out, *field_desc->enum_type(),
+                           reflect->GetEnumValue(message, field_desc));
+      break;
   }
 }
 
@@ -1313,26 +1378,15 @@ void ProtoDebugStringRepeated(std::string& out, const google::protobuf::Message&
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
-      using DebugStringer = std::string (*)(const google::protobuf::Message&);
-      DebugStringer debug_stringer;
-      if (field_desc->message_type()->full_name() ==
-          "google.protobuf.Duration") {
-        debug_stringer = DurationValueDebugStringFromProto;
-      } else if (field_desc->message_type()->full_name() ==
-                 "google.protobuf.Timestamp") {
-        debug_stringer = TimestampValueDebugStringFromProto;
-      } else {
-        debug_stringer = protobuf_internal::ParsedProtoStructValue::DebugString;
-      }
       auto fields =
           reflect->GetRepeatedFieldRef<google::protobuf::Message>(message, field_desc);
       auto field = fields.begin();
       if (field != fields.end()) {
-        out.append((*debug_stringer)(*field));
+        ProtoDebugStringStruct(out, *field);
         ++field;
         for (; field != fields.end(); ++field) {
           out.append(", ");
-          out.append((*debug_stringer)(*field));
+          ProtoDebugStringStruct(out, *field);
         }
       }
     } break;
@@ -1350,33 +1404,14 @@ void ProtoDebugStringRepeated(std::string& out, const google::protobuf::Message&
       }
     } break;
     case google::protobuf::FieldDescriptor::TYPE_ENUM: {
-      const auto* desc = field_desc->enum_type();
       auto fields = reflect->GetRepeatedFieldRef<int32_t>(message, field_desc);
       auto field = fields.begin();
       if (field != fields.end()) {
-        out.append(desc->full_name());
-        if (const auto* value_desc = desc->FindValueByNumber(*field);
-            value_desc != nullptr) {
-          out.push_back('.');
-          out.append(value_desc->name());
-        } else {
-          out.push_back('(');
-          out.append(IntValue::DebugString(*field));
-          out.push_back(')');
-        }
+        ProtoDebugStringEnum(out, *field_desc->enum_type(), *field);
         ++field;
         for (; field != fields.end(); ++field) {
           out.append(", ");
-          out.append(desc->full_name());
-          if (const auto* value_desc = desc->FindValueByNumber(*field);
-              value_desc != nullptr) {
-            out.push_back('.');
-            out.append(value_desc->name());
-          } else {
-            out.push_back('(');
-            out.append(IntValue::DebugString(*field));
-            out.push_back(')');
-          }
+          ProtoDebugStringEnum(out, *field_desc->enum_type(), *field);
         }
       }
     } break;
@@ -1846,17 +1881,27 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
             reflect.GetRepeatedFieldRef<std::string>(value(), &field_desc));
       }
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
-        return value_factory
-            .CreateListValue<ReffedParsedProtoListValue<EnumValue, int32_t>>(
+      switch (field.type.As<ListType>()->element()->kind()) {
+        case Kind::kNullType:
+          return value_factory.CreateListValue<ParsedProtoListValue<NullValue>>(
+              field.type.As<ListType>(),
+              reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc)
+                  .size());
+        case Kind::kEnum:
+          if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
+            return value_factory.CreateListValue<
+                ReffedParsedProtoListValue<EnumValue, int32_t>>(
                 field.type.As<ListType>(),
                 reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc),
                 this);
-      } else {
-        return value_factory
-            .CreateListValue<ArenaParsedProtoListValue<EnumValue, int32_t>>(
-                field.type.As<ListType>(),
-                reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc));
+          } else {
+            return value_factory
+                .CreateListValue<ArenaParsedProtoListValue<EnumValue, int32_t>>(
+                    field.type.As<ListType>(),
+                    reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc));
+          }
+        default:
+          ABSL_UNREACHABLE();
       }
   }
 }
@@ -1934,7 +1979,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
               value_factory, field.type.As<ProtoStructType>(), this,
               &(reflect.GetMessage(value(), &field_desc)));
         default:
-          cel::internal::unreachable();
+          ABSL_UNREACHABLE();
       }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       if (field_desc.options().ctype() == google::protobuf::FieldOptions::CORD &&
@@ -1949,9 +1994,16 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
             reflect.GetStringView(value(), &field_desc));
       }
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
-      return value_factory.CreateEnumValue(
-          field.type.As<EnumType>(),
-          reflect.GetEnumValue(value(), &field_desc));
+      switch (field.type->kind()) {
+        case Kind::kNullType:
+          return value_factory.GetNullValue();
+        case Kind::kEnum:
+          return value_factory.CreateEnumValue(
+              field.type.As<ProtoEnumType>(),
+              reflect.GetEnumValue(value(), &field_desc));
+        default:
+          ABSL_UNREACHABLE();
+      }
   }
 }
 

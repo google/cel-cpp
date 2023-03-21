@@ -19,6 +19,7 @@
 #include "base/memory_manager.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "extensions/protobuf/type.h"
 #include "extensions/protobuf/type_provider.h"
 #include "internal/testing.h"
 #include "google/protobuf/generated_enum_reflection.h"
@@ -32,7 +33,7 @@ TEST(ProtoEnumType, CreateStatically) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
+      ProtoType::Resolve<google::protobuf::Field::Kind>(type_manager));
   EXPECT_TRUE(type->Is<EnumType>());
   EXPECT_TRUE(type->Is<ProtoEnumType>());
   EXPECT_EQ(type->kind(), Kind::kEnum);
@@ -47,14 +48,14 @@ TEST(ProtoEnumType, CreateDynamically) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Resolve(
+      ProtoType::Resolve(
           type_manager,
           *google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>()));
   EXPECT_TRUE(type->Is<EnumType>());
   EXPECT_TRUE(type->Is<ProtoEnumType>());
   EXPECT_EQ(type->kind(), Kind::kEnum);
   EXPECT_EQ(type->name(), "google.protobuf.Field.Kind");
-  EXPECT_EQ(&type->descriptor(),
+  EXPECT_EQ(&type.As<ProtoEnumType>()->descriptor(),
             google::protobuf::GetEnumDescriptor<google::protobuf::Field::Kind>());
 }
 
@@ -64,7 +65,7 @@ TEST(ProtoEnumType, FindConstantByName) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
+      ProtoType::Resolve<google::protobuf::Field::Kind>(type_manager));
   ASSERT_OK_AND_ASSIGN(auto constant,
                        type->FindConstant(EnumType::ConstantId("TYPE_STRING")));
   ASSERT_TRUE(constant.has_value());
@@ -78,7 +79,7 @@ TEST(ProtoEnumType, FindConstantByNumber) {
   TypeManager type_manager(type_factory, type_provider);
   ASSERT_OK_AND_ASSIGN(
       auto type,
-      ProtoEnumType::Resolve<google::protobuf::Field::Kind>(type_manager));
+      ProtoType::Resolve<google::protobuf::Field::Kind>(type_manager));
   ASSERT_OK_AND_ASSIGN(auto constant,
                        type->FindConstant(EnumType::ConstantId(9)));
   ASSERT_TRUE(constant.has_value());

@@ -30,16 +30,16 @@ absl::StatusOr<Handle<ProtoEnumType>> ProtoEnumType::Resolve(
   CEL_ASSIGN_OR_RETURN(auto type,
                        type_manager.ResolveType(descriptor.full_name()));
   if (ABSL_PREDICT_FALSE(!type.has_value())) {
-    return absl::InternalError(
+    return absl::NotFoundError(
         absl::StrCat("Missing protocol buffer enum type implementation for \"",
                      descriptor.full_name(), "\""));
   }
   if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoEnumType>())) {
-    return absl::InternalError(absl::StrCat(
+    return absl::FailedPreconditionError(absl::StrCat(
         "Unexpected protocol buffer enum type implementation for \"",
-        descriptor.full_name(), "\""));
+        descriptor.full_name(), "\": ", (*type)->DebugString()));
   }
-  return std::move(*type).As<ProtoEnumType>();
+  return std::move(type).value().As<ProtoEnumType>();
 }
 
 absl::StatusOr<absl::optional<ProtoEnumType::Constant>>

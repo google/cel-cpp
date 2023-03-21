@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <array>
-#include <functional>
 #include <utility>
 
 #include "base/type_factory.h"
@@ -36,6 +35,7 @@ class BuiltinTypeProvider final : public TypeProvider {
   BuiltinTypeProvider()
       : types_{{
             {"null_type", GetNullType},
+            {"google.protobuf.NullValue", GetNullType},
             {"bool", GetBoolType},
             {"int", GetIntType},
             {"uint", GetUintType},
@@ -121,7 +121,7 @@ class BuiltinTypeProvider final : public TypeProvider {
     return type_factory.GetTypeType();
   }
 
-  std::array<BuiltinType, 12> types_;
+  std::array<BuiltinType, 13> types_;
 };
 
 }  // namespace

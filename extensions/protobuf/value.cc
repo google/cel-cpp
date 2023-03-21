@@ -14,7 +14,6 @@
 
 #include "extensions/protobuf/value.h"
 
-#include <string>
 #include <utility>
 
 #include "absl/base/optimization.h"
@@ -63,6 +62,23 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
     return value_factory.CreateUncheckedTimestampValue(time);
   }
   return ProtoStructValue::Create(value_factory, std::move(value));
+}
+
+absl::StatusOr<Handle<Value>> ProtoValue::Create(
+    ValueFactory& value_factory, const google::protobuf::EnumDescriptor& descriptor,
+    int value) {
+  CEL_ASSIGN_OR_RETURN(
+      auto type, ProtoType::Resolve(value_factory.type_manager(), descriptor));
+  switch (type->kind()) {
+    case Kind::kNullType:
+      // google.protobuf.NullValue is an enum, which represents JSON null.
+      return value_factory.GetNullValue();
+    case Kind::kEnum:
+      return value_factory.CreateEnumValue(std::move(type).As<ProtoEnumType>(),
+                                           value);
+    default:
+      ABSL_UNREACHABLE();
+  }
 }
 
 }  // namespace cel::extensions

@@ -15,6 +15,7 @@
 #include "extensions/protobuf/value.h"
 
 #include "google/protobuf/duration.pb.h"
+#include "google/protobuf/struct.pb.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -161,7 +162,7 @@ TEST_P(ProtoValueTest, StructDynamicRValue) {
               EqualsProto(struct_proto));
 }
 
-TEST_P(ProtoValueTest, Enum) {
+TEST_P(ProtoValueTest, StaticEnum) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
@@ -176,6 +177,54 @@ TEST_P(ProtoValueTest, Enum) {
           enum_proto));
   EXPECT_THAT(ProtoEnumValue::value<TestAllTypes::NestedEnum>(enum_value),
               Optional(Eq(enum_proto)));
+}
+
+TEST_P(ProtoValueTest, DynamicEnum) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  TestAllTypes::NestedEnum enum_proto = TestAllTypes::BAR;
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory,
+                         *google::protobuf::GetEnumDescriptor<TestAllTypes::NestedEnum>()
+                              ->FindValueByNumber(enum_proto)));
+  ASSERT_TRUE(value->Is<EnumValue>());
+  EXPECT_TRUE(ProtoEnumValue::Is(value.As<EnumValue>()));
+  EXPECT_EQ(
+      ProtoEnumValue::descriptor(value.As<EnumValue>()),
+      google::protobuf::GetEnumDescriptor<TestAllTypes::NestedEnum>()->FindValueByNumber(
+          enum_proto));
+  EXPECT_THAT(
+      ProtoEnumValue::value<TestAllTypes::NestedEnum>(value.As<EnumValue>()),
+      Optional(Eq(enum_proto)));
+}
+
+TEST_P(ProtoValueTest, StaticNullValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto null_value,
+      ProtoValue::Create(value_factory,
+                         google::protobuf::NullValue::NULL_VALUE));
+  EXPECT_TRUE(null_value->Is<NullValue>());
+}
+
+TEST_P(ProtoValueTest, DynamicNullValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(
+          value_factory,
+          *google::protobuf::GetEnumDescriptor<google::protobuf::NullValue>()
+               ->FindValueByNumber(google::protobuf::NullValue::NULL_VALUE)));
+  EXPECT_TRUE(value->Is<NullValue>());
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueTest,

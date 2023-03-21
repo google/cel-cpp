@@ -18,6 +18,7 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/wrappers.pb.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
@@ -45,6 +46,9 @@ using testing::status::CanonicalStatusIs;
 using cel::internal::IsOkAndHolds;
 
 using TestAllTypes = ::google::api::expr::test::v1::proto3::TestAllTypes;
+using NullValueProto = ::google::protobuf::NullValue;
+
+constexpr NullValueProto NULL_VALUE = NullValueProto::NULL_VALUE;
 
 using ProtoStructValueTest = ProtoTest<>;
 
@@ -79,6 +83,50 @@ Handle<T> Must(absl::optional<T> optional) {
 template <typename T>
 T Must(absl::StatusOr<T> status_or) {
   return Must(std::move(status_or).value());
+}
+
+TEST_P(ProtoStructValueTest, NullValueHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(type_manager,
+                                      ProtoStructType::FieldId("null_value")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.set_null_value(NULL_VALUE);
+                         })));
+  // In proto3, this can never be present as it will always be the default
+  // value. We would need to add `optional` for it to work.
+  EXPECT_THAT(value_with->HasField(type_manager,
+                                   ProtoStructType::FieldId("null_value")),
+              IsOkAndHolds(Eq(false)));
+}
+
+TEST_P(ProtoStructValueTest, OptionalNullValueHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(type_manager, ProtoStructType::FieldId(
+                                                        "optional_null_value")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.set_optional_null_value(NULL_VALUE);
+                         })));
+  EXPECT_THAT(value_with->HasField(type_manager, ProtoStructType::FieldId(
+                                                     "optional_null_value")),
+              IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, BoolHasField) {
@@ -351,6 +399,27 @@ TEST_P(ProtoStructValueTest, StructHasField) {
                          })));
   EXPECT_THAT(value_with->HasField(
                   type_manager, ProtoStructType::FieldId("standalone_message")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, NullValueListHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(value_without->HasField(type_manager, ProtoStructType::FieldId(
+                                                        "repeated_null_value")),
+              IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.add_repeated_null_value(NULL_VALUE);
+                         })));
+  EXPECT_THAT(value_with->HasField(type_manager, ProtoStructType::FieldId(
+                                                     "repeated_null_value")),
               IsOkAndHolds(Eq(true)));
 }
 
@@ -628,6 +697,53 @@ TEST_P(ProtoStructValueTest, StructListHasField) {
       value_with->HasField(type_manager,
                            ProtoStructType::FieldId("repeated_nested_message")),
       IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, NullValueGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field, value_without->GetField(
+                      value_factory, ProtoStructType::FieldId("null_value")));
+  EXPECT_TRUE(field->Is<NullValue>());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.set_null_value(NULL_VALUE);
+                         })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory,
+                                  ProtoStructType::FieldId("null_value")));
+  EXPECT_TRUE(field->Is<NullValue>());
+}
+
+TEST_P(ProtoStructValueTest, OptionalNullValueGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(value_factory,
+                              ProtoStructType::FieldId("optional_null_value")));
+  EXPECT_TRUE(field->Is<NullValue>());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.set_optional_null_value(NULL_VALUE);
+                         })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
+                                                     "optional_null_value")));
+  EXPECT_TRUE(field->Is<NullValue>());
 }
 
 TEST_P(ProtoStructValueTest, BoolGetField) {
@@ -947,6 +1063,43 @@ TEST_P(ProtoStructValueTest, StructGetField) {
   google::protobuf::Arena arena;
   EXPECT_THAT(*field.As<ProtoStructValue>()->value(arena),
               EqualsProto(expected));
+}
+
+TEST_P(ProtoStructValueTest, NullValueListGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(value_factory,
+                              ProtoStructType::FieldId("repeated_null_value")));
+  EXPECT_TRUE(field->Is<ListValue>());
+  EXPECT_EQ(field.As<ListValue>()->size(), 0);
+  EXPECT_TRUE(field.As<ListValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "[]");
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.add_repeated_null_value(NULL_VALUE);
+                           message.add_repeated_null_value(NULL_VALUE);
+                         })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
+                                                     "repeated_null_value")));
+  EXPECT_TRUE(field->Is<ListValue>());
+  EXPECT_EQ(field.As<ListValue>()->size(), 2);
+  EXPECT_FALSE(field.As<ListValue>()->empty());
+  EXPECT_EQ(field->DebugString(), "[null, null]");
+  ASSERT_OK_AND_ASSIGN(auto field_value,
+                       field.As<ListValue>()->Get(value_factory, 0));
+  EXPECT_TRUE(field_value->Is<NullValue>());
+  ASSERT_OK_AND_ASSIGN(field_value,
+                       field.As<ListValue>()->Get(value_factory, 1));
+  EXPECT_TRUE(field_value->Is<NullValue>());
 }
 
 TEST_P(ProtoStructValueTest, BoolListGetField) {
@@ -1470,6 +1623,40 @@ void TestMapHasField(MemoryManager& memory_manager,
               IsOkAndHolds(Eq(true)));
 }
 
+template <typename T>
+std::decay_t<T> ProtoToNative(const T& t) {
+  return t;
+}
+
+absl::Duration ProtoToNative(const google::protobuf::Duration& duration) {
+  return absl::Seconds(duration.seconds()) +
+         absl::Nanoseconds(duration.nanos());
+}
+
+absl::Time ProtoToNative(const google::protobuf::Timestamp& timestamp) {
+  return absl::UnixEpoch() + absl::Seconds(timestamp.seconds()) +
+         absl::Nanoseconds(timestamp.nanos());
+}
+
+google::protobuf::Duration NativeToProto(absl::Duration duration) {
+  google::protobuf::Duration duration_proto;
+  duration_proto.set_seconds(
+      absl::ToInt64Seconds(absl::Trunc(duration, absl::Seconds(1))));
+  duration -= absl::Trunc(duration, absl::Seconds(1));
+  duration_proto.set_nanos(absl::ToInt64Nanoseconds(duration));
+  return duration_proto;
+}
+
+google::protobuf::Timestamp NativeToProto(absl::Time time) {
+  absl::Duration duration = time - absl::UnixEpoch();
+  google::protobuf::Timestamp timestamp_proto;
+  timestamp_proto.set_seconds(
+      absl::ToInt64Seconds(absl::Trunc(duration, absl::Seconds(1))));
+  duration -= absl::Trunc(duration, absl::Seconds(1));
+  timestamp_proto.set_nanos(absl::ToInt64Nanoseconds(duration));
+  return timestamp_proto;
+}
+
 template <typename T, typename MutableMapField, typename Creator,
           typename Valuer, typename Pair, typename Key>
 void TestMapGetField(MemoryManager& memory_manager,
@@ -1513,8 +1700,11 @@ void TestMapGetField(MemoryManager& memory_manager,
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
                 EqualsProto(pair1.second));
+  } else if constexpr (std::is_same_v<T, NullValue>) {
+    EXPECT_TRUE((*field_value)->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair1.second);
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+              ProtoToNative(pair1.second));
   }
   EXPECT_THAT(
       field.As<MapValue>()->Has(Must((value_factory.*creator)(pair1.first))),
@@ -1526,8 +1716,11 @@ void TestMapGetField(MemoryManager& memory_manager,
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
                 EqualsProto(pair2.second));
+  } else if constexpr (std::is_same_v<T, NullValue>) {
+    EXPECT_TRUE((*field_value)->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair2.second);
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+              ProtoToNative(pair2.second));
   }
   EXPECT_THAT(
       field.As<MapValue>()->Has(Must((value_factory.*creator)(pair2.first))),
@@ -1595,8 +1788,11 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
                 EqualsProto(pair1.second));
+  } else if constexpr (std::is_same_v<T, NullValue>) {
+    EXPECT_TRUE((*field_value)->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair1.second);
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+              ProtoToNative(pair1.second));
   }
   EXPECT_THAT(field.As<MapValue>()->Has(
                   Must(value_factory.CreateStringValue(pair1.first))),
@@ -1608,8 +1804,11 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
                 EqualsProto(pair2.second));
+  } else if constexpr (std::is_same_v<T, NullValue>) {
+    EXPECT_TRUE((*field_value)->template Is<NullValue>());
   } else {
-    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(), pair2.second);
+    EXPECT_EQ(((*(*field_value).template As<T>()).*valuer)(),
+              ProtoToNative(pair2.second));
   }
   EXPECT_THAT(field.As<MapValue>()->Has(
                   Must(value_factory.CreateStringValue(pair2.first))),
@@ -1631,6 +1830,12 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
   EXPECT_OK(keys->Get(value_factory, 0));
+}
+
+TEST_P(ProtoStructValueTest, BoolNullValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_null_value",
+                  &TestAllTypes::mutable_map_bool_null_value,
+                  std::make_pair(true, NULL_VALUE));
 }
 
 TEST_P(ProtoStructValueTest, BoolBoolMapHasField) {
@@ -1687,6 +1892,18 @@ TEST_P(ProtoStructValueTest, BoolStringMapHasField) {
                   std::make_pair(true, "foo"));
 }
 
+TEST_P(ProtoStructValueTest, BoolDurationMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_duration",
+                  &TestAllTypes::mutable_map_bool_duration,
+                  std::make_pair(true, google::protobuf::Duration()));
+}
+
+TEST_P(ProtoStructValueTest, BoolTimestampMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_timestamp",
+                  &TestAllTypes::mutable_map_bool_timestamp,
+                  std::make_pair(true, google::protobuf::Timestamp()));
+}
+
 TEST_P(ProtoStructValueTest, BoolEnumMapHasField) {
   TestMapHasField(memory_manager(), "map_bool_enum",
                   &TestAllTypes::mutable_map_bool_enum,
@@ -1697,6 +1914,12 @@ TEST_P(ProtoStructValueTest, BoolMessageMapHasField) {
   TestMapHasField(memory_manager(), "map_bool_message",
                   &TestAllTypes::mutable_map_bool_message,
                   std::make_pair(true, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Int32NullValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_null_value",
+                  &TestAllTypes::mutable_map_int32_null_value,
+                  std::make_pair(1, NULL_VALUE));
 }
 
 TEST_P(ProtoStructValueTest, Int32BoolMapHasField) {
@@ -1751,6 +1974,18 @@ TEST_P(ProtoStructValueTest, Int32StringMapHasField) {
                   std::make_pair(1, "foo"));
 }
 
+TEST_P(ProtoStructValueTest, Int32DurationMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_duration",
+                  &TestAllTypes::mutable_map_int32_duration,
+                  std::make_pair(1, google::protobuf::Duration()));
+}
+
+TEST_P(ProtoStructValueTest, Int32TimestampMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_timestamp",
+                  &TestAllTypes::mutable_map_int32_timestamp,
+                  std::make_pair(1, google::protobuf::Timestamp()));
+}
+
 TEST_P(ProtoStructValueTest, Int32EnumMapHasField) {
   TestMapHasField(memory_manager(), "map_int32_enum",
                   &TestAllTypes::mutable_map_int32_enum,
@@ -1761,6 +1996,12 @@ TEST_P(ProtoStructValueTest, Int32MessageMapHasField) {
   TestMapHasField(memory_manager(), "map_int32_message",
                   &TestAllTypes::mutable_map_int32_message,
                   std::make_pair(1, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Int64NullValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_null_value",
+                  &TestAllTypes::mutable_map_int64_null_value,
+                  std::make_pair(1, NULL_VALUE));
 }
 
 TEST_P(ProtoStructValueTest, Int64BoolMapHasField) {
@@ -1815,6 +2056,18 @@ TEST_P(ProtoStructValueTest, Int64StringMapHasField) {
                   std::make_pair(1, "foo"));
 }
 
+TEST_P(ProtoStructValueTest, Int64DurationMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_duration",
+                  &TestAllTypes::mutable_map_int64_duration,
+                  std::make_pair(1, google::protobuf::Duration()));
+}
+
+TEST_P(ProtoStructValueTest, Int64TimestampMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_timestamp",
+                  &TestAllTypes::mutable_map_int64_timestamp,
+                  std::make_pair(1, google::protobuf::Timestamp()));
+}
+
 TEST_P(ProtoStructValueTest, Int64EnumMapHasField) {
   TestMapHasField(memory_manager(), "map_int64_enum",
                   &TestAllTypes::mutable_map_int64_enum,
@@ -1825,6 +2078,12 @@ TEST_P(ProtoStructValueTest, Int64MessageMapHasField) {
   TestMapHasField(memory_manager(), "map_int64_message",
                   &TestAllTypes::mutable_map_int64_message,
                   std::make_pair(1, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32NullValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_null_value",
+                  &TestAllTypes::mutable_map_uint32_null_value,
+                  std::make_pair(1u, NULL_VALUE));
 }
 
 TEST_P(ProtoStructValueTest, Uint32BoolMapHasField) {
@@ -1881,6 +2140,18 @@ TEST_P(ProtoStructValueTest, Uint32StringMapHasField) {
                   std::make_pair(1u, "foo"));
 }
 
+TEST_P(ProtoStructValueTest, Uint32DurationMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_duration",
+                  &TestAllTypes::mutable_map_uint32_duration,
+                  std::make_pair(1u, google::protobuf::Duration()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32TimestampMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_timestamp",
+                  &TestAllTypes::mutable_map_uint32_timestamp,
+                  std::make_pair(1u, google::protobuf::Timestamp()));
+}
+
 TEST_P(ProtoStructValueTest, Uint32EnumMapHasField) {
   TestMapHasField(memory_manager(), "map_uint32_enum",
                   &TestAllTypes::mutable_map_uint32_enum,
@@ -1891,6 +2162,12 @@ TEST_P(ProtoStructValueTest, Uint32MessageMapHasField) {
   TestMapHasField(memory_manager(), "map_uint32_message",
                   &TestAllTypes::mutable_map_uint32_message,
                   std::make_pair(1u, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64NullValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_null_value",
+                  &TestAllTypes::mutable_map_uint64_null_value,
+                  std::make_pair(1u, NULL_VALUE));
 }
 
 TEST_P(ProtoStructValueTest, Uint64BoolMapHasField) {
@@ -1947,6 +2224,18 @@ TEST_P(ProtoStructValueTest, Uint64StringMapHasField) {
                   std::make_pair(1u, "foo"));
 }
 
+TEST_P(ProtoStructValueTest, Uint64DurationMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_duration",
+                  &TestAllTypes::mutable_map_uint64_duration,
+                  std::make_pair(1u, google::protobuf::Duration()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64TimestampMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_timestamp",
+                  &TestAllTypes::mutable_map_uint64_timestamp,
+                  std::make_pair(1u, google::protobuf::Timestamp()));
+}
+
 TEST_P(ProtoStructValueTest, Uint64EnumMapHasField) {
   TestMapHasField(memory_manager(), "map_uint64_enum",
                   &TestAllTypes::mutable_map_uint64_enum,
@@ -1957,6 +2246,12 @@ TEST_P(ProtoStructValueTest, Uint64MessageMapHasField) {
   TestMapHasField(memory_manager(), "map_uint64_message",
                   &TestAllTypes::mutable_map_uint64_message,
                   std::make_pair(1u, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, StringNullValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_null_value",
+                  &TestAllTypes::mutable_map_string_null_value,
+                  std::make_pair("foo", NULL_VALUE));
 }
 
 TEST_P(ProtoStructValueTest, StringBoolMapHasField) {
@@ -2013,6 +2308,18 @@ TEST_P(ProtoStructValueTest, StringStringMapHasField) {
                   std::make_pair("foo", "foo"));
 }
 
+TEST_P(ProtoStructValueTest, StringDurationMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_duration",
+                  &TestAllTypes::mutable_map_string_duration,
+                  std::make_pair("foo", google::protobuf::Duration()));
+}
+
+TEST_P(ProtoStructValueTest, StringTimestampMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_timestamp",
+                  &TestAllTypes::mutable_map_string_timestamp,
+                  std::make_pair("foo", google::protobuf::Timestamp()));
+}
+
 TEST_P(ProtoStructValueTest, StringEnumMapHasField) {
   TestMapHasField(memory_manager(), "map_string_enum",
                   &TestAllTypes::mutable_map_string_enum,
@@ -2023,6 +2330,15 @@ TEST_P(ProtoStructValueTest, StringMessageMapHasField) {
   TestMapHasField(memory_manager(), "map_string_message",
                   &TestAllTypes::mutable_map_string_message,
                   std::make_pair("foo", TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, BoolNullValueMapGetField) {
+  TestMapGetField<NullValue>(memory_manager(), "map_bool_null_value",
+                             "{false: null, true: null}",
+                             &TestAllTypes::mutable_map_bool_null_value,
+                             &ValueFactory::CreateBoolValue, nullptr,
+                             std::make_pair(false, NULL_VALUE),
+                             std::make_pair(true, NULL_VALUE), nullptr);
 }
 
 TEST_P(ProtoStructValueTest, BoolBoolMapGetField) {
@@ -2097,6 +2413,28 @@ TEST_P(ProtoStructValueTest, BoolStringMapGetField) {
       std::make_pair(true, "foo"), nullptr);
 }
 
+TEST_P(ProtoStructValueTest, BoolDurationMapGetField) {
+  TestMapGetField<DurationValue>(
+      memory_manager(), "map_bool_duration", "{false: 1s, true: 0}",
+      &TestAllTypes::mutable_map_bool_duration, &ValueFactory::CreateBoolValue,
+      &DurationValue::value,
+      std::make_pair(false, NativeToProto(absl::Seconds(1))),
+      std::make_pair(true, NativeToProto(absl::ZeroDuration())), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, BoolTimestampMapGetField) {
+  TestMapGetField<TimestampValue>(
+      memory_manager(), "map_bool_timestamp",
+      "{false: 1970-01-01T00:00:01Z, true: 1970-01-01T00:00:00Z}",
+      &TestAllTypes::mutable_map_bool_timestamp, &ValueFactory::CreateBoolValue,
+      &TimestampValue::value,
+      std::make_pair(false,
+                     NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
+      std::make_pair(true,
+                     NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
+      nullptr);
+}
+
 TEST_P(ProtoStructValueTest, BoolEnumMapGetField) {
   TestMapGetField<EnumValue>(
       memory_manager(), "map_bool_enum",
@@ -2116,6 +2454,14 @@ TEST_P(ProtoStructValueTest, BoolMessageMapGetField) {
       &TestAllTypes::mutable_map_bool_message, &ValueFactory::CreateBoolValue,
       nullptr, std::make_pair(false, CreateTestNestedMessage(1)),
       std::make_pair(true, CreateTestNestedMessage(2)), nullptr);
+}
+
+TEST_P(ProtoStructValueTest, Int32NullValueMapGetField) {
+  TestMapGetField<NullValue>(
+      memory_manager(), "map_int32_null_value", "{0: null, 1: null}",
+      &TestAllTypes::mutable_map_int32_null_value,
+      &ValueFactory::CreateIntValue, nullptr, std::make_pair(0, NULL_VALUE),
+      std::make_pair(1, NULL_VALUE), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int32BoolMapGetField) {
@@ -2183,6 +2529,26 @@ TEST_P(ProtoStructValueTest, Int32StringMapGetField) {
       std::make_pair(1, "foo"), 2);
 }
 
+TEST_P(ProtoStructValueTest, Int32DurationMapGetField) {
+  TestMapGetField<DurationValue>(
+      memory_manager(), "map_int32_duration", "{0: 1s, 1: 0}",
+      &TestAllTypes::mutable_map_int32_duration, &ValueFactory::CreateIntValue,
+      &DurationValue::value, std::make_pair(0, NativeToProto(absl::Seconds(1))),
+      std::make_pair(1, NativeToProto(absl::ZeroDuration())), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int32TimestampMapGetField) {
+  TestMapGetField<TimestampValue>(
+      memory_manager(), "map_int32_timestamp",
+      "{0: 1970-01-01T00:00:01Z, 1: 1970-01-01T00:00:00Z}",
+      &TestAllTypes::mutable_map_int32_timestamp, &ValueFactory::CreateIntValue,
+      &TimestampValue::value,
+      std::make_pair(0, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
+      std::make_pair(1,
+                     NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
+      2);
+}
+
 TEST_P(ProtoStructValueTest, Int32EnumMapGetField) {
   TestMapGetField<EnumValue>(
       memory_manager(), "map_int32_enum",
@@ -2202,6 +2568,14 @@ TEST_P(ProtoStructValueTest, Int32MessageMapGetField) {
       &TestAllTypes::mutable_map_int32_message, &ValueFactory::CreateIntValue,
       nullptr, std::make_pair(0, CreateTestNestedMessage(1)),
       std::make_pair(1, CreateTestNestedMessage(2)), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64NullValueMapGetField) {
+  TestMapGetField<NullValue>(
+      memory_manager(), "map_int64_null_value", "{0: null, 1: null}",
+      &TestAllTypes::mutable_map_int64_null_value,
+      &ValueFactory::CreateIntValue, nullptr, std::make_pair(0, NULL_VALUE),
+      std::make_pair(1, NULL_VALUE), 2);
 }
 
 TEST_P(ProtoStructValueTest, Int64BoolMapGetField) {
@@ -2269,6 +2643,26 @@ TEST_P(ProtoStructValueTest, Int64StringMapGetField) {
       std::make_pair(1, "foo"), 2);
 }
 
+TEST_P(ProtoStructValueTest, Int64DurationMapGetField) {
+  TestMapGetField<DurationValue>(
+      memory_manager(), "map_int64_duration", "{0: 1s, 1: 0}",
+      &TestAllTypes::mutable_map_int64_duration, &ValueFactory::CreateIntValue,
+      &DurationValue::value, std::make_pair(0, NativeToProto(absl::Seconds(1))),
+      std::make_pair(1, NativeToProto(absl::ZeroDuration())), 2);
+}
+
+TEST_P(ProtoStructValueTest, Int64TimestampMapGetField) {
+  TestMapGetField<TimestampValue>(
+      memory_manager(), "map_int64_timestamp",
+      "{0: 1970-01-01T00:00:01Z, 1: 1970-01-01T00:00:00Z}",
+      &TestAllTypes::mutable_map_int64_timestamp, &ValueFactory::CreateIntValue,
+      &TimestampValue::value,
+      std::make_pair(0, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
+      std::make_pair(1,
+                     NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
+      2);
+}
+
 TEST_P(ProtoStructValueTest, Int64EnumMapGetField) {
   TestMapGetField<EnumValue>(
       memory_manager(), "map_int64_enum",
@@ -2288,6 +2682,14 @@ TEST_P(ProtoStructValueTest, Int64MessageMapGetField) {
       &TestAllTypes::mutable_map_int64_message, &ValueFactory::CreateIntValue,
       nullptr, std::make_pair(0, CreateTestNestedMessage(1)),
       std::make_pair(1, CreateTestNestedMessage(2)), 2);
+}
+
+TEST_P(ProtoStructValueTest, Uint32NullValueMapGetField) {
+  TestMapGetField<NullValue>(
+      memory_manager(), "map_uint32_null_value", "{0u: null, 1u: null}",
+      &TestAllTypes::mutable_map_uint32_null_value,
+      &ValueFactory::CreateUintValue, nullptr, std::make_pair(0u, NULL_VALUE),
+      std::make_pair(1u, NULL_VALUE), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint32BoolMapGetField) {
@@ -2358,6 +2760,27 @@ TEST_P(ProtoStructValueTest, Uint32StringMapGetField) {
       std::make_pair(1u, "foo"), 2u);
 }
 
+TEST_P(ProtoStructValueTest, Uint32DurationMapGetField) {
+  TestMapGetField<DurationValue>(
+      memory_manager(), "map_uint32_duration", "{0u: 1s, 1u: 0}",
+      &TestAllTypes::mutable_map_uint32_duration,
+      &ValueFactory::CreateUintValue, &DurationValue::value,
+      std::make_pair(0u, NativeToProto(absl::Seconds(1))),
+      std::make_pair(1u, NativeToProto(absl::ZeroDuration())), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint32TimestampMapGetField) {
+  TestMapGetField<TimestampValue>(
+      memory_manager(), "map_uint32_timestamp",
+      "{0u: 1970-01-01T00:00:01Z, 1u: 1970-01-01T00:00:00Z}",
+      &TestAllTypes::mutable_map_uint32_timestamp,
+      &ValueFactory::CreateUintValue, &TimestampValue::value,
+      std::make_pair(0u, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
+      std::make_pair(1u,
+                     NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
+      2u);
+}
+
 TEST_P(ProtoStructValueTest, Uint32EnumMapGetField) {
   TestMapGetField<EnumValue>(
       memory_manager(), "map_uint32_enum",
@@ -2377,6 +2800,14 @@ TEST_P(ProtoStructValueTest, Uint32MessageMapGetField) {
       &TestAllTypes::mutable_map_uint32_message, &ValueFactory::CreateUintValue,
       nullptr, std::make_pair(0u, CreateTestNestedMessage(1)),
       std::make_pair(1u, CreateTestNestedMessage(2)), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64NullValueMapGetField) {
+  TestMapGetField<NullValue>(
+      memory_manager(), "map_uint64_null_value", "{0u: null, 1u: null}",
+      &TestAllTypes::mutable_map_uint64_null_value,
+      &ValueFactory::CreateUintValue, nullptr, std::make_pair(0u, NULL_VALUE),
+      std::make_pair(1u, NULL_VALUE), 2u);
 }
 
 TEST_P(ProtoStructValueTest, Uint64BoolMapGetField) {
@@ -2447,6 +2878,27 @@ TEST_P(ProtoStructValueTest, Uint64StringMapGetField) {
       std::make_pair(1u, "foo"), 2u);
 }
 
+TEST_P(ProtoStructValueTest, Uint64DurationMapGetField) {
+  TestMapGetField<DurationValue>(
+      memory_manager(), "map_uint64_duration", "{0u: 1s, 1u: 0}",
+      &TestAllTypes::mutable_map_uint64_duration,
+      &ValueFactory::CreateUintValue, &DurationValue::value,
+      std::make_pair(0u, NativeToProto(absl::Seconds(1))),
+      std::make_pair(1u, NativeToProto(absl::ZeroDuration())), 2u);
+}
+
+TEST_P(ProtoStructValueTest, Uint64TimestampMapGetField) {
+  TestMapGetField<TimestampValue>(
+      memory_manager(), "map_uint64_timestamp",
+      "{0u: 1970-01-01T00:00:01Z, 1u: 1970-01-01T00:00:00Z}",
+      &TestAllTypes::mutable_map_uint64_timestamp,
+      &ValueFactory::CreateUintValue, &TimestampValue::value,
+      std::make_pair(0u, NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
+      std::make_pair(1u,
+                     NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
+      2u);
+}
+
 TEST_P(ProtoStructValueTest, Uint64EnumMapGetField) {
   TestMapGetField<EnumValue>(
       memory_manager(), "map_uint64_enum",
@@ -2466,6 +2918,14 @@ TEST_P(ProtoStructValueTest, Uint64MessageMapGetField) {
       &TestAllTypes::mutable_map_uint64_message, &ValueFactory::CreateUintValue,
       nullptr, std::make_pair(0u, CreateTestNestedMessage(1)),
       std::make_pair(1u, CreateTestNestedMessage(2)), 2u);
+}
+
+TEST_P(ProtoStructValueTest, StringNullValueMapGetField) {
+  TestStringMapGetField<NullValue>(memory_manager(), "map_string_null_value",
+                                   "{\"bar\": null, \"baz\": null}",
+                                   &TestAllTypes::mutable_map_string_null_value,
+                                   nullptr, std::make_pair("bar", NULL_VALUE),
+                                   std::make_pair("baz", NULL_VALUE), "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringBoolMapGetField) {
@@ -2531,6 +2991,26 @@ TEST_P(ProtoStructValueTest, StringStringMapGetField) {
       "{\"bar\": \"baz\", \"baz\": \"bar\"}",
       &TestAllTypes::mutable_map_string_string, &StringValue::ToString,
       std::make_pair("bar", "baz"), std::make_pair("baz", "bar"), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringDurationMapGetField) {
+  TestStringMapGetField<DurationValue>(
+      memory_manager(), "map_string_duration", "{\"bar\": 1s, \"baz\": 0}",
+      &TestAllTypes::mutable_map_string_duration, &DurationValue::value,
+      std::make_pair("bar", NativeToProto(absl::Seconds(1))),
+      std::make_pair("baz", NativeToProto(absl::ZeroDuration())), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StringTimestampMapGetField) {
+  TestStringMapGetField<TimestampValue>(
+      memory_manager(), "map_string_timestamp",
+      "{\"bar\": 1970-01-01T00:00:01Z, \"baz\": 1970-01-01T00:00:00Z}",
+      &TestAllTypes::mutable_map_string_timestamp, &TimestampValue::value,
+      std::make_pair("bar",
+                     NativeToProto(absl::UnixEpoch() + absl::Seconds(1))),
+      std::make_pair("baz",
+                     NativeToProto(absl::UnixEpoch() + absl::ZeroDuration())),
+      "foo");
 }
 
 TEST_P(ProtoStructValueTest, StringEnumMapGetField) {

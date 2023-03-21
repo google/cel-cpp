@@ -24,6 +24,7 @@
 #include "absl/strings/str_cat.h"
 #include "base/type_manager.h"
 #include "extensions/protobuf/enum_type.h"
+#include "extensions/protobuf/type.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 
@@ -34,16 +35,16 @@ absl::StatusOr<Handle<ProtoStructType>> ProtoStructType::Resolve(
   CEL_ASSIGN_OR_RETURN(auto type,
                        type_manager.ResolveType(descriptor.full_name()));
   if (ABSL_PREDICT_FALSE(!type.has_value())) {
-    return absl::InternalError(absl::StrCat(
+    return absl::NotFoundError(absl::StrCat(
         "Missing protocol buffer message type implementation for \"",
         descriptor.full_name(), "\""));
   }
   if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoStructType>())) {
-    return absl::InternalError(absl::StrCat(
+    return absl::FailedPreconditionError(absl::StrCat(
         "Unexpected protocol buffer message type implementation for \"",
-        descriptor.full_name(), "\""));
+        descriptor.full_name(), "\": ", (*type)->DebugString()));
   }
-  return std::move(*type).As<ProtoStructType>();
+  return std::move(type).value().As<ProtoStructType>();
 }
 
 namespace {
@@ -81,48 +82,12 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeSingular(
       return type_manager.type_factory().GetStringType();
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
-    case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
-      const auto* desc = field_desc->message_type();
-      CEL_ASSIGN_OR_RETURN(auto type,
-                           type_manager.ResolveType(desc->full_name()));
-      if (ABSL_PREDICT_FALSE(!type)) {
-        return absl::InternalError(absl::StrCat(
-            "Type implementation missing for \"", desc->full_name(), "\""));
-      }
-      if (ABSL_PREDICT_FALSE(!((*type)->Is<ProtoStructType>() ||
-                               (*type)->Is<DurationType>() ||
-                               (*type)->Is<TimestampType>()))) {
-        // All types present in protocol buffer messages should either be
-        // appropriate builtin CEL types or other protocol buffer types. In
-        // theory someone could resolve this to their custom non protocol buffer
-        // type, but we will not support that as we make assumptions that all
-        // protocol buffer types are our protocol buffer types.
-        return absl::InternalError(absl::StrCat(
-            "Unexpected type implementation for \"", desc->full_name(), "\""));
-      }
-      return std::move(*type);
-    }
+    case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+      return ProtoType::Resolve(type_manager, *field_desc->message_type());
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       return type_manager.type_factory().GetBytesType();
-    case google::protobuf::FieldDescriptor::TYPE_ENUM: {
-      const auto* desc = field_desc->enum_type();
-      CEL_ASSIGN_OR_RETURN(auto type,
-                           type_manager.ResolveType(desc->full_name()));
-      if (ABSL_PREDICT_FALSE(!type)) {
-        return absl::InternalError(absl::StrCat(
-            "Type implementation missing for \"", desc->full_name(), "\""));
-      }
-      if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoEnumType>())) {
-        // All types present in protocol buffer messages should either be
-        // appropriate builtin CEL types or other protocol buffer types. In
-        // theory someone could resolve this to their custom non protocol buffer
-        // type, but we will not support that as we make assumptions that all
-        // protocol buffer types are our protocol buffer types.
-        return absl::InternalError(absl::StrCat(
-            "Unexpected type implementation for \"", desc->full_name(), "\""));
-      }
-      return std::move(*type);
-    }
+    case google::protobuf::FieldDescriptor::TYPE_ENUM:
+      return ProtoType::Resolve(type_manager, *field_desc->enum_type());
   }
 }
 

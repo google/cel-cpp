@@ -25,13 +25,10 @@
 
 namespace cel::extensions {
 
+class ProtoType;
 class ProtoTypeProvider;
 
 class ProtoEnumType final : public EnumType {
- private:
-  template <typename T, typename R>
-  using EnableIfEnum = std::enable_if_t<google::protobuf::is_proto_enum<T>::value, R>;
-
  public:
   static bool Is(const Type& type) {
     return type.kind() == Kind::kEnum &&
@@ -45,15 +42,6 @@ class ProtoEnumType final : public EnumType {
     ABSL_ASSERT(Is(type));
     return static_cast<const ProtoEnumType&>(type);
   }
-
-  template <typename T>
-  static EnableIfEnum<T, absl::StatusOr<Handle<ProtoEnumType>>> Resolve(
-      TypeManager& type_manager) {
-    return Resolve(type_manager, *google::protobuf::GetEnumDescriptor<T>());
-  }
-
-  static absl::StatusOr<Handle<ProtoEnumType>> Resolve(
-      TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor);
 
   absl::string_view name() const override { return descriptor().full_name(); }
 
@@ -69,8 +57,19 @@ class ProtoEnumType final : public EnumType {
       int64_t number) const override;
 
  private:
+  friend class ProtoType;
   friend class ProtoTypeProvider;
   friend class cel::MemoryManager;
+
+  template <typename T>
+  static std::enable_if_t<google::protobuf::is_proto_enum<T>::value,
+                          absl::StatusOr<Handle<ProtoEnumType>>>
+  Resolve(TypeManager& type_manager) {
+    return Resolve(type_manager, *google::protobuf::GetEnumDescriptor<T>());
+  }
+
+  static absl::StatusOr<Handle<ProtoEnumType>> Resolve(
+      TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor);
 
   explicit ProtoEnumType(const google::protobuf::EnumDescriptor* descriptor)
       : descriptor_(ABSL_DIE_IF_NULL(descriptor)) {}  // Crash OK.

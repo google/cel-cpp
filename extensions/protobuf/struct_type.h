@@ -31,18 +31,12 @@ namespace cel::extensions {
 
 class ProtoTypeProvider;
 class ProtoStructValue;
+class ProtoType;
 namespace protobuf_internal {
 class ParsedProtoStructValue;
 }
 
 class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
- private:
-  template <typename T, typename R>
-  using EnableIfDerivedMessage =
-      std::enable_if_t<(!std::is_same_v<google::protobuf::Message, T> &&
-                        std::is_base_of_v<google::protobuf::Message, T>),
-                       R>;
-
  public:
   static bool Is(const Type& type) {
     return type.kind() == Kind::kStruct &&
@@ -58,15 +52,6 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
     return static_cast<const ProtoStructType&>(type);
   }
 
-  template <typename T>
-  static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructType>>>
-  Resolve(TypeManager& type_manager) {
-    return Resolve(type_manager, *T::descriptor());
-  }
-
-  static absl::StatusOr<Handle<ProtoStructType>> Resolve(
-      TypeManager& type_manager, const google::protobuf::Descriptor& descriptor);
-
   absl::string_view name() const override { return descriptor().full_name(); }
 
   const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
@@ -81,10 +66,22 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
       TypeManager& type_manager, int64_t number) const override;
 
  private:
+  friend class ProtoType;
   friend class ProtoTypeProvider;
   friend class ProtoStructValue;
   friend class protobuf_internal::ParsedProtoStructValue;
   friend class cel::MemoryManager;
+
+  template <typename T>
+  static std::enable_if_t<(!std::is_same_v<google::protobuf::Message, T> &&
+                           std::is_base_of_v<google::protobuf::Message, T>),
+                          absl::StatusOr<Handle<ProtoStructType>>>
+  Resolve(TypeManager& type_manager) {
+    return Resolve(type_manager, *T::descriptor());
+  }
+
+  static absl::StatusOr<Handle<ProtoStructType>> Resolve(
+      TypeManager& type_manager, const google::protobuf::Descriptor& descriptor);
 
   ProtoStructType(const google::protobuf::Descriptor* descriptor,
                   google::protobuf::MessageFactory* factory)
