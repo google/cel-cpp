@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 #define THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 
-#include <cstdint>
-
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 
@@ -44,6 +42,7 @@ enum class Kind /* : uint8_t */ {
   // New kinds not present in legacy CelValue.
   kEnum,
   kDyn,
+  kWrapper,
 
   // Legacy aliases, deprecated do not use.
   kInt64 = kInt,

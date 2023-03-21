@@ -41,6 +41,7 @@ class MapType;
 class TypeFactory;
 class TypeProvider;
 class TypeManager;
+class WrapperType;
 
 class ValueFactory;
 
@@ -91,6 +92,21 @@ class Type : public base_internal::Data {
   friend class MapType;
   template <Kind K>
   friend class base_internal::SimpleType;
+  friend class WrapperType;
+  friend class base_internal::TypeHandle;
+
+  static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
+
+  static bool Equals(const Type& lhs, const Type& rhs) {
+    return &lhs == &rhs ||
+           (lhs.kind() == rhs.kind() && Equals(lhs, rhs, lhs.kind()));
+  }
+
+  static void HashValue(const Type& type, Kind kind, absl::HashState state);
+
+  static void HashValue(const Type& type, absl::HashState state) {
+    HashValue(type, type.kind(), std::move(state));
+  }
 
   Type() = default;
   Type(const Type&) = default;

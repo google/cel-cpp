@@ -218,6 +218,7 @@ cc_test(
     name = "type_test",
     srcs = [
         "type_factory_test.cc",
+        "type_provider_test.cc",
         "type_test.cc",
     ],
     deps = [

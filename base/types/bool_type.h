@@ -21,6 +21,7 @@
 namespace cel {
 
 class BoolValue;
+class BoolWrapperType;
 
 class BoolType final : public base_internal::SimpleType<Kind::kBool> {
  private:
@@ -45,6 +46,8 @@ class BoolType final : public base_internal::SimpleType<Kind::kBool> {
   using Base::DebugString;
 
  private:
+  friend class BoolWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(BoolType, BoolValue);
 };
 

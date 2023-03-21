@@ -47,6 +47,15 @@ class BuiltinTypeProvider final : public TypeProvider {
             {"list", GetListType},
             {"map", GetMapType},
             {"type", GetTypeType},
+            {"google.protobuf.BoolValue", GetBoolWrapperType},
+            {"google.protobuf.BytesValue", GetBytesWrapperType},
+            {"google.protobuf.DoubleValue", GetDoubleWrapperType},
+            {"google.protobuf.FloatValue", GetDoubleWrapperType},
+            {"google.protobuf.Int32Value", GetIntWrapperType},
+            {"google.protobuf.Int64Value", GetIntWrapperType},
+            {"google.protobuf.StringValue", GetStringWrapperType},
+            {"google.protobuf.UInt32Value", GetUintWrapperType},
+            {"google.protobuf.UInt64Value", GetUintWrapperType},
         }} {
     std::stable_sort(
         types_.begin(), types_.end(),
@@ -107,6 +116,36 @@ class BuiltinTypeProvider final : public TypeProvider {
     return type_factory.GetTimestampType();
   }
 
+  static absl::StatusOr<Handle<Type>> GetBoolWrapperType(
+      TypeFactory& type_factory) {
+    return type_factory.GetBoolWrapperType();
+  }
+
+  static absl::StatusOr<Handle<Type>> GetBytesWrapperType(
+      TypeFactory& type_factory) {
+    return type_factory.GetBytesWrapperType();
+  }
+
+  static absl::StatusOr<Handle<Type>> GetDoubleWrapperType(
+      TypeFactory& type_factory) {
+    return type_factory.GetDoubleWrapperType();
+  }
+
+  static absl::StatusOr<Handle<Type>> GetIntWrapperType(
+      TypeFactory& type_factory) {
+    return type_factory.GetIntWrapperType();
+  }
+
+  static absl::StatusOr<Handle<Type>> GetStringWrapperType(
+      TypeFactory& type_factory) {
+    return type_factory.GetStringWrapperType();
+  }
+
+  static absl::StatusOr<Handle<Type>> GetUintWrapperType(
+      TypeFactory& type_factory) {
+    return type_factory.GetUintWrapperType();
+  }
+
   static absl::StatusOr<Handle<Type>> GetListType(TypeFactory& type_factory) {
     // The element type does not matter.
     return HandleFactory<ListType>::Make<base_internal::LegacyListType>();
@@ -121,7 +160,7 @@ class BuiltinTypeProvider final : public TypeProvider {
     return type_factory.GetTypeType();
   }
 
-  std::array<BuiltinType, 13> types_;
+  std::array<BuiltinType, 22> types_;
 };
 
 }  // namespace

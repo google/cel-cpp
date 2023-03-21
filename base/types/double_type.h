@@ -21,6 +21,7 @@
 namespace cel {
 
 class DoubleValue;
+class DoubleWrapperType;
 
 class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
  private:
@@ -45,6 +46,8 @@ class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
   using Base::DebugString;
 
  private:
+  friend class DoubleWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DoubleType, DoubleValue);
 };
 

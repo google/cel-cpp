@@ -21,6 +21,7 @@
 namespace cel {
 
 class BytesValue;
+class BytesWrapperType;
 
 class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
  private:
@@ -45,6 +46,8 @@ class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
   using Base::DebugString;
 
  private:
+  friend class BytesWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(BytesType, BytesValue);
 };
 

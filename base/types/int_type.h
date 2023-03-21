@@ -21,6 +21,7 @@
 namespace cel {
 
 class IntValue;
+class IntWrapperType;
 
 class IntType final : public base_internal::SimpleType<Kind::kInt> {
  private:
@@ -45,6 +46,8 @@ class IntType final : public base_internal::SimpleType<Kind::kInt> {
   using Base::DebugString;
 
  private:
+  friend class IntWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(IntType, IntValue);
 };
 

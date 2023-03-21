@@ -42,6 +42,7 @@
 #include "base/types/type_type.h"
 #include "base/types/uint_type.h"
 #include "base/types/unknown_type.h"
+#include "base/types/wrapper_type.h"
 
 namespace cel {
 
@@ -86,6 +87,32 @@ class TypeFactory final {
   Handle<DurationType> GetDurationType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Handle<TimestampType> GetTimestampType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  Handle<BoolWrapperType> GetBoolWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BoolWrapperType::Get();
+  }
+
+  Handle<BytesWrapperType> GetBytesWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BytesWrapperType::Get();
+  }
+
+  Handle<DoubleWrapperType> GetDoubleWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DoubleWrapperType::Get();
+  }
+
+  Handle<IntWrapperType> GetIntWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return IntWrapperType::Get();
+  }
+
+  Handle<StringWrapperType> GetStringWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return StringWrapperType::Get();
+  }
+
+  Handle<UintWrapperType> GetUintWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return UintWrapperType::Get();
+  }
 
   template <typename T, typename... Args>
   EnableIfBaseOfT<EnumType, T, absl::StatusOr<Handle<T>>> CreateEnumType(

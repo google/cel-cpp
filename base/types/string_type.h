@@ -21,6 +21,7 @@
 namespace cel {
 
 class StringValue;
+class StringWrapperType;
 
 class StringType final : public base_internal::SimpleType<Kind::kString> {
  private:
@@ -45,6 +46,8 @@ class StringType final : public base_internal::SimpleType<Kind::kString> {
   using Base::DebugString;
 
  private:
+  friend class StringWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(StringType, StringValue);
 };
 

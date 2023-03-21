@@ -21,6 +21,7 @@
 namespace cel {
 
 class UintValue;
+class UintWrapperType;
 
 class UintType final : public base_internal::SimpleType<Kind::kUint> {
  private:
@@ -45,6 +46,8 @@ class UintType final : public base_internal::SimpleType<Kind::kUint> {
   using Base::DebugString;
 
  private:
+  friend class UintWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(UintType, UintValue);
 };
 
