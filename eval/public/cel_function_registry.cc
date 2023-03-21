@@ -63,6 +63,40 @@ class ProxyToModernCelFunction : public CelFunction {
   const cel::Function* implementation_;
 };
 
+// Impl for simple provider that looks up functions in an activation function
+// registry.
+class ActivationFunctionProviderImpl : public CelFunctionProvider {
+ public:
+  ActivationFunctionProviderImpl() = default;
+  absl::StatusOr<const CelFunction*> GetFunction(
+      const CelFunctionDescriptor& descriptor,
+      const BaseActivation& activation) const override {
+    std::vector<const CelFunction*> overloads =
+        activation.FindFunctionOverloads(descriptor.name());
+
+    const CelFunction* matching_overload = nullptr;
+
+    for (const CelFunction* overload : overloads) {
+      if (overload->descriptor().ShapeMatches(descriptor)) {
+        if (matching_overload != nullptr) {
+          return absl::Status(absl::StatusCode::kInvalidArgument,
+                              "Couldn't resolve function.");
+        }
+        matching_overload = overload;
+      }
+    }
+
+    return matching_overload;
+  }
+};
+
+// Create a CelFunctionProvider that just looks up the functions inserted in the
+// Activation. This is a convenience implementation for a simple, common
+// use-case.
+std::unique_ptr<CelFunctionProvider> CreateActivationFunctionProvider() {
+  return std::make_unique<ActivationFunctionProviderImpl>();
+}
+
 }  // namespace
 
 absl::Status CelFunctionRegistry::Register(
@@ -101,8 +135,7 @@ absl::Status CelFunctionRegistry::RegisterAll(
 }
 
 absl::Status CelFunctionRegistry::RegisterLazyFunction(
-    const CelFunctionDescriptor& descriptor,
-    std::unique_ptr<CelFunctionProvider> factory) {
+    const CelFunctionDescriptor& descriptor) {
   if (DescriptorRegistered(descriptor)) {
     return absl::Status(
         absl::StatusCode::kAlreadyExists,
@@ -115,7 +148,7 @@ absl::Status CelFunctionRegistry::RegisterLazyFunction(
   auto& overloads = functions_[descriptor.name()];
 
   overloads.lazy_overloads.push_back(
-      LazyFunctionEntry(descriptor, std::move(factory)));
+      LazyFunctionEntry(descriptor, CreateActivationFunctionProvider()));
 
   return absl::OkStatus();
 }
@@ -160,10 +193,11 @@ CelFunctionRegistry::FindStaticOverloads(
   return matched_funcs;
 }
 
-std::vector<const CelFunctionProvider*> CelFunctionRegistry::FindLazyOverloads(
+std::vector<const CelFunctionDescriptor*>
+CelFunctionRegistry::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<CelValue::Type>& types) const {
-  std::vector<const CelFunctionProvider*> matched_funcs;
+  std::vector<const CelFunctionDescriptor*> matched_funcs;
 
   auto overloads = functions_.find(name);
   if (overloads == functions_.end()) {
@@ -172,7 +206,7 @@ std::vector<const CelFunctionProvider*> CelFunctionRegistry::FindLazyOverloads(
 
   for (const auto& entry : overloads->second.lazy_overloads) {
     if (entry.descriptor->ShapeMatches(receiver_style, types)) {
-      matched_funcs.push_back(entry.function_provider.get());
+      matched_funcs.push_back(entry.descriptor.get());
     }
   }
 

@@ -265,9 +265,6 @@ cc_test(
 
 cc_library(
     name = "cel_function_provider",
-    srcs = [
-        "cel_function_provider.cc",
-    ],
     hdrs = [
         "cel_function_provider.h",
     ],
@@ -876,19 +873,6 @@ cc_test(
 )
 
 cc_test(
-    name = "cel_function_provider_test",
-    srcs = [
-        "cel_function_provider_test.cc",
-    ],
-    deps = [
-        ":activation",
-        ":cel_function_provider",
-        "//internal:status_macros",
-        "//internal:testing",
-    ],
-)
-
-cc_test(
     name = "cel_function_registry_test",
     srcs = [
         "cel_function_registry_test.cc",
@@ -898,6 +882,7 @@ cc_test(
         ":cel_function",
         ":cel_function_provider",
         ":cel_function_registry",
+        "//base:kind",
         "//internal:status_macros",
         "//internal:testing",
         "@com_google_absl//absl/status",

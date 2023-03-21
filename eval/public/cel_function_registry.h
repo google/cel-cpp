@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/attributes.h"
 #include "absl/container/node_hash_map.h"
 #include "base/function.h"
 #include "base/kind.h"
@@ -54,21 +53,9 @@ class CelFunctionRegistry {
   absl::Status RegisterAll(std::initializer_list<Registrar> registrars,
                            const InterpreterOptions& opts);
 
-  // Register a lazily provided function. CelFunctionProvider is used to get
-  // a CelFunction ptr at evaluation time. The registry takes ownership of the
-  // factory.
-  ABSL_DEPRECATED(
-      "Deprecated, prefer using the default implementation provided"
-      " by the Descriptor only overload.")
-  absl::Status RegisterLazyFunction(
-      const CelFunctionDescriptor& descriptor,
-      std::unique_ptr<CelFunctionProvider> factory);
-
   // Register a lazily provided function. This overload uses a default provider
   // that delegates to the activation at evaluation time.
-  absl::Status RegisterLazyFunction(const CelFunctionDescriptor& descriptor) {
-    return RegisterLazyFunction(descriptor, CreateActivationFunctionProvider());
-  }
+  absl::Status RegisterLazyFunction(const CelFunctionDescriptor& descriptor);
 
   // Find subset of CelFunction that match overload conditions
   // As types may not be available during expression compilation,
@@ -95,7 +82,7 @@ class CelFunctionRegistry {
   // receiver_style - indicates whether function has receiver style;
   // types - argument types. If  type is not known during compilation,
   // DYN value should be passed.
-  std::vector<const CelFunctionProvider*> FindLazyOverloads(
+  std::vector<const CelFunctionDescriptor*> FindLazyOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<CelValue::Type>& types) const;
 

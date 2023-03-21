@@ -1,8 +1,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_PROVIDER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_FUNCTION_PROVIDER_H_
 
-#include <memory>
-
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "eval/public/base_activation.h"
@@ -28,11 +26,6 @@ class ABSL_DEPRECATED(
       const CelFunctionDescriptor& descriptor,
       const BaseActivation& activation) const = 0;
 };
-
-// Create a CelFunctionProvider that just looks up the functions inserted in the
-// Activation. This is a convenience implementation for a simple, common
-// use-case.
-std::unique_ptr<CelFunctionProvider> CreateActivationFunctionProvider();
 
 }  // namespace google::api::expr::runtime
 
