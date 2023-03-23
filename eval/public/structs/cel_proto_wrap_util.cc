@@ -42,6 +42,8 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/overflow.h"
 #include "internal/proto_time_encoding.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -187,8 +189,22 @@ class DynamicMap : public CelMap {
 // protobuf message.
 class ValueFactory {
  public:
-  ValueFactory(const ProtobufValueFactory& factory, google::protobuf::Arena* arena)
-      : factory_(factory), arena_(arena) {}
+  ValueFactory(const ProtobufValueFactory& value_factory,
+               const google::protobuf::DescriptorPool* descriptor_pool,
+               google::protobuf::Arena* arena, google::protobuf::MessageFactory* message_factory)
+      : value_factory_(value_factory),
+        descriptor_pool_(descriptor_pool),
+        arena_(arena),
+        message_factory_(message_factory) {}
+
+  // Note: this overload should only be used in the context of accessing struct
+  // value members, which have already been adapted to the generated message
+  // types.
+  ValueFactory(const ProtobufValueFactory& value_factory, google::protobuf::Arena* arena)
+      : value_factory_(value_factory),
+        descriptor_pool_(DescriptorPool::generated_pool()),
+        arena_(arena),
+        message_factory_(MessageFactory::generated_factory()) {}
 
   CelValue ValueFromMessage(const Duration* duration) {
     return CelValue::CreateDuration(DecodeDuration(*duration));
@@ -199,13 +215,13 @@ class ValueFactory {
   }
 
   CelValue ValueFromMessage(const ListValue* list_values) {
-    return CelValue::CreateList(
-        Arena::Create<DynamicList>(arena_, list_values, factory_, arena_));
+    return CelValue::CreateList(Arena::Create<DynamicList>(
+        arena_, list_values, value_factory_, arena_));
   }
 
   CelValue ValueFromMessage(const Struct* struct_value) {
-    return CelValue::CreateMap(
-        Arena::Create<DynamicMap>(arena_, struct_value, factory_, arena_));
+    return CelValue::CreateMap(Arena::Create<DynamicMap>(
+        arena_, struct_value, value_factory_, arena_));
   }
 
   CelValue ValueFromMessage(const Any* any_value,
@@ -243,12 +259,11 @@ class ValueFactory {
       return CreateErrorValue(arena_, "Failed to unpack Any into message");
     }
 
-    return UnwrapMessageToValue(nested_message, factory_, arena_);
+    return UnwrapMessageToValue(nested_message, value_factory_, arena_);
   }
 
   CelValue ValueFromMessage(const Any* any_value) {
-    return ValueFromMessage(any_value, DescriptorPool::generated_pool(),
-                            MessageFactory::generated_factory());
+    return ValueFromMessage(any_value, descriptor_pool_, message_factory_);
   }
 
   CelValue ValueFromMessage(const BoolValue* wrapper) {
@@ -300,17 +315,21 @@ class ValueFactory {
       case Value::KindCase::kBoolValue:
         return CelValue::CreateBool(value->bool_value());
       case Value::KindCase::kStructValue:
-        return UnwrapMessageToValue(&value->struct_value(), factory_, arena_);
+        return UnwrapMessageToValue(&value->struct_value(), value_factory_,
+                                    arena_);
       case Value::KindCase::kListValue:
-        return UnwrapMessageToValue(&value->list_value(), factory_, arena_);
+        return UnwrapMessageToValue(&value->list_value(), value_factory_,
+                                    arena_);
       default:
         return CelValue::CreateNull();
     }
   }
 
  private:
-  const ProtobufValueFactory& factory_;
+  const ProtobufValueFactory& value_factory_;
+  const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::Arena* arena_;
+  MessageFactory* message_factory_;
 };
 
 // Class makes CelValue from generic protobuf Message.
@@ -325,6 +344,12 @@ class ValueFromMessageMaker {
                                            Arena* arena) {
     const MessageType* message =
         google::protobuf::DynamicCastToGenerated<const MessageType>(msg);
+
+    // Copy the original descriptor pool and message factory for unpacking 'Any'
+    // values.
+    google::protobuf::MessageFactory* message_factory =
+        msg->GetReflection()->GetMessageFactory();
+    const google::protobuf::DescriptorPool* pool = msg->GetDescriptor()->file()->pool();
     if (message == nullptr) {
       auto message_copy = Arena::CreateMessage<MessageType>(arena);
       if (MessageType::descriptor() == msg->GetDescriptor()) {
@@ -340,7 +365,8 @@ class ValueFromMessageMaker {
         }
       }
     }
-    return ValueFactory(factory, arena).ValueFromMessage(message);
+    return ValueFactory(factory, pool, arena, message_factory)
+        .ValueFromMessage(message);
   }
 
   static absl::optional<CelValue> CreateValue(

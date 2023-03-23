@@ -395,3 +395,29 @@ cc_test(
         "//internal:testing",
     ],
 )
+
+cc_test(
+    name = "dynamic_descriptor_pool_end_to_end_test",
+    srcs = ["dynamic_descriptor_pool_end_to_end_test.cc"],
+    deps = [
+        ":cel_proto_descriptor_pool_builder",
+        ":cel_proto_wrapper",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public/testing:matchers",
+        "//internal:proto_util",
+        "//internal:testing",
+        "//internal:time",
+        "//parser",
+        "//testutil:util",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
