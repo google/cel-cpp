@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_ADAPTER_ACTIVATION_IMPL_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_ADAPTER_ACTIVATION_IMPL_H_
 
+#include <vector>
+
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "base/memory_manager.h"
 #include "base/value.h"
-#include "eval/internal/activation_interface.h"
 #include "eval/public/base_activation.h"
+#include "runtime/activation_interface.h"
+#include "runtime/function_overload_reference.h"
 
 namespace cel::interop_internal {
 
@@ -33,8 +35,11 @@ class AdapterActivationImpl : public ActivationInterface {
       const google::api::expr::runtime::BaseActivation& legacy_activation)
       : legacy_activation_(legacy_activation) {}
 
-  absl::optional<Handle<Value>> ResolveVariable(
-      MemoryManager& manager, absl::string_view name) const override;
+  absl::optional<Handle<Value>> FindVariable(
+      ValueFactory& value_factory, absl::string_view name) const override;
+
+  std::vector<FunctionOverloadReference> FindFunctionOverloads(
+      absl::string_view name) const override;
 
   absl::Span<const cel::AttributePattern> GetUnknownAttributes() const override;
 

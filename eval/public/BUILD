@@ -264,19 +264,6 @@ cc_test(
 )
 
 cc_library(
-    name = "cel_function_provider",
-    hdrs = [
-        "cel_function_provider.h",
-    ],
-    deps = [
-        ":base_activation",
-        ":cel_function",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/status:statusor",
-    ],
-)
-
-cc_library(
     name = "cel_builtins",
     hdrs = [
         "cel_builtins.h",
@@ -684,7 +671,6 @@ cc_library(
     hdrs = ["cel_function_registry.h"],
     deps = [
         ":cel_function",
-        ":cel_function_provider",
         ":cel_options",
         ":cel_value",
         "//base:function_interface",
@@ -695,8 +681,12 @@ cc_library(
         "//eval/internal:interop",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
-        "@com_google_absl//absl/base:core_headers",
+        "//runtime:activation_interface",
+        "//runtime:function_overload_reference",
+        "//runtime:function_provider",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -880,11 +870,11 @@ cc_test(
     deps = [
         ":activation",
         ":cel_function",
-        ":cel_function_provider",
         ":cel_function_registry",
         "//base:kind",
-        "//internal:status_macros",
+        "//eval/internal:adapter_activation_impl",
         "//internal:testing",
+        "//runtime:function_overload_reference",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],

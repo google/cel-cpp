@@ -189,12 +189,12 @@ TEST(ResolverTest, TestFindOverloads) {
   auto overloads =
       resolver.FindOverloads("fake_func", false, ArgumentsMatcher(0));
   EXPECT_THAT(overloads.size(), Eq(1));
-  EXPECT_THAT(overloads[0].descriptor->name(), Eq("fake_func"));
+  EXPECT_THAT(overloads[0].descriptor.name(), Eq("fake_func"));
 
   overloads =
       resolver.FindOverloads("fake_ns_func", false, ArgumentsMatcher(0));
   EXPECT_THAT(overloads.size(), Eq(1));
-  EXPECT_THAT(overloads[0].descriptor->name(), Eq("cel.fake_ns_func"));
+  EXPECT_THAT(overloads[0].descriptor.name(), Eq("cel.fake_ns_func"));
 }
 
 TEST(ResolverTest, TestFindLazyOverloads) {

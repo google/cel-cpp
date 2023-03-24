@@ -213,6 +213,7 @@ cc_library(
         "//eval/internal:interop",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_type_registry",
+        "//runtime:function_overload_reference",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",

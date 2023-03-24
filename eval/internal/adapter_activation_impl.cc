@@ -14,20 +14,27 @@
 
 #include "eval/internal/adapter_activation_impl.h"
 
+#include <vector>
+
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/memory_manager.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "runtime/function_overload_reference.h"
 #include "google/protobuf/arena.h"
 
 namespace cel::interop_internal {
 
-absl::optional<Handle<Value>> AdapterActivationImpl::ResolveVariable(
-    MemoryManager& manager, absl::string_view name) const {
-  google::protobuf::Arena* arena =
-      extensions::ProtoMemoryManager::CastToProtoArena(manager);
+using ::google::api::expr::runtime::CelFunction;
+
+absl::optional<Handle<Value>> AdapterActivationImpl::FindVariable(
+    ValueFactory& value_factory, absl::string_view name) const {
+  // This implementation should only be used during interop, when we can
+  // always assume the memory manager is backed by a protobuf arena.
+  google::protobuf::Arena* arena = extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory.memory_manager());
 
   absl::optional<google::api::expr::runtime::CelValue> legacy_value =
       legacy_activation_.FindValue(name, arena);
@@ -35,6 +42,22 @@ absl::optional<Handle<Value>> AdapterActivationImpl::ResolveVariable(
     return absl::nullopt;
   }
   return LegacyValueToModernValueOrDie(arena, *legacy_value);
+}
+
+std::vector<FunctionOverloadReference>
+AdapterActivationImpl::FindFunctionOverloads(absl::string_view name) const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  std::vector<const CelFunction*> legacy_candidates =
+      legacy_activation_.FindFunctionOverloads(name);
+  std::vector<FunctionOverloadReference> result;
+  result.reserve(legacy_candidates.size());
+  for (const auto* candidate : legacy_candidates) {
+    if (candidate == nullptr) {
+      continue;
+    }
+    result.push_back({candidate->descriptor(), *candidate});
+  }
+  return result;
 }
 
 absl::Span<const AttributePattern> AdapterActivationImpl::GetUnknownAttributes()

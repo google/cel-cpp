@@ -28,7 +28,6 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
-#include "eval/internal/activation_interface.h"
 #include "eval/internal/adapter_activation_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
@@ -38,6 +37,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "runtime/activation_interface.h"
 
 namespace google::api::expr::runtime {
 
@@ -49,7 +49,7 @@ using Expr = ::google::api::expr::v1alpha1::Expr;
 // Class Expression represents single execution step.
 class ExpressionStep {
  public:
-  virtual ~ExpressionStep() {}
+  virtual ~ExpressionStep() = default;
 
   // Performs actual evaluation.
   // Values are passed between Expression objects via EvaluatorStack, which is
@@ -203,7 +203,7 @@ class ExecutionFrame {
   const BaseActivation& activation() const { return activation_; }
 
   // Returns reference to the modern API activation.
-  const cel::interop_internal::ActivationInterface& modern_activation() const {
+  const cel::ActivationInterface& modern_activation() const {
     return modern_activation_;
   }
 

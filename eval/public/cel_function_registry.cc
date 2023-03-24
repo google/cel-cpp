@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "base/function.h"
 #include "base/function_interface.h"
 #include "base/kind.h"
@@ -18,6 +20,9 @@
 #include "eval/public/cel_options.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/activation_interface.h"
+#include "runtime/function_overload_reference.h"
+#include "runtime/function_provider.h"
 
 namespace google::api::expr::runtime {
 namespace {
@@ -65,24 +70,27 @@ class ProxyToModernCelFunction : public CelFunction {
 
 // Impl for simple provider that looks up functions in an activation function
 // registry.
-class ActivationFunctionProviderImpl : public CelFunctionProvider {
+class ActivationFunctionProviderImpl
+    : public cel::runtime_internal::FunctionProvider {
  public:
   ActivationFunctionProviderImpl() = default;
-  absl::StatusOr<const CelFunction*> GetFunction(
-      const CelFunctionDescriptor& descriptor,
-      const BaseActivation& activation) const override {
-    std::vector<const CelFunction*> overloads =
+
+  absl::StatusOr<absl::optional<cel::FunctionOverloadReference>> GetFunction(
+      const cel::FunctionDescriptor& descriptor,
+      const cel::ActivationInterface& activation) const override {
+    std::vector<cel::FunctionOverloadReference> overloads =
         activation.FindFunctionOverloads(descriptor.name());
 
-    const CelFunction* matching_overload = nullptr;
+    absl::optional<cel::FunctionOverloadReference> matching_overload =
+        absl::nullopt;
 
-    for (const CelFunction* overload : overloads) {
-      if (overload->descriptor().ShapeMatches(descriptor)) {
-        if (matching_overload != nullptr) {
+    for (const auto& overload : overloads) {
+      if (overload.descriptor.ShapeMatches(descriptor)) {
+        if (matching_overload.has_value()) {
           return absl::Status(absl::StatusCode::kInvalidArgument,
                               "Couldn't resolve function.");
         }
-        matching_overload = overload;
+        matching_overload.emplace(overload);
       }
     }
 
@@ -93,7 +101,8 @@ class ActivationFunctionProviderImpl : public CelFunctionProvider {
 // Create a CelFunctionProvider that just looks up the functions inserted in the
 // Activation. This is a convenience implementation for a simple, common
 // use-case.
-std::unique_ptr<CelFunctionProvider> CreateActivationFunctionProvider() {
+std::unique_ptr<cel::runtime_internal::FunctionProvider>
+CreateActivationFunctionProvider() {
   return std::make_unique<ActivationFunctionProviderImpl>();
 }
 
@@ -172,11 +181,11 @@ std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(
   return matched_funcs;
 }
 
-std::vector<CelFunctionRegistry::StaticOverload>
+std::vector<cel::FunctionOverloadReference>
 CelFunctionRegistry::FindStaticOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<CelValue::Type>& types) const {
-  std::vector<CelFunctionRegistry::StaticOverload> matched_funcs;
+  std::vector<cel::FunctionOverloadReference> matched_funcs;
 
   auto overloads = functions_.find(name);
   if (overloads == functions_.end()) {
@@ -185,8 +194,7 @@ CelFunctionRegistry::FindStaticOverloads(
 
   for (const auto& overload : overloads->second.static_overloads) {
     if (overload.descriptor->ShapeMatches(receiver_style, types)) {
-      matched_funcs.push_back(
-          {overload.descriptor.get(), overload.implementation.get()});
+      matched_funcs.push_back({*overload.descriptor, *overload.implementation});
     }
   }
 
@@ -226,8 +234,7 @@ CelFunctionRegistry::ModernFindLazyOverloads(
 
   for (const auto& entry : overloads->second.lazy_overloads) {
     if (entry.descriptor->ShapeMatches(receiver_style, types)) {
-      matched_funcs.push_back(
-          {entry.descriptor.get(), entry.function_provider.get()});
+      matched_funcs.push_back({*entry.descriptor, *entry.function_provider});
     }
   }
 

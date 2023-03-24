@@ -82,29 +82,18 @@ cc_library(
 )
 
 cc_library(
-    name = "activation_interface",
-    hdrs = ["activation_interface.h"],
-    deps = [
-        "//base:attributes",
-        "//base:memory_manager",
-        "//base:value",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
     name = "adapter_activation_impl",
     srcs = ["adapter_activation_impl.cc"],
     hdrs = ["adapter_activation_impl.h"],
     deps = [
-        ":activation_interface",
         ":interop",
         "//base:memory_manager",
         "//base:value",
         "//eval/public:base_activation",
         "//eval/public:cel_value",
         "//extensions/protobuf:memory_manager",
+        "//runtime:activation_interface",
+        "//runtime:function_overload_reference",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",

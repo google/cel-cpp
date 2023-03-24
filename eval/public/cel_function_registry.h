@@ -11,9 +11,10 @@
 #include "base/function.h"
 #include "base/kind.h"
 #include "eval/public/cel_function.h"
-#include "eval/public/cel_function_provider.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "runtime/function_overload_reference.h"
+#include "runtime/function_provider.h"
 
 namespace google::api::expr::runtime {
 
@@ -22,16 +23,10 @@ namespace google::api::expr::runtime {
 // CelExpression objects from Expr ASTs.
 class CelFunctionRegistry {
  public:
-  // Represents a single overload for a function.
-  struct StaticOverload {
-    const cel::FunctionDescriptor* descriptor;
-    const cel::Function* implementation;
-  };
-
   // Represents a single overload for a lazily provided function.
   struct LazyOverload {
-    const cel::FunctionDescriptor* descriptor;
-    const CelFunctionProvider* provider;
+    const cel::FunctionDescriptor& descriptor;
+    const cel::runtime_internal::FunctionProvider& provider;
   };
 
   CelFunctionRegistry() = default;
@@ -71,7 +66,7 @@ class CelFunctionRegistry {
       absl::string_view name, bool receiver_style,
       const std::vector<CelValue::Type>& types) const;
 
-  std::vector<StaticOverload> FindStaticOverloads(
+  std::vector<cel::FunctionOverloadReference> FindStaticOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types) const;
 
@@ -109,15 +104,16 @@ class CelFunctionRegistry {
   };
 
   struct LazyFunctionEntry {
-    LazyFunctionEntry(const cel::FunctionDescriptor& descriptor,
-                      std::unique_ptr<CelFunctionProvider> provider)
+    LazyFunctionEntry(
+        const cel::FunctionDescriptor& descriptor,
+        std::unique_ptr<cel::runtime_internal::FunctionProvider> provider)
         : descriptor(std::make_unique<cel::FunctionDescriptor>(descriptor)),
           function_provider(std::move(provider)) {}
 
     // Extra indirection needed to preserve pointer stability for the
     // descriptors.
     std::unique_ptr<cel::FunctionDescriptor> descriptor;
-    std::unique_ptr<CelFunctionProvider> function_provider;
+    std::unique_ptr<cel::runtime_internal::FunctionProvider> function_provider;
   };
 
   struct RegistryEntry {

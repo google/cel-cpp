@@ -22,7 +22,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
 // CelFunctionRegistry.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call, int64_t expr_id,
-    std::vector<CelFunctionRegistry::StaticOverload> overloads);
+    std::vector<cel::FunctionOverloadReference> overloads);
 
 }  // namespace google::api::expr::runtime
 

@@ -11,6 +11,7 @@
 #include "base/kind.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "runtime/function_overload_reference.h"
 
 namespace google::api::expr::runtime {
 
@@ -56,7 +57,7 @@ class Resolver {
 
   // FindOverloads returns the set, possibly empty, of eager function overloads
   // matching the given function signature.
-  std::vector<CelFunctionRegistry::StaticOverload> FindOverloads(
+  std::vector<cel::FunctionOverloadReference> FindOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 

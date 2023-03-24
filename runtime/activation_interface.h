@@ -12,28 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_ACTIVATION_INTERFACE_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_ACTIVATION_INTERFACE_H_
+#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_ACTIVATION_INTERFACE_H_
+#define THIRD_PARTY_CEL_CPP_RUNTIME_ACTIVATION_INTERFACE_H_
+
+#include <vector>
 
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
-#include "base/memory_manager.h"
 #include "base/value.h"
+#include "runtime/function_overload_reference.h"
 
-namespace cel::interop_internal {
+namespace cel {
 
 // Interface for providing runtime with variable lookups.
-// TODO(issues/5): Add support for lazily bound / context functions.
 // TODO(issues/5): After finalizing, make this public and add instructions
 // for clients to migrate.
 class ActivationInterface {
  public:
   virtual ~ActivationInterface() = default;
 
-  // Resolve a string (possibly qualified) variable name.
-  virtual absl::optional<Handle<Value>> ResolveVariable(
-      MemoryManager& manager, absl::string_view name) const = 0;
+  // Find value for a string (possibly qualified) variable name.
+  virtual absl::optional<Handle<Value>> FindVariable(
+      ValueFactory& factory, absl::string_view name) const = 0;
+
+  // Find a set of context function overloads by name.
+  virtual std::vector<FunctionOverloadReference> FindFunctionOverloads(
+      absl::string_view name) const = 0;
 
   // Return a list of unknown attribute patterns.
   //
@@ -58,6 +63,6 @@ class ActivationInterface {
       const = 0;
 };
 
-}  // namespace cel::interop_internal
+}  // namespace cel
 
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_INTERNAL_ACTIVATION_INTERFACE_H_
+#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_ACTIVATION_INTERFACE_H_

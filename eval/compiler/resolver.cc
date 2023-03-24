@@ -111,12 +111,12 @@ Handle<Value> Resolver::FindConstant(absl::string_view name,
   return Handle<Value>();
 }
 
-std::vector<CelFunctionRegistry::StaticOverload> Resolver::FindOverloads(
+std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<cel::Kind>& types, int64_t expr_id) const {
   // Resolve the fully qualified names and then search the function registry
   // for possible matches.
-  std::vector<CelFunctionRegistry::StaticOverload> funcs;
+  std::vector<cel::FunctionOverloadReference> funcs;
   auto names = FullyQualifiedNames(name, expr_id);
   for (auto it = names.begin(); it != names.end(); it++) {
     // Only one set of overloads is returned along the namespace hierarchy as
