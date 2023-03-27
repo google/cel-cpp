@@ -22,6 +22,7 @@
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -67,19 +68,41 @@ class MapValue : public Value {
 
   bool empty() const;
 
+  class GetContext final {
+   public:
+    explicit GetContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
+
+    ValueFactory& value_factory() const { return value_factory_; }
+
+   private:
+    ValueFactory& value_factory_;
+  };
+
   // Retrieves the value corresponding to the given key. If the key does not
   // exist, an empty optional is returned. If the given key type is not
   // compatible with the expected key type, an error is returned.
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const;
+      const GetContext& context, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
+  class HasContext final {};
 
-  absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const;
 
-  ABSL_DEPRECATED("Use ListKeys(ValueFactory&) instead")
+  class ListKeysContext final {
+   public:
+    explicit ListKeysContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
+
+    ValueFactory& value_factory() const { return value_factory_; }
+
+   private:
+    ValueFactory& value_factory_;
+  };
+
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      MemoryManager& memory_manager) const;
+      const ListKeysContext& context) const;
 
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
@@ -132,11 +155,13 @@ class LegacyMapValue final : public MapValue, public InlineData {
   bool empty() const;
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const;
+      const GetContext& context, const Handle<Value>& key) const;
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const;
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const;
 
-  absl::StatusOr<Handle<ListValue>> ListKeys(ValueFactory& value_factory) const;
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      const ListKeysContext& context) const;
 
   constexpr uintptr_t value() const { return impl_; }
 
@@ -182,12 +207,13 @@ class AbstractMapValue : public MapValue, public HeapData {
   virtual bool empty() const { return size() == 0; }
 
   virtual absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const = 0;
+      const GetContext& context, const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<bool> Has(const Handle<Value>& key) const = 0;
+  virtual absl::StatusOr<bool> Has(const HasContext& context,
+                                   const Handle<Value>& key) const = 0;
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const = 0;
+      const ListKeysContext& context) const = 0;
 
  protected:
   explicit AbstractMapValue(Handle<MapType> type);

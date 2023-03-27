@@ -23,6 +23,7 @@
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -60,22 +61,44 @@ class StructValue : public Value {
 
   std::string DebugString() const;
 
-  absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
+  class GetFieldContext final {
+   public:
+    explicit GetFieldContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
+
+    ValueFactory& value_factory() const { return value_factory_; }
+
+   private:
+    ValueFactory& value_factory_;
+  };
+
+  absl::StatusOr<Handle<Value>> GetField(const GetFieldContext& context,
                                          FieldId field) const;
 
-  absl::StatusOr<bool> HasField(TypeManager& type_manager, FieldId field) const;
-
- protected:
-  absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> GetFieldByName(const GetFieldContext& context,
                                                absl::string_view name) const;
 
-  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
                                                  int64_t number) const;
 
-  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
+  class HasFieldContext final {
+   public:
+    explicit HasFieldContext(TypeManager& type_manager)
+        : type_manager_(type_manager) {}
+
+    TypeManager& type_manager() const { return type_manager_; }
+
+   private:
+    TypeManager& type_manager_;
+  };
+
+  absl::StatusOr<bool> HasField(const HasFieldContext& context,
+                                FieldId field) const;
+
+  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
                                       absl::string_view name) const;
 
-  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
+  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const;
 
  private:
@@ -140,17 +163,16 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   std::string DebugString() const;
 
- protected:
-  absl::StatusOr<Handle<Value>> GetFieldByName(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> GetFieldByName(const GetFieldContext& context,
                                                absl::string_view name) const;
 
-  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
                                                  int64_t number) const;
 
-  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
+  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
                                       absl::string_view name) const;
 
-  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
+  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const;
 
  private:
@@ -213,20 +235,20 @@ class AbstractStructValue : public StructValue, public HeapData {
 
   virtual std::string DebugString() const = 0;
 
- protected:
-  explicit AbstractStructValue(Handle<StructType> type);
-
   virtual absl::StatusOr<Handle<Value>> GetFieldByName(
-      ValueFactory& value_factory, absl::string_view name) const = 0;
+      const GetFieldContext& context, absl::string_view name) const = 0;
 
   virtual absl::StatusOr<Handle<Value>> GetFieldByNumber(
-      ValueFactory& value_factory, int64_t number) const = 0;
+      const GetFieldContext& context, int64_t number) const = 0;
 
-  virtual absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
+  virtual absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
                                               absl::string_view name) const = 0;
 
-  virtual absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
+  virtual absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                                 int64_t number) const = 0;
+
+ protected:
+  explicit AbstractStructValue(Handle<StructType> type);
 
  private:
   struct GetFieldVisitor;

@@ -217,8 +217,7 @@ class DynamicMapValue final : public AbstractMapValue {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
-    static_cast<void>(value_factory);
+      const GetContext& context, const Handle<Value>& key) const override {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return absl::nullopt;
@@ -226,13 +225,14 @@ class DynamicMapValue final : public AbstractMapValue {
     return existing->second;
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const override {
     return storage_.find(key) != storage_.end();
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
-    ListValueBuilder<Value> keys(value_factory, type()->key());
+      const ListKeysContext& context) const override {
+    ListValueBuilder<Value> keys(context.value_factory(), type()->key());
     keys.reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
@@ -293,7 +293,7 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
+      const GetContext& context, const Handle<Value>& key) const override {
     auto existing = storage_.find(key.As<K>()->value());
     if (existing == storage_.end()) {
       return absl::nullopt;
@@ -301,13 +301,15 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
     return existing->second;
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const override {
     return storage_.find(key.As<K>()->value()) != storage_.end();
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
-    ListValueBuilder<K> keys(value_factory, type()->key().template As<K>());
+      const ListKeysContext& context) const override {
+    ListValueBuilder<K> keys(context.value_factory(),
+                             type()->key().template As<K>());
     keys.reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
@@ -364,21 +366,22 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
+      const GetContext& context, const Handle<Value>& key) const override {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return absl::nullopt;
     }
-    return ValueTraits<V>::Wrap(value_factory, existing->second);
+    return ValueTraits<V>::Wrap(context.value_factory(), existing->second);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const override {
     return storage_.find(key) != storage_.end();
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
-    ListValueBuilder<Value> keys(value_factory, type()->key());
+      const ListKeysContext& context) const override {
+    ListValueBuilder<Value> keys(context.value_factory(), type()->key());
     keys.reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
@@ -439,22 +442,23 @@ class StaticMapValue final : public AbstractMapValue {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
+      const GetContext& context, const Handle<Value>& key) const override {
     auto existing = storage_.find(key.As<K>()->value());
     if (existing == storage_.end()) {
       return absl::nullopt;
     }
-    return ValueTraits<V>::Wrap(value_factory, existing->second);
+    return ValueTraits<V>::Wrap(context.value_factory(), existing->second);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const override {
     return storage_.find(key.As<K>()->value()) != storage_.end();
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
+      const ListKeysContext& context) const override {
     ListValueBuilder<K> keys(
-        value_factory,
+        context.value_factory(),
         type()->key().template As<typename ValueTraits<K>::type_type>());
     keys.reserve(size());
     for (const auto& current : storage_) {

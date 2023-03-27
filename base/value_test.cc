@@ -126,38 +126,37 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
 
   const TestStruct& value() const { return value_; }
 
- protected:
   absl::StatusOr<Handle<Value>> GetFieldByName(
-      ValueFactory& value_factory, absl::string_view name) const override {
+      const GetFieldContext& context, absl::string_view name) const override {
     if (name == "bool_field") {
-      return value_factory.CreateBoolValue(value().bool_field);
+      return context.value_factory().CreateBoolValue(value().bool_field);
     } else if (name == "int_field") {
-      return value_factory.CreateIntValue(value().int_field);
+      return context.value_factory().CreateIntValue(value().int_field);
     } else if (name == "uint_field") {
-      return value_factory.CreateUintValue(value().uint_field);
+      return context.value_factory().CreateUintValue(value().uint_field);
     } else if (name == "double_field") {
-      return value_factory.CreateDoubleValue(value().double_field);
+      return context.value_factory().CreateDoubleValue(value().double_field);
     }
     return absl::NotFoundError("");
   }
 
   absl::StatusOr<Handle<Value>> GetFieldByNumber(
-      ValueFactory& value_factory, int64_t number) const override {
+      const GetFieldContext& context, int64_t number) const override {
     switch (number) {
       case 0:
-        return value_factory.CreateBoolValue(value().bool_field);
+        return context.value_factory().CreateBoolValue(value().bool_field);
       case 1:
-        return value_factory.CreateIntValue(value().int_field);
+        return context.value_factory().CreateIntValue(value().int_field);
       case 2:
-        return value_factory.CreateUintValue(value().uint_field);
+        return context.value_factory().CreateUintValue(value().uint_field);
       case 3:
-        return value_factory.CreateDoubleValue(value().double_field);
+        return context.value_factory().CreateDoubleValue(value().double_field);
       default:
         return absl::NotFoundError("");
     }
   }
 
-  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
+  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
                                       absl::string_view name) const override {
     if (name == "bool_field") {
       return true;
@@ -171,7 +170,7 @@ class TestStructValue final : public CEL_STRUCT_VALUE_CLASS {
     return absl::NotFoundError("");
   }
 
-  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
+  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const override {
     switch (number) {
       case 0:
@@ -250,12 +249,12 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const override { return elements_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const override {
     if (index >= size()) {
       return absl::OutOfRangeError("");
     }
-    return value_factory.CreateIntValue(elements_[index]);
+    return context.value_factory().CreateIntValue(elements_[index]);
   }
 
   std::string DebugString() const override {
@@ -284,7 +283,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   size_t size() const override { return entries_.size(); }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const override {
+      const GetContext& context, const Handle<Value>& key) const override {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -292,10 +291,11 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
     if (entry == entries_.end()) {
       return absl::nullopt;
     }
-    return value_factory.CreateIntValue(entry->second);
+    return context.value_factory().CreateIntValue(entry->second);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const override {
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const override {
     if (!key->Is<StringValue>()) {
       return absl::InvalidArgumentError("");
     }
@@ -316,7 +316,7 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const override {
+      const ListKeysContext& context) const override {
     return absl::UnimplementedError("MapValue::ListKeys is not implemented");
   }
 
@@ -2002,31 +2002,34 @@ TEST_P(StructValueTest, GetField) {
   ASSERT_OK_AND_ASSIGN(
       auto struct_value,
       value_factory.CreateStructValue<TestStructValue>(struct_type));
+  StructValue::GetFieldContext context(value_factory);
   EXPECT_THAT(
-      struct_value->GetField(value_factory, StructValue::FieldId("bool_field")),
+      struct_value->GetField(context, StructValue::FieldId("bool_field")),
       IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(0)),
+  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(0)),
               IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
   EXPECT_THAT(
-      struct_value->GetField(value_factory, StructValue::FieldId("int_field")),
+      struct_value->GetField(context, StructValue::FieldId("int_field")),
       IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(1)),
+  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(1)),
               IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
   EXPECT_THAT(
-      struct_value->GetField(value_factory, StructValue::FieldId("uint_field")),
+      struct_value->GetField(context, StructValue::FieldId("uint_field")),
       IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(2)),
+  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(2)),
               IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
-  EXPECT_THAT(struct_value->GetField(value_factory,
-                                     StructValue::FieldId("double_field")),
+  EXPECT_THAT(
+      struct_value->GetField(context, StructValue::FieldId("double_field")),
+      IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
+  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(3)),
               IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
-  EXPECT_THAT(struct_value->GetField(value_factory, StructValue::FieldId(3)),
-              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
-  EXPECT_THAT(struct_value->GetField(value_factory,
-                                     StructValue::FieldId("missing_field")),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(4)),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      struct_value->GetField(context, StructValue::FieldId("missing_field")),
+      StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(
+      struct_value->HasField(StructValue::HasFieldContext((type_manager)),
+                             StructValue::FieldId(4)),
+      StatusIs(absl::StatusCode::kNotFound));
 }
 
 TEST_P(StructValueTest, HasField) {
@@ -2038,30 +2041,31 @@ TEST_P(StructValueTest, HasField) {
   ASSERT_OK_AND_ASSIGN(
       auto struct_value,
       value_factory.CreateStructValue<TestStructValue>(struct_type));
+  StructValue::HasFieldContext context(type_manager);
   EXPECT_THAT(
-      struct_value->HasField(type_manager, StructValue::FieldId("bool_field")),
+      struct_value->HasField(context, StructValue::FieldId("bool_field")),
       IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(0)),
-              IsOkAndHolds(true));
-  EXPECT_THAT(
-      struct_value->HasField(type_manager, StructValue::FieldId("int_field")),
-      IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(1)),
+  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(0)),
               IsOkAndHolds(true));
   EXPECT_THAT(
-      struct_value->HasField(type_manager, StructValue::FieldId("uint_field")),
+      struct_value->HasField(context, StructValue::FieldId("int_field")),
       IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(2)),
+  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(1)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(type_manager,
-                                     StructValue::FieldId("double_field")),
+  EXPECT_THAT(
+      struct_value->HasField(context, StructValue::FieldId("uint_field")),
+      IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(2)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(3)),
+  EXPECT_THAT(
+      struct_value->HasField(context, StructValue::FieldId("double_field")),
+      IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(3)),
               IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(type_manager,
-                                     StructValue::FieldId("missing_field")),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_value->HasField(type_manager, StructValue::FieldId(4)),
+  EXPECT_THAT(
+      struct_value->HasField(context, StructValue::FieldId("missing_field")),
+      StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(4)),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -2136,13 +2140,11 @@ TEST_P(ListValueTest, Get) {
                            list_type, std::vector<int64_t>{0, 1, 2}));
   EXPECT_FALSE(list_value->empty());
   EXPECT_EQ(list_value->size(), 3);
-  EXPECT_EQ(Must(list_value->Get(value_factory, 0)),
-            value_factory.CreateIntValue(0));
-  EXPECT_EQ(Must(list_value->Get(value_factory, 1)),
-            value_factory.CreateIntValue(1));
-  EXPECT_EQ(Must(list_value->Get(value_factory, 2)),
-            value_factory.CreateIntValue(2));
-  EXPECT_THAT(list_value->Get(value_factory, 3),
+  ListValue::GetContext context(value_factory);
+  EXPECT_EQ(Must(list_value->Get(context, 0)), value_factory.CreateIntValue(0));
+  EXPECT_EQ(Must(list_value->Get(context, 1)), value_factory.CreateIntValue(1));
+  EXPECT_EQ(Must(list_value->Get(context, 2)), value_factory.CreateIntValue(2));
+  EXPECT_THAT(list_value->Get(context, 3),
               StatusIs(absl::StatusCode::kOutOfRange));
 }
 
@@ -2225,27 +2227,32 @@ TEST_P(MapValueTest, GetAndHas) {
                                          {"foo", 1}, {"bar", 2}, {"baz", 3}}));
   EXPECT_FALSE(map_value->empty());
   EXPECT_EQ(map_value->size(), 3);
-  EXPECT_EQ(Must(map_value->Get(value_factory,
+  EXPECT_EQ(Must(map_value->Get(MapValue::GetContext(value_factory),
                                 Must(value_factory.CreateStringValue("foo")))),
             value_factory.CreateIntValue(1));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("foo"))),
+  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
+                             Must(value_factory.CreateStringValue("foo"))),
               IsOkAndHolds(true));
-  EXPECT_EQ(Must(map_value->Get(value_factory,
+  EXPECT_EQ(Must(map_value->Get(MapValue::GetContext(value_factory),
                                 Must(value_factory.CreateStringValue("bar")))),
             value_factory.CreateIntValue(2));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("bar"))),
+  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
+                             Must(value_factory.CreateStringValue("bar"))),
               IsOkAndHolds(true));
-  EXPECT_EQ(Must(map_value->Get(value_factory,
+  EXPECT_EQ(Must(map_value->Get(MapValue::GetContext(value_factory),
                                 Must(value_factory.CreateStringValue("baz")))),
             value_factory.CreateIntValue(3));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("baz"))),
+  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
+                             Must(value_factory.CreateStringValue("baz"))),
               IsOkAndHolds(true));
-  EXPECT_THAT(map_value->Get(value_factory, value_factory.CreateIntValue(0)),
+  EXPECT_THAT(map_value->Get(MapValue::GetContext(value_factory),
+                             value_factory.CreateIntValue(0)),
               StatusIs(absl::StatusCode::kInvalidArgument));
-  EXPECT_THAT(map_value->Get(value_factory,
+  EXPECT_THAT(map_value->Get(MapValue::GetContext(value_factory),
                              Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(map_value->Has(Must(value_factory.CreateStringValue("missing"))),
+  EXPECT_THAT(map_value->Has(MapValue::HasContext(),
+                             Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(false));
 }
 

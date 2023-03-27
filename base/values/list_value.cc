@@ -14,13 +14,17 @@
 
 #include "base/values/list_value.h"
 
+#include <cstddef>
 #include <string>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/status/statusor.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
+#include "internal/rtti.h"
 
 namespace cel {
 
@@ -49,9 +53,9 @@ bool ListValue::empty() const {
   return CEL_INTERNAL_LIST_VALUE_DISPATCH(empty);
 }
 
-absl::StatusOr<Handle<Value>> ListValue::Get(ValueFactory& value_factory,
+absl::StatusOr<Handle<Value>> ListValue::Get(const GetContext& context,
                                              size_t index) const {
-  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, value_factory, index);
+  return CEL_INTERNAL_LIST_VALUE_DISPATCH(Get, context, index);
 }
 
 internal::TypeInfo ListValue::TypeId() const {
@@ -72,9 +76,9 @@ size_t LegacyListValue::size() const { return LegacyListValueSize(impl_); }
 
 bool LegacyListValue::empty() const { return LegacyListValueEmpty(impl_); }
 
-absl::StatusOr<Handle<Value>> LegacyListValue::Get(ValueFactory& value_factory,
+absl::StatusOr<Handle<Value>> LegacyListValue::Get(const GetContext& context,
                                                    size_t index) const {
-  return LegacyListValueGet(impl_, value_factory, index);
+  return LegacyListValueGet(impl_, context.value_factory(), index);
 }
 
 AbstractListValue::AbstractListValue(Handle<ListType> type)

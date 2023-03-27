@@ -25,6 +25,7 @@
 #include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
 #include "base/allocator.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -69,11 +70,18 @@ class ListValue : public Value {
 
   bool empty() const;
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
-                                    size_t index) const;
+  class GetContext final {
+   public:
+    explicit GetContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
 
-  ABSL_DEPRECATED("Use Get(ValueFactory&, size_t) instead")
-  absl::StatusOr<Handle<Value>> Get(MemoryManager& memory_manager,
+    ValueFactory& value_factory() const { return value_factory_; }
+
+   private:
+    ValueFactory& value_factory_;
+  };
+
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const;
 
   bool Equals(const Value& other) const;
@@ -123,7 +131,7 @@ class LegacyListValue final : public ListValue, public InlineData {
 
   bool empty() const;
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const;
 
   constexpr uintptr_t value() const { return impl_; }
@@ -171,7 +179,7 @@ class AbstractListValue : public ListValue, public HeapData {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  virtual absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                             size_t index) const = 0;
 
  protected:
@@ -220,9 +228,9 @@ class DynamicListValue final : public AbstractListValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const override {
-    static_cast<void>(value_factory);
+    static_cast<void>(context);
     return storage_[index];
   }
 
@@ -264,9 +272,9 @@ class StaticListValue final : public AbstractListValue {
 
   bool empty() const override { return storage_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const override {
-    return value_traits::Wrap(value_factory, storage_[index]);
+    return value_traits::Wrap(context.value_factory(), storage_[index]);
   }
 
   internal::TypeInfo TypeId() const override {

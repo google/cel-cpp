@@ -14,13 +14,19 @@
 
 #include "base/values/map_value.h"
 
+#include <cstddef>
 #include <string>
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/status/statusor.h"
+#include "absl/types/optional.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/types/map_type.h"
+#include "base/value.h"
 #include "base/values/list_value.h"
+#include "internal/rtti.h"
 
 namespace cel {
 
@@ -46,17 +52,18 @@ size_t MapValue::size() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(size); }
 bool MapValue::empty() const { return CEL_INTERNAL_MAP_VALUE_DISPATCH(empty); }
 
 absl::StatusOr<absl::optional<Handle<Value>>> MapValue::Get(
-    ValueFactory& value_factory, const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, value_factory, key);
+    const GetContext& context, const Handle<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Get, context, key);
 }
 
-absl::StatusOr<bool> MapValue::Has(const Handle<Value>& key) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, key);
+absl::StatusOr<bool> MapValue::Has(const HasContext& context,
+                                   const Handle<Value>& key) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(Has, context, key);
 }
 
 absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
-    ValueFactory& value_factory) const {
-  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, value_factory);
+    const ListKeysContext& context) const {
+  return CEL_INTERNAL_MAP_VALUE_DISPATCH(ListKeys, context);
 }
 
 internal::TypeInfo MapValue::TypeId() const {
@@ -78,17 +85,19 @@ size_t LegacyMapValue::size() const { return LegacyMapValueSize(impl_); }
 bool LegacyMapValue::empty() const { return LegacyMapValueEmpty(impl_); }
 
 absl::StatusOr<absl::optional<Handle<Value>>> LegacyMapValue::Get(
-    ValueFactory& value_factory, const Handle<Value>& key) const {
-  return LegacyMapValueGet(impl_, value_factory, key);
+    const GetContext& context, const Handle<Value>& key) const {
+  return LegacyMapValueGet(impl_, context.value_factory(), key);
 }
 
-absl::StatusOr<bool> LegacyMapValue::Has(const Handle<Value>& key) const {
+absl::StatusOr<bool> LegacyMapValue::Has(const HasContext& context,
+                                         const Handle<Value>& key) const {
+  static_cast<void>(context);
   return LegacyMapValueHas(impl_, key);
 }
 
 absl::StatusOr<Handle<ListValue>> LegacyMapValue::ListKeys(
-    ValueFactory& value_factory) const {
-  return LegacyMapValueListKeys(impl_, value_factory);
+    const ListKeysContext& context) const {
+  return LegacyMapValueListKeys(impl_, context.value_factory());
 }
 
 AbstractMapValue::AbstractMapValue(Handle<MapType> type)

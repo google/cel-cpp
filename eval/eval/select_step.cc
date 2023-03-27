@@ -95,7 +95,8 @@ absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
       return MessageValueGetFieldWithWrapperAsProtoDefault(
           msg, frame->value_factory(), field_);
     default:
-      return msg->GetField(frame->value_factory(), field_id);
+      return msg->GetField(StructValue::GetFieldContext(frame->value_factory()),
+                           field_id);
   }
 }
 
@@ -137,7 +138,8 @@ Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
   StructValue::FieldId field_id(field);
   Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
 
-  absl::StatusOr<bool> result = msg->HasField(type_manager, field_id);
+  absl::StatusOr<bool> result =
+      msg->HasField(StructValue::HasFieldContext(type_manager), field_id);
 
   if (!result.ok()) {
     return CreateErrorValueFromView(
@@ -151,7 +153,8 @@ Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
                              cel::MemoryManager& manager) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence = map->Has(CreateStringValueFromView(field_name));
+  auto presence =
+      map->Has(MapValue::HasContext(), CreateStringValueFromView(field_name));
 
   if (!presence.ok()) {
     Arena* arena = ProtoMemoryManager::CastToProtoArena(manager);
@@ -235,8 +238,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     case CelValue::Type::kMap: {
       const auto& cel_map = arg.As<MapValue>();
       auto cel_field = CreateStringValueFromView(field_);
-      CEL_ASSIGN_OR_RETURN(auto result,
-                           cel_map->Get(frame->value_factory(), cel_field));
+      CEL_ASSIGN_OR_RETURN(
+          auto result,
+          cel_map->Get(MapValue::GetContext(frame->value_factory()),
+                       cel_field));
 
       // If object is not found, we return Error, per CEL specification.
       if (!result.has_value()) {

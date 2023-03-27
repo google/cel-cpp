@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_STRUCT_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_STRUCT_VALUE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -24,7 +25,14 @@
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/log/die_if_null.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/type.h"
+#include "base/types/struct_type.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/struct_value.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -164,6 +172,18 @@ class ParsedProtoStructValue : public ProtoStructValue {
 
   std::string DebugString() const final;
 
+  absl::StatusOr<Handle<Value>> GetFieldByName(
+      const GetFieldContext& context, absl::string_view name) const final;
+
+  absl::StatusOr<Handle<Value>> GetFieldByNumber(const GetFieldContext& context,
+                                                 int64_t number) const final;
+
+  absl::StatusOr<bool> HasFieldByName(const HasFieldContext& context,
+                                      absl::string_view name) const final;
+
+  absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
+                                        int64_t number) const final;
+
  protected:
   explicit ParsedProtoStructValue(Handle<StructType> type)
       : ProtoStructValue(std::move(type)) {}
@@ -174,12 +194,6 @@ class ParsedProtoStructValue : public ProtoStructValue {
 
   google::protobuf::Message* ValuePointer(google::protobuf::MessageFactory& message_factory,
                                 google::protobuf::Arena* arena) const final;
-
-  absl::StatusOr<Handle<Value>> GetFieldByName(
-      ValueFactory& value_factory, absl::string_view name) const final;
-
-  absl::StatusOr<Handle<Value>> GetFieldByNumber(ValueFactory& value_factory,
-                                                 int64_t number) const final;
 
   absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
                                          const StructType::Field& field) const;
@@ -198,12 +212,6 @@ class ParsedProtoStructValue : public ProtoStructValue {
       ValueFactory& value_factory, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
-
-  absl::StatusOr<bool> HasFieldByName(TypeManager& type_manager,
-                                      absl::string_view name) const final;
-
-  absl::StatusOr<bool> HasFieldByNumber(TypeManager& type_manager,
-                                        int64_t number) const final;
 
   absl::StatusOr<bool> HasField(TypeManager& type_manager,
                                 const StructType::Field& field) const;

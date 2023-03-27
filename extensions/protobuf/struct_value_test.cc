@@ -92,9 +92,10 @@ TEST_P(ProtoStructValueTest, NullValueHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId("null_value")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("null_value")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
@@ -103,7 +104,7 @@ TEST_P(ProtoStructValueTest, NullValueHasField) {
                          })));
   // In proto3, this can never be present as it will always be the default
   // value. We would need to add `optional` for it to work.
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("null_value")),
               IsOkAndHolds(Eq(false)));
 }
@@ -115,18 +116,20 @@ TEST_P(ProtoStructValueTest, OptionalNullValueHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager, ProtoStructType::FieldId(
-                                                        "optional_null_value")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("optional_null_value")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_optional_null_value(NULL_VALUE);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager, ProtoStructType::FieldId(
-                                                     "optional_null_value")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("optional_null_value")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, BoolHasField) {
@@ -136,16 +139,17 @@ TEST_P(ProtoStructValueTest, BoolHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId("single_bool")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_bool")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_bool(true);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_bool")),
               IsOkAndHolds(Eq(true)));
 }
@@ -157,16 +161,17 @@ TEST_P(ProtoStructValueTest, Int32HasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId("single_int32")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_int32")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_int32(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_int32")),
               IsOkAndHolds(Eq(true)));
 }
@@ -178,16 +183,17 @@ TEST_P(ProtoStructValueTest, Int64HasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId("single_int64")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_int64")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_int64(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_int64")),
               IsOkAndHolds(Eq(true)));
 }
@@ -199,16 +205,17 @@ TEST_P(ProtoStructValueTest, Uint32HasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("single_uint32")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_uint32")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_uint32(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_uint32")),
               IsOkAndHolds(Eq(true)));
 }
@@ -220,16 +227,17 @@ TEST_P(ProtoStructValueTest, Uint64HasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("single_uint64")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_uint64")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_uint64(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_uint64")),
               IsOkAndHolds(Eq(true)));
 }
@@ -241,16 +249,17 @@ TEST_P(ProtoStructValueTest, FloatHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId("single_float")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_float")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_float(1.0);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_float")),
               IsOkAndHolds(Eq(true)));
 }
@@ -262,16 +271,17 @@ TEST_P(ProtoStructValueTest, DoubleHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("single_double")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_double")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_double(1.0);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_double")),
               IsOkAndHolds(Eq(true)));
 }
@@ -283,16 +293,17 @@ TEST_P(ProtoStructValueTest, BytesHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId("single_bytes")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_bytes")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_bytes("foo");
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_bytes")),
               IsOkAndHolds(Eq(true)));
 }
@@ -304,16 +315,17 @@ TEST_P(ProtoStructValueTest, StringHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("single_string")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_string")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_single_string("foo");
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_string")),
               IsOkAndHolds(Eq(true)));
 }
@@ -325,16 +337,17 @@ TEST_P(ProtoStructValueTest, DurationHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("single_duration")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_duration")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.mutable_single_duration();
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("single_duration")),
               IsOkAndHolds(Eq(true)));
 }
@@ -346,18 +359,20 @@ TEST_P(ProtoStructValueTest, TimestampHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("single_timestamp")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_timestamp")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.mutable_single_timestamp();
                          })));
-  EXPECT_THAT(value_with->HasField(
-                  type_manager, ProtoStructType::FieldId("single_timestamp")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("single_timestamp")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, EnumHasField) {
@@ -367,16 +382,17 @@ TEST_P(ProtoStructValueTest, EnumHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("standalone_enum")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("standalone_enum")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.set_standalone_enum(TestAllTypes::BAR);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("standalone_enum")),
               IsOkAndHolds(Eq(true)));
 }
@@ -388,18 +404,20 @@ TEST_P(ProtoStructValueTest, StructHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("standalone_message")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("standalone_message")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.mutable_standalone_message();
                          })));
-  EXPECT_THAT(value_with->HasField(
-                  type_manager, ProtoStructType::FieldId("standalone_message")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("standalone_message")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, NullValueListHasField) {
@@ -409,18 +427,20 @@ TEST_P(ProtoStructValueTest, NullValueListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager, ProtoStructType::FieldId(
-                                                        "repeated_null_value")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_null_value")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_null_value(NULL_VALUE);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager, ProtoStructType::FieldId(
-                                                     "repeated_null_value")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("repeated_null_value")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, BoolListHasField) {
@@ -430,16 +450,17 @@ TEST_P(ProtoStructValueTest, BoolListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_bool")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_bool")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_bool(true);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_bool")),
               IsOkAndHolds(Eq(true)));
 }
@@ -451,16 +472,17 @@ TEST_P(ProtoStructValueTest, Int32ListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_int32")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_int32")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_int32(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_int32")),
               IsOkAndHolds(Eq(true)));
 }
@@ -472,16 +494,17 @@ TEST_P(ProtoStructValueTest, Int64ListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_int64")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_int64")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_int64(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_int64")),
               IsOkAndHolds(Eq(true)));
 }
@@ -493,16 +516,17 @@ TEST_P(ProtoStructValueTest, Uint32ListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_uint32")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_uint32")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_uint32(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_uint32")),
               IsOkAndHolds(Eq(true)));
 }
@@ -514,16 +538,17 @@ TEST_P(ProtoStructValueTest, Uint64ListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_uint64")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_uint64")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_uint64(1);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_uint64")),
               IsOkAndHolds(Eq(true)));
 }
@@ -535,16 +560,17 @@ TEST_P(ProtoStructValueTest, FloatListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_float")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_float")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_float(1.0);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_float")),
               IsOkAndHolds(Eq(true)));
 }
@@ -556,16 +582,17 @@ TEST_P(ProtoStructValueTest, DoubleListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_double")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_double")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_double(1.0);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_double")),
               IsOkAndHolds(Eq(true)));
 }
@@ -577,16 +604,17 @@ TEST_P(ProtoStructValueTest, BytesListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_bytes")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_bytes")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_bytes("foo");
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_bytes")),
               IsOkAndHolds(Eq(true)));
 }
@@ -598,16 +626,17 @@ TEST_P(ProtoStructValueTest, StringListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_string")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_string")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_string("foo");
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId("repeated_string")),
               IsOkAndHolds(Eq(true)));
 }
@@ -619,18 +648,20 @@ TEST_P(ProtoStructValueTest, DurationListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_duration")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_duration")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_duration()->set_seconds(1);
                          })));
-  EXPECT_THAT(value_with->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_duration")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("repeated_duration")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, TimestampListHasField) {
@@ -640,18 +671,20 @@ TEST_P(ProtoStructValueTest, TimestampListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_timestamp")),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_timestamp")),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_timestamp()->set_seconds(1);
                          })));
-  EXPECT_THAT(value_with->HasField(
-                  type_manager, ProtoStructType::FieldId("repeated_timestamp")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("repeated_timestamp")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, EnumListHasField) {
@@ -662,7 +695,7 @@ TEST_P(ProtoStructValueTest, EnumListHasField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   EXPECT_THAT(
-      value_without->HasField(type_manager,
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
                               ProtoStructType::FieldId("repeated_nested_enum")),
       IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
@@ -671,9 +704,10 @@ TEST_P(ProtoStructValueTest, EnumListHasField) {
                          CreateTestMessage([](TestAllTypes& message) {
                            message.add_repeated_nested_enum(TestAllTypes::BAR);
                          })));
-  EXPECT_THAT(value_with->HasField(type_manager, ProtoStructType::FieldId(
-                                                     "repeated_nested_enum")),
-              IsOkAndHolds(Eq(true)));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("repeated_nested_enum")),
+      IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, StructListHasField) {
@@ -683,10 +717,10 @@ TEST_P(ProtoStructValueTest, StructListHasField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(
-          type_manager, ProtoStructType::FieldId("repeated_nested_message")),
-      IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(value_without->HasField(
+                  StructValue::HasFieldContext(type_manager),
+                  ProtoStructType::FieldId("repeated_nested_message")),
+              IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory,
@@ -694,7 +728,7 @@ TEST_P(ProtoStructValueTest, StructListHasField) {
                            message.add_repeated_nested_message();
                          })));
   EXPECT_THAT(
-      value_with->HasField(type_manager,
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
                            ProtoStructType::FieldId("repeated_nested_message")),
       IsOkAndHolds(Eq(true)));
 }
@@ -707,8 +741,9 @@ TEST_P(ProtoStructValueTest, NullValueGetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId("null_value")));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("null_value")));
   EXPECT_TRUE(field->Is<NullValue>());
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -717,7 +752,7 @@ TEST_P(ProtoStructValueTest, NullValueGetField) {
                            message.set_null_value(NULL_VALUE);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("null_value")));
   EXPECT_TRUE(field->Is<NullValue>());
 }
@@ -731,7 +766,7 @@ TEST_P(ProtoStructValueTest, OptionalNullValueGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("optional_null_value")));
   EXPECT_TRUE(field->Is<NullValue>());
   ASSERT_OK_AND_ASSIGN(
@@ -741,8 +776,9 @@ TEST_P(ProtoStructValueTest, OptionalNullValueGetField) {
                            message.set_optional_null_value(NULL_VALUE);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
-                                                     "optional_null_value")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("optional_null_value")));
   EXPECT_TRUE(field->Is<NullValue>());
 }
 
@@ -754,8 +790,9 @@ TEST_P(ProtoStructValueTest, BoolGetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId("single_bool")));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_bool")));
   EXPECT_FALSE(field.As<BoolValue>()->value());
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -764,7 +801,7 @@ TEST_P(ProtoStructValueTest, BoolGetField) {
                            message.set_single_bool(true);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_bool")));
   EXPECT_TRUE(field.As<BoolValue>()->value());
 }
@@ -777,8 +814,9 @@ TEST_P(ProtoStructValueTest, Int32GetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId("single_int32")));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_int32")));
   EXPECT_EQ(field.As<IntValue>()->value(), 0);
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -787,7 +825,7 @@ TEST_P(ProtoStructValueTest, Int32GetField) {
                            message.set_single_int32(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_int32")));
   EXPECT_EQ(field.As<IntValue>()->value(), 1);
 }
@@ -800,8 +838,9 @@ TEST_P(ProtoStructValueTest, Int64GetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId("single_int64")));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_int64")));
   EXPECT_EQ(field.As<IntValue>()->value(), 0);
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -810,7 +849,7 @@ TEST_P(ProtoStructValueTest, Int64GetField) {
                            message.set_single_int64(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_int64")));
   EXPECT_EQ(field.As<IntValue>()->value(), 1);
 }
@@ -824,7 +863,7 @@ TEST_P(ProtoStructValueTest, Uint32GetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("single_uint32")));
   EXPECT_EQ(field.As<UintValue>()->value(), 0);
   ASSERT_OK_AND_ASSIGN(
@@ -834,7 +873,7 @@ TEST_P(ProtoStructValueTest, Uint32GetField) {
                            message.set_single_uint32(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_uint32")));
   EXPECT_EQ(field.As<UintValue>()->value(), 1);
 }
@@ -848,7 +887,7 @@ TEST_P(ProtoStructValueTest, Uint64GetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("single_uint64")));
   EXPECT_EQ(field.As<UintValue>()->value(), 0);
   ASSERT_OK_AND_ASSIGN(
@@ -858,7 +897,7 @@ TEST_P(ProtoStructValueTest, Uint64GetField) {
                            message.set_single_uint64(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_uint64")));
   EXPECT_EQ(field.As<UintValue>()->value(), 1);
 }
@@ -871,8 +910,9 @@ TEST_P(ProtoStructValueTest, FloatGetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId("single_float")));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_float")));
   EXPECT_EQ(field.As<DoubleValue>()->value(), 0);
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -881,7 +921,7 @@ TEST_P(ProtoStructValueTest, FloatGetField) {
                            message.set_single_float(1.0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_float")));
   EXPECT_EQ(field.As<DoubleValue>()->value(), 1);
 }
@@ -895,7 +935,7 @@ TEST_P(ProtoStructValueTest, DoubleGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("single_double")));
   EXPECT_EQ(field.As<DoubleValue>()->value(), 0);
   ASSERT_OK_AND_ASSIGN(
@@ -905,7 +945,7 @@ TEST_P(ProtoStructValueTest, DoubleGetField) {
                            message.set_single_double(1.0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_double")));
   EXPECT_EQ(field.As<DoubleValue>()->value(), 1);
 }
@@ -918,8 +958,9 @@ TEST_P(ProtoStructValueTest, BytesGetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId("single_bytes")));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_bytes")));
   EXPECT_EQ(field.As<BytesValue>()->ToString(), "");
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
@@ -928,7 +969,7 @@ TEST_P(ProtoStructValueTest, BytesGetField) {
                            message.set_single_bytes("foo");
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_bytes")));
   EXPECT_EQ(field.As<BytesValue>()->ToString(), "foo");
 }
@@ -942,7 +983,7 @@ TEST_P(ProtoStructValueTest, StringGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("single_string")));
   EXPECT_EQ(field.As<StringValue>()->ToString(), "");
   ASSERT_OK_AND_ASSIGN(
@@ -952,7 +993,7 @@ TEST_P(ProtoStructValueTest, StringGetField) {
                            message.set_single_string("foo");
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_string")));
   EXPECT_EQ(field.As<StringValue>()->ToString(), "foo");
 }
@@ -966,7 +1007,7 @@ TEST_P(ProtoStructValueTest, DurationGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("single_duration")));
   EXPECT_EQ(field.As<DurationValue>()->value(), absl::ZeroDuration());
   ASSERT_OK_AND_ASSIGN(
@@ -976,7 +1017,7 @@ TEST_P(ProtoStructValueTest, DurationGetField) {
                            message.mutable_single_duration()->set_seconds(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("single_duration")));
   EXPECT_EQ(field.As<DurationValue>()->value(), absl::Seconds(1));
 }
@@ -990,7 +1031,7 @@ TEST_P(ProtoStructValueTest, TimestampGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("single_timestamp")));
   EXPECT_EQ(field.As<TimestampValue>()->value(), absl::UnixEpoch());
   ASSERT_OK_AND_ASSIGN(
@@ -1000,8 +1041,9 @@ TEST_P(ProtoStructValueTest, TimestampGetField) {
                            message.mutable_single_timestamp()->set_seconds(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(
-                 value_factory, ProtoStructType::FieldId("single_timestamp")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("single_timestamp")));
   EXPECT_EQ(field.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Seconds(1));
 }
@@ -1015,7 +1057,7 @@ TEST_P(ProtoStructValueTest, EnumGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("standalone_enum")));
   EXPECT_EQ(field.As<EnumValue>()->number(), 0);
   ASSERT_OK_AND_ASSIGN(
@@ -1025,7 +1067,7 @@ TEST_P(ProtoStructValueTest, EnumGetField) {
                            message.set_standalone_enum(TestAllTypes::BAR);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("standalone_enum")));
   EXPECT_EQ(field.As<EnumValue>()->number(), 1);
 }
@@ -1039,7 +1081,7 @@ TEST_P(ProtoStructValueTest, StructGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("standalone_message")));
   EXPECT_THAT(*field.As<ProtoStructValue>()->value(),
               EqualsProto(CreateTestMessage().standalone_message()));
@@ -1050,8 +1092,9 @@ TEST_P(ProtoStructValueTest, StructGetField) {
                            message.mutable_standalone_message()->set_bb(1);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
-                                                     "standalone_message")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("standalone_message")));
   TestAllTypes::NestedMessage expected =
       CreateTestMessage([](TestAllTypes& message) {
         message.mutable_standalone_message()->set_bb(1);
@@ -1074,7 +1117,7 @@ TEST_P(ProtoStructValueTest, NullValueListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_null_value")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1088,17 +1131,20 @@ TEST_P(ProtoStructValueTest, NullValueListGetField) {
                            message.add_repeated_null_value(NULL_VALUE);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
-                                                     "repeated_null_value")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("repeated_null_value")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[null, null]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_TRUE(field_value->Is<NullValue>());
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_TRUE(field_value->Is<NullValue>());
 }
 
@@ -1111,7 +1157,7 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_bool")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1125,17 +1171,19 @@ TEST_P(ProtoStructValueTest, BoolListGetField) {
                            message.add_repeated_bool(false);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_bool")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[true, false]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_TRUE(field_value.As<BoolValue>()->value());
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_FALSE(field_value.As<BoolValue>()->value());
 }
 
@@ -1148,7 +1196,7 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_int32")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1162,17 +1210,19 @@ TEST_P(ProtoStructValueTest, Int32ListGetField) {
                            message.add_repeated_int32(0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_int32")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1, 0]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
 }
 
@@ -1185,7 +1235,7 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_int64")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1199,17 +1249,19 @@ TEST_P(ProtoStructValueTest, Int64ListGetField) {
                            message.add_repeated_int64(0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_int64")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1, 0]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
 }
 
@@ -1222,7 +1274,7 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_uint32")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1236,17 +1288,19 @@ TEST_P(ProtoStructValueTest, Uint32ListGetField) {
                            message.add_repeated_uint32(0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_uint32")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
 }
 
@@ -1259,7 +1313,7 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_uint64")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1273,17 +1327,19 @@ TEST_P(ProtoStructValueTest, Uint64ListGetField) {
                            message.add_repeated_uint64(0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_uint64")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
 }
 
@@ -1296,7 +1352,7 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_float")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1310,17 +1366,19 @@ TEST_P(ProtoStructValueTest, FloatListGetField) {
                            message.add_repeated_float(0.0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_float")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
 }
 
@@ -1333,7 +1391,7 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_double")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1347,17 +1405,19 @@ TEST_P(ProtoStructValueTest, DoubleListGetField) {
                            message.add_repeated_double(0.0);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_double")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
 }
 
@@ -1370,7 +1430,7 @@ TEST_P(ProtoStructValueTest, BytesListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_bytes")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1384,17 +1444,19 @@ TEST_P(ProtoStructValueTest, BytesListGetField) {
                            message.add_repeated_bytes("bar");
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_bytes")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
 }
 
@@ -1407,7 +1469,7 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_string")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1421,17 +1483,19 @@ TEST_P(ProtoStructValueTest, StringListGetField) {
                            message.add_repeated_string("bar");
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId("repeated_string")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
 }
 
@@ -1444,7 +1508,7 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_duration")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1458,17 +1522,20 @@ TEST_P(ProtoStructValueTest, DurationListGetField) {
                            message.add_repeated_duration()->set_seconds(2);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(
-                 value_factory, ProtoStructType::FieldId("repeated_duration")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("repeated_duration")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(), "[1s, 2s]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(1));
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(2));
 }
 
@@ -1481,7 +1548,7 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetField(value_factory,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
                               ProtoStructType::FieldId("repeated_timestamp")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
@@ -1495,19 +1562,22 @@ TEST_P(ProtoStructValueTest, TimestampListGetField) {
                            message.add_repeated_timestamp()->set_seconds(2);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
-                                                     "repeated_timestamp")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("repeated_timestamp")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(),
             "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Seconds(1));
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Seconds(2));
 }
@@ -1519,10 +1589,10 @@ TEST_P(ProtoStructValueTest, EnumListGetField) {
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetField(
-          value_factory, ProtoStructType::FieldId("repeated_nested_enum")));
+  ASSERT_OK_AND_ASSIGN(auto field,
+                       value_without->GetField(
+                           StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("repeated_nested_enum")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
@@ -1535,19 +1605,22 @@ TEST_P(ProtoStructValueTest, EnumListGetField) {
                            message.add_repeated_nested_enum(TestAllTypes::BAR);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory, ProtoStructType::FieldId(
-                                                     "repeated_nested_enum")));
+      field,
+      value_with->GetField(StructValue::GetFieldContext(value_factory),
+                           ProtoStructType::FieldId("repeated_nested_enum")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
   EXPECT_EQ(field->DebugString(),
             "[google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
             "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR]");
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::FOO);
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::BAR);
 }
 
@@ -1559,9 +1632,9 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetField(
-          value_factory, ProtoStructType::FieldId("repeated_nested_message")));
+      auto field, value_without->GetField(
+                      StructValue::GetFieldContext(value_factory),
+                      ProtoStructType::FieldId("repeated_nested_message")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 0);
   EXPECT_TRUE(field.As<ListValue>()->empty());
@@ -1574,9 +1647,9 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
                            message.add_repeated_nested_message()->set_bb(2);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field,
-      value_with->GetField(
-          value_factory, ProtoStructType::FieldId("repeated_nested_message")));
+      field, value_with->GetField(
+                 StructValue::GetFieldContext(value_factory),
+                 ProtoStructType::FieldId("repeated_nested_message")));
   EXPECT_TRUE(field->Is<ListValue>());
   EXPECT_EQ(field.As<ListValue>()->size(), 2);
   EXPECT_FALSE(field.As<ListValue>()->empty());
@@ -1585,13 +1658,15 @@ TEST_P(ProtoStructValueTest, StructListGetField) {
       "[google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 1}, "
       "google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}]");
   TestAllTypes::NestedMessage message;
-  ASSERT_OK_AND_ASSIGN(auto field_value,
-                       field.As<ListValue>()->Get(value_factory, 0));
+  ASSERT_OK_AND_ASSIGN(
+      auto field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
   message.set_bb(1);
   EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
               EqualsProto(message));
-  ASSERT_OK_AND_ASSIGN(field_value,
-                       field.As<ListValue>()->Get(value_factory, 1));
+  ASSERT_OK_AND_ASSIGN(
+      field_value,
+      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
   message.set_bb(2);
   EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
               EqualsProto(message));
@@ -1607,9 +1682,10 @@ void TestMapHasField(MemoryManager& memory_manager,
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(type_manager,
-                                      ProtoStructType::FieldId(map_field_name)),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId(map_field_name)),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(
@@ -1618,7 +1694,7 @@ void TestMapHasField(MemoryManager& memory_manager,
                                                TestAllTypes& message) mutable {
             (message.*mutable_map_field)()->insert(std::forward<Pair>(pair));
           })));
-  EXPECT_THAT(value_with->HasField(type_manager,
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
                                    ProtoStructType::FieldId(map_field_name)),
               IsOkAndHolds(Eq(true)));
 }
@@ -1672,8 +1748,9 @@ void TestMapGetField(MemoryManager& memory_manager,
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId(map_field_name)));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId(map_field_name)));
   EXPECT_TRUE(field->Is<MapValue>());
   EXPECT_EQ(field.As<MapValue>()->size(), 0);
   EXPECT_TRUE(field.As<MapValue>()->empty());
@@ -1687,7 +1764,7 @@ void TestMapGetField(MemoryManager& memory_manager,
                            (message.*mutable_map_field)()->insert(pair2);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId(map_field_name)));
   EXPECT_TRUE(field->Is<MapValue>());
   EXPECT_EQ(field.As<MapValue>()->size(), 2);
@@ -1695,7 +1772,7 @@ void TestMapGetField(MemoryManager& memory_manager,
   EXPECT_EQ(field->DebugString(), debug_string);
   ASSERT_OK_AND_ASSIGN(
       auto field_value,
-      field.As<MapValue>()->Get(value_factory,
+      field.As<MapValue>()->Get(MapValue::GetContext(value_factory),
                                 Must((value_factory.*creator)(pair1.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
@@ -1707,11 +1784,12 @@ void TestMapGetField(MemoryManager& memory_manager,
               ProtoToNative(pair1.second));
   }
   EXPECT_THAT(
-      field.As<MapValue>()->Has(Must((value_factory.*creator)(pair1.first))),
+      field.As<MapValue>()->Has(MapValue::HasContext(),
+                                Must((value_factory.*creator)(pair1.first))),
       IsOkAndHolds(Eq(true)));
   ASSERT_OK_AND_ASSIGN(
       field_value,
-      field.As<MapValue>()->Get(value_factory,
+      field.As<MapValue>()->Get(MapValue::GetContext(value_factory),
                                 Must((value_factory.*creator)(pair2.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
@@ -1723,26 +1801,30 @@ void TestMapGetField(MemoryManager& memory_manager,
               ProtoToNative(pair2.second));
   }
   EXPECT_THAT(
-      field.As<MapValue>()->Has(Must((value_factory.*creator)(pair2.first))),
+      field.As<MapValue>()->Has(MapValue::HasContext(),
+                                Must((value_factory.*creator)(pair2.first))),
       IsOkAndHolds(Eq(true)));
   if constexpr (!std::is_null_pointer_v<Key>) {
-    EXPECT_THAT(field.As<MapValue>()->Get(
-                    value_factory, Must((value_factory.*creator)(missing_key))),
-                IsOkAndHolds(Eq(absl::nullopt)));
+    EXPECT_THAT(
+        field.As<MapValue>()->Get(MapValue::GetContext(value_factory),
+                                  Must((value_factory.*creator)(missing_key))),
+        IsOkAndHolds(Eq(absl::nullopt)));
   }
   EXPECT_THAT(field.As<MapValue>()->Get(
-                  value_factory,
+                  MapValue::GetContext(value_factory),
                   value_factory.CreateErrorValue(absl::CancelledError())),
               CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(field.As<MapValue>()->Has(
+                  MapValue::HasContext(),
                   value_factory.CreateErrorValue(absl::CancelledError())),
               CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       field.As<MapValue>()->ListKeys(value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto keys,
+      field.As<MapValue>()->ListKeys(MapValue::ListKeysContext(value_factory)));
   EXPECT_EQ(keys->size(), 2);
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
-  EXPECT_OK(keys->Get(value_factory, 0));
+  EXPECT_OK(keys->Get(ListValue::GetContext(value_factory), 0));
 }
 
 template <typename T, typename MutableMapField, typename Valuer, typename Pair,
@@ -1760,8 +1842,9 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
-      auto field, value_without->GetField(
-                      value_factory, ProtoStructType::FieldId(map_field_name)));
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId(map_field_name)));
   EXPECT_TRUE(field->Is<MapValue>());
   EXPECT_EQ(field.As<MapValue>()->size(), 0);
   EXPECT_TRUE(field.As<MapValue>()->empty());
@@ -1775,16 +1858,16 @@ void TestStringMapGetField(MemoryManager& memory_manager,
                            (message.*mutable_map_field)()->insert(pair2);
                          })));
   ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetField(value_factory,
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
                                   ProtoStructType::FieldId(map_field_name)));
   EXPECT_TRUE(field->Is<MapValue>());
   EXPECT_EQ(field.As<MapValue>()->size(), 2);
   EXPECT_FALSE(field.As<MapValue>()->empty());
   EXPECT_EQ(field->DebugString(), debug_string);
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<MapValue>()->Get(
-          value_factory, Must(value_factory.CreateStringValue(pair1.first))));
+  ASSERT_OK_AND_ASSIGN(auto field_value,
+                       field.As<MapValue>()->Get(
+                           MapValue::GetContext(value_factory),
+                           Must(value_factory.CreateStringValue(pair1.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
                 EqualsProto(pair1.second));
@@ -1795,12 +1878,13 @@ void TestStringMapGetField(MemoryManager& memory_manager,
               ProtoToNative(pair1.second));
   }
   EXPECT_THAT(field.As<MapValue>()->Has(
+                  MapValue::HasContext(),
                   Must(value_factory.CreateStringValue(pair1.first))),
               IsOkAndHolds(Eq(true)));
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<MapValue>()->Get(
-          value_factory, Must(value_factory.CreateStringValue(pair2.first))));
+  ASSERT_OK_AND_ASSIGN(field_value,
+                       field.As<MapValue>()->Get(
+                           MapValue::GetContext(value_factory),
+                           Must(value_factory.CreateStringValue(pair2.first))));
   if constexpr (std::is_same_v<T, ProtoStructValue>) {
     EXPECT_THAT(*((*field_value).template As<ProtoStructValue>()->value()),
                 EqualsProto(pair2.second));
@@ -1811,25 +1895,28 @@ void TestStringMapGetField(MemoryManager& memory_manager,
               ProtoToNative(pair2.second));
   }
   EXPECT_THAT(field.As<MapValue>()->Has(
+                  MapValue::HasContext(),
                   Must(value_factory.CreateStringValue(pair2.first))),
               IsOkAndHolds(Eq(true)));
-  EXPECT_THAT(
-      field.As<MapValue>()->Get(
-          value_factory, Must(value_factory.CreateStringValue(missing_key))),
-      IsOkAndHolds(Eq(absl::nullopt)));
   EXPECT_THAT(field.As<MapValue>()->Get(
-                  value_factory,
+                  MapValue::GetContext(value_factory),
+                  Must(value_factory.CreateStringValue(missing_key))),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(field.As<MapValue>()->Get(
+                  MapValue::GetContext(value_factory),
                   value_factory.CreateErrorValue(absl::CancelledError())),
               CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(field.As<MapValue>()->Has(
+                  MapValue::HasContext(),
                   value_factory.CreateErrorValue(absl::CancelledError())),
               CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
-  ASSERT_OK_AND_ASSIGN(auto keys,
-                       field.As<MapValue>()->ListKeys(value_factory));
+  ASSERT_OK_AND_ASSIGN(
+      auto keys,
+      field.As<MapValue>()->ListKeys(MapValue::ListKeysContext(value_factory)));
   EXPECT_EQ(keys->size(), 2);
   EXPECT_FALSE(keys->empty());
   EXPECT_EQ(field.As<MapValue>()->type()->key(), keys->type()->element());
-  EXPECT_OK(keys->Get(value_factory, 0));
+  EXPECT_OK(keys->Get(ListValue::GetContext(value_factory), 0));
 }
 
 TEST_P(ProtoStructValueTest, BoolNullValueMapHasField) {

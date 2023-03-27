@@ -14,6 +14,7 @@
 
 #include "extensions/protobuf/struct_value.h"
 
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -27,9 +28,14 @@
 #include "absl/container/btree_set.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "base/allocator.h"
+#include "base/handle.h"
+#include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
@@ -223,10 +229,10 @@ class ParsedProtoListValue<NullValue> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return size_ == 0; }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
     ABSL_ASSERT(index < size_);
-    return value_factory.GetNullValue();
+    return context.value_factory().GetNullValue();
   }
 
  private:
@@ -264,9 +270,10 @@ class ParsedProtoListValue<BoolValue, bool> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
-    return value_factory.CreateBoolValue(fields_.Get(static_cast<int>(index)));
+    return context.value_factory().CreateBoolValue(
+        fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -304,9 +311,10 @@ class ParsedProtoListValue<IntValue, P> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
-    return value_factory.CreateIntValue(fields_.Get(static_cast<int>(index)));
+    return context.value_factory().CreateIntValue(
+        fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -344,9 +352,10 @@ class ParsedProtoListValue<UintValue, P> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
-    return value_factory.CreateUintValue(fields_.Get(static_cast<int>(index)));
+    return context.value_factory().CreateUintValue(
+        fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -384,9 +393,9 @@ class ParsedProtoListValue<DoubleValue, P> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
-    return value_factory.CreateDoubleValue(
+    return context.value_factory().CreateDoubleValue(
         fields_.Get(static_cast<int>(index)));
   }
 
@@ -426,11 +435,12 @@ class ParsedProtoListValue<BytesValue, std::string>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
     // Proto does not provide a zero copy interface for accessing repeated bytes
     // fields.
-    return value_factory.CreateBytesValue(fields_.Get(static_cast<int>(index)));
+    return context.value_factory().CreateBytesValue(
+        fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -469,11 +479,11 @@ class ParsedProtoListValue<StringValue, std::string>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
     // Proto does not provide a zero copy interface for accessing repeated
     // string fields.
-    return value_factory.CreateUncheckedStringValue(
+    return context.value_factory().CreateUncheckedStringValue(
         fields_.Get(static_cast<int>(index)));
   }
 
@@ -513,7 +523,7 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
@@ -521,7 +531,7 @@ class ParsedProtoListValue<DurationValue, google::protobuf::Message>
         protobuf_internal::AbslDurationFromDurationProto(
             fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
-    return value_factory.CreateUncheckedDurationValue(duration);
+    return context.value_factory().CreateUncheckedDurationValue(duration);
   }
 
  private:
@@ -561,14 +571,14 @@ class ParsedProtoListValue<TimestampValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     CEL_ASSIGN_OR_RETURN(
         auto time, protobuf_internal::AbslTimeFromTimestampProto(
                        fields_.Get(static_cast<int>(index), scratch.get())));
     scratch.reset();
-    return value_factory.CreateUncheckedTimestampValue(time);
+    return context.value_factory().CreateUncheckedTimestampValue(time);
   }
 
  private:
@@ -609,10 +619,10 @@ class ParsedProtoListValue<EnumValue, int32_t> : public CEL_LIST_VALUE_CLASS {
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
-    return value_factory.CreateEnumValue(type()->element().As<EnumType>(),
-                                         fields_.Get(static_cast<int>(index)));
+    return context.value_factory().CreateEnumValue(
+        type()->element().As<EnumType>(), fields_.Get(static_cast<int>(index)));
   }
 
  private:
@@ -653,7 +663,7 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
 
   bool empty() const final { return fields_.empty(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
     std::unique_ptr<google::protobuf::Message> scratch(fields_.NewMessage());
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
@@ -661,25 +671,28 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
       // Scratch was not used, we can avoid copying.
       scratch.reset();
       return protobuf_internal::DynamicMemberParsedProtoStructValue::Create(
-          value_factory, type()->element().As<StructType>(), this, &field);
+          context.value_factory(), type()->element().As<StructType>(), this,
+          &field);
     }
-    if (ProtoMemoryManager::Is(value_factory.memory_manager())) {
-      auto* arena =
-          ProtoMemoryManager::CastToProtoArena(value_factory.memory_manager());
+    if (ProtoMemoryManager::Is(context.value_factory().memory_manager())) {
+      auto* arena = ProtoMemoryManager::CastToProtoArena(
+          context.value_factory().memory_manager());
       if (ABSL_PREDICT_TRUE(arena != nullptr)) {
         // We are using google::protobuf::Arena, but fields_.NewMessage() allocates on the
         // heap. Copy the message into the arena to avoid the extra bookkeeping.
         auto* message = field.New(arena);
         message->CopyFrom(*scratch);
         scratch.reset();
-        return value_factory.CreateStructValue<
-            protobuf_internal::ArenaDynamicParsedProtoStructValue>(
-            type()->element().As<ProtoStructType>(), message);
+        return context.value_factory()
+            .CreateStructValue<
+                protobuf_internal::ArenaDynamicParsedProtoStructValue>(
+                type()->element().As<ProtoStructType>(), message);
       }
     }
-    return value_factory.CreateStructValue<
-        protobuf_internal::HeapDynamicParsedProtoStructValue>(
-        type()->element().As<ProtoStructType>(), scratch.release());
+    return context.value_factory()
+        .CreateStructValue<
+            protobuf_internal::HeapDynamicParsedProtoStructValue>(
+            type()->element().As<ProtoStructType>(), scratch.release());
   }
 
  private:
@@ -1049,9 +1062,9 @@ class ParsedProtoMapValueKeysList : public CEL_LIST_VALUE_CLASS {
 
   size_t size() const final { return keys_.size(); }
 
-  absl::StatusOr<Handle<Value>> Get(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const final {
-    return FromProtoMapKey(value_factory, keys_[index], this);
+    return FromProtoMapKey(context.value_factory(), keys_[index], this);
   }
 
  private:
@@ -1107,7 +1120,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<absl::optional<Handle<Value>>> Get(
-      ValueFactory& value_factory, const Handle<Value>& key) const final {
+      const GetContext& context, const Handle<Value>& key) const final {
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),
@@ -1123,10 +1136,12 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                            proto_key, &proto_value)) {
       return absl::nullopt;
     }
-    return FromProtoMapValue(value_factory, proto_value, field_, this);
+    return FromProtoMapValue(context.value_factory(), proto_value, field_,
+                             this);
   }
 
-  absl::StatusOr<bool> Has(const Handle<Value>& key) const final {
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const final {
     if (ABSL_PREDICT_FALSE(type()->key() != key->type())) {
       return absl::InvalidArgumentError(absl::StrCat(
           "map key type mismatch, expected: ", type()->key()->DebugString(),
@@ -1142,12 +1157,12 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
   }
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
-      ValueFactory& value_factory) const final {
+      const ListKeysContext& context) const final {
     CEL_ASSIGN_OR_RETURN(
         auto list_type,
-        value_factory.type_factory().CreateListType(type()->key()));
+        context.value_factory().type_factory().CreateListType(type()->key()));
     std::vector<google::protobuf::MapKey, Allocator<google::protobuf::MapKey>> keys(
-        Allocator<google::protobuf::MapKey>(value_factory.memory_manager()));
+        Allocator<google::protobuf::MapKey>(context.value_factory().memory_manager()));
     keys.reserve(size());
     auto begin = protobuf_internal::MapBegin(reflection(), message_, field_);
     auto end = protobuf_internal::MapEnd(reflection(), message_, field_);
@@ -1155,11 +1170,13 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
       keys.push_back(begin.GetKey());
     }
     if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {
-      return value_factory.CreateListValue<ReffedParsedProtoMapValueKeysList>(
-          std::move(list_type), std::move(keys), this);
+      return context.value_factory()
+          .CreateListValue<ReffedParsedProtoMapValueKeysList>(
+              std::move(list_type), std::move(keys), this);
     }
-    return value_factory.CreateListValue<ArenaParsedProtoMapValueKeysList>(
-        std::move(list_type), std::move(keys));
+    return context.value_factory()
+        .CreateListValue<ArenaParsedProtoMapValueKeysList>(std::move(list_type),
+                                                           std::move(keys));
   }
 
  private:
@@ -1645,25 +1662,25 @@ google::protobuf::Message* ParsedProtoStructValue::ValuePointer(
 }
 
 absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByName(
-    ValueFactory& value_factory, absl::string_view name) const {
+    const GetFieldContext& context, absl::string_view name) const {
   CEL_ASSIGN_OR_RETURN(
       auto field_type,
-      type()->FindField(value_factory.type_manager(), FieldId(name)));
+      type()->FindField(context.value_factory().type_manager(), FieldId(name)));
   if (ABSL_PREDICT_FALSE(!field_type)) {
     return interop_internal::CreateNoSuchFieldError(name);
   }
-  return GetField(value_factory, *field_type);
+  return GetField(context.value_factory(), *field_type);
 }
 
 absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByNumber(
-    ValueFactory& value_factory, int64_t number) const {
-  CEL_ASSIGN_OR_RETURN(
-      auto field_type,
-      type()->FindField(value_factory.type_manager(), FieldId(number)));
+    const GetFieldContext& context, int64_t number) const {
+  CEL_ASSIGN_OR_RETURN(auto field_type,
+                       type()->FindField(context.value_factory().type_manager(),
+                                         FieldId(number)));
   if (ABSL_PREDICT_FALSE(!field_type)) {
     return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
   }
-  return GetField(value_factory, *field_type);
+  return GetField(context.value_factory(), *field_type);
 }
 
 absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetField(
@@ -2008,23 +2025,23 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
 }
 
 absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByName(
-    TypeManager& type_manager, absl::string_view name) const {
-  CEL_ASSIGN_OR_RETURN(auto field,
-                       type()->FindField(type_manager, FieldId(name)));
+    const HasFieldContext& context, absl::string_view name) const {
+  CEL_ASSIGN_OR_RETURN(
+      auto field, type()->FindField(context.type_manager(), FieldId(name)));
   if (ABSL_PREDICT_FALSE(!field.has_value())) {
     return interop_internal::CreateNoSuchFieldError(name);
   }
-  return HasField(type_manager, *field);
+  return HasField(context.type_manager(), *field);
 }
 
 absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByNumber(
-    TypeManager& type_manager, int64_t number) const {
-  CEL_ASSIGN_OR_RETURN(auto field,
-                       type()->FindField(type_manager, FieldId(number)));
+    const HasFieldContext& context, int64_t number) const {
+  CEL_ASSIGN_OR_RETURN(
+      auto field, type()->FindField(context.type_manager(), FieldId(number)));
   if (ABSL_PREDICT_FALSE(!field.has_value())) {
     return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
   }
-  return HasField(type_manager, *field);
+  return HasField(context.type_manager(), *field);
 }
 
 absl::StatusOr<bool> ParsedProtoStructValue::HasField(

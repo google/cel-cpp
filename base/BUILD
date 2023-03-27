@@ -267,7 +267,6 @@ cc_library(
         "//internal:unreachable",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

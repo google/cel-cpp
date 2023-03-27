@@ -215,8 +215,10 @@ TEST_F(ConstantFoldingTestWithValueFactory, ListComprehension) {
   ASSERT_TRUE(value->Is<ListValue>());
   const auto& list = value.As<ListValue>();
   ASSERT_EQ(list->size(), 2);
-  ASSERT_OK_AND_ASSIGN(auto elem0, list->Get(value_factory_, 0));
-  ASSERT_OK_AND_ASSIGN(auto elem1, list->Get(value_factory_, 1));
+  ASSERT_OK_AND_ASSIGN(auto elem0,
+                       list->Get(ListValue::GetContext(value_factory_), 0));
+  ASSERT_OK_AND_ASSIGN(auto elem1,
+                       list->Get(ListValue::GetContext(value_factory_), 1));
   ASSERT_TRUE(elem0->Is<IntValue>());
   ASSERT_EQ(elem0.As<IntValue>()->value(), 1);
   ASSERT_TRUE(elem1->Is<ListValue>());
@@ -290,8 +292,16 @@ TEST_F(ConstantFoldingTestWithValueFactory, FunctionApplication) {
 
   const auto& list = idents[out.ident_expr().name()].As<ListValue>();
   ASSERT_EQ(list->size(), 2);
-  ASSERT_EQ(list->Get(value_factory_, 0).value().As<IntValue>()->value(), 1);
-  ASSERT_EQ(list->Get(value_factory_, 1).value().As<IntValue>()->value(), 2);
+  ASSERT_EQ(list->Get(ListValue::GetContext(value_factory_), 0)
+                .value()
+                .As<IntValue>()
+                ->value(),
+            1);
+  ASSERT_EQ(list->Get(ListValue::GetContext(value_factory_), 1)
+                .value()
+                .As<IntValue>()
+                ->value(),
+            2);
 }
 
 TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {

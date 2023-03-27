@@ -220,22 +220,4 @@ absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValueFromView(
   return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(value);
 }
 
-absl::StatusOr<Handle<Value>> ListValue::Get(MemoryManager& memory_manager,
-                                             size_t index) const {
-  // Do not do this at home. This is unsafe in nature, but safe during interop.
-  TypeFactory type_factory(memory_manager);
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  return Get(value_factory, index);
-}
-
-absl::StatusOr<Handle<ListValue>> MapValue::ListKeys(
-    MemoryManager& memory_manager) const {
-  // Do not do this at home. This is unsafe in nature, but safe during interop.
-  TypeFactory type_factory(memory_manager);
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  return ListKeys(value_factory);
-}
-
 }  // namespace cel

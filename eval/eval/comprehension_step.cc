@@ -138,10 +138,10 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   frame->value_stack().Push(iter_range, iter_range_attr);
   current_index += 1;
 
-  CEL_ASSIGN_OR_RETURN(
-      auto current_value,
-      iter_range.As<cel::ListValue>()->Get(frame->memory_manager(),
-                                           static_cast<size_t>(current_index)));
+  CEL_ASSIGN_OR_RETURN(auto current_value,
+                       iter_range.As<cel::ListValue>()->Get(
+                           cel::ListValue::GetContext(frame->value_factory()),
+                           static_cast<size_t>(current_index)));
   frame->value_stack().Push(
       cel::interop_internal::CreateIntValue(current_index));
   AttributeTrail iter_trail = iter_range_attr.Step(
@@ -249,8 +249,9 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
   }
 
   CEL_ASSIGN_OR_RETURN(
-      auto list_keys, frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
-                          frame->memory_manager()));
+      auto list_keys,
+      frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
+          cel::MapValue::ListKeysContext(frame->value_factory())));
   frame->value_stack().PopAndPush(std::move(list_keys));
   return absl::OkStatus();
 }

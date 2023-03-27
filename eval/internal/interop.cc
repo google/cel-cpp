@@ -83,7 +83,8 @@ class LegacyCelList final : public CelList {
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
-    auto value = impl_->Get(value_factory, static_cast<size_t>(index));
+    auto value = impl_->Get(ListValue::GetContext(value_factory),
+                            static_cast<size_t>(index));
     if (!value.ok()) {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, value.status()));
@@ -139,7 +140,8 @@ class LegacyCelMap final : public CelMap {
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
-    auto modern_value = impl_->Get(value_factory, *modern_key);
+    auto modern_value =
+        impl_->Get(MapValue::GetContext(value_factory), *modern_key);
     if (!modern_value.ok()) {
       return CelValue::CreateError(
           google::protobuf::Arena::Create<absl::Status>(arena, modern_value.status()));
@@ -161,7 +163,7 @@ class LegacyCelMap final : public CelMap {
     // persist past the return value.
     google::protobuf::Arena arena;
     CEL_ASSIGN_OR_RETURN(auto modern_key, FromLegacyValue(&arena, key));
-    return impl_->Has(modern_key);
+    return impl_->Has(MapValue::HasContext(), modern_key);
   }
 
   int size() const override { return static_cast<int>(impl_->size()); }
@@ -185,7 +187,9 @@ class LegacyCelMap final : public CelMap {
     TypeFactory type_factory(memory_manager);
     TypeManager type_manager(type_factory, TypeProvider::Builtin());
     ValueFactory value_factory(type_manager);
-    CEL_ASSIGN_OR_RETURN(auto list_keys, impl_->ListKeys(value_factory));
+    CEL_ASSIGN_OR_RETURN(
+        auto list_keys,
+        impl_->ListKeys(MapValue::ListKeysContext(value_factory)));
     CEL_ASSIGN_OR_RETURN(auto legacy_list_keys,
                          ToLegacyValue(arena, list_keys));
     return legacy_list_keys.ListOrDie();
@@ -638,7 +642,8 @@ absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(
   }
 
   // Otherwise assume struct impl has the appropriate option set.
-  return struct_value->GetField(value_factory, StructValue::FieldId(field));
+  return struct_value->GetField(StructValue::GetFieldContext(value_factory),
+                                StructValue::FieldId(field));
 }
 
 }  // namespace cel::interop_internal
