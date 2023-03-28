@@ -85,6 +85,11 @@ class Type : public base_internal::Data {
     return T::Cast(*this);
   }
 
+  template <typename Sink>
+  friend void AbslStringify(Sink& sink, const Type& type) {
+    sink.Append(type.DebugString());
+  }
+
  private:
   friend class EnumType;
   friend class StructType;

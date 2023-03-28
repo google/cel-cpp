@@ -20,6 +20,7 @@
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/wrappers.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
@@ -63,17 +64,56 @@ class ProtoValue final {
   using DerivedEnum = google::protobuf::is_proto_enum<std::decay_t<T>>;
 
   template <typename T>
-  using NullValueEnum =
+  using NullWrapperEnum =
       std::is_same<google::protobuf::NullValue, std::decay_t<T>>;
 
   template <typename T>
-  using NotNullValueEnum = std::negation<NullValueEnum<T>>;
+  static constexpr bool NullWrapperEnumV = NullWrapperEnum<T>::value;
+
+  template <typename T>
+  using NotNullWrapperEnum = std::negation<NullWrapperEnum<T>>;
+
+  template <typename T>
+  using BoolWrapperMessage =
+      std::is_same<google::protobuf::BoolValue, std::decay_t<T>>;
+
+  template <typename T>
+  using BytesWrapperMessage =
+      std::is_same<google::protobuf::BytesValue, std::decay_t<T>>;
+
+  template <typename T>
+  using DoubleWrapperMessage = std::disjunction<
+      std::is_same<google::protobuf::FloatValue, std::decay_t<T>>,
+      std::is_same<google::protobuf::DoubleValue, std::decay_t<T>>>;
+
+  template <typename T>
+  using IntWrapperMessage = std::disjunction<
+      std::is_same<google::protobuf::Int32Value, std::decay_t<T>>,
+      std::is_same<google::protobuf::Int64Value, std::decay_t<T>>>;
+
+  template <typename T>
+  using StringWrapperMessage =
+      std::is_same<google::protobuf::StringValue, std::decay_t<T>>;
+
+  template <typename T>
+  using UintWrapperMessage = std::disjunction<
+      std::is_same<google::protobuf::UInt32Value, std::decay_t<T>>,
+      std::is_same<google::protobuf::UInt64Value, std::decay_t<T>>>;
+
+  template <typename T>
+  using WrapperMessage =
+      std::disjunction<BoolWrapperMessage<T>, BytesWrapperMessage<T>,
+                       DoubleWrapperMessage<T>, IntWrapperMessage<T>,
+                       StringWrapperMessage<T>, UintWrapperMessage<T>>;
+
+  template <typename T>
+  using NotWrapperMessage = std::negation<WrapperMessage<T>>;
 
  public:
   // Create a new EnumValue from a generated protocol buffer enum.
   template <typename T>
   static std::enable_if_t<
-      std::conjunction_v<DerivedEnum<T>, NotNullValueEnum<T>>,
+      std::conjunction_v<DerivedEnum<T>, NotNullWrapperEnum<T>>,
       absl::StatusOr<Handle<EnumValue>>>
   Create(ValueFactory& value_factory, const T& value) {
     CEL_ASSIGN_OR_RETURN(auto type,
@@ -84,8 +124,8 @@ class ProtoValue final {
 
   // Create NullValue.
   template <typename T>
-  static std::enable_if_t<std::conjunction_v<DerivedEnum<T>, NullValueEnum<T>>,
-                          absl::StatusOr<Handle<NullValue>>>
+  static std::enable_if_t<NullWrapperEnumV<T>,
+                          absl::StatusOr<Handle<cel::NullValue>>>
   Create(ValueFactory& value_factory, const T& value ABSL_ATTRIBUTE_UNUSED) {
     return value_factory.GetNullValue();
   }
@@ -94,7 +134,7 @@ class ProtoValue final {
   template <typename T>
   static std::enable_if_t<
       std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
-                         NotTimestampMessage<T>>,
+                         NotTimestampMessage<T>, NotWrapperMessage<T>>,
       absl::StatusOr<Handle<ProtoStructValue>>>
   Create(ValueFactory& value_factory, T&& value) {
     return ProtoStructValue::Create(value_factory, std::forward<T>(value));
@@ -113,6 +153,60 @@ class ProtoValue final {
     return value_factory.CreateUncheckedTimestampValue(
         absl::UnixEpoch() + absl::Seconds(value.seconds()) +
         absl::Nanoseconds(value.nanos()));
+  }
+
+  // Create a new BoolValue from google.protobuf.BoolValue.
+  static absl::StatusOr<Handle<BoolValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::BoolValue& value) {
+    return value_factory.CreateBoolValue(value.value());
+  }
+
+  // Create a new BytesValue from google.protobuf.BytesValue.
+  static absl::StatusOr<Handle<BytesValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::BytesValue& value) {
+    return value_factory.CreateBytesValue(value.value());
+  }
+
+  // Create a new DoubleValue from google.protobuf.FloatValue.
+  static absl::StatusOr<Handle<DoubleValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::FloatValue& value) {
+    return value_factory.CreateDoubleValue(value.value());
+  }
+
+  // Create a new DoubleValue from google.protobuf.DoubleValue.
+  static absl::StatusOr<Handle<DoubleValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::DoubleValue& value) {
+    return value_factory.CreateDoubleValue(value.value());
+  }
+
+  // Create a new IntValue from google.protobuf.Int32Value.
+  static absl::StatusOr<Handle<IntValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::Int32Value& value) {
+    return value_factory.CreateIntValue(value.value());
+  }
+
+  // Create a new IntValue from google.protobuf.Int64Value.
+  static absl::StatusOr<Handle<IntValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::Int64Value& value) {
+    return value_factory.CreateIntValue(value.value());
+  }
+
+  // Create a new StringValue from google.protobuf.StringValue.
+  static absl::StatusOr<Handle<StringValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::StringValue& value) {
+    return value_factory.CreateStringValue(value.value());
+  }
+
+  // Create a new UintValue from google.protobuf.UInt32Value.
+  static absl::StatusOr<Handle<UintValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::UInt32Value& value) {
+    return value_factory.CreateUintValue(value.value());
+  }
+
+  // Create a new UintValue from google.protobuf.UInt64Value.
+  static absl::StatusOr<Handle<UintValue>> Create(
+      ValueFactory& value_factory, const google::protobuf::UInt64Value& value) {
+    return value_factory.CreateUintValue(value.value());
   }
 
   // Create a new Value from a protocol buffer message.

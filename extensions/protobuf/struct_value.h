@@ -195,21 +195,21 @@ class ParsedProtoStructValue : public ProtoStructValue {
   google::protobuf::Message* ValuePointer(google::protobuf::MessageFactory& message_factory,
                                 google::protobuf::Arena* arena) const final;
 
-  absl::StatusOr<Handle<Value>> GetField(ValueFactory& value_factory,
+  absl::StatusOr<Handle<Value>> GetField(const GetFieldContext& context,
                                          const StructType::Field& field) const;
 
   absl::StatusOr<Handle<Value>> GetMapField(
-      ValueFactory& value_factory, const StructType::Field& field,
+      const GetFieldContext& context, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
 
   absl::StatusOr<Handle<Value>> GetRepeatedField(
-      ValueFactory& value_factory, const StructType::Field& field,
+      const GetFieldContext& context, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
 
   absl::StatusOr<Handle<Value>> GetSingularField(
-      ValueFactory& value_factory, const StructType::Field& field,
+      const GetFieldContext& context, const StructType::Field& field,
       const google::protobuf::Reflection& reflect,
       const google::protobuf::FieldDescriptor& field_desc) const;
 

@@ -81,6 +81,11 @@ class Value : public base_internal::Data {
     return T::Cast(*this);
   }
 
+  template <typename Sink>
+  friend void AbslStringify(Sink& sink, const Value& value) {
+    sink.Append(value.DebugString());
+  }
+
  private:
   friend class ErrorValue;
   friend class BytesValue;

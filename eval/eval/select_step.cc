@@ -95,8 +95,11 @@ absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
       return MessageValueGetFieldWithWrapperAsProtoDefault(
           msg, frame->value_factory(), field_);
     default:
-      return msg->GetField(StructValue::GetFieldContext(frame->value_factory()),
-                           field_id);
+      return msg->GetField(
+          StructValue::GetFieldContext(frame->value_factory())
+              .set_unbox_null_wrapper_types(
+                  unboxing_option_ == ProtoWrapperTypeOptions::kUnsetNull),
+          field_id);
   }
 }
 

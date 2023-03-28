@@ -68,8 +68,17 @@ class StructValue : public Value {
 
     ValueFactory& value_factory() const { return value_factory_; }
 
+    bool unbox_null_wrapper_types() const { return unbox_null_wrapper_types_; }
+
+    GetFieldContext& set_unbox_null_wrapper_types(
+        bool unbox_null_wrapper_types) {
+      unbox_null_wrapper_types_ = unbox_null_wrapper_types;
+      return *this;
+    }
+
    private:
     ValueFactory& value_factory_;
+    bool unbox_null_wrapper_types_ = false;
   };
 
   absl::StatusOr<Handle<Value>> GetField(const GetFieldContext& context,

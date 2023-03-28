@@ -19,6 +19,8 @@
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/time.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "google/protobuf/descriptor.h"
 
@@ -26,13 +28,19 @@ namespace cel::extensions::protobuf_internal {
 
 namespace {
 
+template <typename T>
 absl::StatusOr<absl::Duration> AbslDurationFromProto(
-    const google::protobuf::Message& message, int seconds_field_number,
-    int nanos_field_number) {
+    const google::protobuf::Message& message) {
   const auto* desc = message.GetDescriptor();
   if (ABSL_PREDICT_FALSE(desc == nullptr)) {
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
+  }
+  if (desc == T::descriptor()) {
+    // Fast path.
+    const auto& derived = cel::internal::down_cast<const T&>(message);
+    return absl::Seconds(derived.seconds()) +
+           absl::Nanoseconds(derived.nanos());
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -41,7 +49,7 @@ absl::StatusOr<absl::Duration> AbslDurationFromProto(
   }
   // seconds is field number 1 on google.protobuf.Duration and
   // google.protobuf.Timestamp.
-  const auto* seconds_field = desc->FindFieldByNumber(seconds_field_number);
+  const auto* seconds_field = desc->FindFieldByNumber(T::kSecondsFieldNumber);
   if (ABSL_PREDICT_FALSE(seconds_field == nullptr)) {
     return absl::InternalError(absl::StrCat(
         message.GetTypeName(), " missing seconds field descriptor"));
@@ -54,7 +62,7 @@ absl::StatusOr<absl::Duration> AbslDurationFromProto(
   }
   // nanos is field number 2 on google.protobuf.Duration and
   // google.protobuf.Timestamp.
-  const auto* nanos_field = desc->FindFieldByNumber(nanos_field_number);
+  const auto* nanos_field = desc->FindFieldByNumber(T::kNanosFieldNumber);
   if (ABSL_PREDICT_FALSE(nanos_field == nullptr)) {
     return absl::InternalError(
         absl::StrCat(message.GetTypeName(), " missing nanos field descriptor"));
@@ -73,18 +81,14 @@ absl::StatusOr<absl::Duration> AbslDurationFromProto(
 
 absl::StatusOr<absl::Duration> AbslDurationFromDurationProto(
     const google::protobuf::Message& message) {
-  return AbslDurationFromProto(message,
-                               google::protobuf::Duration::kSecondsFieldNumber,
-                               google::protobuf::Duration::kNanosFieldNumber);
+  return AbslDurationFromProto<google::protobuf::Duration>(message);
 }
 
 absl::StatusOr<absl::Time> AbslTimeFromTimestampProto(
     const google::protobuf::Message& message) {
   CEL_ASSIGN_OR_RETURN(
       auto duration,
-      AbslDurationFromProto(message,
-                            google::protobuf::Timestamp::kSecondsFieldNumber,
-                            google::protobuf::Timestamp::kNanosFieldNumber));
+      AbslDurationFromProto<google::protobuf::Timestamp>(message));
   return absl::UnixEpoch() + duration;
 }
 

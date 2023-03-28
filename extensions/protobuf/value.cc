@@ -18,11 +18,31 @@
 
 #include "absl/base/optimization.h"
 #include "absl/status/status.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
+#include "absl/types/variant.h"
 #include "extensions/protobuf/internal/time.h"
+#include "extensions/protobuf/internal/wrappers.h"
 #include "internal/status_macros.h"
 
 namespace cel::extensions {
+
+namespace {
+
+struct CreateStringValueFromProtoVisitor final {
+  ValueFactory& value_factory;
+
+  absl::StatusOr<Handle<Value>> operator()(absl::string_view value) const {
+    return value_factory.CreateStringValue(value);
+  }
+
+  absl::StatusOr<Handle<Value>> operator()(absl::Cord value) const {
+    return value_factory.CreateStringValue(std::move(value));
+  }
+};
+
+}  // namespace
 
 absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
                                                  const google::protobuf::Message& value) {
@@ -40,6 +60,40 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
     CEL_ASSIGN_OR_RETURN(auto time,
                          protobuf_internal::AbslTimeFromTimestampProto(value));
     return value_factory.CreateUncheckedTimestampValue(time);
+  }
+  if (type_name == "google.protobuf.BoolValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapBoolValueProto(value));
+    return value_factory.CreateBoolValue(wrapped);
+  }
+  if (type_name == "google.protobuf.BytesValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapBytesValueProto(value));
+    return value_factory.CreateBytesValue(std::move(wrapped));
+  }
+  if (type_name == "google.protobuf.FloatValue" ||
+      type_name == "google.protobuf.DoubleValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapDoubleValueProto(value));
+    return value_factory.CreateDoubleValue(wrapped);
+  }
+  if (type_name == "google.protobuf.Int32Value" ||
+      type_name == "google.protobuf.Int64Value") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapIntValueProto(value));
+    return value_factory.CreateIntValue(wrapped);
+  }
+  if (type_name == "google.protobuf.StringValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapStringValueProto(value));
+    return absl::visit(CreateStringValueFromProtoVisitor{value_factory},
+                       std::move(wrapped));
+  }
+  if (type_name == "google.protobuf.UInt32Value" ||
+      type_name == "google.protobuf.UInt64Value") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapUIntValueProto(value));
+    return value_factory.CreateUintValue(wrapped);
   }
   return ProtoStructValue::Create(value_factory, value);
 }
@@ -60,6 +114,40 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
     CEL_ASSIGN_OR_RETURN(auto time,
                          protobuf_internal::AbslTimeFromTimestampProto(value));
     return value_factory.CreateUncheckedTimestampValue(time);
+  }
+  if (type_name == "google.protobuf.BoolValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapBoolValueProto(value));
+    return value_factory.CreateBoolValue(wrapped);
+  }
+  if (type_name == "google.protobuf.BytesValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapBytesValueProto(value));
+    return value_factory.CreateBytesValue(std::move(wrapped));
+  }
+  if (type_name == "google.protobuf.FloatValue" ||
+      type_name == "google.protobuf.DoubleValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapDoubleValueProto(value));
+    return value_factory.CreateDoubleValue(wrapped);
+  }
+  if (type_name == "google.protobuf.Int32Value" ||
+      type_name == "google.protobuf.Int64Value") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapIntValueProto(value));
+    return value_factory.CreateIntValue(wrapped);
+  }
+  if (type_name == "google.protobuf.StringValue") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapStringValueProto(value));
+    return absl::visit(CreateStringValueFromProtoVisitor{value_factory},
+                       std::move(wrapped));
+  }
+  if (type_name == "google.protobuf.UInt32Value" ||
+      type_name == "google.protobuf.UInt64Value") {
+    CEL_ASSIGN_OR_RETURN(auto wrapped,
+                         protobuf_internal::UnwrapUIntValueProto(value));
+    return value_factory.CreateUintValue(wrapped);
   }
   return ProtoStructValue::Create(value_factory, std::move(value));
 }

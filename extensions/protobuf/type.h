@@ -20,8 +20,10 @@
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/wrappers.pb.h"
 #include "absl/status/statusor.h"
 #include "base/type_manager.h"
+#include "base/types/wrapper_type.h"
 #include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/struct_type.h"
 #include "google/protobuf/generated_enum_util.h"
@@ -42,11 +44,17 @@ class ProtoType final {
       std::is_same<google::protobuf::Duration, std::decay_t<T>>;
 
   template <typename T>
+  static constexpr bool DurationMessageV = DurationMessage<T>::value;
+
+  template <typename T>
   using NotDurationMessage = std::negation<DurationMessage<T>>;
 
   template <typename T>
   using TimestampMessage =
       std::is_same<google::protobuf::Timestamp, std::decay_t<T>>;
+
+  template <typename T>
+  static constexpr bool TimestampMessageV = TimestampMessage<T>::value;
 
   template <typename T>
   using NotTimestampMessage = std::negation<TimestampMessage<T>>;
@@ -55,11 +63,68 @@ class ProtoType final {
   using DerivedEnum = google::protobuf::is_proto_enum<std::decay_t<T>>;
 
   template <typename T>
-  using NullValueEnum =
+  using NullWrapperEnum =
       std::is_same<google::protobuf::NullValue, std::decay_t<T>>;
 
   template <typename T>
-  using NotNullValueEnum = std::negation<NullValueEnum<T>>;
+  static constexpr bool NullWrapperEnumV = NullWrapperEnum<T>::value;
+
+  template <typename T>
+  using NotNullWrapperEnum = std::negation<NullWrapperEnum<T>>;
+
+  template <typename T>
+  using BoolWrapperMessage =
+      std::is_same<google::protobuf::BoolValue, std::decay_t<T>>;
+
+  template <typename T>
+  static constexpr bool BoolWrapperMessageV = BoolWrapperMessage<T>::value;
+
+  template <typename T>
+  using BytesWrapperMessage =
+      std::is_same<google::protobuf::BytesValue, std::decay_t<T>>;
+
+  template <typename T>
+  static constexpr bool BytesWrapperMessageV = BytesWrapperMessage<T>::value;
+
+  template <typename T>
+  using DoubleWrapperMessage = std::disjunction<
+      std::is_same<google::protobuf::FloatValue, std::decay_t<T>>,
+      std::is_same<google::protobuf::DoubleValue, std::decay_t<T>>>;
+
+  template <typename T>
+  static constexpr bool DoubleWrapperMessageV = DoubleWrapperMessage<T>::value;
+
+  template <typename T>
+  using IntWrapperMessage = std::disjunction<
+      std::is_same<google::protobuf::Int32Value, std::decay_t<T>>,
+      std::is_same<google::protobuf::Int64Value, std::decay_t<T>>>;
+
+  template <typename T>
+  static constexpr bool IntWrapperMessageV = IntWrapperMessage<T>::value;
+
+  template <typename T>
+  using StringWrapperMessage =
+      std::is_same<google::protobuf::StringValue, std::decay_t<T>>;
+
+  template <typename T>
+  static constexpr bool StringWrapperMessageV = StringWrapperMessage<T>::value;
+
+  template <typename T>
+  using UintWrapperMessage = std::disjunction<
+      std::is_same<google::protobuf::UInt32Value, std::decay_t<T>>,
+      std::is_same<google::protobuf::UInt64Value, std::decay_t<T>>>;
+
+  template <typename T>
+  static constexpr bool UintWrapperMessageV = UintWrapperMessage<T>::value;
+
+  template <typename T>
+  using WrapperMessage =
+      std::disjunction<BoolWrapperMessage<T>, BytesWrapperMessage<T>,
+                       DoubleWrapperMessage<T>, IntWrapperMessage<T>,
+                       StringWrapperMessage<T>, UintWrapperMessage<T>>;
+
+  template <typename T>
+  using NotWrapperMessage = std::negation<WrapperMessage<T>>;
 
  public:
   // Resolve Type from a protocol buffer enum descriptor.
@@ -69,7 +134,7 @@ class ProtoType final {
   // Resolve ProtoEnumType from a generated protocol buffer enum.
   template <typename T>
   static std::enable_if_t<
-      std::conjunction_v<DerivedEnum<T>, NotNullValueEnum<T>>,
+      std::conjunction_v<DerivedEnum<T>, NotNullWrapperEnum<T>>,
       absl::StatusOr<Handle<ProtoEnumType>>>
   Resolve(TypeManager& type_manager) {
     return ProtoEnumType::Resolve<T>(type_manager);
@@ -77,8 +142,7 @@ class ProtoType final {
 
   // Resolve ProtoEnumType from a generated protocol buffer enum.
   template <typename T>
-  static std::enable_if_t<std::conjunction_v<DerivedEnum<T>, NullValueEnum<T>>,
-                          absl::StatusOr<Handle<NullType>>>
+  static std::enable_if_t<NullWrapperEnumV<T>, absl::StatusOr<Handle<NullType>>>
   Resolve(TypeManager& type_manager) {
     return type_manager.type_factory().GetNullType();
   }
@@ -91,7 +155,7 @@ class ProtoType final {
   template <typename T>
   static std::enable_if_t<
       std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
-                         NotTimestampMessage<T>>,
+                         NotTimestampMessage<T>, NotWrapperMessage<T>>,
       absl::StatusOr<Handle<ProtoStructType>>>
   Resolve(TypeManager& type_manager) {
     return ProtoStructType::Resolve<T>(type_manager);
@@ -99,20 +163,66 @@ class ProtoType final {
 
   // Resolve DurationType.
   template <typename T>
-  static std::enable_if_t<
-      std::conjunction_v<DerivedMessage<T>, DurationMessage<T>>,
-      absl::StatusOr<Handle<DurationType>>>
+  static std::enable_if_t<DurationMessageV<T>,
+                          absl::StatusOr<Handle<DurationType>>>
   Resolve(TypeManager& type_manager) {
     return type_manager.type_factory().GetDurationType();
   }
 
   // Resolve TimestampType.
   template <typename T>
-  static std::enable_if_t<
-      std::conjunction_v<DerivedMessage<T>, TimestampMessage<T>>,
-      absl::StatusOr<Handle<TimestampType>>>
+  static std::enable_if_t<TimestampMessageV<T>,
+                          absl::StatusOr<Handle<TimestampType>>>
   Resolve(TypeManager& type_manager) {
     return type_manager.type_factory().GetTimestampType();
+  }
+
+  // Resolve BoolWrapperType.
+  template <typename T>
+  static std::enable_if_t<BoolWrapperMessageV<T>,
+                          absl::StatusOr<Handle<BoolWrapperType>>>
+  Resolve(TypeManager& type_manager) {
+    return type_manager.type_factory().GetBoolWrapperType();
+  }
+
+  // Resolve BytesWrapperType.
+  template <typename T>
+  static std::enable_if_t<BytesWrapperMessageV<T>,
+                          absl::StatusOr<Handle<BytesWrapperType>>>
+  Resolve(TypeManager& type_manager) {
+    return type_manager.type_factory().GetBytesWrapperType();
+  }
+
+  // Resolve DoubleWrapperType.
+  template <typename T>
+  static std::enable_if_t<DoubleWrapperMessageV<T>,
+                          absl::StatusOr<Handle<DoubleWrapperType>>>
+  Resolve(TypeManager& type_manager) {
+    return type_manager.type_factory().GetDoubleWrapperType();
+  }
+
+  // Resolve IntWrapperType.
+  template <typename T>
+  static std::enable_if_t<IntWrapperMessageV<T>,
+                          absl::StatusOr<Handle<IntWrapperType>>>
+  Resolve(TypeManager& type_manager) {
+    return type_manager.type_factory().GetIntWrapperType();
+  }
+
+  // Resolve StringWrapperType.
+  template <typename T>
+  static std::enable_if_t<StringWrapperMessageV<T>,
+                          absl::StatusOr<Handle<StringWrapperType>>>
+  Resolve(TypeManager& type_manager) {
+    return type_manager.type_factory().GetStringWrapperType();
+  }
+
+  // Resolve UintWrapperType.
+  template <typename T>
+  static std::enable_if_t<UintWrapperMessageV<T>,
+                          absl::StatusOr<Handle<UintWrapperType>>>
+  Resolve(TypeManager& type_manager) {
+    return type_manager.type_factory().GetUintWrapperType();
   }
 
  private:

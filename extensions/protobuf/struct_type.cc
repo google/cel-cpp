@@ -95,7 +95,10 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToTypeRepeated(
     TypeManager& type_manager, const google::protobuf::FieldDescriptor* field_desc) {
   CEL_ASSIGN_OR_RETURN(auto type,
                        FieldDescriptorToTypeSingular(type_manager, field_desc));
-  return type_manager.type_factory().CreateListType(type);
+  // The wrapper types make zero sense as a list element, list elements of
+  // wrapper types can never be null.
+  return type_manager.type_factory().CreateListType(
+      UnwrapType(std::move(type)));
 }
 
 absl::StatusOr<Handle<Type>> FieldDescriptorToType(
@@ -107,7 +110,10 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToType(
     const auto* value_desc = field_desc->message_type()->map_value();
     CEL_ASSIGN_OR_RETURN(auto value_type, FieldDescriptorToTypeSingular(
                                               type_manager, value_desc));
-    return type_manager.type_factory().CreateMapType(key_type, value_type);
+    // The wrapper types make zero sense as a map value, map values of
+    // wrapper types can never be null.
+    return type_manager.type_factory().CreateMapType(
+        std::move(key_type), UnwrapType(std::move(value_type)));
   }
   if (field_desc->is_repeated()) {
     return FieldDescriptorToTypeRepeated(type_manager, field_desc);

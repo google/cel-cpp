@@ -241,6 +241,13 @@ class Handle final : private base_internal::HandlePolicy<T> {
     return H::combine(std::move(state), handle.impl_);
   }
 
+  template <typename Sink>
+  friend void AbslStringify(Sink& sink, const Handle<T>& handle) {
+    if (handle) {
+      sink.Append(handle->DebugString());
+    }
+  }
+
  private:
   template <typename F>
   friend class Handle;

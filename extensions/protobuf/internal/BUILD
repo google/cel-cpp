@@ -45,12 +45,48 @@ cc_library(
     srcs = ["time.cc"],
     hdrs = ["time.h"],
     deps = [
+        "//internal:casts",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "time_test",
+    srcs = ["time_test.cc"],
+    deps = [
+        ":time",
+        "//internal:testing",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "wrappers",
+    srcs = ["wrappers.cc"],
+    hdrs = ["wrappers.h"],
+    deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:variant",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "wrappers_test",
+    srcs = ["wrappers_test.cc"],
+    deps = [
+        ":wrappers",
+        "//internal:testing",
         "@com_google_protobuf//:protobuf",
     ],
 )

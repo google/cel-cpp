@@ -76,6 +76,20 @@ class WrapperType : public Type, base_internal::InlineData {
   using Base::Base;
 };
 
+inline const Handle<Type>& UnwrapType(const Handle<Type>& handle) {
+  return handle->Is<WrapperType>() ? handle.As<WrapperType>()->wrapped()
+                                   : handle;
+}
+
+inline Handle<Type> UnwrapType(Handle<Type>&& handle) {
+  return handle->Is<WrapperType>() ? handle.As<WrapperType>()->wrapped()
+                                   : handle;
+}
+
+inline const Type& UnwrapType(const Type& type) {
+  return WrapperType::Is(type) ? *WrapperType::Cast(type).wrapped() : type;
+}
+
 class BoolWrapperType final : public WrapperType {
  public:
   static bool Is(const Type& type) {

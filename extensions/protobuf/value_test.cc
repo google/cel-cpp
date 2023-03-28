@@ -17,6 +17,7 @@
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "base/internal/memory_manager_testing.h"
+#include "base/testing/value_matchers.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
@@ -30,9 +31,11 @@
 namespace cel::extensions {
 namespace {
 
+using ::cel_testing::ValueOf;
 using testing::Eq;
 using testing::EqualsProto;
 using testing::Optional;
+using cel::internal::IsOkAndHolds;
 
 using TestAllTypes = ::google::api::expr::test::v1::proto3::TestAllTypes;
 
@@ -225,6 +228,144 @@ TEST_P(ProtoValueTest, DynamicNullValue) {
           *google::protobuf::GetEnumDescriptor<google::protobuf::NullValue>()
                ->FindValueByNumber(google::protobuf::NullValue::NULL_VALUE)));
   EXPECT_TRUE(value->Is<NullValue>());
+}
+
+TEST_P(ProtoValueTest, StaticWrapperTypes) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::BoolValue::default_instance()),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, false)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::BytesValue::default_instance()),
+      IsOkAndHolds(ValueOf<BytesValue>(value_factory)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::FloatValue::default_instance()),
+      IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 0.0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::DoubleValue::default_instance()),
+      IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 0.0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::Int32Value::default_instance()),
+      IsOkAndHolds(ValueOf<IntValue>(value_factory, 0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::Int64Value::default_instance()),
+      IsOkAndHolds(ValueOf<IntValue>(value_factory, 0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::StringValue::default_instance()),
+      IsOkAndHolds(ValueOf<StringValue>(value_factory)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::UInt32Value::default_instance()),
+      IsOkAndHolds(ValueOf<UintValue>(value_factory, 0u)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         google::protobuf::UInt64Value::default_instance()),
+      IsOkAndHolds(ValueOf<UintValue>(value_factory, 0u)));
+}
+
+TEST_P(ProtoValueTest, DynamicWrapperTypesLValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         static_cast<const google::protobuf::Message&>(
+                             google::protobuf::BoolValue::default_instance())),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, false)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         static_cast<const google::protobuf::Message&>(
+                             google::protobuf::BytesValue::default_instance())),
+      IsOkAndHolds(ValueOf<BytesValue>(value_factory)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         static_cast<const google::protobuf::Message&>(
+                             google::protobuf::FloatValue::default_instance())),
+      IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 0.0)));
+  EXPECT_THAT(ProtoValue::Create(
+                  value_factory,
+                  static_cast<const google::protobuf::Message&>(
+                      google::protobuf::DoubleValue::default_instance())),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 0.0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         static_cast<const google::protobuf::Message&>(
+                             google::protobuf::Int32Value::default_instance())),
+      IsOkAndHolds(ValueOf<IntValue>(value_factory, 0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory,
+                         static_cast<const google::protobuf::Message&>(
+                             google::protobuf::Int64Value::default_instance())),
+      IsOkAndHolds(ValueOf<IntValue>(value_factory, 0)));
+  EXPECT_THAT(ProtoValue::Create(
+                  value_factory,
+                  static_cast<const google::protobuf::Message&>(
+                      google::protobuf::StringValue::default_instance())),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory)));
+  EXPECT_THAT(ProtoValue::Create(
+                  value_factory,
+                  static_cast<const google::protobuf::Message&>(
+                      google::protobuf::UInt32Value::default_instance())),
+              IsOkAndHolds(ValueOf<UintValue>(value_factory, 0u)));
+  EXPECT_THAT(ProtoValue::Create(
+                  value_factory,
+                  static_cast<const google::protobuf::Message&>(
+                      google::protobuf::UInt64Value::default_instance())),
+              IsOkAndHolds(ValueOf<UintValue>(value_factory, 0u)));
+}
+
+TEST_P(ProtoValueTest, DynamicWrapperTypesRValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::BoolValue())),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, false)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::BytesValue())),
+      IsOkAndHolds(ValueOf<BytesValue>(value_factory)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::FloatValue())),
+      IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 0.0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::DoubleValue())),
+      IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 0.0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::Int32Value())),
+      IsOkAndHolds(ValueOf<IntValue>(value_factory, 0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::Int64Value())),
+      IsOkAndHolds(ValueOf<IntValue>(value_factory, 0)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::StringValue())),
+      IsOkAndHolds(ValueOf<StringValue>(value_factory)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::UInt32Value())),
+      IsOkAndHolds(ValueOf<UintValue>(value_factory, 0u)));
+  EXPECT_THAT(
+      ProtoValue::Create(value_factory, static_cast<google::protobuf::Message&&>(
+                                            google::protobuf::UInt64Value())),
+      IsOkAndHolds(ValueOf<UintValue>(value_factory, 0u)));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoValueTest, ProtoValueTest,
