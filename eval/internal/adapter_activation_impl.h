@@ -17,9 +17,14 @@
 
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/span.h"
+#include "base/attribute.h"
+#include "base/handle.h"
 #include "base/value.h"
+#include "base/value_factory.h"
 #include "eval/public/base_activation.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
@@ -35,7 +40,7 @@ class AdapterActivationImpl : public ActivationInterface {
       const google::api::expr::runtime::BaseActivation& legacy_activation)
       : legacy_activation_(legacy_activation) {}
 
-  absl::optional<Handle<Value>> FindVariable(
+  absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
       ValueFactory& value_factory, absl::string_view name) const override;
 
   std::vector<FunctionOverloadReference> FindFunctionOverloads(

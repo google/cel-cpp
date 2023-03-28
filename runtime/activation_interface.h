@@ -17,7 +17,9 @@
 
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/value.h"
@@ -26,6 +28,9 @@
 namespace cel {
 
 // Interface for providing runtime with variable lookups.
+//
+// Clients should prefer to use one of the concrete implementations provided by
+// the CEL library rather than implementing this interface directly.
 // TODO(issues/5): After finalizing, make this public and add instructions
 // for clients to migrate.
 class ActivationInterface {
@@ -33,7 +38,7 @@ class ActivationInterface {
   virtual ~ActivationInterface() = default;
 
   // Find value for a string (possibly qualified) variable name.
-  virtual absl::optional<Handle<Value>> FindVariable(
+  virtual absl::StatusOr<absl::optional<Handle<Value>>> FindVariable(
       ValueFactory& factory, absl::string_view name) const = 0;
 
   // Find a set of context function overloads by name.

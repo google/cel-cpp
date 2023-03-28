@@ -25,9 +25,10 @@ cc_library(
     deps = [
         ":function_overload_reference",
         "//base:attributes",
-        "//base:memory_manager",
         "//base:value",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -49,5 +50,47 @@ cc_library(
         ":function_overload_reference",
         "//base:functions",
         "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
+    name = "activation",
+    srcs = ["activation.cc"],
+    hdrs = ["activation.h"],
+    deps = [
+        ":activation_interface",
+        ":function_overload_reference",
+        "//base:attributes",
+        "//base:function_interface",
+        "//base:functions",
+        "//base:handle",
+        "//base:value",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "activation_test",
+    srcs = ["activation_test.cc"],
+    deps = [
+        ":activation",
+        "//base:attributes",
+        "//base:function_interface",
+        "//base:functions",
+        "//base:handle",
+        "//base:memory_manager",
+        "//base:type",
+        "//base:value",
+        "//internal:status_macros",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
     ],
 )

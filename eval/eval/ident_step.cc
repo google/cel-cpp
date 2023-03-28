@@ -79,8 +79,8 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
     }
   }
 
-  auto value =
-      frame->modern_activation().FindVariable(frame->value_factory(), name_);
+  CEL_ASSIGN_OR_RETURN(auto value, frame->modern_activation().FindVariable(
+                                       frame->value_factory(), name_));
 
   if (value.has_value()) {
     result.value = std::move(value).value();

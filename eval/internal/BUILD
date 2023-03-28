@@ -87,6 +87,8 @@ cc_library(
     hdrs = ["adapter_activation_impl.h"],
     deps = [
         ":interop",
+        "//base:attributes",
+        "//base:handle",
         "//base:memory_manager",
         "//base:value",
         "//eval/public:base_activation",
@@ -94,8 +96,10 @@ cc_library(
         "//extensions/protobuf:memory_manager",
         "//runtime:activation_interface",
         "//runtime:function_overload_reference",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
         "@com_google_protobuf//:protobuf",
     ],
 )
