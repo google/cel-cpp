@@ -1,6 +1,7 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 
 #include <memory>
+#include <utility>
 
 #include "absl/container/node_hash_map.h"
 #include "absl/hash/hash.h"
@@ -116,7 +117,7 @@ bool CelMapBuilder::Equal::operator()(const CelValue& key1,
 }
 
 absl::StatusOr<std::unique_ptr<CelMap>> CreateContainerBackedMap(
-    absl::Span<std::pair<CelValue, CelValue>> key_values) {
+    absl::Span<const std::pair<CelValue, CelValue>> key_values) {
   auto map = std::make_unique<CelMapBuilder>();
   for (const auto& key_value : key_values) {
     CEL_RETURN_IF_ERROR(map->Add(key_value.first, key_value.second));

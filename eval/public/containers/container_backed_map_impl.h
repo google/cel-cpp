@@ -63,7 +63,7 @@ class CelMapBuilder : public CelMap {
 
 // Factory method creating container-backed CelMap.
 absl::StatusOr<std::unique_ptr<CelMap>> CreateContainerBackedMap(
-    absl::Span<std::pair<CelValue, CelValue>> key_values);
+    absl::Span<const std::pair<CelValue, CelValue>> key_values);
 
 }  // namespace google::api::expr::runtime
 
