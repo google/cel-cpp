@@ -150,13 +150,14 @@ std::string LegacyStructValue::DebugString() const {
 absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByName(
     const GetFieldContext& context, absl::string_view name) const {
   return MessageValueGetFieldByName(msg_, type_info_, context.value_factory(),
-                                    name);
+                                    name, context.unbox_null_wrapper_types());
 }
 
 absl::StatusOr<Handle<Value>> LegacyStructValue::GetFieldByNumber(
     const GetFieldContext& context, int64_t number) const {
   return MessageValueGetFieldByNumber(msg_, type_info_, context.value_factory(),
-                                      number);
+                                      number,
+                                      context.unbox_null_wrapper_types());
 }
 
 absl::StatusOr<bool> LegacyStructValue::HasFieldByName(

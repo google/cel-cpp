@@ -168,6 +168,19 @@ namespace protobuf_internal {
 // parsed protocol buffer messages.
 class ParsedProtoStructValue : public ProtoStructValue {
  public:
+  static bool Is(const Value& value) {
+    // Right now all ProtoStructValue are ParsedProtoStructValue. We need to
+    // update this if anything changes.
+    return ProtoStructValue::Is(value);
+  }
+
+  using ProtoStructValue::Is;
+
+  static const ParsedProtoStructValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const ParsedProtoStructValue&>(value);
+  }
+
   static std::string DebugString(const google::protobuf::Message& message);
 
   std::string DebugString() const final;
@@ -184,13 +197,13 @@ class ParsedProtoStructValue : public ProtoStructValue {
   absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const final;
 
- protected:
-  explicit ParsedProtoStructValue(Handle<StructType> type)
-      : ProtoStructValue(std::move(type)) {}
-
   using ProtoStructValue::value;
 
   virtual const google::protobuf::Message& value() const = 0;
+
+ protected:
+  explicit ParsedProtoStructValue(Handle<StructType> type)
+      : ProtoStructValue(std::move(type)) {}
 
   google::protobuf::Message* ValuePointer(google::protobuf::MessageFactory& message_factory,
                                 google::protobuf::Arena* arena) const final;

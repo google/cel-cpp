@@ -29,6 +29,7 @@
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/error_value.h"
+#include "base/values/struct_value.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
@@ -36,6 +37,8 @@
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "extensions/protobuf/type_provider.h"
+#include "extensions/protobuf/value.h"
 #include "internal/testing.h"
 
 namespace cel::interop_internal {
@@ -666,6 +669,36 @@ TEST(ValueInterop, LegacyStructRoundtrip) {
   EXPECT_EQ(legacy_value_wrapper.message_ptr(), value_wrapper.message_ptr());
   EXPECT_EQ(legacy_value_wrapper.legacy_type_info(),
             value_wrapper.legacy_type_info());
+}
+
+TEST(ValueInterop, ModernStructRoundTrip) {
+  // For interop between extensions::ProtoStructValue and CelValue, we cannot
+  // transform back into extensions::ProtoStructValue again as we no longer have
+  // the type. We could resolve it again, but that might be expensive.
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  extensions::ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Api api;
+  api.set_name("foo");
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       extensions::ProtoValue::Create(value_factory, api));
+  ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, value));
+  EXPECT_TRUE(legacy_value.IsMessage());
+  ASSERT_OK_AND_ASSIGN(auto modern_value,
+                       FromLegacyValue(&arena, legacy_value));
+  EXPECT_TRUE(modern_value->Is<base_internal::LegacyStructValue>());
+  auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
+  auto modern_value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
+      modern_value->As<base_internal::LegacyStructValue>());
+  EXPECT_EQ(modern_value_wrapper.HasFullProto(),
+            legacy_value_wrapper.HasFullProto());
+  EXPECT_EQ(modern_value_wrapper.message_ptr(),
+            legacy_value_wrapper.message_ptr());
+  EXPECT_EQ(modern_value_wrapper.legacy_type_info(),
+            legacy_value_wrapper.legacy_type_info());
 }
 
 TEST(ValueInterop, LegacyStructEquality) {

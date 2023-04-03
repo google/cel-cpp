@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "google/protobuf/arena.h"
+#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -45,6 +46,9 @@
 #include "internal/status_macros.h"
 
 namespace cel::interop_internal {
+
+ABSL_ATTRIBUTE_WEAK absl::optional<google::api::expr::runtime::MessageWrapper>
+ProtoStructValueToMessageWrapper(const Value& value);
 
 namespace {
 
@@ -207,7 +211,7 @@ class LegacyCelMap final : public CelMap {
 
 absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
     const MessageWrapper& wrapper, absl::string_view field,
-    ProtoWrapperTypeOptions unbox_option, MemoryManager& memory_manager) {
+    bool unbox_null_wrapper_types, MemoryManager& memory_manager) {
   const LegacyTypeAccessApis* access_api =
       wrapper.legacy_type_info()->GetAccessApis(wrapper);
 
@@ -218,7 +222,11 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
 
   CEL_ASSIGN_OR_RETURN(
       auto legacy_value,
-      access_api->GetField(field, wrapper, unbox_option, memory_manager));
+      access_api->GetField(field, wrapper,
+                           unbox_null_wrapper_types
+                               ? ProtoWrapperTypeOptions::kUnsetNull
+                               : ProtoWrapperTypeOptions::kUnsetProtoDefault,
+                           memory_manager));
   return FromLegacyValue(
       extensions::ProtoMemoryManager::CastToProtoArena(memory_manager),
       legacy_value);
@@ -482,16 +490,24 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
           google::protobuf::Arena::Create<LegacyCelMap>(arena, value.As<MapValue>()));
     }
     case Kind::kStruct: {
-      if (!value->Is<base_internal::LegacyStructValue>()) {
-        return absl::UnimplementedError(
-            "only legacy struct types and values can be used for interop");
+      if (value->Is<base_internal::LegacyStructValue>()) {
+        // "Legacy".
+        uintptr_t message = LegacyStructValueAccess::Message(
+            *value.As<base_internal::LegacyStructValue>());
+        uintptr_t type_info = LegacyStructValueAccess::TypeInfo(
+            *value.As<base_internal::LegacyStructValue>());
+        return CelValue::CreateMessageWrapper(
+            MessageWrapperAccess::Make(message, type_info));
       }
-      uintptr_t message = LegacyStructValueAccess::Message(
-          *value.As<base_internal::LegacyStructValue>());
-      uintptr_t type_info = LegacyStructValueAccess::TypeInfo(
-          *value.As<base_internal::LegacyStructValue>());
-      return CelValue::CreateMessageWrapper(
-          MessageWrapperAccess::Make(message, type_info));
+      if (ProtoStructValueToMessageWrapper) {
+        auto maybe_message_wrapper = ProtoStructValueToMessageWrapper(*value);
+        if (maybe_message_wrapper.has_value()) {
+          return CelValue::CreateMessageWrapper(
+              std::move(maybe_message_wrapper).value());
+        }
+      }
+      return absl::UnimplementedError(
+          "only legacy struct types and values can be used for interop");
     }
     case Kind::kUnknown: {
       if (base_internal::Metadata::IsTrivial(*value)) {
@@ -629,23 +645,6 @@ std::vector<google::api::expr::runtime::CelValue> ModernValueToLegacyValueOrDie(
       unchecked);
 }
 
-absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(
-    const Handle<StructValue>& struct_value, ValueFactory& value_factory,
-    absl::string_view field) {
-  if (struct_value->Is<base_internal::LegacyStructValue>()) {
-    const auto& legacy_value =
-        struct_value.As<base_internal::LegacyStructValue>();
-    auto wrapper = LegacyStructValueAccess::ToMessageWrapper(*legacy_value);
-    return LegacyStructGetFieldImpl(wrapper, field,
-                                    ProtoWrapperTypeOptions::kUnsetProtoDefault,
-                                    value_factory.memory_manager());
-  }
-
-  // Otherwise assume struct impl has the appropriate option set.
-  return struct_value->GetField(StructValue::GetFieldContext(value_factory),
-                                StructValue::FieldId(field));
-}
-
 }  // namespace cel::interop_internal
 
 namespace cel::base_internal {
@@ -727,19 +726,18 @@ absl::StatusOr<bool> MessageValueHasFieldByName(uintptr_t msg,
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
-    int64_t number) {
+    int64_t number, bool unbox_null_wrapper_types) {
   return absl::UnimplementedError(
       "legacy struct values do not supported looking up fields by number");
 }
 
 absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
-    absl::string_view name) {
+    absl::string_view name, bool unbox_null_wrapper_types) {
   auto wrapper = MessageWrapperAccess::Make(msg, type_info);
 
   return interop_internal::LegacyStructGetFieldImpl(
-      wrapper, name, ProtoWrapperTypeOptions::kUnsetNull,
-      value_factory.memory_manager());
+      wrapper, name, unbox_null_wrapper_types, value_factory.memory_manager());
 }
 
 absl::StatusOr<Handle<Value>> LegacyListValueGet(uintptr_t impl,

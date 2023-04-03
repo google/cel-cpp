@@ -47,7 +47,6 @@ using ::cel::interop_internal::CreateMissingAttributeError;
 using ::cel::interop_internal::CreateNoSuchKeyError;
 using ::cel::interop_internal::CreateStringValueFromView;
 using ::cel::interop_internal::CreateUnknownValueFromView;
-using ::cel::interop_internal::MessageValueGetFieldWithWrapperAsProtoDefault;
 using ::google::protobuf::Arena;
 
 // Common error for cases where evaluation attempts to perform select operations
@@ -89,18 +88,11 @@ class SelectStep : public ExpressionStepBase {
 
 absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
     const Handle<StructValue>& msg, ExecutionFrame* frame) const {
-  StructValue::FieldId field_id(field_);
-  switch (unboxing_option_) {
-    case ProtoWrapperTypeOptions::kUnsetProtoDefault:
-      return MessageValueGetFieldWithWrapperAsProtoDefault(
-          msg, frame->value_factory(), field_);
-    default:
-      return msg->GetField(
-          StructValue::GetFieldContext(frame->value_factory())
-              .set_unbox_null_wrapper_types(
-                  unboxing_option_ == ProtoWrapperTypeOptions::kUnsetNull),
-          field_id);
-  }
+  return msg->GetField(
+      StructValue::GetFieldContext(frame->value_factory())
+          .set_unbox_null_wrapper_types(unboxing_option_ ==
+                                        ProtoWrapperTypeOptions::kUnsetNull),
+      StructValue::FieldId(field_));
 }
 
 absl::optional<Handle<Value>> CheckForMarkedAttributes(

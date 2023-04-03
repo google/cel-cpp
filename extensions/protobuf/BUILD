@@ -152,6 +152,8 @@ cc_library(
         "//base:value",
         "//eval/internal:errors",
         "//eval/internal:interop",
+        "//eval/public:message_wrapper",
+        "//eval/public/structs:proto_message_type_adapter",
         "//extensions/protobuf/internal:map_reflection",
         "//extensions/protobuf/internal:time",
         "//extensions/protobuf/internal:wrappers",

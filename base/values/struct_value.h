@@ -148,10 +148,10 @@ ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByName(
     uintptr_t msg, uintptr_t type_info, absl::string_view name);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByNumber(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
-    int64_t number);
+    int64_t number, bool unbox_null_wrapper_types);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<Value>> MessageValueGetFieldByName(
     uintptr_t msg, uintptr_t type_info, ValueFactory& value_factory,
-    absl::string_view name);
+    absl::string_view name, bool unbox_null_wrapper_types);
 
 class LegacyStructValue final : public StructValue, public InlineData {
  public:

@@ -67,16 +67,6 @@ struct MessageWrapperAccess final {
       google::api::expr::runtime::MessageWrapper& wrapper);
 };
 
-// Helper for backwards compatible field access on wrapper types.
-// The interpreter accepts an option for supporting old behavior for accessing
-// wrapper types (mapped to WKT fields).
-// The new APIs abstract this and let the Struct implementation decide how to
-// handle those fields, but the legacy APIs need an explicit parameter in the
-// field access calls.
-absl::StatusOr<Handle<Value>> MessageValueGetFieldWithWrapperAsProtoDefault(
-    const Handle<StructValue>& struct_value, ValueFactory& value_factory,
-    absl::string_view field);
-
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
 Handle<StringValue> CreateStringValueFromView(absl::string_view value);

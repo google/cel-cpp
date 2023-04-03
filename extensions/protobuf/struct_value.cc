@@ -49,6 +49,8 @@
 #include "base/values/uint_value.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
+#include "eval/public/message_wrapper.h"
+#include "eval/public/structs/proto_message_type_adapter.h"
 #include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/time.h"
@@ -64,11 +66,43 @@
 #include "google/protobuf/reflection.h"
 #include "google/protobuf/repeated_ptr_field.h"
 
+namespace cel::interop_internal {
+
+absl::optional<google::api::expr::runtime::MessageWrapper>
+ProtoStructValueToMessageWrapper(const Value& value) {
+  if (value.Is<extensions::protobuf_internal::ParsedProtoStructValue>()) {
+    // "Modern".
+
+    // It's always full protobuf here.
+    uintptr_t message =
+        reinterpret_cast<uintptr_t>(
+            &value.As<extensions::protobuf_internal::ParsedProtoStructValue>()
+                 .value()) |
+        ::cel::base_internal::kMessageWrapperTagMask;
+    uintptr_t type_info = reinterpret_cast<uintptr_t>(
+        &::google::api::expr::runtime::GetGenericProtoTypeInfoInstance());
+    return MessageWrapperAccess::Make(message, type_info);
+  }
+  return absl::nullopt;
+}
+
+}  // namespace cel::interop_internal
+
 namespace cel::extensions {
 
 namespace protobuf_internal {
 
 namespace {
+
+Handle<StringValue> CreateStringValueFromView(absl::string_view value) {
+  return base_internal::HandleFactory<StringValue>::Make<
+      base_internal::InlinedStringViewStringValue>(value);
+}
+
+Handle<BytesValue> CreateBytesValueFromView(absl::string_view value) {
+  return base_internal::HandleFactory<BytesValue>::Make<
+      base_internal::InlinedStringViewBytesValue>(value);
+}
 
 struct CreateStringValueFromStringWrapperVisitor final {
   ValueFactory& value_factory;
@@ -79,7 +113,7 @@ struct CreateStringValueFromStringWrapperVisitor final {
       return base_internal::ValueFactoryAccess::CreateMemberStringValue(
           value_factory, value, owner);
     }
-    return cel::interop_internal::CreateStringValueFromView(value);
+    return CreateStringValueFromView(value);
   }
 
   absl::StatusOr<Handle<Value>> operator()(absl::Cord value) const {
@@ -1275,7 +1309,7 @@ absl::StatusOr<Handle<Value>> FromProtoMapKey(ValueFactory& value_factory,
         return cel::base_internal::ValueFactoryAccess::CreateMemberStringValue(
             value_factory, key.GetStringValue(), owner);
       }
-      return interop_internal::CreateStringValueFromView(key.GetStringValue());
+      return protobuf_internal::CreateStringValueFromView(key.GetStringValue());
     case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
       return value_factory.CreateBoolValue(key.GetBoolValue());
     default:
@@ -1364,7 +1398,7 @@ absl::StatusOr<Handle<Value>> FromProtoMapValue(
           return cel::base_internal::ValueFactoryAccess::CreateMemberBytesValue(
               value_factory, value.GetStringValue(), owner);
         }
-        return interop_internal::CreateBytesValueFromView(
+        return protobuf_internal::CreateBytesValueFromView(
             value.GetStringValue());
       } else {
         if (cel::base_internal::Metadata::IsReferenceCounted(*owner)) {
@@ -1372,7 +1406,7 @@ absl::StatusOr<Handle<Value>> FromProtoMapValue(
               CreateMemberStringValue(value_factory, value.GetStringValue(),
                                       owner);
         }
-        return interop_internal::CreateStringValueFromView(
+        return protobuf_internal::CreateStringValueFromView(
             value.GetStringValue());
       }
     }
@@ -2535,7 +2569,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
             context.value_factory(),
             reflect.GetStringView(value(), &field_desc), this);
       } else {
-        return cel::interop_internal::CreateStringValueFromView(
+        return CreateStringValueFromView(
             reflect.GetStringView(value(), &field_desc));
       }
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
@@ -2631,7 +2665,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
             context.value_factory(),
             reflect.GetStringView(value(), &field_desc), this);
       } else {
-        return cel::interop_internal::CreateBytesValueFromView(
+        return CreateBytesValueFromView(
             reflect.GetStringView(value(), &field_desc));
       }
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
