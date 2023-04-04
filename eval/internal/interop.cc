@@ -441,9 +441,9 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     case Kind::kType:
       // Should be fine, so long as we are using an arena allocator.
       // We can only transport legacy type values.
-      if (!base_internal::Metadata::IsTrivial(*value)) {
-        // Only legacy type values are trivially copyable, this must be the
-        // modern one which we cannot support here.
+      if (base_internal::Metadata::GetInlineVariant<
+              base_internal::InlinedTypeValueVariant>(*value) !=
+          base_internal::InlinedTypeValueVariant::kLegacy) {
         return absl::UnimplementedError(
             "only legacy type values can be used for interop");
       }
@@ -661,7 +661,6 @@ using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::LegacyTypeAccessApis;
 using ::google::api::expr::runtime::LegacyTypeInfoApis;
 using ::google::api::expr::runtime::MessageWrapper;
-using ::google::api::expr::runtime::ProtoWrapperTypeOptions;
 
 }  // namespace
 

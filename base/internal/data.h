@@ -25,11 +25,16 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "absl/numeric/bits.h"
 #include "base/kind.h"
 #include "internal/assume_aligned.h"
 
-namespace cel::base_internal {
+namespace cel {
+
+class MemoryManager;
+
+namespace base_internal {
 
 // Number of bits to shift to store kind.
 inline constexpr int kKindShift = sizeof(uintptr_t) * 8 - 8;
@@ -179,6 +184,15 @@ class HeapData /* : public Data */ {
                                       << kKindShift) {}
 
  private:
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called. Subclasses should override this if they want their
+  // destructor to be skippable, by default it is not.
+  static bool IsDestructorSkippable(
+      const HeapData& data ABSL_ATTRIBUTE_UNUSED) noexcept {
+    return false;
+  }
+
+  friend class cel::MemoryManager;
   friend constexpr size_t HeapDataMetadataAndReferenceCountOffset();
 
   std::atomic<uintptr_t> metadata_and_reference_count_ ABSL_ATTRIBUTE_UNUSED =
@@ -286,6 +300,25 @@ class Metadata final {
   // Used by `MemoryManager::New()`.
   static void SetReferenceCounted(const Data& data) {
     ReferenceCount(data).fetch_or(kReferenceCounted, std::memory_order_relaxed);
+  }
+
+  // Used by `MemoryManager::New()` and `T::IsDestructorSkippable()`. This is
+  // used by `T::IsDestructorSkippable()` to query whether a member `Handle<F>`
+  // needs its destructor called for an arena-based memory manager.
+  static bool IsDestructorSkippable(const Data& data) {
+    // We can skip the destructor for any data which is stored inline and
+    // trivial, or is arena-allocated.
+    switch (Locality(data)) {
+      case DataLocality::kStoredInline:
+        return IsTrivial(data);
+      case DataLocality::kReferenceCounted:
+        return false;
+      case DataLocality::kArenaAllocated:
+        return true;
+      case DataLocality::kNull:
+        // Locality() never returns kNull.
+        ABSL_UNREACHABLE();
+    }
   }
 
  private:
@@ -474,6 +507,8 @@ struct AnyData final {
   Storage storage;
 };
 
-}  // namespace cel::base_internal
+}  // namespace base_internal
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_INTERNAL_DATA_H_

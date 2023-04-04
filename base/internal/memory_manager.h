@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_MEMORY_MANAGER_PRE_H_
 
 #include <cstddef>
+#include <type_traits>
 
 namespace cel::base_internal {
 
@@ -25,6 +26,15 @@ template <typename T>
 struct MemoryManagerDestructor final {
   static void Destruct(void* pointer) { static_cast<T*>(pointer)->~T(); }
 };
+
+template <typename, typename = void>
+struct HasIsDestructorSkippable : std::false_type {};
+
+template <typename T>
+struct HasIsDestructorSkippable<
+    T,
+    std::void_t<decltype(T::IsDestructorSkippable(std::declval<const T&>()))>>
+    : std::true_type {};
 
 }  // namespace cel::base_internal
 

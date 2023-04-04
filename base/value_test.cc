@@ -2264,6 +2264,15 @@ INSTANTIATE_TEST_SUITE_P(ValueTest, ValueTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
 
+TEST(TypeValue, SkippableDestructor) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto type_value = value_factory.CreateTypeValue(type_factory.GetBoolType());
+  EXPECT_TRUE(base_internal::Metadata::IsDestructorSkippable(*type_value));
+}
+
 TEST(EnumValueTest, UnknownConstantDebugString) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());

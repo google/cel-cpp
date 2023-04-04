@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "base/internal/data.h"
@@ -81,7 +82,9 @@ class LegacyTypeValue final : public TypeValue, InlineData {
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit LegacyTypeValue(absl::string_view value)
-      : InlineData(kMetadata), value_(value) {}
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedTypeValueVariant::kLegacy)),
+        value_(value) {}
 
   LegacyTypeValue(const LegacyTypeValue&) = default;
   LegacyTypeValue(LegacyTypeValue&&) = default;
@@ -103,8 +106,19 @@ class ModernTypeValue final : public TypeValue, InlineData {
   static constexpr uintptr_t kMetadata =
       kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
+  static uintptr_t AdditionalMetadata(const Type& type) {
+    static_assert(
+        std::is_base_of_v<base_internal::InlineData, LegacyTypeValue>,
+        "This logic relies on the fact that EnumValue is stored inline");
+    // Because LegacyTypeValue is stored inline and has only one member, we can
+    // be considered trivial if Handle<Type> has a skippable destructor.
+    return Metadata::IsDestructorSkippable(type) ? kTrivial : uintptr_t{0};
+  }
+
   explicit ModernTypeValue(Handle<Type> value)
-      : InlineData(kMetadata), value_(std::move(value)) {}
+      : InlineData(kMetadata | AdditionalMetadata(*value) |
+                   AsInlineVariant(InlinedTypeValueVariant::kModern)),
+        value_(std::move(value)) {}
 
   ModernTypeValue(const ModernTypeValue&) = default;
   ModernTypeValue(ModernTypeValue&&) = default;

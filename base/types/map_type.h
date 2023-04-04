@@ -106,6 +106,13 @@ class ModernMapType final : public MapType, public HeapData {
   friend class cel::MapType;
   friend class base_internal::TypeHandle;
 
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called.
+  static bool IsDestructorSkippable(const ModernMapType& type) noexcept {
+    return Metadata::IsDestructorSkippable(*type.key()) &&
+           Metadata::IsDestructorSkippable(*type.value());
+  }
+
   explicit ModernMapType(Handle<Type> key, Handle<Type> value);
 
   const Handle<Type> key_;

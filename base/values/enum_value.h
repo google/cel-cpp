@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/strings/string_view.h"
@@ -71,8 +72,20 @@ class EnumValue final : public Value, public base_internal::InlineData {
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
+  static uintptr_t AdditionalMetadata(const EnumType& type) noexcept {
+    static_assert(
+        std::is_base_of_v<base_internal::InlineData, EnumValue>,
+        "This logic relies on the fact that EnumValue is stored inline");
+    // Because EnumValue is stored inline and has only two members of which one
+    // is int64_t, we can be considered trivial if Handle<EnumType> has a
+    // skippable destructor.
+    return base_internal::Metadata::IsDestructorSkippable(type)
+               ? base_internal::kTrivial
+               : uintptr_t{0};
+  }
+
   EnumValue(Handle<EnumType> type, int64_t number)
-      : base_internal::InlineData(kMetadata),
+      : base_internal::InlineData(kMetadata | AdditionalMetadata(*type)),
         type_(std::move(type)),
         number_(number) {}
 

@@ -149,6 +149,13 @@ enum class InlinedStringValueVariant {
   kStringView,
 };
 
+// Enumeration used to differentiate between TypeValue's multiple inline
+// non-trivial implementations.
+enum class InlinedTypeValueVariant {
+  kLegacy = 0,
+  kModern,
+};
+
 }  // namespace base_internal
 
 namespace interop_internal {

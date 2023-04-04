@@ -714,6 +714,25 @@ INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 
+TEST(ListType, DestructorSkippable) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  ASSERT_OK_AND_ASSIGN(auto trivial_list_type,
+                       type_factory.CreateListType(type_factory.GetBoolType()));
+  EXPECT_TRUE(
+      base_internal::Metadata::IsDestructorSkippable(*trivial_list_type));
+}
+
+TEST(MapType, DestructorSkippable) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  ASSERT_OK_AND_ASSIGN(auto trivial_map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetBoolType()));
+  EXPECT_TRUE(
+      base_internal::Metadata::IsDestructorSkippable(*trivial_map_type));
+}
+
 TEST_P(TypeTest, SupportsAbslHash) {
   TypeFactory type_factory(memory_manager());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({

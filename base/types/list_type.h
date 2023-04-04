@@ -100,6 +100,12 @@ class ModernListType final : public ListType, public HeapData {
   friend class cel::ListType;
   friend class base_internal::TypeHandle;
 
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called.
+  static bool IsDestructorSkippable(const ModernListType& type) noexcept {
+    return Metadata::IsDestructorSkippable(*type.element());
+  }
+
   explicit ModernListType(Handle<Type> element);
 
   const Handle<Type> element_;

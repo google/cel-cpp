@@ -15,11 +15,17 @@
 #include "base/values/type_value.h"
 
 #include <string>
-#include <utility>
 
 #include "base/internal/data.h"
 
 namespace cel {
+
+namespace {
+
+using base_internal::InlinedTypeValueVariant;
+using base_internal::Metadata;
+
+}  // namespace
 
 CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
@@ -30,10 +36,12 @@ bool TypeValue::Equals(const TypeValue& other) const {
 }
 
 absl::string_view TypeValue::name() const {
-  if (base_internal::Metadata::IsTrivial(*this)) {
-    return static_cast<const base_internal::LegacyTypeValue&>(*this).name();
+  switch (Metadata::GetInlineVariant<InlinedTypeValueVariant>(*this)) {
+    case InlinedTypeValueVariant::kLegacy:
+      return static_cast<const base_internal::LegacyTypeValue&>(*this).name();
+    case InlinedTypeValueVariant::kModern:
+      return static_cast<const base_internal::ModernTypeValue&>(*this).name();
   }
-  return static_cast<const base_internal::ModernTypeValue&>(*this).name();
 }
 
 }  // namespace cel

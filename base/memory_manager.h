@@ -61,11 +61,18 @@ class MemoryManager {
     void* pointer = Allocate(sizeof(T), alignof(T));
     ::new (pointer) T(std::forward<Args>(args)...);
     if constexpr (!std::is_trivially_destructible_v<T>) {
-      OwnDestructor(pointer,
-                    &base_internal::MemoryManagerDestructor<T>::Destruct);
+      if constexpr (base_internal::HasIsDestructorSkippable<T>::value) {
+        if (!T::IsDestructorSkippable(*static_cast<const T*>(pointer))) {
+          OwnDestructor(pointer,
+                        &base_internal::MemoryManagerDestructor<T>::Destruct);
+        }
+      } else {
+        OwnDestructor(pointer,
+                      &base_internal::MemoryManagerDestructor<T>::Destruct);
+      }
     }
-    base_internal::Metadata::SetArenaAllocated(*reinterpret_cast<T*>(pointer));
-    return ManagedMemory<T>(reinterpret_cast<T*>(pointer));
+    base_internal::Metadata::SetArenaAllocated(*static_cast<T*>(pointer));
+    return ManagedMemory<T>(static_cast<T*>(pointer));
   }
 
   // Allocates and constructs `T`. In the event of an allocation failure nullptr
