@@ -35,7 +35,6 @@
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
 #include "base/values/unknown_value.h"
-#include "internal/unreachable.h"
 
 namespace cel {
 
@@ -76,7 +75,7 @@ Handle<Type> Value::type() const {
     case Kind::kUnknown:
       return static_cast<const UnknownValue*>(this)->type().As<Type>();
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 
@@ -115,7 +114,7 @@ std::string Value::DebugString() const {
     case Kind::kUnknown:
       return static_cast<const UnknownValue*>(this)->DebugString();
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 
@@ -201,7 +200,7 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
              static_cast<const UnknownValue&>(lhs).function_result_set() ==
                  static_cast<const UnknownValue&>(rhs).function_result_set();
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 
@@ -270,7 +269,7 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
               *static_cast<const EnumValue*>(other.data_.get_inline()));
           return;
         default:
-          internal::unreachable();
+          ABSL_UNREACHABLE();
       }
     } else {  // trivially copyable
       // We can simply just copy the bytes.
@@ -342,7 +341,7 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
           other.data_.Destruct<EnumValue>();
           break;
         default:
-          internal::unreachable();
+          ABSL_UNREACHABLE();
       }
     } else {  // trivially copyable
       // We can simply just copy the bytes.
@@ -406,7 +405,7 @@ void ValueHandle::Destruct() {
             data_.Destruct<EnumValue>();
             return;
           default:
-            internal::unreachable();
+            ABSL_UNREACHABLE();
         }
       }
       return;
@@ -440,7 +439,7 @@ void ValueHandle::Delete(Kind kind, const Value& value) {
       delete static_cast<const StringBytesValue*>(&value);
       return;
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 

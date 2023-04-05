@@ -38,7 +38,6 @@
 #include "base/types/uint_type.h"
 #include "base/types/unknown_type.h"
 #include "base/types/wrapper_type.h"
-#include "internal/unreachable.h"
 
 namespace cel {
 
@@ -292,7 +291,7 @@ void TypeHandle::CopyFrom(const TypeHandle& other) {
     if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
       // Type currently has only trivially copyable inline
       // representations.
-      internal::unreachable();
+      ABSL_UNREACHABLE();
     } else {
       // We can simply just copy the bytes.
       data_.CopyFrom(other.data_);
@@ -311,7 +310,7 @@ void TypeHandle::MoveFrom(TypeHandle& other) {
     if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
       // Type currently has only trivially copyable inline
       // representations.
-      internal::unreachable();
+      ABSL_UNREACHABLE();
     } else {
       // We can simply just copy the bytes.
       data_.CopyFrom(other.data_);
@@ -342,7 +341,7 @@ void TypeHandle::Destruct() {
       if (ABSL_PREDICT_FALSE(!data_.IsTrivial())) {
         // Type currently has only trivially destructible inline
         // representations.
-        internal::unreachable();
+        ABSL_UNREACHABLE();
       }
       return;
     case DataLocality::kReferenceCounted:
@@ -371,7 +370,7 @@ void TypeHandle::Delete() const {
           static_cast<Type*>(data_.get_heap()));
       return;
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 

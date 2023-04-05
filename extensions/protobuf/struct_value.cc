@@ -59,7 +59,6 @@
 #include "extensions/protobuf/struct_type.h"
 #include "extensions/protobuf/type.h"
 #include "internal/status_macros.h"
-#include "internal/unreachable.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/map_field.h"
 #include "google/protobuf/message.h"
@@ -2476,7 +2475,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                                                                  &field_desc));
           }
         default:
-          cel::internal::unreachable();
+          ABSL_UNREACHABLE();
       }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       if (cel::base_internal::Metadata::IsReferenceCounted(*this)) {

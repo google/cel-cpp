@@ -160,7 +160,6 @@ cc_library(
         "//internal:casts",
         "//internal:rtti",
         "//internal:status_macros",
-        "//internal:unreachable",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/log:die_if_null",

@@ -31,7 +31,6 @@
 #include "base/values/map_value.h"
 #include "internal/linked_hash_map.h"
 #include "internal/status_macros.h"
-#include "internal/unreachable.h"
 
 namespace cel {
 
@@ -138,7 +137,7 @@ struct MapKeyHasher<Handle<Value>> {
       case Kind::kString:
         return absl::Hash<StringValue>{}(*key.As<StringValue>());
       default:
-        internal::unreachable();
+        ABSL_UNREACHABLE();
     }
   }
 };
@@ -172,7 +171,7 @@ struct MapKeyEqualer<Handle<Value>> {
       case Kind::kString:
         return *lhs.As<StringValue>() == *rhs.As<StringValue>();
       default:
-        internal::unreachable();
+        ABSL_UNREACHABLE();
     }
   }
 };

@@ -28,7 +28,6 @@
 #include "absl/base/optimization.h"
 #include "absl/numeric/bits.h"
 #include "base/kind.h"
-#include "internal/assume_aligned.h"
 
 namespace cel {
 
@@ -325,8 +324,7 @@ class Metadata final {
   static uintptr_t VirtualPointer(const Data& data) {
     // The vptr, or equivalent, is stored at offset 0. Inform the compiler that
     // `data` is aligned to at least `uintptr_t`.
-    return *reinterpret_cast<const uintptr_t*>(
-        internal::assume_aligned<alignof(uintptr_t)>(&data));
+    return *reinterpret_cast<const uintptr_t*>(&data);
   }
 
   static std::atomic<uintptr_t>& ReferenceCount(const Data& data) {
@@ -334,10 +332,8 @@ class Metadata final {
     // immediately follows the vptr, or equivalent, at offset 0. So its offset
     // is `sizeof(uintptr_t)`. Inform the compiler that `data` is aligned to at
     // least `uintptr_t` and `std::atomic<uintptr_t>`.
-    return *reinterpret_cast<std::atomic<uintptr_t>*>(
-        internal::assume_aligned<alignof(std::atomic<uintptr_t>)>(
-            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&data) +
-                                 sizeof(uintptr_t))));
+    return *reinterpret_cast<std::atomic<uintptr_t>*>(const_cast<uint8_t*>(
+        reinterpret_cast<const uint8_t*>(&data) + sizeof(uintptr_t)));
   }
 
   Metadata() = delete;
