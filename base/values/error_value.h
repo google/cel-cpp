@@ -21,6 +21,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -41,7 +42,8 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   using Value::Is;
 
   static const ErrorValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to error";
     return static_cast<const ErrorValue&>(value);
   }
 

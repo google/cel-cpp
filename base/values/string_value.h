@@ -21,6 +21,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -55,7 +56,8 @@ class StringValue : public Value {
   using Value::Is;
 
   static const StringValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to string";
     return static_cast<const StringValue&>(value);
   }
 

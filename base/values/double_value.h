@@ -18,6 +18,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/double_type.h"
 #include "base/value.h"
 
@@ -36,7 +37,8 @@ class DoubleValue final
   using Base::Is;
 
   static const DoubleValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to double";
     return static_cast<const DoubleValue&>(value);
   }
 

@@ -18,6 +18,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/null_type.h"
 #include "base/value.h"
 
@@ -35,7 +36,8 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
   using Base::Is;
 
   static const NullValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to null";
     return static_cast<const NullValue&>(value);
   }
 

@@ -18,6 +18,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/time/time.h"
 #include "base/types/timestamp_type.h"
 #include "base/value.h"
@@ -37,7 +38,8 @@ class TimestampValue final
   using Base::Is;
 
   static const TimestampValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to google.protobuf.Timestamp";
     return static_cast<const TimestampValue&>(value);
   }
 

@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -35,7 +36,7 @@ class BoolType final : public base_internal::SimpleType<Kind::kBool> {
   using Base::Is;
 
   static const BoolType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const BoolType&>(type);
   }
 

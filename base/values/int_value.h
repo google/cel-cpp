@@ -19,6 +19,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/int_type.h"
 #include "base/value.h"
 
@@ -36,7 +37,8 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
   using Base::Is;
 
   static const IntValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to int";
     return static_cast<const IntValue&>(value);
   }
 

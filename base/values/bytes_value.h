@@ -21,6 +21,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -53,7 +54,8 @@ class BytesValue : public Value {
   using Value::Is;
 
   static const BytesValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to bytes";
     return static_cast<const BytesValue&>(value);
   }
 

@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/log/absl_check.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -37,7 +38,8 @@ class TypeValue : public Value {
   using Value::Is;
 
   static const TypeValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to type";
     return static_cast<const TypeValue&>(value);
   }
 

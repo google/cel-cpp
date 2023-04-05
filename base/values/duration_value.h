@@ -18,6 +18,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/time/time.h"
 #include "base/types/duration_type.h"
 #include "base/value.h"
@@ -38,7 +39,8 @@ class DurationValue final
   using Base::Is;
 
   static const DurationValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to google.protobuf.Duration";
     return static_cast<const DurationValue&>(value);
   }
 

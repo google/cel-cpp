@@ -20,6 +20,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
@@ -54,7 +55,8 @@ class MapValue : public Value {
   using Value::Is;
 
   static const MapValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to map";
     return static_cast<const MapValue&>(value);
   }
 

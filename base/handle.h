@@ -19,7 +19,8 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/macros.h"
+#include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/utility/utility.h"
 #include "base/internal/data.h"
 #include "base/internal/handle.h"  // IWYU pragma: export
@@ -89,8 +90,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(static_cast<bool>(*this) &&
-                static_cast<T&>(*impl_.get()).template Is<F>());
+    ABSL_DCHECK(static_cast<bool>(*this)) << "cannot reinterpret empty handle";
 #ifndef NDEBUG
     static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
 #endif
@@ -98,7 +98,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
     // ensured via SFINAE on the return value and the second static_assert. Thus
-    // we can saftley reinterpret_cast.
+    // we can safely reinterpret_cast.
     return *reinterpret_cast<Handle<F>*>(this);
   }
 
@@ -116,8 +116,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(static_cast<bool>(*this) &&
-                static_cast<T&>(*impl_.get()).template Is<F>());
+    ABSL_DCHECK(static_cast<bool>(*this)) << "cannot reinterpret empty handle";
 #ifndef NDEBUG
     static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
 #endif
@@ -125,7 +124,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
     // ensured via SFINAE on the return value and the second static_assert. Thus
-    // we can saftley reinterpret_cast.
+    // we can safely reinterpret_cast.
     return std::move(*reinterpret_cast<Handle<F>*>(this));
   }
 
@@ -143,8 +142,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(static_cast<bool>(*this) &&
-                static_cast<T&>(*impl_.get()).template Is<F>());
+    ABSL_DCHECK(static_cast<bool>(*this)) << "cannot reinterpret empty handle";
 #ifndef NDEBUG
     static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
 #endif
@@ -152,7 +150,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
     // ensured via SFINAE on the return value and the second static_assert. Thus
-    // we can saftley reinterpret_cast.
+    // we can safely reinterpret_cast.
     return *reinterpret_cast<const Handle<F>*>(this);
   }
 
@@ -170,8 +168,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
-    ABSL_ASSERT(static_cast<bool>(*this) &&
-                static_cast<T&>(*impl_.get()).template Is<F>());
+    ABSL_DCHECK(static_cast<bool>(*this)) << "cannot reinterpret empty handle";
 #ifndef NDEBUG
     static_cast<void>(static_cast<T&>(*impl_.get()).template As<F>());
 #endif
@@ -179,17 +176,17 @@ class Handle final : private base_internal::HandlePolicy<T> {
     // representation, as ensured via the first static_assert, and they have
     // compatible types such that F is the base of T or T is the base of F, as
     // ensured via SFINAE on the return value and the second static_assert. Thus
-    // we can saftley reinterpret_cast.
+    // we can safely reinterpret_cast.
     return std::move(*reinterpret_cast<const Handle<F>*>(this));
   }
 
   T& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(static_cast<bool>(*this));
+    ABSL_DCHECK(static_cast<bool>(*this)) << "cannot dereference empty handle";
     return static_cast<T&>(*impl_.get());
   }
 
   T* operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    ABSL_ASSERT(static_cast<bool>(*this));
+    ABSL_DCHECK(static_cast<bool>(*this)) << "cannot dereference empty handle";
     return static_cast<T*>(impl_.get());
   }
 

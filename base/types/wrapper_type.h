@@ -15,9 +15,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_WRAPPER_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_WRAPPER_TYPE_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -53,7 +56,7 @@ class WrapperType : public Type, base_internal::InlineData {
   using Type::Is;
 
   static const WrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to wrapper";
     return static_cast<const WrapperType&>(type);
   }
 
@@ -92,6 +95,8 @@ inline const Type& UnwrapType(const Type& type) {
 
 class BoolWrapperType final : public WrapperType {
  public:
+  static constexpr absl::string_view kName = "google.protobuf.BoolValue";
+
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
@@ -101,13 +106,11 @@ class BoolWrapperType final : public WrapperType {
   using WrapperType::Is;
 
   static const BoolWrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const BoolWrapperType&>(type);
   }
 
-  constexpr absl::string_view name() const {
-    return "google.protobuf.BoolValue";
-  }
+  constexpr absl::string_view name() const { return kName; }
 
   const Handle<BoolType>& wrapped() const { return BoolType::Get(); }
 
@@ -129,6 +132,8 @@ class BoolWrapperType final : public WrapperType {
 
 class BytesWrapperType final : public WrapperType {
  public:
+  static constexpr absl::string_view kName = "google.protobuf.BytesValue";
+
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
@@ -138,13 +143,11 @@ class BytesWrapperType final : public WrapperType {
   using WrapperType::Is;
 
   static const BytesWrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const BytesWrapperType&>(type);
   }
 
-  constexpr absl::string_view name() const {
-    return "google.protobuf.BytesValue";
-  }
+  constexpr absl::string_view name() const { return kName; }
 
   const Handle<BytesType>& wrapped() const { return BytesType::Get(); }
 
@@ -166,6 +169,8 @@ class BytesWrapperType final : public WrapperType {
 
 class DoubleWrapperType final : public WrapperType {
  public:
+  static constexpr absl::string_view kName = "google.protobuf.DoubleValue";
+
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
@@ -175,13 +180,11 @@ class DoubleWrapperType final : public WrapperType {
   using WrapperType::Is;
 
   static const DoubleWrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const DoubleWrapperType&>(type);
   }
 
-  constexpr absl::string_view name() const {
-    return "google.protobuf.DoubleValue";
-  }
+  constexpr absl::string_view name() const { return kName; }
 
   const Handle<DoubleType>& wrapped() const { return DoubleType::Get(); }
 
@@ -203,6 +206,8 @@ class DoubleWrapperType final : public WrapperType {
 
 class IntWrapperType final : public WrapperType {
  public:
+  static constexpr absl::string_view kName = "google.protobuf.Int64Value";
+
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
@@ -212,13 +217,11 @@ class IntWrapperType final : public WrapperType {
   using WrapperType::Is;
 
   static const IntWrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const IntWrapperType&>(type);
   }
 
-  constexpr absl::string_view name() const {
-    return "google.protobuf.Int64Value";
-  }
+  constexpr absl::string_view name() const { return kName; }
 
   const Handle<IntType>& wrapped() const { return IntType::Get(); }
 
@@ -240,6 +243,8 @@ class IntWrapperType final : public WrapperType {
 
 class StringWrapperType final : public WrapperType {
  public:
+  static constexpr absl::string_view kName = "google.protobuf.StringValue";
+
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
@@ -249,13 +254,11 @@ class StringWrapperType final : public WrapperType {
   using WrapperType::Is;
 
   static const StringWrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const StringWrapperType&>(type);
   }
 
-  constexpr absl::string_view name() const {
-    return "google.protobuf.StringValue";
-  }
+  constexpr absl::string_view name() const { return kName; }
 
   const Handle<StringType>& wrapped() const { return StringType::Get(); }
 
@@ -277,6 +280,8 @@ class StringWrapperType final : public WrapperType {
 
 class UintWrapperType final : public WrapperType {
  public:
+  static constexpr absl::string_view kName = "google.protobuf.UInt64Value";
+
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
@@ -286,13 +291,11 @@ class UintWrapperType final : public WrapperType {
   using WrapperType::Is;
 
   static const UintWrapperType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const UintWrapperType&>(type);
   }
 
-  constexpr absl::string_view name() const {
-    return "google.protobuf.UInt64Value";
-  }
+  constexpr absl::string_view name() const { return kName; }
 
   const Handle<UintType>& wrapped() const { return UintType::Get(); }
 

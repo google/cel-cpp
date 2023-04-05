@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -42,7 +43,8 @@ class EnumValue final : public Value, public base_internal::InlineData {
   using Value::Is;
 
   static const EnumValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to enum";
     return static_cast<const EnumValue&>(value);
   }
 

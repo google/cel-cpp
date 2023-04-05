@@ -16,8 +16,10 @@
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -40,7 +42,7 @@ class MapType : public Type {
   using Type::Is;
 
   static const MapType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to map";
     return static_cast<const MapType&>(type);
   }
 

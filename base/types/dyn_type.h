@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_DYN_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_DYN_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -34,7 +35,7 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
   using Base::Is;
 
   static const DynType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const DynType&>(type);
   }
 

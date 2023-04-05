@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -74,7 +75,7 @@ class StructType : public Type {
   using Type::Is;
 
   static const StructType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to struct";
     return static_cast<const StructType&>(type);
   }
 
@@ -140,7 +141,7 @@ class LegacyStructType final : public StructType,
   using StructType::Is;
 
   static const LegacyStructType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to struct";
     return static_cast<const LegacyStructType&>(type);
   }
 
@@ -192,7 +193,7 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   using StructType::Is;
 
   static const AbstractStructType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to struct";
     return static_cast<const AbstractStructType&>(type);
   }
 

@@ -21,6 +21,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
@@ -49,7 +50,8 @@ class StructValue : public Value {
   using Value::Is;
 
   static const StructValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to struct";
     return static_cast<const StructValue&>(value);
   }
 

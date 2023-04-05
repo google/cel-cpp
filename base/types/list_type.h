@@ -16,8 +16,10 @@
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_LIST_TYPE_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -48,7 +50,7 @@ class ListType : public Type {
   using Type::Is;
 
   static const ListType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to list";
     return static_cast<const ListType&>(type);
   }
 

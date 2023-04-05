@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_TYPE_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_TYPE_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -34,7 +35,7 @@ class TypeType final : public base_internal::SimpleType<Kind::kType> {
   using Base::Is;
 
   static const TypeType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
     return static_cast<const TypeType&>(type);
   }
 

@@ -18,6 +18,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/log/absl_check.h"
 #include "base/attribute_set.h"
 #include "base/function_result_set.h"
 #include "base/internal/unknown_set.h"
@@ -35,7 +36,8 @@ class UnknownValue final : public Value, public base_internal::InlineData {
   using Value::Is;
 
   static const UnknownValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to unknown";
     return static_cast<const UnknownValue&>(value);
   }
 

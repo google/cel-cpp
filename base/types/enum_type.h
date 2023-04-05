@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
@@ -68,7 +69,7 @@ class EnumType : public Type, public base_internal::HeapData {
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
   static const EnumType& Cast(const Type& type) {
-    ABSL_ASSERT(Is(type));
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to enum";
     return static_cast<const EnumType&>(type);
   }
 

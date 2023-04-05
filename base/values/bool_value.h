@@ -18,6 +18,7 @@
 #include <string>
 
 #include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/bool_type.h"
 #include "base/value.h"
 
@@ -35,7 +36,8 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
   using Base::Is;
 
   static const BoolValue& Cast(const Value& value) {
-    ABSL_ASSERT(Is(value));
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to bool";
     return static_cast<const BoolValue&>(value);
   }
 
