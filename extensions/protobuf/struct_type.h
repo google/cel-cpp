@@ -17,6 +17,7 @@
 
 #include <type_traits>
 
+#include "absl/base/attributes.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -71,6 +72,14 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   friend class ProtoStructValue;
   friend class protobuf_internal::ParsedProtoStructValue;
   friend class cel::MemoryManager;
+
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called.
+  static bool IsDestructorSkippable(
+      const ProtoStructType& type ABSL_ATTRIBUTE_UNUSED) noexcept {
+    // Our destructor is useless, we only hold pointers to protobuf-owned data.
+    return true;
+  }
 
   template <typename T>
   static std::enable_if_t<(!std::is_same_v<google::protobuf::Message, T> &&

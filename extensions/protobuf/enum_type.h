@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_ENUM_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_ENUM_TYPE_H_
 
+#include "absl/base/attributes.h"
 #include "absl/log/die_if_null.h"
 #include "base/type.h"
 #include "base/type_manager.h"
@@ -60,6 +61,14 @@ class ProtoEnumType final : public EnumType {
   friend class ProtoType;
   friend class ProtoTypeProvider;
   friend class cel::MemoryManager;
+
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called.
+  static bool IsDestructorSkippable(
+      const ProtoEnumType& type ABSL_ATTRIBUTE_UNUSED) noexcept {
+    // Our destructor is useless, we only hold pointers to protobuf-owned data.
+    return true;
+  }
 
   template <typename T>
   static std::enable_if_t<google::protobuf::is_proto_enum<T>::value,
