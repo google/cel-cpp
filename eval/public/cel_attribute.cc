@@ -84,8 +84,8 @@ CelAttributeQualifier CreateCelAttributeQualifier(const CelValue& value) {
 
 CelAttributePattern CreateCelAttributePattern(
     absl::string_view variable,
-    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t, bool,
-                                        CelAttributeQualifierPattern>>
+    std::initializer_list<absl::variant<absl::string_view, int64_t, uint64_t,
+                                        bool, CelAttributeQualifierPattern>>
         path_spec) {
   std::vector<CelAttributeQualifierPattern> path;
   path.reserve(path_spec.size());
