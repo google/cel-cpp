@@ -14,26 +14,8 @@
 
 #include "base/types/type_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(TypeType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<TypeType>) char instance_storage[sizeof(Handle<TypeType>)];
-
-}  // namespace
-
-const Handle<TypeType>& TypeType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<TypeType>::MakeAt<TypeType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<TypeType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

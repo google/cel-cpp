@@ -14,26 +14,8 @@
 
 #include "base/types/int_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(IntType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<IntType>) char instance_storage[sizeof(Handle<IntType>)];
-
-}  // namespace
-
-const Handle<IntType>& IntType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<IntType>::MakeAt<IntType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<IntType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

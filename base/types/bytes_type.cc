@@ -14,26 +14,8 @@
 
 #include "base/types/bytes_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(BytesType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<BytesType>) char instance_storage[sizeof(Handle<BytesType>)];
-
-}  // namespace
-
-const Handle<BytesType>& BytesType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<BytesType>::MakeAt<BytesType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<BytesType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

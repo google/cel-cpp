@@ -14,26 +14,8 @@
 
 #include "base/types/string_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(StringType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<StringType>) char instance_storage[sizeof(Handle<StringType>)];
-
-}  // namespace
-
-const Handle<StringType>& StringType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<StringType>::MakeAt<StringType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<StringType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

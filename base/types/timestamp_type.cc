@@ -14,27 +14,8 @@
 
 #include "base/types/timestamp_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(TimestampType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(
-    Handle<TimestampType>) char instance_storage[sizeof(Handle<TimestampType>)];
-
-}  // namespace
-
-const Handle<TimestampType>& TimestampType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<TimestampType>::MakeAt<TimestampType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<TimestampType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

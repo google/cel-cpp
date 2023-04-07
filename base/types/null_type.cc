@@ -14,26 +14,8 @@
 
 #include "base/types/null_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(NullType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<NullType>) char instance_storage[sizeof(Handle<NullType>)];
-
-}  // namespace
-
-const Handle<NullType>& NullType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<NullType>::MakeAt<NullType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<NullType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

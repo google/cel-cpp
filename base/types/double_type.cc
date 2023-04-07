@@ -14,26 +14,8 @@
 
 #include "base/types/double_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(DoubleType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<DoubleType>) char instance_storage[sizeof(Handle<DoubleType>)];
-
-}  // namespace
-
-const Handle<DoubleType>& DoubleType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<DoubleType>::MakeAt<DoubleType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<DoubleType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

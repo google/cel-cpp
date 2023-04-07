@@ -14,26 +14,8 @@
 
 #include "base/types/dyn_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(DynType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<DynType>) char instance_storage[sizeof(Handle<DynType>)];
-
-}  // namespace
-
-const Handle<DynType>& DynType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<DynType>::MakeAt<DynType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<DynType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

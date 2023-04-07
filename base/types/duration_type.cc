@@ -14,27 +14,8 @@
 
 #include "base/types/duration_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(DurationType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(
-    Handle<DurationType>) char instance_storage[sizeof(Handle<DurationType>)];
-
-}  // namespace
-
-const Handle<DurationType>& DurationType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<DurationType>::MakeAt<DurationType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<DurationType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

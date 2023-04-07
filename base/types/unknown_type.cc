@@ -14,26 +14,8 @@
 
 #include "base/types/unknown_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(UnknownType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<UnknownType>) char instance_storage[sizeof(Handle<UnknownType>)];
-
-}  // namespace
-
-const Handle<UnknownType>& UnknownType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<UnknownType>::MakeAt<UnknownType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<UnknownType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel

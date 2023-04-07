@@ -14,26 +14,8 @@
 
 #include "base/types/bool_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(BoolType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Handle<BoolType>) char instance_storage[sizeof(Handle<BoolType>)];
-
-}  // namespace
-
-const Handle<BoolType>& BoolType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::HandleFactory<BoolType>::MakeAt<BoolType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Handle<BoolType>*>(&instance_storage[0]);
-}
 
 }  // namespace cel
