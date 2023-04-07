@@ -101,6 +101,21 @@ TEST(CelFunctionRegistryTest, ListFunctions) {
   EXPECT_THAT(registered_functions["ConstFunction"], SizeIs(1));
 }
 
+TEST(CelFunctionRegistryTest, LegacyFindLazyOverloads) {
+  CelFunctionDescriptor lazy_function_desc{"LazyFunction", false, {}};
+  CelFunctionRegistry registry;
+
+  ASSERT_OK(registry.RegisterLazyFunction(lazy_function_desc));
+  ASSERT_OK(registry.Register(ConstCelFunction::MakeDescriptor(),
+                              std::make_unique<ConstCelFunction>()));
+
+  EXPECT_THAT(registry.FindLazyOverloads("LazyFunction", false, {}),
+              ElementsAre(Truly([](const CelFunctionDescriptor* descriptor) {
+                return descriptor->name() == "LazyFunction";
+              })))
+      << "Expected single lazy overload for LazyFunction()";
+}
+
 TEST(CelFunctionRegistryTest, DefaultLazyProvider) {
   CelFunctionDescriptor lazy_function_desc{"LazyFunction", false, {}};
   CelFunctionRegistry registry;

@@ -94,3 +94,43 @@ cc_test(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+cc_library(
+    name = "function_registry",
+    srcs = ["function_registry.cc"],
+    hdrs = ["function_registry.h"],
+    deps =
+        [
+            ":activation_interface",
+            ":function_overload_reference",
+            ":function_provider",
+            "//base:function_interface",
+            "//base:functions",
+            "//base:kind",
+            "@com_google_absl//absl/container:flat_hash_map",
+            "@com_google_absl//absl/container:node_hash_map",
+            "@com_google_absl//absl/status",
+            "@com_google_absl//absl/status:statusor",
+            "@com_google_absl//absl/strings",
+            "@com_google_absl//absl/types:optional",
+            "@com_google_absl//absl/types:span",
+        ],
+)
+
+cc_test(
+    name = "function_registry_test",
+    srcs = ["function_registry_test.cc"],
+    deps = [
+        ":activation",
+        ":function_overload_reference",
+        ":function_provider",
+        ":function_registry",
+        "//base:function_adapter",
+        "//base:function_interface",
+        "//base:functions",
+        "//base:kind",
+        "//base:value",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+    ],
+)
