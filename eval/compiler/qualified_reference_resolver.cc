@@ -15,7 +15,6 @@
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
 #include "eval/public/cel_builtins.h"
-#include "eval/public/cel_function_registry.h"
 #include "eval/public/source_position_native.h"
 #include "internal/status_macros.h"
 

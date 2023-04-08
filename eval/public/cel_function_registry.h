@@ -112,6 +112,16 @@ class CelFunctionRegistry {
     return modern_registry_.ListFunctions();
   }
 
+  // cel internal accessor for returning backing modern registry.
+  //
+  // This is intended to allow migrating the CEL evaluator internals while
+  // maintaining the existing CelRegistry API.
+  //
+  // CEL users should not use this.
+  const cel::FunctionRegistry& InternalGetRegistry() const {
+    return modern_registry_;
+  }
+
  private:
   cel::FunctionRegistry modern_registry_;
 

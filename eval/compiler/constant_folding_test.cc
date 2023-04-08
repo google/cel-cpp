@@ -66,7 +66,8 @@ TEST(ConstantFoldingTest, Select) {
   CelFunctionRegistry registry;
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
   EXPECT_EQ(out, native_expr);
   EXPECT_TRUE(idents.empty());
 }
@@ -99,7 +100,8 @@ TEST(ConstantFoldingTest, StructMessage) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -155,7 +157,8 @@ TEST(ConstantFoldingTest, StructComprehension) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(
@@ -206,7 +209,8 @@ TEST_F(ConstantFoldingTestWithValueFactory, ListComprehension) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   ASSERT_EQ(out.id(), 45);
   ASSERT_TRUE(out.has_ident_expr());
@@ -249,7 +253,8 @@ TEST(ConstantFoldingTest, LogicApplication) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   ASSERT_EQ(out.id(), 105);
   ASSERT_TRUE(out.has_call_expr());
@@ -283,7 +288,8 @@ TEST_F(ConstantFoldingTestWithValueFactory, FunctionApplication) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   ASSERT_EQ(out.id(), 15);
   ASSERT_TRUE(out.has_ident_expr());
@@ -326,7 +332,8 @@ TEST(ConstantFoldingTest, FunctionApplicationWithReceiver) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   ASSERT_EQ(out.id(), 10);
   ASSERT_TRUE(out.has_ident_expr());
@@ -360,7 +367,8 @@ TEST(ConstantFoldingTest, FunctionApplicationNoOverload) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   ASSERT_EQ(out.id(), 16);
   ASSERT_TRUE(out.has_ident_expr());
@@ -428,7 +436,8 @@ TEST(ConstantFoldingTest, MapComprehension) {
 
   absl::flat_hash_map<std::string, Handle<Value>> idents;
   Expr out;
-  FoldConstants(native_expr, registry, &arena, idents, out);
+  FoldConstants(native_expr, registry.InternalGetRegistry(), &arena, idents,
+                out);
 
   google::api::expr::v1alpha1::Expr expected;
   google::protobuf::TextFormat::ParseFromString(R"(

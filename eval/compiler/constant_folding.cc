@@ -7,13 +7,17 @@
 
 #include "absl/strings/str_cat.h"
 #include "base/ast_internal.h"
+#include "base/function_interface.h"
 #include "base/values/error_value.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_builtins.h"
-#include "eval/public/cel_function_registry.h"
+#include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/function_overload_reference.h"
+#include "runtime/function_registry.h"
 
 namespace cel::ast::internal {
 
@@ -22,9 +26,7 @@ namespace {
 using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateLegacyListValue;
 using ::cel::interop_internal::CreateNoMatchingOverloadError;
-using ::cel::interop_internal::LegacyValueToModernValueOrDie;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
-using ::google::api::expr::runtime::CelFunction;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
 using ::google::protobuf::Arena;
@@ -39,18 +41,6 @@ Handle<Value> CreateLegacyListBackedHandle(
           arena, std::move(legacy_values));
 
   return CreateLegacyListValue(legacy_list);
-}
-
-absl::StatusOr<Handle<Value>> EvalLegacyFunction(
-    Arena* arena, const std::vector<Handle<Value>>& arg_values,
-    const CelFunction& matched_function) {
-  CelValue result;
-  std::vector<CelValue> legacy_args =
-      ModernValueToLegacyValueOrDie(arena, arg_values);
-
-  CEL_RETURN_IF_ERROR(matched_function.Evaluate(legacy_args, &result, arena));
-
-  return LegacyValueToModernValueOrDie(arena, result);
 }
 
 struct MakeConstantArenaSafeVisitor {
@@ -99,11 +89,14 @@ Handle<Value> MakeConstantArenaSafe(
 class ConstantFoldingTransform {
  public:
   ConstantFoldingTransform(
-      const google::api::expr::runtime::CelFunctionRegistry& registry,
-      google::protobuf::Arena* arena,
+      const FunctionRegistry& registry, google::protobuf::Arena* arena,
       absl::flat_hash_map<std::string, Handle<Value>>& constant_idents)
       : registry_(registry),
         arena_(arena),
+        memory_manager_(arena),
+        type_factory_(memory_manager_),
+        type_manager_(type_factory_, TypeProvider::Builtin()),
+        value_factory_(type_manager_),
         constant_idents_(constant_idents),
         counter_(0) {}
 
@@ -187,7 +180,7 @@ class ConstantFoldingTransform {
       // compute argument list
       const int arg_size = arg_num + (receiver_style ? 1 : 0);
       std::vector<Kind> arg_types(arg_size, Kind::kAny);
-      auto overloads = transform_.registry_.FindOverloads(
+      auto overloads = transform_.registry_.FindStaticOverloads(
           call_expr.function(), receiver_style, arg_types);
 
       // do not proceed if there are no overloads registered
@@ -196,25 +189,29 @@ class ConstantFoldingTransform {
       }
 
       std::vector<Handle<Value>> arg_values;
+      std::vector<cel::Kind> arg_kinds;
       arg_values.reserve(arg_size);
+      arg_kinds.reserve(arg_size);
       if (receiver_style) {
         arg_values.push_back(transform_.RemoveConstant(call_expr.target()));
+        arg_kinds.push_back(arg_values.back()->kind());
       }
       for (int i = 0; i < arg_num; i++) {
         arg_values.push_back(transform_.RemoveConstant(call_expr.args()[i]));
+        arg_kinds.push_back(arg_values.back()->kind());
       }
 
       // compute function overload
       // consider consolidating this logic with FunctionStep overload
       // resolution.
-      const CelFunction* matched_function = nullptr;
+      absl::optional<FunctionOverloadReference> matched_function;
       for (auto overload : overloads) {
-        if (overload->MatchArguments(arg_values)) {
-          matched_function = overload;
+        if (overload.descriptor.ShapeMatches(receiver_style, arg_kinds)) {
+          matched_function.emplace(overload);
         }
       }
-      if (matched_function == nullptr ||
-          matched_function->descriptor().is_strict()) {
+      if (!matched_function.has_value() ||
+          matched_function->descriptor.is_strict()) {
         // propagate argument errors up the expression
         for (Handle<Value>& arg : arg_values) {
           if (arg->Is<ErrorValue>()) {
@@ -223,7 +220,7 @@ class ConstantFoldingTransform {
           }
         }
       }
-      if (matched_function == nullptr) {
+      if (!matched_function.has_value()) {
         Handle<Value> error =
             CreateErrorValueFromView(CreateNoMatchingOverloadError(
                 transform_.arena_, call_expr.function()));
@@ -231,8 +228,9 @@ class ConstantFoldingTransform {
         return true;
       }
 
+      FunctionEvaluationContext context(transform_.value_factory_);
       auto call_result =
-          EvalLegacyFunction(transform_.arena_, arg_values, *matched_function);
+          matched_function->implementation.Invoke(context, arg_values);
 
       if (call_result.ok()) {
         transform_.MakeConstant(std::move(call_result).value(), out_);
@@ -327,10 +325,17 @@ class ConstantFoldingTransform {
     ConstantFoldingTransform& transform_;
     Expr& out_;
   };
-  const google::api::expr::runtime::CelFunctionRegistry& registry_;
+  const FunctionRegistry& registry_;
 
   // Owns constant values created during folding
   Arena* arena_;
+  // TODO(issues/5): make this support generic memory manager and value
+  // factory. This is only safe for interop where we know an arena is always
+  // available.
+  extensions::ProtoMemoryManager memory_manager_;
+  TypeFactory type_factory_;
+  TypeManager type_manager_;
+  ValueFactory value_factory_;
   absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
 
   int counter_;
@@ -345,9 +350,7 @@ bool ConstantFoldingTransform::Transform(const Expr& expr, Expr& out_) {
 }  // namespace
 
 void FoldConstants(
-    const Expr& ast,
-    const google::api::expr::runtime::CelFunctionRegistry& registry,
-    google::protobuf::Arena* arena,
+    const Expr& ast, const FunctionRegistry& registry, google::protobuf::Arena* arena,
     absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
     Expr& out_ast) {
   ConstantFoldingTransform constant_folder(registry, arena, constant_idents);

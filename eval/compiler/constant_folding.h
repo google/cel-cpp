@@ -6,7 +6,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/container/flat_hash_map.h"
 #include "base/ast_internal.h"
-#include "eval/public/cel_function_registry.h"
+#include "runtime/function_registry.h"
 
 namespace cel::ast::internal {
 
@@ -14,9 +14,7 @@ namespace cel::ast::internal {
 // constant sub-expressions replaced by generated idents in the constant_idents
 // map. This transformation preserves the IDs of the input sub-expressions.
 void FoldConstants(
-    const Expr& ast,
-    const google::api::expr::runtime::CelFunctionRegistry& registry,
-    google::protobuf::Arena* arena,
+    const Expr& ast, const FunctionRegistry& registry, google::protobuf::Arena* arena,
     absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
     Expr& out_ast);
 

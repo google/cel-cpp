@@ -9,7 +9,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_function_registry.h"
+#include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -18,7 +18,7 @@ using ::cel::Value;
 using ::cel::interop_internal::CreateIntValue;
 
 Resolver::Resolver(absl::string_view container,
-                   const CelFunctionRegistry* function_registry,
+                   const cel::FunctionRegistry& function_registry,
                    const CelTypeRegistry* type_registry,
                    bool resolve_qualified_type_identifiers)
     : namespace_prefixes_(),
@@ -124,7 +124,7 @@ std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
     // resolution, meaning the most specific definition wins. This is different
     // from how C++ namespaces work, as they will accumulate the overload set
     // over the namespace hierarchy.
-    funcs = function_registry_->FindStaticOverloads(*it, receiver_style, types);
+    funcs = function_registry_.FindStaticOverloads(*it, receiver_style, types);
     if (!funcs.empty()) {
       return funcs;
     }
@@ -132,16 +132,15 @@ std::vector<cel::FunctionOverloadReference> Resolver::FindOverloads(
   return funcs;
 }
 
-std::vector<CelFunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
+std::vector<cel::FunctionRegistry::LazyOverload> Resolver::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<cel::Kind>& types, int64_t expr_id) const {
   // Resolve the fully qualified names and then search the function registry
   // for possible matches.
-  std::vector<CelFunctionRegistry::LazyOverload> funcs;
+  std::vector<cel::FunctionRegistry::LazyOverload> funcs;
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
-    funcs = function_registry_->ModernFindLazyOverloads(name, receiver_style,
-                                                        types);
+    funcs = function_registry_.FindLazyOverloads(name, receiver_style, types);
     if (!funcs.empty()) {
       return funcs;
     }

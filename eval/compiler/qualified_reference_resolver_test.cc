@@ -4,7 +4,6 @@
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/text_format.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
@@ -94,7 +93,7 @@ TEST(ResolveReferences, Basic) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
                                   warnings, &expr);
@@ -124,7 +123,7 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
                                   warnings, &expr);
@@ -146,7 +145,7 @@ TEST(ResolveReferences, NamespacedIdent) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[7].set_name("namespace_x.bar");
 
@@ -207,7 +206,7 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[1].set_name("foo.bar.var1");
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
@@ -257,7 +256,7 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[5].set_name("bar.foo.Enum.ENUM_VAL1");
   reference_map[5].mutable_value().set_int64_value(9);
@@ -293,7 +292,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[2].mutable_value().set_int64_value(2);
   reference_map[5].set_name("bar.foo.Enum.ENUM_VAL1");
@@ -330,7 +329,7 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[2].set_name("foo.bar.var1");
   reference_map[2].mutable_value().set_bool_value(true);
   reference_map[5].set_name("bar.foo.var2");
@@ -401,7 +400,7 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
                                 CelValue::Type::kBool,
                             })));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings;
   reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
 
@@ -418,7 +417,7 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
   absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings;
   reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
 
@@ -453,7 +452,7 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     // Builtins aren't in the function registry.
     CelFunctionRegistry func_registry;
     CelTypeRegistry type_registry;
-    Resolver registry("", &func_registry, &type_registry);
+    Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
     BuilderWarnings warnings;
     reference_map[1].mutable_overload_id().push_back(
         absl::StrCat("builtin.", builtin_fn));
@@ -475,7 +474,7 @@ TEST(ResolveReferences,
   absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings;
   reference_map[1].set_name("udf_boolean_and");
 
@@ -499,7 +498,7 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
   absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings(/*fail_eagerly=*/true);
   reference_map[1].set_name("udf_boolean_and");
 
@@ -518,7 +517,7 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[2].mutable_overload_id().push_back("udf_boolean_and");
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
@@ -557,7 +556,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
@@ -576,7 +575,7 @@ TEST(ResolveReferences,
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
@@ -597,7 +596,7 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
@@ -632,7 +631,8 @@ TEST(ResolveReferences,
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("com.google", &func_registry, &type_registry);
+  Resolver registry("com.google", func_registry.InternalGetRegistry(),
+                    &type_registry);
   auto result = ResolveReferences(&reference_map, registry, &source_info,
                                   warnings, &expr);
 
@@ -691,7 +691,7 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.option.boolean_and", true, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
 
   auto result = ResolveReferences(&reference_map, registry, &source_info,
@@ -782,7 +782,7 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[3].set_name("ENUM");
   reference_map[3].mutable_value().set_int64_value(2);
   reference_map[7].set_name("ENUM");
@@ -889,7 +889,7 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   reference_map[0].set_name("pkg.var");
   BuilderWarnings warnings;
 

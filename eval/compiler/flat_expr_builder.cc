@@ -1270,8 +1270,8 @@ FlatExprBuilder::CreateExpressionImpl(
     cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
   BuilderWarnings warnings_builder(fail_on_warnings_);
-  Resolver resolver(container(), GetRegistry(), GetTypeRegistry(),
-                    enable_qualified_type_identifiers_);
+  Resolver resolver(container(), GetRegistry()->InternalGetRegistry(),
+                    GetTypeRegistry(), enable_qualified_type_identifiers_);
   absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
   auto& ast_impl = AstImpl::CastFromPublicAst(ast);
   const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
@@ -1301,9 +1301,9 @@ FlatExprBuilder::CreateExpressionImpl(
 
   cel::ast::internal::Expr const_fold_buffer;
   if (constant_folding_) {
-    cel::ast::internal::FoldConstants(ast_impl.root_expr(),
-                                      *this->GetRegistry(), constant_arena_,
-                                      constant_idents, const_fold_buffer);
+    cel::ast::internal::FoldConstants(
+        ast_impl.root_expr(), this->GetRegistry()->InternalGetRegistry(),
+        constant_arena_, constant_idents, const_fold_buffer);
     effective_expr = &const_fold_buffer;
   }
 

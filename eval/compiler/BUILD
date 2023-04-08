@@ -140,13 +140,17 @@ cc_library(
     ],
     deps = [
         "//base:ast_internal",
+        "//base:function_interface",
         "//base:value",
         "//eval/internal:errors",
         "//eval/internal:interop",
         "//eval/public:cel_builtins",
-        "//eval/public:cel_function_registry",
+        "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
+        "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
+        "//runtime:function_overload_reference",
+        "//runtime:function_registry",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
@@ -160,13 +164,10 @@ cc_test(
     ],
     deps = [
         ":constant_folding",
-        "//base:type_factory",
-        "//base:type_manager",
+        "//base:type",
         "//base:value",
-        "//base:value_factory",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_function_registry",
-        "//eval/public:cel_value",
         "//eval/testutil:test_message_cc_proto",
         "//extensions/protobuf:ast_converters",
         "//extensions/protobuf:memory_manager",
@@ -192,7 +193,6 @@ cc_library(
         "//eval/eval:expression_build_warning",
         "//eval/public:ast_rewrite_native",
         "//eval/public:cel_builtins",
-        "//eval/public:cel_function_registry",
         "//eval/public:source_position_native",
         "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -211,9 +211,9 @@ cc_library(
     deps = [
         "//base:kind",
         "//eval/internal:interop",
-        "//eval/public:cel_function_registry",
         "//eval/public:cel_type_registry",
         "//runtime:function_overload_reference",
+        "//runtime:function_registry",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
@@ -240,7 +240,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -282,7 +281,6 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

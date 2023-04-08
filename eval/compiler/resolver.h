@@ -9,9 +9,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/kind.h"
-#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "runtime/function_overload_reference.h"
+#include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -26,7 +26,7 @@ namespace google::api::expr::runtime {
 class Resolver {
  public:
   Resolver(absl::string_view container,
-           const CelFunctionRegistry* function_registry,
+           const cel::FunctionRegistry& function_registry,
            const CelTypeRegistry* type_registry,
            bool resolve_qualified_type_identifiers = true);
 
@@ -51,7 +51,7 @@ class Resolver {
 
   // FindLazyOverloads returns the set, possibly empty, of lazy overloads
   // matching the given function signature.
-  std::vector<CelFunctionRegistry::LazyOverload> FindLazyOverloads(
+  std::vector<cel::FunctionRegistry::LazyOverload> FindLazyOverloads(
       absl::string_view name, bool receiver_style,
       const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 
@@ -69,7 +69,7 @@ class Resolver {
  private:
   std::vector<std::string> namespace_prefixes_;
   absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
-  const CelFunctionRegistry* function_registry_;
+  const cel::FunctionRegistry& function_registry_;
   const CelTypeRegistry* type_registry_;
   bool resolve_qualified_type_identifiers_;
 };
