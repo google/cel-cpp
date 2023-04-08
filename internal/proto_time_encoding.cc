@@ -67,7 +67,8 @@ absl::Status EncodeDuration(absl::Duration duration,
   CEL_RETURN_IF_ERROR(CelValidateDuration(duration));
   // s and n may both be negative, per the Duration proto spec.
   const int64_t s = absl::IDivDuration(duration, absl::Seconds(1), &duration);
-  const int64_t n = absl::IDivDuration(duration, absl::Nanoseconds(1), &duration);
+  const int64_t n =
+      absl::IDivDuration(duration, absl::Nanoseconds(1), &duration);
   proto->set_seconds(s);
   proto->set_nanos(n);
   return absl::OkStatus();
