@@ -371,8 +371,15 @@ cc_library(
     deps = [
         ":function_interface",
         ":functions",
+        ":handle",
+        ":value",
         "//base/internal:function_adapter",
+        "//internal:status_macros",
+        "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

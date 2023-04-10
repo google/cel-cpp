@@ -20,13 +20,20 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_FUNCTION_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_FUNCTION_ADAPTER_H_
 
+#include <functional>
 #include <memory>
-#include <utility>
 
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/function.h"
 #include "base/function_interface.h"
+#include "base/handle.h"
 #include "base/internal/function_adapter.h"
+#include "base/value.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 namespace internal {
@@ -64,14 +71,29 @@ struct AdaptedTypeTraits<const T&> {
 // check the type of the argument at evaluation time.
 //
 // Supported CEL to C++ type mappings:
+// bool -> bool
 // double -> double
 // uint -> uint64_t
 // int -> int64_t
-// dyn -> Handle<Value>
-// TODO(issues/5): add support for remaining builtin types.
+// timestamp -> absl::Time
+// duration -> absl::Duration
+//
+// Complex types may be referred to by cref or handle.
+// To return these, users should return a Handle<Value>.
+// any/dyn -> Handle<Value>, const Value&
+// string -> Handle<StringValue> | const StringValue&
+// bytes -> Handle<BytesValue> | const BytesValue&
+// list -> Handle<ListValue> | const ListValue&
+// map -> Handle<MapValue> | const MapValue&
+// struct -> Handle<StructValue> | const StructValue&
+// null -> Handle<NullValue> | const NullValue&
+//
+// To intercept error and unknown arguments, users must use a non-strict
+// overload with all arguments typed as any and check the kind of the
+// Handle<Value> argument.
 //
 // Example Usage:
-//  double SquareDifference(double x, double y) {
+//  double SquareDifference(ValueFactory&, double x, double y) {
 //    return x * x - y * y;
 //  }
 //
@@ -143,7 +165,7 @@ class BinaryFunctionAdapter {
 // See documentation for Binary Function adapter for general recommendations.
 //
 // Example Usage:
-//  double Invert(double x) {
+//  double Invert(ValueFactory&, double x) {
 //   return 1 / x;
 //  }
 //

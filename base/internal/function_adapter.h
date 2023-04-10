@@ -17,17 +17,28 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_INTERNAL_FUNCTION_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_INTERNAL_FUNCTION_ADAPTER_H_
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "base/handle.h"
 #include "base/kind.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
+#include "base/values/double_value.h"
 #include "base/values/duration_value.h"
 #include "base/values/int_value.h"
+#include "base/values/list_value.h"
+#include "base/values/map_value.h"
+#include "base/values/null_value.h"
+#include "base/values/string_value.h"
+#include "base/values/struct_value.h"
 #include "base/values/timestamp_value.h"
 #include "base/values/uint_value.h"
 #include "internal/status_macros.h"
@@ -79,35 +90,33 @@ constexpr Kind AdaptedKind<absl::Duration>() {
   return Kind::kDuration;
 }
 
-template <>
-constexpr Kind AdaptedKind<Handle<Value>>() {
-  return Kind::kAny;
-}
+// ValueTypes without a canonical c++ type representation can be referenced by
+// Handle, cref Handle, or cref ValueType.
+#define HANDLE_ADAPTED_KIND_OVL(value_type, kind)           \
+  template <>                                               \
+  constexpr Kind AdaptedKind<const value_type&>() {         \
+    return kind;                                            \
+  }                                                         \
+                                                            \
+  template <>                                               \
+  constexpr Kind AdaptedKind<Handle<value_type>>() {        \
+    return kind;                                            \
+  }                                                         \
+                                                            \
+  template <>                                               \
+  constexpr Kind AdaptedKind<const Handle<value_type>&>() { \
+    return kind;                                            \
+  }
 
-template <>
-constexpr Kind AdaptedKind<Handle<StringValue>>() {
-  return Kind::kString;
-}
+HANDLE_ADAPTED_KIND_OVL(Value, Kind::kAny);
+HANDLE_ADAPTED_KIND_OVL(StringValue, Kind::kString);
+HANDLE_ADAPTED_KIND_OVL(BytesValue, Kind::kBytes);
+HANDLE_ADAPTED_KIND_OVL(StructValue, Kind::kStruct);
+HANDLE_ADAPTED_KIND_OVL(MapValue, Kind::kMap);
+HANDLE_ADAPTED_KIND_OVL(ListValue, Kind::kList);
+HANDLE_ADAPTED_KIND_OVL(NullValue, Kind::kNullType);
 
-template <>
-constexpr Kind AdaptedKind<Handle<BytesValue>>() {
-  return Kind::kBytes;
-}
-
-template <>
-constexpr Kind AdaptedKind<const Handle<Value>&>() {
-  return Kind::kAny;
-}
-
-template <>
-constexpr Kind AdaptedKind<const Handle<StringValue>&>() {
-  return Kind::kString;
-}
-
-template <>
-constexpr Kind AdaptedKind<const Handle<BytesValue>&>() {
-  return Kind::kBytes;
-}
+#undef HANDLE_ADAPTED_KIND_OVL
 
 // Adapt a Handle<Value> to its corresponding argument type in a wrapped c++
 // function.
@@ -182,6 +191,16 @@ struct HandleToAdaptedVisitor {
   }
 
   template <typename T>
+  absl::Status operator()(const T** out) {
+    if (!input->Is<T>()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("expected ", KindToString(T::kKind), " value"));
+    }
+    *out = &(*input.As<T>());
+    return absl::OkStatus();
+  }
+
+  template <typename T>
   absl::Status operator()(Handle<T>* out) {
     const Handle<T>* out_ptr;
     CEL_RETURN_IF_ERROR(this->operator()(&out_ptr));
@@ -212,13 +231,13 @@ struct AdaptedToHandleVisitor {
   }
 
   absl::StatusOr<Handle<Value>> operator()(absl::Time in) {
-    // Type matching may have already occurred. Its to late to change up the
+    // Type matching may have already occurred. It's too late to change up the
     // type and return an error.
     return value_factory.CreateUncheckedTimestampValue(in);
   }
 
   absl::StatusOr<Handle<Value>> operator()(absl::Duration in) {
-    // Type matching may have already occurred. Its to late to change up the
+    // Type matching may have already occurred. It's too late to change up the
     // type and return an error.
     return value_factory.CreateUncheckedDurationValue(in);
   }

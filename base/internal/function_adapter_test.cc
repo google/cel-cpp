@@ -14,15 +14,32 @@
 
 #include "base/internal/function_adapter.h"
 
+#include <cstdint>
+#include <string>
+
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/time/time.h"
+#include "base/handle.h"
+#include "base/kind.h"
 #include "base/memory_manager.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
+#include "base/type_provider.h"
+#include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
 #include "base/values/duration_value.h"
+#include "base/values/error_value.h"
 #include "base/values/int_value.h"
+#include "base/values/list_value.h"
+#include "base/values/map_value.h"
+#include "base/values/null_value.h"
 #include "base/values/string_value.h"
+#include "base/values/struct_value.h"
+#include "base/values/timestamp_value.h"
 #include "base/values/uint_value.h"
 #include "internal/testing.h"
 
@@ -48,6 +65,28 @@ static_assert(AdaptedKind<Handle<StringValue>>() == Kind::kString,
               "string adapts to Handle<String>");
 static_assert(AdaptedKind<Handle<BytesValue>>() == Kind::kBytes,
               "bytes adapts to Handle<Bytes>");
+static_assert(AdaptedKind<Handle<StructValue>>() == Kind::kStruct,
+              "struct adapts to Handle<StructValue>");
+static_assert(AdaptedKind<Handle<ListValue>>() == Kind::kList,
+              "list adapts to Handle<ListValue>");
+static_assert(AdaptedKind<Handle<MapValue>>() == Kind::kMap,
+              "map adapts to Handle<MapValue>");
+static_assert(AdaptedKind<Handle<NullValue>>() == Kind::kNullType,
+              "null adapts to Handle<NullValue>");
+static_assert(AdaptedKind<const Value&>() == Kind::kAny,
+              "any adapts to const Value&");
+static_assert(AdaptedKind<const StringValue&>() == Kind::kString,
+              "string adapts to const String&");
+static_assert(AdaptedKind<const BytesValue&>() == Kind::kBytes,
+              "bytes adapts to const Bytes&");
+static_assert(AdaptedKind<const StructValue&>() == Kind::kStruct,
+              "struct adapts to const StructValue&");
+static_assert(AdaptedKind<const ListValue&>() == Kind::kList,
+              "list adapts to const ListValue&");
+static_assert(AdaptedKind<const MapValue&>() == Kind::kMap,
+              "map adapts to const MapValue&");
+static_assert(AdaptedKind<const NullValue&>() == Kind::kNullType,
+              "null adapts to const NullValue&");
 
 class ValueFactoryTestBase : public testing::Test {
  public:
@@ -187,7 +226,7 @@ TEST_F(HandleToAdaptedVisitorTest, String) {
   EXPECT_EQ(out->ToString(), "string");
 }
 
-TEST_F(HandleToAdaptedVisitorTest, StringPtr) {
+TEST_F(HandleToAdaptedVisitorTest, StringHandlePtr) {
   ASSERT_OK_AND_ASSIGN(Handle<Value> v,
                        value_factory().CreateStringValue("string"));
 
@@ -195,6 +234,16 @@ TEST_F(HandleToAdaptedVisitorTest, StringPtr) {
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
 
   EXPECT_EQ((*out)->ToString(), "string");
+}
+
+TEST_F(HandleToAdaptedVisitorTest, StringPtr) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateStringValue("string"));
+
+  const StringValue* out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out->ToString(), "string");
 }
 
 TEST_F(HandleToAdaptedVisitorTest, StringWrongKind) {
@@ -216,7 +265,7 @@ TEST_F(HandleToAdaptedVisitorTest, Bytes) {
   EXPECT_EQ(out->ToString(), "bytes");
 }
 
-TEST_F(HandleToAdaptedVisitorTest, BytesPtr) {
+TEST_F(HandleToAdaptedVisitorTest, BytesHandlePtr) {
   ASSERT_OK_AND_ASSIGN(Handle<Value> v,
                        value_factory().CreateBytesValue("bytes"));
 
@@ -224,6 +273,16 @@ TEST_F(HandleToAdaptedVisitorTest, BytesPtr) {
   ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
 
   EXPECT_EQ((*out)->ToString(), "bytes");
+}
+
+TEST_F(HandleToAdaptedVisitorTest, BytesPtr) {
+  ASSERT_OK_AND_ASSIGN(Handle<Value> v,
+                       value_factory().CreateBytesValue("bytes"));
+
+  const BytesValue* out;
+  ASSERT_OK(HandleToAdaptedVisitor{v}(&out));
+
+  EXPECT_EQ(out->ToString(), "bytes");
 }
 
 TEST_F(HandleToAdaptedVisitorTest, BytesWrongKind) {
