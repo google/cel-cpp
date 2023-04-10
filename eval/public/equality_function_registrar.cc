@@ -26,6 +26,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "base/function_adapter.h"
+#include "base/kind.h"
+#include "base/value_factory.h"
+#include "base/values/null_value.h"
+#include "base/values/struct_value.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
@@ -36,11 +41,17 @@
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::BinaryFunctionAdapter;
+using ::cel::Kind;
+using ::cel::NullValue;
+using ::cel::StructValue;
+using ::cel::ValueFactory;
 using ::google::protobuf::Arena;
 
 // Forward declaration of the functors for generic equality operator.
@@ -63,16 +74,6 @@ absl::optional<bool> Inequal(Type t1, Type t2) {
 template <class Type>
 absl::optional<bool> Equal(Type t1, Type t2) {
   return t1 == t2;
-}
-
-bool MessageNullEqual(Arena* arena, MessageWrapper t1, CelValue::NullType) {
-  // messages should never be null.
-  return false;
-}
-
-bool MessageNullInequal(Arena* arena, MessageWrapper t1, CelValue::NullType) {
-  // messages should never be null.
-  return true;
 }
 
 // Equality for lists. Template parameter provides either heterogeneous or
@@ -220,30 +221,30 @@ absl::optional<bool> HomogenousCelValueEqual(const CelValue& t1,
     return absl::nullopt;
   }
   switch (t1.type()) {
-    case CelValue::Type::kNullType:
+    case Kind::kNullType:
       return Equal<CelValue::NullType>(CelValue::NullType(),
                                        CelValue::NullType());
-    case CelValue::Type::kBool:
+    case Kind::kBool:
       return Equal<bool>(t1.BoolOrDie(), t2.BoolOrDie());
-    case CelValue::Type::kInt64:
+    case Kind::kInt64:
       return Equal<int64_t>(t1.Int64OrDie(), t2.Int64OrDie());
-    case CelValue::Type::kUint64:
+    case Kind::kUint64:
       return Equal<uint64_t>(t1.Uint64OrDie(), t2.Uint64OrDie());
-    case CelValue::Type::kDouble:
+    case Kind::kDouble:
       return Equal<double>(t1.DoubleOrDie(), t2.DoubleOrDie());
-    case CelValue::Type::kString:
+    case Kind::kString:
       return Equal<CelValue::StringHolder>(t1.StringOrDie(), t2.StringOrDie());
-    case CelValue::Type::kBytes:
+    case Kind::kBytes:
       return Equal<CelValue::BytesHolder>(t1.BytesOrDie(), t2.BytesOrDie());
-    case CelValue::Type::kDuration:
+    case Kind::kDuration:
       return Equal<absl::Duration>(t1.DurationOrDie(), t2.DurationOrDie());
-    case CelValue::Type::kTimestamp:
+    case Kind::kTimestamp:
       return Equal<absl::Time>(t1.TimestampOrDie(), t2.TimestampOrDie());
-    case CelValue::Type::kList:
+    case Kind::kList:
       return ListEqual<EqualityProvider>(t1.ListOrDie(), t2.ListOrDie());
-    case CelValue::Type::kMap:
+    case Kind::kMap:
       return MapEqual<EqualityProvider>(t1.MapOrDie(), t2.MapOrDie());
-    case CelValue::Type::kCelType:
+    case Kind::kCelType:
       return Equal<CelValue::CelTypeHolder>(t1.CelTypeOrDie(),
                                             t2.CelTypeOrDie());
     default:
@@ -278,22 +279,6 @@ absl::Status RegisterEqualityFunctionsForType(CelFunctionRegistry* registry) {
   // Equality
   CEL_RETURN_IF_ERROR(registry->Register(FunctionAdapter::Create(
       builtin::kEqual, false, WrapComparison<Type>(&Equal<Type>))));
-
-  return absl::OkStatus();
-}
-
-template <typename T, typename U>
-absl::Status RegisterSymmetricFunction(
-    absl::string_view name, std::function<bool(google::protobuf::Arena*, T, U)> fn,
-    CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR(registry->Register(
-      PortableBinaryFunctionAdapter<bool, T, U>::Create(name, false, fn)));
-
-  // the symmetric version
-  CEL_RETURN_IF_ERROR(
-      registry->Register(PortableBinaryFunctionAdapter<bool, U, T>::Create(
-          name, false,
-          [fn](google::protobuf::Arena* arena, U u, T t) { return fn(arena, t, u); })));
 
   return absl::OkStatus();
 }
@@ -336,12 +321,40 @@ absl::Status RegisterHomogenousEqualityFunctions(
 
 absl::Status RegisterNullMessageEqualityFunctions(
     CelFunctionRegistry* registry) {
-  CEL_RETURN_IF_ERROR(
-      (RegisterSymmetricFunction<MessageWrapper, CelValue::NullType>(
-          builtin::kEqual, MessageNullEqual, registry)));
-  CEL_RETURN_IF_ERROR(
-      (RegisterSymmetricFunction<MessageWrapper, CelValue::NullType>(
-          builtin::kInequal, MessageNullInequal, registry)));
+  // equals
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<bool, const StructValue&,
+                            const NullValue&>::CreateDescriptor(builtin::kEqual,
+                                                                false),
+      BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>::
+          WrapFunction([](ValueFactory&, const StructValue&, const NullValue&) {
+            return false;
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>::
+          CreateDescriptor(builtin::kEqual, false),
+      BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>::
+          WrapFunction([](ValueFactory&, const NullValue&, const StructValue&) {
+            return false;
+          })));
+
+  // inequals
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>::
+          CreateDescriptor(builtin::kInequal, false),
+      BinaryFunctionAdapter<bool, const StructValue&, const NullValue&>::
+          WrapFunction([](ValueFactory&, const StructValue&, const NullValue&) {
+            return true;
+          })));
+
+  CEL_RETURN_IF_ERROR(registry->Register(
+      BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>::
+          CreateDescriptor(builtin::kInequal, false),
+      BinaryFunctionAdapter<bool, const NullValue&, const StructValue&>::
+          WrapFunction([](ValueFactory&, const NullValue&, const StructValue&) {
+            return true;
+          })));
 
   return absl::OkStatus();
 }

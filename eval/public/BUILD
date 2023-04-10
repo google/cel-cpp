@@ -385,6 +385,9 @@ cc_library(
         ":cel_value",
         ":message_wrapper",
         ":portable_cel_function_adapter",
+        "//base:function_adapter",
+        "//base:kind",
+        "//base:value",
         "//eval/public/structs:legacy_type_adapter",
         "//eval/public/structs:legacy_type_info_apis",
         "//internal:status_macros",
@@ -392,6 +395,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
