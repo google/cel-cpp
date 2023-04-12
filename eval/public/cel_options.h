@@ -121,14 +121,6 @@ struct InterpreterOptions {
   // comprehension expressions.
   bool enable_comprehension_vulnerability_check = false;
 
-  // Enable coercing null cel values to messages in function resolution. This
-  // allows extension functions that previously depended on representing null
-  // values as nullptr messages to function.
-  //
-  // Note: This will be disabled by default in the future after clients that
-  // depend on the legacy function resolution are identified.
-  bool enable_null_to_message_coercion = false;
-
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
   bool enable_heterogeneous_equality = true;
 
