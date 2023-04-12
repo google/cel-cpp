@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <limits>
 
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "eval/public/cel_value.h"
 
@@ -205,18 +206,6 @@ struct LosslessConvertibleToUintVisitor {
   constexpr bool operator()(int64_t value) const { return value >= 0; }
 };
 
-struct CelValueVisitor {
-  CelValue operator()(double value) const {
-    return CelValue::CreateDouble(value);
-  }
-  CelValue operator()(uint64_t value) const {
-    return CelValue::CreateUint64(value);
-  }
-  CelValue operator()(int64_t value) const {
-    return CelValue::CreateInt64(value);
-  }
-};
-
 }  // namespace internal
 
 // Utility class for CEL number operations.
@@ -303,9 +292,11 @@ class CelNumber {
     return Compare(other) != internal::ComparisonResult::kEqual;
   }
 
-  // Adapt the CelNumber into a CelValue.
-  CelValue ToCelValue() const {
-    return absl::visit(internal::CelValueVisitor(), value_);
+  // Visit the underlying number representation, a variant of double, uint64_t,
+  // or int64_t.
+  template <typename T, typename Op>
+  T visit(Op&& op) const {
+    return absl::visit(std::forward<Op>(op), value_);
   }
 
  private:

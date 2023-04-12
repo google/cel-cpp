@@ -1190,6 +1190,7 @@ cc_library(
     hdrs = ["cel_number.h"],
     deps = [
         ":cel_value",
+        "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
     ],
 )

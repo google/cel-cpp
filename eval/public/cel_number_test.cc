@@ -80,16 +80,5 @@ TEST(CelNumber, Conversions) {
   EXPECT_EQ(CelNumber::FromDouble(1.0).AsInt(), 1);
 }
 
-TEST(CelNumber, ToCelValue) {
-  EXPECT_TRUE(CelNumber::FromDouble(1.0).ToCelValue().IsDouble());
-  EXPECT_EQ(CelNumber::FromDouble(1.0).ToCelValue().DoubleOrDie(), 1.0);
-
-  EXPECT_TRUE(CelNumber::FromInt64(-42L).ToCelValue().IsInt64());
-  EXPECT_EQ(CelNumber::FromInt64(-42L).ToCelValue().Int64OrDie(), -42L);
-
-  EXPECT_TRUE(CelNumber::FromUint64(123u).ToCelValue().IsUint64());
-  EXPECT_EQ(CelNumber::FromUint64(123u).ToCelValue().Uint64OrDie(), 123u);
-}
-
 }  // namespace
 }  // namespace google::api::expr::runtime
