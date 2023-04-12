@@ -627,6 +627,7 @@ cc_library(
         "cel_options.h",
     ],
     deps = [
+        "//runtime:runtime_options",
         "@com_google_protobuf//:protobuf",
     ],
 )

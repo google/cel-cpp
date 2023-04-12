@@ -49,7 +49,8 @@ TEST(RegexMatchStep, Precompiled) {
   *checked_expr.mutable_source_info() = parsed_expr.source_info();
   checked_expr.mutable_reference_map()->insert(
       {checked_expr.expr().id(), MakeMatchesStringOverload()});
-  auto options = InterpreterOptions{.enable_regex_precompilation = true};
+  InterpreterOptions options;
+  options.enable_regex_precompilation = true;
   auto expr_builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
   ASSERT_OK_AND_ASSIGN(auto expr,
@@ -69,7 +70,8 @@ TEST(RegexMatchStep, PrecompiledInvalidRegex) {
   *checked_expr.mutable_source_info() = parsed_expr.source_info();
   checked_expr.mutable_reference_map()->insert(
       {checked_expr.expr().id(), MakeMatchesStringOverload()});
-  auto options = InterpreterOptions{.enable_regex_precompilation = true};
+  InterpreterOptions options;
+  options.enable_regex_precompilation = true;
   auto expr_builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
   EXPECT_THAT(
@@ -86,8 +88,9 @@ TEST(RegexMatchStep, PrecompiledInvalidProgramTooLarge) {
   *checked_expr.mutable_source_info() = parsed_expr.source_info();
   checked_expr.mutable_reference_map()->insert(
       {checked_expr.expr().id(), MakeMatchesStringOverload()});
-  auto options = InterpreterOptions{.regex_max_program_size = 1,
-                                    .enable_regex_precompilation = true};
+  InterpreterOptions options;
+  options.regex_max_program_size = 1;
+  options.enable_regex_precompilation = true;
   auto expr_builder = CreateCelExpressionBuilder(options);
   ASSERT_OK(RegisterBuiltinFunctions(expr_builder->GetRegistry(), options));
   EXPECT_THAT(expr_builder->CreateExpression(&checked_expr),
