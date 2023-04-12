@@ -47,6 +47,7 @@ cc_library(
         "//eval/public:source_position_native",
         "//extensions/protobuf:ast_converters",
         "//internal:status_macros",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_map",
@@ -57,6 +58,7 @@ cc_library(
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -123,6 +125,7 @@ cc_test(
         "//internal:status_macros",
         "//internal:testing",
         "//parser",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

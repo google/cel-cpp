@@ -53,8 +53,8 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     CEL_ASSIGN_OR_RETURN(step, CreateTernaryStep(4));
     path.push_back(std::move(step));
 
-    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {},
-                               enable_unknown);
+    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                               cel::RuntimeOptions{}, 0, {}, enable_unknown);
 
     Activation activation;
     std::string value("test");

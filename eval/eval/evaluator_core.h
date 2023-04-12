@@ -134,7 +134,8 @@ class ExecutionFrame {
   // arena serves as allocation manager during the expression evaluation.
 
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
-                 const CelTypeRegistry* type_registry, int max_iterations,
+                 const CelTypeRegistry* type_registry,
+                 const cel::RuntimeOptions& options, int max_iterations,
                  CelExpressionFlatEvaluationState* state, bool enable_unknowns,
                  bool enable_unknown_function_results,
                  bool enable_missing_attribute_errors,
@@ -144,6 +145,7 @@ class ExecutionFrame {
         activation_(activation),
         modern_activation_(activation),
         type_registry_(*type_registry),
+        options_(options),
         enable_unknowns_(enable_unknowns),
         enable_unknown_function_results_(enable_unknown_function_results),
         enable_missing_attribute_errors_(enable_missing_attribute_errors),
@@ -256,6 +258,7 @@ class ExecutionFrame {
   const BaseActivation& activation_;
   cel::interop_internal::AdapterActivationImpl modern_activation_;
   const CelTypeRegistry& type_registry_;
+  const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
   bool enable_unknowns_;
   bool enable_unknown_function_results_;
   bool enable_missing_attribute_errors_;
@@ -277,7 +280,7 @@ class CelExpressionFlatImpl : public CelExpression {
   // bound).
   CelExpressionFlatImpl(ExecutionPath path,
                         const CelTypeRegistry* type_registry,
-                        int max_iterations,
+                        const cel::RuntimeOptions& options, int max_iterations,
                         std::set<std::string> iter_variable_names,
                         bool enable_unknowns = false,
                         bool enable_unknown_function_results = false,
@@ -287,6 +290,7 @@ class CelExpressionFlatImpl : public CelExpression {
       : arena_(std::move(arena)),
         path_(std::move(path)),
         type_registry_(*type_registry),
+        options_(options),
         max_iterations_(max_iterations),
         iter_variable_names_(std::move(iter_variable_names)),
         enable_unknowns_(enable_unknowns),
@@ -326,6 +330,7 @@ class CelExpressionFlatImpl : public CelExpression {
   const std::unique_ptr<const google::protobuf::Arena> arena_;
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
+  cel::RuntimeOptions options_;
   const int max_iterations_;
   const std::set<std::string> iter_variable_names_;
   bool enable_unknowns_;

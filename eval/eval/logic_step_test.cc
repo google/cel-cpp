@@ -42,8 +42,8 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     path.push_back(std::move(step));
 
     auto dummy_expr = std::make_unique<Expr>();
-    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {},
-                               enable_unknown);
+    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                               cel::RuntimeOptions{}, 0, {}, enable_unknown);
 
     Activation activation;
     activation.InsertValue("name0", arg0);

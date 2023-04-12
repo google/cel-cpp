@@ -67,8 +67,8 @@ CelValue EvaluateAttributeHelper(
   path.push_back(std::move(CreateIdentStep(key_expr.ident_expr(), 2).value()));
   path.push_back(std::move(CreateContainerAccessStep(call, 3).value()));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
-                                 enable_unknown);
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {}, enable_unknown);
   Activation activation;
 
   activation.InsertValue("container", container);
