@@ -14,11 +14,14 @@
 
 #include "base/value.h"
 
-#include <cstddef>
 #include <string>
 #include <utility>
 
+#include "absl/base/optimization.h"
+#include "base/handle.h"
 #include "base/internal/message_wrapper.h"
+#include "base/kind.h"
+#include "base/type.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
@@ -29,6 +32,7 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/null_value.h"
+#include "base/values/opaque_value.h"
 #include "base/values/string_value.h"
 #include "base/values/struct_value.h"
 #include "base/values/timestamp_value.h"
@@ -74,6 +78,8 @@ Handle<Type> Value::type() const {
       return static_cast<const StructValue*>(this)->type().As<Type>();
     case Kind::kUnknown:
       return static_cast<const UnknownValue*>(this)->type().As<Type>();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->type().As<Type>();
     default:
       ABSL_UNREACHABLE();
   }
@@ -113,6 +119,8 @@ std::string Value::DebugString() const {
       return static_cast<const StructValue*>(this)->DebugString();
     case Kind::kUnknown:
       return static_cast<const UnknownValue*>(this)->DebugString();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->DebugString();
     default:
       ABSL_UNREACHABLE();
   }
@@ -199,6 +207,8 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
                  static_cast<const UnknownValue&>(rhs).attribute_set() &&
              static_cast<const UnknownValue&>(lhs).function_result_set() ==
                  static_cast<const UnknownValue&>(rhs).function_result_set();
+    case Kind::kOpaque:
+      return &lhs == &rhs;
     default:
       ABSL_UNREACHABLE();
   }
@@ -437,6 +447,9 @@ void ValueHandle::Delete(Kind kind, const Value& value) {
       return;
     case Kind::kBytes:
       delete static_cast<const StringBytesValue*>(&value);
+      return;
+    case Kind::kOpaque:
+      delete static_cast<const OpaqueValue*>(&value);
       return;
     default:
       ABSL_UNREACHABLE();

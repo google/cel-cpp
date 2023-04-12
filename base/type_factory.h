@@ -136,8 +136,8 @@ class TypeFactory final {
                                                 const Handle<Type>& value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
-      const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<Handle<OptionalType>> CreateOptionalType(Handle<Type> type)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Handle<TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 

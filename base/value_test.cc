@@ -35,6 +35,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
+#include "base/values/optional_value.h"
 #include "internal/benchmark.h"
 #include "internal/strings.h"
 #include "internal/testing.h"
@@ -1146,6 +1147,41 @@ TEST_P(ValueTest, Unknown) {
   EXPECT_EQ(zero_value, value_factory.CreateUnknownValue());
   EXPECT_EQ(zero_value->kind(), Kind::kUnknown);
   EXPECT_EQ(zero_value->type(), type_factory.GetUnknownType());
+}
+
+TEST_P(ValueTest, Optional) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto none_optional,
+      OptionalValue::None(value_factory, type_factory.GetStringType()));
+  EXPECT_TRUE(none_optional->Is<OpaqueValue>());
+  EXPECT_TRUE(none_optional->Is<OptionalValue>());
+  EXPECT_FALSE(none_optional->Is<NullValue>());
+  EXPECT_EQ(none_optional, none_optional);
+  EXPECT_EQ(none_optional->kind(), Kind::kOpaque);
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_EQ(none_optional->type(), optional_type);
+  EXPECT_FALSE(none_optional->has_value());
+  EXPECT_EQ(none_optional->DebugString(), "optional()");
+
+  ASSERT_OK_AND_ASSIGN(
+      auto full_optional,
+      OptionalValue::Of(value_factory, value_factory.GetStringValue()));
+  EXPECT_TRUE(full_optional->Is<OpaqueValue>());
+  EXPECT_TRUE(full_optional->Is<OptionalValue>());
+  EXPECT_FALSE(full_optional->Is<NullValue>());
+  EXPECT_EQ(full_optional, full_optional);
+  EXPECT_EQ(full_optional->kind(), Kind::kOpaque);
+  EXPECT_EQ(full_optional->type(), optional_type);
+  EXPECT_TRUE(full_optional->has_value());
+  EXPECT_EQ(full_optional->value(), value_factory.GetStringValue());
+  EXPECT_EQ(full_optional->DebugString(), "optional(\"\")");
+
+  EXPECT_NE(none_optional, full_optional);
+  EXPECT_NE(full_optional, none_optional);
 }
 
 Handle<BytesValue> MakeStringBytes(ValueFactory& value_factory,
