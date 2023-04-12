@@ -36,6 +36,7 @@
 #include "base/types/list_type.h"
 #include "base/types/map_type.h"
 #include "base/types/null_type.h"
+#include "base/types/optional_type.h"
 #include "base/types/string_type.h"
 #include "base/types/struct_type.h"
 #include "base/types/timestamp_type.h"
@@ -135,6 +136,9 @@ class TypeFactory final {
                                                 const Handle<Type>& value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
+      const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   Handle<TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   Handle<UnknownType> GetUnknownType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -155,6 +159,10 @@ class TypeFactory final {
   // cache map types and avoid re-creating the same type.
   absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>, Handle<MapType>>
       map_types_ ABSL_GUARDED_BY(map_types_mutex_);
+
+  absl::Mutex optional_types_mutex_;
+  absl::flat_hash_map<Handle<Type>, Handle<OptionalType>> optional_types_
+      ABSL_GUARDED_BY(optional_types_mutex_);
 };
 
 }  // namespace cel

@@ -33,6 +33,7 @@
 namespace cel {
 namespace {
 
+using testing::ElementsAre;
 using testing::Eq;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
@@ -266,6 +267,10 @@ void TestTypeIs(const Handle<T>& type) {
             (std::is_same<T, StringWrapperType>::value));
   EXPECT_EQ(type->template Is<UintWrapperType>(),
             (std::is_same<T, UintWrapperType>::value));
+  EXPECT_EQ(type->template Is<OpaqueType>(),
+            (std::is_base_of<OpaqueType, T>::value));
+  EXPECT_EQ(type->template Is<OptionalType>(),
+            (std::is_same<T, OptionalType>::value));
 }
 
 TEST_P(TypeTest, Null) {
@@ -415,6 +420,16 @@ TEST_P(TypeTest, UnknownType) {
   EXPECT_EQ(type_factory.GetUnknownType()->kind(), Kind::kUnknown);
   EXPECT_EQ(type_factory.GetUnknownType()->name(), "*unknown*");
   TestTypeIs(type_factory.GetUnknownType());
+}
+
+TEST_P(TypeTest, OptionalType) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_EQ(optional_type->kind(), Kind::kOpaque);
+  EXPECT_EQ(optional_type->name(), "optional");
+  TestTypeIs(optional_type);
+  TestTypeIs<StringType>(optional_type->type().As<StringType>());
 }
 
 TEST_P(TypeTest, BoolWrapperType) {
@@ -574,6 +589,20 @@ INSTANTIATE_TEST_SUITE_P(StructTypeTest, StructTypeTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 
+class OptionalTypeTest : public TypeTest {};
+
+TEST_P(OptionalTypeTest, Parameters) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_THAT(optional_type->parameters(),
+              ElementsAre(type_factory.GetStringType()));
+}
+
+INSTANTIATE_TEST_SUITE_P(OptionalTypeTest, OptionalTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
 class DebugStringTest : public TypeTest {};
 
 TEST_P(DebugStringTest, NullType) {
@@ -674,6 +703,13 @@ TEST_P(DebugStringTest, TypeType) {
   EXPECT_EQ(type_factory.GetTypeType()->DebugString(), "type");
 }
 
+TEST_P(DebugStringTest, OptionalType) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_EQ(optional_type->DebugString(), "optional<string>");
+}
+
 TEST_P(DebugStringTest, BoolWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolWrapperType()->DebugString(),
@@ -733,6 +769,16 @@ TEST(MapType, DestructorSkippable) {
       base_internal::Metadata::IsDestructorSkippable(*trivial_map_type));
 }
 
+TEST(OptionalType, DestructorSkippable) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto trivial_optional_type,
+      type_factory.CreateOptionalType(type_factory.GetStringType()));
+  EXPECT_TRUE(
+      base_internal::Metadata::IsDestructorSkippable(*trivial_optional_type));
+}
+
 TEST_P(TypeTest, SupportsAbslHash) {
   TypeFactory type_factory(memory_manager());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
@@ -762,6 +808,8 @@ TEST_P(TypeTest, SupportsAbslHash) {
       Handle<Type>(type_factory.GetIntWrapperType()),
       Handle<Type>(type_factory.GetStringWrapperType()),
       Handle<Type>(type_factory.GetUintWrapperType()),
+      Handle<Type>(
+          Must(type_factory.CreateOptionalType(type_factory.GetStringType()))),
   }));
 }
 

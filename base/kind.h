@@ -43,6 +43,7 @@ enum class Kind /* : uint8_t */ {
   kEnum,
   kDyn,
   kWrapper,
+  kOpaque,
 
   // Legacy aliases, deprecated do not use.
   kInt64 = kInt,

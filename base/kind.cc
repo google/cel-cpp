@@ -54,6 +54,8 @@ absl::string_view KindToString(Kind kind) {
       return "*unknown*";
     case Kind::kWrapper:
       return "*wrapper*";
+    case Kind::kOpaque:
+      return "*opaque*";
     default:
       return "*error*";
   }

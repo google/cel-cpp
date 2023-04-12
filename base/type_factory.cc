@@ -100,4 +100,19 @@ absl::StatusOr<Handle<MapType>> TypeFactory::CreateMapType(
   return map_type;
 }
 
+absl::StatusOr<Handle<OptionalType>> TypeFactory::CreateOptionalType(
+    const Handle<Type>& type) {
+  {
+    absl::ReaderMutexLock lock(&optional_types_mutex_);
+    auto existing = optional_types_.find(type);
+    if (existing != optional_types_.end()) {
+      return existing->second;
+    }
+  }
+  absl::WriterMutexLock lock(&optional_types_mutex_);
+  auto optional_type =
+      HandleFactory<OptionalType>::Make<OptionalType>(memory_manager(), type);
+  return optional_types_.insert({type, std::move(optional_type)}).first->second;
+}
+
 }  // namespace cel

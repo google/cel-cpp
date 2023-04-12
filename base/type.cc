@@ -14,6 +14,7 @@
 
 #include "base/type.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -31,6 +32,7 @@
 #include "base/types/list_type.h"
 #include "base/types/map_type.h"
 #include "base/types/null_type.h"
+#include "base/types/opaque_type.h"
 #include "base/types/string_type.h"
 #include "base/types/struct_type.h"
 #include "base/types/timestamp_type.h"
@@ -83,6 +85,8 @@ absl::string_view Type::name() const {
       return static_cast<const UnknownType*>(this)->name();
     case Kind::kWrapper:
       return static_cast<const WrapperType*>(this)->name();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueType*>(this)->name();
     default:
       return "*unreachable*";
   }
@@ -128,6 +132,8 @@ std::string Type::DebugString() const {
       return static_cast<const UnknownType*>(this)->DebugString();
     case Kind::kWrapper:
       return static_cast<const WrapperType*>(this)->DebugString();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueType*>(this)->DebugString();
     default:
       return "*unreachable*";
   }
@@ -181,6 +187,19 @@ bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
     case Kind::kWrapper:
       return static_cast<const WrapperType&>(lhs).wrapped() ==
              static_cast<const WrapperType&>(rhs).wrapped();
+    case Kind::kOpaque: {
+      if (static_cast<const OpaqueType&>(lhs).name() !=
+          static_cast<const OpaqueType&>(rhs).name()) {
+        return false;
+      }
+      const auto& lhs_parameters =
+          static_cast<const OpaqueType&>(lhs).parameters();
+      const auto& rhs_parameters =
+          static_cast<const OpaqueType&>(rhs).parameters();
+      return lhs_parameters.size() == rhs_parameters.size() &&
+             std::equal(lhs_parameters.begin(), lhs_parameters.end(),
+                        rhs_parameters.begin());
+    }
     default:
       return false;
   }
@@ -251,6 +270,16 @@ void Type::HashValue(const Type& type, Kind kind, absl::HashState state) {
                                static_cast<const WrapperType&>(type).wrapped(),
                                kind, type.name());
       return;
+    case Kind::kOpaque: {
+      const auto& parameters =
+          static_cast<const OpaqueType&>(type).parameters();
+      for (const auto& parameter : parameters) {
+        state = absl::HashState::combine(std::move(state), parameter);
+      }
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const OpaqueType&>(type).name());
+      return;
+    }
     default:
       return;
   }
@@ -368,6 +397,9 @@ void TypeHandle::Delete() const {
     case Kind::kStruct:
       delete static_cast<AbstractStructType*>(
           static_cast<Type*>(data_.get_heap()));
+      return;
+    case Kind::kOpaque:
+      delete static_cast<OpaqueType*>(static_cast<Type*>(data_.get_heap()));
       return;
     default:
       ABSL_UNREACHABLE();

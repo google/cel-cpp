@@ -42,7 +42,7 @@ class TypeFactory;
 class TypeProvider;
 class TypeManager;
 class WrapperType;
-
+class OpaqueType;
 class ValueFactory;
 
 // A representation of a CEL type that enables introspection, for program
@@ -99,6 +99,7 @@ class Type : public base_internal::Data {
   friend class base_internal::SimpleType;
   friend class WrapperType;
   friend class base_internal::TypeHandle;
+  friend class OpaqueType;
 
   static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
 
