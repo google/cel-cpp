@@ -1190,8 +1190,8 @@ cc_library(
     hdrs = ["cel_number.h"],
     deps = [
         ":cel_value",
+        "//runtime/internal:number",
         "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -1258,16 +1258,5 @@ cc_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "cel_number_test",
-    srcs = ["cel_number_test.cc"],
-    deps = [
-        ":cel_number",
-        ":cel_value",
-        "//internal:testing",
-        "@com_google_absl//absl/types:optional",
     ],
 )
