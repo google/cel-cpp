@@ -104,8 +104,11 @@ class Type : public base_internal::Data {
   static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
 
   static bool Equals(const Type& lhs, const Type& rhs) {
-    return &lhs == &rhs ||
-           (lhs.kind() == rhs.kind() && Equals(lhs, rhs, lhs.kind()));
+    if (&lhs == &rhs) {
+      return true;
+    }
+    Kind lhs_kind = lhs.kind();
+    return lhs_kind == rhs.kind() && Equals(lhs, rhs, lhs_kind);
   }
 
   static void HashValue(const Type& type, Kind kind, absl::HashState state);

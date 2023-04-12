@@ -167,7 +167,8 @@ bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
     case Kind::kBytes:
       return true;
     case Kind::kEnum:
-      return lhs.name() == rhs.name();
+      return static_cast<const EnumType&>(lhs).name() ==
+             static_cast<const EnumType&>(rhs).name();
     case Kind::kDuration:
       return true;
     case Kind::kTimestamp:
@@ -181,7 +182,8 @@ bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
              static_cast<const MapType&>(lhs).value() ==
                  static_cast<const MapType&>(rhs).value();
     case Kind::kStruct:
-      return lhs.name() == rhs.name();
+      return static_cast<const StructType&>(lhs).name() ==
+             static_cast<const StructType&>(rhs).name();
     case Kind::kUnknown:
       return true;
     case Kind::kWrapper:
@@ -208,67 +210,84 @@ bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
 void Type::HashValue(const Type& type, Kind kind, absl::HashState state) {
   switch (kind) {
     case Kind::kNullType:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const NullType&>(type).name());
       return;
     case Kind::kError:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const ErrorType&>(type).name());
       return;
     case Kind::kDyn:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const DynType&>(type).name());
       return;
     case Kind::kAny:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const AnyType&>(type).name());
       return;
     case Kind::kType:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const TypeType&>(type).name());
       return;
     case Kind::kBool:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const BoolType&>(type).name());
       return;
     case Kind::kInt:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const IntType&>(type).name());
       return;
     case Kind::kUint:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const UintType&>(type).name());
       return;
     case Kind::kDouble:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const DoubleType&>(type).name());
       return;
     case Kind::kString:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const StringType&>(type).name());
       return;
     case Kind::kBytes:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const BytesType&>(type).name());
       return;
     case Kind::kEnum:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const EnumType&>(type).name());
       return;
     case Kind::kDuration:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const DurationType&>(type).name());
       return;
     case Kind::kTimestamp:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const TimestampType&>(type).name());
       return;
     case Kind::kList:
       absl::HashState::combine(std::move(state),
                                static_cast<const ListType&>(type).element(),
-                               kind, type.name());
+                               kind, static_cast<const ListType&>(type).name());
       return;
     case Kind::kMap:
-      absl::HashState::combine(
-          std::move(state), static_cast<const MapType&>(type).key(),
-          static_cast<const MapType&>(type).value(), kind, type.name());
+      absl::HashState::combine(std::move(state),
+                               static_cast<const MapType&>(type).key(),
+                               static_cast<const MapType&>(type).value(), kind,
+                               static_cast<const MapType&>(type).name());
       return;
     case Kind::kStruct:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const StructType&>(type).name());
       return;
     case Kind::kUnknown:
-      absl::HashState::combine(std::move(state), kind, type.name());
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const UnknownType&>(type).name());
       return;
     case Kind::kWrapper:
-      absl::HashState::combine(std::move(state),
-                               static_cast<const WrapperType&>(type).wrapped(),
-                               kind, type.name());
+      absl::HashState::combine(
+          std::move(state), static_cast<const WrapperType&>(type).wrapped(),
+          kind, static_cast<const WrapperType&>(type).name());
       return;
     case Kind::kOpaque: {
       const auto& parameters =
