@@ -16,7 +16,6 @@
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
-#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -74,8 +73,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(),
-                       cel::RuntimeOptions{}, 0, &state,
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
                        /*enable_unknowns=*/false,
                        /*enable_unknown_funcion_results=*/false,
                        /*enable_missing_attribute_errors=*/false,
@@ -98,8 +96,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   ProtoMemoryManager manager(&arena);
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(),
-                       cel::RuntimeOptions{}, 0, &state,
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
                        /*enable_unknowns=*/false,
                        /*enable_unknown_funcion_results=*/false,
                        /*enable_missing_attribute_errors=*/false,
@@ -162,8 +159,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {});
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -239,9 +235,7 @@ TEST(EvaluatorCoreTest, TraceTest) {
   result_expr->set_id(25);
   result_expr->mutable_const_expr()->set_bool_value(true);
 
-  cel::RuntimeOptions options;
-  options.short_circuiting = false;
-  FlatExprBuilder builder(options);
+  FlatExprBuilder builder;
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   builder.set_shortcircuiting(false);
   ASSERT_OK_AND_ASSIGN(auto cel_expr,

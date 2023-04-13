@@ -40,7 +40,6 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
-#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -51,9 +50,7 @@ using testing::HasSubstr;
 using cel::internal::StatusIs;
 
 TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
-  cel::RuntimeOptions options;
-  options.enable_comprehension_list_append = true;
-  FlatExprBuilder builder(options);
+  FlatExprBuilder builder;
   builder.set_enable_comprehension_list_append(true);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
@@ -71,9 +68,7 @@ TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
 }
 
 TEST(FlatExprBuilderComprehensionsTest, MapComp) {
-  cel::RuntimeOptions options;
-  options.enable_comprehension_list_append = true;
-  FlatExprBuilder builder(options);
+  FlatExprBuilder builder;
   builder.set_enable_comprehension_list_append(true);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("[1, 2].map(x, x * 2)"));
@@ -120,8 +115,8 @@ TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
           }
         })pb",
       &expr);
-  cel::RuntimeOptions options;
-  FlatExprBuilder builder(options);
+
+  FlatExprBuilder builder;
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -172,8 +167,7 @@ TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithConcatVulernability) {
         })pb",
       &expr);
 
-  cel::RuntimeOptions options;
-  FlatExprBuilder builder(options);
+  FlatExprBuilder builder;
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
@@ -268,8 +262,7 @@ TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithStructVulernability) {
       )pb",
       &expr);
 
-  cel::RuntimeOptions options;
-  FlatExprBuilder builder(options);
+  FlatExprBuilder builder;
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
@@ -335,8 +328,7 @@ TEST(FlatExprBuilderComprehensionsTest,
       )pb",
       &expr);
 
-  cel::RuntimeOptions options;
-  FlatExprBuilder builder(options);
+  FlatExprBuilder builder;
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),

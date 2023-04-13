@@ -30,8 +30,7 @@ TEST(IdentStepTest, TestIdentStep) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {});
 
   Activation activation;
   Arena arena;
@@ -57,8 +56,7 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {});
 
   Activation activation;
   Arena arena;
@@ -81,8 +79,7 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {},
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {},
                              /*enable_unknowns=*/false);
 
   Activation activation;
@@ -117,8 +114,8 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, false, false,
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, false,
+                             false,
                              /*enable_missing_attribute_errors=*/true);
 
   Activation activation;
@@ -155,8 +152,7 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   path.push_back(std::move(step));
 
   // Expression with unknowns enabled.
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true);
 
   Activation activation;
   Arena arena;
