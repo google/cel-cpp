@@ -623,10 +623,14 @@ cc_library(
 
 cc_library(
     name = "cel_options",
+    srcs = [
+        "cel_options.cc",
+    ],
     hdrs = [
         "cel_options.h",
     ],
     deps = [
+        "//runtime:runtime_options",
         "@com_google_protobuf//:protobuf",
     ],
 )

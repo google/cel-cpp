@@ -14,21 +14,40 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
-#define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
+#ifndef THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_OPTIONS_H_
+#define THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_OPTIONS_H_
 
-#include "google/protobuf/arena.h"
-#include "runtime/runtime_options.h"
+namespace cel {
 
-namespace google::api::expr::runtime {
+// Options for unknown processing.
+enum class UnknownProcessingOptions {
+  // No unknown processing.
+  kDisabled,
+  // Only attributes supported.
+  kAttributeOnly,
+  // Attributes and functions supported. Function results are dependent on the
+  // logic for handling unknown_attributes, so clients must opt in to both.
+  kAttributeAndFunction
+};
 
-using UnknownProcessingOptions = cel::UnknownProcessingOptions;
-
-using ProtoWrapperTypeOptions = cel::ProtoWrapperTypeOptions;
+// Options for handling unset wrapper types on field access.
+enum class ProtoWrapperTypeOptions {
+  // Default: legacy behavior following proto semantics (unset behaves as though
+  // it is set to default value).
+  kUnsetProtoDefault,
+  // CEL spec behavior, unset wrapper is treated as a null value when accessed.
+  kUnsetNull,
+};
 
 // LINT.IfChange
 // Interpreter options for controlling evaluation and builtin functions.
-struct InterpreterOptions {
+//
+// Members should provide simple parameters for configuring core features and
+// built-ins.
+//
+// Optimizations or features that have a heavy footprint should be added via an
+// extension API.
+struct RuntimeOptions {
   // Level of unknown support enabled.
   UnknownProcessingOptions unknown_processing =
       UnknownProcessingOptions::kDisabled;
@@ -46,13 +65,6 @@ struct InterpreterOptions {
   // AND, OR, and TERNARY do not evaluate the entire expression once the the
   // resulting value is known from the left-hand side.
   bool short_circuiting = true;
-
-  // Enable constant folding during the expression creation. If enabled,
-  // an arena must be provided for constant generation.
-  // Note that expression tracing applies a modified expression if this option
-  // is enabled.
-  bool constant_folding = false;
-  google::protobuf::Arena* constant_arena = nullptr;
 
   // Enable comprehension expressions (e.g. exists, all)
   bool enable_comprehension = true;
@@ -97,16 +109,6 @@ struct InterpreterOptions {
   // as static type values rather than as per-eval variables.
   bool enable_qualified_type_identifiers = false;
 
-  // Enable a check for memory vulnerabilities within comprehension
-  // sub-expressions.
-  //
-  // Note: This flag is not necessary if you are only using Core CEL macros.
-  //
-  // Consider enabling this feature when using custom comprehensions, and
-  // absolutely enable the feature when using hand-written ASTs for
-  // comprehension expressions.
-  bool enable_comprehension_vulnerability_check = false;
-
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
   bool enable_heterogeneous_equality = true;
 
@@ -115,33 +117,9 @@ struct InterpreterOptions {
   // that will result in a Null cel value, as opposed to returning the
   // cel representation of the proto defined default int64_t: 0.
   bool enable_empty_wrapper_null_unboxing = false;
-
-  // Enables expression rewrites to disambiguate namespace qualified identifiers
-  // from container access for variables and receiver-style calls for functions.
-  //
-  // Note: This makes an implicit copy of the input expression for lifetime
-  // safety.
-  bool enable_qualified_identifier_rewrites = false;
-
-  // Historically regular expressions were compiled on each invocation to
-  // `matches` and not re-used, even if the regular expression is a constant.
-  // Enabling this option causes constant regular expressions to be compiled
-  // ahead-of-time and re-used for each invocation to `matches`. A side effect
-  // of this is that invalid regular expressions will result in errors when
-  // building an expression.
-  //
-  // It is recommended that this option be enabled in conjunction with
-  // enable_constant_folding.
-  //
-  // Note: In most cases enabling this option is safe, however to perform this
-  // optimization overloads are not consulted for applicable calls. If you have
-  // overriden the default `matches` function you should not enable this option.
-  bool enable_regex_precompilation = false;
 };
-// LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
+// LINT.ThenChange(//depot/google3/eval/public/cel_options.h)
 
-cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options);
+}  // namespace cel
 
-}  // namespace google::api::expr::runtime
-
-#endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
+#endif  // THIRD_PARTY_CEL_CPP_RUNTIME_RUNTIME_OPTIONS_H_
