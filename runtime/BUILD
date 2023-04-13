@@ -134,8 +134,3 @@ cc_test(
         "@com_google_absl//absl/status",
     ],
 )
-
-cc_library(
-    name = "runtime_options",
-    hdrs = ["runtime_options.h"],
-)
