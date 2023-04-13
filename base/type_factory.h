@@ -21,6 +21,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
@@ -49,9 +50,6 @@ namespace cel {
 
 // TypeFactory provides member functions to get and create type implementations
 // of builtin types.
-//
-// While TypeFactory is not final and has a virtual destructor, inheriting it is
-// forbidden outside of the CEL codebase.
 class TypeFactory final {
  private:
   template <typename T, typename U, typename V>
@@ -63,55 +61,94 @@ class TypeFactory final {
       : memory_manager_(memory_manager) {}
 
   TypeFactory(const TypeFactory&) = delete;
+  TypeFactory(TypeFactory&&) = delete;
   TypeFactory& operator=(const TypeFactory&) = delete;
+  TypeFactory& operator=(TypeFactory&&) = delete;
 
-  Handle<NullType> GetNullType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<NullType>& GetNullType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return NullType::Get();
+  }
 
-  Handle<ErrorType> GetErrorType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<ErrorType>& GetErrorType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return ErrorType::Get();
+  }
 
-  Handle<DynType> GetDynType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<DynType>& GetDynType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DynType::Get();
+  }
 
-  Handle<AnyType> GetAnyType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<AnyType>& GetAnyType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AnyType::Get();
+  }
 
-  Handle<BoolType> GetBoolType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<BoolType>& GetBoolType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BoolType::Get();
+  }
 
-  Handle<IntType> GetIntType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<IntType>& GetIntType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return IntType::Get();
+  }
 
-  Handle<UintType> GetUintType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<UintType>& GetUintType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return UintType::Get();
+  }
 
-  Handle<DoubleType> GetDoubleType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<DoubleType>& GetDoubleType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DoubleType::Get();
+  }
 
-  Handle<StringType> GetStringType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<StringType>& GetStringType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return StringType::Get();
+  }
 
-  Handle<BytesType> GetBytesType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<BytesType>& GetBytesType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BytesType::Get();
+  }
 
-  Handle<DurationType> GetDurationType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<DurationType>& GetDurationType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DurationType::Get();
+  }
 
-  Handle<TimestampType> GetTimestampType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<TimestampType>& GetTimestampType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return TimestampType::Get();
+  }
 
-  Handle<BoolWrapperType> GetBoolWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const Handle<TypeType>& GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return TypeType::Get();
+  }
+
+  const Handle<UnknownType>& GetUnknownType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return UnknownType::Get();
+  }
+
+  const Handle<BoolWrapperType>& GetBoolWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return BoolWrapperType::Get();
   }
 
-  Handle<BytesWrapperType> GetBytesWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const Handle<BytesWrapperType>& GetBytesWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return BytesWrapperType::Get();
   }
 
-  Handle<DoubleWrapperType> GetDoubleWrapperType()
+  const Handle<DoubleWrapperType>& GetDoubleWrapperType()
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return DoubleWrapperType::Get();
   }
 
-  Handle<IntWrapperType> GetIntWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const Handle<IntWrapperType>& GetIntWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return IntWrapperType::Get();
   }
 
-  Handle<StringWrapperType> GetStringWrapperType()
+  const Handle<StringWrapperType>& GetStringWrapperType()
       ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return StringWrapperType::Get();
   }
 
-  Handle<UintWrapperType> GetUintWrapperType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  const Handle<UintWrapperType>& GetUintWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return UintWrapperType::Get();
   }
 
@@ -136,12 +173,8 @@ class TypeFactory final {
                                                 const Handle<Type>& value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Handle<OptionalType>> CreateOptionalType(Handle<Type> type)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  Handle<TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  Handle<UnknownType> GetUnknownType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
+      const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const { return memory_manager_; }
 
@@ -161,6 +194,8 @@ class TypeFactory final {
       map_types_ ABSL_GUARDED_BY(map_types_mutex_);
 
   absl::Mutex optional_types_mutex_;
+  // Mapping from type to the optional type. This allows us to cache optional
+  // types and avoid re-creating the same type.
   absl::flat_hash_map<Handle<Type>, Handle<OptionalType>> optional_types_
       ABSL_GUARDED_BY(optional_types_mutex_);
 };
