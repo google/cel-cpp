@@ -1359,8 +1359,9 @@ TEST(FlatExprBuilderTest, ComprehensionBudget) {
     })",
                                       &expr);
 
-  FlatExprBuilder builder;
-  builder.set_comprehension_max_iterations(1);
+  cel::RuntimeOptions options;
+  options.comprehension_max_iterations = 1;
+  FlatExprBuilder builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
@@ -1824,8 +1825,9 @@ TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
 TEST(FlatExprBuilderTest, HeterogeneousEqualityEnabled) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("{1: 2, 2u: 3}[1.0]"));
-  FlatExprBuilder builder;
-  builder.set_enable_heterogeneous_equality(true);
+  cel::RuntimeOptions options;
+  options.enable_heterogeneous_equality = true;
+  FlatExprBuilder builder(options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -1841,8 +1843,9 @@ TEST(FlatExprBuilderTest, HeterogeneousEqualityEnabled) {
 TEST(FlatExprBuilderTest, HeterogeneousEqualityDisabled) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("{1: 2, 2u: 3}[1.0]"));
-  FlatExprBuilder builder;
-  builder.set_enable_heterogeneous_equality(false);
+  cel::RuntimeOptions options;
+  options.enable_heterogeneous_equality = false;
+  FlatExprBuilder builder(options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));

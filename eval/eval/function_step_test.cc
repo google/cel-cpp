@@ -218,25 +218,11 @@ class FunctionStepTest
  public:
   // underlying expression impl moves path
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
-    bool unknowns = false;
-    bool unknown_function_results = false;
-    switch (GetParam()) {
-      case UnknownProcessingOptions::kAttributeAndFunction:
-        unknowns = true;
-        unknown_function_results = true;
-        break;
-      case UnknownProcessingOptions::kAttributeOnly:
-        unknowns = true;
-        unknown_function_results = false;
-        break;
-      case UnknownProcessingOptions::kDisabled:
-        unknowns = false;
-        unknown_function_results = false;
-        break;
-    }
+    cel::RuntimeOptions options;
+    options.unknown_processing = GetParam();
+
     return std::make_unique<CelExpressionFlatImpl>(
-        std::move(path), &TestTypeRegistry(), cel::RuntimeOptions{}, 0,
-        std::set<std::string>(), unknowns, unknown_function_results);
+        std::move(path), &TestTypeRegistry(), options, std::set<std::string>());
   }
 };
 
@@ -579,18 +565,11 @@ class FunctionStepTestUnknowns
     : public testing::TestWithParam<UnknownProcessingOptions> {
  public:
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
-    bool unknown_functions;
-    switch (GetParam()) {
-      case UnknownProcessingOptions::kAttributeAndFunction:
-        unknown_functions = true;
-        break;
-      default:
-        unknown_functions = false;
-        break;
-    }
+    cel::RuntimeOptions options;
+    options.unknown_processing = GetParam();
+
     return std::make_unique<CelExpressionFlatImpl>(
-        std::move(path), &TestTypeRegistry(), cel::RuntimeOptions{}, 0,
-        std::set<std::string>(), true, unknown_functions);
+        std::move(path), &TestTypeRegistry(), options, std::set<std::string>());
   }
 };
 
@@ -723,9 +702,10 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options, {});
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -767,8 +747,10 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options, {});
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -810,8 +792,10 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options, {});
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -848,8 +832,10 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options, {});
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -931,8 +917,10 @@ TEST(FunctionStepStrictnessTest,
                        MakeTestFunctionStep(call1, registry));
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options, {});
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
@@ -956,8 +944,10 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   Expr placeholder_expr;
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options, {});
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));

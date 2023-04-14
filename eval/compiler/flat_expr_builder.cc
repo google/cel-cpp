@@ -1322,10 +1322,7 @@ FlatExprBuilder::CreateExpressionImpl(
   std::unique_ptr<CelExpression> expression_impl =
       std::make_unique<CelExpressionFlatImpl>(
           std::move(execution_path), GetTypeRegistry(), options_,
-          comprehension_max_iterations_, std::move(iter_variable_names),
-          enable_unknowns_, enable_unknown_function_results_,
-          enable_missing_attribute_errors_, enable_heterogeneous_equality_,
-          std::move(arena));
+          std::move(iter_variable_names), std::move(arena));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

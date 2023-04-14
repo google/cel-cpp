@@ -15,6 +15,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -45,9 +46,12 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   CEL_ASSIGN_OR_RETURN(auto step,
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step));
-
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 cel::RuntimeOptions{}, 0, {}, enable_unknowns);
+  cel::RuntimeOptions options;
+  if (enable_unknowns) {
+    options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  }
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options,
+                                 {});
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -79,8 +83,13 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 cel::RuntimeOptions{}, 0, {}, enable_unknowns);
+  cel::RuntimeOptions options;
+  if (enable_unknowns) {
+    options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  }
+
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options,
+                                 {});
 
   return cel_expr.Evaluate(activation, arena);
 }
@@ -102,7 +111,7 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
   path.push_back(std::move(step0));
 
   CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 cel::RuntimeOptions{}, 0, {});
+                                 cel::RuntimeOptions{}, {});
   Activation activation;
 
   google::protobuf::Arena arena;

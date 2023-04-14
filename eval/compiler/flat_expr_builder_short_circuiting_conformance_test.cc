@@ -105,10 +105,6 @@ class ShortCircuitingTest : public testing::TestWithParam<bool> {
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
     auto result = std::make_unique<FlatExprBuilder>(options);
-    if (enable_unknowns) {
-      result->set_enable_unknown_function_results(true);
-      result->set_enable_unknowns(true);
-    }
     return result;
   }
 };

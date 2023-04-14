@@ -40,30 +40,11 @@ class FlatExprBuilder : public CelExpressionBuilder {
   // Create a flat expr builder with defaulted options.
   FlatExprBuilder() : CelExpressionBuilder() {}
 
-  // set_enable_unknowns controls support for unknowns in expressions created.
-  void set_enable_unknowns(bool enabled) { enable_unknowns_ = enabled; }
-
-  // set_enable_missing_attribute_errors support for error injection in
-  // expressions created.
-  void set_enable_missing_attribute_errors(bool enabled) {
-    enable_missing_attribute_errors_ = enabled;
-  }
-
-  // set_enable_unknown_function_results controls support for unknown function
-  // results.
-  void set_enable_unknown_function_results(bool enabled) {
-    enable_unknown_function_results_ = enabled;
-  }
-
   // Toggle constant folding optimization. By default it is not enabled.
   // The provided arena is used to hold the generated constants.
   void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
     constant_folding_ = enabled;
     constant_arena_ = arena;
-  }
-
-  void set_comprehension_max_iterations(int max_iterations) {
-    comprehension_max_iterations_ = max_iterations;
   }
 
   // set_enable_comprehension_vulnerability_check inspects comprehension
@@ -76,13 +57,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
   // comprehension expressions.
   void set_enable_comprehension_vulnerability_check(bool enabled) {
     enable_comprehension_vulnerability_check_ = enabled;
-  }
-
-  // If enable_heterogeneous_equality is enabled, the evaluator will use
-  // hetergeneous equality semantics. This includes the == operator and numeric
-  // index lookups in containers.
-  void set_enable_heterogeneous_equality(bool enabled) {
-    enable_heterogeneous_equality_ = enabled;
   }
 
   // If enable_qualified_identifier_rewrites is true, the evaluator will attempt
@@ -128,9 +102,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   cel::RuntimeOptions options_;
 
-  bool enable_unknowns_ = false;
-  bool enable_unknown_function_results_ = false;
-  bool enable_missing_attribute_errors_ = false;
   int comprehension_max_iterations_ = 0;
   bool enable_heterogeneous_equality_ = false;
 

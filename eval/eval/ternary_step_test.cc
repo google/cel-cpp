@@ -11,6 +11,7 @@
 #include "eval/public/unknown_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -53,8 +54,13 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     CEL_ASSIGN_OR_RETURN(step, CreateTernaryStep(4));
     path.push_back(std::move(step));
 
-    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                               cel::RuntimeOptions{}, 0, {}, enable_unknown);
+    cel::RuntimeOptions options;
+    if (enable_unknown) {
+      options.unknown_processing =
+          cel::UnknownProcessingOptions::kAttributeOnly;
+    }
+    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options,
+                               {});
 
     Activation activation;
     std::string value("test");

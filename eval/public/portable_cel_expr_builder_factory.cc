@@ -40,25 +40,6 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
 
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
 
-  builder->set_comprehension_max_iterations(
-      options.comprehension_max_iterations);
-  builder->set_enable_heterogeneous_equality(
-      options.enable_heterogeneous_equality);
-  switch (options.unknown_processing) {
-    case UnknownProcessingOptions::kAttributeAndFunction:
-      builder->set_enable_unknown_function_results(true);
-      builder->set_enable_unknowns(true);
-      break;
-    case UnknownProcessingOptions::kAttributeOnly:
-      builder->set_enable_unknowns(true);
-      break;
-    case UnknownProcessingOptions::kDisabled:
-      break;
-  }
-
-  builder->set_enable_missing_attribute_errors(
-      options.enable_missing_attribute_errors);
-
   // TODO(issues/5): These need to be abstracted to avoid bringing in too
   // many build dependencies by default.
   builder->set_enable_comprehension_vulnerability_check(

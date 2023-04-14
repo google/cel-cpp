@@ -72,14 +72,11 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   auto dummy_expr = std::make_unique<Expr>();
 
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(),
-                       cel::RuntimeOptions{}, 0, &state,
-                       /*enable_unknowns=*/false,
-                       /*enable_unknown_funcion_results=*/false,
-                       /*enable_missing_attribute_errors=*/false,
-                       /*enable_heterogeneous_numeric_lookups=*/true);
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), options, &state);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -98,12 +95,9 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   ProtoMemoryManager manager(&arena);
   ExecutionPath path;
   CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(),
-                       cel::RuntimeOptions{}, 0, &state,
-                       /*enable_unknowns=*/false,
-                       /*enable_unknown_funcion_results=*/false,
-                       /*enable_missing_attribute_errors=*/false,
-                       /*enable_heterogeneous_numeric_lookups=*/true);
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), options, &state);
 
   auto original = cel::interop_internal::CreateIntValue(test_value);
   Expr ident;
@@ -163,7 +157,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step2));
 
   CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{}, 0, {});
+                             cel::RuntimeOptions{}, {});
 
   Activation activation;
   google::protobuf::Arena arena;

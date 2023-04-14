@@ -38,6 +38,7 @@
 #include "eval/public/unknown_attribute_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "runtime/activation_interface.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -135,26 +136,18 @@ class ExecutionFrame {
 
   ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
                  const CelTypeRegistry* type_registry,
-                 const cel::RuntimeOptions& options, int max_iterations,
-                 CelExpressionFlatEvaluationState* state, bool enable_unknowns,
-                 bool enable_unknown_function_results,
-                 bool enable_missing_attribute_errors,
-                 bool enable_heterogeneous_numeric_lookups)
+                 const cel::RuntimeOptions& options,
+                 CelExpressionFlatEvaluationState* state)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
         modern_activation_(activation),
         type_registry_(*type_registry),
         options_(options),
-        enable_unknowns_(enable_unknowns),
-        enable_unknown_function_results_(enable_unknown_function_results),
-        enable_missing_attribute_errors_(enable_missing_attribute_errors),
-        enable_heterogeneous_numeric_lookups_(
-            enable_heterogeneous_numeric_lookups),
         attribute_utility_(modern_activation_.GetUnknownAttributes(),
                            modern_activation_.GetMissingAttributes(),
                            state->memory_manager()),
-        max_iterations_(max_iterations),
+        max_iterations_(options_.comprehension_max_iterations),
         iterations_(0),
         state_(state) {}
 
@@ -175,16 +168,23 @@ class ExecutionFrame {
   }
 
   EvaluatorStack& value_stack() { return state_->value_stack(); }
-  bool enable_unknowns() const { return enable_unknowns_; }
-  bool enable_unknown_function_results() const {
-    return enable_unknown_function_results_;
+
+  bool enable_unknowns() const {
+    return options_.unknown_processing !=
+           cel::UnknownProcessingOptions::kDisabled;
   }
+
+  bool enable_unknown_function_results() const {
+    return options_.unknown_processing ==
+           cel::UnknownProcessingOptions::kAttributeAndFunction;
+  }
+
   bool enable_missing_attribute_errors() const {
-    return enable_missing_attribute_errors_;
+    return options_.enable_missing_attribute_errors;
   }
 
   bool enable_heterogeneous_numeric_lookups() const {
-    return enable_heterogeneous_numeric_lookups_;
+    return options_.enable_heterogeneous_equality;
   }
 
   cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
@@ -259,10 +259,6 @@ class ExecutionFrame {
   cel::interop_internal::AdapterActivationImpl modern_activation_;
   const CelTypeRegistry& type_registry_;
   const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
-  bool enable_unknowns_;
-  bool enable_unknown_function_results_;
-  bool enable_missing_attribute_errors_;
-  bool enable_heterogeneous_numeric_lookups_;
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
@@ -280,23 +276,14 @@ class CelExpressionFlatImpl : public CelExpression {
   // bound).
   CelExpressionFlatImpl(ExecutionPath path,
                         const CelTypeRegistry* type_registry,
-                        const cel::RuntimeOptions& options, int max_iterations,
+                        const cel::RuntimeOptions& options,
                         std::set<std::string> iter_variable_names,
-                        bool enable_unknowns = false,
-                        bool enable_unknown_function_results = false,
-                        bool enable_missing_attribute_errors = false,
-                        bool enable_heterogeneous_equality = false,
                         std::unique_ptr<const google::protobuf::Arena> arena = nullptr)
       : arena_(std::move(arena)),
         path_(std::move(path)),
         type_registry_(*type_registry),
         options_(options),
-        max_iterations_(max_iterations),
-        iter_variable_names_(std::move(iter_variable_names)),
-        enable_unknowns_(enable_unknowns),
-        enable_unknown_function_results_(enable_unknown_function_results),
-        enable_missing_attribute_errors_(enable_missing_attribute_errors),
-        enable_heterogeneous_equality_(enable_heterogeneous_equality) {}
+        iter_variable_names_(std::move(iter_variable_names)) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -331,12 +318,7 @@ class CelExpressionFlatImpl : public CelExpression {
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
   cel::RuntimeOptions options_;
-  const int max_iterations_;
   const std::set<std::string> iter_variable_names_;
-  bool enable_unknowns_;
-  bool enable_unknown_function_results_;
-  bool enable_missing_attribute_errors_;
-  bool enable_heterogeneous_equality_;
 };
 
 }  // namespace google::api::expr::runtime
