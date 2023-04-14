@@ -50,8 +50,7 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options,
-                                 {});
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -88,8 +87,7 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options,
-                                 {});
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
 
   return cel_expr.Evaluate(activation, arena);
 }
@@ -111,7 +109,7 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
   path.push_back(std::move(step0));
 
   CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 cel::RuntimeOptions{}, {});
+                                 cel::RuntimeOptions{});
   Activation activation;
 
   google::protobuf::Arena arena;

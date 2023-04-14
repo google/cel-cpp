@@ -276,7 +276,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       google::protobuf::Arena* constant_arena,
       bool enable_comprehension_vulnerability_check,
       google::api::expr::runtime::BuilderWarnings* warnings,
-      std::set<std::string>* iter_variable_names,
       bool enable_regex_precompilation,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
           reference_map,
@@ -291,13 +290,10 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
         builder_warnings_(warnings),
-        iter_variable_names_(iter_variable_names),
         enable_regex_precompilation_(enable_regex_precompilation),
         regex_program_builder_(options_.regex_max_program_size),
         reference_map_(reference_map),
-        arena_(arena) {
-    DCHECK(iter_variable_names_);
-  }
+        arena_(arena) {}
 
   void PreVisitExpr(const cel::ast::internal::Expr* expr,
                     const cel::ast::internal::SourcePosition*) override {
@@ -632,15 +628,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PostVisit(expr);
     cond_visitor_stack_.pop();
-
-    // Save off the names of the variables we're using, such that we have a
-    // full set of the names from the entire evaluation tree at the end.
-    if (!comprehension_expr->accu_var().empty()) {
-      iter_variable_names_->insert(comprehension_expr->accu_var());
-    }
-    if (!comprehension_expr->iter_var().empty()) {
-      iter_variable_names_->insert(comprehension_expr->iter_var());
-    }
   }
 
   // Invoked after each argument node processed.
@@ -828,8 +815,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   bool enable_comprehension_vulnerability_check_;
   google::api::expr::runtime::BuilderWarnings* builder_warnings_;
-
-  std::set<std::string>* iter_variable_names_;
 
   bool enable_regex_precompilation_;
   RegexProgramBuilder regex_program_builder_;
@@ -1301,12 +1286,10 @@ FlatExprBuilder::CreateExpressionImpl(
 
   auto arena = std::make_unique<google::protobuf::Arena>();
 
-  std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(
       resolver, &execution_path, options_, constant_idents, constant_arena_,
       enable_comprehension_vulnerability_check_, &warnings_builder,
-      &iter_variable_names, enable_regex_precompilation_,
-      &ast_impl.reference_map(), arena.get());
+      enable_regex_precompilation_, &ast_impl.reference_map(), arena.get());
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 
@@ -1320,9 +1303,9 @@ FlatExprBuilder::CreateExpressionImpl(
   }
 
   std::unique_ptr<CelExpression> expression_impl =
-      std::make_unique<CelExpressionFlatImpl>(
-          std::move(execution_path), GetTypeRegistry(), options_,
-          std::move(iter_variable_names), std::move(arena));
+      std::make_unique<CelExpressionFlatImpl>(std::move(execution_path),
+                                              GetTypeRegistry(), options_,
+                                              std::move(arena));
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

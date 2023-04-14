@@ -74,12 +74,13 @@ class ExpressionStep {
 };
 
 using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;
+using ExecutionPathView =
+    absl::Span<const std::unique_ptr<const ExpressionStep>>;
 
 class CelExpressionFlatEvaluationState : public CelEvaluationState {
  public:
-  CelExpressionFlatEvaluationState(
-      size_t value_stack_size, const std::set<std::string>& iter_variable_names,
-      google::protobuf::Arena* arena);
+  CelExpressionFlatEvaluationState(size_t value_stack_size,
+                                   google::protobuf::Arena* arena);
 
   struct ComprehensionVarEntry {
     absl::string_view name;
@@ -101,8 +102,6 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   IterFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
-  std::set<std::string>& iter_variable_names() { return iter_variable_names_; }
-
   google::protobuf::Arena* arena() { return memory_manager_.arena(); }
 
   cel::MemoryManager& memory_manager() { return memory_manager_; }
@@ -119,7 +118,6 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   // manager they want to use for evaluation.
   cel::extensions::ProtoMemoryManager memory_manager_;
   EvaluatorStack value_stack_;
-  std::set<std::string> iter_variable_names_;
   std::vector<IterFrame> iter_stack_;
   cel::TypeFactory type_factory_;
   cel::TypeManager type_manager_;
@@ -134,7 +132,7 @@ class ExecutionFrame {
   // activation provides bindings between parameter names and values.
   // arena serves as allocation manager during the expression evaluation.
 
-  ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
+  ExecutionFrame(ExecutionPathView flat, const BaseActivation& activation,
                  const CelTypeRegistry* type_registry,
                  const cel::RuntimeOptions& options,
                  CelExpressionFlatEvaluationState* state)
@@ -254,7 +252,7 @@ class ExecutionFrame {
 
  private:
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
-  const ExecutionPath& execution_path_;
+  ExecutionPathView execution_path_;
   const BaseActivation& activation_;
   cel::interop_internal::AdapterActivationImpl modern_activation_;
   const CelTypeRegistry& type_registry_;
@@ -277,13 +275,11 @@ class CelExpressionFlatImpl : public CelExpression {
   CelExpressionFlatImpl(ExecutionPath path,
                         const CelTypeRegistry* type_registry,
                         const cel::RuntimeOptions& options,
-                        std::set<std::string> iter_variable_names,
                         std::unique_ptr<const google::protobuf::Arena> arena = nullptr)
       : arena_(std::move(arena)),
         path_(std::move(path)),
         type_registry_(*type_registry),
-        options_(options),
-        iter_variable_names_(std::move(iter_variable_names)) {}
+        options_(options) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -318,7 +314,6 @@ class CelExpressionFlatImpl : public CelExpression {
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
   cel::RuntimeOptions options_;
-  const std::set<std::string> iter_variable_names_;
 };
 
 }  // namespace google::api::expr::runtime

@@ -31,11 +31,9 @@ absl::Status InvalidIterationStateError() {
 // TODO(issues/5): cel::TypeFactory and family are setup here assuming legacy
 // value interop. Later, these will need to be configurable by clients.
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
-    size_t value_stack_size, const std::set<std::string>& iter_variable_names,
-    google::protobuf::Arena* arena)
+    size_t value_stack_size, google::protobuf::Arena* arena)
     : memory_manager_(arena),
       value_stack_(value_stack_size),
-      iter_variable_names_(iter_variable_names),
       type_factory_(memory_manager_),
       type_manager_(type_factory_, cel::TypeProvider::Builtin()),
       value_factory_(type_manager_) {}
@@ -141,8 +139,8 @@ bool ExecutionFrame::GetIterVar(absl::string_view name,
 
 std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
     google::protobuf::Arena* arena) const {
-  return std::make_unique<CelExpressionFlatEvaluationState>(
-      path_.size(), iter_variable_names_, arena);
+  return std::make_unique<CelExpressionFlatEvaluationState>(path_.size(),
+                                                            arena);
 }
 
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(

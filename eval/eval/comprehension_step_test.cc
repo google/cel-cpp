@@ -49,7 +49,7 @@ class ListKeysStepTest : public testing::Test {
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
     return std::make_unique<CelExpressionFlatImpl>(
-        std::move(path), &TestTypeRegistry(), options, std::set<std::string>());
+        std::move(path), &TestTypeRegistry(), options);
   }
 
  private:

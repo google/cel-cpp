@@ -80,7 +80,7 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), &type_registry, options, {});
+  CelExpressionFlatImpl cel_expr(std::move(path), &type_registry, options);
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -171,8 +171,7 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options,
-                                 {});
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -201,7 +200,7 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   if (GetParam()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), &type_registry, options, {});
+  CelExpressionFlatImpl cel_expr(std::move(path), &type_registry, options);
   Activation activation;
 
   google::protobuf::Arena arena;
