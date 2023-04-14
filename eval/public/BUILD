@@ -1208,6 +1208,7 @@ cc_library(
         ":cel_options",
         "//eval/compiler:flat_expr_builder",
         "//eval/public/structs:legacy_type_provider",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status",
     ],
 )

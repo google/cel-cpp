@@ -28,6 +28,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -234,8 +235,8 @@ class FunctionStepTest
         break;
     }
     return std::make_unique<CelExpressionFlatImpl>(
-        std::move(path), &TestTypeRegistry(), 0, std::set<std::string>(),
-        unknowns, unknown_function_results);
+        std::move(path), &TestTypeRegistry(), cel::RuntimeOptions{}, 0,
+        std::set<std::string>(), unknowns, unknown_function_results);
   }
 };
 
@@ -588,8 +589,8 @@ class FunctionStepTestUnknowns
         break;
     }
     return std::make_unique<CelExpressionFlatImpl>(
-        std::move(path), &TestTypeRegistry(), 0, std::set<std::string>(), true,
-        unknown_functions);
+        std::move(path), &TestTypeRegistry(), cel::RuntimeOptions{}, 0,
+        std::set<std::string>(), true, unknown_functions);
   }
 };
 
@@ -723,8 +724,8 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
-                             true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{}, 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -766,8 +767,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
-                             true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{}, 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -809,8 +810,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
-                             true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{}, 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -847,8 +848,8 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
-                             true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{}, 0, {}, true, true);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -930,8 +931,8 @@ TEST(FunctionStepStrictnessTest,
                        MakeTestFunctionStep(call1, registry));
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
-                             true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{}, 0, {}, true, true);
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
@@ -955,8 +956,8 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   Expr placeholder_expr;
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), 0, {}, true,
-                             true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{}, 0, {}, true, true);
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));

@@ -92,7 +92,8 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {},
                                  options.enable_unknowns);
   Activation activation;
   activation.InsertValue("target", target);
@@ -278,8 +279,8 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
-                                 false);
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {}, false);
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -810,8 +811,8 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
 
   google::protobuf::Arena arena;
   bool enable_unknowns = GetParam();
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
-                                 enable_unknowns);
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {}, enable_unknowns);
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -844,7 +845,8 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {},
                                  /*enable_unknowns=*/false);
   Activation activation;
   activation.InsertValue("message",
@@ -885,8 +887,8 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
-                                 false, false,
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {}, false, false,
                                  /*enable_missing_attribute_errors=*/true);
   Activation activation;
   activation.InsertValue("message",
@@ -933,8 +935,8 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   path.push_back(*std::move(step0_status));
   path.push_back(*std::move(step1_status));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), 0, {},
-                                 true);
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
+                                 cel::RuntimeOptions{}, 0, {}, true);
 
   {
     std::vector<CelAttributePattern> unknown_patterns;

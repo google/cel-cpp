@@ -270,7 +270,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
  public:
   FlatExprVisitor(
       const google::api::expr::runtime::Resolver& resolver,
-      google::api::expr::runtime::ExecutionPath* path, bool short_circuiting,
+      google::api::expr::runtime::ExecutionPath* path,
+      const cel::RuntimeOptions& options, bool short_circuiting,
       const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
       google::protobuf::Arena* constant_arena, bool enable_comprehension,
       bool enable_comprehension_list_append,
@@ -286,6 +287,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         flattened_path_(path),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
+        options_(options),
         short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
         constant_arena_(constant_arena),
@@ -302,6 +304,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         reference_map_(reference_map),
         arena_(arena) {
     DCHECK(iter_variable_names_);
+    static_cast<void>(options_);  // TODO(issues/5): follow-up will use this.
   }
 
   void PreVisitExpr(const cel::ast::internal::Expr* expr,
@@ -823,6 +826,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   // field is used as marker suppressing CelExpression creation for SELECTs.
   const cel::ast::internal::Expr* resolved_select_expr_;
 
+  const cel::RuntimeOptions& options_;
   bool short_circuiting_;
 
   const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
@@ -1311,7 +1315,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(
-      resolver, &execution_path, shortcircuiting_, constant_idents,
+      resolver, &execution_path, options_, shortcircuiting_, constant_idents,
       constant_arena_, enable_comprehension_, enable_comprehension_list_append_,
       enable_comprehension_vulnerability_check_,
       enable_wrapper_type_null_unboxing_, &warnings_builder,
@@ -1331,7 +1335,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::unique_ptr<CelExpression> expression_impl =
       std::make_unique<CelExpressionFlatImpl>(
-          std::move(execution_path), GetTypeRegistry(),
+          std::move(execution_path), GetTypeRegistry(), options_,
           comprehension_max_iterations_, std::move(iter_variable_names),
           enable_unknowns_, enable_unknown_function_results_,
           enable_missing_attribute_errors_, enable_heterogeneous_equality_,

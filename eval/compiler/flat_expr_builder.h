@@ -25,6 +25,8 @@
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "eval/public/cel_expression.h"
+#include "runtime/runtime_options.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -32,6 +34,10 @@ namespace google::api::expr::runtime {
 // Builds instances of CelExpressionFlatImpl.
 class FlatExprBuilder : public CelExpressionBuilder {
  public:
+  explicit FlatExprBuilder(const cel::RuntimeOptions& options)
+      : CelExpressionBuilder(), options_(options) {}
+
+  // Create a flat expr builder with defaulted options.
   FlatExprBuilder() : CelExpressionBuilder() {}
 
   // set_enable_unknowns controls support for unknowns in expressions created.
@@ -168,25 +174,27 @@ class FlatExprBuilder : public CelExpressionBuilder {
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
       cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const;
 
+  cel::RuntimeOptions options_;
+
   bool enable_unknowns_ = false;
   bool enable_unknown_function_results_ = false;
   bool enable_missing_attribute_errors_ = false;
   bool shortcircuiting_ = true;
-
-  bool constant_folding_ = false;
-  google::protobuf::Arena* constant_arena_ = nullptr;
   bool enable_comprehension_ = true;
   int comprehension_max_iterations_ = 0;
   bool fail_on_warnings_ = true;
   bool enable_qualified_type_identifiers_ = false;
   bool enable_comprehension_list_append_ = false;
-  bool enable_comprehension_vulnerability_check_ = false;
   bool enable_wrapper_type_null_unboxing_ = false;
   bool enable_heterogeneous_equality_ = false;
-  bool enable_qualified_identifier_rewrites_ = false;
   bool enable_regex_ = false;
-  bool enable_regex_precompilation_ = false;
   int regex_max_program_size_ = -1;
+
+  bool enable_qualified_identifier_rewrites_ = false;
+  bool enable_regex_precompilation_ = false;
+  bool enable_comprehension_vulnerability_check_ = false;
+  bool constant_folding_ = false;
+  google::protobuf::Arena* constant_arena_ = nullptr;
 };
 
 }  // namespace google::api::expr::runtime
