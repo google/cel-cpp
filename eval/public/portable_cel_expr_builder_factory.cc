@@ -40,21 +40,10 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
 
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
 
-  builder->set_shortcircuiting(options.short_circuiting);
-  builder->set_enable_comprehension(options.enable_comprehension);
-  builder->set_enable_comprehension_list_append(
-      options.enable_comprehension_list_append);
   builder->set_comprehension_max_iterations(
       options.comprehension_max_iterations);
-  builder->set_fail_on_warnings(options.fail_on_warnings);
-  builder->set_enable_qualified_type_identifiers(
-      options.enable_qualified_type_identifiers);
-  builder->set_enable_wrapper_type_null_unboxing(
-      options.enable_empty_wrapper_null_unboxing);
   builder->set_enable_heterogeneous_equality(
       options.enable_heterogeneous_equality);
-  builder->set_enable_regex(options.enable_regex);
-  builder->set_regex_max_program_size(options.regex_max_program_size);
   switch (options.unknown_processing) {
     case UnknownProcessingOptions::kAttributeAndFunction:
       builder->set_enable_unknown_function_results(true);

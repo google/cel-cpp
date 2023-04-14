@@ -271,15 +271,13 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   FlatExprVisitor(
       const google::api::expr::runtime::Resolver& resolver,
       google::api::expr::runtime::ExecutionPath* path,
-      const cel::RuntimeOptions& options, bool short_circuiting,
+      const cel::RuntimeOptions& options,
       const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
-      google::protobuf::Arena* constant_arena, bool enable_comprehension,
-      bool enable_comprehension_list_append,
+      google::protobuf::Arena* constant_arena,
       bool enable_comprehension_vulnerability_check,
-      bool enable_wrapper_type_null_unboxing,
       google::api::expr::runtime::BuilderWarnings* warnings,
-      std::set<std::string>* iter_variable_names, bool enable_regex,
-      bool enable_regex_precompilation, int regex_max_program_size,
+      std::set<std::string>* iter_variable_names,
+      bool enable_regex_precompilation,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
           reference_map,
       google::protobuf::Arena* arena)
@@ -288,23 +286,17 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
         options_(options),
-        short_circuiting_(short_circuiting),
         constant_idents_(constant_idents),
         constant_arena_(constant_arena),
-        enable_comprehension_(enable_comprehension),
-        enable_comprehension_list_append_(enable_comprehension_list_append),
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
-        enable_wrapper_type_null_unboxing_(enable_wrapper_type_null_unboxing),
         builder_warnings_(warnings),
         iter_variable_names_(iter_variable_names),
-        enable_regex_(enable_regex),
         enable_regex_precompilation_(enable_regex_precompilation),
-        regex_program_builder_(regex_max_program_size),
+        regex_program_builder_(options_.regex_max_program_size),
         reference_map_(reference_map),
         arena_(arena) {
     DCHECK(iter_variable_names_);
-    static_cast<void>(options_);  // TODO(issues/5): follow-up will use this.
   }
 
   void PreVisitExpr(const cel::ast::internal::Expr* expr,
@@ -453,7 +445,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
 
     AddStep(CreateSelectStep(*select_expr, expr->id(), select_path,
-                             enable_wrapper_type_null_unboxing_));
+                             options_.enable_empty_wrapper_null_unboxing));
   }
 
   // Call node handler group.
@@ -470,14 +462,14 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     std::unique_ptr<CondVisitor> cond_visitor;
     if (call_expr->function() == google::api::expr::runtime::builtin::kAnd) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
-          this, /* cond_value= */ false, short_circuiting_);
+          this, /* cond_value= */ false, options_.short_circuiting);
     } else if (call_expr->function() ==
                google::api::expr::runtime::builtin::kOr) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
-          this, /* cond_value= */ true, short_circuiting_);
+          this, /* cond_value= */ true, options_.short_circuiting);
     } else if (call_expr->function() ==
                google::api::expr::runtime::builtin::kTernary) {
-      if (short_circuiting_) {
+      if (options_.short_circuiting) {
         cond_visitor = std::make_unique<TernaryCondVisitor>(this);
       } else {
         cond_visitor = std::make_unique<ExhaustiveTernaryCondVisitor>(this);
@@ -521,7 +513,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
     // Check to see if this is regular expression matching and the pattern is a
     // constant.
-    if (enable_regex_ && enable_regex_precompilation_ &&
+    if (options_.enable_regex && enable_regex_precompilation_ &&
         IsOptimizeableMatchesCall(*expr, *call_expr)) {
       auto program = regex_program_builder_.BuildRegexProgram(
           GetConstantString(call_expr->args().back()));
@@ -535,7 +527,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
     // Check to see if this is a special case of add that should really be
     // treated as a list append
-    if (enable_comprehension_list_append_ &&
+    if (options_.enable_comprehension_list_append &&
         call_expr->function() == google::api::expr::runtime::builtin::kAdd &&
         call_expr->args().size() == 2 && !comprehension_stack_.empty()) {
       const cel::ast::internal::Comprehension* comprehension =
@@ -597,7 +589,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    if (!ValidateOrError(enable_comprehension_,
+    if (!ValidateOrError(options_.enable_comprehension,
                          "Comprehension support is disabled")) {
       return;
     }
@@ -621,7 +613,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     comprehension_stack_.push(comprehension);
     cond_visitor_stack_.push(
         {expr, std::make_unique<ComprehensionVisitor>(
-                   this, short_circuiting_,
+                   this, options_.short_circuiting,
                    enable_comprehension_vulnerability_check_)});
     auto cond_visitor = FindCondVisitor(expr);
     cond_visitor->PreVisit(expr);
@@ -675,7 +667,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    if (enable_comprehension_list_append_ && !comprehension_stack_.empty() &&
+    if (options_.enable_comprehension_list_append &&
+        !comprehension_stack_.empty() &&
         &(comprehension_stack_.top()->accu_init()) == expr) {
       AddStep(CreateCreateMutableListStep(*list_expr, expr->id()));
       return;
@@ -827,23 +820,17 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   const cel::ast::internal::Expr* resolved_select_expr_;
 
   const cel::RuntimeOptions& options_;
-  bool short_circuiting_;
 
   const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
   google::protobuf::Arena* constant_arena_;
 
-  bool enable_comprehension_;
-  bool enable_comprehension_list_append_;
   std::stack<const cel::ast::internal::Comprehension*> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
-  bool enable_wrapper_type_null_unboxing_;
-
   google::api::expr::runtime::BuilderWarnings* builder_warnings_;
 
   std::set<std::string>* iter_variable_names_;
 
-  bool enable_regex_;
   bool enable_regex_precompilation_;
   RegexProgramBuilder regex_program_builder_;
   const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>* const
@@ -1273,9 +1260,10 @@ absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpressionImpl(
     cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
-  BuilderWarnings warnings_builder(fail_on_warnings_);
+  BuilderWarnings warnings_builder(options_.fail_on_warnings);
   Resolver resolver(container(), GetRegistry()->InternalGetRegistry(),
-                    GetTypeRegistry(), enable_qualified_type_identifiers_);
+                    GetTypeRegistry(),
+                    options_.enable_qualified_type_identifiers);
   absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
   auto& ast_impl = AstImpl::CastFromPublicAst(ast);
   const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
@@ -1315,12 +1303,10 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::set<std::string> iter_variable_names;
   FlatExprVisitor visitor(
-      resolver, &execution_path, options_, shortcircuiting_, constant_idents,
-      constant_arena_, enable_comprehension_, enable_comprehension_list_append_,
-      enable_comprehension_vulnerability_check_,
-      enable_wrapper_type_null_unboxing_, &warnings_builder,
-      &iter_variable_names, enable_regex_, enable_regex_precompilation_,
-      regex_max_program_size_, &ast_impl.reference_map(), arena.get());
+      resolver, &execution_path, options_, constant_idents, constant_arena_,
+      enable_comprehension_vulnerability_check_, &warnings_builder,
+      &iter_variable_names, enable_regex_precompilation_,
+      &ast_impl.reference_map(), arena.get());
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 

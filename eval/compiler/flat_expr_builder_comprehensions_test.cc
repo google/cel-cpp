@@ -54,7 +54,6 @@ TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
   cel::RuntimeOptions options;
   options.enable_comprehension_list_append = true;
   FlatExprBuilder builder(options);
-  builder.set_enable_comprehension_list_append(true);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
                        parser::Parse("[1, 2].filter(x, [3, 4].all(y, x < y))"));
@@ -74,7 +73,6 @@ TEST(FlatExprBuilderComprehensionsTest, MapComp) {
   cel::RuntimeOptions options;
   options.enable_comprehension_list_append = true;
   FlatExprBuilder builder(options);
-  builder.set_enable_comprehension_list_append(true);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("[1, 2].map(x, x * 2)"));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));

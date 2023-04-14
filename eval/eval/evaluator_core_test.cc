@@ -243,7 +243,6 @@ TEST(EvaluatorCoreTest, TraceTest) {
   options.short_circuiting = false;
   FlatExprBuilder builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
-  builder.set_shortcircuiting(false);
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 

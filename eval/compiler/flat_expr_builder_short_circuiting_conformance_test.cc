@@ -16,6 +16,7 @@
 #include "eval/public/unknown_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -97,8 +98,13 @@ class ShortCircuitingTest : public testing::TestWithParam<bool> {
   ShortCircuitingTest() {}
   std::unique_ptr<CelExpressionBuilder> GetBuilder(
       bool enable_unknowns = false) {
-    auto result = std::make_unique<FlatExprBuilder>();
-    result->set_shortcircuiting(GetParam());
+    cel::RuntimeOptions options;
+    options.short_circuiting = GetParam();
+    if (enable_unknowns) {
+      options.unknown_processing =
+          cel::UnknownProcessingOptions::kAttributeAndFunction;
+    }
+    auto result = std::make_unique<FlatExprBuilder>(options);
     if (enable_unknowns) {
       result->set_enable_unknown_function_results(true);
       result->set_enable_unknowns(true);

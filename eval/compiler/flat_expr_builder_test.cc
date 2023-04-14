@@ -58,6 +58,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -265,8 +266,6 @@ TEST(FlatExprBuilderTest, BinaryCallTooManyArguments) {
 TEST(FlatExprBuilderTest, TernaryCallTooManyArguments) {
   Expr expr;
   SourceInfo source_info;
-  FlatExprBuilder builder;
-
   auto* call = expr.mutable_call_expr();
   call->set_function(builtin::kTernary);
   call->mutable_target()->mutable_const_expr()->set_string_value("random");
@@ -274,15 +273,26 @@ TEST(FlatExprBuilderTest, TernaryCallTooManyArguments) {
   call->add_args()->mutable_const_expr()->set_int64_value(1);
   call->add_args()->mutable_const_expr()->set_int64_value(2);
 
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid argument count")));
+  {
+    cel::RuntimeOptions options;
+    options.short_circuiting = true;
+    FlatExprBuilder builder(options);
+
+    EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+                StatusIs(absl::StatusCode::kInvalidArgument,
+                         HasSubstr("Invalid argument count")));
+  }
 
   // Disable short-circuiting to ensure that a different visitor is used.
-  builder.set_shortcircuiting(false);
-  EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
-              StatusIs(absl::StatusCode::kInvalidArgument,
-                       HasSubstr("Invalid argument count")));
+  {
+    cel::RuntimeOptions options;
+    options.short_circuiting = false;
+    FlatExprBuilder builder(options);
+
+    EXPECT_THAT(builder.CreateExpression(&expr, &source_info).status(),
+                StatusIs(absl::StatusCode::kInvalidArgument,
+                         HasSubstr("Invalid argument count")));
+  }
 }
 
 TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
@@ -297,8 +307,9 @@ TEST(FlatExprBuilderTest, DelayedFunctionResolutionErrors) {
   auto arg2 = call_expr->add_args();
   arg2->mutable_ident_expr()->set_name("value");
 
-  FlatExprBuilder builder;
-  builder.set_fail_on_warnings(false);
+  cel::RuntimeOptions options;
+  options.fail_on_warnings = false;
+  FlatExprBuilder builder(options);
   std::vector<absl::Status> warnings;
 
   // Concat function not registered.
@@ -335,38 +346,54 @@ TEST(FlatExprBuilderTest, Shortcircuiting) {
   auto arg2 = call_expr->add_args();
   arg2->mutable_call_expr()->set_function("recorder2");
 
-  FlatExprBuilder builder;
-  auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
-
-  int count1 = 0;
-  int count2 = 0;
-
-  ASSERT_OK(builder.GetRegistry()->Register(
-      std::make_unique<RecorderFunction>("recorder1", &count1)));
-  ASSERT_OK(builder.GetRegistry()->Register(
-      std::make_unique<RecorderFunction>("recorder2", &count2)));
-
-  // Shortcircuiting on.
-  ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
-                       builder.CreateExpression(&expr, &source_info));
   Activation activation;
   google::protobuf::Arena arena;
-  auto eval_on = cel_expr_on->Evaluate(activation, &arena);
-  ASSERT_OK(eval_on);
 
-  EXPECT_THAT(count1, Eq(1));
-  EXPECT_THAT(count2, Eq(0));
+  // Shortcircuiting on
+  {
+    cel::RuntimeOptions options;
+    options.short_circuiting = true;
+    FlatExprBuilder builder(options);
+    auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
+
+    int count1 = 0;
+    int count2 = 0;
+
+    ASSERT_OK(builder.GetRegistry()->Register(
+        std::make_unique<RecorderFunction>("recorder1", &count1)));
+    ASSERT_OK(builder.GetRegistry()->Register(
+        std::make_unique<RecorderFunction>("recorder2", &count2)));
+
+    ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
+                         builder.CreateExpression(&expr, &source_info));
+    ASSERT_OK(cel_expr_on->Evaluate(activation, &arena));
+
+    EXPECT_THAT(count1, Eq(1));
+    EXPECT_THAT(count2, Eq(0));
+  }
 
   // Shortcircuiting off.
-  builder.set_shortcircuiting(false);
-  ASSERT_OK_AND_ASSIGN(auto cel_expr_off,
-                       builder.CreateExpression(&expr, &source_info));
-  count1 = 0;
-  count2 = 0;
+  {
+    cel::RuntimeOptions options;
+    options.short_circuiting = false;
+    FlatExprBuilder builder(options);
+    auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
 
-  ASSERT_OK(cel_expr_off->Evaluate(activation, &arena));
-  EXPECT_THAT(count1, Eq(1));
-  EXPECT_THAT(count2, Eq(1));
+    int count1 = 0;
+    int count2 = 0;
+
+    ASSERT_OK(builder.GetRegistry()->Register(
+        std::make_unique<RecorderFunction>("recorder1", &count1)));
+    ASSERT_OK(builder.GetRegistry()->Register(
+        std::make_unique<RecorderFunction>("recorder2", &count2)));
+
+    ASSERT_OK_AND_ASSIGN(auto cel_expr_off,
+                         builder.CreateExpression(&expr, &source_info));
+
+    ASSERT_OK(cel_expr_off->Evaluate(activation, &arena));
+    EXPECT_THAT(count1, Eq(1));
+    EXPECT_THAT(count2, Eq(1));
+  }
 }
 
 TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
@@ -386,32 +413,46 @@ TEST(FlatExprBuilderTest, ShortcircuitingComprehension) {
       ->mutable_const_expr()
       ->set_bool_value(false);
   comprehension_expr->mutable_loop_step()->mutable_call_expr()->set_function(
-      "loop_step");
+      "recorder_function1");
   comprehension_expr->mutable_result()->mutable_const_expr()->set_bool_value(
       false);
 
-  FlatExprBuilder builder;
-  auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
-
-  int count = 0;
-  ASSERT_OK(builder.GetRegistry()->Register(
-      std::make_unique<RecorderFunction>("loop_step", &count)));
-
-  // Shortcircuiting on.
-  ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
-                       builder.CreateExpression(&expr, &source_info));
   Activation activation;
   google::protobuf::Arena arena;
-  ASSERT_OK(cel_expr_on->Evaluate(activation, &arena));
-  EXPECT_THAT(count, Eq(0));
 
-  // Shortcircuiting off.
-  builder.set_shortcircuiting(false);
-  ASSERT_OK_AND_ASSIGN(auto cel_expr_off,
-                       builder.CreateExpression(&expr, &source_info));
-  count = 0;
-  ASSERT_OK(cel_expr_off->Evaluate(activation, &arena));
-  EXPECT_THAT(count, Eq(3));
+  // shortcircuiting on
+  {
+    cel::RuntimeOptions options;
+    options.short_circuiting = true;
+    FlatExprBuilder builder(options);
+    auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
+
+    int count = 0;
+    ASSERT_OK(builder.GetRegistry()->Register(
+        std::make_unique<RecorderFunction>("recorder_function1", &count)));
+
+    ASSERT_OK_AND_ASSIGN(auto cel_expr_on,
+                         builder.CreateExpression(&expr, &source_info));
+
+    ASSERT_OK(cel_expr_on->Evaluate(activation, &arena));
+    EXPECT_THAT(count, Eq(0));
+  }
+
+  // shortcircuiting off
+  {
+    cel::RuntimeOptions options;
+    options.short_circuiting = false;
+    FlatExprBuilder builder(options);
+    auto builtin = RegisterBuiltinFunctions(builder.GetRegistry());
+
+    int count = 0;
+    ASSERT_OK(builder.GetRegistry()->Register(
+        std::make_unique<RecorderFunction>("recorder_function1", &count)));
+    ASSERT_OK_AND_ASSIGN(auto cel_expr_off,
+                         builder.CreateExpression(&expr, &source_info));
+    ASSERT_OK(cel_expr_off->Evaluate(activation, &arena));
+    EXPECT_THAT(count, Eq(3));
+  }
 }
 
 TEST(FlatExprBuilderTest, IdentExprUnsetName) {
@@ -808,8 +849,9 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrderReceiverCall) {
 
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportDisabled) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
-  FlatExprBuilder builder;
-  builder.set_fail_on_warnings(false);
+  cel::RuntimeOptions options;
+  options.fail_on_warnings = false;
+  FlatExprBuilder builder(options);
   std::vector<absl::Status> build_warnings;
   builder.set_container("ext");
   using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
@@ -1741,8 +1783,9 @@ TEST(FlatExprBuilderTest, NullUnboxingEnabled) {
   TestMessage message;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("message.int32_wrapper_value"));
-  FlatExprBuilder builder;
-  builder.set_enable_wrapper_type_null_unboxing(true);
+  cel::RuntimeOptions options;
+  options.enable_empty_wrapper_null_unboxing = true;
+  FlatExprBuilder builder(options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));
@@ -1761,8 +1804,9 @@ TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
   TestMessage message;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("message.int32_wrapper_value"));
-  FlatExprBuilder builder;
-  builder.set_enable_wrapper_type_null_unboxing(false);
+  cel::RuntimeOptions options;
+  options.enable_empty_wrapper_null_unboxing = false;
+  FlatExprBuilder builder(options);
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder.CreateExpression(&parsed_expr.expr(),
                                                 &parsed_expr.source_info()));

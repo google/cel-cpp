@@ -55,10 +55,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_unknown_function_results_ = enabled;
   }
 
-  // set_shortcircuiting regulates shortcircuiting of some expressions.
-  // Be default shortcircuiting is enabled.
-  void set_shortcircuiting(bool enabled) { shortcircuiting_ = enabled; }
-
   // Toggle constant folding optimization. By default it is not enabled.
   // The provided arena is used to hold the generated constants.
   void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
@@ -66,38 +62,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
     constant_arena_ = arena;
   }
 
-  void set_enable_comprehension(bool enabled) {
-    enable_comprehension_ = enabled;
-  }
-
   void set_comprehension_max_iterations(int max_iterations) {
     comprehension_max_iterations_ = max_iterations;
-  }
-
-  // Warnings (e.g. no function bound) fail immediately.
-  void set_fail_on_warnings(bool should_fail) {
-    fail_on_warnings_ = should_fail;
-  }
-
-  // set_enable_qualified_type_identifiers controls whether select expressions
-  // may be treated as constant type identifiers during CelExpression creation.
-  void set_enable_qualified_type_identifiers(bool enabled) {
-    enable_qualified_type_identifiers_ = enabled;
-  }
-
-  // set_enable_comprehension_list_append controls whether the FlatExprBuilder
-  // will attempt to optimize list concatenation within map() and filter()
-  // macro comprehensions as an append of results on the `accu_var` rather than
-  // as a reassignment of the `accu_var` to the concatenation of
-  // `accu_var` + [elem].
-  //
-  // Before enabling, ensure that `#list_append` is not a function declared
-  // within your runtime, and that your CEL expressions retain their integer
-  // identifiers.
-  //
-  // This option is not safe for use with hand-rolled ASTs.
-  void set_enable_comprehension_list_append(bool enabled) {
-    enable_comprehension_list_append_ = enabled;
   }
 
   // set_enable_comprehension_vulnerability_check inspects comprehension
@@ -110,14 +76,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
   // comprehension expressions.
   void set_enable_comprehension_vulnerability_check(bool enabled) {
     enable_comprehension_vulnerability_check_ = enabled;
-  }
-
-  // If set_enable_wrapper_type_null_unboxing is enabled, the evaluator will
-  // return null for well known wrapper type fields if they are unset.
-  // The default is disabled and follows protobuf behavior (returning the
-  // proto default for the wrapped type).
-  void set_enable_wrapper_type_null_unboxing(bool enabled) {
-    enable_wrapper_type_null_unboxing_ = enabled;
   }
 
   // If enable_heterogeneous_equality is enabled, the evaluator will use
@@ -138,14 +96,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
         enable_qualified_identifier_rewrites;
   }
 
-  void set_enable_regex(bool enable) { enable_regex_ = enable; }
-
   void set_enable_regex_precompilation(bool enable) {
     enable_regex_precompilation_ = enable;
-  }
-
-  void set_regex_max_program_size(int regex_max_program_size) {
-    regex_max_program_size_ = regex_max_program_size;
   }
 
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
@@ -179,16 +131,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_unknowns_ = false;
   bool enable_unknown_function_results_ = false;
   bool enable_missing_attribute_errors_ = false;
-  bool shortcircuiting_ = true;
-  bool enable_comprehension_ = true;
   int comprehension_max_iterations_ = 0;
-  bool fail_on_warnings_ = true;
-  bool enable_qualified_type_identifiers_ = false;
-  bool enable_comprehension_list_append_ = false;
-  bool enable_wrapper_type_null_unboxing_ = false;
   bool enable_heterogeneous_equality_ = false;
-  bool enable_regex_ = false;
-  int regex_max_program_size_ = -1;
 
   bool enable_qualified_identifier_rewrites_ = false;
   bool enable_regex_precompilation_ = false;
