@@ -38,7 +38,7 @@ class AstRewriter : public AstVisitor {
   ~AstRewriter() override {}
 
   // Rewrite a sub expression before visiting.
-  // Occurs before visiting Expr. If expr is modified, it the new value will be
+  // Occurs before visiting Expr. If expr is modified, the new value will be
   // visited.
   virtual bool PreVisitRewrite(google::api::expr::v1alpha1::Expr* expr,
                                const SourcePosition* position) = 0;
