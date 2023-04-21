@@ -252,7 +252,7 @@ cc_library(
     deps = [
         ":allocator",
         ":attributes",
-        ":functions",
+        ":function_result_set",
         ":handle",
         ":kind",
         ":memory_manager",
@@ -337,20 +337,53 @@ cc_test(
 )
 
 cc_library(
-    name = "functions",
-    srcs = [
-        "function.cc",
-        "function_result_set.cc",
-    ],
+    name = "function",
     hdrs = [
         "function.h",
-        "function_result.h",
-        "function_result_set.h",
+    ],
+    deps = [
+        ":handle",
+        ":value",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "function_descriptor",
+    srcs = [
+        "function_descriptor.cc",
+    ],
+    hdrs = [
+        "function_descriptor.h",
     ],
     deps = [
         ":kind",
-        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "function_result",
+    hdrs = [
+        "function_result.h",
+    ],
+    deps = [":function_descriptor"],
+)
+
+cc_library(
+    name = "function_result_set",
+    srcs = [
+        "function_result_set.cc",
+    ],
+    hdrs = [
+        "function_result_set.h",
+    ],
+    deps = [
+        ":function_result",
+        "@com_google_absl//absl/container:btree",
     ],
 )
 
@@ -360,20 +393,11 @@ cc_library(
 )
 
 cc_library(
-    name = "function_interface",
-    hdrs = ["function_interface.h"],
-    deps = [
-        ":value",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
     name = "function_adapter",
     hdrs = ["function_adapter.h"],
     deps = [
-        ":function_interface",
-        ":functions",
+        ":function",
+        ":function_descriptor",
         ":handle",
         ":value",
         "//base/internal:function_adapter",
@@ -390,9 +414,9 @@ cc_test(
     name = "function_adapter_test",
     srcs = ["function_adapter_test.cc"],
     deps = [
+        ":function",
         ":function_adapter",
-        ":function_interface",
-        ":functions",
+        ":function_descriptor",
         ":handle",
         ":kind",
         ":memory_manager",

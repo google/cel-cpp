@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/function.h"
+#include "base/function_descriptor.h"
 
 #include <algorithm>
+#include <cstddef>
+
+#include "absl/base/macros.h"
+#include "absl/types/span.h"
+#include "base/kind.h"
 
 namespace cel {
 

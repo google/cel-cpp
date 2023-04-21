@@ -22,7 +22,7 @@
 #include "absl/status/status.h"
 #include "base/function.h"
 #include "base/function_adapter.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/kind.h"
 #include "base/value_factory.h"
 #include "internal/testing.h"

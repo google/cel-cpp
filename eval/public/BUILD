@@ -182,8 +182,8 @@ cc_library(
     ],
     deps = [
         ":cel_value",
-        "//base:function_interface",
-        "//base:functions",
+        "//base:function",
+        "//base:function_descriptor",
         "//base:handle",
         "//base:value",
         "//eval/internal:interop",
@@ -449,10 +449,8 @@ cc_library(
         ":cel_function_registry",
         ":cel_options",
         "//base:function_adapter",
-        "//base:functions",
-        "//base:kind",
+        "//base:function_descriptor",
         "//base:value",
-        "//base:value_factory",
         "//eval/internal:errors",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
@@ -681,8 +679,8 @@ cc_library(
         ":cel_function",
         ":cel_options",
         ":cel_value",
-        "//base:function_interface",
-        "//base:functions",
+        "//base:function",
+        "//base:function_descriptor",
         "//base:kind",
         "//base:type",
         "//base:value",
@@ -1053,7 +1051,10 @@ cc_library(
     name = "unknown_function_result_set",
     srcs = ["unknown_function_result_set.cc"],
     hdrs = ["unknown_function_result_set.h"],
-    deps = ["//base:functions"],
+    deps = [
+        "//base:function_result",
+        "//base:function_result_set",
+    ],
 )
 
 cc_test(

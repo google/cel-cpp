@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,69 +15,55 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_FUNCTION_H_
 #define THIRD_PARTY_CEL_CPP_BASE_FUNCTION_H_
 
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "base/kind.h"
+#include "base/handle.h"
+#include "base/value.h"
+#include "base/value_factory.h"
 
 namespace cel {
 
-// Describes a function.
-class FunctionDescriptor final {
+// Interface for extension functions.
+//
+// The host for the CEL environment may provide implementations to define custom
+// extensions functions.
+//
+// The interpreter expects functions to be deterministic and side-effect free.
+class Function {
  public:
-  FunctionDescriptor(absl::string_view name, bool receiver_style,
-                     std::vector<Kind> types, bool is_strict = true)
-      : impl_(std::make_shared<Impl>(name, receiver_style, std::move(types),
-                                     is_strict)) {}
+  virtual ~Function() = default;
 
-  // Function name.
-  const std::string& name() const { return impl_->name; }
+  // InvokeContext provides access to current evaluator state.
+  class InvokeContext final {
+   public:
+    explicit InvokeContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
 
-  // Whether function is receiver style i.e. true means arg0.name(args[1:]...).
-  bool receiver_style() const { return impl_->receiver_style; }
+    // Return the value_factory defined for the evaluation invoking the
+    // extension function.
+    cel::ValueFactory& value_factory() const { return value_factory_; }
 
-  // The argmument types the function accepts.
-  //
-  // TODO(issues/5): make this kinds
-  const std::vector<Kind>& types() const { return impl_->types; }
-
-  // if true (strict, default), error or unknown arguments are propagated
-  // instead of calling the function. if false (non-strict), the function may
-  // receive error or unknown values as arguments.
-  bool is_strict() const { return impl_->is_strict; }
-
-  // Helper for matching a descriptor. This tests that the shape is the same --
-  // |other| accepts the same number and types of arguments and is the same call
-  // style).
-  bool ShapeMatches(const FunctionDescriptor& other) const {
-    return ShapeMatches(other.receiver_style(), other.types());
-  }
-  bool ShapeMatches(bool receiver_style, absl::Span<const Kind> types) const;
-
-  bool operator==(const FunctionDescriptor& other) const;
-
-  bool operator<(const FunctionDescriptor& other) const;
-
- private:
-  struct Impl final {
-    Impl(absl::string_view name, bool receiver_style, std::vector<Kind> types,
-         bool is_strict)
-        : name(name),
-          types(std::move(types)),
-          receiver_style(receiver_style),
-          is_strict(is_strict) {}
-
-    std::string name;
-    std::vector<Kind> types;
-    bool receiver_style;
-    bool is_strict;
+    // TODO(issues/5): Add accessors for getting attribute stack and mutable
+    // value stack.
+   private:
+    cel::ValueFactory& value_factory_;
   };
 
-  std::shared_ptr<const Impl> impl_;
+  // Attempt to evaluate an extension function based on the runtime arguments
+  // during the evaluation of a CEL expression.
+  //
+  // A non-ok status is interpreted as an unrecoverable error in evaluation (
+  // e.g. data corruption). This stops evaluation and is propagated immediately.
+  //
+  // A cel::ErrorValue typed result is considered a recoverable error and
+  // follows CEL's logical short-circuiting behavior.
+  virtual absl::StatusOr<Handle<Value>> Invoke(
+      const InvokeContext& context,
+      absl::Span<const Handle<Value>> args) const = 0;
 };
+
+// Legacy type, aliased to the actual type.
+using FunctionEvaluationContext = Function::InvokeContext;
 
 }  // namespace cel
 

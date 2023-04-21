@@ -10,7 +10,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/function.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/value.h"
 #include "eval/public/cel_value.h"

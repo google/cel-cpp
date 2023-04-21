@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/function_interface.h"
+#include "base/function.h"
 #include "eval/internal/interop.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"

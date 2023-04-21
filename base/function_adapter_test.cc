@@ -22,7 +22,7 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/function.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/memory_manager.h"

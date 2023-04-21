@@ -144,7 +144,7 @@ cc_library(
     ],
     deps = [
         "//base:ast_internal",
-        "//base:function_interface",
+        "//base:function",
         "//base:value",
         "//eval/internal:errors",
         "//eval/internal:interop",

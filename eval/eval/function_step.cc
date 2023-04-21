@@ -16,7 +16,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/function.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/kind.h"
 #include "base/value.h"

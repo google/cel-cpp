@@ -12,7 +12,7 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "base/function.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
 #include "base/value.h"

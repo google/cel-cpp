@@ -26,7 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/function.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/kind.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_provider.h"

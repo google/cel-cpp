@@ -30,7 +30,7 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/function.h"
-#include "base/function_interface.h"
+#include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/value.h"
 #include "base/value_factory.h"

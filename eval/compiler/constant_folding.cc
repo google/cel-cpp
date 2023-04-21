@@ -7,7 +7,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "base/ast_internal.h"
-#include "base/function_interface.h"
+#include "base/function.h"
 #include "base/values/error_value.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"

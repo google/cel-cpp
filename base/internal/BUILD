@@ -108,7 +108,7 @@ cc_library(
     hdrs = ["unknown_set.h"],
     deps = [
         "//base:attributes",
-        "//base:functions",
+        "//base:function_result_set",
         "//internal:no_destructor",
         "@com_google_absl//absl/base:core_headers",
     ],

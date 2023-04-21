@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <utility>
 
-#include "base/function.h"
+#include "base/function_descriptor.h"
 
 namespace cel {
 
