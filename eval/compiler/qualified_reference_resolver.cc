@@ -11,6 +11,8 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/ast.h"
+#include "base/internal/ast_impl.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
@@ -76,7 +78,7 @@ absl::optional<std::string> BestOverloadMatch(const Resolver& resolver,
 class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
  public:
   ReferenceResolver(
-      const absl::flat_hash_map<int64_t, Reference>* reference_map,
+      const absl::flat_hash_map<int64_t, Reference>& reference_map,
       const Resolver& resolver, BuilderWarnings& warnings)
       : reference_map_(reference_map),
         resolver_(resolver),
@@ -247,12 +249,8 @@ class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
   //
   // Returns nullptr if no reference is available.
   const Reference* GetReferenceForId(int64_t expr_id) {
-    if (reference_map_ == nullptr) {
-      return nullptr;
-    }
-
-    auto iter = reference_map_->find(expr_id);
-    if (iter == reference_map_->end()) {
+    auto iter = reference_map_.find(expr_id);
+    if (iter == reference_map_.end()) {
       return nullptr;
     }
     if (expr_id == 0) {
@@ -265,7 +263,7 @@ class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
     return &iter->second;
   }
 
-  const absl::flat_hash_map<int64_t, Reference>* reference_map_;
+  const absl::flat_hash_map<int64_t, Reference>& reference_map_;
   const Resolver& resolver_;
   BuilderWarnings& warnings_;
   absl::flat_hash_set<int64_t> rewritten_reference_;
@@ -273,17 +271,15 @@ class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
 
 }  // namespace
 
-absl::StatusOr<bool> ResolveReferences(
-    const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
-        reference_map,
-    const Resolver& resolver, const cel::ast::internal::SourceInfo* source_info,
-    BuilderWarnings& warnings, cel::ast::internal::Expr* expr) {
-  ReferenceResolver ref_resolver(reference_map, resolver, warnings);
+absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
+                                       BuilderWarnings& warnings,
+                                       cel::ast::internal::AstImpl& ast) {
+  ReferenceResolver ref_resolver(ast.reference_map(), resolver, warnings);
 
   // Rewriting interface doesn't support failing mid traverse propagate first
   // error encountered if fail fast enabled.
-  bool was_rewritten =
-      cel::ast::internal::AstRewrite(expr, source_info, &ref_resolver);
+  bool was_rewritten = cel::ast::internal::AstRewrite(
+      &ast.root_expr(), &ast.source_info(), &ref_resolver);
   if (warnings.fail_immediately() && !warnings.warnings().empty()) {
     return warnings.warnings().front();
   }

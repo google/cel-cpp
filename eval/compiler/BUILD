@@ -192,7 +192,9 @@ cc_library(
     ],
     deps = [
         ":resolver",
+        "//base:ast",
         "//base:ast_internal",
+        "//base/internal:ast_impl",
         "//eval/eval:const_value_step",
         "//eval/eval:expression_build_warning",
         "//eval/public:ast_rewrite_native",
@@ -204,7 +206,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -231,16 +232,20 @@ cc_test(
     ],
     deps = [
         ":qualified_reference_resolver",
+        "//base:ast",
+        "//base/internal:ast_impl",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_builtins",
         "//eval/public:cel_function",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_type_registry",
         "//extensions/protobuf:ast_converters",
+        "//internal:casts",
         "//internal:status_macros",
         "//internal:testing",
         "//testutil:util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

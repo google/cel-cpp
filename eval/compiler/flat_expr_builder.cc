@@ -1266,9 +1266,8 @@ FlatExprBuilder::CreateExpressionImpl(
   // available, we can skip the reference resolve step here if it's already
   // done.
   if (rewrites_enabled) {
-    absl::StatusOr<bool> rewritten = ResolveReferences(
-        &ast_impl.reference_map(), resolver, &ast_impl.source_info(),
-        warnings_builder, &ast_impl.root_expr());
+    absl::StatusOr<bool> rewritten =
+        ResolveReferences(resolver, warnings_builder, ast_impl);
     if (!rewritten.ok()) {
       return rewritten.status();
     }

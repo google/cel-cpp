@@ -84,6 +84,11 @@ class AstImpl : public Ast {
   const absl::flat_hash_map<int64_t, Reference>& reference_map() const {
     return reference_map_;
   }
+
+  absl::flat_hash_map<int64_t, Reference>& reference_map() {
+    return reference_map_;
+  }
+
   const absl::flat_hash_map<int64_t, Type>& type_map() const {
     return type_map_;
   }

@@ -3,9 +3,8 @@
 
 #include <cstdint>
 
-#include "google/protobuf/map.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
+#include "base/ast.h"
 #include "base/ast_internal.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
@@ -21,11 +20,9 @@ namespace google::api::expr::runtime {
 // Will warn or return a non-ok status if references can't be resolved (no
 // function overload could match a call) or are inconsistnet (reference map
 // points to an expr node that isn't a reference).
-absl::StatusOr<bool> ResolveReferences(
-    const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
-        reference_map,
-    const Resolver& resolver, const cel::ast::internal::SourceInfo* source_info,
-    BuilderWarnings& warnings, cel::ast::internal::Expr* expr);
+absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
+                                       BuilderWarnings& warnings,
+                                       cel::ast::internal::AstImpl& ast);
 
 }  // namespace google::api::expr::runtime
 
