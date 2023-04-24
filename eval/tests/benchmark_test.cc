@@ -922,6 +922,41 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
 
 BENCHMARK(BM_ListComprehension_Trace)->Range(1, 1 << 16);
 
+void BM_ListComprehension_Opt(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("list.map(x, x * 2)"));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  InterpreterOptions options;
+  options.constant_arena = &arena;
+  options.constant_folding = true;
+  options.comprehension_max_iterations = 10000000;
+  options.enable_comprehension_list_append = true;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_expr, builder->CreateExpression(&(parsed_expr.expr()), nullptr));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsList());
+    ASSERT_EQ(result.ListOrDie()->size(), len);
+  }
+}
+
+BENCHMARK(BM_ListComprehension_Opt)->Range(1, 1 << 16);
+
 void BM_ComprehensionCpp(benchmark::State& state) {
   google::protobuf::Arena arena;
   Activation activation;

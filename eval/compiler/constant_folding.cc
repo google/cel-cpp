@@ -253,7 +253,16 @@ class ConstantFoldingTransform {
             transform_.Transform(expr_.list_expr().elements()[i], element) &&
             all_constant;
       }
+
       if (!all_constant) {
+        return false;
+      }
+
+      if (list_size == 0) {
+        // TODO(issues/5): need a more robust fix to support generic
+        // comprehensions, but this will allow comprehension list append
+        // optimization to work to prevent quadratic memory consumption for
+        // map/filter.
         return false;
       }
 
