@@ -28,7 +28,7 @@ namespace google::api::expr::runtime {
 // or supported.
 class AttributeTrail {
  public:
-  AttributeTrail() = default;
+  AttributeTrail() : attribute_(absl::nullopt) {}
 
   AttributeTrail(google::api::expr::v1alpha1::Expr root, cel::MemoryManager& manager);
 
