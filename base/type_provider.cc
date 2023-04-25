@@ -45,8 +45,11 @@ class BuiltinTypeProvider final : public TypeProvider {
             {"google.protobuf.Duration", GetDurationType},
             {"google.protobuf.Timestamp", GetTimestampType},
             {"list", GetListType},
+            {"google.protobuf.ListValue", GetListType},
             {"map", GetMapType},
+            {"google.protobuf.Struct", GetStructType},
             {"type", GetTypeType},
+            {"google.protobuf.Value", GetValueType},
             {"google.protobuf.BoolValue", GetBoolWrapperType},
             {"google.protobuf.BytesValue", GetBytesWrapperType},
             {"google.protobuf.DoubleValue", GetDoubleWrapperType},
@@ -156,11 +159,20 @@ class BuiltinTypeProvider final : public TypeProvider {
     return HandleFactory<MapType>::Make<base_internal::LegacyMapType>();
   }
 
+  static absl::StatusOr<Handle<Type>> GetStructType(TypeFactory& type_factory) {
+    return type_factory.CreateMapType(type_factory.GetStringType(),
+                                      type_factory.GetDynType());
+  }
+
   static absl::StatusOr<Handle<Type>> GetTypeType(TypeFactory& type_factory) {
     return type_factory.GetTypeType();
   }
 
-  std::array<BuiltinType, 22> types_;
+  static absl::StatusOr<Handle<Type>> GetValueType(TypeFactory& type_factory) {
+    return type_factory.GetDynType();
+  }
+
+  std::array<BuiltinType, 25> types_;
 };
 
 }  // namespace
