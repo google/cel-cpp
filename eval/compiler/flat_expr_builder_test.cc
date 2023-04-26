@@ -37,6 +37,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -689,7 +690,8 @@ TEST(FlatExprBuilderTest, InvalidContainer) {
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupport) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("ext.XOr(a, b)"));
   FlatExprBuilder builder;
-  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
 
   ASSERT_OK(FunctionAdapterT::CreateAndRegister(
@@ -718,7 +720,8 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupport) {
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportWithContainer) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("XOr(a, b)"));
   FlatExprBuilder builder;
-  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("ext");
   using FunctionAdapterT = FunctionAdapter<bool, bool, bool>;
 
@@ -747,7 +750,8 @@ TEST(FlatExprBuilderTest, ParsedNamespacedFunctionSupportWithContainer) {
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrder) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
   FlatExprBuilder builder;
-  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
   using FunctionAdapterT = FunctionAdapter<bool>;
 
@@ -773,7 +777,8 @@ TEST(FlatExprBuilderTest,
      ParsedNamespacedFunctionResolutionOrderParentContainer) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("c.d.Get()"));
   FlatExprBuilder builder;
-  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
   using FunctionAdapterT = FunctionAdapter<bool>;
 
@@ -799,7 +804,8 @@ TEST(FlatExprBuilderTest,
      ParsedNamespacedFunctionResolutionOrderExplicitGlobal) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(".c.d.Get()"));
   FlatExprBuilder builder;
-  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
   using FunctionAdapterT = FunctionAdapter<bool>;
 
@@ -824,7 +830,8 @@ TEST(FlatExprBuilderTest,
 TEST(FlatExprBuilderTest, ParsedNamespacedFunctionResolutionOrderReceiverCall) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("e.Get()"));
   FlatExprBuilder builder;
-  builder.set_enable_qualified_identifier_rewrites(true);
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kAlways));
   builder.set_container("a.b");
   using FunctionAdapterT = FunctionAdapter<bool>;
 
@@ -958,6 +965,8 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMap) {
                                       &expr);
 
   FlatExprBuilder builder;
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
@@ -1025,6 +1034,8 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapFunction) {
                                       &expr);
 
   FlatExprBuilder builder;
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   builder.set_container("com.foo");
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK((FunctionAdapter<bool, bool, bool>::CreateAndRegister(
@@ -1091,6 +1102,8 @@ TEST(FlatExprBuilderTest, CheckedExprActivationMissesReferences) {
                                       &expr);
 
   FlatExprBuilder builder;
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
@@ -1154,6 +1167,8 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
                                       &expr);
 
   FlatExprBuilder builder;
+  builder.AddAstTransform(
+      NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   google::protobuf::Arena arena;
   builder.set_constant_folding(true, &arena);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));

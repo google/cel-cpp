@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "absl/container/flat_hash_map.h"
@@ -13,6 +14,7 @@
 #include "absl/types/optional.h"
 #include "base/ast.h"
 #include "base/internal/ast_impl.h"
+#include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
@@ -269,6 +271,25 @@ class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
   absl::flat_hash_set<int64_t> rewritten_reference_;
 };
 
+class ReferenceResolverExtension : public AstTransform {
+ public:
+  explicit ReferenceResolverExtension(ReferenceResolverOption opt)
+      : opt_(opt) {}
+  absl::Status UpdateAst(PlannerContext& context,
+                         cel::ast::internal::AstImpl& ast) const override {
+    if (opt_ == ReferenceResolverOption::kCheckedOnly &&
+        ast.reference_map().empty()) {
+      return absl::OkStatus();
+    }
+    return ResolveReferences(context.resolver(), context.builder_warnings(),
+                             ast)
+        .status();
+  }
+
+ private:
+  ReferenceResolverOption opt_;
+};
+
 }  // namespace
 
 absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
@@ -284,6 +305,11 @@ absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
     return warnings.warnings().front();
   }
   return was_rewritten;
+}
+
+std::unique_ptr<AstTransform> NewReferenceResolverExtension(
+    ReferenceResolverOption option) {
+  return std::make_unique<ReferenceResolverExtension>(option);
 }
 
 }  // namespace google::api::expr::runtime

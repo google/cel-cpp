@@ -43,7 +43,7 @@
 #include "base/internal/ast_impl.h"
 #include "base/values/string_value.h"
 #include "eval/compiler/constant_folding.h"
-#include "eval/compiler/qualified_reference_resolver.h"
+#include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
 #include "eval/eval/const_value_step.h"
@@ -1250,6 +1250,9 @@ FlatExprBuilder::CreateExpressionImpl(
                     GetTypeRegistry(),
                     options_.enable_qualified_type_identifiers);
   absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
+
+  PlannerContext extension_context(resolver, warnings_builder);
+
   auto& ast_impl = AstImpl::CastFromPublicAst(ast);
   const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
 
@@ -1258,21 +1261,8 @@ FlatExprBuilder::CreateExpressionImpl(
         absl::StrCat("Invalid expression container: '", container(), "'"));
   }
 
-  // transformed expression preserving expression IDs
-  bool rewrites_enabled = enable_qualified_identifier_rewrites_ ||
-                          !ast_impl.reference_map().empty();
-  // TODO(issues/98): A type checker may perform these rewrites, but there
-  // currently isn't a signal to expose that in an expression. If that becomes
-  // available, we can skip the reference resolve step here if it's already
-  // done.
-  if (rewrites_enabled) {
-    absl::StatusOr<bool> rewritten =
-        ResolveReferences(resolver, warnings_builder, ast_impl);
-    if (!rewritten.ok()) {
-      return rewritten.status();
-    }
-    // TODO(issues/99): we could setup a check step here that confirms all of
-    // references are defined before actually evaluating.
+  for (const std::unique_ptr<AstTransform>& transform : ast_transforms_) {
+    CEL_RETURN_IF_ERROR(transform->UpdateAst(extension_context, ast_impl));
   }
 
   cel::ast::internal::Expr const_fold_buffer;

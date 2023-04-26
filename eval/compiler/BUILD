@@ -7,6 +7,17 @@ licenses(["notice"])
 exports_files(["LICENSE"])
 
 cc_library(
+    name = "flat_expr_builder_extensions",
+    hdrs = ["flat_expr_builder_extensions.h"],
+    deps = [
+        ":resolver",
+        "//base:ast",
+        "//eval/eval:expression_build_warning",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
     name = "flat_expr_builder",
     srcs = [
         "flat_expr_builder.cc",
@@ -16,7 +27,7 @@ cc_library(
     ],
     deps = [
         ":constant_folding",
-        ":qualified_reference_resolver",
+        ":flat_expr_builder_extensions",
         ":resolver",
         "//base:ast",
         "//base:ast_internal",
@@ -72,6 +83,7 @@ cc_test(
     ],
     deps = [
         ":flat_expr_builder",
+        ":qualified_reference_resolver",
         "//eval/eval:expression_build_warning",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
@@ -191,6 +203,7 @@ cc_library(
         "qualified_reference_resolver.h",
     ],
     deps = [
+        ":flat_expr_builder_extensions",
         ":resolver",
         "//base:ast",
         "//base:ast_internal",

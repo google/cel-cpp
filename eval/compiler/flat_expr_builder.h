@@ -18,12 +18,14 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
+#include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/public/cel_expression.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
@@ -59,15 +61,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
     enable_comprehension_vulnerability_check_ = enabled;
   }
 
-  // If enable_qualified_identifier_rewrites is true, the evaluator will attempt
-  // to disambiguate namespace qualified identifiers.
-  //
-  // For functions, this will attempt to determine whether a function call is a
-  // receiver call or a namespace qualified function.
-  void set_enable_qualified_identifier_rewrites(
-      bool enable_qualified_identifier_rewrites) {
-    enable_qualified_identifier_rewrites_ =
-        enable_qualified_identifier_rewrites;
+  void AddAstTransform(std::unique_ptr<AstTransform> transform) {
+    ast_transforms_.push_back(std::move(transform));
   }
 
   void set_enable_regex_precompilation(bool enable) {
@@ -101,11 +96,8 @@ class FlatExprBuilder : public CelExpressionBuilder {
       cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const;
 
   cel::RuntimeOptions options_;
+  std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
 
-  int comprehension_max_iterations_ = 0;
-  bool enable_heterogeneous_equality_ = false;
-
-  bool enable_qualified_identifier_rewrites_ = false;
   bool enable_regex_precompilation_ = false;
   bool enable_comprehension_vulnerability_check_ = false;
   bool constant_folding_ = false;

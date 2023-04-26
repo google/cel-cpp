@@ -2,10 +2,12 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_QUALIFIED_REFERENCE_RESOLVER_H_
 
 #include <cstdint>
+#include <memory>
 
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "base/ast_internal.h"
+#include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
 
@@ -23,6 +25,16 @@ namespace google::api::expr::runtime {
 absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
                                        BuilderWarnings& warnings,
                                        cel::ast::internal::AstImpl& ast);
+
+enum class ReferenceResolverOption {
+  // Always attempt to resolve references based on runtime types and functions.
+  kAlways,
+  // Only attempt to resolve for checked expressions with reference metadata.
+  kCheckedOnly,
+};
+
+std::unique_ptr<AstTransform> NewReferenceResolverExtension(
+    ReferenceResolverOption option);
 
 }  // namespace google::api::expr::runtime
 

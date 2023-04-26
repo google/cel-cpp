@@ -22,6 +22,7 @@
 
 #include "absl/status/status.h"
 #include "eval/compiler/flat_expr_builder.h"
+#include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/public/cel_options.h"
 #include "runtime/runtime_options.h"
 
@@ -40,12 +41,14 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
 
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
 
+  builder->AddAstTransform(NewReferenceResolverExtension(
+      (options.enable_qualified_identifier_rewrites)
+          ? ReferenceResolverOption::kAlways
+          : ReferenceResolverOption::kCheckedOnly));
   // TODO(issues/5): These need to be abstracted to avoid bringing in too
   // many build dependencies by default.
   builder->set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);
-  builder->set_enable_qualified_identifier_rewrites(
-      options.enable_qualified_identifier_rewrites);
   builder->set_enable_regex_precompilation(options.enable_regex_precompilation);
   builder->set_constant_folding(options.constant_folding,
                                 options.constant_arena);
