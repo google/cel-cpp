@@ -158,7 +158,9 @@ class LegacyListValue final : public ListValue, public InlineData {
   uintptr_t impl_;
 };
 
-class AbstractListValue : public ListValue, public HeapData {
+class AbstractListValue : public ListValue,
+                          public HeapData,
+                          public EnableHandleFromThis<AbstractListValue> {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&

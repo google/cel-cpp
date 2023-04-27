@@ -227,7 +227,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
   uintptr_t type_info_;
 };
 
-class AbstractStructValue : public StructValue, public HeapData {
+class AbstractStructValue : public StructValue,
+                            public HeapData,
+                            public EnableHandleFromThis<AbstractStructValue> {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&

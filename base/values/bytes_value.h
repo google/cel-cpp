@@ -156,20 +156,14 @@ class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
   // by `owner`. `owner` may be nullptr, in which case `value` has no owner and
   // must live for the duration of the underlying `MemoryManager`.
   InlinedStringViewBytesValue(absl::string_view value, const Value* owner)
-      : InlinedStringViewBytesValue(
-            value, owner,
-            owner == nullptr || !Metadata::IsArenaAllocated(*owner)) {}
+      : InlinedStringViewBytesValue(value, owner, owner == nullptr) {}
 
   InlinedStringViewBytesValue(absl::string_view value, const Value* owner,
                               bool trivial)
       : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
                    AsInlineVariant(InlinedBytesValueVariant::kStringView)),
         value_(value),
-        owner_(trivial ? nullptr : owner) {
-    if (owner_ != nullptr) {
-      Metadata::Ref(*owner_);
-    }
-  }
+        owner_(trivial ? nullptr : owner) {}
 
   // Only called when owner_ was, at some point, not nullptr.
   InlinedStringViewBytesValue(const InlinedStringViewBytesValue& other)

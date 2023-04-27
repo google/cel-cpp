@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
@@ -54,14 +55,43 @@
 namespace cel {
 
 namespace base_internal {
-struct ValueFactoryAccess;
+
+template <typename T>
+class ReferentValue final : public T {
+ public:
+  template <typename... Args>
+  explicit ReferentValue(const cel::Value* referent, Args&&... args)
+      : T(std::forward<Args>(args)...),
+        referent_(ABSL_DIE_IF_NULL(referent))  // Crash OK
+  {}
+
+  ~ReferentValue() override { ValueMetadata::Unref(*referent_); }
+
+ private:
+  const cel::Value* const referent_;
+};
+
 }  // namespace base_internal
 
 class ValueFactory final {
  private:
   template <typename T, typename U, typename V>
-  using EnableIfBaseOfT =
+  using EnableIfBaseOf =
       std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
+
+  template <typename R, typename V>
+  using EnableIfReferent = std::enable_if_t<
+      std::conjunction_v<std::is_base_of<Value, R>,
+                         std::is_base_of<base_internal::HeapData, R>>,
+      V>;
+
+  template <typename T, typename U, typename R, typename V>
+  using EnableIfBaseOfAndReferent = std::enable_if_t<
+      std::conjunction_v<
+          std::is_base_of<T, std::remove_const_t<U>>,
+          std::is_base_of<Value, std::remove_const_t<R>>,
+          std::is_base_of<base_internal::HeapData, std::remove_const_t<R>>>,
+      V>;
 
  public:
   explicit ValueFactory(TypeManager& type_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
@@ -131,6 +161,20 @@ class ValueFactory final {
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
   }
 
+  template <typename R>
+  EnableIfReferent<R, absl::StatusOr<Handle<BytesValue>>>
+  CreateReferentBytesValue(Handle<R> reference, absl::string_view value) {
+    if (value.empty()) {
+      return GetEmptyBytesValue();
+    }
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return base_internal::HandleFactory<BytesValue>::Make<
+          base_internal::InlinedStringViewBytesValue>(value);
+    }
+    return CreateMemberBytesValue(value, pointer);
+  }
+
   Handle<StringValue> GetStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return GetEmptyStringValue();
   }
@@ -167,6 +211,20 @@ class ValueFactory final {
     }
     return CreateStringValue(
         absl::MakeCordFromExternal(value, std::forward<Releaser>(releaser)));
+  }
+
+  template <typename R>
+  EnableIfReferent<R, absl::StatusOr<Handle<StringValue>>>
+  CreateReferentStringValue(Handle<R> reference, absl::string_view value) {
+    if (value.empty()) {
+      return GetEmptyStringValue();
+    }
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return base_internal::HandleFactory<StringValue>::Make<
+          base_internal::InlinedStringViewStringValue>(value);
+    }
+    return CreateMemberStringValue(value, pointer);
   }
 
   absl::StatusOr<Handle<DurationValue>> CreateDurationValue(
@@ -219,25 +277,51 @@ class ValueFactory final {
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
-      const Handle<StructType>& struct_type,
+  EnableIfBaseOf<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
+      const Handle<StructType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), struct_type,
+        std::remove_const_t<T>>(memory_manager(), type,
                                 std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
-      Handle<StructType>&& struct_type,
-      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  EnableIfBaseOf<StructValue, T, absl::StatusOr<Handle<T>>> CreateStructValue(
+      Handle<StructType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::move(struct_type),
+        std::remove_const_t<T>>(memory_manager(), std::move(type),
                                 std::forward<Args>(args)...);
   }
 
+  template <typename T, typename R, typename... Args>
+  EnableIfBaseOfAndReferent<StructValue, T, R, absl::StatusOr<Handle<T>>>
+  CreateReferentStructValue(Handle<R> reference, const Handle<StructType>& type,
+                            Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return CreateStructValue<T>(type, std::forward<Args>(args)...);
+    }
+    return base_internal::HandleFactory<T>::template Make<
+        base_internal::ReferentValue<T>>(memory_manager(), pointer, type,
+                                         std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename R, typename... Args>
+  EnableIfBaseOfAndReferent<StructValue, T, R, absl::StatusOr<Handle<T>>>
+  CreateReferentStructValue(Handle<R> reference, Handle<StructType>&& type,
+                            Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return CreateStructValue<T>(std::move(type), std::forward<Args>(args)...);
+    }
+    return base_internal::HandleFactory<T>::template Make<
+        base_internal::ReferentValue<T>>(memory_manager(), pointer,
+                                         std::move(type),
+                                         std::forward<Args>(args)...);
+  }
+
   template <typename T, typename... Args>
-  EnableIfBaseOfT<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
+  EnableIfBaseOf<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
       const Handle<ListType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
@@ -246,15 +330,42 @@ class ValueFactory final {
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
+  EnableIfBaseOf<ListValue, T, absl::StatusOr<Handle<T>>> CreateListValue(
       Handle<ListType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
         std::remove_const_t<T>>(memory_manager(), std::move(type),
                                 std::forward<Args>(args)...);
   }
 
+  template <typename T, typename R, typename... Args>
+  EnableIfBaseOfAndReferent<ListValue, T, R, absl::StatusOr<Handle<T>>>
+  CreateReferentListValue(Handle<R> reference, const Handle<ListType>& type,
+                          Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return CreateListValue<T>(type, std::forward<Args>(args)...);
+    }
+    return base_internal::HandleFactory<T>::template Make<
+        base_internal::ReferentValue<T>>(memory_manager(), pointer, type,
+                                         std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename R, typename... Args>
+  EnableIfBaseOfAndReferent<ListValue, T, R, absl::StatusOr<Handle<T>>>
+  CreateReferentListValue(Handle<R> reference, Handle<ListType>&& type,
+                          Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return CreateListValue<T>(std::move(type), std::forward<Args>(args)...);
+    }
+    return base_internal::HandleFactory<T>::template Make<
+        base_internal::ReferentValue<T>>(memory_manager(), pointer,
+                                         std::move(type),
+                                         std::forward<Args>(args)...);
+  }
+
   template <typename T, typename... Args>
-  EnableIfBaseOfT<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
+  EnableIfBaseOf<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
       const Handle<MapType>& type,
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
@@ -263,11 +374,38 @@ class ValueFactory final {
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
+  EnableIfBaseOf<MapValue, T, absl::StatusOr<Handle<T>>> CreateMapValue(
       Handle<MapType>&& type, Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return base_internal::HandleFactory<T>::template Make<
         std::remove_const_t<T>>(memory_manager(), std::move(type),
                                 std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename R, typename... Args>
+  EnableIfBaseOfAndReferent<MapValue, T, R, absl::StatusOr<Handle<T>>>
+  CreateReferentMapValue(Handle<R> reference, const Handle<MapType>& type,
+                         Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return CreateMapValue<T>(type, std::forward<Args>(args)...);
+    }
+    return base_internal::HandleFactory<T>::template Make<
+        base_internal::ReferentValue<T>>(memory_manager(), pointer, type,
+                                         std::forward<Args>(args)...);
+  }
+
+  template <typename T, typename R, typename... Args>
+  EnableIfBaseOfAndReferent<MapValue, T, R, absl::StatusOr<Handle<T>>>
+  CreateReferentMapValue(Handle<R> reference, Handle<MapType>&& type,
+                         Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    if (pointer == nullptr) {
+      return CreateMapValue<T>(std::move(type), std::forward<Args>(args)...);
+    }
+    return base_internal::HandleFactory<T>::template Make<
+        base_internal::ReferentValue<T>>(memory_manager(), pointer,
+                                         std::move(type),
+                                         std::forward<Args>(args)...);
   }
 
   Handle<TypeValue> CreateTypeValue(const Handle<Type>& value)
@@ -298,7 +436,6 @@ class ValueFactory final {
  private:
   friend class BytesValue;
   friend class StringValue;
-  friend struct base_internal::ValueFactoryAccess;
 
   Handle<BytesValue> GetEmptyBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
@@ -313,9 +450,6 @@ class ValueFactory final {
   absl::StatusOr<Handle<BytesValue>> CreateMemberBytesValue(
       absl::string_view value,
       const Value* owner) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    if (value.empty()) {
-      return GetEmptyBytesValue();
-    }
     return base_internal::HandleFactory<BytesValue>::template Make<
         base_internal::InlinedStringViewBytesValue>(value, owner);
   }
@@ -323,9 +457,6 @@ class ValueFactory final {
   absl::StatusOr<Handle<StringValue>> CreateMemberStringValue(
       absl::string_view value,
       const Value* owner) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    if (value.empty()) {
-      return GetEmptyStringValue();
-    }
     return base_internal::HandleFactory<StringValue>::template Make<
         base_internal::InlinedStringViewStringValue>(value, owner);
   }
@@ -367,20 +498,6 @@ inline Handle<TimestampValue> ValueTraits<TimestampValue>::Wrap(
     ValueFactory& value_factory, absl::Time value) {
   return value_factory.CreateUncheckedTimestampValue(value);
 }
-
-struct ValueFactoryAccess {
-  static absl::StatusOr<Handle<BytesValue>> CreateMemberBytesValue(
-      ValueFactory& value_factory, absl::string_view value,
-      const Value* owner) {
-    return value_factory.CreateMemberBytesValue(value, owner);
-  }
-
-  static absl::StatusOr<Handle<StringValue>> CreateMemberStringValue(
-      ValueFactory& value_factory, absl::string_view value,
-      const Value* owner) {
-    return value_factory.CreateMemberStringValue(value, owner);
-  }
-};
 
 }  // namespace base_internal
 

@@ -166,6 +166,12 @@ class ValueHandle final {
 
   bool Equals(const ValueHandle& other) const;
 
+  Value* release() {
+    Value* value = static_cast<Value*>(data_.get_heap());
+    data_.set_pointer(0);
+    return value;
+  }
+
  private:
   friend class ValueMetadata;
 

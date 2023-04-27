@@ -185,7 +185,9 @@ class LegacyMapValue final : public MapValue, public InlineData {
   uintptr_t impl_;
 };
 
-class AbstractMapValue : public MapValue, public HeapData {
+class AbstractMapValue : public MapValue,
+                         public HeapData,
+                         public EnableHandleFromThis<AbstractMapValue> {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&

@@ -172,6 +172,12 @@ class TypeHandle final {
 
   void HashValue(absl::HashState state) const;
 
+  Type* release() {
+    Type* type = static_cast<Type*>(data_.get_heap());
+    data_.set_pointer(0);
+    return type;
+  }
+
  private:
   static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
 
