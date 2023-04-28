@@ -244,6 +244,28 @@ INSTANTIATE_TEST_SUITE_P(
          {},
          absl::OutOfRangeError("timestamp overflow"),
          OverflowChecksEnabled()},
+
+        // List concatenation tests.
+        {"ListConcatEmptyInputs",
+         "[] + [] == []",
+         {},
+         CelValue::CreateBool(true),
+         OverflowChecksEnabled()},
+        {"ListConcatRightEmpty",
+         "[1] + [] == [1]",
+         {},
+         CelValue::CreateBool(true),
+         OverflowChecksEnabled()},
+        {"ListConcatLeftEmpty",
+         "[] + [1] == [1]",
+         {},
+         CelValue::CreateBool(true),
+         OverflowChecksEnabled()},
+        {"ListConcat",
+         "[2] + [1] == [2, 1]",
+         {},
+         CelValue::CreateBool(true),
+         OverflowChecksEnabled()},
     }),
     [](const testing::TestParamInfo<BuiltinFuncParamsTest::ParamType>& info) {
       return info.param.test_name;

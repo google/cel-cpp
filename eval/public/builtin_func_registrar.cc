@@ -394,12 +394,18 @@ absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueFactory& factory,
 
 // Concatenation for CelList type.
 absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
-                                             const ListValue& value1,
-                                             const ListValue& value2) {
+                                             const Handle<ListValue>& value1,
+                                             const Handle<ListValue>& value2) {
   std::vector<CelValue> joined_values;
 
-  int size1 = value1.size();
-  int size2 = value2.size();
+  int size1 = value1->size();
+  if (size1 == 0) {
+    return value2;
+  }
+  int size2 = value2->size();
+  if (size2 == 0) {
+    return value1;
+  }
   joined_values.reserve(size1 + size2);
 
   Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
@@ -407,12 +413,12 @@ absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
 
   ListValue::GetContext context(factory);
   for (int i = 0; i < size1; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1.Get(context, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(context, i));
     joined_values.push_back(
         cel::interop_internal::ModernValueToLegacyValueOrDie(arena, elem));
   }
   for (int i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2.Get(context, i));
+    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2->Get(context, i));
     joined_values.push_back(
         cel::interop_internal::ModernValueToLegacyValueOrDie(arena, elem));
   }
@@ -1626,8 +1632,9 @@ absl::Status RegisterContainerFunctions(CelFunctionRegistry* registry,
         BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const ListValue&,
                               const ListValue&>::CreateDescriptor(builtin::kAdd,
                                                                   false),
-        BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const ListValue&,
-                              const ListValue&>::WrapFunction(ConcatList)));
+        BinaryFunctionAdapter<
+            absl::StatusOr<Handle<Value>>, const Handle<ListValue>&,
+            const Handle<ListValue>&>::WrapFunction(ConcatList)));
   }
 
   return registry->Register(PortableBinaryFunctionAdapter<
