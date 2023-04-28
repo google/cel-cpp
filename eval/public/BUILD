@@ -268,6 +268,9 @@ cc_library(
     hdrs = [
         "cel_builtins.h",
     ],
+    deps = [
+        "//base:builtins",
+    ],
 )
 
 cc_library(
