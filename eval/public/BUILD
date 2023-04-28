@@ -323,17 +323,18 @@ cc_library(
         "comparison_functions.h",
     ],
     deps = [
-        ":cel_builtins",
         ":cel_function_registry",
-        ":cel_number",
         ":cel_options",
+        "//base:builtins",
         "//base:function_adapter",
         "//base:handle",
         "//base:value",
         "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "//runtime/internal:number",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:optional",
     ],
 )
 

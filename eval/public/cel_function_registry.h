@@ -122,6 +122,8 @@ class CelFunctionRegistry {
     return modern_registry_;
   }
 
+  cel::FunctionRegistry& InternalGetRegistry() { return modern_registry_; }
+
  private:
   cel::FunctionRegistry modern_registry_;
 
