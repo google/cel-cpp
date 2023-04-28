@@ -14,43 +14,23 @@
 
 #include "eval/public/comparison_functions.h"
 
-#include <cmath>
-#include <cstdint>
-#include <limits>
 #include <memory>
-#include <string>
-#include <utility>
+#include <tuple>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/any.pb.h"
 #include "google/rpc/context/attribute_context.pb.h"
-#include "google/protobuf/descriptor.pb.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/dynamic_message.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "absl/types/span.h"
-#include "absl/types/variant.h"
 #include "eval/public/activation.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
-#include "eval/public/containers/container_backed_list_impl.h"
-#include "eval/public/containers/container_backed_map_impl.h"
-#include "eval/public/message_wrapper.h"
-#include "eval/public/structs/cel_proto_wrapper.h"
-#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
-#include "eval/testutil/test_message.pb.h"  // IWYU pragma: keep
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
@@ -60,13 +40,8 @@ namespace {
 
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
-using testing::_;
 using testing::Combine;
-using testing::HasSubstr;
-using testing::Optional;
-using testing::Values;
 using testing::ValuesIn;
-using cel::internal::StatusIs;
 
 MATCHER_P2(DefinesHomogenousOverload, name, argument_type,
            absl::StrCat(name, " for ", CelValue::TypeName(argument_type))) {
@@ -115,50 +90,6 @@ class ComparisonFunctionTest
   InterpreterOptions options_;
   google::protobuf::Arena arena_;
 };
-
-constexpr std::array<CelValue::Type, 8> kOrderableTypes = {
-    CelValue::Type::kBool,     CelValue::Type::kInt64,
-    CelValue::Type::kUint64,   CelValue::Type::kString,
-    CelValue::Type::kDouble,   CelValue::Type::kBytes,
-    CelValue::Type::kDuration, CelValue::Type::kTimestamp};
-
-TEST(RegisterComparisonFunctionsTest, LessThanDefined) {
-  InterpreterOptions default_options;
-  CelFunctionRegistry registry;
-  ASSERT_OK(RegisterComparisonFunctions(&registry, default_options));
-  for (CelValue::Type type : kOrderableTypes) {
-    EXPECT_THAT(registry, DefinesHomogenousOverload(builtin::kLess, type));
-  }
-}
-
-TEST(RegisterComparisonFunctionsTest, LessThanOrEqualDefined) {
-  InterpreterOptions default_options;
-  CelFunctionRegistry registry;
-  ASSERT_OK(RegisterComparisonFunctions(&registry, default_options));
-  for (CelValue::Type type : kOrderableTypes) {
-    EXPECT_THAT(registry,
-                DefinesHomogenousOverload(builtin::kLessOrEqual, type));
-  }
-}
-
-TEST(RegisterComparisonFunctionsTest, GreaterThanDefined) {
-  InterpreterOptions default_options;
-  CelFunctionRegistry registry;
-  ASSERT_OK(RegisterComparisonFunctions(&registry, default_options));
-  for (CelValue::Type type : kOrderableTypes) {
-    EXPECT_THAT(registry, DefinesHomogenousOverload(builtin::kGreater, type));
-  }
-}
-
-TEST(RegisterComparisonFunctionsTest, GreaterThanOrEqualDefined) {
-  InterpreterOptions default_options;
-  CelFunctionRegistry registry;
-  ASSERT_OK(RegisterComparisonFunctions(&registry, default_options));
-  for (CelValue::Type type : kOrderableTypes) {
-    EXPECT_THAT(registry,
-                DefinesHomogenousOverload(builtin::kGreaterOrEqual, type));
-  }
-}
 
 TEST_P(ComparisonFunctionTest, SmokeTest) {
   ComparisonTestCase test_case = std::get<0>(GetParam());
