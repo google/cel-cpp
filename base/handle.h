@@ -256,8 +256,6 @@ class Handle final : private base_internal::HandlePolicy<T> {
   explicit Handle(absl::in_place_t, Args&&... args)
       : impl_(std::forward<Args>(args)...) {}
 
-  T* Release() { return static_cast<T*>(impl_.release()); }
-
   Impl impl_;
 };
 
@@ -311,42 +309,6 @@ struct HandleFactory {
     }
     return Handle<T>(absl::in_place,
                      *base_internal::ManagedMemoryRelease(managed_memory));
-  }
-
-  template <typename F>
-  static std::enable_if_t<std::is_base_of_v<HeapData, F>, Handle<F>> MakeFrom(
-      const F* data) {
-    if (Metadata::IsReferenceCounted(*data)) {
-      Metadata::Ref(*data);
-    } else {
-      ABSL_ASSERT(Metadata::IsArenaAllocated(*data));
-    }
-    return Handle<T>(absl::in_place, *const_cast<F*>(data));
-  }
-
-  // Requires that T is reference counted or arena allocated. Clears Handle<T>
-  // without decrementing the reference count. Returns nullptr if T is arena
-  // allocated, T* otherwise.
-  template <typename F>
-  static std::enable_if_t<std::is_base_of_v<HeapData, F>, F*> Release(
-      Handle<F>& handle) {
-    T* data = handle.Release();
-    if (Metadata::IsArenaAllocated(*data)) {
-      data = nullptr;
-    } else {
-      ABSL_ASSERT(Metadata::IsReferenceCounted(*data));
-    }
-    return data;
-  }
-};
-
-template <typename T>
-class EnableHandleFromThis {
- protected:
-  Handle<T> handle_from_this() const {
-    static_assert(std::is_base_of_v<EnableHandleFromThis<T>, T>);
-    // It is guaranteed that we are either reference counted or arena allocated.
-    return HandleFactory<T>::MakeFrom(reinterpret_cast<const T*>(this));
   }
 };
 

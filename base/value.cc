@@ -456,8 +456,6 @@ void ValueHandle::Delete(Kind kind, const Value& value) {
   }
 }
 
-void ValueMetadata::Ref(const Value& value) { Metadata::Ref(value); }
-
 void ValueMetadata::Unref(const Value& value) {
   if (Metadata::Unref(value)) {
     ValueHandle::Delete(Metadata::KindHeap(value), value);

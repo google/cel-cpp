@@ -758,9 +758,9 @@ class ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>
       // Scratch was not used, we can avoid copying.
       scratch.reset();
       return context.value_factory()
-          .CreateReferentStructValue<
+          .CreateBorrowedStructValue<
               protobuf_internal::DynamicMemberParsedProtoStructValue>(
-              handle_from_this(), type()->element().As<StructType>(), &field);
+              owner_from_this(), type()->element().As<StructType>(), &field);
     }
     if (ProtoMemoryManager::Is(context.value_factory().memory_manager())) {
       auto* arena = ProtoMemoryManager::CastToProtoArena(
@@ -1014,8 +1014,8 @@ class ParsedProtoListValue<StringValue, google::protobuf::Message>
     CEL_ASSIGN_OR_RETURN(auto wrapped,
                          protobuf_internal::UnwrapStringValueProto(field));
     if (absl::holds_alternative<absl::string_view>(wrapped)) {
-      return context.value_factory().CreateReferentStringValue(
-          handle_from_this(), absl::get<absl::string_view>(wrapped));
+      return context.value_factory().CreateBorrowedStringValue(
+          owner_from_this(), absl::get<absl::string_view>(wrapped));
     } else {
       ABSL_ASSERT(absl::holds_alternative<absl::Cord>(wrapped));
       return context.value_factory().CreateStringValue(
@@ -1297,8 +1297,8 @@ class ParsedProtoMapValueKeysList : public CEL_LIST_VALUE_CLASS {
       case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
         return context.value_factory().CreateUintValue(key.GetUInt32Value());
       case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
-        return context.value_factory().CreateReferentStringValue(
-            handle_from_this(), key.GetStringValue());
+        return context.value_factory().CreateBorrowedStringValue(
+            owner_from_this(), key.GetStringValue());
       case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
         return context.value_factory().CreateBoolValue(key.GetBoolValue());
       default:
@@ -1376,11 +1376,11 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
             proto_value.GetDoubleValue());
       case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
         if (value_desc->type() == google::protobuf::FieldDescriptor::TYPE_BYTES) {
-          return context.value_factory().CreateReferentBytesValue(
-              handle_from_this(), proto_value.GetStringValue());
+          return context.value_factory().CreateBorrowedBytesValue(
+              owner_from_this(), proto_value.GetStringValue());
         } else {
-          return context.value_factory().CreateReferentStringValue(
-              handle_from_this(), proto_value.GetStringValue());
+          return context.value_factory().CreateBorrowedStringValue(
+              owner_from_this(), proto_value.GetStringValue());
         }
       }
       case google::protobuf::FieldDescriptor::CPPTYPE_ENUM: {
@@ -1460,8 +1460,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                  protobuf_internal::UnwrapStringValueProto(
                                      proto_value.GetMessageValue()));
             if (absl::holds_alternative<absl::string_view>(wrapped)) {
-              return context.value_factory().CreateReferentStringValue(
-                  handle_from_this(), absl::get<absl::string_view>(wrapped));
+              return context.value_factory().CreateBorrowedStringValue(
+                  owner_from_this(), absl::get<absl::string_view>(wrapped));
             } else {
               ABSL_ASSERT(absl::holds_alternative<absl::Cord>(wrapped));
               return context.value_factory().CreateStringValue(
@@ -1478,9 +1478,9 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
           }
           case Kind::kStruct:
             return context.value_factory()
-                .CreateReferentStructValue<
+                .CreateBorrowedStructValue<
                     protobuf_internal::DynamicMemberParsedProtoStructValue>(
-                    handle_from_this(), std::move(type).As<ProtoStructType>(),
+                    owner_from_this(), std::move(type).As<ProtoStructType>(),
                     &proto_value.GetMessageValue());
           default:
             return absl::InternalError(absl::StrCat(
@@ -1522,8 +1522,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
       keys.push_back(begin.GetKey());
     }
     return context.value_factory()
-        .CreateReferentListValue<ParsedProtoMapValueKeysList>(
-            handle_from_this(), std::move(list_type), std::move(keys));
+        .CreateBorrowedListValue<ParsedProtoMapValueKeysList>(
+            owner_from_this(), std::move(list_type), std::move(keys));
   }
 
  private:
@@ -2028,8 +2028,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetMapField(
     const GetFieldContext& context, const StructType::Field& field,
     const google::protobuf::Reflection& reflect,
     const google::protobuf::FieldDescriptor& field_desc) const {
-  return context.value_factory().CreateReferentMapValue<ParsedProtoMapValue>(
-      handle_from_this(), field.type.As<MapType>(), value(), field_desc);
+  return context.value_factory().CreateBorrowedMapValue<ParsedProtoMapValue>(
+      owner_from_this(), field.type.As<MapType>(), value(), field_desc);
 }
 
 absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
@@ -2039,13 +2039,13 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
   switch (field_desc.type()) {
     case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<DoubleValue, double>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<DoubleValue, double>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<double>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_FLOAT:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<DoubleValue, float>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<DoubleValue, float>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<float>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_INT64:
       ABSL_FALLTHROUGH_INTENDED;
@@ -2053,8 +2053,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_SINT64:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<IntValue, int64_t>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<IntValue, int64_t>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<int64_t>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_INT32:
       ABSL_FALLTHROUGH_INTENDED;
@@ -2062,33 +2062,33 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_SINT32:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<IntValue, int32_t>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<IntValue, int32_t>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_UINT64:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_FIXED64:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<UintValue, uint64_t>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<UintValue, uint64_t>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<uint64_t>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_FIXED32:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_UINT32:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<UintValue, uint32_t>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<UintValue, uint32_t>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<uint32_t>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_BOOL:
       return context.value_factory()
-          .CreateReferentListValue<ParsedProtoListValue<BoolValue, bool>>(
-              handle_from_this(), field.type.As<ListType>(),
+          .CreateBorrowedListValue<ParsedProtoListValue<BoolValue, bool>>(
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<bool>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_STRING:
       return context.value_factory()
-          .CreateReferentListValue<
+          .CreateBorrowedListValue<
               ParsedProtoListValue<StringValue, std::string>>(
-              handle_from_this(), field.type.As<ListType>(),
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<std::string>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
@@ -2096,77 +2096,77 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
       switch (field.type.As<ListType>()->element()->kind()) {
         case Kind::kDuration:
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<DurationValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kTimestamp:
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<TimestampValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kBool:
           // google.protobuf.BoolValue, mapped to CEL primitive bool type for
           // list elements.
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<BoolValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kBytes:
           // google.protobuf.BytesValue, mapped to CEL primitive bytes type for
           // list elements.
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<BytesValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kDouble:
           // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL primitive
           // double type for list elements.
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<DoubleValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kInt:
           // google.protobuf.{Int32Value,Int64Value}, mapped to CEL primitive
           // int type for list elements.
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<IntValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kString:
           // google.protobuf.StringValue, mapped to CEL primitive bytes type for
           // list elements.
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<StringValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kUint:
           // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL primitive
           // uint type for list elements.
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<UintValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         case Kind::kStruct:
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
         default:
@@ -2174,9 +2174,9 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
       }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
       return context.value_factory()
-          .CreateReferentListValue<
+          .CreateBorrowedListValue<
               ParsedProtoListValue<BytesValue, std::string>>(
-              handle_from_this(), field.type.As<ListType>(),
+              owner_from_this(), field.type.As<ListType>(),
               reflect.GetRepeatedFieldRef<std::string>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
       switch (field.type.As<ListType>()->element()->kind()) {
@@ -2188,9 +2188,9 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                       .size());
         case Kind::kEnum:
           return context.value_factory()
-              .CreateReferentListValue<
+              .CreateBorrowedListValue<
                   ParsedProtoListValue<EnumValue, int32_t>>(
-                  handle_from_this(), field.type.As<ListType>(),
+                  owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc));
         default:
           ABSL_UNREACHABLE();
@@ -2242,8 +2242,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
         return context.value_factory().CreateStringValue(
             reflect.GetCord(value(), &field_desc));
       } else {
-        return context.value_factory().CreateReferentStringValue(
-            handle_from_this(), reflect.GetStringView(value(), &field_desc));
+        return context.value_factory().CreateBorrowedStringValue(
+            owner_from_this(), reflect.GetStringView(value(), &field_desc));
       }
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
@@ -2305,8 +2305,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
                   protobuf_internal::UnwrapStringValueProto(reflect.GetMessage(
                       value(), &field_desc, type()->factory_)));
               if (absl::holds_alternative<absl::string_view>(wrapped)) {
-                return context.value_factory().CreateReferentStringValue(
-                    handle_from_this(), absl::get<absl::string_view>(wrapped));
+                return context.value_factory().CreateBorrowedStringValue(
+                    owner_from_this(), absl::get<absl::string_view>(wrapped));
               } else {
                 ABSL_ASSERT(absl::holds_alternative<absl::Cord>(wrapped));
                 return context.value_factory().CreateStringValue(
@@ -2327,8 +2327,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
         }
         case Kind::kStruct:
           return context.value_factory()
-              .CreateReferentStructValue<DynamicMemberParsedProtoStructValue>(
-                  handle_from_this(), field.type.As<ProtoStructType>(),
+              .CreateBorrowedStructValue<DynamicMemberParsedProtoStructValue>(
+                  owner_from_this(), field.type.As<ProtoStructType>(),
                   &(reflect.GetMessage(value(), &field_desc)));
         default:
           ABSL_UNREACHABLE();
@@ -2339,8 +2339,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
         return context.value_factory().CreateBytesValue(
             reflect.GetCord(value(), &field_desc));
       } else {
-        return context.value_factory().CreateReferentBytesValue(
-            handle_from_this(), reflect.GetStringView(value(), &field_desc));
+        return context.value_factory().CreateBorrowedBytesValue(
+            owner_from_this(), reflect.GetStringView(value(), &field_desc));
       }
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
       switch (field.type->kind()) {

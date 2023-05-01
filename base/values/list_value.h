@@ -29,6 +29,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/owner.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
 #include "base/value.h"
@@ -160,7 +161,7 @@ class LegacyListValue final : public ListValue, public InlineData {
 
 class AbstractListValue : public ListValue,
                           public HeapData,
-                          public EnableHandleFromThis<AbstractListValue> {
+                          public EnableOwnerFromThis<AbstractListValue> {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&

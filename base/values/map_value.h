@@ -26,6 +26,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/owner.h"
 #include "base/type.h"
 #include "base/types/map_type.h"
 #include "base/value.h"
@@ -187,7 +188,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
 class AbstractMapValue : public MapValue,
                          public HeapData,
-                         public EnableHandleFromThis<AbstractMapValue> {
+                         public EnableOwnerFromThis<AbstractMapValue> {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&

@@ -124,9 +124,13 @@ class ValueMetadata final {
  public:
   ValueMetadata() = delete;
 
-  static void Ref(const Value& value);
+  static void Ref(const Value& value) { Metadata::Ref(value); }
 
   static void Unref(const Value& value);
+
+  static bool IsReferenceCounted(const Value& value) {
+    return Metadata::IsReferenceCounted(value);
+  }
 };
 
 class ValueHandle final {
@@ -165,12 +169,6 @@ class ValueHandle final {
   explicit operator bool() const { return !data_.IsNull(); }
 
   bool Equals(const ValueHandle& other) const;
-
-  Value* release() {
-    Value* value = static_cast<Value*>(data_.get_heap());
-    data_.set_pointer(0);
-    return value;
-  }
 
  private:
   friend class ValueMetadata;

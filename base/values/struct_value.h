@@ -27,6 +27,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/owner.h"
 #include "base/type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
@@ -229,7 +230,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
 class AbstractStructValue : public StructValue,
                             public HeapData,
-                            public EnableHandleFromThis<AbstractStructValue> {
+                            public EnableOwnerFromThis<AbstractStructValue> {
  public:
   static bool Is(const Value& value) {
     return value.kind() == kKind &&

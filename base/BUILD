@@ -73,6 +73,14 @@ cc_library(
 )
 
 cc_library(
+    name = "owner",
+    hdrs = ["owner.h"],
+    deps = [
+        "//base/internal:data",
+    ],
+)
+
+cc_library(
     name = "kind",
     srcs = ["kind.cc"],
     hdrs = ["kind.h"],
@@ -256,6 +264,7 @@ cc_library(
         ":handle",
         ":kind",
         ":memory_manager",
+        ":owner",
         ":type",
         "//base/internal:data",
         "//base/internal:message_wrapper",

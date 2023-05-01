@@ -133,6 +133,17 @@ namespace cel {
 
 namespace base_internal {
 
+class TypeMetadata final {
+ public:
+  TypeMetadata() = delete;
+
+  static void Ref(const Type& type);
+
+  static void Unref(const Type& type);
+
+  static bool IsReferenceCounted(const Type& type);
+};
+
 class TypeHandle final {
  public:
   TypeHandle() = default;
@@ -171,12 +182,6 @@ class TypeHandle final {
   bool Equals(const TypeHandle& other) const;
 
   void HashValue(absl::HashState state) const;
-
-  Type* release() {
-    Type* type = static_cast<Type*>(data_.get_heap());
-    data_.set_pointer(0);
-    return type;
-  }
 
  private:
   static bool Equals(const Type& lhs, const Type& rhs, Kind kind);

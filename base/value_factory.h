@@ -32,6 +32,7 @@
 #include "base/function_result_set.h"
 #include "base/handle.h"
 #include "base/memory_manager.h"
+#include "base/owner.h"
 #include "base/type_manager.h"
 #include "base/value.h"
 #include "base/values/bool_value.h"
@@ -57,18 +58,18 @@ namespace cel {
 namespace base_internal {
 
 template <typename T>
-class ReferentValue final : public T {
+class BorrowedValue final : public T {
  public:
   template <typename... Args>
-  explicit ReferentValue(const cel::Value* referent, Args&&... args)
+  explicit BorrowedValue(const cel::Value* owner, Args&&... args)
       : T(std::forward<Args>(args)...),
-        referent_(ABSL_DIE_IF_NULL(referent))  // Crash OK
+        owner_(ABSL_DIE_IF_NULL(owner))  // Crash OK
   {}
 
-  ~ReferentValue() override { ValueMetadata::Unref(*referent_); }
+  ~BorrowedValue() override { ValueMetadata::Unref(*owner_); }
 
  private:
-  const cel::Value* const referent_;
+  const cel::Value* const owner_;
 };
 
 }  // namespace base_internal
@@ -163,11 +164,11 @@ class ValueFactory final {
 
   template <typename R>
   EnableIfReferent<R, absl::StatusOr<Handle<BytesValue>>>
-  CreateReferentBytesValue(Handle<R> reference, absl::string_view value) {
+  CreateBorrowedBytesValue(Owner<R> owner, absl::string_view value) {
     if (value.empty()) {
       return GetEmptyBytesValue();
     }
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return base_internal::HandleFactory<BytesValue>::Make<
           base_internal::InlinedStringViewBytesValue>(value);
@@ -215,11 +216,11 @@ class ValueFactory final {
 
   template <typename R>
   EnableIfReferent<R, absl::StatusOr<Handle<StringValue>>>
-  CreateReferentStringValue(Handle<R> reference, absl::string_view value) {
+  CreateBorrowedStringValue(Owner<R> owner, absl::string_view value) {
     if (value.empty()) {
       return GetEmptyStringValue();
     }
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return base_internal::HandleFactory<StringValue>::Make<
           base_internal::InlinedStringViewStringValue>(value);
@@ -295,27 +296,27 @@ class ValueFactory final {
 
   template <typename T, typename R, typename... Args>
   EnableIfBaseOfAndReferent<StructValue, T, R, absl::StatusOr<Handle<T>>>
-  CreateReferentStructValue(Handle<R> reference, const Handle<StructType>& type,
+  CreateBorrowedStructValue(Owner<R> owner, const Handle<StructType>& type,
                             Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return CreateStructValue<T>(type, std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::ReferentValue<T>>(memory_manager(), pointer, type,
+        base_internal::BorrowedValue<T>>(memory_manager(), pointer, type,
                                          std::forward<Args>(args)...);
   }
 
   template <typename T, typename R, typename... Args>
   EnableIfBaseOfAndReferent<StructValue, T, R, absl::StatusOr<Handle<T>>>
-  CreateReferentStructValue(Handle<R> reference, Handle<StructType>&& type,
+  CreateBorrowedStructValue(Owner<R> owner, Handle<StructType>&& type,
                             Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return CreateStructValue<T>(std::move(type), std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::ReferentValue<T>>(memory_manager(), pointer,
+        base_internal::BorrowedValue<T>>(memory_manager(), pointer,
                                          std::move(type),
                                          std::forward<Args>(args)...);
   }
@@ -339,27 +340,27 @@ class ValueFactory final {
 
   template <typename T, typename R, typename... Args>
   EnableIfBaseOfAndReferent<ListValue, T, R, absl::StatusOr<Handle<T>>>
-  CreateReferentListValue(Handle<R> reference, const Handle<ListType>& type,
+  CreateBorrowedListValue(Owner<R> owner, const Handle<ListType>& type,
                           Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return CreateListValue<T>(type, std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::ReferentValue<T>>(memory_manager(), pointer, type,
+        base_internal::BorrowedValue<T>>(memory_manager(), pointer, type,
                                          std::forward<Args>(args)...);
   }
 
   template <typename T, typename R, typename... Args>
   EnableIfBaseOfAndReferent<ListValue, T, R, absl::StatusOr<Handle<T>>>
-  CreateReferentListValue(Handle<R> reference, Handle<ListType>&& type,
+  CreateBorrowedListValue(Owner<R> owner, Handle<ListType>&& type,
                           Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return CreateListValue<T>(std::move(type), std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::ReferentValue<T>>(memory_manager(), pointer,
+        base_internal::BorrowedValue<T>>(memory_manager(), pointer,
                                          std::move(type),
                                          std::forward<Args>(args)...);
   }
@@ -383,27 +384,27 @@ class ValueFactory final {
 
   template <typename T, typename R, typename... Args>
   EnableIfBaseOfAndReferent<MapValue, T, R, absl::StatusOr<Handle<T>>>
-  CreateReferentMapValue(Handle<R> reference, const Handle<MapType>& type,
+  CreateBorrowedMapValue(Owner<R> owner, const Handle<MapType>& type,
                          Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return CreateMapValue<T>(type, std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::ReferentValue<T>>(memory_manager(), pointer, type,
+        base_internal::BorrowedValue<T>>(memory_manager(), pointer, type,
                                          std::forward<Args>(args)...);
   }
 
   template <typename T, typename R, typename... Args>
   EnableIfBaseOfAndReferent<MapValue, T, R, absl::StatusOr<Handle<T>>>
-  CreateReferentMapValue(Handle<R> reference, Handle<MapType>&& type,
+  CreateBorrowedMapValue(Owner<R> owner, Handle<MapType>&& type,
                          Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    auto* pointer = base_internal::HandleFactory<R>::Release(reference);
+    auto* pointer = owner.release();
     if (pointer == nullptr) {
       return CreateMapValue<T>(std::move(type), std::forward<Args>(args)...);
     }
     return base_internal::HandleFactory<T>::template Make<
-        base_internal::ReferentValue<T>>(memory_manager(), pointer,
+        base_internal::BorrowedValue<T>>(memory_manager(), pointer,
                                          std::move(type),
                                          std::forward<Args>(args)...);
   }

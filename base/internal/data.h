@@ -31,6 +31,8 @@
 
 namespace cel {
 
+class Type;
+class Value;
 class MemoryManager;
 
 namespace base_internal {
@@ -342,6 +344,29 @@ class Metadata final {
   Metadata& operator=(const Metadata&) = delete;
   Metadata& operator=(Metadata&&) = delete;
 };
+
+class TypeMetadata;
+class ValueMetadata;
+
+template <typename T, typename = void>
+struct SelectMetadataImpl;
+
+template <typename T>
+struct SelectMetadataImpl<
+    T, std::enable_if_t<std::conjunction_v<std::is_base_of<HeapData, T>,
+                                           std::is_base_of<cel::Type, T>>>> {
+  using type = TypeMetadata;
+};
+
+template <typename T>
+struct SelectMetadataImpl<
+    T, std::enable_if_t<std::conjunction_v<std::is_base_of<HeapData, T>,
+                                           std::is_base_of<cel::Value, T>>>> {
+  using type = ValueMetadata;
+};
+
+template <typename T>
+using SelectMetadata = typename SelectMetadataImpl<T>::type;
 
 template <size_t Size, size_t Align>
 union alignas(Align) AnyDataStorage final {
