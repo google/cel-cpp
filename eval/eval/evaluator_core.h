@@ -22,8 +22,10 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/ast_internal.h"
+#include "base/handle.h"
 #include "base/memory_manager.h"
 #include "base/type_manager.h"
+#include "base/value.h"
 #include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
@@ -151,6 +153,10 @@ class ExecutionFrame {
 
   // Returns next expression to evaluate.
   const ExpressionStep* Next();
+
+  // Evaluate the execution frame to completion.
+  absl::StatusOr<cel::Handle<cel::Value>> Evaluate(
+      const CelEvaluationListener& listener);
 
   // Intended for use only in conditionals.
   absl::Status JumpTo(int offset) {

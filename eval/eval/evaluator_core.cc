@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -13,9 +14,11 @@
 #include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/interop.h"
+#include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -148,6 +151,43 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
   return Trace(activation, state, CelEvaluationListener());
 }
 
+absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
+    const CelEvaluationListener& listener) {
+  size_t initial_stack_size = value_stack().size();
+  const ExpressionStep* expr;
+  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
+      value_factory().memory_manager());
+  while ((expr = Next()) != nullptr) {
+    CEL_RETURN_IF_ERROR(expr->Evaluate(this));
+
+    if (!listener ||
+        // This step was added during compilation (e.g. Int64ConstImpl).
+        !expr->ComesFromAst()) {
+      continue;
+    }
+
+    if (value_stack().empty()) {
+      LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
+                    "Try to disable short-circuiting.";
+      continue;
+    }
+    CEL_RETURN_IF_ERROR(
+        listener(expr->id(),
+                 cel::interop_internal::ModernValueToLegacyValueOrDie(
+                     arena, value_stack().Peek()),
+                 arena));
+  }
+
+  size_t final_stack_size = value_stack().size();
+  if (final_stack_size != initial_stack_size + 1 || final_stack_size == 0) {
+    return absl::Status(absl::StatusCode::kInternal,
+                        "Stack error during evaluation");
+  }
+  cel::Handle<cel::Value> value = value_stack().Peek();
+  value_stack().Pop(1);
+  return value;
+}
+
 absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
     const BaseActivation& activation, CelEvaluationState* _state,
     CelEvaluationListener callback) const {
@@ -157,44 +197,8 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
 
   ExecutionFrame frame(path_, activation, &type_registry_, options_, state);
 
-  EvaluatorStack* stack = &frame.value_stack();
-  size_t initial_stack_size = stack->size();
-  const ExpressionStep* expr;
-  while ((expr = frame.Next()) != nullptr) {
-    auto status = expr->Evaluate(&frame);
-    if (!status.ok()) {
-      return status;
-    }
-    if (!callback) {
-      continue;
-    }
-    if (!expr->ComesFromAst()) {
-      // This step was added during compilation (e.g. Int64ConstImpl).
-      continue;
-    }
+  CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> value, frame.Evaluate(callback));
 
-    if (stack->empty()) {
-      LOG(ERROR) << "Stack is empty after a ExpressionStep.Evaluate. "
-                    "Try to disable short-circuiting.";
-      continue;
-    }
-    auto status2 =
-        callback(expr->id(),
-                 cel::interop_internal::ModernValueToLegacyValueOrDie(
-                     state->arena(), stack->Peek()),
-                 state->arena());
-    if (!status2.ok()) {
-      return status2;
-    }
-  }
-
-  size_t final_stack_size = stack->size();
-  if (initial_stack_size + 1 != final_stack_size || final_stack_size == 0) {
-    return absl::Status(absl::StatusCode::kInternal,
-                        "Stack error during evaluation");
-  }
-  auto value = stack->Peek();
-  stack->Pop(1);
   return cel::interop_internal::ModernValueToLegacyValueOrDie(state->arena(),
                                                               value);
 }
