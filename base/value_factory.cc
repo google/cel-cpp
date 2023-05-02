@@ -36,7 +36,6 @@ using base_internal::InlinedCordBytesValue;
 using base_internal::InlinedCordStringValue;
 using base_internal::InlinedStringViewBytesValue;
 using base_internal::InlinedStringViewStringValue;
-using base_internal::ModernTypeValue;
 using base_internal::StringBytesValue;
 using base_internal::StringStringValue;
 
@@ -44,10 +43,6 @@ using base_internal::StringStringValue;
 
 Handle<NullValue> NullValue::Get(ValueFactory& value_factory) {
   return value_factory.GetNullValue();
-}
-
-Handle<NullValue> ValueFactory::GetNullValue() {
-  return HandleFactory<NullValue>::Make<NullValue>();
 }
 
 Handle<ErrorValue> ValueFactory::CreateErrorValue(absl::Status status) {
@@ -180,17 +175,13 @@ absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(
 absl::StatusOr<Handle<DurationValue>> ValueFactory::CreateDurationValue(
     absl::Duration value) {
   CEL_RETURN_IF_ERROR(internal::ValidateDuration(value));
-  return HandleFactory<DurationValue>::Make<DurationValue>(value);
+  return CreateUncheckedDurationValue(value);
 }
 
 absl::StatusOr<Handle<TimestampValue>> ValueFactory::CreateTimestampValue(
     absl::Time value) {
   CEL_RETURN_IF_ERROR(internal::ValidateTimestamp(value));
-  return HandleFactory<TimestampValue>::Make<TimestampValue>(value);
-}
-
-Handle<TypeValue> ValueFactory::CreateTypeValue(const Handle<Type>& value) {
-  return HandleFactory<TypeValue>::Make<ModernTypeValue>(value);
+  return CreateUncheckedTimestampValue(value);
 }
 
 Handle<UnknownValue> ValueFactory::CreateUnknownValue(
@@ -203,16 +194,6 @@ Handle<UnknownValue> ValueFactory::CreateUnknownValue(
 absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValueFromView(
     absl::string_view value) {
   return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(value);
-}
-
-Handle<BytesValue> ValueFactory::GetEmptyBytesValue() {
-  return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(
-      absl::string_view());
-}
-
-Handle<StringValue> ValueFactory::GetEmptyStringValue() {
-  return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(
-      absl::string_view());
 }
 
 absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValueFromView(

@@ -107,7 +107,9 @@ class ValueFactory final {
 
   TypeManager& type_manager() const { return type_manager_; }
 
-  Handle<NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<NullValue> GetNullValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<NullValue>::Make<NullValue>();
+  }
 
   Handle<ErrorValue> CreateErrorValue(absl::Status status)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
@@ -410,7 +412,10 @@ class ValueFactory final {
   }
 
   Handle<TypeValue> CreateTypeValue(const Handle<Type>& value)
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<TypeValue>::Make<
+        base_internal::ModernTypeValue>(value);
+  }
 
   Handle<UnknownValue> CreateUnknownValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
     return CreateUnknownValue(AttributeSet(), FunctionResultSet());
@@ -438,12 +443,18 @@ class ValueFactory final {
   friend class BytesValue;
   friend class StringValue;
 
-  Handle<BytesValue> GetEmptyBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<BytesValue> GetEmptyBytesValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<BytesValue>::Make<
+        base_internal::InlinedStringViewBytesValue>(absl::string_view());
+  }
 
   absl::StatusOr<Handle<BytesValue>> CreateBytesValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Handle<StringValue> GetEmptyStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<StringValue> GetEmptyStringValue() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<StringValue>::Make<
+        base_internal::InlinedStringViewStringValue>(absl::string_view());
+  }
 
   absl::StatusOr<Handle<StringValue>> CreateStringValueFromView(
       absl::string_view value) ABSL_ATTRIBUTE_LIFETIME_BOUND;

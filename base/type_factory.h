@@ -57,8 +57,7 @@ class TypeFactory final {
 
  public:
   explicit TypeFactory(
-      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : memory_manager_(memory_manager) {}
+      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   TypeFactory(const TypeFactory&) = delete;
   TypeFactory(TypeFactory&&) = delete;
@@ -152,6 +151,18 @@ class TypeFactory final {
     return UintWrapperType::Get();
   }
 
+  const Handle<Type>& GetJsonValueType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetDynType().As<Type>();
+  }
+
+  const Handle<ListType>& GetJsonListType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return json_list_type_;
+  }
+
+  const Handle<MapType>& GetJsonMapType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return json_map_type_;
+  }
+
   template <typename T, typename... Args>
   EnableIfBaseOfT<EnumType, T, absl::StatusOr<Handle<T>>> CreateEnumType(
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
@@ -180,6 +191,9 @@ class TypeFactory final {
 
  private:
   MemoryManager& memory_manager_;
+
+  Handle<ListType> json_list_type_;
+  Handle<MapType> json_map_type_;
 
   absl::Mutex list_types_mutex_;
   // Mapping from list element types to the list type. This allows us to cache

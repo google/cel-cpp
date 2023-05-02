@@ -30,6 +30,21 @@ using base_internal::ModernMapType;
 
 }  // namespace
 
+TypeFactory::TypeFactory(MemoryManager& memory_manager)
+    : memory_manager_(memory_manager) {
+  json_list_type_ = list_types_
+                        .insert({GetJsonValueType(),
+                                 HandleFactory<ListType>::Make<ModernListType>(
+                                     memory_manager_, GetJsonValueType())})
+                        .first->second;
+  json_map_type_ =
+      map_types_
+          .insert({std::make_pair(GetStringType(), GetJsonValueType()),
+                   HandleFactory<MapType>::Make<ModernMapType>(
+                       memory_manager_, GetStringType(), GetJsonValueType())})
+          .first->second;
+}
+
 absl::StatusOr<Handle<ListType>> TypeFactory::CreateListType(
     const Handle<Type>& element) {
   ABSL_DCHECK(element) << "handle must not be empty";
