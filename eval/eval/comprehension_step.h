@@ -5,7 +5,6 @@
 #include <memory>
 #include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 

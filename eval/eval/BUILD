@@ -167,7 +167,6 @@ cc_library(
         "//base:ast_internal",
         "//eval/internal:errors",
         "//eval/internal:interop",
-        "//eval/public:unknown_attribute_set",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
@@ -349,7 +348,6 @@ cc_library(
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 

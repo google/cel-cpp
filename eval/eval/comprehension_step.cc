@@ -93,7 +93,6 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   auto state = frame->value_stack().GetSpan(5);
-  auto attr = frame->value_stack().GetAttributeSpan(5);
 
   // Get range from the stack.
   auto iter_range = state[POS_ITER_RANGE];
@@ -109,7 +108,6 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
             frame->memory_manager(), "<iter_range>")));
     return frame->JumpTo(error_jump_offset_);
   }
-  AttributeTrail iter_range_attr = attr[POS_ITER_RANGE];
 
   // Get the current index off the stack.
   const auto& current_index_value = state[POS_CURRENT_INDEX];
@@ -125,6 +123,16 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     CEL_RETURN_IF_ERROR(frame->PushIterFrame(iter_var_, accu_var_));
   }
 
+  AttributeTrail iter_range_attr;
+  AttributeTrail iter_trail;
+  if (frame->enable_unknowns()) {
+    auto attr = frame->value_stack().GetAttributeSpan(5);
+    iter_range_attr = attr[POS_ITER_RANGE];
+    iter_trail =
+        iter_range_attr.Step(cel::AttributeQualifier::OfInt(current_index + 1),
+                             frame->memory_manager());
+  }
+
   // Update stack for breaking out of loop or next round.
   auto loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
@@ -135,7 +143,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     CEL_RETURN_IF_ERROR(frame->ClearIterVar());
     return frame->JumpTo(jump_offset_);
   }
-  frame->value_stack().Push(iter_range, iter_range_attr);
+  frame->value_stack().Push(iter_range, std::move(iter_range_attr));
   current_index += 1;
 
   CEL_ASSIGN_OR_RETURN(auto current_value,
@@ -144,8 +152,6 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
                            static_cast<size_t>(current_index)));
   frame->value_stack().Push(
       cel::interop_internal::CreateIntValue(current_index));
-  AttributeTrail iter_trail = iter_range_attr.Step(
-      cel::AttributeQualifier::OfInt(current_index), frame->memory_manager());
   frame->value_stack().Push(current_value, iter_trail);
   CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, std::move(iter_trail)));
   return absl::OkStatus();

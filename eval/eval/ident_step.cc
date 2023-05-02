@@ -53,21 +53,21 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
       ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
 
   // Special case - comprehension variables mask any activation vars.
-  if (frame->GetIterVar(name_, &result.value, &result.trail)) {
-    return result;
-  }
+  bool iter_var = frame->GetIterVar(name_, &result.value, &result.trail);
 
   // Populate trails if either MissingAttributeError or UnknownPattern
   // is enabled.
-  if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
-    result.trail = AttributeTrail(name_);
-  }
+  if (!iter_var) {
+    if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
+      result.trail = AttributeTrail(name_);
+    }
 
-  if (frame->enable_missing_attribute_errors() && !name_.empty() &&
-      frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
-    result.value = cel::interop_internal::CreateErrorValueFromView(
-        CreateMissingAttributeError(frame->memory_manager(), name_));
-    return result;
+    if (frame->enable_missing_attribute_errors() && !name_.empty() &&
+        frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
+      result.value = cel::interop_internal::CreateErrorValueFromView(
+          CreateMissingAttributeError(frame->memory_manager(), name_));
+      return result;
+    }
   }
 
   if (frame->enable_unknowns()) {
@@ -77,6 +77,9 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
       result.value = CreateUnknownValueFromView(unknown_set);
       return result;
     }
+  }
+  if (iter_var) {
+    return result;
   }
 
   CEL_ASSIGN_OR_RETURN(auto value, frame->modern_activation().FindVariable(
