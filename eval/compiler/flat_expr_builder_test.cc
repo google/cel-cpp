@@ -16,6 +16,7 @@
 
 #include "eval/compiler/flat_expr_builder.h"
 
+#include <cstddef>
 #include <fstream>
 #include <functional>
 #include <memory>
@@ -25,18 +26,16 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/descriptor.pb.h"
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/dynamic_message.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/function.h"
+#include "base/function_descriptor.h"
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
@@ -46,9 +45,11 @@
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_function_adapter.h"
+#include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_descriptor_pool_builder.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
@@ -60,17 +61,23 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
+#include "google/protobuf/dynamic_message.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Handle;
+using ::cel::Value;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
+using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
+using testing::SizeIs;
+using testing::Truly;
 using cel::internal::StatusIs;
 
 inline constexpr absl::string_view kSimpleTestMessageDescriptorSetFile =
@@ -2074,6 +2081,182 @@ INSTANTIATE_TEST_SUITE_P(
            reflection->SetInt64(message, field, 20);
          },
          test::IsCelTimestamp(absl::FromUnixSeconds(20))}}));
+
+struct ConstantFoldingTestCase {
+  std::string test_name;
+  std::string expr;
+  test::CelValueMatcher matcher;
+  absl::flat_hash_map<std::string, int64_t> values;
+};
+
+class UnknownFunctionImpl : public cel::Function {
+  absl::StatusOr<Handle<Value>> Invoke(
+      const cel::Function::InvokeContext& ctx,
+      absl::Span<const Handle<Value>> args) const override {
+    return ctx.value_factory().CreateUnknownValue();
+  }
+};
+
+absl::StatusOr<std::unique_ptr<CelExpressionBuilder>>
+CreateConstantFoldingConformanceTestExprBuilder(
+    const InterpreterOptions& options) {
+  auto builder =
+      google::api::expr::runtime::CreateCelExpressionBuilder(options);
+  CEL_RETURN_IF_ERROR(
+      RegisterBuiltinFunctions(builder->GetRegistry(), options));
+  CEL_RETURN_IF_ERROR(builder->GetRegistry()->RegisterLazyFunction(
+      cel::FunctionDescriptor("LazyFunction", false, {})));
+  CEL_RETURN_IF_ERROR(builder->GetRegistry()->RegisterLazyFunction(
+      cel::FunctionDescriptor("LazyFunction", false, {cel::Kind::kBool})));
+  CEL_RETURN_IF_ERROR(builder->GetRegistry()->Register(
+      cel::FunctionDescriptor("UnknownFunction", false, {}),
+      std::make_unique<UnknownFunctionImpl>()));
+  return builder;
+}
+
+class ConstantFoldingConformanceTest
+    : public ::testing::TestWithParam<ConstantFoldingTestCase> {
+ protected:
+  google::protobuf::Arena arena_;
+};
+
+TEST_P(ConstantFoldingConformanceTest, Legacy) {
+  InterpreterOptions options;
+  options.constant_folding = true;
+  options.constant_arena = &arena_;
+  options.enable_updated_constant_folding = false;
+  // Check interaction between const folding and list append optimizations.
+  options.enable_comprehension_list_append = true;
+
+  const ConstantFoldingTestCase& p = GetParam();
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder, CreateConstantFoldingConformanceTestExprBuilder(options));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(p.expr));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK(activation.InsertFunction(
+      PortableUnaryFunctionAdapter<bool, bool>::Create(
+          "LazyFunction", false,
+          [](google::protobuf::Arena* arena, bool val) { return val; })));
+  for (auto iter = p.values.begin(); iter != p.values.end(); ++iter) {
+    activation.InsertValue(iter->first, CelValue::CreateInt64(iter->second));
+  }
+
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena_));
+  // Check that none of the memoized constants are being mutated.
+  ASSERT_OK_AND_ASSIGN(result, plan->Evaluate(activation, &arena_));
+  EXPECT_THAT(result, p.matcher);
+}
+
+TEST_P(ConstantFoldingConformanceTest, Updated) {
+  InterpreterOptions options;
+  options.constant_folding = true;
+  options.constant_arena = &arena_;
+  options.enable_updated_constant_folding = true;
+  // Check interaction between const folding and list append optimizations.
+  options.enable_comprehension_list_append = true;
+
+  const ConstantFoldingTestCase& p = GetParam();
+  ASSERT_OK_AND_ASSIGN(
+      auto builder, CreateConstantFoldingConformanceTestExprBuilder(options));
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(p.expr));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
+
+  Activation activation;
+  ASSERT_OK(activation.InsertFunction(
+      PortableUnaryFunctionAdapter<bool, bool>::Create(
+          "LazyFunction", false,
+          [](google::protobuf::Arena* arena, bool val) { return val; })));
+
+  for (auto iter = p.values.begin(); iter != p.values.end(); ++iter) {
+    activation.InsertValue(iter->first, CelValue::CreateInt64(iter->second));
+  }
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena_));
+  // Check that none of the memoized constants are being mutated.
+  ASSERT_OK_AND_ASSIGN(result, plan->Evaluate(activation, &arena_));
+  EXPECT_THAT(result, p.matcher);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Exprs, ConstantFoldingConformanceTest,
+    ::testing::ValuesIn(std::vector<ConstantFoldingTestCase>{
+        {"simple_add", "1 + 2 + 3", test::IsCelInt64(6)},
+        {"add_with_var",
+         "1 + (2 + (3 + id))",
+         test::IsCelInt64(10),
+         {{"id", 4}}},
+        {"const_list", "[1, 2, 3, 4]", test::IsCelList(_)},
+        {"mixed_const_list",
+         "[1, 2, 3, 4] + [id]",
+         test::IsCelList(_),
+         {{"id", 5}}},
+        {"create_struct", "{'abc': 'def', 'def': 'efg', 'efg': 'hij'}",
+         Truly([](const CelValue& v) { return v.IsMap(); })},
+        {"field_selection", "{'abc': 123}.abc == 123", test::IsCelBool(true)},
+        {"type_coverage",
+         // coverage for constant literals, type() is used to make the list
+         // homogenous.
+         R"cel(
+            [type(bool),
+             type(123),
+             type(123u),
+             type(12.3),
+             type(b'123'),
+             type('123'),
+             type(null),
+             type(timestamp(0)),
+             type(duration('1h'))
+             ])cel",
+         test::IsCelList(SizeIs(9))},
+        {"lazy_function", "true || LazyFunction()", test::IsCelBool(true)},
+        {"lazy_function_called", "LazyFunction(true) || false",
+         test::IsCelBool(true)},
+        {"unknown_function", "UnknownFunction() && false",
+         test::IsCelBool(false)},
+        {"nested_comprehension",
+         "[1, 2, 3, 4].all(x, [5, 6, 7, 8].all(y, x < y))",
+         test::IsCelBool(true)},
+        // Implementation detail: map and filter use replace the accu_init
+        // expr with a special mutable list to avoid quadratic memory usage
+        // building the projected list.
+        {"map", "[1, 2, 3, 4].map(x, x * 2).size() == 4",
+         test::IsCelBool(true)},
+        {"str_cat",
+         "'1234567890' + '1234567890' + '1234567890' + '1234567890' + "
+         "'1234567890'",
+         test::IsCelString(
+             "12345678901234567890123456789012345678901234567890")}}));
+
+// Check that list literals are pre-computed
+TEST(UpdatedConstantFolding, FoldsLists) {
+  InterpreterOptions options;
+  google::protobuf::Arena arena;
+  options.constant_folding = true;
+  options.constant_arena = &arena;
+  options.enable_updated_constant_folding = true;
+
+  ASSERT_OK_AND_ASSIGN(
+      auto builder, CreateConstantFoldingConformanceTestExprBuilder(options));
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr,
+                       parser::Parse("[1] + [2] + [3] + [4] + [5] + [6] + [7] "
+                                     "+ [8] + [9] + [10] + [11] + [12]"));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
+  Activation activation;
+  int before_size = arena.SpaceUsed();
+  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena));
+  // Some incidental allocations are expected related to interop.
+  EXPECT_LT(arena.SpaceUsed() - before_size, 100);
+  EXPECT_THAT(result, test::IsCelList(SizeIs(12)));
+}
 
 }  // namespace
 

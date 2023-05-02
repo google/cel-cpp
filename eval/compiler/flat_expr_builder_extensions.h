@@ -22,26 +22,65 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 
+#include <vector>
+
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/compiler/resolver.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
+#include "eval/public/cel_type_registry.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
 // Class representing FlatExpr internals exposed to extensions.
 class PlannerContext {
  public:
+  struct ProgramInfo {
+    int range_start;
+    int range_len = -1;
+    const cel::ast::internal::Expr* parent = nullptr;
+    std::vector<const cel::ast::internal::Expr*> children;
+  };
+
+  using ProgramTree =
+      absl::flat_hash_map<const cel::ast::internal::Expr*, ProgramInfo>;
+
   explicit PlannerContext(const Resolver& resolver,
-                          BuilderWarnings& builder_warnings)
-      : resolver_(resolver), builder_warnings_(builder_warnings) {}
+                          const CelTypeRegistry& type_registry,
+                          const cel::RuntimeOptions& options,
+                          BuilderWarnings& builder_warnings,
+                          ExecutionPath& execution_path,
+                          ProgramTree& program_tree)
+      : resolver_(resolver),
+        type_registry_(type_registry),
+        options_(options),
+        builder_warnings_(builder_warnings),
+        execution_path_(execution_path),
+        program_tree_(program_tree) {}
+
+  // Note: this is invalidated after a sibling or parent is updated.
+  ExecutionPathView GetSubplan(const cel::ast::internal::Expr& node) const;
+
+  // Note: this can only safely be called on the node being visited.
+  absl::Status ReplaceSubplan(const cel::ast::internal::Expr& node,
+                              ExecutionPath path);
 
   const Resolver& resolver() const { return resolver_; }
+  const CelTypeRegistry& type_registry() const { return type_registry_; }
+  const cel::RuntimeOptions& options() const { return options_; }
   BuilderWarnings& builder_warnings() { return builder_warnings_; }
 
  private:
   const Resolver& resolver_;
+  const CelTypeRegistry& type_registry_;
+  const cel::RuntimeOptions& options_;
   BuilderWarnings& builder_warnings_;
+  ExecutionPath& execution_path_;
+  ProgramTree& program_tree_;
 };
 
 // Interface for Ast Transforms.

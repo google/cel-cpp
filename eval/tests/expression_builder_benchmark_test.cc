@@ -38,7 +38,11 @@ namespace {
 
 using google::api::expr::v1alpha1::ParsedExpr;
 
-enum BenchmarkParam : int { kDefault = 0, kFoldConstants = 1 };
+enum BenchmarkParam : int {
+  kDefault = 0,
+  kFoldConstants = 1,
+  kUpdatedFoldConstants = 2
+};
 
 void BM_RegisterBuiltins(benchmark::State& state) {
   for (auto _ : state) {
@@ -49,6 +53,26 @@ void BM_RegisterBuiltins(benchmark::State& state) {
 }
 
 BENCHMARK(BM_RegisterBuiltins);
+
+InterpreterOptions OptionsForParam(BenchmarkParam param, google::protobuf::Arena& arena) {
+  InterpreterOptions options;
+
+  switch (param) {
+    case BenchmarkParam::kFoldConstants:
+      options.constant_arena = &arena;
+      options.constant_folding = true;
+      break;
+    case BenchmarkParam::kUpdatedFoldConstants:
+      options.constant_arena = &arena;
+      options.constant_folding = true;
+      options.enable_updated_constant_folding = true;
+      break;
+    case BenchmarkParam::kDefault:
+      options.constant_folding = false;
+      break;
+  }
+  return options;
+}
 
 void BM_SymbolicPolicy(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -62,17 +86,7 @@ void BM_SymbolicPolicy(benchmark::State& state) {
    ))cel"));
 
   google::protobuf::Arena arena;
-  InterpreterOptions options;
-
-  switch (param) {
-    case BenchmarkParam::kFoldConstants:
-      options.constant_arena = &arena;
-      options.constant_folding = true;
-      break;
-    case BenchmarkParam::kDefault:
-      options.constant_folding = false;
-      break;
-  }
+  InterpreterOptions options = OptionsForParam(param, arena);
 
   auto builder = CreateCelExpressionBuilder(options);
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
@@ -82,12 +96,14 @@ void BM_SymbolicPolicy(benchmark::State& state) {
     ASSERT_OK_AND_ASSIGN(
         auto expression,
         builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    arena.Reset();
   }
 }
 
 BENCHMARK(BM_SymbolicPolicy)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
 
 void BM_NestedComprehension(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -96,18 +112,8 @@ void BM_NestedComprehension(benchmark::State& state) {
     [4, 5, 6].all(x, [1, 2, 3].all(y, x > y) && [7, 8, 9].all(z, x < z))
   )"));
 
-  InterpreterOptions options;
   google::protobuf::Arena arena;
-
-  switch (param) {
-    case BenchmarkParam::kFoldConstants:
-      options.constant_arena = &arena;
-      options.constant_folding = true;
-      break;
-    case BenchmarkParam::kDefault:
-      options.constant_folding = false;
-      break;
-  }
+  InterpreterOptions options = OptionsForParam(param, arena);
 
   auto builder = CreateCelExpressionBuilder(options);
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
@@ -117,12 +123,14 @@ void BM_NestedComprehension(benchmark::State& state) {
     ASSERT_OK_AND_ASSIGN(
         auto expression,
         builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    arena.Reset();
   }
 }
 
 BENCHMARK(BM_NestedComprehension)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
 
 void BM_Comparisons(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -134,18 +142,8 @@ void BM_Comparisons(benchmark::State& state) {
       && v11 != v12 && v12 != v13
   )"));
 
-  InterpreterOptions options;
   google::protobuf::Arena arena;
-
-  switch (param) {
-    case BenchmarkParam::kFoldConstants:
-      options.constant_arena = &arena;
-      options.constant_folding = true;
-      break;
-    case BenchmarkParam::kDefault:
-      options.constant_folding = false;
-      break;
-  }
+  InterpreterOptions options = OptionsForParam(param, arena);
 
   auto builder = CreateCelExpressionBuilder(options);
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
@@ -155,12 +153,14 @@ void BM_Comparisons(benchmark::State& state) {
     ASSERT_OK_AND_ASSIGN(
         auto expression,
         builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    arena.Reset();
   }
 }
 
 BENCHMARK(BM_Comparisons)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
 
 void BM_StringConcat(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -177,18 +177,8 @@ void BM_StringConcat(benchmark::State& state) {
 
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(source));
 
-  InterpreterOptions options;
   google::protobuf::Arena arena;
-
-  switch (param) {
-    case BenchmarkParam::kFoldConstants:
-      options.constant_arena = &arena;
-      options.constant_folding = true;
-      break;
-    case BenchmarkParam::kDefault:
-      options.constant_folding = false;
-      break;
-  }
+  InterpreterOptions options = OptionsForParam(param, arena);
 
   auto builder = CreateCelExpressionBuilder(options);
   auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
@@ -198,6 +188,7 @@ void BM_StringConcat(benchmark::State& state) {
     ASSERT_OK_AND_ASSIGN(
         auto expression,
         builder->CreateExpression(&expr.expr(), &expr.source_info()));
+    arena.Reset();
   }
 }
 
@@ -211,7 +202,12 @@ BENCHMARK(BM_StringConcat)
     ->Args({BenchmarkParam::kFoldConstants, 4})
     ->Args({BenchmarkParam::kFoldConstants, 8})
     ->Args({BenchmarkParam::kFoldConstants, 16})
-    ->Args({BenchmarkParam::kFoldConstants, 32});
+    ->Args({BenchmarkParam::kFoldConstants, 32})
+    ->Args({BenchmarkParam::kUpdatedFoldConstants, 2})
+    ->Args({BenchmarkParam::kUpdatedFoldConstants, 4})
+    ->Args({BenchmarkParam::kUpdatedFoldConstants, 8})
+    ->Args({BenchmarkParam::kUpdatedFoldConstants, 16})
+    ->Args({BenchmarkParam::kUpdatedFoldConstants, 32});
 
 }  // namespace
 }  // namespace google::api::expr::runtime

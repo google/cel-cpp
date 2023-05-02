@@ -5,13 +5,28 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "base/ast_internal.h"
 #include "base/function.h"
+#include "base/handle.h"
+#include "base/kind.h"
+#include "base/value.h"
+#include "base/values/bytes_value.h"
 #include "base/values/error_value.h"
+#include "base/values/string_value.h"
+#include "base/values/unknown_value.h"
+#include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/compiler/resolver.h"
+#include "eval/eval/const_value_step.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
+#include "eval/public/activation.h"
 #include "eval/public/cel_builtins.h"
+#include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -27,8 +42,18 @@ using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateLegacyListValue;
 using ::cel::interop_internal::CreateNoMatchingOverloadError;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
+using ::google::api::expr::runtime::CelEvaluationListener;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
+using ::google::api::expr::runtime::ExecutionFrame;
+using ::google::api::expr::runtime::ExecutionPath;
+using ::google::api::expr::runtime::ExecutionPathView;
+using ::google::api::expr::runtime::PlannerContext;
+using ::google::api::expr::runtime::Resolver;
+using ::google::api::expr::runtime::builtin::kAnd;
+using ::google::api::expr::runtime::builtin::kOr;
+using ::google::api::expr::runtime::builtin::kTernary;
+
 using ::google::protobuf::Arena;
 
 Handle<Value> CreateLegacyListBackedHandle(
@@ -48,34 +73,33 @@ struct MakeConstantArenaSafeVisitor {
   // non-arena based cel::MemoryManager.
   google::protobuf::Arena* arena;
 
-  cel::Handle<cel::Value> operator()(
-      const cel::ast::internal::NullValue& value) {
+  Handle<Value> operator()(const cel::ast::internal::NullValue& value) {
     return cel::interop_internal::CreateNullValue();
   }
-  cel::Handle<cel::Value> operator()(bool value) {
+  Handle<Value> operator()(bool value) {
     return cel::interop_internal::CreateBoolValue(value);
   }
-  cel::Handle<cel::Value> operator()(int64_t value) {
+  Handle<Value> operator()(int64_t value) {
     return cel::interop_internal::CreateIntValue(value);
   }
-  cel::Handle<cel::Value> operator()(uint64_t value) {
+  Handle<Value> operator()(uint64_t value) {
     return cel::interop_internal::CreateUintValue(value);
   }
-  cel::Handle<cel::Value> operator()(double value) {
+  Handle<Value> operator()(double value) {
     return cel::interop_internal::CreateDoubleValue(value);
   }
-  cel::Handle<cel::Value> operator()(const std::string& value) {
+  Handle<Value> operator()(const std::string& value) {
     const auto* arena_copy = Arena::Create<std::string>(arena, value);
     return cel::interop_internal::CreateStringValueFromView(*arena_copy);
   }
-  cel::Handle<cel::Value> operator()(const cel::ast::internal::Bytes& value) {
+  Handle<Value> operator()(const cel::ast::internal::Bytes& value) {
     const auto* arena_copy = Arena::Create<std::string>(arena, value.bytes);
     return cel::interop_internal::CreateBytesValueFromView(*arena_copy);
   }
-  cel::Handle<cel::Value> operator()(const absl::Duration duration) {
+  Handle<Value> operator()(const absl::Duration duration) {
     return cel::interop_internal::CreateDurationValue(duration);
   }
-  cel::Handle<cel::Value> operator()(const absl::Time timestamp) {
+  Handle<Value> operator()(const absl::Time timestamp) {
     return cel::interop_internal::CreateTimestampValue(timestamp);
   }
 };
@@ -137,6 +161,10 @@ class ConstantFoldingTransform {
     }
 
     bool operator()(const Ident& ident) {
+      // TODO(issues/5): this could be updated to use the rewrite visitor
+      // to make changes in-place instead of manually copy. This would avoid
+      // having to understand how to copy all of the information in the original
+      // AST.
       out_.mutable_ident_expr().set_name(expr_.ident_expr().name());
       return false;
     }
@@ -249,6 +277,7 @@ class ConstantFoldingTransform {
       bool all_constant = true;
       for (int i = 0; i < list_size; i++) {
         auto& element = list_expr.mutable_elements().emplace_back();
+        // TODO(issues/5): Add support for CEL optional.
         all_constant =
             transform_.Transform(expr_.list_expr().elements()[i], element) &&
             all_constant;
@@ -287,6 +316,7 @@ class ConstantFoldingTransform {
         auto& new_entry = struct_expr.mutable_entries().emplace_back();
         new_entry.set_id(entry.id());
         struct {
+          // TODO(issues/5): Add support for CEL optional.
           ConstantFoldingTransform& transform;
           const CreateStruct::Entry& entry;
           CreateStruct::Entry& new_entry;
@@ -357,6 +387,100 @@ bool ConstantFoldingTransform::Transform(const Expr& expr, Expr& out_) {
 }
 
 }  // namespace
+
+absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
+                                                  const Expr& node) {
+  struct IsConstVisitor {
+    IsConst operator()(const Constant&) { return IsConst::kConditional; }
+    IsConst operator()(const Ident&) { return IsConst::kNonConst; }
+    IsConst operator()(const Comprehension&) {
+      // Not yet supported, need to identify whether range and
+      // iter vars are compatible with const folding.
+      return IsConst::kNonConst;
+    }
+    IsConst operator()(const CreateStruct&) {
+      // Not yet supported but should be possible in the future.
+      return IsConst::kNonConst;
+    }
+    IsConst operator()(const CreateList& create_list) {
+      if (create_list.elements().empty()) {
+        // TODO(issues/5): Don't fold for empty list to allow comprehension
+        // list append optimization.
+        return IsConst::kNonConst;
+      }
+      return IsConst::kConditional;
+    }
+
+    IsConst operator()(const Select&) { return IsConst::kConditional; }
+
+    IsConst operator()(absl::monostate) { return IsConst::kNonConst; }
+
+    IsConst operator()(const Call& call) {
+      // Shortcircuiting operators not yet supported.
+      if (call.function() == kAnd || call.function() == kOr ||
+          call.function() == kTernary) {
+        return IsConst::kNonConst;
+      }
+
+      int arg_len = call.args().size() + (call.has_target() ? 1 : 0);
+      std::vector<cel::Kind> arg_matcher(arg_len, cel::Kind::kAny);
+      // Check for any lazy overloads (activation dependant)
+      if (!resolver
+               .FindLazyOverloads(call.function(), call.has_target(),
+                                  arg_matcher)
+               .empty()) {
+        return IsConst::kNonConst;
+      }
+
+      return IsConst::kConditional;
+    }
+
+    const Resolver& resolver;
+  };
+
+  IsConst is_const =
+      absl::visit(IsConstVisitor{context.resolver()}, node.expr_kind());
+  is_const_.push_back(is_const);
+
+  return absl::OkStatus();
+}
+
+absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
+                                                   const Expr& node) {
+  IsConst is_const = is_const_.back();
+  is_const_.pop_back();
+
+  if (is_const == IsConst::kNonConst) {
+    // update parent
+    if (!is_const_.empty()) {
+      is_const_.back() = IsConst::kNonConst;
+    }
+    return absl::OkStatus();
+  }
+
+  // copy string to arena if backed by the original program.
+  Handle<Value> value;
+  if (node.has_const_expr()) {
+    value = absl::visit(MakeConstantArenaSafeVisitor{arena_},
+                        node.const_expr().constant_kind());
+  } else {
+    ExecutionPathView subplan = context.GetSubplan(node);
+    ExecutionFrame frame(subplan, empty_, &context.type_registry(),
+                         context.options(), &state_);
+    state_.Reset();
+    CEL_ASSIGN_OR_RETURN(value, frame.Evaluate(null_listener_));
+    if (value->Is<UnknownValue>()) {
+      return absl::OkStatus();
+    }
+  }
+
+  ExecutionPath new_plan;
+  CEL_ASSIGN_OR_RETURN(new_plan.emplace_back(),
+                       google::api::expr::runtime::CreateConstValueStep(
+                           std::move(value), node.id(), false));
+
+  return context.ReplaceSubplan(node, std::move(new_plan));
+}
 
 void FoldConstants(
     const Expr& ast, const FunctionRegistry& registry, google::protobuf::Arena* arena,

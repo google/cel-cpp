@@ -8,9 +8,9 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
-cc_test(
-    name = "benchmark_test",
-    size = "small",
+cc_library(
+    name = "benchmark_testlib",
+    testonly = True,
     srcs = [
         "benchmark_test.cc",
     ],
@@ -29,16 +29,40 @@ cc_test(
         "//internal:status_macros",
         "//internal:testing",
         "//parser",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_github_google_benchmark//:benchmark_main",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+    alwayslink = True,
+)
+
+cc_test(
+    name = "benchmark_test",
+    size = "small",
+    deps = [
+        ":benchmark_testlib",
+        "@com_github_google_benchmark//:benchmark",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+# copybara:strip_begin
+# benchy will still need the enable_optimizations flag since it isn't using blaze run directly.
+# copybara:strip_end
+cc_test(
+    name = "const_folding_benchmark_test",
+    size = "small",
+    args = ["--enable_optimizations"],
+    deps = [
+        ":benchmark_testlib",
+        "@com_github_google_benchmark//:benchmark",
+        "@com_github_google_benchmark//:benchmark_main",
     ],
 )
 

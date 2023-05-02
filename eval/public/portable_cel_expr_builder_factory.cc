@@ -51,7 +51,8 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
       options.enable_comprehension_vulnerability_check);
   builder->set_enable_regex_precompilation(options.enable_regex_precompilation);
   builder->set_constant_folding(options.constant_folding,
-                                options.constant_arena);
+                                options.constant_arena,
+                                options.enable_updated_constant_folding);
 
   return builder;
 }

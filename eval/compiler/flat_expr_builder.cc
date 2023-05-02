@@ -273,17 +273,19 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       google::api::expr::runtime::ExecutionPath* path,
       const cel::RuntimeOptions& options,
       const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
-      google::protobuf::Arena* constant_arena,
+      google::protobuf::Arena* constant_arena, bool updated_constant_folding,
       bool enable_comprehension_vulnerability_check,
       google::api::expr::runtime::BuilderWarnings* warnings,
       bool enable_regex_precompilation,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
           reference_map,
-      google::protobuf::Arena* arena)
+      google::protobuf::Arena* arena, PlannerContext::ProgramTree& program_tree,
+      PlannerContext& extension_context)
       : resolver_(resolver),
-        flattened_path_(path),
+        execution_path_(path),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
+        parent_expr_(nullptr),
         options_(options),
         constant_idents_(constant_idents),
         constant_arena_(constant_arena),
@@ -293,17 +295,59 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         enable_regex_precompilation_(enable_regex_precompilation),
         regex_program_builder_(options_.regex_max_program_size),
         reference_map_(reference_map),
-        arena_(arena) {}
+        arena_(arena),
+        program_tree_(program_tree),
+        extension_context_(extension_context) {
+    if (updated_constant_folding) {
+      constexpr int kDefaultConstFoldStackLimit = 64;
+      constant_folding_.emplace(kDefaultConstFoldStackLimit, constant_arena_);
+    }
+  }
 
   void PreVisitExpr(const cel::ast::internal::Expr* expr,
                     const cel::ast::internal::SourcePosition*) override {
     ValidateOrError(
         !absl::holds_alternative<absl::monostate>(expr->expr_kind()),
         "Invalid empty expression");
+    if (!progress_status_.ok()) {
+      return;
+    }
+    // TODO(issues/5): this will be generalized later.
+    if (!(constant_folding_.has_value())) {
+      return;
+    }
+    PlannerContext::ProgramInfo& info = program_tree_[expr];
+    info.range_start = execution_path_->size();
+    info.parent = parent_expr_;
+    if (parent_expr_ != nullptr) {
+      program_tree_[parent_expr_].children.push_back(expr);
+    }
+    parent_expr_ = expr;
+    absl::Status status =
+        constant_folding_->OnPreVisit(extension_context_, *expr);
+    if (!status.ok()) {
+      SetProgressStatusError(status);
+    }
   }
 
-  void PostVisitExpr(const cel::ast::internal::Expr*,
-                     const cel::ast::internal::SourcePosition*) override {}
+  void PostVisitExpr(const cel::ast::internal::Expr* expr,
+                     const cel::ast::internal::SourcePosition*) override {
+    if (!progress_status_.ok()) {
+      return;
+    }
+    // TODO(issues/5): this will be generalized later.
+    if (!constant_folding_.has_value()) {
+      return;
+    }
+    PlannerContext::ProgramInfo& info = program_tree_[expr];
+    info.range_len = execution_path_->size() - info.range_start;
+    parent_expr_ = info.parent;
+    absl::Status status =
+        constant_folding_->OnPostVisit(extension_context_, *expr);
+    if (!status.ok()) {
+      SetProgressStatusError(status);
+    }
+  }
 
   void PostVisitConst(const cel::ast::internal::Constant* const_expr,
                       const cel::ast::internal::Expr* expr,
@@ -708,7 +752,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
                std::unique_ptr<google::api::expr::runtime::ExpressionStep>>
                    step) {
     if (step.ok() && progress_status_.ok()) {
-      flattened_path_->push_back(*std::move(step));
+      execution_path_->push_back(*std::move(step));
     } else {
       SetProgressStatusError(step.status());
     }
@@ -717,7 +761,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   void AddStep(
       std::unique_ptr<google::api::expr::runtime::ExpressionStep> step) {
     if (progress_status_.ok()) {
-      flattened_path_->push_back(std::move(step));
+      execution_path_->push_back(std::move(step));
     }
   }
 
@@ -728,7 +772,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   // Index of the next step to be inserted.
-  int GetCurrentIndex() const { return flattened_path_->size(); }
+  int GetCurrentIndex() const { return execution_path_->size(); }
 
   CondVisitor* FindCondVisitor(const cel::ast::internal::Expr* expr) const {
     if (cond_visitor_stack_.empty()) {
@@ -787,7 +831,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   const google::api::expr::runtime::Resolver& resolver_;
-  google::api::expr::runtime::ExecutionPath* flattened_path_;
+  google::api::expr::runtime::ExecutionPath* execution_path_;
   absl::Status progress_status_;
 
   std::stack<
@@ -806,10 +850,16 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   // field is used as marker suppressing CelExpression creation for SELECTs.
   const cel::ast::internal::Expr* resolved_select_expr_;
 
+  // Used for assembling a temporary tree mapping program segments
+  // to source expr nodes.
+  const cel::ast::internal::Expr* parent_expr_;
+
   const cel::RuntimeOptions& options_;
 
   const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
   google::protobuf::Arena* constant_arena_;
+  absl::optional<cel::ast::internal::ConstantFoldingExtension>
+      constant_folding_;
 
   std::stack<const cel::ast::internal::Comprehension*> comprehension_stack_;
 
@@ -822,6 +872,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       reference_map_;
 
   google::protobuf::Arena* const arena_;
+  PlannerContext::ProgramTree& program_tree_;
+  PlannerContext extension_context_;
 };
 
 void BinaryCondVisitor::PreVisit(const cel::ast::internal::Expr* expr) {
@@ -1251,7 +1303,10 @@ FlatExprBuilder::CreateExpressionImpl(
                     options_.enable_qualified_type_identifiers);
   absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
 
-  PlannerContext extension_context(resolver, warnings_builder);
+  PlannerContext::ProgramTree program_tree;
+  PlannerContext extension_context(resolver, *GetTypeRegistry(), options_,
+                                   warnings_builder, execution_path,
+                                   program_tree);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(ast);
   const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
@@ -1266,7 +1321,7 @@ FlatExprBuilder::CreateExpressionImpl(
   }
 
   cel::ast::internal::Expr const_fold_buffer;
-  if (constant_folding_) {
+  if (constant_folding_ && !updated_constant_folding_) {
     cel::ast::internal::FoldConstants(
         ast_impl.root_expr(), this->GetRegistry()->InternalGetRegistry(),
         constant_arena_, constant_idents, const_fold_buffer);
@@ -1277,8 +1332,9 @@ FlatExprBuilder::CreateExpressionImpl(
 
   FlatExprVisitor visitor(
       resolver, &execution_path, options_, constant_idents, constant_arena_,
-      enable_comprehension_vulnerability_check_, &warnings_builder,
-      enable_regex_precompilation_, &ast_impl.reference_map(), arena.get());
+      updated_constant_folding_, enable_comprehension_vulnerability_check_,
+      &warnings_builder, enable_regex_precompilation_,
+      &ast_impl.reference_map(), arena.get(), program_tree, extension_context);
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 

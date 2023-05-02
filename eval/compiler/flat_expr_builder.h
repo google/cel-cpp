@@ -44,8 +44,10 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   // Toggle constant folding optimization. By default it is not enabled.
   // The provided arena is used to hold the generated constants.
-  void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
+  void set_constant_folding(bool enabled, google::protobuf::Arena* arena,
+                            bool updated = false) {
     constant_folding_ = enabled;
+    updated_constant_folding_ = updated;
     constant_arena_ = arena;
   }
 
@@ -101,6 +103,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
   bool enable_regex_precompilation_ = false;
   bool enable_comprehension_vulnerability_check_ = false;
   bool constant_folding_ = false;
+  bool updated_constant_folding_ = false;
   google::protobuf::Arena* constant_arena_ = nullptr;
 };
 
