@@ -193,6 +193,8 @@ struct PostVisitor {
         visitor->PostVisitComprehension(&expr->comprehension_expr(), expr,
                                         &position);
         break;
+      case Expr::EXPR_KIND_NOT_SET:
+        break;
       default:
         LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
     }

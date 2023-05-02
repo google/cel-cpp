@@ -60,6 +60,12 @@ class AstRewriterBase : public AstRewriter {
  public:
   ~AstRewriterBase() override {}
 
+  void PreVisitExpr(const google::api::expr::v1alpha1::Expr*,
+                    const SourcePosition*) override {}
+
+  void PostVisitExpr(const google::api::expr::v1alpha1::Expr*,
+                     const SourcePosition*) override {}
+
   void PostVisitConst(const google::api::expr::v1alpha1::Constant*,
                       const google::api::expr::v1alpha1::Expr*,
                       const SourcePosition*) override {}
