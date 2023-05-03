@@ -85,7 +85,10 @@ struct InlineValue final {
     absl::Time time_value;
     absl::Status status_value;
     absl::Cord cord_value;
-    absl::string_view string_value;
+    struct {
+      absl::string_view string_value;
+      uintptr_t owner;
+    } string_value;
     Handle<Type> type_value;
     struct {
       Handle<EnumType> type;
