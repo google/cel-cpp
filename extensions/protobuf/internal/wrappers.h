@@ -28,14 +28,24 @@ absl::StatusOr<bool> UnwrapBoolValueProto(const google::protobuf::Message& messa
 absl::StatusOr<absl::Cord> UnwrapBytesValueProto(
     const google::protobuf::Message& message);
 
+absl::StatusOr<double> UnwrapFloatValueProto(const google::protobuf::Message& message);
+
 absl::StatusOr<double> UnwrapDoubleValueProto(const google::protobuf::Message& message);
 
 absl::StatusOr<int64_t> UnwrapIntValueProto(const google::protobuf::Message& message);
+
+absl::StatusOr<int64_t> UnwrapInt32ValueProto(const google::protobuf::Message& message);
+
+absl::StatusOr<int64_t> UnwrapInt64ValueProto(const google::protobuf::Message& message);
 
 absl::StatusOr<absl::variant<absl::string_view, absl::Cord>>
 UnwrapStringValueProto(const google::protobuf::Message& message);
 
 absl::StatusOr<uint64_t> UnwrapUIntValueProto(const google::protobuf::Message& message);
+
+absl::StatusOr<uint64_t> UnwrapUInt32ValueProto(const google::protobuf::Message& message);
+
+absl::StatusOr<uint64_t> UnwrapUInt64ValueProto(const google::protobuf::Message& message);
 
 }  // namespace cel::extensions::protobuf_internal
 

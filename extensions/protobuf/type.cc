@@ -23,6 +23,19 @@
 
 namespace cel::extensions {
 
+namespace {
+
+bool IsJsonMap(const Type& type) {
+  return type.Is<MapType>() && type.As<MapType>().key()->Is<StringType>() &&
+         type.As<MapType>().value()->Is<DynType>();
+}
+
+bool IsJsonList(const Type& type) {
+  return type.Is<ListType>() && type.As<ListType>().element()->Is<DynType>();
+}
+
+}  // namespace
+
 absl::StatusOr<Handle<Type>> ProtoType::Resolve(
     TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor) {
   CEL_ASSIGN_OR_RETURN(auto type,
@@ -50,9 +63,11 @@ absl::StatusOr<Handle<Type>> ProtoType::Resolve(
         absl::StrCat("Missing protocol buffer type implementation for \"",
                      descriptor.full_name(), "\""));
   }
-  if (ABSL_PREDICT_FALSE(
-          !(*type)->Is<ProtoStructType>() && !(*type)->Is<DurationType>() &&
-          !(*type)->Is<TimestampType>() && !(*type)->Is<WrapperType>())) {
+  if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoStructType>() &&
+                         !(*type)->Is<DurationType>() &&
+                         !(*type)->Is<TimestampType>() &&
+                         !(*type)->Is<WrapperType>() && !IsJsonList(**type) &&
+                         !IsJsonMap(**type) && !(*type)->Is<DynType>())) {
     return absl::FailedPreconditionError(
         absl::StrCat("Unexpected protocol buffer type implementation for \"",
                      descriptor.full_name(), "\": ", (*type)->DebugString()));

@@ -14,6 +14,8 @@
 
 #include "extensions/protobuf/value.h"
 
+#include <memory>
+
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "base/internal/memory_manager_testing.h"
@@ -228,6 +230,371 @@ TEST_P(ProtoValueTest, DynamicNullValue) {
           *google::protobuf::GetEnumDescriptor<google::protobuf::NullValue>()
                ->FindValueByNumber(google::protobuf::NullValue::NULL_VALUE)));
   EXPECT_TRUE(value->Is<NullValue>());
+}
+
+TEST_P(ProtoValueTest, StaticValueNullValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  value_proto->set_null_value(google::protobuf::NULL_VALUE);
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueNullValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_null_value(google::protobuf::NULL_VALUE);
+  EXPECT_THAT(ProtoValue::Create(value_factory, value_proto),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueNullValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_null_value(google::protobuf::NULL_VALUE);
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+}
+
+TEST_P(ProtoValueTest, StaticValueBoolValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  value_proto->set_bool_value(true);
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueBoolValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_bool_value(true);
+  EXPECT_THAT(ProtoValue::Create(value_factory, value_proto),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueBoolValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_bool_value(true);
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticValueNumberValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  value_proto->set_number_value(1.0);
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueNumberValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_number_value(1.0);
+  EXPECT_THAT(ProtoValue::Create(value_factory, value_proto),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueNumberValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_number_value(1.0);
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<DoubleValue>(value_factory, 1.0)));
+}
+
+TEST_P(ProtoValueTest, StaticValueStringValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  value_proto->set_string_value("foo");
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "foo")));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueStringValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_string_value("foo");
+  EXPECT_THAT(ProtoValue::Create(value_factory, value_proto),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "foo")));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueStringValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.set_string_value("foo");
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<StringValue>(value_factory, "foo")));
+}
+
+TEST_P(ProtoValueTest, StaticValueListValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  value_proto->mutable_list_value()->add_values()->set_bool_value(true);
+  ASSERT_OK_AND_ASSIGN(
+      auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
+  EXPECT_TRUE(value->Is<ListValue>());
+  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_THAT(
+      value->As<ListValue>().Get(ListValue::GetContext(value_factory), 0),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueListValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.mutable_list_value()->add_values()->set_bool_value(true);
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       ProtoValue::Create(value_factory, value_proto));
+  EXPECT_TRUE(value->Is<ListValue>());
+  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_THAT(
+      value->As<ListValue>().Get(ListValue::GetContext(value_factory), 0),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueListValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  value_proto.mutable_list_value()->add_values()->set_bool_value(true);
+  ASSERT_OK_AND_ASSIGN(
+      auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
+  EXPECT_TRUE(value->Is<ListValue>());
+  EXPECT_EQ(value->As<ListValue>().size(), 1);
+  EXPECT_THAT(
+      value->As<ListValue>().Get(ListValue::GetContext(value_factory), 0),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticValueStructValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value bool_value_proto;
+  bool_value_proto.set_bool_value(true);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  value_proto->mutable_struct_value()->mutable_fields()->insert(
+      {"foo", bool_value_proto});
+  ASSERT_OK_AND_ASSIGN(
+      auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
+  EXPECT_TRUE(value->Is<MapValue>());
+  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(
+      value->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
+      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueStructValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value bool_value_proto;
+  bool_value_proto.set_bool_value(true);
+  google::protobuf::Value value_proto;
+  value_proto.mutable_struct_value()->mutable_fields()->insert(
+      {"foo", bool_value_proto});
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       ProtoValue::Create(value_factory, value_proto));
+  EXPECT_TRUE(value->Is<MapValue>());
+  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(
+      value->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
+      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueStructValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value bool_value_proto;
+  bool_value_proto.set_bool_value(true);
+  google::protobuf::Value value_proto;
+  value_proto.mutable_struct_value()->mutable_fields()->insert(
+      {"foo", bool_value_proto});
+  ASSERT_OK_AND_ASSIGN(
+      auto value, ProtoValue::Create(value_factory, std::move(value_proto)));
+  EXPECT_TRUE(value->Is<MapValue>());
+  EXPECT_EQ(value->As<MapValue>().size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(
+      value->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
+      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+}
+
+TEST_P(ProtoValueTest, StaticValueUnset) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto value_proto = std::make_unique<google::protobuf::Value>();
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+}
+
+TEST_P(ProtoValueTest, StaticLValueValueUnset) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  EXPECT_THAT(ProtoValue::Create(value_factory, value_proto),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+}
+
+TEST_P(ProtoValueTest, StaticRValueValueUnset) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value value_proto;
+  EXPECT_THAT(ProtoValue::Create(value_factory, std::move(value_proto)),
+              IsOkAndHolds(ValueOf<NullValue>(value_factory)));
+}
+
+TEST_P(ProtoValueTest, StaticListValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  auto list_value_proto = std::make_unique<google::protobuf::ListValue>();
+  list_value_proto->add_values()->set_bool_value(true);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory, std::move(list_value_proto)));
+  EXPECT_EQ(value->size(), 1);
+  EXPECT_THAT(value->Get(ListValue::GetContext(value_factory), 0),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticLValueListValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::ListValue list_value_proto;
+  list_value_proto.add_values()->set_bool_value(true);
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       ProtoValue::Create(value_factory, list_value_proto));
+  EXPECT_EQ(value->size(), 1);
+  EXPECT_THAT(value->Get(ListValue::GetContext(value_factory), 0),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticRValueListValue) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::ListValue list_value_proto;
+  list_value_proto.add_values()->set_bool_value(true);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory, std::move(list_value_proto)));
+  EXPECT_EQ(value->size(), 1);
+  EXPECT_THAT(value->Get(ListValue::GetContext(value_factory), 0),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoValueTest, StaticStruct) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value bool_value_proto;
+  bool_value_proto.set_bool_value(true);
+  auto struct_proto = std::make_unique<google::protobuf::Struct>();
+  struct_proto->mutable_fields()->insert({"foo", bool_value_proto});
+  ASSERT_OK_AND_ASSIGN(
+      auto value, ProtoValue::Create(value_factory, std::move(struct_proto)));
+  EXPECT_EQ(value->size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
+              IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+}
+
+TEST_P(ProtoValueTest, StaticLValueStruct) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value bool_value_proto;
+  bool_value_proto.set_bool_value(true);
+  google::protobuf::Struct struct_proto;
+  struct_proto.mutable_fields()->insert({"foo", bool_value_proto});
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       ProtoValue::Create(value_factory, struct_proto));
+  EXPECT_EQ(value->size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
+              IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+}
+
+TEST_P(ProtoValueTest, StaticRValueStruct) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Value bool_value_proto;
+  bool_value_proto.set_bool_value(true);
+  google::protobuf::Struct struct_proto;
+  struct_proto.mutable_fields()->insert({"foo", bool_value_proto});
+  ASSERT_OK_AND_ASSIGN(
+      auto value, ProtoValue::Create(value_factory, std::move(struct_proto)));
+  EXPECT_EQ(value->size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
+              IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
 
 TEST_P(ProtoValueTest, StaticWrapperTypes) {

@@ -81,17 +81,12 @@ class ValueFactory final {
       std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
 
   template <typename R, typename V>
-  using EnableIfReferent = std::enable_if_t<
-      std::conjunction_v<std::is_base_of<Value, R>,
-                         std::is_base_of<base_internal::HeapData, R>>,
-      V>;
+  using EnableIfReferent = std::enable_if_t<std::is_base_of_v<Value, R>, V>;
 
   template <typename T, typename U, typename R, typename V>
   using EnableIfBaseOfAndReferent = std::enable_if_t<
-      std::conjunction_v<
-          std::is_base_of<T, std::remove_const_t<U>>,
-          std::is_base_of<Value, std::remove_const_t<R>>,
-          std::is_base_of<base_internal::HeapData, std::remove_const_t<R>>>,
+      std::conjunction_v<std::is_base_of<T, std::remove_const_t<U>>,
+                         std::is_base_of<Value, std::remove_const_t<R>>>,
       V>;
 
  public:

@@ -30,6 +30,7 @@
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/kind.h"
+#include "base/owner.h"
 #include "base/type.h"
 #include "base/types/struct_type.h"
 #include "base/value.h"
@@ -148,8 +149,17 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
   static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructValue>>>
   Create(ValueFactory& value_factory, T&& value);
 
+  template <typename T>
+  static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructValue>>>
+  CreateBorrowed(Owner<Value> owner, ValueFactory& value_factory,
+                 const T& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   static absl::StatusOr<Handle<ProtoStructValue>> Create(
       ValueFactory& value_factory, const google::protobuf::Message& message);
+
+  static absl::StatusOr<Handle<ProtoStructValue>> CreateBorrowed(
+      Owner<Value> owner, ValueFactory& value_factory,
+      const google::protobuf::Message& message ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   static absl::StatusOr<Handle<ProtoStructValue>> Create(
       ValueFactory& value_factory, google::protobuf::Message&& message);
@@ -163,6 +173,48 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
 // Implementation details
 
 namespace protobuf_internal {
+
+// Declare here but implemented in value.cc to give ProtoStructValue access to
+// the conversion logic in value.cc. Creates a borrowed `ListValue` over
+// `google.protobuf.ListValue`.
+//
+// Borrowing here means we are borrowing some native representation owned by
+// `owner` and creating a new value which references that native representation,
+// but does not own it.
+absl::StatusOr<Handle<Value>> CreateBorrowedListValue(
+    Owner<Value> owner, ValueFactory& value_factory,
+    const google::protobuf::Message& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+// Declare here but implemented in value.cc to give ProtoStructValue access to
+// the conversion logic in value.cc. Creates a borrowed `MapValue` over
+// `google.protobuf.Struct`.
+//
+// Borrowing here means we are borrowing some native representation owned by
+// `owner` and creating a new value which references that native representation,
+// but does not own it.
+absl::StatusOr<Handle<Value>> CreateBorrowedStruct(
+    Owner<Value> owner, ValueFactory& value_factory,
+    const google::protobuf::Message& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+// Declare here but implemented in value.cc to give ProtoStructValue access to
+// the conversion logic in value.cc. Creates a borrowed `Value` over
+// `google.protobuf.Value`.
+//
+// Borrowing here means we are borrowing some native representation owned by
+// `owner` and creating a new value which references that native representation,
+// but does not own it.
+absl::StatusOr<Handle<Value>> CreateBorrowedValue(
+    Owner<Value> owner, ValueFactory& value_factory,
+    const google::protobuf::Message& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+absl::StatusOr<Handle<Value>> CreateListValue(
+    ValueFactory& value_factory, std::unique_ptr<google::protobuf::Message> value);
+
+absl::StatusOr<Handle<Value>> CreateStruct(
+    ValueFactory& value_factory, std::unique_ptr<google::protobuf::Message> value);
+
+absl::StatusOr<Handle<Value>> CreateValue(
+    ValueFactory& value_factory, std::unique_ptr<google::protobuf::Message> value);
 
 // Base class of all implementations of `ProtoStructValue` that operate on
 // parsed protocol buffer messages.
@@ -258,6 +310,31 @@ class StaticParsedProtoStructValue final : public ParsedProtoStructValue {
   const T value_;
 };
 
+template <typename T>
+class HeapStaticParsedProtoStructValue : public ParsedProtoStructValue {
+ public:
+  HeapStaticParsedProtoStructValue(Handle<StructType> type, const T* value)
+      : ParsedProtoStructValue(std::move(type)), value_(value) {}
+
+  const google::protobuf::Message& value() const final { return *value_; }
+
+ protected:
+  absl::optional<const google::protobuf::Message*> ValueReference(
+      google::protobuf::Message& scratch, const google::protobuf::Descriptor& desc,
+      internal::TypeInfo type) const final {
+    static_cast<void>(scratch);
+    static_cast<void>(desc);
+    if (ABSL_PREDICT_FALSE(type != internal::TypeId<T>())) {
+      return absl::nullopt;
+    }
+    ABSL_ASSERT(value().GetDescriptor() == &desc);
+    return &value();
+  }
+
+ private:
+  const T* const value_;
+};
+
 // Base implementation of `ParsedProtoStructValue` which does not know the
 // concrete type of the protocol buffer message. The protocol buffer message is
 // referenced by pointer and is allocated with the same memory manager that
@@ -289,7 +366,7 @@ class DynamicParsedProtoStructValue : public ParsedProtoStructValue {
 
 // Implementation of `DynamicParsedProtoStructValue` for Arena-based memory
 // managers.
-class ArenaDynamicParsedProtoStructValue final
+class ArenaDynamicParsedProtoStructValue
     : public DynamicParsedProtoStructValue {
  public:
   ArenaDynamicParsedProtoStructValue(Handle<StructType> type,
@@ -322,6 +399,18 @@ ProtoStructValue::Create(ValueFactory& value_factory, T&& value) {
   return value_factory
       .CreateStructValue<protobuf_internal::StaticParsedProtoStructValue<T>>(
           std::move(type), std::forward<T>(value));
+}
+
+template <typename T>
+inline ProtoStructValue::EnableIfDerivedMessage<
+    T, absl::StatusOr<Handle<ProtoStructValue>>>
+ProtoStructValue::CreateBorrowed(Owner<Value> owner,
+                                 ValueFactory& value_factory, const T& value) {
+  CEL_ASSIGN_OR_RETURN(
+      auto type, ProtoStructType::Resolve<T>(value_factory.type_manager()));
+  return value_factory.CreateBorrowedStructValue<
+      protobuf_internal::HeapStaticParsedProtoStructValue<T>>(
+      std::move(owner), std::move(type), &value);
 }
 
 }  // namespace cel::extensions

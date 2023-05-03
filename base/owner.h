@@ -38,6 +38,8 @@ class Owner {
   using metadata_type = base_internal::SelectMetadata<T>;
 
  public:
+  static_assert(!std::is_base_of_v<base_internal::InlineData, T>);
+
   Owner() = delete;
 
   Owner(const Owner<T>& other) noexcept : owner_(other.owner_) {
@@ -132,7 +134,9 @@ class Owner {
   friend class TypeFactory;
   friend class ValueFactory;
 
-  explicit Owner(const T* owner) : owner_(owner) {}
+  explicit Owner(const T* owner) : owner_(owner) {
+    static_assert(std::is_base_of_v<base_internal::HeapData, T>);
+  }
 
   const T* release() {
     const T* owner = owner_;

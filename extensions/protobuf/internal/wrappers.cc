@@ -71,6 +71,12 @@ absl::StatusOr<absl::Cord> UnwrapBytesValueProto(
       &google::protobuf::Reflection::GetCord);
 }
 
+absl::StatusOr<double> UnwrapFloatValueProto(const google::protobuf::Message& message) {
+  return UnwrapValueProto<google::protobuf::FloatValue, double>(
+      message, google::protobuf::FieldDescriptor::CPPTYPE_FLOAT,
+      &google::protobuf::Reflection::GetFloat);
+}
+
 absl::StatusOr<double> UnwrapDoubleValueProto(const google::protobuf::Message& message) {
   const auto* desc = message.GetDescriptor();
   if (ABSL_PREDICT_FALSE(desc == nullptr)) {
@@ -78,9 +84,7 @@ absl::StatusOr<double> UnwrapDoubleValueProto(const google::protobuf::Message& m
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if (desc->full_name() == "google.protobuf.FloatValue") {
-    return UnwrapValueProto<google::protobuf::FloatValue, double>(
-        message, google::protobuf::FieldDescriptor::CPPTYPE_FLOAT,
-        &google::protobuf::Reflection::GetFloat);
+    return UnwrapFloatValueProto(message);
   }
   if (desc->full_name() == "google.protobuf.DoubleValue") {
     return UnwrapValueProto<google::protobuf::DoubleValue, double>(
@@ -98,17 +102,25 @@ absl::StatusOr<int64_t> UnwrapIntValueProto(const google::protobuf::Message& mes
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if (desc->full_name() == "google.protobuf.Int32Value") {
-    return UnwrapValueProto<google::protobuf::Int32Value, int64_t>(
-        message, google::protobuf::FieldDescriptor::CPPTYPE_INT32,
-        &google::protobuf::Reflection::GetInt32);
+    return UnwrapInt32ValueProto(message);
   }
   if (desc->full_name() == "google.protobuf.Int64Value") {
-    return UnwrapValueProto<google::protobuf::Int64Value, int64_t>(
-        message, google::protobuf::FieldDescriptor::CPPTYPE_INT64,
-        &google::protobuf::Reflection::GetInt64);
+    return UnwrapInt64ValueProto(message);
   }
   return absl::InvalidArgumentError(
       absl::StrCat(message.GetTypeName(), " is not int-like"));
+}
+
+absl::StatusOr<int64_t> UnwrapInt32ValueProto(const google::protobuf::Message& message) {
+  return UnwrapValueProto<google::protobuf::Int32Value, int64_t>(
+      message, google::protobuf::FieldDescriptor::CPPTYPE_INT32,
+      &google::protobuf::Reflection::GetInt32);
+}
+
+absl::StatusOr<int64_t> UnwrapInt64ValueProto(const google::protobuf::Message& message) {
+  return UnwrapValueProto<google::protobuf::Int64Value, int64_t>(
+      message, google::protobuf::FieldDescriptor::CPPTYPE_INT64,
+      &google::protobuf::Reflection::GetInt64);
 }
 
 absl::StatusOr<absl::variant<absl::string_view, absl::Cord>>
@@ -155,17 +167,27 @@ absl::StatusOr<uint64_t> UnwrapUIntValueProto(const google::protobuf::Message& m
         absl::StrCat(message.GetTypeName(), " missing descriptor"));
   }
   if (desc->full_name() == "google.protobuf.UInt32Value") {
-    return UnwrapValueProto<google::protobuf::UInt32Value, uint64_t>(
-        message, google::protobuf::FieldDescriptor::CPPTYPE_UINT32,
-        &google::protobuf::Reflection::GetUInt32);
+    return UnwrapUInt32ValueProto(message);
   }
   if (desc->full_name() == "google.protobuf.UInt64Value") {
-    return UnwrapValueProto<google::protobuf::UInt64Value, uint64_t>(
-        message, google::protobuf::FieldDescriptor::CPPTYPE_UINT64,
-        &google::protobuf::Reflection::GetUInt64);
+    return UnwrapUInt64ValueProto(message);
   }
   return absl::InvalidArgumentError(
       absl::StrCat(message.GetTypeName(), " is not uint-like"));
+}
+
+absl::StatusOr<uint64_t> UnwrapUInt32ValueProto(
+    const google::protobuf::Message& message) {
+  return UnwrapValueProto<google::protobuf::UInt32Value, uint64_t>(
+      message, google::protobuf::FieldDescriptor::CPPTYPE_UINT32,
+      &google::protobuf::Reflection::GetUInt32);
+}
+
+absl::StatusOr<uint64_t> UnwrapUInt64ValueProto(
+    const google::protobuf::Message& message) {
+  return UnwrapValueProto<google::protobuf::UInt64Value, uint64_t>(
+      message, google::protobuf::FieldDescriptor::CPPTYPE_UINT64,
+      &google::protobuf::Reflection::GetUInt64);
 }
 
 }  // namespace cel::extensions::protobuf_internal

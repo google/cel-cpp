@@ -352,16 +352,14 @@ template <typename T, typename = void>
 struct SelectMetadataImpl;
 
 template <typename T>
-struct SelectMetadataImpl<
-    T, std::enable_if_t<std::conjunction_v<std::is_base_of<HeapData, T>,
-                                           std::is_base_of<cel::Type, T>>>> {
+struct SelectMetadataImpl<T,
+                          std::enable_if_t<std::is_base_of_v<cel::Type, T>>> {
   using type = TypeMetadata;
 };
 
 template <typename T>
-struct SelectMetadataImpl<
-    T, std::enable_if_t<std::conjunction_v<std::is_base_of<HeapData, T>,
-                                           std::is_base_of<cel::Value, T>>>> {
+struct SelectMetadataImpl<T,
+                          std::enable_if_t<std::is_base_of_v<cel::Value, T>>> {
   using type = ValueMetadata;
 };
 

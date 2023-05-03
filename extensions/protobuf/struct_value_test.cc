@@ -23,6 +23,7 @@
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "base/internal/memory_manager_testing.h"
+#include "base/testing/value_matchers.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/types/struct_type.h"
@@ -40,8 +41,10 @@
 namespace cel::extensions {
 namespace {
 
+using ::cel_testing::ValueOf;
 using testing::Eq;
 using testing::EqualsProto;
+using testing::Optional;
 using testing::status::CanonicalStatusIs;
 using cel::internal::IsOkAndHolds;
 
@@ -397,7 +400,7 @@ TEST_P(ProtoStructValueTest, EnumHasField) {
               IsOkAndHolds(Eq(true)));
 }
 
-TEST_P(ProtoStructValueTest, StructHasField) {
+TEST_P(ProtoStructValueTest, MessageHasField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
@@ -625,6 +628,72 @@ TEST_P(ProtoStructValueTest, StringWrapperHasField) {
       value_with->HasField(StructValue::HasFieldContext(type_manager),
                            ProtoStructType::FieldId("single_string_wrapper")),
       IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, ListValueHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("list_value")),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.mutable_list_value();
+                         })));
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
+                                   ProtoStructType::FieldId("list_value")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, StructHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_struct")),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.mutable_single_struct();
+                         })));
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
+                                   ProtoStructType::FieldId("single_struct")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, ValueHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("single_value")),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.mutable_single_value();
+                         })));
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
+                                   ProtoStructType::FieldId("single_value")),
+              IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, NullValueListHasField) {
@@ -917,7 +986,7 @@ TEST_P(ProtoStructValueTest, EnumListHasField) {
       IsOkAndHolds(Eq(true)));
 }
 
-TEST_P(ProtoStructValueTest, StructListHasField) {
+TEST_P(ProtoStructValueTest, MessageListHasField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
@@ -1145,6 +1214,73 @@ TEST_P(ProtoStructValueTest, StringWrapperListHasField) {
       value_with->HasField(StructValue::HasFieldContext(type_manager),
                            ProtoStructType::FieldId("repeated_string_wrapper")),
       IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, ListValueListHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_list_value")),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.add_repeated_list_value();
+                         })));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager),
+                           ProtoStructType::FieldId("repeated_list_value")),
+      IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, StructListHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_struct")),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.add_repeated_struct();
+                         })));
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
+                                   ProtoStructType::FieldId("repeated_struct")),
+              IsOkAndHolds(Eq(true)));
+}
+
+TEST_P(ProtoStructValueTest, ValueListHasField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager),
+                              ProtoStructType::FieldId("repeated_value")),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.add_repeated_value();
+                         })));
+  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
+                                   ProtoStructType::FieldId("repeated_value")),
+              IsOkAndHolds(Eq(true)));
 }
 
 TEST_P(ProtoStructValueTest, NullValueGetField) {
@@ -1486,7 +1622,7 @@ TEST_P(ProtoStructValueTest, EnumGetField) {
   EXPECT_EQ(field.As<EnumValue>()->number(), 1);
 }
 
-TEST_P(ProtoStructValueTest, StructGetField) {
+TEST_P(ProtoStructValueTest, MessageGetField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
@@ -1808,6 +1944,91 @@ TEST_P(ProtoStructValueTest, StringWrapperGetField) {
       value_with->GetField(StructValue::GetFieldContext(value_factory),
                            ProtoStructType::FieldId("single_string_wrapper")));
   EXPECT_EQ(field.As<StringValue>()->ToString(), "foo");
+}
+
+TEST_P(ProtoStructValueTest, StructGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_struct")));
+  ASSERT_TRUE(field->Is<MapValue>());
+  EXPECT_TRUE(field->As<MapValue>().empty());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            google::protobuf::Value value_proto;
+            value_proto.set_bool_value(true);
+            message.mutable_single_struct()->mutable_fields()->insert(
+                {"foo", std::move(value_proto)});
+          })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
+                                  ProtoStructType::FieldId("single_struct")));
+  ASSERT_TRUE(field->Is<MapValue>());
+  EXPECT_EQ(field->As<MapValue>().size(), 1);
+  ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+  EXPECT_THAT(
+      field->As<MapValue>().Get(MapValue::GetContext(value_factory), key),
+      IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
+}
+
+TEST_P(ProtoStructValueTest, ListValueGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("list_value")));
+  ASSERT_TRUE(field->Is<ListValue>());
+  EXPECT_TRUE(field->As<ListValue>().empty());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(
+          value_factory, CreateTestMessage([](TestAllTypes& message) {
+            message.mutable_list_value()->add_values()->set_bool_value(true);
+          })));
+  ASSERT_OK_AND_ASSIGN(
+      field, value_with->GetField(StructValue::GetFieldContext(value_factory),
+                                  ProtoStructType::FieldId("list_value")));
+  ASSERT_TRUE(field->Is<ListValue>());
+  EXPECT_EQ(field->As<ListValue>().size(), 1);
+  EXPECT_THAT(
+      field->As<ListValue>().Get(ListValue::GetContext(value_factory), 0),
+      IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
+}
+
+TEST_P(ProtoStructValueTest, ValueGetField) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      value_without->GetField(StructValue::GetFieldContext(value_factory),
+                              ProtoStructType::FieldId("single_value")));
+  EXPECT_TRUE(field->Is<NullValue>());
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.mutable_single_value()->set_bool_value(true);
+                         })));
+  EXPECT_THAT(value_with->GetField(StructValue::GetFieldContext(value_factory),
+                                   ProtoStructType::FieldId("single_value")),
+              IsOkAndHolds(ValueOf<BoolValue>(value_factory, true)));
 }
 
 TEST_P(ProtoStructValueTest, NullValueListGetField) {

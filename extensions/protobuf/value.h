@@ -15,15 +15,19 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_VALUE_H_
 
+#include <memory>
 #include <type_traits>
 #include <utility>
 
 #include "google/protobuf/duration.pb.h"
+#include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
+#include "base/handle.h"
+#include "base/owner.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/duration_value.h"
@@ -109,6 +113,15 @@ class ProtoValue final {
   template <typename T>
   using NotWrapperMessage = std::negation<WrapperMessage<T>>;
 
+  template <typename T>
+  using JsonMessage = std::disjunction<
+      std::is_same<google::protobuf::Value, std::decay_t<T>>,
+      std::is_same<google::protobuf::ListValue, std::decay_t<T>>,
+      std::is_same<google::protobuf::Struct, std::decay_t<T>>>;
+
+  template <typename T>
+  using NotJsonMessage = std::negation<JsonMessage<T>>;
+
  public:
   // Create a new EnumValue from a generated protocol buffer enum.
   template <typename T>
@@ -134,10 +147,22 @@ class ProtoValue final {
   template <typename T>
   static std::enable_if_t<
       std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
-                         NotTimestampMessage<T>, NotWrapperMessage<T>>,
+                         NotTimestampMessage<T>, NotWrapperMessage<T>,
+                         NotJsonMessage<T>>,
       absl::StatusOr<Handle<ProtoStructValue>>>
   Create(ValueFactory& value_factory, T&& value) {
     return ProtoStructValue::Create(value_factory, std::forward<T>(value));
+  }
+
+  template <typename T>
+  static std::enable_if_t<
+      std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
+                         NotTimestampMessage<T>, NotWrapperMessage<T>,
+                         NotJsonMessage<T>>,
+      absl::StatusOr<Handle<ProtoStructValue>>>
+  CreateBorrowed(ValueFactory& value_factory,
+                 const T& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    return ProtoStructValue::Create(value_factory, value);
   }
 
   // Create a new DurationValue from google.protobuf.Duration.
@@ -209,9 +234,47 @@ class ProtoValue final {
     return value_factory.CreateUintValue(value.value());
   }
 
+  static absl::StatusOr<Handle<ListValue>> Create(
+      ValueFactory& value_factory, google::protobuf::ListValue value);
+
+  static absl::StatusOr<Handle<ListValue>> Create(
+      ValueFactory& value_factory,
+      std::unique_ptr<google::protobuf::ListValue> value);
+
+  static absl::StatusOr<Handle<ListValue>> CreateBorrowed(
+      Owner<Value> owner, ValueFactory& value_factory,
+      const google::protobuf::ListValue& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  static absl::StatusOr<Handle<MapValue>> Create(
+      ValueFactory& value_factory, google::protobuf::Struct value);
+
+  static absl::StatusOr<Handle<MapValue>> Create(
+      ValueFactory& value_factory,
+      std::unique_ptr<google::protobuf::Struct> value);
+
+  static absl::StatusOr<Handle<MapValue>> CreateBorrowed(
+      Owner<Value> owner, ValueFactory& value_factory,
+      const google::protobuf::Struct& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
+  static absl::StatusOr<Handle<Value>> Create(ValueFactory& value_factory,
+                                              google::protobuf::Value value);
+
+  static absl::StatusOr<Handle<Value>> Create(
+      ValueFactory& value_factory,
+      std::unique_ptr<google::protobuf::Value> value);
+
+  static absl::StatusOr<Handle<Value>> CreateBorrowed(
+      Owner<Value> owner, ValueFactory& value_factory,
+      const google::protobuf::Value& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
+
   // Create a new Value from a protocol buffer message.
   static absl::StatusOr<Handle<Value>> Create(ValueFactory& value_factory,
                                               const google::protobuf::Message& value);
+
+  // Create a new Value from a protocol buffer message.
+  static absl::StatusOr<Handle<Value>> CreateBorrowed(
+      Owner<Value> owner, ValueFactory& value_factory,
+      const google::protobuf::Message& value ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   // Create a new Value from a protocol buffer message.
   static absl::StatusOr<Handle<Value>> Create(ValueFactory& value_factory,
