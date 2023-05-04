@@ -32,6 +32,7 @@
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/testing.h"
@@ -370,8 +371,9 @@ const LegacyTypeAccessApis* DemoTypeInfo::GetAccessApis(
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTimestamp::NewInstance(
     cel::MemoryManager& memory_manager) const {
-  auto ts = memory_manager.New<google::protobuf::Timestamp>();
-  return CelValue::MessageWrapper::Builder(ts.release());
+  auto* ts = google::protobuf::Arena::CreateMessage<google::protobuf::Timestamp>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager));
+  return CelValue::MessageWrapper::Builder(ts);
 }
 absl::StatusOr<CelValue> DemoTimestamp::AdaptFromWellKnownType(
     cel::MemoryManager& memory_manager,
@@ -421,8 +423,9 @@ DemoTestMessage::DemoTestMessage(const DemoTypeProvider* owning_provider)
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTestMessage::NewInstance(
     cel::MemoryManager& memory_manager) const {
-  auto ts = memory_manager.New<TestMessage>();
-  return CelValue::MessageWrapper::Builder(ts.release());
+  auto* ts = google::protobuf::Arena::CreateMessage<TestMessage>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager));
+  return CelValue::MessageWrapper::Builder(ts);
 }
 
 absl::Status DemoTestMessage::SetField(

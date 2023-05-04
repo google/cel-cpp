@@ -4,6 +4,7 @@
 
 #include "base/attribute_set.h"
 #include "base/values/unknown_value.h"
+#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 
@@ -71,8 +72,9 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
     return initial_set;
   }
 
-  return memory_manager_.New<UnknownSet>(std::move(result_set).value())
-      .release();
+  return google::protobuf::Arena::Create<UnknownSet>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+      std::move(result_set).value());
 }
 
 // Creates merged UnknownAttributeSet.
@@ -118,9 +120,26 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
           result_set, UnknownSet(unknown_value->attribute_set(),
                                  unknown_value->function_result_set()));
     }
-    return memory_manager_.New<UnknownSet>(std::move(result_set)).release();
+    return google::protobuf::Arena::Create<UnknownSet>(
+        cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+        std::move(result_set));
   }
   return MergeUnknowns(args, initial_set);
+}
+
+const UnknownSet* AttributeUtility::CreateUnknownSet(
+    cel::Attribute attr) const {
+  return google::protobuf::Arena::Create<UnknownSet>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+      UnknownAttributeSet({std::move(attr)}));
+}
+
+const UnknownSet* AttributeUtility::CreateUnknownSet(
+    const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
+    absl::Span<const cel::Handle<cel::Value>> args) const {
+  return google::protobuf::Arena::Create<UnknownSet>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+      cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)));
 }
 
 }  // namespace google::api::expr::runtime

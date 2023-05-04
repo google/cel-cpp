@@ -14,6 +14,7 @@
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -106,10 +107,10 @@ absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
   if (status_or_result.ok()) {
     result = std::move(status_or_result).value();
   } else {
-    result = CreateErrorValueFromView(
-        frame->memory_manager()
-            .New<absl::Status>(status_or_result.status())
-            .release());
+    result = CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
+        cel::extensions::ProtoMemoryManager::CastToProtoArena(
+            frame->memory_manager()),
+        status_or_result.status()));
   }
   frame->value_stack().Pop(entries_.size());
   frame->value_stack().Push(std::move(result));
@@ -131,7 +132,9 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
   }
 
   // TODO(issues/5): switch to new cel::MapValue in phase 2
-  auto map_builder = frame->memory_manager().New<CelMapBuilder>();
+  auto* map_builder = google::protobuf::Arena::Create<CelMapBuilder>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(
+          frame->memory_manager()));
 
   for (size_t i = 0; i < entry_count_; i += 1) {
     int map_key_index = 2 * i;
@@ -144,12 +147,14 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
         map_key, cel::interop_internal::ModernValueToLegacyValueOrDie(
                      frame->memory_manager(), args[map_value_index]));
     if (!key_status.ok()) {
-      return CreateErrorValueFromView(
-          frame->memory_manager().New<absl::Status>(key_status).release());
+      return CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
+          cel::extensions::ProtoMemoryManager::CastToProtoArena(
+              frame->memory_manager()),
+          key_status));
     }
   }
 
-  return CreateLegacyMapValue(map_builder.release());
+  return CreateLegacyMapValue(map_builder);
 }
 
 absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {

@@ -19,15 +19,14 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/base/macros.h"
-#include "absl/base/optimization.h"
 #include "absl/log/absl_check.h"
 #include "absl/utility/utility.h"
 #include "base/internal/data.h"
 #include "base/internal/handle.h"  // IWYU pragma: export
-#include "base/memory_manager.h"
 
 namespace cel {
+
+class MemoryManager;
 
 // `Handle` is a handle that shares ownership of the referenced `T`. It is valid
 // so long as there are 1 or more handles pointing to `T` and the
@@ -251,6 +250,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
   friend class Handle;
   template <typename F>
   friend struct base_internal::HandleFactory;
+  friend class MemoryManager;
 
   template <typename... Args>
   explicit Handle(absl::in_place_t, Args&&... args)
@@ -294,22 +294,7 @@ struct HandleFactory {
   // implementation.
   template <typename F, typename... Args>
   static std::enable_if_t<std::is_base_of_v<HeapData, F>, Handle<T>> Make(
-      MemoryManager& memory_manager, Args&&... args) {
-    static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
-    static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
-#if defined(__cpp_lib_is_pointer_interconvertible) && \
-    __cpp_lib_is_pointer_interconvertible >= 201907L
-    // Only available in C++20.
-    static_assert(std::is_pointer_interconvertible_base_of_v<Data, F>,
-                  "F must be pointer interconvertible to Data");
-#endif
-    auto managed_memory = memory_manager.New<F>(std::forward<Args>(args)...);
-    if (ABSL_PREDICT_FALSE(managed_memory == nullptr)) {
-      return Handle<T>();
-    }
-    return Handle<T>(absl::in_place,
-                     *base_internal::ManagedMemoryRelease(managed_memory));
-  }
+      MemoryManager& memory_manager, Args&&... args);
 };
 
 }  // namespace cel::base_internal

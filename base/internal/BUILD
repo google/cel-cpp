@@ -46,18 +46,6 @@ cc_library(
 )
 
 cc_library(
-    name = "managed_memory",
-    srcs = ["managed_memory.cc"],
-    hdrs = ["managed_memory.h"],
-    deps = [
-        ":data",
-        "@com_google_absl//absl/base:config",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/numeric:bits",
-    ],
-)
-
-cc_library(
     name = "memory_manager",
     hdrs = [
         "memory_manager.h",

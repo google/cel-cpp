@@ -11,6 +11,7 @@
 #include "eval/eval/mutable_list_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 
@@ -71,20 +72,19 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
+  auto* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
+      frame->memory_manager());
+
   if (immutable_) {
     // TODO(issues/5): switch to new cel::ListValue in phase 2
-    result = CreateLegacyListValue(
-        frame->memory_manager()
-            .New<ContainerBackedListImpl>(
-                ModernValueToLegacyValueOrDie(frame->memory_manager(), args))
-            .release());
+    result =
+        CreateLegacyListValue(google::protobuf::Arena::Create<ContainerBackedListImpl>(
+            arena,
+            ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
   } else {
     // TODO(issues/5): switch to new cel::ListValue in phase 2
-    result = CreateLegacyListValue(
-        frame->memory_manager()
-            .New<MutableListImpl>(
-                ModernValueToLegacyValueOrDie(frame->memory_manager(), args))
-            .release());
+    result = CreateLegacyListValue(google::protobuf::Arena::Create<MutableListImpl>(
+        arena, ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
   }
   frame->value_stack().Pop(list_size_);
   frame->value_stack().Push(std::move(result));

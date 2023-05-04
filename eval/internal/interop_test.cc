@@ -368,11 +368,10 @@ TEST(ValueInterop, ListFromLegacy) {
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto legacy_value = CelValue::CreateList(
-      memory_manager
-          .New<google::api::expr::runtime::ContainerBackedListImpl>(
-              std::vector<CelValue>{CelValue::CreateInt64(0)})
-          .release());
+  auto legacy_value =
+      CelValue::CreateList(google::protobuf::Arena::Create<
+                           google::api::expr::runtime::ContainerBackedListImpl>(
+          &arena, std::vector<CelValue>{CelValue::CreateInt64(0)}));
   ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
   EXPECT_TRUE(value->Is<ListValue>());
   EXPECT_EQ(value.As<ListValue>()->size(), 1);
@@ -457,11 +456,10 @@ TEST(ValueInterop, LegacyListRoundtrip) {
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  auto value = CelValue::CreateList(
-      memory_manager
-          .New<google::api::expr::runtime::ContainerBackedListImpl>(
-              std::vector<CelValue>{CelValue::CreateInt64(0)})
-          .release());
+  auto value =
+      CelValue::CreateList(google::protobuf::Arena::Create<
+                           google::api::expr::runtime::ContainerBackedListImpl>(
+          &arena, std::vector<CelValue>{CelValue::CreateInt64(0)}));
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   EXPECT_EQ(value.ListOrDie(), legacy_value.ListOrDie());
@@ -474,7 +472,7 @@ TEST(ValueInterop, MapFromLegacy) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto* legacy_map =
-      memory_manager.New<google::api::expr::runtime::CelMapBuilder>().release();
+      google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena);
   ASSERT_OK(legacy_map->Add(CelValue::CreateInt64(1),
                             CelValue::CreateStringView("foo")));
   auto legacy_value = CelValue::CreateMap(legacy_map);
@@ -605,8 +603,7 @@ TEST(ValueInterop, LegacyMapRoundtrip) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = CelValue::CreateMap(
-      memory_manager.New<google::api::expr::runtime::CelMapBuilder>()
-          .release());
+      google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena));
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   EXPECT_EQ(value.MapOrDie(), legacy_value.MapOrDie());

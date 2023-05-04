@@ -30,6 +30,7 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_set.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
@@ -89,9 +90,10 @@ std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
     auto attr_set = frame->attribute_utility().CheckForUnknowns(
         attrs.subspan(i, 1), /*use_partial=*/true);
     if (!attr_set.empty()) {
-      auto unknown_set = frame->memory_manager()
-                             .New<UnknownSet>(std::move(attr_set))
-                             .release();
+      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
+          cel::extensions::ProtoMemoryManager::CastToProtoArena(
+              frame->memory_manager()),
+          std::move(attr_set));
       result.push_back(
           cel::interop_internal::CreateUnknownValueFromView(unknown_set));
     } else {

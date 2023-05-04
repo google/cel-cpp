@@ -134,15 +134,15 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
 
   if (field_desc->is_map()) {
-    auto map = memory_manager.New<internal::FieldBackedMapImpl>(
-        message, field_desc, &MessageCelValueFactory, arena);
+    auto* map = google::protobuf::Arena::Create<internal::FieldBackedMapImpl>(
+        arena, message, field_desc, &MessageCelValueFactory, arena);
 
-    return CelValue::CreateMap(map.release());
+    return CelValue::CreateMap(map);
   }
   if (field_desc->is_repeated()) {
-    auto list = memory_manager.New<internal::FieldBackedListImpl>(
-        message, field_desc, &MessageCelValueFactory, arena);
-    return CelValue::CreateList(list.release());
+    auto* list = google::protobuf::Arena::Create<internal::FieldBackedListImpl>(
+        arena, message, field_desc, &MessageCelValueFactory, arena);
+    return CelValue::CreateList(list);
   }
 
   CEL_ASSIGN_OR_RETURN(

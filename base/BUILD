@@ -19,13 +19,9 @@ package(
 
 licenses(["notice"])
 
-cc_library(
+alias(
     name = "allocator",
-    hdrs = ["allocator.h"],
-    deps = [
-        ":memory_manager",
-        "@com_google_absl//absl/base:core_headers",
-    ],
+    actual = ":memory",
 )
 
 cc_test(
@@ -63,7 +59,6 @@ cc_library(
     name = "handle",
     hdrs = ["handle.h"],
     deps = [
-        ":memory_manager",
         "//base/internal:data",
         "//base/internal:handle",
         "@com_google_absl//absl/base:core_headers",
@@ -100,17 +95,15 @@ cc_test(
 )
 
 cc_library(
-    name = "managed_memory",
-    hdrs = ["managed_memory.h"],
-    deps = ["//base/internal:managed_memory"],
-)
-
-cc_library(
-    name = "memory_manager",
+    name = "memory",
     srcs = ["memory_manager.cc"],
-    hdrs = ["memory_manager.h"],
+    hdrs = [
+        "allocator.h",
+        "memory.h",
+        "memory_manager.h",
+    ],
     deps = [
-        ":managed_memory",
+        ":handle",
         "//base/internal:data",
         "//base/internal:memory_manager",
         "//internal:no_destructor",
@@ -118,9 +111,15 @@ cc_library(
         "@com_google_absl//absl/base:config",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/base:dynamic_annotations",
+        "@com_google_absl//absl/log:die_if_null",
         "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/synchronization",
     ],
+)
+
+alias(
+    name = "memory_manager",
+    actual = ":memory",
 )
 
 cc_test(

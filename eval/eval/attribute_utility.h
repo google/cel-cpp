@@ -71,21 +71,12 @@ class AttributeUtility {
       bool use_partial) const;
 
   // Create an initial UnknownSet from a single attribute.
-  const UnknownSet* CreateUnknownSet(cel::Attribute attr) const {
-    return memory_manager_
-        .New<UnknownSet>(UnknownAttributeSet({std::move(attr)}))
-        .release();
-  }
+  const UnknownSet* CreateUnknownSet(cel::Attribute attr) const;
 
   // Create an initial UnknownSet from a single missing function call.
   const UnknownSet* CreateUnknownSet(
       const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
-      absl::Span<const cel::Handle<cel::Value>> args) const {
-    return memory_manager_
-        .New<UnknownSet>(
-            cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)))
-        .release();
-  }
+      absl::Span<const cel::Handle<cel::Value>> args) const;
 
  private:
   absl::Span<const cel::AttributePattern> unknown_patterns_;

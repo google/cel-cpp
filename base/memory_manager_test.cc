@@ -21,15 +21,6 @@
 namespace cel {
 namespace {
 
-struct TriviallyDestructible final {};
-
-TEST(GlobalMemoryManager, TriviallyDestructible) {
-  EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
-  auto managed = MemoryManager::Global().New<TriviallyDestructible>();
-  EXPECT_NE(managed, nullptr);
-  EXPECT_NE(nullptr, managed);
-}
-
 struct NotTriviallyDestuctible final {
   ~NotTriviallyDestuctible() { Delete(); }
 
@@ -37,28 +28,17 @@ struct NotTriviallyDestuctible final {
 };
 
 TEST(GlobalMemoryManager, NotTriviallyDestuctible) {
-  EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
-  auto managed = MemoryManager::Global().New<NotTriviallyDestuctible>();
-  EXPECT_NE(managed, nullptr);
-  EXPECT_NE(nullptr, managed);
+  auto managed = MakeUnique<NotTriviallyDestuctible>(MemoryManager::Global());
   EXPECT_CALL(*managed, Delete());
 }
 
-TEST(ManagedMemory, Null) {
-  EXPECT_EQ(ManagedMemory<TriviallyDestructible>(), nullptr);
-  EXPECT_EQ(nullptr, ManagedMemory<TriviallyDestructible>());
-}
-
-struct LargeStruct {
-  char padding[4096 - alignof(char)];
-};
-
-TEST(DefaultArenaMemoryManager, OddSizes) {
+TEST(ArenaMemoryManager, NotTriviallyDestuctible) {
   auto memory_manager = ArenaMemoryManager::Default();
-  size_t page_size = base_internal::GetPageSize();
-  for (size_t allocated = 0; allocated <= page_size;
-       allocated += sizeof(LargeStruct)) {
-    static_cast<void>(memory_manager->New<LargeStruct>());
+  {
+    // Destructor is called when UniqueRef is destructed, not on MemoryManager
+    // destruction.
+    auto managed = MakeUnique<NotTriviallyDestuctible>(*memory_manager);
+    EXPECT_CALL(*managed, Delete());
   }
 }
 
