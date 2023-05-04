@@ -20,10 +20,10 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <new>
 #include <type_traits>
 
 #include "absl/base/attributes.h"
+#include "absl/base/casts.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
 #include "absl/numeric/bits.h"
@@ -74,7 +74,7 @@ inline constexpr uintptr_t kInlineVariantBits = uintptr_t{0xf}
                                                 << kInlineVariantShift;
 
 // We assert some expectations we have around alignment, size, and trivial
-// destructability.
+// destructibility.
 static_assert(sizeof(uintptr_t) == sizeof(std::atomic<uintptr_t>),
               "uintptr_t and std::atomic<uintptr_t> must have the same size");
 static_assert(sizeof(void*) == sizeof(uintptr_t),
@@ -368,7 +368,13 @@ using SelectMetadata = typename SelectMetadataImpl<T>::type;
 
 template <size_t Size, size_t Align>
 union alignas(Align) AnyDataStorage final {
+#ifdef NDEBUG
+  // Only need to clear the pointer for this to appear as empty.
   AnyDataStorage() : pointer(0) {}
+#else
+  // In debug builds we clear the entire storage to help identify misuse.
+  AnyDataStorage() { std::memset(buffer, '\0', sizeof(buffer)); }
+#endif
 
   uintptr_t pointer;
   uint8_t buffer[Size];
@@ -464,11 +470,11 @@ struct AnyData final {
   }
 
   Data* get_inline() const {
-    return static_cast<Data*>(const_cast<void*>(buffer()));
+    return absl::bit_cast<Data*>(const_cast<void*>(buffer()));
   }
 
   Data* get_heap() const {
-    return reinterpret_cast<Data*>(pointer() & kPointerMask);
+    return absl::bit_cast<Data*>(pointer() & kPointerMask);
   }
 
   // Copy the bytes from other, similar to `std::memcpy`.
@@ -484,33 +490,47 @@ struct AnyData final {
 
   template <typename T>
   void Destruct() {
+    static_assert(sizeof(T) <= kSize);
+    static_assert(alignof(T) <= kAlign);
     ABSL_ASSERT(IsStoredInline());
     static_cast<T*>(get_inline())->~T();
   }
 
   void Clear() {
+#ifdef NDEBUG
     // We only need to clear the first `sizeof(uintptr_t)` bytes as that is
     // consulted to determine locality.
     set_pointer(0);
+#else
+    // In debug builds, we clear all the storage to help identify misuse.
+    std::memset(buffer(), '\0', kSize);
+#endif
   }
 
   // Counterpart to `Metadata::SetArenaAllocated()` and
   // `Metadata::SetReferenceCounted()`, also used by `MemoryManager`.
-  void ConstructHeap(const Data& data) {
-    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(&data)) >=
+  void ConstructReferenceCounted(const Data& data) {
+    uintptr_t pointer = absl::bit_cast<uintptr_t>(std::addressof(data));
+    ABSL_ASSERT(absl::countr_zero(pointer) >=
                 2);  // Assert pointer alignment results in at least the 2 least
                      // significant bits being unset.
-    set_pointer(reinterpret_cast<uintptr_t>(&data) |
-                ((reinterpret_cast<std::atomic<uintptr_t>*>(
-                      reinterpret_cast<uintptr_t>(&data) + sizeof(uintptr_t))
-                      ->load(std::memory_order_relaxed) &
-                  kArenaAllocated) == kArenaAllocated
-                     ? kPointerArenaAllocated
-                     : kPointerReferenceCounted));
+    set_pointer(pointer | kPointerReferenceCounted);
+  }
+
+  // Counterpart to `Metadata::SetArenaAllocated()` and
+  // `Metadata::SetReferenceCounted()`, also used by `MemoryManager`.
+  void ConstructArenaAllocated(const Data& data) {
+    uintptr_t pointer = absl::bit_cast<uintptr_t>(std::addressof(data));
+    ABSL_ASSERT(absl::countr_zero(pointer) >=
+                2);  // Assert pointer alignment results in at least the 2 least
+                     // significant bits being unset.
+    set_pointer(pointer | kPointerArenaAllocated);
   }
 
   template <typename T, typename... Args>
   void ConstructInline(Args&&... args) {
+    static_assert(sizeof(T) <= kSize);
+    static_assert(alignof(T) <= kAlign);
     ::new (buffer()) T(std::forward<Args>(args)...);
     ABSL_ASSERT(IsStoredInline());
   }
@@ -525,6 +545,62 @@ struct AnyData final {
 
   Storage storage;
 };
+
+template <typename T>
+struct IsData
+    : public std::integral_constant<bool, std::is_base_of_v<Data, T>> {};
+
+template <typename T>
+inline constexpr bool IsDataV = IsData<T>::value;
+
+template <typename T>
+struct IsDerivedData
+    : public std::integral_constant<
+          bool, std::conjunction_v<
+                    std::is_base_of<Data, T>,
+                    std::negation<std::is_same<Data, std::remove_cv_t<T>>>>> {};
+
+template <typename T>
+inline constexpr bool IsDerivedDataV = IsDerivedData<T>::value;
+
+template <typename T>
+struct IsInlineData
+    : public std::integral_constant<
+          bool, std::conjunction_v<IsData<T>, std::is_base_of<InlineData, T>>> {
+};
+
+template <typename T>
+inline constexpr bool IsInlineDataV = IsInlineData<T>::value;
+
+template <typename T>
+struct IsDerivedInlineData
+    : public std::integral_constant<
+          bool,
+          std::conjunction_v<
+              IsInlineData<T>, IsDerivedData<T>,
+              std::negation<std::is_same<InlineData, std::remove_cv_t<T>>>>> {};
+
+template <typename T>
+inline constexpr bool IsDerivedInlineDataV = IsDerivedInlineData<T>::value;
+
+template <typename T>
+struct IsHeapData
+    : public std::integral_constant<
+          bool, std::conjunction_v<IsData<T>, std::is_base_of<HeapData, T>>> {};
+
+template <typename T>
+inline constexpr bool IsHeapDataV = IsHeapData<T>::value;
+
+template <typename T>
+struct IsDerivedHeapData
+    : public std::integral_constant<
+          bool,
+          std::conjunction_v<
+              IsHeapData<T>, IsDerivedData<T>,
+              std::negation<std::is_same<HeapData, std::remove_cv_t<T>>>>> {};
+
+template <typename T>
+inline constexpr bool IsDerivedHeapDataV = IsDerivedHeapData<T>::value;
 
 }  // namespace base_internal
 

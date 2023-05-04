@@ -174,13 +174,9 @@ class MemoryManager {
   template <typename T, typename... Args>
   Handle<T> AllocateHandle(Args&&... args)
       ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
-    static_assert(std::is_base_of_v<base_internal::HeapData, T>);
-    T* pointer;
-    if (!allocation_only_) {
-      pointer = new T(std::forward<Args>(args)...);
-      base_internal::Metadata::SetReferenceCounted(*pointer);
-    } else {
-      pointer = ::new (Allocate(sizeof(T), alignof(T)))
+    static_assert(base_internal::IsDerivedHeapDataV<T>);
+    if (allocation_only_) {
+      T* pointer = ::new (Allocate(sizeof(T), alignof(T)))
           T(std::forward<Args>(args)...);
       if constexpr (!std::is_trivially_destructible_v<T>) {
         if constexpr (base_internal::HasIsDestructorSkippable<T>::value) {
@@ -194,14 +190,17 @@ class MemoryManager {
         }
       }
       base_internal::Metadata::SetArenaAllocated(*pointer);
+      return Handle<T>(base_internal::kInPlaceArenaAllocated, *pointer);
     }
-    return Handle<T>(absl::in_place, *pointer);
+    T* pointer = new T(std::forward<Args>(args)...);
+    base_internal::Metadata::SetReferenceCounted(*pointer);
+    return Handle<T>(base_internal::kInPlaceReferenceCounted, *pointer);
   }
 
   template <typename T, typename... Args>
   UniqueRef<T> AllocateUnique(Args&&... args)
       ABSL_ATTRIBUTE_LIFETIME_BOUND ABSL_MUST_USE_RESULT {
-    static_assert(!std::is_base_of_v<base_internal::Data, T>);
+    static_assert(!base_internal::IsDataV<T>);
     T* ptr;
     if (allocation_only_) {
       ptr = ::new (Allocate(sizeof(T), alignof(T)))
@@ -357,9 +356,8 @@ namespace base_internal {
 
 template <typename T>
 template <typename F, typename... Args>
-std::enable_if_t<std::is_base_of_v<HeapData, F>, Handle<T>>
-HandleFactory<T>::Make(MemoryManager& memory_manager, Args&&... args) {
-  static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
+std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> HandleFactory<T>::Make(
+    MemoryManager& memory_manager, Args&&... args) {
   static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
 #if defined(__cpp_lib_is_pointer_interconvertible) && \
     __cpp_lib_is_pointer_interconvertible >= 201907L

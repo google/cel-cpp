@@ -20,7 +20,6 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
-#include "absl/utility/utility.h"
 #include "base/internal/data.h"
 #include "base/internal/handle.h"  // IWYU pragma: export
 
@@ -252,9 +251,17 @@ class Handle final : private base_internal::HandlePolicy<T> {
   friend struct base_internal::HandleFactory;
   friend class MemoryManager;
 
-  template <typename... Args>
-  explicit Handle(absl::in_place_t, Args&&... args)
-      : impl_(std::forward<Args>(args)...) {}
+  template <typename F, typename... Args>
+  explicit Handle(base_internal::InPlaceStoredInline<F> tag, Args&&... args)
+      : impl_(tag, std::forward<Args>(args)...) {}
+
+  Handle(base_internal::InPlaceArenaAllocated tag,
+         typename Impl::base_type& arg)
+      : impl_(tag, arg) {}
+
+  Handle(base_internal::InPlaceReferenceCounted tag,
+         typename Impl::base_type& arg)
+      : impl_(tag, arg) {}
 
   Impl impl_;
 };
@@ -268,32 +275,32 @@ namespace cel::base_internal {
 
 template <typename T>
 struct HandleFactory {
+  static_assert(IsDerivedDataV<T>);
+
   // Constructs a handle whose underlying object is stored in the
   // handle itself.
   template <typename F, typename... Args>
-  static std::enable_if_t<std::is_base_of_v<InlineData, F>, Handle<T>> Make(
+  static std::enable_if_t<IsDerivedInlineDataV<F>, Handle<T>> Make(
       Args&&... args) {
-    static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
     static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
-    return Handle<T>(absl::in_place, absl::in_place_type<F>,
-                     std::forward<Args>(args)...);
+    return Handle<T>(kInPlaceStoredInline<F>, std::forward<Args>(args)...);
   }
+
   // Constructs a handle whose underlying object is stored in the
   // handle itself.
   template <typename F, typename... Args>
-  static std::enable_if_t<std::is_base_of_v<InlineData, F>, void> MakeAt(
+  static std::enable_if_t<IsDerivedInlineDataV<F>, void> MakeAt(
       void* address, Args&&... args) {
-    static_assert(std::is_base_of_v<Data, F>, "T is not derived from Data");
     static_assert(std::is_base_of_v<T, F>, "F is not derived from T");
-    ::new (address) Handle<T>(absl::in_place, absl::in_place_type<F>,
-                              std::forward<Args>(args)...);
+    ::new (address)
+        Handle<T>(kInPlaceStoredInline<F>, std::forward<Args>(args)...);
   }
 
   // Constructs a handle whose underlying object is heap allocated
   // and potentially reference counted, depending on the memory manager
   // implementation.
   template <typename F, typename... Args>
-  static std::enable_if_t<std::is_base_of_v<HeapData, F>, Handle<T>> Make(
+  static std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> Make(
       MemoryManager& memory_manager, Args&&... args);
 };
 

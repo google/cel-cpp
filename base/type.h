@@ -24,7 +24,6 @@
 #include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
-#include "absl/utility/utility.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/type.h"  // IWYU pragma: export
@@ -146,14 +145,22 @@ class TypeMetadata final {
 
 class TypeHandle final {
  public:
+  using base_type = Type;
+
   TypeHandle() = default;
 
   template <typename T, typename... Args>
-  explicit TypeHandle(absl::in_place_type_t<T>, Args&&... args) {
+  explicit TypeHandle(InPlaceStoredInline<T>, Args&&... args) {
     data_.ConstructInline<T>(std::forward<Args>(args)...);
   }
 
-  explicit TypeHandle(const Type& type) { data_.ConstructHeap(type); }
+  explicit TypeHandle(InPlaceArenaAllocated, Type& arg) {
+    data_.ConstructArenaAllocated(arg);
+  }
+
+  explicit TypeHandle(InPlaceReferenceCounted, Type& arg) {
+    data_.ConstructReferenceCounted(arg);
+  }
 
   TypeHandle(const TypeHandle& other) { CopyFrom(other); }
 

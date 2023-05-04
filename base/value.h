@@ -53,7 +53,7 @@ class Value : public base_internal::Data {
   static const Value& Cast(const Value& value) { return value; }
 
   // Returns the kind of the value. This is equivalent to `type().kind()` but
-  // faster in many scenarios. As such it should be preffered when only the kind
+  // faster in many scenarios. As such it should be preferred when only the kind
   // is required.
   Kind kind() const { return base_internal::Metadata::Kind(*this); }
 
@@ -135,14 +135,22 @@ class ValueMetadata final {
 
 class ValueHandle final {
  public:
+  using base_type = Value;
+
   ValueHandle() = default;
 
   template <typename T, typename... Args>
-  explicit ValueHandle(absl::in_place_type_t<T> in_place_type, Args&&... args) {
+  explicit ValueHandle(InPlaceStoredInline<T>, Args&&... args) {
     data_.ConstructInline<T>(std::forward<Args>(args)...);
   }
 
-  explicit ValueHandle(const Value& value) { data_.ConstructHeap(value); }
+  explicit ValueHandle(InPlaceArenaAllocated, Value& arg) {
+    data_.ConstructArenaAllocated(arg);
+  }
+
+  explicit ValueHandle(InPlaceReferenceCounted, Value& arg) {
+    data_.ConstructReferenceCounted(arg);
+  }
 
   ValueHandle(const ValueHandle& other) { CopyFrom(other); }
 

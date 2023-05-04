@@ -63,7 +63,6 @@ cc_library(
         "//base/internal:handle",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
-        "@com_google_absl//absl/utility",
     ],
 )
 
@@ -196,7 +195,6 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@com_google_absl//absl/utility",
     ],
 )
 
