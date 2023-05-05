@@ -33,68 +33,46 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(StructValue);
 
+#define CEL_INTERNAL_STRUCT_VALUE_DISPATCH(method, ...)                       \
+  base_internal::Metadata::IsStoredInline(*this)                              \
+      ? static_cast<const base_internal::LegacyStructValue&>(*this).method(   \
+            __VA_ARGS__)                                                      \
+      : static_cast<const base_internal::AbstractStructValue&>(*this).method( \
+            __VA_ARGS__)
+
 Handle<StructType> StructValue::type() const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)->type();
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)->type();
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(type);
 }
 
 std::string StructValue::DebugString() const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->DebugString();
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->DebugString();
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(DebugString);
 }
 
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByName(
     const GetFieldContext& context, absl::string_view name) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->GetFieldByName(context, name);
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->GetFieldByName(context, name);
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByName, context, name);
 }
 
 absl::StatusOr<Handle<Value>> StructValue::GetFieldByNumber(
     const GetFieldContext& context, int64_t number) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->GetFieldByNumber(context, number);
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->GetFieldByNumber(context, number);
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(GetFieldByNumber, context, number);
 }
 
 absl::StatusOr<bool> StructValue::HasFieldByName(const HasFieldContext& context,
                                                  absl::string_view name) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->HasFieldByName(context, name);
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->HasFieldByName(context, name);
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByName, context, name);
 }
 
 absl::StatusOr<bool> StructValue::HasFieldByNumber(
     const HasFieldContext& context, int64_t number) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)
-        ->HasFieldByNumber(context, number);
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)
-      ->HasFieldByNumber(context, number);
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByNumber, context, number);
 }
 
 internal::TypeInfo StructValue::TypeId() const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructValue*>(this)->TypeId();
-  }
-  return static_cast<const base_internal::AbstractStructValue*>(this)->TypeId();
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(TypeId);
 }
+
+#undef CEL_INTERNAL_STRUCT_VALUE_DISPATCH
 
 struct StructValue::GetFieldVisitor final {
   const StructValue& struct_value;

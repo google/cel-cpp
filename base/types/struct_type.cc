@@ -15,62 +15,48 @@
 #include "base/types/struct_type.h"
 
 #include <string>
-#include <utility>
 
 #include "absl/base/macros.h"
-#include "absl/hash/hash.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
-#include "base/internal/message_wrapper.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(StructType);
 
+#define CEL_INTERNAL_STRUCT_TYPE_DISPATCH(method, ...)                       \
+  base_internal::Metadata::IsStoredInline(*this)                             \
+      ? static_cast<const base_internal::LegacyStructType&>(*this).method(   \
+            __VA_ARGS__)                                                     \
+      : static_cast<const base_internal::AbstractStructType&>(*this).method( \
+            __VA_ARGS__)
+
 absl::string_view StructType::name() const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)->name();
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)->name();
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(name);
 }
 
 std::string StructType::DebugString() const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)
-        ->DebugString();
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)
-      ->DebugString();
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(DebugString);
 }
 
 internal::TypeInfo StructType::TypeId() const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)->TypeId();
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)->TypeId();
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(TypeId);
 }
 
 absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByName(
     TypeManager& type_manager, absl::string_view name) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)
-        ->FindFieldByName(type_manager, name);
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)
-      ->FindFieldByName(type_manager, name);
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(FindFieldByName, type_manager, name);
 }
 
 absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByNumber(
     TypeManager& type_manager, int64_t number) const {
-  if (base_internal::Metadata::IsStoredInline(*this)) {
-    return static_cast<const base_internal::LegacyStructType*>(this)
-        ->FindFieldByNumber(type_manager, number);
-  }
-  return static_cast<const base_internal::AbstractStructType*>(this)
-      ->FindFieldByNumber(type_manager, number);
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(FindFieldByNumber, type_manager,
+                                           number);
 }
+
+#undef CEL_INTERNAL_STRUCT_TYPE_DISPATCH
 
 struct StructType::FindFieldVisitor final {
   const StructType& struct_type;
