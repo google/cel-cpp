@@ -260,17 +260,17 @@ class Metadata final {
 
   static void Ref(const Data& data) {
     ABSL_ASSERT(IsReferenceCounted(data));
-    const auto count =
-        (ReferenceCount(data).fetch_add(1, std::memory_order_relaxed)) &
-        kReferenceCountMask;
+    const auto count = (ReferenceCount(const_cast<Data&>(data))
+                            .fetch_add(1, std::memory_order_relaxed)) &
+                       kReferenceCountMask;
     ABSL_ASSERT(count > 0 && count < kReferenceCountMax);
   }
 
   ABSL_MUST_USE_RESULT static bool Unref(const Data& data) {
     ABSL_ASSERT(IsReferenceCounted(data));
-    const auto count =
-        (ReferenceCount(data).fetch_sub(1, std::memory_order_seq_cst)) &
-        kReferenceCountMask;
+    const auto count = (ReferenceCount(const_cast<Data&>(data))
+                            .fetch_sub(1, std::memory_order_seq_cst)) &
+                       kReferenceCountMask;
     ABSL_ASSERT(count > 0 && count < kReferenceCountMax);
     return count == 1;
   }
@@ -284,7 +284,7 @@ class Metadata final {
 
   static bool IsUnique(const Data& data) {
     ABSL_ASSERT(IsReferenceCounted(data));
-    return ((ReferenceCount(data).fetch_add(1, std::memory_order_acquire)) &
+    return (ReferenceCount(data).load(std::memory_order_acquire) &
             kReferenceCountMask) == 1;
   }
 
@@ -294,12 +294,12 @@ class Metadata final {
   }
 
   // Used by `MemoryManager::New()`.
-  static void SetArenaAllocated(const Data& data) {
+  static void SetArenaAllocated(Data& data) {
     ReferenceCount(data).fetch_or(kArenaAllocated, std::memory_order_relaxed);
   }
 
   // Used by `MemoryManager::New()`.
-  static void SetReferenceCounted(const Data& data) {
+  static void SetReferenceCounted(Data& data) {
     ReferenceCount(data).fetch_or(kReferenceCounted, std::memory_order_relaxed);
   }
 
@@ -326,16 +326,23 @@ class Metadata final {
   static uintptr_t VirtualPointer(const Data& data) {
     // The vptr, or equivalent, is stored at offset 0. Inform the compiler that
     // `data` is aligned to at least `uintptr_t`.
-    return *reinterpret_cast<const uintptr_t*>(&data);
+    return *absl::bit_cast<const uintptr_t*>(std::addressof(data));
   }
 
-  static std::atomic<uintptr_t>& ReferenceCount(const Data& data) {
+  static const std::atomic<uintptr_t>& ReferenceCount(const Data& data) {
     // For arena allocated and reference counted, the reference count
     // immediately follows the vptr, or equivalent, at offset 0. So its offset
-    // is `sizeof(uintptr_t)`. Inform the compiler that `data` is aligned to at
-    // least `uintptr_t` and `std::atomic<uintptr_t>`.
-    return *reinterpret_cast<std::atomic<uintptr_t>*>(const_cast<uint8_t*>(
-        reinterpret_cast<const uint8_t*>(&data) + sizeof(uintptr_t)));
+    // is `sizeof(uintptr_t)`.
+    return *absl::bit_cast<const std::atomic<uintptr_t>*>(
+        absl::bit_cast<uintptr_t>(std::addressof(data)) + sizeof(uintptr_t));
+  }
+
+  static std::atomic<uintptr_t>& ReferenceCount(Data& data) {
+    // For arena allocated and reference counted, the reference count
+    // immediately follows the vptr, or equivalent, at offset 0. So its offset
+    // is `sizeof(uintptr_t)`.
+    return const_cast<std::atomic<uintptr_t>&>(
+        ReferenceCount(static_cast<const Data&>(data)));
   }
 
   Metadata() = delete;
@@ -405,8 +412,8 @@ struct AnyData final {
 
   Kind kind_heap() const {
     return static_cast<Kind>(
-        ((reinterpret_cast<std::atomic<uintptr_t>*>((pointer() & kPointerMask) +
-                                                    sizeof(uintptr_t))
+        ((absl::bit_cast<std::atomic<uintptr_t>*>((pointer() & kPointerMask) +
+                                                  sizeof(uintptr_t))
               ->load(std::memory_order_relaxed)) >>
          kKindShift) &
         kKindMask);
@@ -515,6 +522,7 @@ struct AnyData final {
                 2);  // Assert pointer alignment results in at least the 2 least
                      // significant bits being unset.
     set_pointer(pointer | kPointerReferenceCounted);
+    ABSL_ASSERT(IsReferenceCounted());
   }
 
   // Counterpart to `Metadata::SetArenaAllocated()` and
@@ -525,6 +533,7 @@ struct AnyData final {
                 2);  // Assert pointer alignment results in at least the 2 least
                      // significant bits being unset.
     set_pointer(pointer | kPointerArenaAllocated);
+    ABSL_ASSERT(IsArenaAllocated());
   }
 
   template <typename T, typename... Args>
