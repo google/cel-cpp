@@ -85,9 +85,6 @@ class EnumType : public Type, public base_internal::HeapData {
   // returned.
   absl::StatusOr<absl::optional<Constant>> FindConstant(ConstantId id) const;
 
- protected:
-  EnumType();
-
   // Called by FindConstant.
   virtual absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const = 0;
@@ -95,6 +92,9 @@ class EnumType : public Type, public base_internal::HeapData {
   // Called by FindConstant.
   virtual absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
       int64_t number) const = 0;
+
+ protected:
+  EnumType();
 
  private:
   friend internal::TypeInfo base_internal::GetEnumTypeTypeId(

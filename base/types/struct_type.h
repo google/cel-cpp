@@ -92,7 +92,6 @@ class StructType : public Type {
   absl::StatusOr<absl::optional<Field>> FindField(TypeManager& type_manager,
                                                   FieldId id) const;
 
- protected:
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
       TypeManager& type_manager, absl::string_view name) const;
