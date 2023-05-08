@@ -72,6 +72,7 @@ message TestMessage {
   google.protobuf.Duration duration_value = 301;
   google.protobuf.Timestamp timestamp_value = 302;
   google.protobuf.Struct struct_value = 303;
+  // TODO(issues/5): Test null_value with variable bindings.
   google.protobuf.Value value_value = 304;
   google.protobuf.Int64Value int64_wrapper_value = 305;
   google.protobuf.Int32Value int32_wrapper_value = 306;
