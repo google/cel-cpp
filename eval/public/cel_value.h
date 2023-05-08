@@ -52,7 +52,7 @@ namespace google::api::expr::runtime {
 
 using CelError = absl::Status;
 
-// Break cyclic depdendencies for container types.
+// Break cyclic dependencies for container types.
 class CelList;
 class CelMap;
 class LegacyTypeAdapter;
