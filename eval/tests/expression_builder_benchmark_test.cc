@@ -17,6 +17,7 @@
 #include <cmath>
 #include <string>
 
+#include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/text_format.h"
 #include "absl/container/flat_hash_set.h"
@@ -158,6 +159,55 @@ void BM_Comparisons(benchmark::State& state) {
 }
 
 BENCHMARK(BM_Comparisons)
+    ->Arg(BenchmarkParam::kDefault)
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+
+void RegexPrecompilationBench(bool enabled, benchmark::State& state) {
+  auto param = static_cast<BenchmarkParam>(state.range(0));
+
+  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(R"cel(
+    input_str.matches(r'192\.168\.' + '[0-9]{1,3}' + r'\.' + '[0-9]{1,3}') ||
+    input_str.matches(r'10(\.[0-9]{1,3}){3}')
+  )cel"));
+
+  // Fake a checked expression with enough reference information for the expr
+  // builder to identify the regex as optimize-able.
+  CheckedExpr checked_expr;
+  checked_expr.mutable_expr()->Swap(expr.mutable_expr());
+  checked_expr.mutable_source_info()->Swap(expr.mutable_source_info());
+  (*checked_expr.mutable_reference_map())[2].add_overload_id("matches_string");
+  (*checked_expr.mutable_reference_map())[11].add_overload_id("matches_string");
+
+  google::protobuf::Arena arena;
+  InterpreterOptions options = OptionsForParam(param, arena);
+  options.enable_regex_precompilation = enabled;
+
+  auto builder = CreateCelExpressionBuilder(options);
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
+  ASSERT_OK(reg_status);
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(auto expression,
+                         builder->CreateExpression(&checked_expr));
+    arena.Reset();
+  }
+}
+
+void BM_RegexPrecompilationDisabled(benchmark::State& state) {
+  RegexPrecompilationBench(false, state);
+}
+
+BENCHMARK(BM_RegexPrecompilationDisabled)
+    ->Arg(BenchmarkParam::kDefault)
+    ->Arg(BenchmarkParam::kFoldConstants)
+    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+
+void BM_RegexPrecompilationEnabled(benchmark::State& state) {
+  RegexPrecompilationBench(true, state);
+}
+
+BENCHMARK(BM_RegexPrecompilationEnabled)
     ->Arg(BenchmarkParam::kDefault)
     ->Arg(BenchmarkParam::kFoldConstants)
     ->Arg(BenchmarkParam::kUpdatedFoldConstants);
