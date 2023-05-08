@@ -177,7 +177,6 @@ cc_library(
         ":kind",
         ":memory_manager",
         "//base/internal:data",
-        "//base/internal:message_wrapper",
         "//base/internal:type",
         "//internal:casts",
         "//internal:no_destructor",

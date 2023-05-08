@@ -36,7 +36,6 @@ namespace {
 using testing::ElementsAre;
 using testing::Eq;
 using cel::internal::IsOkAndHolds;
-using cel::internal::StatusIs;
 
 enum class TestEnum {
   kValue1 = 1,
@@ -48,6 +47,14 @@ class TestEnumType final : public EnumType {
   using EnumType::EnumType;
 
   absl::string_view name() const override { return "test_enum.TestEnum"; }
+
+  size_t constant_count() const override { return 2; }
+
+  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
+      MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError(
+        "EnumType::NewConstantIterator is unimplemented");
+  }
 
  protected:
   absl::StatusOr<absl::optional<Constant>> FindConstantByName(

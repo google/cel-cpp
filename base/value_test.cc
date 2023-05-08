@@ -60,6 +60,14 @@ class TestEnumType final : public EnumType {
 
   absl::string_view name() const override { return "test_enum.TestEnum"; }
 
+  size_t constant_count() const override { return 2; }
+
+  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
+      MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError(
+        "EnumType::NewConstantIterator is unimplemented");
+  }
+
  protected:
   absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override {

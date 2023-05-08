@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -26,6 +27,7 @@
 #include "absl/types/variant.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "internal/rtti.h"
 
@@ -75,23 +77,33 @@ class EnumType : public Type, public base_internal::HeapData {
 
   Kind kind() const { return kKind; }
 
-  virtual absl::string_view name() const = 0;
+  virtual absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   std::string DebugString() const { return std::string(name()); }
+
+  virtual size_t constant_count() const = 0;
 
   // Find the constant definition for the given identifier. If the constant does
   // not exist, an OK status and empty optional is returned. If the constant
   // exists, an OK status and the constant is returned. Otherwise an error is
   // returned.
-  absl::StatusOr<absl::optional<Constant>> FindConstant(ConstantId id) const;
+  absl::StatusOr<absl::optional<Constant>> FindConstant(ConstantId id) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Called by FindConstant.
   virtual absl::StatusOr<absl::optional<Constant>> FindConstantByName(
-      absl::string_view name) const = 0;
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   // Called by FindConstant.
   virtual absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
-      int64_t number) const = 0;
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+  class ConstantIterator;
+
+  // Returns an iterator which can iterate over all the constants defined by
+  // this enumeration. The order with which iteration occurs is undefined.
+  virtual absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
  protected:
   EnumType();
@@ -114,6 +126,36 @@ class EnumType : public Type, public base_internal::HeapData {
 
   // Called by CEL_IMPLEMENT_ENUM_TYPE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
+};
+
+// Constant describes a single value in an enumeration. All fields are valid so
+// long as EnumType is valid.
+struct EnumType::Constant final {
+  Constant(absl::string_view name, int64_t number, const void* hint = nullptr)
+      : name(name), number(number), hint(hint) {}
+
+  // The unqualified enumeration value name.
+  absl::string_view name;
+  // The enumeration value number.
+  int64_t number;
+  // Some implementation-specific data that can be laundered to the value
+  // implementation for this type to perform optimizations.
+  const void* hint = nullptr;
+};
+
+class EnumType::ConstantIterator {
+ public:
+  using Constant = EnumType::Constant;
+
+  virtual ~ConstantIterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Constant> Next() = 0;
+
+  virtual absl::StatusOr<absl::string_view> NextName();
+
+  virtual absl::StatusOr<int64_t> NextNumber();
 };
 
 // CEL_DECLARE_ENUM_TYPE declares `enum_type` as an enumeration type. It must be
@@ -139,20 +181,6 @@ class EnumType : public Type, public base_internal::HeapData {
 // CEL_IMPLEMENT_ENUM_TYPE(MyEnumType);
 #define CEL_IMPLEMENT_ENUM_TYPE(enum_type) \
   CEL_INTERNAL_IMPLEMENT_TYPE(Enum, enum_type)
-
-struct EnumType::Constant final {
-  explicit Constant(absl::string_view name, int64_t number,
-                    const void* hint = nullptr)
-      : name(name), number(number) {}
-
-  // The unqualified enumeration value name.
-  absl::string_view name;
-  // The enumeration value number.
-  int64_t number;
-  // Some implementation-specific data that can be laundered to the value
-  // implementation for this type to perform optimizations.
-  const void* hint = nullptr;
-};
 
 CEL_INTERNAL_TYPE_DECL(EnumType);
 

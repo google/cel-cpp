@@ -32,9 +32,9 @@ class ProtoTypeProvider;
 class ProtoEnumType final : public EnumType {
  public:
   static bool Is(const Type& type) {
-    return type.kind() == Kind::kEnum &&
-           cel::base_internal::GetEnumTypeTypeId(static_cast<const EnumType&>(
-               type)) == cel::internal::TypeId<ProtoEnumType>();
+    return EnumType::Is(type) && cel::base_internal::GetEnumTypeTypeId(
+                                     static_cast<const EnumType&>(type)) ==
+                                     cel::internal::TypeId<ProtoEnumType>();
   }
 
   using EnumType::Is;
@@ -46,9 +46,8 @@ class ProtoEnumType final : public EnumType {
 
   absl::string_view name() const override { return descriptor().full_name(); }
 
-  const google::protobuf::EnumDescriptor& descriptor() const { return *descriptor_; }
+  size_t constant_count() const override;
 
- protected:
   // Called by FindField.
   absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override;
@@ -56,6 +55,11 @@ class ProtoEnumType final : public EnumType {
   // Called by FindField.
   absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
       int64_t number) const override;
+
+  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
+      MemoryManager& memory_manager) const override;
+
+  const google::protobuf::EnumDescriptor& descriptor() const { return *descriptor_; }
 
  private:
   friend class ProtoType;

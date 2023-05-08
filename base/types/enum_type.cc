@@ -14,12 +14,11 @@
 
 #include "base/types/enum_type.h"
 
-#include <utility>
-
 #include "absl/base/macros.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -48,6 +47,16 @@ struct EnumType::FindConstantVisitor final {
 absl::StatusOr<absl::optional<EnumType::Constant>> EnumType::FindConstant(
     ConstantId id) const {
   return absl::visit(FindConstantVisitor{*this}, id.data_);
+}
+
+absl::StatusOr<absl::string_view> EnumType::ConstantIterator::NextName() {
+  CEL_ASSIGN_OR_RETURN(auto constant, Next());
+  return constant.name;
+}
+
+absl::StatusOr<int64_t> EnumType::ConstantIterator::NextNumber() {
+  CEL_ASSIGN_OR_RETURN(auto constant, Next());
+  return constant.number;
 }
 
 }  // namespace cel

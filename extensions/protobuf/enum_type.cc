@@ -25,6 +25,33 @@
 
 namespace cel::extensions {
 
+namespace {
+
+class ProtoEnumTypeConstantIterator final : public EnumType::ConstantIterator {
+ public:
+  explicit ProtoEnumTypeConstantIterator(
+      const google::protobuf::EnumDescriptor& descriptor)
+      : descriptor_(descriptor) {}
+
+  bool HasNext() override { return index_ < descriptor_.value_count(); }
+
+  absl::StatusOr<Constant> Next() override {
+    if (ABSL_PREDICT_FALSE(index_ >= descriptor_.value_count())) {
+      return absl::FailedPreconditionError(
+          "EnumType::ConstantIterator::Next() called when "
+          "EnumType::ConstantIterator::HasNext() returns false");
+    }
+    const auto* value = descriptor_.value(index_++);
+    return Constant(value->name(), value->number(), value);
+  }
+
+ private:
+  const google::protobuf::EnumDescriptor& descriptor_;
+  int index_ = 0;
+};
+
+}  // namespace
+
 absl::StatusOr<Handle<ProtoEnumType>> ProtoEnumType::Resolve(
     TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor) {
   CEL_ASSIGN_OR_RETURN(auto type,
@@ -40,6 +67,10 @@ absl::StatusOr<Handle<ProtoEnumType>> ProtoEnumType::Resolve(
         descriptor.full_name(), "\": ", (*type)->DebugString()));
   }
   return std::move(type).value().As<ProtoEnumType>();
+}
+
+size_t ProtoEnumType::constant_count() const {
+  return descriptor().value_count();
 }
 
 absl::StatusOr<absl::optional<ProtoEnumType::Constant>>
@@ -66,6 +97,12 @@ ProtoEnumType::FindConstantByNumber(int64_t number) const {
   }
   ABSL_ASSERT(value_desc->number() == number);
   return Constant{value_desc->name(), value_desc->number(), value_desc};
+}
+
+absl::StatusOr<UniqueRef<EnumType::ConstantIterator>>
+ProtoEnumType::NewConstantIterator(MemoryManager& memory_manager) const {
+  return MakeUnique<ProtoEnumTypeConstantIterator>(memory_manager,
+                                                   descriptor());
 }
 
 }  // namespace cel::extensions
