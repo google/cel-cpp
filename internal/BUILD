@@ -74,6 +74,11 @@ cc_test(
 )
 
 cc_library(
+    name = "overloaded",
+    hdrs = ["overloaded.h"],
+)
+
+cc_library(
     name = "status_macros",
     hdrs = ["status_macros.h"],
     deps = [

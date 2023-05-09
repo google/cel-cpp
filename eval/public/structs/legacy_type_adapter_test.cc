@@ -41,6 +41,11 @@ class TestAccessApiImpl : public LegacyTypeAccessApis {
       cel::MemoryManager& memory_manager) const override {
     return absl::UnimplementedError("Not implemented");
   }
+
+  std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const override {
+    return std::vector<absl::string_view>();
+  }
 };
 
 TEST(LegacyTypeAdapterAccessApis, DefaultAlwaysInequal) {

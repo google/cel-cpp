@@ -160,6 +160,7 @@ cc_library(
         "//base/internal:type",
         "//internal:casts",
         "//internal:no_destructor",
+        "//internal:overloaded",
         "//internal:rtti",
         "//internal:status_macros",
         "@com_google_absl//absl/base",

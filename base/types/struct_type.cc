@@ -15,16 +15,56 @@
 #include "base/types/struct_type.h"
 
 #include <string>
+#include <utility>
 
 #include "absl/base/macros.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "internal/overloaded.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(StructType);
+
+bool operator<(const StructType::FieldId& lhs, const StructType::FieldId& rhs) {
+  return absl::visit(
+      internal::Overloaded{
+          [&rhs](absl::string_view lhs_name) {
+            return absl::visit(
+                internal::Overloaded{// (absl::string_view, absl::string_view)
+                                     [lhs_name](absl::string_view rhs_name) {
+                                       return lhs_name < rhs_name;
+                                     },
+                                     // (absl::string_view, int64_t)
+                                     [](int64_t rhs_number) { return false; }},
+                rhs.data_);
+          },
+          [&rhs](int64_t lhs_number) {
+            return absl::visit(
+                internal::Overloaded{
+                    // (int64_t, absl::string_view)
+                    [](absl::string_view rhs_name) { return true; },
+                    // (int64_t, int64_t)
+                    [lhs_number](int64_t rhs_number) {
+                      return lhs_number < rhs_number;
+                    },
+                },
+                rhs.data_);
+          }},
+      lhs.data_);
+}
+
+std::string StructType::FieldId::DebugString() const {
+  return absl::visit(
+      internal::Overloaded{
+          [](absl::string_view name) { return std::string(name); },
+          [](int64_t number) { return absl::StrCat(number); }},
+      data_);
+}
 
 #define CEL_INTERNAL_STRUCT_TYPE_DISPATCH(method, ...)                       \
   base_internal::Metadata::IsStoredInline(*this)                             \
@@ -35,6 +75,10 @@ CEL_INTERNAL_TYPE_IMPL(StructType);
 
 absl::string_view StructType::name() const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(name);
+}
+
+size_t StructType::field_count() const {
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(field_count);
 }
 
 std::string StructType::DebugString() const {
@@ -54,6 +98,11 @@ absl::StatusOr<absl::optional<StructType::Field>> StructType::FindFieldByNumber(
     TypeManager& type_manager, int64_t number) const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(FindFieldByNumber, type_manager,
                                            number);
+}
+
+absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+StructType::NewFieldIterator(MemoryManager& memory_manager) const {
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewFieldIterator, memory_manager);
 }
 
 #undef CEL_INTERNAL_STRUCT_TYPE_DISPATCH
@@ -77,10 +126,44 @@ absl::StatusOr<absl::optional<StructType::Field>> StructType::FindField(
   return absl::visit(FindFieldVisitor{*this, type_manager}, id.data_);
 }
 
+absl::StatusOr<StructType::FieldId> StructType::FieldIterator::NextId(
+    TypeManager& type_manager) {
+  CEL_ASSIGN_OR_RETURN(auto name, NextName(type_manager));
+  return FieldId(name);
+}
+
+absl::StatusOr<absl::string_view> StructType::FieldIterator::NextName(
+    TypeManager& type_manager) {
+  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+  return field.name;
+}
+
+absl::StatusOr<int64_t> StructType::FieldIterator::NextNumber(
+    TypeManager& type_manager) {
+  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+  return field.number;
+}
+
+absl::StatusOr<Handle<Type>> StructType::FieldIterator::NextType(
+    TypeManager& type_manager) {
+  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+  return std::move(field.type);
+}
+
 namespace base_internal {
 
 absl::string_view LegacyStructType::name() const {
   return MessageTypeName(msg_);
+}
+
+size_t LegacyStructType::field_count() const {
+  return MessageTypeFieldCount(msg_);
+}
+
+absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+LegacyStructType::NewFieldIterator(MemoryManager& memory_manager) const {
+  return absl::UnimplementedError(
+      "StructType::NewFieldIterator is not supported by legacy struct types");
 }
 
 // Always returns an error.

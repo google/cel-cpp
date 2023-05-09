@@ -17,8 +17,10 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/optimization.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
@@ -28,6 +30,7 @@
 #include "base/types/struct_type.h"
 #include "base/value.h"
 #include "internal/rtti.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
@@ -42,6 +45,10 @@ CEL_INTERNAL_VALUE_IMPL(StructValue);
 
 Handle<StructType> StructValue::type() const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(type);
+}
+
+size_t StructValue::field_count() const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(field_count);
 }
 
 std::string StructValue::DebugString() const {
@@ -66,6 +73,11 @@ absl::StatusOr<bool> StructValue::HasFieldByName(const HasFieldContext& context,
 absl::StatusOr<bool> StructValue::HasFieldByNumber(
     const HasFieldContext& context, int64_t number) const {
   return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(HasFieldByNumber, context, number);
+}
+
+absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
+StructValue::NewFieldIterator(MemoryManager& memory_manager) const {
+  return CEL_INTERNAL_STRUCT_VALUE_DISPATCH(NewFieldIterator, memory_manager);
 }
 
 internal::TypeInfo StructValue::TypeId() const {
@@ -110,7 +122,65 @@ absl::StatusOr<bool> StructValue::HasField(const HasFieldContext& context,
   return absl::visit(HasFieldVisitor{*this, context}, field.data_);
 }
 
+absl::StatusOr<StructValue::FieldId> StructValue::FieldIterator::NextId(
+    const StructValue::GetFieldContext& context) {
+  CEL_ASSIGN_OR_RETURN(auto entry, Next(context));
+  return entry.id;
+}
+
+absl::StatusOr<Handle<Value>> StructValue::FieldIterator::NextValue(
+    const StructValue::GetFieldContext& context) {
+  CEL_ASSIGN_OR_RETURN(auto entry, Next(context));
+  return std::move(entry.value);
+}
+
 namespace base_internal {
+
+namespace {
+
+class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
+ public:
+  LegacyStructValueFieldIterator(uintptr_t msg, uintptr_t type_info)
+      : msg_(msg),
+        type_info_(type_info),
+        field_names_(MessageValueListFields(msg_, type_info_)) {}
+
+  bool HasNext() override { return index_ < field_names_.size(); }
+
+  absl::StatusOr<Field> Next(
+      const StructValue::GetFieldContext& context) override {
+    if (ABSL_PREDICT_FALSE(index_ >= field_names_.size())) {
+      return absl::FailedPreconditionError(
+          "StructValue::FieldIterator::Next() called when "
+          "StructValue::FieldIterator::HasNext() returns false");
+    }
+    const auto& field_name = field_names_[index_];
+    CEL_ASSIGN_OR_RETURN(
+        auto value, MessageValueGetFieldByName(
+                        msg_, type_info_, context.value_factory(), field_name,
+                        context.unbox_null_wrapper_types()));
+    ++index_;
+    return Field(StructValue::FieldId(field_name), std::move(value));
+  }
+
+  absl::StatusOr<StructValue::FieldId> NextId(
+      const StructValue::GetFieldContext& context) override {
+    if (ABSL_PREDICT_FALSE(index_ >= field_names_.size())) {
+      return absl::FailedPreconditionError(
+          "StructValue::FieldIterator::Next() called when "
+          "StructValue::FieldIterator::HasNext() returns false");
+    }
+    return StructValue::FieldId(field_names_[index_++]);
+  }
+
+ private:
+  const uintptr_t msg_;
+  const uintptr_t type_info_;
+  const std::vector<absl::string_view> field_names_;
+  size_t index_ = 0;
+};
+
+}  // namespace
 
 Handle<StructType> LegacyStructValue::type() const {
   if ((msg_ & kMessageWrapperTagMask) == kMessageWrapperTagMask) {
@@ -119,6 +189,10 @@ Handle<StructType> LegacyStructValue::type() const {
   }
   // LegacyTypeInfoApis
   return HandleFactory<StructType>::Make<LegacyStructType>(type_info_);
+}
+
+size_t LegacyStructValue::field_count() const {
+  return MessageValueFieldCount(msg_, type_info_);
 }
 
 std::string LegacyStructValue::DebugString() const {
@@ -146,6 +220,12 @@ absl::StatusOr<bool> LegacyStructValue::HasFieldByName(
 absl::StatusOr<bool> LegacyStructValue::HasFieldByNumber(
     const HasFieldContext& context, int64_t number) const {
   return MessageValueHasFieldByNumber(msg_, type_info_, number);
+}
+
+absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
+LegacyStructValue::NewFieldIterator(MemoryManager& memory_manager) const {
+  return MakeUnique<LegacyStructValueFieldIterator>(memory_manager, msg_,
+                                                    type_info_);
 }
 
 AbstractStructValue::AbstractStructValue(Handle<StructType> type)

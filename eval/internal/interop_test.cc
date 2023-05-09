@@ -830,6 +830,62 @@ TEST(ValueInterop, LegacyStructEquality) {
   EXPECT_EQ(lhs_value, rhs_value);
 }
 
+TEST(ValueInterop, LegacyStructNewFieldIteratorIds) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Api api;
+  api.set_name("foo");
+  api.set_version("bar");
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(&api, &arena)));
+  EXPECT_EQ(value->As<StructValue>().field_count(), 2);
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, value->As<StructValue>().NewFieldIterator(memory_manager));
+  std::set<StructType::FieldId> actual_ids;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto id, iterator->NextId(StructValue::GetFieldContext(value_factory)));
+    actual_ids.insert(id);
+  }
+  EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<StructType::FieldId> expected_ids = {StructType::FieldId("name"),
+                                                StructType::FieldId("version")};
+  EXPECT_EQ(actual_ids, expected_ids);
+}
+
+TEST(ValueInterop, LegacyStructNewFieldIteratorValues) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Api api;
+  api.set_name("foo");
+  api.set_version("bar");
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      FromLegacyValue(&arena, CelProtoWrapper::CreateMessage(&api, &arena)));
+  EXPECT_EQ(value->As<StructValue>().field_count(), 2);
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, value->As<StructValue>().NewFieldIterator(memory_manager));
+  std::set<std::string> actual_values;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto value,
+        iterator->NextValue(StructValue::GetFieldContext(value_factory)));
+    actual_values.insert(value->As<StringValue>().ToString());
+  }
+  EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<std::string> expected_values = {"bar", "foo"};
+  EXPECT_EQ(actual_values, expected_values);
+}
+
 TEST(ValueInterop, UnknownFromLegacy) {
   AttributeSet attributes({Attribute("foo")});
   FunctionResultSet function_results(

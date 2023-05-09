@@ -125,6 +125,7 @@ cc_test(
         "//base/testing:type_matchers",
         "//extensions/protobuf/internal:testing",
         "//internal:testing",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
         "@com_google_protobuf//:protobuf",

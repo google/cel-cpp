@@ -28,6 +28,7 @@
 #include "absl/types/variant.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "internal/rtti.h"
 
@@ -61,6 +62,24 @@ class StructType : public Type {
     FieldId(const FieldId&) = default;
     FieldId& operator=(const FieldId&) = default;
 
+    std::string DebugString() const;
+
+    friend bool operator==(const FieldId& lhs, const FieldId& rhs) {
+      return lhs.data_ == rhs.data_;
+    }
+
+    friend bool operator<(const FieldId& lhs, const FieldId& rhs);
+
+    template <typename H>
+    friend H AbslHashValue(H state, const FieldId& id) {
+      return H::combine(std::move(state), id.data_);
+    }
+
+    template <typename S>
+    friend void AbslStringify(S& sink, const FieldId& id) {
+      sink.Append(id.DebugString());
+    }
+
    private:
     friend class StructType;
     friend class StructValue;
@@ -81,24 +100,34 @@ class StructType : public Type {
 
   Kind kind() const { return kKind; }
 
-  absl::string_view name() const;
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const;
+
+  size_t field_count() const;
 
   // Find the field definition for the given identifier. If the field does
   // not exist, an OK status and empty optional is returned. If the field
   // exists, an OK status and the field is returned. Otherwise an error is
   // returned.
   absl::StatusOr<absl::optional<Field>> FindField(TypeManager& type_manager,
-                                                  FieldId id) const;
+                                                  FieldId id) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
-      TypeManager& type_manager, absl::string_view name) const;
+      TypeManager& type_manager,
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
-      TypeManager& type_manager, int64_t number) const;
+      TypeManager& type_manager,
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  class FieldIterator;
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend internal::TypeInfo base_internal::GetStructTypeTypeId(
@@ -119,6 +148,44 @@ class StructType : public Type {
   internal::TypeInfo TypeId() const;
 };
 
+// Field describes a single field in a struct. All fields are valid so long as
+// StructType is valid, except Field::type which is managed.
+struct StructType::Field final {
+  explicit Field(absl::string_view name, int64_t number, Handle<Type> type,
+                 const void* hint = nullptr)
+      : name(name), number(number), type(std::move(type)), hint(hint) {}
+
+  // The field name.
+  absl::string_view name;
+  // The field number.
+  int64_t number;
+  // The field type;
+  Handle<Type> type;
+  // Some implementation-specific data that can be laundered to the value
+  // implementation for this type to enable potential optimizations.
+  const void* hint = nullptr;
+};
+
+class StructType::FieldIterator {
+ public:
+  using FieldId = StructType::FieldId;
+  using Field = StructType::Field;
+
+  virtual ~FieldIterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Field> Next(TypeManager& type_manager) = 0;
+
+  virtual absl::StatusOr<FieldId> NextId(TypeManager& type_manager);
+
+  virtual absl::StatusOr<absl::string_view> NextName(TypeManager& type_manager);
+
+  virtual absl::StatusOr<int64_t> NextNumber(TypeManager& type_manager);
+
+  virtual absl::StatusOr<Handle<Type>> NextType(TypeManager& type_manager);
+};
+
 namespace base_internal {
 
 // In an ideal world we would just make StructType a heap type. Unfortunately we
@@ -127,6 +194,7 @@ namespace base_internal {
 // variant.
 
 ABSL_ATTRIBUTE_WEAK absl::string_view MessageTypeName(uintptr_t msg);
+ABSL_ATTRIBUTE_WEAK size_t MessageTypeFieldCount(uintptr_t msg);
 
 class LegacyStructType final : public StructType,
                                public base_internal::InlineData {
@@ -144,19 +212,25 @@ class LegacyStructType final : public StructType,
     return static_cast<const LegacyStructType&>(type);
   }
 
-  absl::string_view name() const;
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Always returns the same string.
   std::string DebugString() const { return std::string(name()); }
 
- protected:
+  size_t field_count() const;
+
   // Always returns an error.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
-      TypeManager& type_manager, absl::string_view name) const;
+      TypeManager& type_manager,
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Always returns an error.
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
-      TypeManager& type_manager, int64_t number) const;
+      TypeManager& type_manager,
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   static constexpr uintptr_t kMetadata =
@@ -196,20 +270,27 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
     return static_cast<const AbstractStructType&>(type);
   }
 
-  virtual absl::string_view name() const = 0;
+  virtual absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   virtual std::string DebugString() const { return std::string(name()); }
 
- protected:
-  AbstractStructType();
+  virtual size_t field_count() const = 0;
 
   // Called by FindField.
   virtual absl::StatusOr<absl::optional<Field>> FindFieldByName(
-      TypeManager& type_manager, absl::string_view name) const = 0;
+      TypeManager& type_manager,
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   // Called by FindField.
   virtual absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
-      TypeManager& type_manager, int64_t number) const = 0;
+      TypeManager& type_manager,
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+  virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+ protected:
+  AbstractStructType();
 
  private:
   friend internal::TypeInfo base_internal::GetStructTypeTypeId(
@@ -257,22 +338,6 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
 // CEL_IMPLEMENT_STRUCT_TYPE(MyStructType);
 #define CEL_IMPLEMENT_STRUCT_TYPE(struct_type) \
   CEL_INTERNAL_IMPLEMENT_TYPE(Struct, struct_type)
-
-struct StructType::Field final {
-  explicit Field(absl::string_view name, int64_t number, Handle<Type> type,
-                 const void* hint = nullptr)
-      : name(name), number(number), type(std::move(type)), hint(hint) {}
-
-  // The field name.
-  absl::string_view name;
-  // The field number.
-  int64_t number;
-  // The field type;
-  Handle<Type> type;
-  // Some implementation-specific data that can be laundered to the value
-  // implementation for this type to enable potential optimizations.
-  const void* hint = nullptr;
-};
 
 CEL_INTERNAL_TYPE_DECL(StructType);
 

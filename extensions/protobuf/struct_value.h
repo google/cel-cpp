@@ -174,6 +174,8 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
 
 namespace protobuf_internal {
 
+class ParsedProtoStructValueFieldIterator;
+
 // Declare here but implemented in value.cc to give ProtoStructValue access to
 // the conversion logic in value.cc. Creates a borrowed `ListValue` over
 // `google.protobuf.ListValue`.
@@ -237,6 +239,8 @@ class ParsedProtoStructValue : public ProtoStructValue {
 
   std::string DebugString() const final;
 
+  size_t field_count() const final;
+
   absl::StatusOr<Handle<Value>> GetFieldByName(
       const GetFieldContext& context, absl::string_view name) const final;
 
@@ -248,6 +252,9 @@ class ParsedProtoStructValue : public ProtoStructValue {
 
   absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const final;
+
+  absl::StatusOr<UniqueRef<StructValue::FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const final;
 
   using ProtoStructValue::value;
 
@@ -280,6 +287,9 @@ class ParsedProtoStructValue : public ProtoStructValue {
 
   absl::StatusOr<bool> HasField(TypeManager& type_manager,
                                 const StructType::Field& field) const;
+
+ private:
+  friend class ParsedProtoStructValueFieldIterator;
 };
 
 // Implementation of `ParsedProtoStructValue` which knows the concrete type of

@@ -123,6 +123,63 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToType(
 
 }  // namespace
 
+namespace {
+
+class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
+ public:
+  explicit ProtoStructTypeFieldIterator(const google::protobuf::Descriptor& descriptor)
+      : descriptor_(descriptor) {}
+
+  bool HasNext() override { return index_ < descriptor_.field_count(); }
+
+  absl::StatusOr<StructType::Field> Next(TypeManager& type_manager) override {
+    if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
+      return absl::FailedPreconditionError(
+          "StructType::FieldIterator::Next() called when "
+          "StructType::FieldIterator::HasNext() returns false");
+    }
+    const auto* field = descriptor_.field(index_);
+    CEL_ASSIGN_OR_RETURN(auto type, FieldDescriptorToType(type_manager, field));
+    ++index_;
+    return StructType::Field(field->name(), field->number(), std::move(type),
+                             field);
+  }
+
+  absl::StatusOr<absl::string_view> NextName(
+      TypeManager& type_manager) override {
+    if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
+      return absl::FailedPreconditionError(
+          "StructType::FieldIterator::Next() called when "
+          "StructType::FieldIterator::HasNext() returns false");
+    }
+    return descriptor_.field(index_++)->name();
+  }
+
+  absl::StatusOr<int64_t> NextNumber(TypeManager& type_manager) override {
+    if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
+      return absl::FailedPreconditionError(
+          "StructType::FieldIterator::Next() called when "
+          "StructType::FieldIterator::HasNext() returns false");
+    }
+    return descriptor_.field(index_++)->number();
+  }
+
+ private:
+  const google::protobuf::Descriptor& descriptor_;
+  int index_ = 0;
+};
+
+}  // namespace
+
+size_t ProtoStructType::field_count() const {
+  return descriptor().field_count();
+}
+
+absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+ProtoStructType::NewFieldIterator(MemoryManager& memory_manager) const {
+  return MakeUnique<ProtoStructTypeFieldIterator>(memory_manager, descriptor());
+}
+
 absl::StatusOr<absl::optional<ProtoStructType::Field>>
 ProtoStructType::FindFieldByName(TypeManager& type_manager,
                                  absl::string_view name) const {

@@ -14,7 +14,9 @@
 
 #include "extensions/protobuf/struct_value.h"
 
+#include <set>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -4586,6 +4588,97 @@ TEST_P(ProtoStructValueTest, DynamicRValueDifferentDescriptors) {
                        ProtoValue::Create(value_factory, std::move(*message)));
   delete message;
   EXPECT_TRUE(value->Is<ProtoStructValue>());
+}
+
+TEST_P(ProtoStructValueTest, NewFieldIteratorIds) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.set_single_bool(true);
+                           message.set_single_int32(1);
+                           message.set_single_int64(1);
+                           message.set_single_uint32(1);
+                           message.set_single_uint64(1);
+                           message.set_single_float(1.0);
+                           message.set_single_double(1.0);
+                           message.set_single_bytes("foo");
+                           message.set_single_string("foo");
+                           message.set_standalone_enum(TestAllTypes::BAR);
+                           message.mutable_standalone_message()->set_bb(1);
+                           message.mutable_single_duration()->set_seconds(1);
+                           message.mutable_single_timestamp()->set_seconds(1);
+                         })));
+  EXPECT_EQ(value->As<StructValue>().field_count(), 13);
+  ASSERT_OK_AND_ASSIGN(auto iterator, value->As<StructValue>().NewFieldIterator(
+                                          memory_manager()));
+  std::set<StructType::FieldId> actual_ids;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto id, iterator->NextId(StructValue::GetFieldContext(value_factory)));
+    actual_ids.insert(id);
+  }
+  EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
+              CanonicalStatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<StructType::FieldId> expected_ids = {
+      StructValue::FieldId("single_bool"),
+      StructValue::FieldId("single_int32"),
+      StructValue::FieldId("single_int64"),
+      StructValue::FieldId("single_uint32"),
+      StructValue::FieldId("single_uint64"),
+      StructValue::FieldId("single_float"),
+      StructValue::FieldId("single_double"),
+      StructValue::FieldId("single_bytes"),
+      StructValue::FieldId("single_string"),
+      StructValue::FieldId("standalone_enum"),
+      StructValue::FieldId("standalone_message"),
+      StructValue::FieldId("single_duration"),
+      StructValue::FieldId("single_timestamp")};
+  EXPECT_EQ(actual_ids, expected_ids);
+}
+
+TEST_P(ProtoStructValueTest, NewFieldIteratorValues) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto value,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage([](TestAllTypes& message) {
+                           message.set_single_bool(true);
+                           message.set_single_int32(1);
+                           message.set_single_int64(1);
+                           message.set_single_uint32(1);
+                           message.set_single_uint64(1);
+                           message.set_single_float(1.0);
+                           message.set_single_double(1.0);
+                           message.set_single_bytes("foo");
+                           message.set_single_string("foo");
+                           message.set_standalone_enum(TestAllTypes::BAR);
+                           message.mutable_standalone_message()->set_bb(1);
+                           message.mutable_single_duration()->set_seconds(1);
+                           message.mutable_single_timestamp()->set_seconds(1);
+                         })));
+  EXPECT_EQ(value->As<StructValue>().field_count(), 13);
+  ASSERT_OK_AND_ASSIGN(auto iterator, value->As<StructValue>().NewFieldIterator(
+                                          memory_manager()));
+  std::vector<Handle<Value>> actual_values;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto value,
+        iterator->NextValue(StructValue::GetFieldContext(value_factory)));
+    actual_values.push_back(std::move(value));
+  }
+  EXPECT_THAT(iterator->NextValue(StructValue::GetFieldContext(value_factory)),
+              CanonicalStatusIs(absl::StatusCode::kFailedPrecondition));
+  // We cannot really test actual_types, as hand translating TestAllTypes would
+  // be obnoxious. Otherwise we would simply be testing the same logic against
+  // itself, which would not be useful.
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoStructValueTest, ProtoStructValueTest,

@@ -701,6 +701,27 @@ bool MessageValueEquals(uintptr_t lhs_msg, uintptr_t lhs_type_info,
           static_cast<const base_internal::LegacyStructValue&>(rhs)));
 }
 
+size_t MessageValueFieldCount(uintptr_t msg, uintptr_t type_info) {
+  auto message_wrapper = MessageWrapperAccess::Make(msg, type_info);
+  if (message_wrapper.message_ptr() == nullptr) {
+    return 0;
+  }
+  const LegacyTypeAccessApis* access_api =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  return access_api->ListFields(message_wrapper).size();
+}
+
+std::vector<absl::string_view> MessageValueListFields(uintptr_t msg,
+                                                      uintptr_t type_info) {
+  auto message_wrapper = MessageWrapperAccess::Make(msg, type_info);
+  if (message_wrapper.message_ptr() == nullptr) {
+    return std::vector<absl::string_view>{};
+  }
+  const LegacyTypeAccessApis* access_api =
+      message_wrapper.legacy_type_info()->GetAccessApis(message_wrapper);
+  return access_api->ListFields(message_wrapper);
+}
+
 absl::StatusOr<bool> MessageValueHasFieldByNumber(uintptr_t msg,
                                                   uintptr_t type_info,
                                                   int64_t number) {

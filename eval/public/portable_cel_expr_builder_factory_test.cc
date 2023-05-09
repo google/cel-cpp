@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -308,6 +309,16 @@ class DemoTestMessage : public LegacyTypeMutationApis,
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManager& memory_manager) const override;
+
+  std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const override {
+    std::vector<absl::string_view> fields;
+    fields.reserve(fields_.size());
+    for (const auto& field : fields_) {
+      fields.emplace_back(field.first);
+    }
+    return fields;
+  }
 
  private:
   using Field = ProtoField<TestMessage>;

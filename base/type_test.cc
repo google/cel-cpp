@@ -96,6 +96,14 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
+  size_t field_count() const override { return 4; }
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError(
+        "StructType::NewFieldIterator() is unimplemented");
+  }
+
  protected:
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
       TypeManager& type_manager, absl::string_view name) const override {

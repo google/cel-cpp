@@ -2179,6 +2179,16 @@ std::string ParsedProtoStructValue::DebugString() const {
   return ParsedProtoStructValue::DebugString(value());
 }
 
+size_t ParsedProtoStructValue::field_count() const {
+  const auto* reflect = value().GetReflection();
+  if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
+    return 0;
+  }
+  std::vector<const google::protobuf::FieldDescriptor*> fields;
+  reflect->ListFields(value(), &fields);
+  return fields.size();
+}
+
 google::protobuf::Message* ParsedProtoStructValue::ValuePointer(
     google::protobuf::MessageFactory& message_factory, google::protobuf::Arena* arena) const {
   const auto* desc = value().GetDescriptor();
@@ -2639,6 +2649,60 @@ absl::StatusOr<bool> ParsedProtoStructValue::HasField(
     return reflect->FieldSize(value(), field_desc) != 0;
   }
   return reflect->HasField(value(), field_desc);
+}
+
+class ParsedProtoStructValueFieldIterator final
+    : public StructValue::FieldIterator {
+ public:
+  ParsedProtoStructValueFieldIterator(
+      const ParsedProtoStructValue* value,
+      std::vector<const google::protobuf::FieldDescriptor*> fields)
+      : value_(value), fields_(std::move(fields)) {}
+
+  bool HasNext() override { return index_ < fields_.size(); }
+
+  absl::StatusOr<Field> Next(
+      const StructValue::GetFieldContext& context) override {
+    if (ABSL_PREDICT_FALSE(index_ >= fields_.size())) {
+      return absl::FailedPreconditionError(
+          "StructValue::FieldIterator::Next() called when "
+          "StructValue::FieldIterator::HasNext() returns false");
+    }
+    const auto* field = fields_[index_];
+    CEL_ASSIGN_OR_RETURN(auto type, value_->type()->FindFieldByNumber(
+                                        context.value_factory().type_manager(),
+                                        field->number()));
+    CEL_ASSIGN_OR_RETURN(auto value,
+                         value_->GetField(context, std::move(type).value()));
+    ++index_;
+    return Field(StructValue::FieldId(field->name()), std::move(value));
+  }
+
+  absl::StatusOr<StructValue::FieldId> NextId(
+      const StructValue::GetFieldContext& context) override {
+    if (ABSL_PREDICT_FALSE(index_ >= fields_.size())) {
+      return absl::FailedPreconditionError(
+          "StructValue::FieldIterator::Next() called when "
+          "StructValue::FieldIterator::HasNext() returns false");
+    }
+    return StructValue::FieldId(fields_[index_++]->name());
+  }
+
+ private:
+  const ParsedProtoStructValue* const value_;
+  const std::vector<const google::protobuf::FieldDescriptor*> fields_;
+  size_t index_ = 0;
+};
+
+absl::StatusOr<UniqueRef<StructValue::FieldIterator>>
+ParsedProtoStructValue::NewFieldIterator(MemoryManager& memory_manager) const {
+  const auto* reflect = value().GetReflection();
+  std::vector<const google::protobuf::FieldDescriptor*> fields;
+  if (ABSL_PREDICT_TRUE(reflect != nullptr)) {
+    reflect->ListFields(value(), &fields);
+  }
+  return MakeUnique<ParsedProtoStructValueFieldIterator>(memory_manager, this,
+                                                         std::move(fields));
 }
 
 }  // namespace protobuf_internal

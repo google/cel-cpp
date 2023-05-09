@@ -152,6 +152,24 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
   return result;
 }
 
+std::vector<absl::string_view> ListFieldsImpl(
+    const CelValue::MessageWrapper& instance) {
+  if (instance.message_ptr() == nullptr) {
+    return std::vector<absl::string_view>();
+  }
+  const auto* message =
+      cel::internal::down_cast<const google::protobuf::Message*>(instance.message_ptr());
+  const auto* reflect = message->GetReflection();
+  std::vector<const google::protobuf::FieldDescriptor*> fields;
+  reflect->ListFields(*message, &fields);
+  std::vector<absl::string_view> field_names;
+  field_names.reserve(fields.size());
+  for (const auto* field : fields) {
+    field_names.emplace_back(field->name());
+  }
+  return field_names;
+}
+
 class DucktypedMessageAdapter : public LegacyTypeAccessApis,
                                 public LegacyTypeMutationApis,
                                 public LegacyTypeInfoApis {
@@ -253,6 +271,11 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
                    ->GetDescriptor(),
                nullptr)
         .SetField(field_name, value, memory_manager, instance);
+  }
+
+  std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const override {
+    return ListFieldsImpl(instance);
   }
 
   const LegacyTypeAccessApis* GetAccessApis(
@@ -429,6 +452,11 @@ bool ProtoMessageTypeAdapter::IsEqualTo(
     return false;
   }
   return ProtoEquals(**lhs, **rhs);
+}
+
+std::vector<absl::string_view> ProtoMessageTypeAdapter::ListFields(
+    const CelValue::MessageWrapper& instance) const {
+  return ListFieldsImpl(instance);
 }
 
 const LegacyTypeInfoApis& GetGenericProtoTypeInfoInstance() {

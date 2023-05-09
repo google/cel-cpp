@@ -18,6 +18,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
@@ -27,6 +29,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/owner.h"
 #include "base/type.h"
 #include "base/types/struct_type.h"
@@ -61,6 +64,8 @@ class StructValue : public Value {
   constexpr Kind kind() const { return kKind; }
 
   Handle<StructType> type() const;
+
+  size_t field_count() const;
 
   std::string DebugString() const;
 
@@ -113,6 +118,18 @@ class StructValue : public Value {
   absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const;
 
+  class FieldIterator;
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  struct Field final {
+    Field(FieldId id, Handle<Value> value) : id(id), value(std::move(value)) {}
+
+    FieldId id;
+    Handle<Value> value;
+  };
+
  private:
   struct GetFieldVisitor;
   struct HasFieldVisitor;
@@ -131,6 +148,25 @@ class StructValue : public Value {
   internal::TypeInfo TypeId() const;
 };
 
+class StructValue::FieldIterator {
+ public:
+  using Field = StructValue::Field;
+  using FieldId = StructValue::FieldId;
+
+  virtual ~FieldIterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Field> Next(
+      const StructValue::GetFieldContext& context) = 0;
+
+  virtual absl::StatusOr<FieldId> NextId(
+      const StructValue::GetFieldContext& context);
+
+  virtual absl::StatusOr<Handle<Value>> NextValue(
+      const StructValue::GetFieldContext& context);
+};
+
 CEL_INTERNAL_VALUE_DECL(StructValue);
 
 namespace base_internal {
@@ -145,6 +181,10 @@ ABSL_ATTRIBUTE_WEAK void MessageValueHash(uintptr_t msg, uintptr_t type_info,
 ABSL_ATTRIBUTE_WEAK bool MessageValueEquals(uintptr_t lhs_msg,
                                             uintptr_t lhs_type_info,
                                             const Value& rhs);
+ABSL_ATTRIBUTE_WEAK size_t MessageValueFieldCount(uintptr_t msg,
+                                                  uintptr_t type_info);
+ABSL_ATTRIBUTE_WEAK std::vector<absl::string_view> MessageValueListFields(
+    uintptr_t msg, uintptr_t type_info);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByNumber(
     uintptr_t msg, uintptr_t type_info, int64_t number);
 ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> MessageValueHasFieldByName(
@@ -175,6 +215,8 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   std::string DebugString() const;
 
+  size_t field_count() const;
+
   absl::StatusOr<Handle<Value>> GetFieldByName(const GetFieldContext& context,
                                                absl::string_view name) const;
 
@@ -186,6 +228,9 @@ class LegacyStructValue final : public StructValue, public InlineData {
 
   absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                         int64_t number) const;
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   struct GetFieldVisitor;
@@ -247,6 +292,8 @@ class AbstractStructValue : public StructValue,
 
   const Handle<StructType>& type() const { return type_; }
 
+  virtual size_t field_count() const = 0;
+
   virtual std::string DebugString() const = 0;
 
   virtual absl::StatusOr<Handle<Value>> GetFieldByName(
@@ -260,6 +307,9 @@ class AbstractStructValue : public StructValue,
 
   virtual absl::StatusOr<bool> HasFieldByNumber(const HasFieldContext& context,
                                                 int64_t number) const = 0;
+
+  virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
  protected:
   explicit AbstractStructValue(Handle<StructType> type);

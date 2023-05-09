@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_PROTO_MESSAGE_TYPE_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_PROTO_MESSAGE_TYPE_ADAPTER_H_
 
+#include <vector>
+
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
@@ -61,6 +63,9 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
 
   bool IsEqualTo(const CelValue::MessageWrapper& instance,
                  const CelValue::MessageWrapper& other_instance) const override;
+
+  std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const override;
 
  private:
   // Helper for standardizing error messages for SetField operation.

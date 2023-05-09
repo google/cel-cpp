@@ -55,9 +55,11 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
 
   absl::string_view name() const override { return descriptor().full_name(); }
 
-  const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
+  size_t field_count() const override;
 
- protected:
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const override;
+
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
       TypeManager& type_manager, absl::string_view name) const override;
@@ -65,6 +67,8 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
       TypeManager& type_manager, int64_t number) const override;
+
+  const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
 
  private:
   friend class ProtoType;
