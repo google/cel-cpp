@@ -153,7 +153,13 @@ class MemoryManager {
  public:
   ABSL_ATTRIBUTE_PURE_FUNCTION static MemoryManager& Global();
 
+  MemoryManager(const MemoryManager&) = delete;
+  MemoryManager(MemoryManager&&) = delete;
+
   virtual ~MemoryManager() = default;
+
+  MemoryManager& operator=(const MemoryManager&) = delete;
+  MemoryManager& operator=(MemoryManager&&) = delete;
 
  private:
   friend class GlobalMemoryManager;
