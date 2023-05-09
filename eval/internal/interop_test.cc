@@ -15,6 +15,7 @@
 #include "eval/internal/interop.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,7 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
 #include "absl/time/time.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
 #include "base/value_factory.h"
@@ -465,6 +466,60 @@ TEST(ValueInterop, LegacyListRoundtrip) {
   EXPECT_EQ(value.ListOrDie(), legacy_value.ListOrDie());
 }
 
+TEST(ValueInterop, LegacyListNewIteratorIndices) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value =
+      CelValue::CreateList(google::protobuf::Arena::Create<
+                           google::api::expr::runtime::ContainerBackedListImpl>(
+          &arena, std::vector<CelValue>{CelValue::CreateInt64(0),
+                                        CelValue::CreateInt64(1),
+                                        CelValue::CreateInt64(2)}));
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, modern_value->As<ListValue>().NewIterator(memory_manager));
+  std::set<size_t> actual_indices;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto index, iterator->NextIndex(ListValue::GetContext(value_factory)));
+    actual_indices.insert(index);
+  }
+  EXPECT_THAT(iterator->NextIndex(ListValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<size_t> expected_indices = {0, 1, 2};
+  EXPECT_EQ(actual_indices, expected_indices);
+}
+
+TEST(ValueInterop, LegacyListNewIteratorValues) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto value =
+      CelValue::CreateList(google::protobuf::Arena::Create<
+                           google::api::expr::runtime::ContainerBackedListImpl>(
+          &arena, std::vector<CelValue>{CelValue::CreateInt64(3),
+                                        CelValue::CreateInt64(4),
+                                        CelValue::CreateInt64(5)}));
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, modern_value->As<ListValue>().NewIterator(memory_manager));
+  std::set<int64_t> actual_values;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto value, iterator->NextValue(ListValue::GetContext(value_factory)));
+    actual_values.insert(value->As<IntValue>().value());
+  }
+  EXPECT_THAT(iterator->NextValue(ListValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<int64_t> expected_values = {3, 4, 5};
+  EXPECT_EQ(actual_values, expected_values);
+}
+
 TEST(ValueInterop, MapFromLegacy) {
   google::protobuf::Arena arena;
   extensions::ProtoMemoryManager memory_manager(&arena);
@@ -607,6 +662,66 @@ TEST(ValueInterop, LegacyMapRoundtrip) {
   ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
   ASSERT_OK_AND_ASSIGN(auto legacy_value, ToLegacyValue(&arena, modern_value));
   EXPECT_EQ(value.MapOrDie(), legacy_value.MapOrDie());
+}
+
+TEST(ValueInterop, LegacyMapNewIteratorKeys) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto* map_builder =
+      google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena);
+  ASSERT_OK(map_builder->Add(CelValue::CreateStringView("foo"),
+                             CelValue::CreateInt64(1)));
+  ASSERT_OK(map_builder->Add(CelValue::CreateStringView("bar"),
+                             CelValue::CreateInt64(2)));
+  ASSERT_OK(map_builder->Add(CelValue::CreateStringView("baz"),
+                             CelValue::CreateInt64(3)));
+  auto value = CelValue::CreateMap(map_builder);
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, modern_value->As<MapValue>().NewIterator(memory_manager));
+  std::set<std::string> actual_keys;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto key, iterator->NextKey(MapValue::GetContext(value_factory)));
+    actual_keys.insert(key->As<StringValue>().ToString());
+  }
+  EXPECT_THAT(iterator->NextKey(MapValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<std::string> expected_keys = {"foo", "bar", "baz"};
+  EXPECT_EQ(actual_keys, expected_keys);
+}
+
+TEST(ValueInterop, LegacyMapNewIteratorValues) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  auto* map_builder =
+      google::protobuf::Arena::Create<google::api::expr::runtime::CelMapBuilder>(&arena);
+  ASSERT_OK(map_builder->Add(CelValue::CreateStringView("foo"),
+                             CelValue::CreateInt64(1)));
+  ASSERT_OK(map_builder->Add(CelValue::CreateStringView("bar"),
+                             CelValue::CreateInt64(2)));
+  ASSERT_OK(map_builder->Add(CelValue::CreateStringView("baz"),
+                             CelValue::CreateInt64(3)));
+  auto value = CelValue::CreateMap(map_builder);
+  ASSERT_OK_AND_ASSIGN(auto modern_value, FromLegacyValue(&arena, value));
+  ASSERT_OK_AND_ASSIGN(
+      auto iterator, modern_value->As<MapValue>().NewIterator(memory_manager));
+  std::set<int64_t> actual_values;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto value, iterator->NextValue(MapValue::GetContext(value_factory)));
+    actual_values.insert(value->As<IntValue>().value());
+  }
+  EXPECT_THAT(iterator->NextValue(MapValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<int64_t> expected_values = {1, 2, 3};
+  EXPECT_EQ(actual_values, expected_values);
 }
 
 TEST(ValueInterop, StructFromLegacy) {

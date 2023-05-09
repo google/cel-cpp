@@ -25,10 +25,10 @@
 #include "absl/hash/hash.h"
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
-#include "base/allocator.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/owner.h"
 #include "base/type.h"
 #include "base/types/list_type.h"
@@ -87,6 +87,19 @@ class ListValue : public Value {
   absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                     size_t index) const;
 
+  struct Element final {
+    Element(size_t index, Handle<Value> value)
+        : index(index), value(std::move(value)) {}
+
+    size_t index;
+    Handle<Value> value;
+  };
+
+  class Iterator;
+
+  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
   bool Equals(const Value& other) const;
 
   void HashValue(absl::HashState state) const;
@@ -102,6 +115,27 @@ class ListValue : public Value {
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
   internal::TypeInfo TypeId() const;
+};
+
+// Abstract class describes an iterator which can iterate over the elements in a
+// list. A default implementation is provided by `ListValue::NewIterator`,
+// however it is likely not as efficient as providing your own implementation.
+class ListValue::Iterator {
+ public:
+  using Element = ListValue::Element;
+
+  virtual ~Iterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Element> Next(
+      const ListValue::GetContext& context) = 0;
+
+  virtual absl::StatusOr<size_t> NextIndex(
+      const ListValue::GetContext& context);
+
+  virtual absl::StatusOr<Handle<Value>> NextValue(
+      const ListValue::GetContext& context);
 };
 
 namespace base_internal {
@@ -138,6 +172,9 @@ class LegacyListValue final : public ListValue, public InlineData {
                                     size_t index) const;
 
   constexpr uintptr_t value() const { return impl_; }
+
+  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class base_internal::ValueHandle;
@@ -186,6 +223,9 @@ class AbstractListValue : public ListValue,
 
   virtual absl::StatusOr<Handle<Value>> Get(const GetContext& context,
                                             size_t index) const = 0;
+
+  virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
   explicit AbstractListValue(Handle<ListType> type);

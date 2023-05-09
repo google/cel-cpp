@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
@@ -26,6 +27,7 @@
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/owner.h"
 #include "base/type.h"
 #include "base/types/map_type.h"
@@ -107,6 +109,19 @@ class MapValue : public Value {
   absl::StatusOr<Handle<ListValue>> ListKeys(
       const ListKeysContext& context) const;
 
+  struct Entry final {
+    Entry(Handle<Value> key, Handle<Value> value)
+        : key(std::move(key)), value(std::move(value)) {}
+
+    Handle<Value> key;
+    Handle<Value> value;
+  };
+
+  class Iterator;
+
+  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
  private:
   friend internal::TypeInfo base_internal::GetMapValueTypeId(
       const MapValue& map_value);
@@ -118,6 +133,26 @@ class MapValue : public Value {
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
   internal::TypeInfo TypeId() const;
+};
+
+// Abstract class describes an iterator which can iterate over the entries in a
+// map. A default implementation is provided by `MapValue::NewIterator`, however
+// it is likely not as efficient as providing your own implementation.
+class MapValue::Iterator {
+ public:
+  using Entry = MapValue::Entry;
+
+  virtual ~Iterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Entry> Next(const MapValue::GetContext& context) = 0;
+
+  virtual absl::StatusOr<Handle<Value>> NextKey(
+      const MapValue::GetContext& context);
+
+  virtual absl::StatusOr<Handle<Value>> NextValue(
+      const MapValue::GetContext& context);
 };
 
 CEL_INTERNAL_VALUE_DECL(MapValue);
@@ -165,6 +200,9 @@ class LegacyMapValue final : public MapValue, public InlineData {
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       const ListKeysContext& context) const;
+
+  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   constexpr uintptr_t value() const { return impl_; }
 
@@ -219,6 +257,9 @@ class AbstractMapValue : public MapValue,
 
   virtual absl::StatusOr<Handle<ListValue>> ListKeys(
       const ListKeysContext& context) const = 0;
+
+  virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
   explicit AbstractMapValue(Handle<MapType> type);

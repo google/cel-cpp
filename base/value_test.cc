@@ -19,6 +19,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -30,7 +31,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/time/time.h"
 #include "base/internal/memory_manager_testing.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -280,6 +281,36 @@ class TestListValue final : public CEL_LIST_VALUE_CLASS {
 
 CEL_IMPLEMENT_LIST_VALUE(TestListValue);
 
+class TestMapKeysListValue final : public CEL_LIST_VALUE_CLASS {
+ public:
+  explicit TestMapKeysListValue(const Handle<ListType>& type,
+                                std::vector<std::string> elements)
+      : CEL_LIST_VALUE_CLASS(type), elements_(std::move(elements)) {}
+
+  size_t size() const override { return elements_.size(); }
+
+  absl::StatusOr<Handle<Value>> Get(const GetContext& context,
+                                    size_t index) const override {
+    if (index >= size()) {
+      return absl::OutOfRangeError("");
+    }
+    return context.value_factory().CreateStringValue(elements_[index]);
+  }
+
+  std::string DebugString() const override {
+    return absl::StrCat("[", absl::StrJoin(elements_, ", "), "]");
+  }
+
+  const std::vector<std::string>& value() const { return elements_; }
+
+ private:
+  std::vector<std::string> elements_;
+
+  CEL_DECLARE_LIST_VALUE(TestMapKeysListValue);
+};
+
+CEL_IMPLEMENT_LIST_VALUE(TestMapKeysListValue);
+
 class TestMapValue final : public CEL_MAP_VALUE_CLASS {
  public:
   explicit TestMapValue(const Handle<MapType>& type,
@@ -326,7 +357,17 @@ class TestMapValue final : public CEL_MAP_VALUE_CLASS {
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       const ListKeysContext& context) const override {
-    return absl::UnimplementedError("MapValue::ListKeys is not implemented");
+    CEL_ASSIGN_OR_RETURN(
+        auto list_type,
+        context.value_factory().type_factory().CreateListType(
+            context.value_factory().type_factory().GetStringType()));
+    std::vector<std::string> keys;
+    keys.reserve(entries_.size());
+    for (const auto& entry : entries_) {
+      keys.push_back(entry.first);
+    }
+    return context.value_factory().CreateListValue<TestMapKeysListValue>(
+        std::move(list_type), std::move(keys));
   }
 
   const std::map<std::string, int64_t>& value() const { return entries_; }
@@ -2192,6 +2233,52 @@ TEST_P(ListValueTest, Get) {
               StatusIs(absl::StatusCode::kOutOfRange));
 }
 
+TEST_P(ListValueTest, NewIteratorIndices) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{0, 1, 2}));
+  ASSERT_OK_AND_ASSIGN(auto iterator,
+                       list_value->NewIterator(memory_manager()));
+  std::set<size_t> actual_indices;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto index, iterator->NextIndex(ListValue::GetContext(value_factory)));
+    actual_indices.insert(index);
+  }
+  EXPECT_THAT(iterator->NextIndex(ListValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<size_t> expected_indices = {0, 1, 2};
+  EXPECT_EQ(actual_indices, expected_indices);
+}
+
+TEST_P(ListValueTest, NewIteratorValues) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto list_type,
+                       type_factory.CreateListType(type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto list_value,
+                       value_factory.CreateListValue<TestListValue>(
+                           list_type, std::vector<int64_t>{3, 4, 5}));
+  ASSERT_OK_AND_ASSIGN(auto iterator,
+                       list_value->NewIterator(memory_manager()));
+  std::set<int64_t> actual_values;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto value, iterator->NextValue(ListValue::GetContext(value_factory)));
+    actual_values.insert(value->As<IntValue>().value());
+  }
+  EXPECT_THAT(iterator->NextValue(ListValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<int64_t> expected_values = {3, 4, 5};
+  EXPECT_EQ(actual_values, expected_values);
+}
+
 INSTANTIATE_TEST_SUITE_P(ListValueTest, ListValueTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
@@ -2298,6 +2385,54 @@ TEST_P(MapValueTest, GetAndHas) {
   EXPECT_THAT(map_value->Has(MapValue::HasContext(),
                              Must(value_factory.CreateStringValue("missing"))),
               IsOkAndHolds(false));
+}
+
+TEST_P(MapValueTest, NewIteratorKeys) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{
+                                         {"foo", 1}, {"bar", 2}, {"baz", 3}}));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value->NewIterator(memory_manager()));
+  std::set<std::string> actual_keys;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto key, iterator->NextKey(MapValue::GetContext(value_factory)));
+    actual_keys.insert(key->As<StringValue>().ToString());
+  }
+  EXPECT_THAT(iterator->NextKey(MapValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<std::string> expected_keys = {"foo", "bar", "baz"};
+  EXPECT_EQ(actual_keys, expected_keys);
+}
+
+TEST_P(MapValueTest, NewIteratorValues) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetIntType()));
+  ASSERT_OK_AND_ASSIGN(auto map_value,
+                       value_factory.CreateMapValue<TestMapValue>(
+                           map_type, std::map<std::string, int64_t>{
+                                         {"foo", 1}, {"bar", 2}, {"baz", 3}}));
+  ASSERT_OK_AND_ASSIGN(auto iterator, map_value->NewIterator(memory_manager()));
+  std::set<int64_t> actual_values;
+  while (iterator->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(
+        auto value, iterator->NextValue(MapValue::GetContext(value_factory)));
+    actual_values.insert(value->As<IntValue>().value());
+  }
+  EXPECT_THAT(iterator->NextValue(MapValue::GetContext(value_factory)),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+  std::set<int64_t> expected_values = {1, 2, 3};
+  EXPECT_EQ(actual_values, expected_values);
 }
 
 INSTANTIATE_TEST_SUITE_P(MapValueTest, MapValueTest,
