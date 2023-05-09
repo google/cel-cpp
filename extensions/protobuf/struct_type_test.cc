@@ -15,7 +15,7 @@
 #include "extensions/protobuf/struct_type.h"
 
 #include "google/protobuf/type.pb.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/types/list_type.h"

@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/allocator.h"
+#include "base/memory.h"
 
+#include <type_traits>
 #include <vector>
 
-#include "base/memory_manager.h"
 #include "internal/testing.h"
 
 namespace cel {
 namespace {
+
+struct NotTriviallyDestuctible final {
+  ~NotTriviallyDestuctible() { Delete(); }
+
+  MOCK_METHOD(void, Delete, (), ());
+};
+
+TEST(GlobalMemoryManager, NotTriviallyDestuctible) {
+  auto managed = MakeUnique<NotTriviallyDestuctible>(MemoryManager::Global());
+  EXPECT_CALL(*managed, Delete());
+}
+
+TEST(ArenaMemoryManager, NotTriviallyDestuctible) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  {
+    // Destructor is called when UniqueRef is destructed, not on MemoryManager
+    // destruction.
+    auto managed = MakeUnique<NotTriviallyDestuctible>(*memory_manager);
+    EXPECT_CALL(*managed, Delete());
+  }
+}
 
 TEST(Allocator, Global) {
   std::vector<int, Allocator<int>> vector(

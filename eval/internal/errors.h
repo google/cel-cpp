@@ -17,7 +17,7 @@
 
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 
 namespace cel::interop_internal {
 

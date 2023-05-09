@@ -11,7 +11,7 @@
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/kind.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/value.h"
 #include "base/values/bool_value.h"
 #include "base/values/double_value.h"

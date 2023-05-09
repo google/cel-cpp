@@ -24,7 +24,7 @@ cc_library(
     srcs = ["memory_manager.cc"],
     hdrs = ["memory_manager.h"],
     deps = [
-        "//base:memory_manager",
+        "//base:memory",
         "//internal:casts",
         "//internal:rtti",
         "@com_google_absl//absl/base:core_headers",
@@ -119,7 +119,7 @@ cc_test(
     deps = [
         ":type",
         "//base:kind",
-        "//base:memory_manager",
+        "//base:memory",
         "//base:type",
         "//base/internal:memory_manager_testing",
         "//base/testing:type_matchers",
@@ -146,9 +146,9 @@ cc_library(
     deps = [
         ":memory_manager",
         ":type",
-        "//base:allocator",
         "//base:handle",
         "//base:kind",
+        "//base:memory",
         "//base:owner",
         "//base:type",
         "//base:value",

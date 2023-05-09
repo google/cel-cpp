@@ -11,7 +11,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/structs/legacy_type_info_apis.h"

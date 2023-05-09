@@ -15,7 +15,7 @@
 #include "base/type_factory.h"
 
 #include "absl/status/status.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "internal/testing.h"
 
 namespace cel {

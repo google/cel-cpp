@@ -23,7 +23,7 @@
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "base/allocator.h"
+#include "base/memory.h"
 #include "base/value_factory.h"
 #include "base/values/list_value.h"
 

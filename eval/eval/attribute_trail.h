@@ -9,7 +9,7 @@
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"

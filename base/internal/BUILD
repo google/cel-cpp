@@ -172,7 +172,7 @@ cc_test(
         ":function_adapter",
         "//base:handle",
         "//base:kind",
-        "//base:memory_manager",
+        "//base:memory",
         "//base:type",
         "//base:value",
         "//internal:testing",

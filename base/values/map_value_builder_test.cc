@@ -15,7 +15,7 @@
 #include "base/values/map_value_builder.h"
 
 #include "absl/time/time.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "internal/testing.h"

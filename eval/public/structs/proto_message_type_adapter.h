@@ -19,7 +19,7 @@
 #include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/legacy_type_adapter.h"

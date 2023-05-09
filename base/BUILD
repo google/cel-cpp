@@ -19,21 +19,6 @@ package(
 
 licenses(["notice"])
 
-alias(
-    name = "allocator",
-    actual = ":memory",
-)
-
-cc_test(
-    name = "allocator_test",
-    srcs = ["allocator_test.cc"],
-    deps = [
-        ":allocator",
-        ":memory_manager",
-        "//internal:testing",
-    ],
-)
-
 cc_library(
     name = "attributes",
     srcs = [
@@ -95,11 +80,9 @@ cc_test(
 
 cc_library(
     name = "memory",
-    srcs = ["memory_manager.cc"],
+    srcs = ["memory.cc"],
     hdrs = [
-        "allocator.h",
         "memory.h",
-        "memory_manager.h",
     ],
     deps = [
         ":handle",
@@ -116,16 +99,13 @@ cc_library(
     ],
 )
 
-alias(
-    name = "memory_manager",
-    actual = ":memory",
-)
-
 cc_test(
-    name = "memory_manager_test",
-    srcs = ["memory_manager_test.cc"],
+    name = "memory_test",
+    srcs = [
+        "memory_test.cc",
+    ],
     deps = [
-        ":memory_manager",
+        ":memory",
         "//internal:testing",
     ],
 )
@@ -175,7 +155,7 @@ cc_library(
     deps = [
         ":handle",
         ":kind",
-        ":memory_manager",
+        ":memory",
         "//base/internal:data",
         "//base/internal:type",
         "//internal:casts",
@@ -197,30 +177,6 @@ cc_library(
     ],
 )
 
-alias(
-    name = "type_manager",
-    actual = "type",
-    deprecation = "Use :type instead",
-)
-
-alias(
-    name = "type_provider",
-    actual = "type",
-    deprecation = "Use :type instead",
-)
-
-alias(
-    name = "type_registry",
-    actual = "type",
-    deprecation = "Use :type instead",
-)
-
-alias(
-    name = "type_factory",
-    actual = "type",
-    deprecation = "Use :type instead",
-)
-
 cc_test(
     name = "type_test",
     srcs = [
@@ -230,7 +186,7 @@ cc_test(
     ],
     deps = [
         ":handle",
-        ":memory_manager",
+        ":memory",
         ":type",
         ":value",
         "//base/internal:memory_manager_testing",
@@ -254,12 +210,11 @@ cc_library(
         "value_factory.h",
     ] + glob(["values/*.h"]),
     deps = [
-        ":allocator",
         ":attributes",
         ":function_result_set",
         ":handle",
         ":kind",
-        ":memory_manager",
+        ":memory",
         ":owner",
         ":type",
         "//base/internal:data",
@@ -289,12 +244,6 @@ cc_library(
     ],
 )
 
-alias(
-    name = "value_factory",
-    actual = "value",
-    deprecation = "Use :value instead",
-)
-
 cc_test(
     name = "value_test",
     srcs = [
@@ -302,7 +251,7 @@ cc_test(
         "value_test.cc",
     ] + glob(["values/*_test.cc"]),
     deps = [
-        ":memory_manager",
+        ":memory",
         ":type",
         ":value",
         "//base/internal:memory_manager_testing",
@@ -425,7 +374,7 @@ cc_test(
         ":function_descriptor",
         ":handle",
         ":kind",
-        ":memory_manager",
+        ":memory",
         ":type",
         ":value",
         "//internal:testing",

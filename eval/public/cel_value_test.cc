@@ -6,7 +6,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/structs/legacy_type_info_apis.h"

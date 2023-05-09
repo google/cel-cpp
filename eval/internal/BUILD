@@ -52,7 +52,7 @@ cc_test(
     deps = [
         ":errors",
         ":interop",
-        "//base:memory_manager",
+        "//base:memory",
         "//base:type",
         "//base:value",
         "//eval/public:cel_value",
@@ -76,7 +76,7 @@ cc_library(
     srcs = ["errors.cc"],
     hdrs = ["errors.h"],
     deps = [
-        "//base:memory_manager",
+        "//base:memory",
         "//extensions/protobuf:memory_manager",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -92,7 +92,7 @@ cc_library(
         ":interop",
         "//base:attributes",
         "//base:handle",
-        "//base:memory_manager",
+        "//base:memory",
         "//base:value",
         "//eval/public:base_activation",
         "//eval/public:cel_value",

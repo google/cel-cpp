@@ -19,7 +19,7 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_LEGACY_TYPE_ADPATER_H_
 
 #include "absl/status/status.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 

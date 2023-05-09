@@ -25,7 +25,7 @@
 #include "base/function_descriptor.h"
 #include "base/handle.h"
 #include "base/kind.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_factory.h"

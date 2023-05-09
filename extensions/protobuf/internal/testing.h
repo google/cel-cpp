@@ -19,7 +19,7 @@
 
 #include "absl/types/optional.h"
 #include "base/internal/memory_manager_testing.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
 #include "google/protobuf/arena.h"

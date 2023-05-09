@@ -17,7 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "extensions/protobuf/memory_manager.h"
 
 namespace cel::interop_internal {

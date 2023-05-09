@@ -17,7 +17,7 @@
 #include <memory>
 
 #include "base/internal/memory_manager_testing.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_factory.h"
 #include "internal/testing.h"
 

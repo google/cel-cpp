@@ -34,7 +34,7 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/kind.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/unknown_set.h"

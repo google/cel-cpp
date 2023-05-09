@@ -194,7 +194,7 @@ cc_library(
     deps = [
         ":legacy_any_packing",
         ":legacy_type_adapter",
-        "//base:type_provider",
+        "//base:type",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -203,7 +203,7 @@ cc_library(
     name = "legacy_type_adapter",
     hdrs = ["legacy_type_adapter.h"],
     deps = [
-        "//base:memory_manager",
+        "//base:memory",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "@com_google_absl//absl/status",
@@ -235,7 +235,7 @@ cc_library(
         ":field_access_impl",
         ":legacy_type_adapter",
         ":legacy_type_info_apis",
-        "//base:memory_manager",
+        "//base:memory",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",

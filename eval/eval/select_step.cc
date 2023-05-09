@@ -9,7 +9,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
 #include "base/values/error_value.h"

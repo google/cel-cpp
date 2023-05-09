@@ -23,7 +23,7 @@
 #include "absl/types/optional.h"
 #include "base/ast_internal.h"
 #include "base/handle.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
 #include "base/value_factory.h"

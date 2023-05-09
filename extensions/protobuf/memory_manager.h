@@ -20,7 +20,7 @@
 #include "google/protobuf/arena.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "internal/casts.h"
 #include "internal/rtti.h"
 

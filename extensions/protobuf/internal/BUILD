@@ -31,7 +31,7 @@ cc_library(
     testonly = True,
     hdrs = ["testing.h"],
     deps = [
-        "//base:memory_manager",
+        "//base:memory",
         "//base/internal:memory_manager_testing",
         "//extensions/protobuf:memory_manager",
         "//internal:testing",

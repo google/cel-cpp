@@ -84,7 +84,7 @@ cc_test(
         "//base:function",
         "//base:function_descriptor",
         "//base:handle",
-        "//base:memory_manager",
+        "//base:memory",
         "//base:type",
         "//base:value",
         "//internal:status_macros",
