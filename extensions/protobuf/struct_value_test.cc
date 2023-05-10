@@ -90,6 +90,32 @@ T Must(absl::StatusOr<T> status_or) {
   return Must(std::move(status_or).value());
 }
 
+// Implementation for ProtoStructValue::HasField. This should be the one and
+// only call in the function body.
+//
+// NOTE: Explore using parameter generator approach instead.
+template <typename TestMessageMaker>
+void TestHasField(MemoryManager& memory_manager, ProtoStructType::FieldId id,
+                  TestMessageMaker&& test_message_maker) {
+  TypeFactory type_factory(memory_manager);
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  EXPECT_THAT(
+      value_without->HasField(StructValue::HasFieldContext(type_manager), id),
+      IsOkAndHolds(Eq(false)));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory,
+                         CreateTestMessage(std::forward<TestMessageMaker>(
+                             test_message_maker))));
+  EXPECT_THAT(
+      value_with->HasField(StructValue::HasFieldContext(type_manager), id),
+      IsOkAndHolds(Eq(true)));
+}
+
 TEST_P(ProtoStructValueTest, NullValueHasField) {
   TypeFactory type_factory(memory_manager());
   ProtoTypeProvider type_provider;
@@ -115,1174 +141,303 @@ TEST_P(ProtoStructValueTest, NullValueHasField) {
 }
 
 TEST_P(ProtoStructValueTest, OptionalNullValueHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("optional_null_value")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_optional_null_value(NULL_VALUE);
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("optional_null_value")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(),
+               ProtoStructType::FieldId("optional_null_value"),
+               [](TestAllTypes& message) {
+                 message.set_optional_null_value(NULL_VALUE);
+               });
 }
 
 TEST_P(ProtoStructValueTest, BoolHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_bool")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_bool(true);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_bool")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_bool"),
+               [](TestAllTypes& message) { message.set_single_bool(true); });
 }
 
 TEST_P(ProtoStructValueTest, Int32HasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_int32")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_int32(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_int32")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_int32"),
+               [](TestAllTypes& message) { message.set_single_int32(1); });
 }
 
 TEST_P(ProtoStructValueTest, Int64HasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_int64")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_int64(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_int64")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_int64"),
+               [](TestAllTypes& message) { message.set_single_int64(1); });
 }
 
 TEST_P(ProtoStructValueTest, Uint32HasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_uint32")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_uint32(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_uint32")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_uint32"),
+               [](TestAllTypes& message) { message.set_single_uint32(1); });
 }
 
 TEST_P(ProtoStructValueTest, Uint64HasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_uint64")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_uint64(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_uint64")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_uint64"),
+               [](TestAllTypes& message) { message.set_single_uint64(1); });
 }
 
 TEST_P(ProtoStructValueTest, FloatHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_float")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_float(1.0);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_float")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_float"),
+               [](TestAllTypes& message) { message.set_single_float(1.0); });
 }
 
 TEST_P(ProtoStructValueTest, DoubleHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_double")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_double(1.0);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_double")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_double"),
+               [](TestAllTypes& message) { message.set_single_double(1.0); });
 }
 
 TEST_P(ProtoStructValueTest, BytesHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_bytes")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_bytes("foo");
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_bytes")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_bytes"),
+               [](TestAllTypes& message) { message.set_single_bytes("foo"); });
 }
 
 TEST_P(ProtoStructValueTest, StringHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_string")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_single_string("foo");
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_string")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_string"),
+               [](TestAllTypes& message) { message.set_single_string("foo"); });
 }
 
 TEST_P(ProtoStructValueTest, DurationHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_duration")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_duration();
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_duration")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_duration"),
+      [](TestAllTypes& message) { message.mutable_single_duration(); });
 }
 
 TEST_P(ProtoStructValueTest, TimestampHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_timestamp")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_timestamp();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_timestamp")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_timestamp"),
+      [](TestAllTypes& message) { message.mutable_single_timestamp(); });
 }
 
 TEST_P(ProtoStructValueTest, EnumHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("standalone_enum")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.set_standalone_enum(TestAllTypes::BAR);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("standalone_enum")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("standalone_enum"),
+               [](TestAllTypes& message) {
+                 message.set_standalone_enum(TestAllTypes::BAR);
+               });
 }
 
 TEST_P(ProtoStructValueTest, MessageHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("standalone_message")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_standalone_message();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("standalone_message")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("standalone_message"),
+      [](TestAllTypes& message) { message.mutable_standalone_message(); });
 }
 
 TEST_P(ProtoStructValueTest, BoolWrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_bool_wrapper")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_bool_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_bool_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_bool_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_bool_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, Int32WrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_int32_wrapper")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_int32_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_int32_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_int32_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_int32_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, Int64WrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_int64_wrapper")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_int64_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_int64_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_int64_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_int64_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, UInt32WrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("single_uint32_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_uint32_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_uint32_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_uint32_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_uint32_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, UInt64WrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("single_uint64_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_uint64_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_uint64_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_uint64_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_uint64_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, FloatWrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_float_wrapper")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_float_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_float_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_float_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_float_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, DoubleWrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("single_double_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_double_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_double_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_double_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_double_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, BytesWrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_bytes_wrapper")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_bytes_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_bytes_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_bytes_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_bytes_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, StringWrapperHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("single_string_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_string_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("single_string_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("single_string_wrapper"),
+      [](TestAllTypes& message) { message.mutable_single_string_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, ListValueHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("list_value")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_list_value();
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("list_value")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("list_value"),
+               [](TestAllTypes& message) { message.mutable_list_value(); });
 }
 
 TEST_P(ProtoStructValueTest, StructHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_struct")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_struct();
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_struct")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_struct"),
+               [](TestAllTypes& message) { message.mutable_single_struct(); });
 }
 
 TEST_P(ProtoStructValueTest, ValueHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("single_value")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.mutable_single_value();
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("single_value")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("single_value"),
+               [](TestAllTypes& message) { message.mutable_single_value(); });
 }
 
 TEST_P(ProtoStructValueTest, NullValueListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_null_value")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_null_value(NULL_VALUE);
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_null_value")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(),
+               ProtoStructType::FieldId("repeated_null_value"),
+               [](TestAllTypes& message) {
+                 message.add_repeated_null_value(NULL_VALUE);
+               });
 }
 
 TEST_P(ProtoStructValueTest, BoolListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_bool")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_bool(true);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_bool")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_bool"),
+               [](TestAllTypes& message) { message.add_repeated_bool(true); });
 }
 
 TEST_P(ProtoStructValueTest, Int32ListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_int32")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int32(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_int32")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_int32"),
+               [](TestAllTypes& message) { message.add_repeated_int32(true); });
 }
 
 TEST_P(ProtoStructValueTest, Int64ListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_int64")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int64(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_int64")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_int64"),
+               [](TestAllTypes& message) { message.add_repeated_int64(1); });
 }
 
 TEST_P(ProtoStructValueTest, Uint32ListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_uint32")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint32(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_uint32")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_uint32"),
+               [](TestAllTypes& message) { message.add_repeated_uint32(1); });
 }
 
 TEST_P(ProtoStructValueTest, Uint64ListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_uint64")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint64(1);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_uint64")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_uint64"),
+               [](TestAllTypes& message) { message.add_repeated_uint64(1); });
 }
 
 TEST_P(ProtoStructValueTest, FloatListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_float")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_float(1.0);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_float")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_float"),
+               [](TestAllTypes& message) { message.add_repeated_float(1.0); });
 }
 
 TEST_P(ProtoStructValueTest, DoubleListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_double")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_double(1.0);
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_double")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_double"),
+               [](TestAllTypes& message) { message.add_repeated_double(1.0); });
 }
 
 TEST_P(ProtoStructValueTest, BytesListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_bytes")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_bytes("foo");
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_bytes")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_bytes"),
+      [](TestAllTypes& message) { message.add_repeated_bytes("foo"); });
 }
 
 TEST_P(ProtoStructValueTest, StringListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_string")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_string("foo");
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_string")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_string"),
+      [](TestAllTypes& message) { message.add_repeated_string("foo"); });
 }
 
 TEST_P(ProtoStructValueTest, DurationListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_duration")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_duration()->set_seconds(1);
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_duration")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_duration"),
+               [](TestAllTypes& message) {
+                 message.add_repeated_duration()->set_seconds(1);
+               });
 }
 
 TEST_P(ProtoStructValueTest, TimestampListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_timestamp")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_timestamp()->set_seconds(1);
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_timestamp")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_timestamp"),
+               [](TestAllTypes& message) {
+                 message.add_repeated_timestamp()->set_seconds(1);
+               });
 }
 
 TEST_P(ProtoStructValueTest, EnumListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_nested_enum")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_nested_enum(TestAllTypes::BAR);
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_nested_enum")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(),
+               ProtoStructType::FieldId("repeated_nested_enum"),
+               [](TestAllTypes& message) {
+                 message.add_repeated_nested_enum(TestAllTypes::BAR);
+               });
 }
 
 TEST_P(ProtoStructValueTest, MessageListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_nested_message")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_nested_message();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_nested_message")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_nested_message"),
+      [](TestAllTypes& message) { message.add_repeated_nested_message(); });
 }
 
 TEST_P(ProtoStructValueTest, BoolWrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_bool_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_bool_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_bool_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_bool_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_bool_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, Int32WrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_int32_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int32_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_int32_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_int32_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_int32_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, Int64WrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_int64_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int64_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_int64_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_int64_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_int64_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, Uint32WrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_uint32_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint32_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_uint32_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_uint32_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_uint32_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, Uint64WrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_uint64_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint64_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_uint64_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_uint64_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_uint64_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, FloatWrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_float_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_float_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_float_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_float_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_float_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, DoubleWrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_double_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_double_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_double_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_double_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_double_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, BytesWrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_bytes_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_bytes_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_bytes_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_bytes_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_bytes_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, StringWrapperListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  ProtoStructType::FieldId("repeated_string_wrapper")),
-              IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_string_wrapper();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_string_wrapper")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_string_wrapper"),
+      [](TestAllTypes& message) { message.add_repeated_string_wrapper(); });
 }
 
 TEST_P(ProtoStructValueTest, ListValueListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_list_value")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_list_value();
-                         })));
-  EXPECT_THAT(
-      value_with->HasField(StructValue::HasFieldContext(type_manager),
-                           ProtoStructType::FieldId("repeated_list_value")),
-      IsOkAndHolds(Eq(true)));
+  TestHasField(
+      memory_manager(), ProtoStructType::FieldId("repeated_list_value"),
+      [](TestAllTypes& message) { message.add_repeated_list_value(); });
 }
 
 TEST_P(ProtoStructValueTest, StructListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_struct")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_struct();
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_struct")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_struct"),
+               [](TestAllTypes& message) { message.add_repeated_struct(); });
 }
 
 TEST_P(ProtoStructValueTest, ValueListHasField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(
-      value_without->HasField(StructValue::HasFieldContext(type_manager),
-                              ProtoStructType::FieldId("repeated_value")),
-      IsOkAndHolds(Eq(false)));
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_value();
-                         })));
-  EXPECT_THAT(value_with->HasField(StructValue::HasFieldContext(type_manager),
-                                   ProtoStructType::FieldId("repeated_value")),
-              IsOkAndHolds(Eq(true)));
+  TestHasField(memory_manager(), ProtoStructType::FieldId("repeated_value"),
+               [](TestAllTypes& message) { message.add_repeated_value(); });
 }
 
 TEST_P(ProtoStructValueTest, NullValueGetField) {
