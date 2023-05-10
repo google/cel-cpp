@@ -44,10 +44,10 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   // Toggle constant folding optimization. By default it is not enabled.
   // The provided arena is used to hold the generated constants.
-  void set_constant_folding(bool enabled, google::protobuf::Arena* arena,
-                            bool updated = false) {
+  // TODO(issues/5): default enable the updated version then deprecate this
+  // function.
+  void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
     constant_folding_ = enabled;
-    updated_constant_folding_ = updated;
     constant_arena_ = arena;
   }
 
@@ -65,6 +65,10 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   void AddAstTransform(std::unique_ptr<AstTransform> transform) {
     ast_transforms_.push_back(std::move(transform));
+  }
+
+  void AddProgramOptimizer(std::unique_ptr<ProgramOptimizer> optimizer) {
+    program_optimizers_.push_back(std::move(optimizer));
   }
 
   void set_enable_regex_precompilation(bool enable) {
@@ -99,11 +103,11 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   cel::RuntimeOptions options_;
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
+  std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
 
   bool enable_regex_precompilation_ = false;
   bool enable_comprehension_vulnerability_check_ = false;
   bool constant_folding_ = false;
-  bool updated_constant_folding_ = false;
   google::protobuf::Arena* constant_arena_ = nullptr;
 };
 

@@ -1197,6 +1197,7 @@ cc_library(
     deps = [
         ":cel_expression",
         ":cel_options",
+        "//eval/compiler:constant_folding",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:qualified_reference_resolver",
         "//eval/public/structs:legacy_type_provider",

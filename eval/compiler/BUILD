@@ -21,7 +21,6 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -194,6 +193,7 @@ cc_library(
         "//base:handle",
         "//base:kind",
         "//base:value",
+        "//base/internal:ast_impl",
         "//eval/eval:const_value_step",
         "//eval/eval:evaluator_core",
         "//eval/internal:errors",
@@ -212,7 +212,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -236,7 +235,6 @@ cc_test(
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_function_registry",
         "//eval/public:cel_type_registry",
-        "//eval/testutil:test_message_cc_proto",
         "//extensions/protobuf:ast_converters",
         "//extensions/protobuf:memory_manager",
         "//internal:status_macros",

@@ -4,7 +4,6 @@
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/text_format.h"
 #include "base/ast_internal.h"
 #include "base/internal/ast_impl.h"
 #include "base/type_factory.h"
@@ -23,7 +22,6 @@
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
-#include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
@@ -49,9 +47,11 @@ using ::google::api::expr::runtime::CelTypeRegistry;
 using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::PlannerContext;
+using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::Resolver;
 using ::google::protobuf::Arena;
 using testing::SizeIs;
+using cel::internal::StatusIs;
 
 class ConstantFoldingTestWithValueFactory : public testing::Test {
  public:
@@ -606,18 +606,20 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  ConstantFoldingExtension constant_folder(kStackLimit, &arena);
+  std::unique_ptr<ProgramOptimizer> constant_folder =
+      CreateConstantFoldingExtension(&arena, {kStackLimit});
 
   // Act
   // Issue the visitation calls.
-  ASSERT_OK(constant_folder.OnPreVisit(context, call));
-  ASSERT_OK(constant_folder.OnPreVisit(context, condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, condition));
-  ASSERT_OK(constant_folder.OnPreVisit(context, true_branch));
-  ASSERT_OK(constant_folder.OnPostVisit(context, true_branch));
-  ASSERT_OK(constant_folder.OnPreVisit(context, false_branch));
-  ASSERT_OK(constant_folder.OnPostVisit(context, false_branch));
-  ASSERT_OK(constant_folder.OnPostVisit(context, call));
+  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, call));
+  ASSERT_OK(constant_folder->OnPreVisit(context, condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, condition));
+  ASSERT_OK(constant_folder->OnPreVisit(context, true_branch));
+  ASSERT_OK(constant_folder->OnPostVisit(context, true_branch));
+  ASSERT_OK(constant_folder->OnPreVisit(context, false_branch));
+  ASSERT_OK(constant_folder->OnPostVisit(context, false_branch));
+  ASSERT_OK(constant_folder->OnPostVisit(context, call));
 
   // Assert
   // No changes attempted.
@@ -670,16 +672,18 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  ConstantFoldingExtension constant_folder(kStackLimit, &arena);
+  std::unique_ptr<ProgramOptimizer> constant_folder =
+      CreateConstantFoldingExtension(&arena, {kStackLimit});
 
   // Act
   // Issue the visitation calls.
-  ASSERT_OK(constant_folder.OnPreVisit(context, call));
-  ASSERT_OK(constant_folder.OnPreVisit(context, left_condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, left_condition));
-  ASSERT_OK(constant_folder.OnPreVisit(context, right_condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, right_condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, call));
+  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, call));
+  ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, left_condition));
+  ASSERT_OK(constant_folder->OnPreVisit(context, right_condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, right_condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, call));
 
   // Assert
   // No changes attempted.
@@ -732,20 +736,82 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  ConstantFoldingExtension constant_folder(kStackLimit, &arena);
+  std::unique_ptr<ProgramOptimizer> constant_folder =
+      CreateConstantFoldingExtension(&arena, {kStackLimit});
 
   // Act
   // Issue the visitation calls.
-  ASSERT_OK(constant_folder.OnPreVisit(context, call));
-  ASSERT_OK(constant_folder.OnPreVisit(context, left_condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, left_condition));
-  ASSERT_OK(constant_folder.OnPreVisit(context, right_condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, right_condition));
-  ASSERT_OK(constant_folder.OnPostVisit(context, call));
+  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, call));
+  ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, left_condition));
+  ASSERT_OK(constant_folder->OnPreVisit(context, right_condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, right_condition));
+  ASSERT_OK(constant_folder->OnPostVisit(context, call));
 
   // Assert
   // No changes attempted.
   EXPECT_THAT(path, SizeIs(3));
+}
+
+TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
+  // Arrange
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+                       ParseFromCel("true && false"));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  const Expr& call = ast_impl.root_expr();
+  const Expr& left_condition = call.call_expr().args()[0];
+  const Expr& right_condition = call.call_expr().args()[1];
+
+  PlannerContext::ProgramTree tree;
+  PlannerContext::ProgramInfo& call_info = tree[&call];
+  call_info.range_start = 0;
+  call_info.range_len = 4;
+  call_info.children = {&left_condition, &right_condition};
+
+  PlannerContext::ProgramInfo& left_condition_info = tree[&left_condition];
+  left_condition_info.range_start = 0;
+  left_condition_info.range_len = 1;
+  left_condition_info.parent = &call;
+
+  PlannerContext::ProgramInfo& right_condition_info = tree[&right_condition];
+  right_condition_info.range_start = 1;
+  right_condition_info.range_len = 1;
+  right_condition_info.parent = &call;
+
+  // Mock execution path that has placeholders for the non-shortcircuiting
+  // version of ternary.
+  ExecutionPath path;
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(true)), -1));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(false)), -1));
+
+  // Just a placeholder.
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(Constant(NullValue::kNullValue), -1));
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  google::protobuf::Arena arena;
+  constexpr int kStackLimit = 1;
+  std::unique_ptr<ProgramOptimizer> constant_folder =
+      CreateConstantFoldingExtension(&arena, {kStackLimit});
+
+  // Act
+  // Issue the visitation calls in wrong order.
+  ASSERT_OK(constant_folder->OnPreVisit(context, call));
+  ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
+  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+
+  // ASSERT
+  EXPECT_THAT(constant_folder->OnPostVisit(context, left_condition),
+              StatusIs(absl::StatusCode::kInternal));
 }
 
 }  // namespace

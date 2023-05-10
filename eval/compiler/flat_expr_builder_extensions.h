@@ -84,7 +84,7 @@ class PlannerContext {
 };
 
 // Interface for Ast Transforms.
-// If any are present, the flat expr builder will apply the Ast Transforms in
+// If any are present, the FlatExprBuilder will apply the Ast Transforms in
 // order on a copy of the relevant input expressions before planning the
 // program.
 class AstTransform {
@@ -93,6 +93,30 @@ class AstTransform {
 
   virtual absl::Status UpdateAst(PlannerContext& context,
                                  cel::ast::internal::AstImpl& ast) const = 0;
+};
+
+// Interface for program optimizers.
+//
+// If any are present, the FlatExprBuilder will notify the implementations in
+// order as it traverses the input ast.
+//
+// Note: implementations must correctly check that subprograms are available
+// before accessing (i.e. they have not already been edited).
+class ProgramOptimizer {
+ public:
+  virtual ~ProgramOptimizer() = default;
+
+  // Called once before program planning begins for the given AST.
+  virtual absl::Status OnInit(PlannerContext& context,
+                              const cel::ast::internal::AstImpl& ast) = 0;
+
+  // Called before planning the given expr node.
+  virtual absl::Status OnPreVisit(PlannerContext& context,
+                                  const cel::ast::internal::Expr& node) = 0;
+
+  // Called after planning the given expr node.
+  virtual absl::Status OnPostVisit(PlannerContext& context,
+                                   const cel::ast::internal::Expr& node) = 0;
 };
 
 }  // namespace google::api::expr::runtime

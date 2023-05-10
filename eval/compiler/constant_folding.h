@@ -1,17 +1,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_
 
+#include <memory>
 #include <string>
-#include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
 #include "base/ast_internal.h"
 #include "base/value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
-#include "eval/eval/evaluator_core.h"
-#include "eval/public/activation.h"
-#include "eval/public/cel_expression.h"
 #include "runtime/function_registry.h"
 #include "google/protobuf/arena.h"
 
@@ -25,29 +21,23 @@ void FoldConstants(
     absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
     Expr& out_ast);
 
-class ConstantFoldingExtension {
- public:
-  ConstantFoldingExtension(int stack_limit, google::protobuf::Arena* arena)
-      : arena_(arena), state_(stack_limit, arena) {}
-
-  absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
-                          const Expr& node);
-  absl::Status OnPostVisit(google::api::expr::runtime::PlannerContext& context,
-                           const Expr& node);
-
- private:
-  enum class IsConst {
-    kConditional,
-    kNonConst,
-  };
-
-  google::protobuf::Arena* arena_;
-  google::api::expr::runtime::Activation empty_;
-  google::api::expr::runtime::CelEvaluationListener null_listener_;
-  google::api::expr::runtime::CelExpressionFlatEvaluationState state_;
-
-  std::vector<IsConst> is_const_;
+struct ConstantFoldingOptions {
+  // Stack limit for evaluating constant sub expressions.
+  // Should accommodate the maximum expected number of dependencies for a small
+  // subexpression (e.g. number of elements in a list).
+  //
+  // 64 is sufficient to support map literals with 32 key/value pairs per the
+  // minimum required support in the CEL spec.
+  int stack_limit = 64;
 };
+
+// Create a new constant folding extension.
+// Eagerly evaluates sub expressions with all constant inputs, and replaces said
+// sub expression with the result.
+std::unique_ptr<google::api::expr::runtime::ProgramOptimizer>
+CreateConstantFoldingExtension(
+    google::protobuf::Arena* arena,
+    ConstantFoldingOptions options = ConstantFoldingOptions());
 
 }  // namespace cel::ast::internal
 

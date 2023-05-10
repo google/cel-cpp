@@ -270,15 +270,15 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
  public:
   FlatExprVisitor(
       const google::api::expr::runtime::Resolver& resolver,
-      google::api::expr::runtime::ExecutionPath* path,
       const cel::RuntimeOptions& options,
       const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
-      google::protobuf::Arena* constant_arena, bool updated_constant_folding,
       bool enable_comprehension_vulnerability_check,
-      google::api::expr::runtime::BuilderWarnings* warnings,
       bool enable_regex_precompilation,
+      absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
           reference_map,
+      google::api::expr::runtime::ExecutionPath* path,
+      google::api::expr::runtime::BuilderWarnings* warnings,
       google::protobuf::Arena* arena, PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
@@ -288,21 +288,16 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         parent_expr_(nullptr),
         options_(options),
         constant_idents_(constant_idents),
-        constant_arena_(constant_arena),
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
-        builder_warnings_(warnings),
         enable_regex_precompilation_(enable_regex_precompilation),
+        program_optimizers_(program_optimizers),
+        builder_warnings_(warnings),
         regex_program_builder_(options_.regex_max_program_size),
         reference_map_(reference_map),
         arena_(arena),
         program_tree_(program_tree),
-        extension_context_(extension_context) {
-    if (updated_constant_folding) {
-      constexpr int kDefaultConstFoldStackLimit = 64;
-      constant_folding_.emplace(kDefaultConstFoldStackLimit, constant_arena_);
-    }
-  }
+        extension_context_(extension_context) {}
 
   void PreVisitExpr(const cel::ast::internal::Expr* expr,
                     const cel::ast::internal::SourcePosition*) override {
@@ -312,8 +307,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    // TODO(issues/5): this will be generalized later.
-    if (!(constant_folding_.has_value())) {
+    if (program_optimizers_.empty()) {
       return;
     }
     PlannerContext::ProgramInfo& info = program_tree_[expr];
@@ -323,10 +317,13 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       program_tree_[parent_expr_].children.push_back(expr);
     }
     parent_expr_ = expr;
-    absl::Status status =
-        constant_folding_->OnPreVisit(extension_context_, *expr);
-    if (!status.ok()) {
-      SetProgressStatusError(status);
+
+    for (const std::unique_ptr<ProgramOptimizer>& optimizer :
+         program_optimizers_) {
+      absl::Status status = optimizer->OnPreVisit(extension_context_, *expr);
+      if (!status.ok()) {
+        SetProgressStatusError(status);
+      }
     }
   }
 
@@ -336,16 +333,19 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       return;
     }
     // TODO(issues/5): this will be generalized later.
-    if (!constant_folding_.has_value()) {
+    if (program_optimizers_.empty()) {
       return;
     }
     PlannerContext::ProgramInfo& info = program_tree_[expr];
     info.range_len = execution_path_->size() - info.range_start;
     parent_expr_ = info.parent;
-    absl::Status status =
-        constant_folding_->OnPostVisit(extension_context_, *expr);
-    if (!status.ok()) {
-      SetProgressStatusError(status);
+
+    for (const std::unique_ptr<ProgramOptimizer>& optimizer :
+         program_optimizers_) {
+      absl::Status status = optimizer->OnPostVisit(extension_context_, *expr);
+      if (!status.ok()) {
+        SetProgressStatusError(status);
+      }
     }
   }
 
@@ -857,16 +857,15 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   const cel::RuntimeOptions& options_;
 
   const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
-  google::protobuf::Arena* constant_arena_;
-  absl::optional<cel::ast::internal::ConstantFoldingExtension>
-      constant_folding_;
 
   std::stack<const cel::ast::internal::Comprehension*> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
+  bool enable_regex_precompilation_;
+
+  absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   google::api::expr::runtime::BuilderWarnings* builder_warnings_;
 
-  bool enable_regex_precompilation_;
   RegexProgramBuilder regex_program_builder_;
   const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>* const
       reference_map_;
@@ -1321,7 +1320,7 @@ FlatExprBuilder::CreateExpressionImpl(
   }
 
   cel::ast::internal::Expr const_fold_buffer;
-  if (constant_folding_ && !updated_constant_folding_) {
+  if (constant_folding_) {
     cel::ast::internal::FoldConstants(
         ast_impl.root_expr(), this->GetRegistry()->InternalGetRegistry(),
         constant_arena_, constant_idents, const_fold_buffer);
@@ -1330,11 +1329,15 @@ FlatExprBuilder::CreateExpressionImpl(
 
   auto arena = std::make_unique<google::protobuf::Arena>();
 
+  for (const std::unique_ptr<ProgramOptimizer>& optimizer :
+       program_optimizers_) {
+    CEL_RETURN_IF_ERROR(optimizer->OnInit(extension_context, ast_impl));
+  }
   FlatExprVisitor visitor(
-      resolver, &execution_path, options_, constant_idents, constant_arena_,
-      updated_constant_folding_, enable_comprehension_vulnerability_check_,
-      &warnings_builder, enable_regex_precompilation_,
-      &ast_impl.reference_map(), arena.get(), program_tree, extension_context);
+      resolver, options_, constant_idents,
+      enable_comprehension_vulnerability_check_, enable_regex_precompilation_,
+      program_optimizers_, &ast_impl.reference_map(), &execution_path,
+      &warnings_builder, arena.get(), program_tree, extension_context);
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 

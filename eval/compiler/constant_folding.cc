@@ -12,6 +12,7 @@
 #include "base/ast_internal.h"
 #include "base/function.h"
 #include "base/handle.h"
+#include "base/internal/ast_impl.h"
 #include "base/kind.h"
 #include "base/value.h"
 #include "base/values/bytes_value.h"
@@ -49,6 +50,7 @@ using ::google::api::expr::runtime::ExecutionFrame;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::ExecutionPathView;
 using ::google::api::expr::runtime::PlannerContext;
+using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::Resolver;
 using ::google::api::expr::runtime::builtin::kAnd;
 using ::google::api::expr::runtime::builtin::kOr;
@@ -386,7 +388,37 @@ bool ConstantFoldingTransform::Transform(const Expr& expr, Expr& out_) {
   return absl::visit(handler, expr.expr_kind());
 }
 
-}  // namespace
+class ConstantFoldingExtension : public ProgramOptimizer {
+ public:
+  ConstantFoldingExtension(int stack_limit, google::protobuf::Arena* arena)
+      : arena_(arena), state_(stack_limit, arena) {}
+
+  absl::Status OnInit(google::api::expr::runtime::PlannerContext& context,
+                      const AstImpl& ast) override {
+    // Clean up const stack incase of failure in the middle of planning previous
+    // expression.
+    is_const_.clear();
+    return absl::OkStatus();
+  }
+
+  absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
+                          const Expr& node) override;
+  absl::Status OnPostVisit(google::api::expr::runtime::PlannerContext& context,
+                           const Expr& node) override;
+
+ private:
+  enum class IsConst {
+    kConditional,
+    kNonConst,
+  };
+
+  google::protobuf::Arena* arena_;
+  google::api::expr::runtime::Activation empty_;
+  google::api::expr::runtime::CelEvaluationListener null_listener_;
+  google::api::expr::runtime::CelExpressionFlatEvaluationState state_;
+
+  std::vector<IsConst> is_const_;
+};
 
 absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
                                                   const Expr& node) {
@@ -447,6 +479,10 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
 
 absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
                                                    const Expr& node) {
+  if (is_const_.empty()) {
+    return absl::InternalError("ConstantFoldingExtension called out of order.");
+  }
+
   IsConst is_const = is_const_.back();
   is_const_.pop_back();
 
@@ -482,12 +518,20 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
   return context.ReplaceSubplan(node, std::move(new_plan));
 }
 
+}  // namespace
+
 void FoldConstants(
     const Expr& ast, const FunctionRegistry& registry, google::protobuf::Arena* arena,
     absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
     Expr& out_ast) {
   ConstantFoldingTransform constant_folder(registry, arena, constant_idents);
   constant_folder.Transform(ast, out_ast);
+}
+
+std::unique_ptr<google::api::expr::runtime::ProgramOptimizer>
+CreateConstantFoldingExtension(google::protobuf::Arena* arena,
+                               ConstantFoldingOptions options) {
+  return std::make_unique<ConstantFoldingExtension>(options.stack_limit, arena);
 }
 
 }  // namespace cel::ast::internal
