@@ -39,6 +39,10 @@ class FakeConstExpressionStep : public ExpressionStep {
   int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
+
+  cel::internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeInfo();
+  }
 };
 
 // Fake expression implementation
@@ -58,6 +62,10 @@ class FakeIncrementExpressionStep : public ExpressionStep {
   int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
+
+  cel::internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeInfo();
+  }
 };
 
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {

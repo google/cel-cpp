@@ -39,6 +39,7 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/rtti.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_options.h"
 
@@ -73,6 +74,11 @@ class ExpressionStep {
 
   // Returns if the execution step comes from AST.
   virtual bool ComesFromAst() const = 0;
+
+  // Return the type of the underlying expression step for special handling in
+  // the planning phase. This should only be overridden by special cases, and
+  // callers must not make any assumptions about the default case.
+  virtual cel::internal::TypeInfo TypeId() const = 0;
 };
 
 using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;
@@ -315,7 +321,7 @@ class CelExpressionFlatImpl : public CelExpression {
                                  CelEvaluationListener callback) const override;
 
  private:
-  // Arena used while builting the expression, must live as long.
+  // Arena used while building the expression, must live as long.
   const std::unique_ptr<const google::protobuf::Arena> arena_;
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;

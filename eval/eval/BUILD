@@ -33,6 +33,7 @@ cc_library(
         "//eval/public:unknown_attribute_set",
         "//extensions/protobuf:memory_manager",
         "//internal:casts",
+        "//internal:rtti",
         "//internal:status_macros",
         "//runtime:activation_interface",
         "//runtime:runtime_options",
@@ -95,6 +96,7 @@ cc_library(
         "const_value_step.h",
     ],
     deps = [
+        ":compiler_constant_step",
         ":evaluator_core",
         ":expression_step_base",
         "//base:ast_internal",
@@ -833,5 +835,34 @@ cc_library(
         "//eval/public/structs:protobuf_descriptor_type_provider",
         "//internal:no_destructor",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "compiler_constant_step",
+    srcs = ["compiler_constant_step.cc"],
+    hdrs = ["compiler_constant_step.h"],
+    deps = [
+        ":expression_step_base",
+        "//internal:rtti",
+    ],
+)
+
+cc_test(
+    name = "compiler_constant_step_test",
+    srcs = ["compiler_constant_step_test.cc"],
+    deps = [
+        ":compiler_constant_step",
+        ":evaluator_core",
+        ":test_type_registry",
+        "//base:type",
+        "//base:value",
+        "//eval/public:activation",
+        "//eval/public:cel_expression",
+        "//extensions/protobuf:memory_manager",
+        "//internal:rtti",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//runtime:runtime_options",
     ],
 )

@@ -8,6 +8,7 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/ast_internal.h"
+#include "eval/eval/compiler_constant_step.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/interop.h"
 
@@ -19,10 +20,6 @@ using ::cel::ast::internal::Constant;
 
 class ConstValueStep : public ExpressionStepBase {
  public:
-  ConstValueStep(cel::Handle<cel::Value> value, int64_t expr_id,
-                 bool comes_from_ast)
-      : ExpressionStepBase(expr_id, comes_from_ast), value_(std::move(value)) {}
-
   ConstValueStep(const Constant& expr, int64_t expr_id, bool comes_from_ast)
       : ExpressionStepBase(expr_id, comes_from_ast),
         const_expr_(expr),
@@ -31,7 +28,7 @@ class ConstValueStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  // Mainain a copy of the source constant to avoid lifecycle dependence on the
+  // Maintain a copy of the source constant to avoid lifecycle dependence on the
   // ast after planning.
   cel::ast::internal::Constant const_expr_;
   cel::Handle<cel::Value> value_;
@@ -82,8 +79,8 @@ cel::Handle<cel::Value> ConvertConstant(
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     cel::Handle<cel::Value> value, int64_t expr_id, bool comes_from_ast) {
-  return std::make_unique<ConstValueStep>(std::move(value), expr_id,
-                                          comes_from_ast);
+  return std::make_unique<CompilerConstantStep>(std::move(value), expr_id,
+                                                comes_from_ast);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
