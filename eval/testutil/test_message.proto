@@ -66,6 +66,7 @@ message TestMessage {
   map<int32, float> int32_float_map = 207;
   map<int64, TestEnum> int64_enum_map = 208;
   map<string, google.protobuf.Timestamp> string_timestamp_map = 209;
+  map<string, TestMessage> string_message_map = 210;
 
   // Well-known types.
   google.protobuf.Any any_value = 300;
