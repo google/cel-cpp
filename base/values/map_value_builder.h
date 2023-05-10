@@ -1268,23 +1268,19 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
   }
 
   absl::StatusOr<bool> InsertOrUpdate(const K& key, const Handle<V>& value) {
-    return storage_.insert_or_assign(std::make_pair(key, value)).second;
+    return storage_.insert_or_assign(key, value).second;
   }
 
   absl::StatusOr<bool> InsertOrUpdate(const K& key, Handle<V>&& value) {
-    return storage_.insert_or_assign(std::make_pair(key, std::move(value)))
-        .second;
+    return storage_.insert_or_assign(key, std::move(value)).second;
   }
 
   absl::StatusOr<bool> InsertOrUpdate(K&& key, const Handle<V>& value) {
-    return storage_.insert_or_assign(std::make_pair(std::move(key), value))
-        .second;
+    return storage_.insert_or_assign(std::move(key), value).second;
   }
 
   absl::StatusOr<bool> InsertOrUpdate(K&& key, Handle<V>&& value) {
-    return storage_
-        .insert_or_assign(std::make_pair(std::move(key), std::move(value)))
-        .second;
+    return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
   bool Has(const Handle<Value>& key) const override { return Has(key.As<K>()); }
