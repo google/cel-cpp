@@ -43,7 +43,9 @@ using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateLegacyListValue;
 using ::cel::interop_internal::CreateNoMatchingOverloadError;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
+using ::google::api::expr::runtime::Activation;
 using ::google::api::expr::runtime::CelEvaluationListener;
+using ::google::api::expr::runtime::CelExpressionFlatEvaluationState;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
 using ::google::api::expr::runtime::ExecutionFrame;
@@ -390,8 +392,8 @@ bool ConstantFoldingTransform::Transform(const Expr& expr, Expr& out_) {
 
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
-  ConstantFoldingExtension(int stack_limit, google::protobuf::Arena* arena)
-      : arena_(arena), state_(stack_limit, arena) {}
+  explicit ConstantFoldingExtension(google::protobuf::Arena* arena)
+      : arena_(arena), state_(kDefaultStackLimit, arena) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -403,11 +405,14 @@ class ConstantFoldingExtension : public ProgramOptimizer {
     kConditional,
     kNonConst,
   };
+  // Most constant folding evaluations are simple
+  // binary operators.
+  static constexpr size_t kDefaultStackLimit = 4;
 
   google::protobuf::Arena* arena_;
-  google::api::expr::runtime::Activation empty_;
-  google::api::expr::runtime::CelEvaluationListener null_listener_;
-  google::api::expr::runtime::CelExpressionFlatEvaluationState state_;
+  Activation empty_;
+  CelEvaluationListener null_listener_;
+  CelExpressionFlatEvaluationState state_;
 
   std::vector<IsConst> is_const_;
 };
@@ -440,7 +445,7 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
     IsConst operator()(absl::monostate) { return IsConst::kNonConst; }
 
     IsConst operator()(const Call& call) {
-      // Shortcircuiting operators not yet supported.
+      // Short Circuiting operators not yet supported.
       if (call.function() == kAnd || call.function() == kOr ||
           call.function() == kTernary) {
         return IsConst::kNonConst;
@@ -496,6 +501,11 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     ExecutionFrame frame(subplan, empty_, &context.type_registry(),
                          context.options(), &state_);
     state_.Reset();
+    // Update stack size to accommodate sub expression.
+    // This only results in a vector resize if the new maxsize is greater than
+    // the current capacity.
+    state_.value_stack().SetMaxSize(subplan.size());
+
     CEL_ASSIGN_OR_RETURN(value, frame.Evaluate(null_listener_));
     if (value->Is<UnknownValue>()) {
       return absl::OkStatus();
@@ -521,11 +531,9 @@ void FoldConstants(
 }
 
 google::api::expr::runtime::ProgramOptimizerFactory
-CreateConstantFoldingExtension(google::protobuf::Arena* arena,
-                               ConstantFoldingOptions options) {
+CreateConstantFoldingExtension(google::protobuf::Arena* arena) {
   return [=](PlannerContext&, const AstImpl&) {
-    return std::make_unique<ConstantFoldingExtension>(options.stack_limit,
-                                                      arena);
+    return std::make_unique<ConstantFoldingExtension>(arena);
   };
 }
 

@@ -21,23 +21,11 @@ void FoldConstants(
     absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
     Expr& out_ast);
 
-struct ConstantFoldingOptions {
-  // Stack limit for evaluating constant sub expressions.
-  // Should accommodate the maximum expected number of dependencies for a small
-  // subexpression (e.g. number of elements in a list).
-  //
-  // 64 is sufficient to support map literals with 32 key/value pairs per the
-  // minimum required support in the CEL spec.
-  int stack_limit = 64;
-};
-
 // Create a new constant folding extension.
 // Eagerly evaluates sub expressions with all constant inputs, and replaces said
 // sub expression with the result.
 google::api::expr::runtime::ProgramOptimizerFactory
-CreateConstantFoldingExtension(
-    google::protobuf::Arena* arena,
-    ConstantFoldingOptions options = ConstantFoldingOptions());
+CreateConstantFoldingExtension(google::protobuf::Arena* arena);
 
 }  // namespace cel::ast::internal
 

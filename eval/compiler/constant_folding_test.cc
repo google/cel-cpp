@@ -606,9 +606,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
                          path, tree);
 
   google::protobuf::Arena arena;
-  constexpr int kStackLimit = 1;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena, {kStackLimit});
+      CreateConstantFoldingExtension(&arena);
 
   // Act
   // Issue the visitation calls.
@@ -673,9 +672,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
                          path, tree);
 
   google::protobuf::Arena arena;
-  constexpr int kStackLimit = 1;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena, {kStackLimit});
+      CreateConstantFoldingExtension(&arena);
 
   // Act
   // Issue the visitation calls.
@@ -738,9 +736,8 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
                          path, tree);
 
   google::protobuf::Arena arena;
-  constexpr int kStackLimit = 1;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena, {kStackLimit});
+      CreateConstantFoldingExtension(&arena);
 
   // Act
   // Issue the visitation calls.
@@ -803,9 +800,8 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
                          path, tree);
 
   google::protobuf::Arena arena;
-  constexpr int kStackLimit = 1;
   ProgramOptimizerFactory constant_folder_factory =
-      CreateConstantFoldingExtension(&arena, {kStackLimit});
+      CreateConstantFoldingExtension(&arena);
 
   // Act / Assert
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,

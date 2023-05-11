@@ -124,19 +124,22 @@ class EvaluatorStack {
     attribute_stack_[current_size_ - 1] = std::move(attribute);
   }
 
+  // Update the max size of the stack and update capacity if needed.
+  void SetMaxSize(size_t size) {
+    max_size_ = size;
+    Reserve(size);
+  }
+
+ private:
   // Preallocate stack.
   void Reserve(size_t size) {
-    if (size > max_size()) {
-      size = max_size();
-    }
     stack_.reserve(size);
     attribute_stack_.reserve(size);
   }
 
- private:
   std::vector<cel::Handle<cel::Value>> stack_;
   std::vector<AttributeTrail> attribute_stack_;
-  const size_t max_size_;
+  size_t max_size_;
   size_t current_size_;
 };
 
