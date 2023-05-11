@@ -34,7 +34,7 @@ struct ConstantFoldingOptions {
 // Create a new constant folding extension.
 // Eagerly evaluates sub expressions with all constant inputs, and replaces said
 // sub expression with the result.
-std::unique_ptr<google::api::expr::runtime::ProgramOptimizer>
+google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingExtension(
     google::protobuf::Arena* arena,
     ConstantFoldingOptions options = ConstantFoldingOptions());

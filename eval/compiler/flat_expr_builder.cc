@@ -1329,15 +1329,16 @@ FlatExprBuilder::CreateExpressionImpl(
 
   auto arena = std::make_unique<google::protobuf::Arena>();
 
-  for (const std::unique_ptr<ProgramOptimizer>& optimizer :
-       program_optimizers_) {
-    CEL_RETURN_IF_ERROR(optimizer->OnInit(extension_context, ast_impl));
+  std::vector<std::unique_ptr<ProgramOptimizer>> optimizers;
+  for (const ProgramOptimizerFactory& optimizer_factory : program_optimizers_) {
+    CEL_ASSIGN_OR_RETURN(optimizers.emplace_back(),
+                         optimizer_factory(extension_context, ast_impl));
   }
   FlatExprVisitor visitor(
       resolver, options_, constant_idents,
       enable_comprehension_vulnerability_check_, enable_regex_precompilation_,
-      program_optimizers_, &ast_impl.reference_map(), &execution_path,
-      &warnings_builder, arena.get(), program_tree, extension_context);
+      optimizers, &ast_impl.reference_map(), &execution_path, &warnings_builder,
+      arena.get(), program_tree, extension_context);
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 

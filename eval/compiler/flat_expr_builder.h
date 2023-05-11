@@ -67,7 +67,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
     ast_transforms_.push_back(std::move(transform));
   }
 
-  void AddProgramOptimizer(std::unique_ptr<ProgramOptimizer> optimizer) {
+  void AddProgramOptimizer(ProgramOptimizerFactory optimizer) {
     program_optimizers_.push_back(std::move(optimizer));
   }
 
@@ -103,7 +103,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   cel::RuntimeOptions options_;
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
-  std::vector<std::unique_ptr<ProgramOptimizer>> program_optimizers_;
+  std::vector<ProgramOptimizerFactory> program_optimizers_;
 
   bool enable_regex_precompilation_ = false;
   bool enable_comprehension_vulnerability_check_ = false;

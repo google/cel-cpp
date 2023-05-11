@@ -393,14 +393,6 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   ConstantFoldingExtension(int stack_limit, google::protobuf::Arena* arena)
       : arena_(arena), state_(stack_limit, arena) {}
 
-  absl::Status OnInit(google::api::expr::runtime::PlannerContext& context,
-                      const AstImpl& ast) override {
-    // Clean up const stack incase of failure in the middle of planning previous
-    // expression.
-    is_const_.clear();
-    return absl::OkStatus();
-  }
-
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
   absl::Status OnPostVisit(google::api::expr::runtime::PlannerContext& context,
@@ -528,10 +520,13 @@ void FoldConstants(
   constant_folder.Transform(ast, out_ast);
 }
 
-std::unique_ptr<google::api::expr::runtime::ProgramOptimizer>
+google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingExtension(google::protobuf::Arena* arena,
                                ConstantFoldingOptions options) {
-  return std::make_unique<ConstantFoldingExtension>(options.stack_limit, arena);
+  return [=](PlannerContext&, const AstImpl&) {
+    return std::make_unique<ConstantFoldingExtension>(options.stack_limit,
+                                                      arena);
+  };
 }
 
 }  // namespace cel::ast::internal

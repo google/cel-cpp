@@ -48,6 +48,7 @@ using ::google::api::expr::runtime::CreateConstValueStep;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
+using ::google::api::expr::runtime::ProgramOptimizerFactory;
 using ::google::api::expr::runtime::Resolver;
 using ::google::protobuf::Arena;
 using testing::SizeIs;
@@ -606,12 +607,13 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  std::unique_ptr<ProgramOptimizer> constant_folder =
+  ProgramOptimizerFactory constant_folder_factory =
       CreateConstantFoldingExtension(&arena, {kStackLimit});
 
   // Act
   // Issue the visitation calls.
-  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
   ASSERT_OK(constant_folder->OnPreVisit(context, call));
   ASSERT_OK(constant_folder->OnPreVisit(context, condition));
   ASSERT_OK(constant_folder->OnPostVisit(context, condition));
@@ -672,12 +674,13 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  std::unique_ptr<ProgramOptimizer> constant_folder =
+  ProgramOptimizerFactory constant_folder_factory =
       CreateConstantFoldingExtension(&arena, {kStackLimit});
 
   // Act
   // Issue the visitation calls.
-  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
   ASSERT_OK(constant_folder->OnPreVisit(context, call));
   ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
   ASSERT_OK(constant_folder->OnPostVisit(context, left_condition));
@@ -736,12 +739,13 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  std::unique_ptr<ProgramOptimizer> constant_folder =
+  ProgramOptimizerFactory constant_folder_factory =
       CreateConstantFoldingExtension(&arena, {kStackLimit});
 
   // Act
   // Issue the visitation calls.
-  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
   ASSERT_OK(constant_folder->OnPreVisit(context, call));
   ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
   ASSERT_OK(constant_folder->OnPostVisit(context, left_condition));
@@ -800,16 +804,12 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
 
   google::protobuf::Arena arena;
   constexpr int kStackLimit = 1;
-  std::unique_ptr<ProgramOptimizer> constant_folder =
+  ProgramOptimizerFactory constant_folder_factory =
       CreateConstantFoldingExtension(&arena, {kStackLimit});
 
-  // Act
-  // Issue the visitation calls in wrong order.
-  ASSERT_OK(constant_folder->OnPreVisit(context, call));
-  ASSERT_OK(constant_folder->OnPreVisit(context, left_condition));
-  ASSERT_OK(constant_folder->OnInit(context, ast_impl));
-
-  // ASSERT
+  // Act / Assert
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
   EXPECT_THAT(constant_folder->OnPostVisit(context, left_condition),
               StatusIs(absl::StatusCode::kInternal));
 }

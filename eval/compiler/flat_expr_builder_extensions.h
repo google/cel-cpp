@@ -22,9 +22,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_EXTENSIONS_H_
 
+#include <memory>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "base/ast.h"
 #include "base/ast_internal.h"
@@ -106,10 +108,6 @@ class ProgramOptimizer {
  public:
   virtual ~ProgramOptimizer() = default;
 
-  // Called once before program planning begins for the given AST.
-  virtual absl::Status OnInit(PlannerContext& context,
-                              const cel::ast::internal::AstImpl& ast) = 0;
-
   // Called before planning the given expr node.
   virtual absl::Status OnPreVisit(PlannerContext& context,
                                   const cel::ast::internal::Expr& node) = 0;
@@ -118,6 +116,19 @@ class ProgramOptimizer {
   virtual absl::Status OnPostVisit(PlannerContext& context,
                                    const cel::ast::internal::Expr& node) = 0;
 };
+
+// Type definition for ProgramOptimizer factories.
+//
+// The expression builder must remain thread compatible, but ProgramOptimizers
+// are often stateful for a given expression. To avoid requiring the optimizer
+// implementation to handle concurrent planning, the builder creates a new
+// instance per expression planned.
+//
+// The factory must be thread safe, but the returned instance may assume
+// it is called from a synchronous context.
+using ProgramOptimizerFactory =
+    absl::AnyInvocable<absl::StatusOr<std::unique_ptr<ProgramOptimizer>>(
+        PlannerContext&, const cel::ast::internal::AstImpl&) const>;
 
 }  // namespace google::api::expr::runtime
 
