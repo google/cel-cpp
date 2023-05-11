@@ -26,6 +26,7 @@
 #include "absl/strings/escaping.h"
 #include "absl/time/time.h"
 #include "base/memory.h"
+#include "base/type.h"
 #include "base/type_manager.h"
 #include "base/value.h"
 #include "base/value_factory.h"
@@ -737,24 +738,21 @@ TEST(ValueInterop, StructFromLegacy) {
   EXPECT_EQ(value->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->kind(), Kind::kStruct);
   EXPECT_EQ(value->type()->name(), "google.protobuf.Api");
-  EXPECT_THAT(value.As<StructValue>()->HasField(
-                  StructValue::HasFieldContext(type_manager),
-                  StructValue::FieldId("name")),
+  EXPECT_THAT(value.As<StructValue>()->HasFieldByName(
+                  StructValue::HasFieldContext(type_manager), "name"),
               IsOkAndHolds(Eq(true)));
-  EXPECT_THAT(
-      value.As<StructValue>()->HasField(
-          StructValue::HasFieldContext(type_manager), StructValue::FieldId(1)),
-      StatusIs(absl::StatusCode::kUnimplemented));
-  ASSERT_OK_AND_ASSIGN(auto value_name_field,
-                       value.As<StructValue>()->GetField(
-                           StructValue::GetFieldContext(value_factory),
-                           StructValue::FieldId("name")));
+  EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(
+                  StructValue::HasFieldContext(type_manager), 1),
+              StatusIs(absl::StatusCode::kUnimplemented));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_name_field,
+      value.As<StructValue>()->GetFieldByName(
+          StructValue::GetFieldContext(value_factory), "name"));
   ASSERT_TRUE(value_name_field->Is<StringValue>());
   EXPECT_EQ(value_name_field.As<StringValue>()->ToString(), "foo");
-  EXPECT_THAT(
-      value.As<StructValue>()->GetField(
-          StructValue::GetFieldContext(value_factory), StructValue::FieldId(1)),
-      StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_THAT(value.As<StructValue>()->GetFieldByNumber(
+                  StructValue::GetFieldContext(value_factory), 1),
+              StatusIs(absl::StatusCode::kUnimplemented));
   auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
       *value.As<base_internal::LegacyStructValue>());
   auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
@@ -830,6 +828,8 @@ TEST(ValueInterop, LegacyStructEquality) {
   EXPECT_EQ(lhs_value, rhs_value);
 }
 
+using ::cel::base_internal::FieldIdFactory;
+
 TEST(ValueInterop, LegacyStructNewFieldIteratorIds) {
   google::protobuf::Arena arena;
   extensions::ProtoMemoryManager memory_manager(&arena);
@@ -853,8 +853,8 @@ TEST(ValueInterop, LegacyStructNewFieldIteratorIds) {
   }
   EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
               StatusIs(absl::StatusCode::kFailedPrecondition));
-  std::set<StructType::FieldId> expected_ids = {StructType::FieldId("name"),
-                                                StructType::FieldId("version")};
+  std::set<StructType::FieldId> expected_ids = {
+      FieldIdFactory::Make("name"), FieldIdFactory::Make("version")};
   EXPECT_EQ(actual_ids, expected_ids);
 }
 

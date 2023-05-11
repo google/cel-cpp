@@ -37,6 +37,8 @@ namespace protobuf_internal {
 class ParsedProtoStructValue;
 }
 
+class ProtoStructTypeFieldIterator;
+
 class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
   static bool Is(const Type& type) {
@@ -71,6 +73,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
 
  private:
+  friend class ProtoStructTypeFieldIterator;
   friend class ProtoType;
   friend class ProtoTypeProvider;
   friend class ProtoStructValue;

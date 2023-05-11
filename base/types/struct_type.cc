@@ -128,8 +128,8 @@ absl::StatusOr<absl::optional<StructType::Field>> StructType::FindField(
 
 absl::StatusOr<StructType::FieldId> StructType::FieldIterator::NextId(
     TypeManager& type_manager) {
-  CEL_ASSIGN_OR_RETURN(auto name, NextName(type_manager));
-  return FieldId(name);
+  CEL_ASSIGN_OR_RETURN(auto field, Next(type_manager));
+  return field.id;
 }
 
 absl::StatusOr<absl::string_view> StructType::FieldIterator::NextName(

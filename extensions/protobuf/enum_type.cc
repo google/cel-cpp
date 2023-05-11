@@ -25,8 +25,6 @@
 
 namespace cel::extensions {
 
-namespace {
-
 class ProtoEnumTypeConstantIterator final : public EnumType::ConstantIterator {
  public:
   explicit ProtoEnumTypeConstantIterator(
@@ -42,15 +40,14 @@ class ProtoEnumTypeConstantIterator final : public EnumType::ConstantIterator {
           "EnumType::ConstantIterator::HasNext() returns false");
     }
     const auto* value = descriptor_.value(index_++);
-    return Constant(value->name(), value->number(), value);
+    return Constant(ProtoEnumType::MakeConstantId(value->number()),
+                    value->name(), value->number(), value);
   }
 
  private:
   const google::protobuf::EnumDescriptor& descriptor_;
   int index_ = 0;
 };
-
-}  // namespace
 
 absl::StatusOr<Handle<ProtoEnumType>> ProtoEnumType::Resolve(
     TypeManager& type_manager, const google::protobuf::EnumDescriptor& descriptor) {
@@ -80,7 +77,8 @@ ProtoEnumType::FindConstantByName(absl::string_view name) const {
     return absl::nullopt;
   }
   ABSL_ASSERT(value_desc->name() == name);
-  return Constant{value_desc->name(), value_desc->number(), value_desc};
+  return Constant(MakeConstantId(value_desc->number()), value_desc->name(),
+                  value_desc->number(), value_desc);
 }
 
 absl::StatusOr<absl::optional<ProtoEnumType::Constant>>
@@ -96,7 +94,8 @@ ProtoEnumType::FindConstantByNumber(int64_t number) const {
     return absl::nullopt;
   }
   ABSL_ASSERT(value_desc->number() == number);
-  return Constant{value_desc->name(), value_desc->number(), value_desc};
+  return Constant(MakeConstantId(value_desc->number()), value_desc->name(),
+                  value_desc->number(), value_desc);
 }
 
 absl::StatusOr<UniqueRef<EnumType::ConstantIterator>>

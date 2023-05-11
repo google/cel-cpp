@@ -130,6 +130,25 @@ class StructValue : public Value {
     Handle<Value> value;
   };
 
+ protected:
+  static FieldId MakeFieldId(absl::string_view name) {
+    return StructType::MakeFieldId(name);
+  }
+
+  static FieldId MakeFieldId(int64_t number) {
+    return StructType::MakeFieldId(number);
+  }
+
+  template <typename E>
+  static std::enable_if_t<
+      std::conjunction_v<
+          std::is_enum<E>,
+          std::is_convertible<std::underlying_type_t<E>, int64_t>>,
+      FieldId>
+  MakeFieldId(E e) {
+    return StructType::MakeFieldId(e);
+  }
+
  private:
   struct GetFieldVisitor;
   struct HasFieldVisitor;

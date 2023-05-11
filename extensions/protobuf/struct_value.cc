@@ -2211,7 +2211,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByName(
     const GetFieldContext& context, absl::string_view name) const {
   CEL_ASSIGN_OR_RETURN(
       auto field_type,
-      type()->FindField(context.value_factory().type_manager(), FieldId(name)));
+      type()->FindFieldByName(context.value_factory().type_manager(), name));
   if (ABSL_PREDICT_FALSE(!field_type)) {
     return interop_internal::CreateNoSuchFieldError(name);
   }
@@ -2221,8 +2221,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByName(
 absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByNumber(
     const GetFieldContext& context, int64_t number) const {
   CEL_ASSIGN_OR_RETURN(auto field_type,
-                       type()->FindField(context.value_factory().type_manager(),
-                                         FieldId(number)));
+                       type()->FindFieldByNumber(
+                           context.value_factory().type_manager(), number));
   if (ABSL_PREDICT_FALSE(!field_type)) {
     return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
   }
@@ -2619,8 +2619,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
 
 absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByName(
     const HasFieldContext& context, absl::string_view name) const {
-  CEL_ASSIGN_OR_RETURN(
-      auto field, type()->FindField(context.type_manager(), FieldId(name)));
+  CEL_ASSIGN_OR_RETURN(auto field,
+                       type()->FindFieldByName(context.type_manager(), name));
   if (ABSL_PREDICT_FALSE(!field.has_value())) {
     return interop_internal::CreateNoSuchFieldError(name);
   }
@@ -2630,7 +2630,7 @@ absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByName(
 absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByNumber(
     const HasFieldContext& context, int64_t number) const {
   CEL_ASSIGN_OR_RETURN(
-      auto field, type()->FindField(context.type_manager(), FieldId(number)));
+      auto field, type()->FindFieldByNumber(context.type_manager(), number));
   if (ABSL_PREDICT_FALSE(!field.has_value())) {
     return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
   }
@@ -2675,7 +2675,8 @@ class ParsedProtoStructValueFieldIterator final
     CEL_ASSIGN_OR_RETURN(auto value,
                          value_->GetField(context, std::move(type).value()));
     ++index_;
-    return Field(StructValue::FieldId(field->name()), std::move(value));
+    return Field(ParsedProtoStructValue::MakeFieldId(field->number()),
+                 std::move(value));
   }
 
   absl::StatusOr<StructValue::FieldId> NextId(
@@ -2685,7 +2686,7 @@ class ParsedProtoStructValueFieldIterator final
           "StructValue::FieldIterator::Next() called when "
           "StructValue::FieldIterator::HasNext() returns false");
     }
-    return StructValue::FieldId(fields_[index_++]->name());
+    return ParsedProtoStructValue::MakeFieldId(fields_[index_++]->number());
   }
 
  private:

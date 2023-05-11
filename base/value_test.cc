@@ -73,10 +73,10 @@ class TestEnumType final : public EnumType {
   absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override {
     if (name == "VALUE1") {
-      return Constant("VALUE1", 1);
+      return Constant(MakeConstantId(1), "VALUE1", 1);
     }
     if (name == "VALUE2") {
-      return Constant("VALUE2", 2);
+      return Constant(MakeConstantId(2), "VALUE2", 2);
     }
     return absl::nullopt;
   }
@@ -85,9 +85,9 @@ class TestEnumType final : public EnumType {
       int64_t number) const override {
     switch (number) {
       case 1:
-        return Constant("VALUE1", 1);
+        return Constant(MakeConstantId(1), "VALUE1", 1);
       case 2:
-        return Constant("VALUE2", 2);
+        return Constant(MakeConstantId(2), "VALUE2", 2);
       default:
         return absl::nullopt;
     }
@@ -228,13 +228,16 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
       TypeManager& type_manager, absl::string_view name) const override {
     if (name == "bool_field") {
-      return Field("bool_field", 0, type_manager.type_factory().GetBoolType());
+      return Field(MakeFieldId(0), "bool_field", 0,
+                   type_manager.type_factory().GetBoolType());
     } else if (name == "int_field") {
-      return Field("int_field", 1, type_manager.type_factory().GetIntType());
+      return Field(MakeFieldId(1), "int_field", 1,
+                   type_manager.type_factory().GetIntType());
     } else if (name == "uint_field") {
-      return Field("uint_field", 2, type_manager.type_factory().GetUintType());
+      return Field(MakeFieldId(2), "uint_field", 2,
+                   type_manager.type_factory().GetUintType());
     } else if (name == "double_field") {
-      return Field("double_field", 3,
+      return Field(MakeFieldId(3), "double_field", 3,
                    type_manager.type_factory().GetDoubleType());
     }
     return absl::nullopt;
@@ -244,15 +247,16 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
       TypeManager& type_manager, int64_t number) const override {
     switch (number) {
       case 0:
-        return Field("bool_field", 0,
+        return Field(MakeFieldId(0), "bool_field", 0,
                      type_manager.type_factory().GetBoolType());
       case 1:
-        return Field("int_field", 1, type_manager.type_factory().GetIntType());
+        return Field(MakeFieldId(1), "int_field", 1,
+                     type_manager.type_factory().GetIntType());
       case 2:
-        return Field("uint_field", 2,
+        return Field(MakeFieldId(2), "uint_field", 2,
                      type_manager.type_factory().GetUintType());
       case 3:
-        return Field("double_field", 3,
+        return Field(MakeFieldId(3), "double_field", 3,
                      type_manager.type_factory().GetDoubleType());
       default:
         return absl::nullopt;
@@ -2104,33 +2108,27 @@ TEST_P(StructValueTest, GetField) {
       auto struct_value,
       value_factory.CreateStructValue<TestStructValue>(struct_type));
   StructValue::GetFieldContext context(value_factory);
-  EXPECT_THAT(
-      struct_value->GetField(context, StructValue::FieldId("bool_field")),
-      IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
-  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(0)),
+  EXPECT_THAT(struct_value->GetFieldByName(context, "bool_field"),
               IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
-  EXPECT_THAT(
-      struct_value->GetField(context, StructValue::FieldId("int_field")),
-      IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
-  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(1)),
+  EXPECT_THAT(struct_value->GetFieldByNumber(context, 0),
+              IsOkAndHolds(Eq(value_factory.CreateBoolValue(false))));
+  EXPECT_THAT(struct_value->GetFieldByName(context, "int_field"),
               IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
-  EXPECT_THAT(
-      struct_value->GetField(context, StructValue::FieldId("uint_field")),
-      IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
-  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(2)),
+  EXPECT_THAT(struct_value->GetFieldByNumber(context, 1),
+              IsOkAndHolds(Eq(value_factory.CreateIntValue(0))));
+  EXPECT_THAT(struct_value->GetFieldByName(context, "uint_field"),
               IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
-  EXPECT_THAT(
-      struct_value->GetField(context, StructValue::FieldId("double_field")),
-      IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
-  EXPECT_THAT(struct_value->GetField(context, StructValue::FieldId(3)),
+  EXPECT_THAT(struct_value->GetFieldByNumber(context, 2),
+              IsOkAndHolds(Eq(value_factory.CreateUintValue(0))));
+  EXPECT_THAT(struct_value->GetFieldByName(context, "double_field"),
               IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
-  EXPECT_THAT(
-      struct_value->GetField(context, StructValue::FieldId("missing_field")),
-      StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(
-      struct_value->HasField(StructValue::HasFieldContext((type_manager)),
-                             StructValue::FieldId(4)),
-      StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->GetFieldByNumber(context, 3),
+              IsOkAndHolds(Eq(value_factory.CreateDoubleValue(0.0))));
+  EXPECT_THAT(struct_value->GetFieldByName(context, "missing_field"),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->HasFieldByNumber(
+                  StructValue::HasFieldContext((type_manager)), 4),
+              StatusIs(absl::StatusCode::kNotFound));
 }
 
 TEST_P(StructValueTest, HasField) {
@@ -2143,30 +2141,21 @@ TEST_P(StructValueTest, HasField) {
       auto struct_value,
       value_factory.CreateStructValue<TestStructValue>(struct_type));
   StructValue::HasFieldContext context(type_manager);
-  EXPECT_THAT(
-      struct_value->HasField(context, StructValue::FieldId("bool_field")),
-      IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(0)),
+  EXPECT_THAT(struct_value->HasFieldByName(context, "bool_field"),
               IsOkAndHolds(true));
-  EXPECT_THAT(
-      struct_value->HasField(context, StructValue::FieldId("int_field")),
-      IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(1)),
+  EXPECT_THAT(struct_value->HasFieldByNumber(context, 0), IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasFieldByName(context, "int_field"),
               IsOkAndHolds(true));
-  EXPECT_THAT(
-      struct_value->HasField(context, StructValue::FieldId("uint_field")),
-      IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(2)),
+  EXPECT_THAT(struct_value->HasFieldByNumber(context, 1), IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasFieldByName(context, "uint_field"),
               IsOkAndHolds(true));
-  EXPECT_THAT(
-      struct_value->HasField(context, StructValue::FieldId("double_field")),
-      IsOkAndHolds(true));
-  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(3)),
+  EXPECT_THAT(struct_value->HasFieldByNumber(context, 2), IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasFieldByName(context, "double_field"),
               IsOkAndHolds(true));
-  EXPECT_THAT(
-      struct_value->HasField(context, StructValue::FieldId("missing_field")),
-      StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_value->HasField(context, StructValue::FieldId(4)),
+  EXPECT_THAT(struct_value->HasFieldByNumber(context, 3), IsOkAndHolds(true));
+  EXPECT_THAT(struct_value->HasFieldByName(context, "missing_field"),
+              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_value->HasFieldByNumber(context, 4),
               StatusIs(absl::StatusCode::kNotFound));
 }
 
@@ -2475,8 +2464,6 @@ TEST(EnumValueTest, UnknownConstantDebugString) {
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(EnumValue::DebugString(*enum_type, 3), "test_enum.TestEnum(3)");
-  EXPECT_EQ(EnumValue::DebugString(*enum_type, EnumType::Constant("", 3)),
-            "test_enum.TestEnum(3)");
 }
 
 Handle<NullValue> DefaultNullValue(ValueFactory& value_factory) {

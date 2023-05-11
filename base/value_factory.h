@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -247,8 +248,8 @@ class ValueFactory final {
       const Handle<EnumType>& enum_type,
       int64_t number) ABSL_ATTRIBUTE_LIFETIME_BOUND {
     CEL_ASSIGN_OR_RETURN(auto constant,
-                         enum_type->FindConstant(EnumType::ConstantId(number)));
-    if (!constant.has_value()) {
+                         enum_type->FindConstantByNumber(number));
+    if (ABSL_PREDICT_FALSE(!constant.has_value())) {
       return absl::NotFoundError(absl::StrCat("no such enum number", number));
     }
     return base_internal::HandleFactory<EnumValue>::template Make<EnumValue>(
@@ -258,9 +259,8 @@ class ValueFactory final {
   absl::StatusOr<Handle<EnumValue>> CreateEnumValue(
       const Handle<EnumType>& enum_type,
       absl::string_view name) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    CEL_ASSIGN_OR_RETURN(auto constant,
-                         enum_type->FindConstant(EnumType::ConstantId(name)));
-    if (!constant.has_value()) {
+    CEL_ASSIGN_OR_RETURN(auto constant, enum_type->FindConstantByName(name));
+    if (ABSL_PREDICT_FALSE(!constant.has_value())) {
       return absl::NotFoundError(absl::StrCat("no such enum value", name));
     }
     return base_internal::HandleFactory<EnumValue>::template Make<EnumValue>(

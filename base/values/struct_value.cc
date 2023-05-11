@@ -136,8 +136,6 @@ absl::StatusOr<Handle<Value>> StructValue::FieldIterator::NextValue(
 
 namespace base_internal {
 
-namespace {
-
 class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
  public:
   LegacyStructValueFieldIterator(uintptr_t msg, uintptr_t type_info)
@@ -160,7 +158,7 @@ class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
                         msg_, type_info_, context.value_factory(), field_name,
                         context.unbox_null_wrapper_types()));
     ++index_;
-    return Field(StructValue::FieldId(field_name), std::move(value));
+    return Field(LegacyStructType::MakeFieldId(field_name), std::move(value));
   }
 
   absl::StatusOr<StructValue::FieldId> NextId(
@@ -170,7 +168,7 @@ class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
           "StructValue::FieldIterator::Next() called when "
           "StructValue::FieldIterator::HasNext() returns false");
     }
-    return StructValue::FieldId(field_names_[index_++]);
+    return LegacyStructType::MakeFieldId(field_names_[index_++]);
   }
 
  private:
@@ -179,8 +177,6 @@ class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
   const std::vector<absl::string_view> field_names_;
   size_t index_ = 0;
 };
-
-}  // namespace
 
 Handle<StructType> LegacyStructValue::type() const {
   if ((msg_ & kMessageWrapperTagMask) == kMessageWrapperTagMask) {

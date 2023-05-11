@@ -56,13 +56,14 @@ class TestEnumType final : public EnumType {
         "EnumType::NewConstantIterator is unimplemented");
   }
 
- protected:
   absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override {
     if (name == "VALUE1") {
-      return Constant("VALUE1", static_cast<int64_t>(TestEnum::kValue1));
+      return Constant(MakeConstantId(TestEnum::kValue1), "VALUE1",
+                      static_cast<int64_t>(TestEnum::kValue1));
     } else if (name == "VALUE2") {
-      return Constant("VALUE2", static_cast<int64_t>(TestEnum::kValue2));
+      return Constant(MakeConstantId(TestEnum::kValue2), "VALUE2",
+                      static_cast<int64_t>(TestEnum::kValue2));
     }
     return absl::nullopt;
   }
@@ -71,9 +72,11 @@ class TestEnumType final : public EnumType {
       int64_t number) const override {
     switch (number) {
       case 1:
-        return Constant("VALUE1", static_cast<int64_t>(TestEnum::kValue1));
+        return Constant(MakeConstantId(TestEnum::kValue1), "VALUE1",
+                        static_cast<int64_t>(TestEnum::kValue1));
       case 2:
-        return Constant("VALUE2", static_cast<int64_t>(TestEnum::kValue2));
+        return Constant(MakeConstantId(TestEnum::kValue2), "VALUE2",
+                        static_cast<int64_t>(TestEnum::kValue2));
       default:
         return absl::nullopt;
     }
@@ -104,17 +107,19 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
         "StructType::NewFieldIterator() is unimplemented");
   }
 
- protected:
   absl::StatusOr<absl::optional<Field>> FindFieldByName(
       TypeManager& type_manager, absl::string_view name) const override {
     if (name == "bool_field") {
-      return Field("bool_field", 0, type_manager.type_factory().GetBoolType());
+      return Field(MakeFieldId(0), "bool_field", 0,
+                   type_manager.type_factory().GetBoolType());
     } else if (name == "int_field") {
-      return Field("int_field", 1, type_manager.type_factory().GetIntType());
+      return Field(MakeFieldId(1), "int_field", 1,
+                   type_manager.type_factory().GetIntType());
     } else if (name == "uint_field") {
-      return Field("uint_field", 2, type_manager.type_factory().GetUintType());
+      return Field(MakeFieldId(2), "uint_field", 2,
+                   type_manager.type_factory().GetUintType());
     } else if (name == "double_field") {
-      return Field("double_field", 3,
+      return Field(MakeFieldId(3), "double_field", 3,
                    type_manager.type_factory().GetDoubleType());
     }
     return absl::nullopt;
@@ -124,15 +129,16 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
       TypeManager& type_manager, int64_t number) const override {
     switch (number) {
       case 0:
-        return Field("bool_field", 0,
+        return Field(MakeFieldId(0), "bool_field", 0,
                      type_manager.type_factory().GetBoolType());
       case 1:
-        return Field("int_field", 1, type_manager.type_factory().GetIntType());
+        return Field(MakeFieldId(1), "int_field", 1,
+                     type_manager.type_factory().GetIntType());
       case 2:
-        return Field("uint_field", 2,
+        return Field(MakeFieldId(2), "uint_field", 2,
                      type_manager.type_factory().GetUintType());
       case 3:
-        return Field("double_field", 3,
+        return Field(MakeFieldId(3), "double_field", 3,
                      type_manager.type_factory().GetDoubleType());
       default:
         return absl::nullopt;
@@ -502,29 +508,25 @@ TEST_P(EnumTypeTest, FindConstant) {
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
 
-  ASSERT_OK_AND_ASSIGN(auto value1,
-                       enum_type->FindConstant(EnumType::ConstantId("VALUE1")));
+  ASSERT_OK_AND_ASSIGN(auto value1, enum_type->FindConstantByName("VALUE1"));
   EXPECT_EQ(value1->name, "VALUE1");
   EXPECT_EQ(value1->number, 1);
 
-  ASSERT_OK_AND_ASSIGN(value1,
-                       enum_type->FindConstant(EnumType::ConstantId(1)));
+  ASSERT_OK_AND_ASSIGN(value1, enum_type->FindConstantByNumber(1));
   EXPECT_EQ(value1->name, "VALUE1");
   EXPECT_EQ(value1->number, 1);
 
-  ASSERT_OK_AND_ASSIGN(auto value2,
-                       enum_type->FindConstant(EnumType::ConstantId("VALUE2")));
+  ASSERT_OK_AND_ASSIGN(auto value2, enum_type->FindConstantByName("VALUE2"));
   EXPECT_EQ(value2->name, "VALUE2");
   EXPECT_EQ(value2->number, 2);
 
-  ASSERT_OK_AND_ASSIGN(value2,
-                       enum_type->FindConstant(EnumType::ConstantId(2)));
+  ASSERT_OK_AND_ASSIGN(value2, enum_type->FindConstantByNumber(2));
   EXPECT_EQ(value2->name, "VALUE2");
   EXPECT_EQ(value2->number, 2);
 
-  EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId("VALUE3")),
+  EXPECT_THAT(enum_type->FindConstantByName("VALUE3"),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId(3)),
+  EXPECT_THAT(enum_type->FindConstantByNumber(3),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 
@@ -542,61 +544,52 @@ TEST_P(StructTypeTest, FindField) {
       type_manager.type_factory().CreateStructType<TestStructType>());
 
   ASSERT_OK_AND_ASSIGN(
-      auto field1,
-      struct_type->FindField(type_manager, StructType::FieldId("bool_field")));
+      auto field1, struct_type->FindFieldByName(type_manager, "bool_field"));
   EXPECT_EQ(field1->name, "bool_field");
   EXPECT_EQ(field1->number, 0);
   EXPECT_EQ(field1->type, type_manager.type_factory().GetBoolType());
 
-  ASSERT_OK_AND_ASSIGN(
-      field1, struct_type->FindField(type_manager, StructType::FieldId(0)));
+  ASSERT_OK_AND_ASSIGN(field1, struct_type->FindFieldByNumber(type_manager, 0));
   EXPECT_EQ(field1->name, "bool_field");
   EXPECT_EQ(field1->number, 0);
   EXPECT_EQ(field1->type, type_manager.type_factory().GetBoolType());
 
-  ASSERT_OK_AND_ASSIGN(
-      auto field2,
-      struct_type->FindField(type_manager, StructType::FieldId("int_field")));
+  ASSERT_OK_AND_ASSIGN(auto field2,
+                       struct_type->FindFieldByName(type_manager, "int_field"));
+  EXPECT_EQ(field2->name, "int_field");
+  EXPECT_EQ(field2->number, 1);
+  EXPECT_EQ(field2->type, type_manager.type_factory().GetIntType());
+
+  ASSERT_OK_AND_ASSIGN(field2, struct_type->FindFieldByNumber(type_manager, 1));
   EXPECT_EQ(field2->name, "int_field");
   EXPECT_EQ(field2->number, 1);
   EXPECT_EQ(field2->type, type_manager.type_factory().GetIntType());
 
   ASSERT_OK_AND_ASSIGN(
-      field2, struct_type->FindField(type_manager, StructType::FieldId(1)));
-  EXPECT_EQ(field2->name, "int_field");
-  EXPECT_EQ(field2->number, 1);
-  EXPECT_EQ(field2->type, type_manager.type_factory().GetIntType());
+      auto field3, struct_type->FindFieldByName(type_manager, "uint_field"));
+  EXPECT_EQ(field3->name, "uint_field");
+  EXPECT_EQ(field3->number, 2);
+  EXPECT_EQ(field3->type, type_manager.type_factory().GetUintType());
 
-  ASSERT_OK_AND_ASSIGN(
-      auto field3,
-      struct_type->FindField(type_manager, StructType::FieldId("uint_field")));
+  ASSERT_OK_AND_ASSIGN(field3, struct_type->FindFieldByNumber(type_manager, 2));
   EXPECT_EQ(field3->name, "uint_field");
   EXPECT_EQ(field3->number, 2);
   EXPECT_EQ(field3->type, type_manager.type_factory().GetUintType());
 
   ASSERT_OK_AND_ASSIGN(
-      field3, struct_type->FindField(type_manager, StructType::FieldId(2)));
-  EXPECT_EQ(field3->name, "uint_field");
-  EXPECT_EQ(field3->number, 2);
-  EXPECT_EQ(field3->type, type_manager.type_factory().GetUintType());
-
-  ASSERT_OK_AND_ASSIGN(
-      auto field4, struct_type->FindField(type_manager,
-                                          StructType::FieldId("double_field")));
+      auto field4, struct_type->FindFieldByName(type_manager, "double_field"));
   EXPECT_EQ(field4->name, "double_field");
   EXPECT_EQ(field4->number, 3);
   EXPECT_EQ(field4->type, type_manager.type_factory().GetDoubleType());
 
-  ASSERT_OK_AND_ASSIGN(
-      field4, struct_type->FindField(type_manager, StructType::FieldId(3)));
+  ASSERT_OK_AND_ASSIGN(field4, struct_type->FindFieldByNumber(type_manager, 3));
   EXPECT_EQ(field4->name, "double_field");
   EXPECT_EQ(field4->number, 3);
   EXPECT_EQ(field4->type, type_manager.type_factory().GetDoubleType());
 
-  EXPECT_THAT(struct_type->FindField(type_manager,
-                                     StructType::FieldId("missing_field")),
+  EXPECT_THAT(struct_type->FindFieldByName(type_manager, "missing_field"),
               IsOkAndHolds(Eq(absl::nullopt)));
-  EXPECT_THAT(struct_type->FindField(type_manager, StructType::FieldId(4)),
+  EXPECT_THAT(struct_type->FindFieldByNumber(type_manager, 4),
               IsOkAndHolds(Eq(absl::nullopt)));
 }
 

@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
@@ -46,20 +47,40 @@ class EnumType : public Type, public base_internal::HeapData {
 
   class ConstantId final {
    public:
+    ConstantId() = delete;
+
+    ConstantId(const ConstantId&) = default;
+    ConstantId(ConstantId&&) = default;
+    ConstantId& operator=(const ConstantId&) = default;
+    ConstantId& operator=(ConstantId&&) = default;
+
+    std::string DebugString() const;
+
+    friend bool operator==(const ConstantId& lhs, const ConstantId& rhs) {
+      return lhs.data_ == rhs.data_;
+    }
+
+    friend bool operator<(const ConstantId& lhs, const ConstantId& rhs);
+
+    template <typename H>
+    friend H AbslHashValue(H state, const ConstantId& id) {
+      return H::combine(std::move(state), id.data_);
+    }
+
+    template <typename S>
+    friend void AbslStringify(S& sink, const ConstantId& id) {
+      sink.Append(id.DebugString());
+    }
+
+   private:
+    friend class EnumType;
+    friend class EnumValue;
+
     explicit ConstantId(absl::string_view name)
         : data_(absl::in_place_type<absl::string_view>, name) {}
 
     explicit ConstantId(int64_t number)
         : data_(absl::in_place_type<int64_t>, number) {}
-
-    ConstantId() = delete;
-
-    ConstantId(const ConstantId&) = default;
-    ConstantId& operator=(const ConstantId&) = default;
-
-   private:
-    friend class EnumType;
-    friend class EnumValue;
 
     absl::variant<absl::string_view, int64_t> data_;
   };
@@ -106,6 +127,25 @@ class EnumType : public Type, public base_internal::HeapData {
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
  protected:
+  static ConstantId MakeConstantId(absl::string_view name) {
+    return ConstantId(name);
+  }
+
+  static ConstantId MakeConstantId(int64_t number) {
+    return ConstantId(number);
+  }
+
+  template <typename E>
+  static std::enable_if_t<
+      std::conjunction_v<
+          std::is_enum<E>,
+          std::is_convertible<std::underlying_type_t<E>, int64_t>>,
+      ConstantId>
+  MakeConstantId(E e) {
+    return MakeConstantId(
+        static_cast<int64_t>(static_cast<std::underlying_type_t<E>>(e)));
+  }
+
   EnumType();
 
  private:
@@ -131,9 +171,13 @@ class EnumType : public Type, public base_internal::HeapData {
 // Constant describes a single value in an enumeration. All fields are valid so
 // long as EnumType is valid.
 struct EnumType::Constant final {
-  Constant(absl::string_view name, int64_t number, const void* hint = nullptr)
-      : name(name), number(number), hint(hint) {}
+  Constant(ConstantId id, absl::string_view name, int64_t number,
+           const void* hint = nullptr)
+      : id(id), name(name), number(number), hint(hint) {}
 
+  // Identifier which allows the most efficient form of lookup, compared to
+  // looking up by name or number.
+  ConstantId id;
   // The unqualified enumeration value name.
   absl::string_view name;
   // The enumeration value number.

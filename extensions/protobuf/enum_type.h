@@ -29,6 +29,8 @@ namespace cel::extensions {
 class ProtoType;
 class ProtoTypeProvider;
 
+class ProtoEnumTypeConstantIterator;
+
 class ProtoEnumType final : public EnumType {
  public:
   static bool Is(const Type& type) {
@@ -62,6 +64,7 @@ class ProtoEnumType final : public EnumType {
   const google::protobuf::EnumDescriptor& descriptor() const { return *descriptor_; }
 
  private:
+  friend class ProtoEnumTypeConstantIterator;
   friend class ProtoType;
   friend class ProtoTypeProvider;
   friend class cel::MemoryManager;

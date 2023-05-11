@@ -14,15 +14,56 @@
 
 #include "base/types/enum_type.h"
 
+#include <string>
+
 #include "absl/base/macros.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(EnumType);
+
+bool operator<(const EnumType::ConstantId& lhs,
+               const EnumType::ConstantId& rhs) {
+  return absl::visit(
+      internal::Overloaded{
+          [&rhs](absl::string_view lhs_name) {
+            return absl::visit(
+                internal::Overloaded{// (absl::string_view, absl::string_view)
+                                     [lhs_name](absl::string_view rhs_name) {
+                                       return lhs_name < rhs_name;
+                                     },
+                                     // (absl::string_view, int64_t)
+                                     [](int64_t rhs_number) { return false; }},
+                rhs.data_);
+          },
+          [&rhs](int64_t lhs_number) {
+            return absl::visit(
+                internal::Overloaded{
+                    // (int64_t, absl::string_view)
+                    [](absl::string_view rhs_name) { return true; },
+                    // (int64_t, int64_t)
+                    [lhs_number](int64_t rhs_number) {
+                      return lhs_number < rhs_number;
+                    },
+                },
+                rhs.data_);
+          }},
+      lhs.data_);
+}
+
+std::string EnumType::ConstantId::DebugString() const {
+  return absl::visit(
+      internal::Overloaded{
+          [](absl::string_view name) { return std::string(name); },
+          [](int64_t number) { return absl::StrCat(number); }},
+      data_);
+}
 
 EnumType::EnumType() : base_internal::HeapData(kKind) {
   // Ensure `Type*` and `base_internal::HeapData*` are not thunked.

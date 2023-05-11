@@ -123,8 +123,6 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToType(
 
 }  // namespace
 
-namespace {
-
 class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
  public:
   explicit ProtoStructTypeFieldIterator(const google::protobuf::Descriptor& descriptor)
@@ -141,8 +139,18 @@ class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
     const auto* field = descriptor_.field(index_);
     CEL_ASSIGN_OR_RETURN(auto type, FieldDescriptorToType(type_manager, field));
     ++index_;
-    return StructType::Field(field->name(), field->number(), std::move(type),
+    return StructType::Field(ProtoStructType::MakeFieldId(field->number()),
+                             field->name(), field->number(), std::move(type),
                              field);
+  }
+
+  absl::StatusOr<FieldId> NextId(TypeManager& type_manager) override {
+    if (ABSL_PREDICT_FALSE(index_ >= descriptor_.field_count())) {
+      return absl::FailedPreconditionError(
+          "StructType::FieldIterator::Next() called when "
+          "StructType::FieldIterator::HasNext() returns false");
+    }
+    return ProtoStructType::MakeFieldId(descriptor_.field(index_++)->number());
   }
 
   absl::StatusOr<absl::string_view> NextName(
@@ -169,8 +177,6 @@ class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
   int index_ = 0;
 };
 
-}  // namespace
-
 size_t ProtoStructType::field_count() const {
   return descriptor().field_count();
 }
@@ -189,8 +195,8 @@ ProtoStructType::FindFieldByName(TypeManager& type_manager,
   }
   CEL_ASSIGN_OR_RETURN(auto type,
                        FieldDescriptorToType(type_manager, field_desc));
-  return Field{field_desc->name(), field_desc->number(), std::move(type),
-               field_desc};
+  return Field(MakeFieldId(field_desc->number()), field_desc->name(),
+               field_desc->number(), std::move(type), field_desc);
 }
 
 absl::StatusOr<absl::optional<ProtoStructType::Field>>
@@ -208,8 +214,8 @@ ProtoStructType::FindFieldByNumber(TypeManager& type_manager,
   }
   CEL_ASSIGN_OR_RETURN(auto type,
                        FieldDescriptorToType(type_manager, field_desc));
-  return Field{field_desc->name(), field_desc->number(), std::move(type),
-               field_desc};
+  return Field(MakeFieldId(field_desc->number()), field_desc->name(),
+               field_desc->number(), std::move(type), field_desc);
 }
 
 }  // namespace cel::extensions

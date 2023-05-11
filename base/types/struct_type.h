@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
@@ -51,16 +52,12 @@ class StructType : public Type {
 
   class FieldId final {
    public:
-    explicit FieldId(absl::string_view name)
-        : data_(absl::in_place_type<absl::string_view>, name) {}
-
-    explicit FieldId(int64_t number)
-        : data_(absl::in_place_type<int64_t>, number) {}
-
     FieldId() = delete;
 
     FieldId(const FieldId&) = default;
+    FieldId(FieldId&&) = default;
     FieldId& operator=(const FieldId&) = default;
+    FieldId& operator=(FieldId&&) = default;
 
     std::string DebugString() const;
 
@@ -83,6 +80,13 @@ class StructType : public Type {
    private:
     friend class StructType;
     friend class StructValue;
+    friend struct base_internal::FieldIdFactory;
+
+    explicit FieldId(absl::string_view name)
+        : data_(absl::in_place_type<absl::string_view>, name) {}
+
+    explicit FieldId(int64_t number)
+        : data_(absl::in_place_type<int64_t>, number) {}
 
     absl::variant<absl::string_view, int64_t> data_;
   };
@@ -129,6 +133,22 @@ class StructType : public Type {
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+ protected:
+  static FieldId MakeFieldId(absl::string_view name) { return FieldId(name); }
+
+  static FieldId MakeFieldId(int64_t number) { return FieldId(number); }
+
+  template <typename E>
+  static std::enable_if_t<
+      std::conjunction_v<
+          std::is_enum<E>,
+          std::is_convertible<std::underlying_type_t<E>, int64_t>>,
+      FieldId>
+  MakeFieldId(E e) {
+    return MakeFieldId(
+        static_cast<int64_t>(static_cast<std::underlying_type_t<E>>(e)));
+  }
+
  private:
   friend internal::TypeInfo base_internal::GetStructTypeTypeId(
       const StructType& struct_type);
@@ -151,10 +171,13 @@ class StructType : public Type {
 // Field describes a single field in a struct. All fields are valid so long as
 // StructType is valid, except Field::type which is managed.
 struct StructType::Field final {
-  explicit Field(absl::string_view name, int64_t number, Handle<Type> type,
-                 const void* hint = nullptr)
-      : name(name), number(number), type(std::move(type)), hint(hint) {}
+  explicit Field(FieldId id, absl::string_view name, int64_t number,
+                 Handle<Type> type, const void* hint = nullptr)
+      : id(id), name(name), number(number), type(std::move(type)), hint(hint) {}
 
+  // Identifier which allows the most efficient form of lookup, compared to
+  // looking up by name or number.
+  FieldId id;
   // The field name.
   absl::string_view name;
   // The field number.
@@ -196,11 +219,12 @@ namespace base_internal {
 ABSL_ATTRIBUTE_WEAK absl::string_view MessageTypeName(uintptr_t msg);
 ABSL_ATTRIBUTE_WEAK size_t MessageTypeFieldCount(uintptr_t msg);
 
-class LegacyStructType final : public StructType,
-                               public base_internal::InlineData {
+class LegacyStructValueFieldIterator;
+
+class LegacyStructType final : public StructType, public InlineData {
  public:
   static bool Is(const Type& type) {
-    return type.kind() == kKind &&
+    return StructType::Is(type) &&
            static_cast<const StructType&>(type).TypeId() ==
                internal::TypeId<LegacyStructType>();
   }
@@ -234,17 +258,17 @@ class LegacyStructType final : public StructType,
 
  private:
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTrivial |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
+  friend class LegacyStructValueFieldIterator;
   friend struct interop_internal::LegacyStructTypeAccess;
   friend class cel::StructType;
-  friend class base_internal::LegacyStructValue;
+  friend class LegacyStructValue;
   template <size_t Size, size_t Align>
   friend class AnyData;
 
   explicit LegacyStructType(uintptr_t msg)
-      : StructType(), base_internal::InlineData(kMetadata), msg_(msg) {}
+      : StructType(), InlineData(kMetadata), msg_(msg) {}
 
   internal::TypeInfo TypeId() const {
     return internal::TypeId<LegacyStructType>();
@@ -255,10 +279,10 @@ class LegacyStructType final : public StructType,
   uintptr_t msg_;
 };
 
-class AbstractStructType : public StructType, public base_internal::HeapData {
+class AbstractStructType : public StructType, public HeapData {
  public:
   static bool Is(const Type& type) {
-    return type.kind() == kKind &&
+    return StructType::Is(type) &&
            static_cast<const StructType&>(type).TypeId() !=
                internal::TypeId<LegacyStructType>();
   }
@@ -293,14 +317,13 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
   AbstractStructType();
 
  private:
-  friend internal::TypeInfo base_internal::GetStructTypeTypeId(
-      const StructType& struct_type);
+  friend internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
   struct FindFieldVisitor;
 
   friend struct FindFieldVisitor;
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::TypeHandle;
+  friend class TypeHandle;
   friend class StructValue;
   friend class cel::StructType;
 
@@ -342,6 +365,17 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
 CEL_INTERNAL_TYPE_DECL(StructType);
 
 namespace base_internal {
+
+// This should be used for testing only, and is private.
+struct FieldIdFactory {
+  static StructType::FieldId Make(absl::string_view name) {
+    return StructType::FieldId(name);
+  }
+
+  static StructType::FieldId Make(int64_t number) {
+    return StructType::FieldId(number);
+  }
+};
 
 inline internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type) {
   return struct_type.TypeId();

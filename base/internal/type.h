@@ -44,6 +44,7 @@ class LegacyListType;
 class ModernListType;
 class LegacyMapType;
 class ModernMapType;
+struct FieldIdFactory;
 
 template <Kind K>
 class SimpleType;

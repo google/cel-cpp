@@ -75,8 +75,7 @@ TEST_P(ProtoEnumTypeTest, FindConstantByName) {
   ASSERT_OK_AND_ASSIGN(
       auto type,
       ProtoType::Resolve<google::protobuf::Field::Kind>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto constant,
-                       type->FindConstant(EnumType::ConstantId("TYPE_STRING")));
+  ASSERT_OK_AND_ASSIGN(auto constant, type->FindConstantByName("TYPE_STRING"));
   ASSERT_TRUE(constant.has_value());
   EXPECT_EQ(constant->number, 9);
   EXPECT_EQ(constant->name, "TYPE_STRING");
@@ -89,8 +88,7 @@ TEST_P(ProtoEnumTypeTest, FindConstantByNumber) {
   ASSERT_OK_AND_ASSIGN(
       auto type,
       ProtoType::Resolve<google::protobuf::Field::Kind>(type_manager));
-  ASSERT_OK_AND_ASSIGN(auto constant,
-                       type->FindConstant(EnumType::ConstantId(9)));
+  ASSERT_OK_AND_ASSIGN(auto constant, type->FindConstantByNumber(9));
   ASSERT_TRUE(constant.has_value());
   EXPECT_EQ(constant->number, 9);
   EXPECT_EQ(constant->name, "TYPE_STRING");

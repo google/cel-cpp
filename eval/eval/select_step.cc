@@ -88,11 +88,11 @@ class SelectStep : public ExpressionStepBase {
 
 absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
     const Handle<StructValue>& msg, ExecutionFrame* frame) const {
-  return msg->GetField(
+  return msg->GetFieldByName(
       StructValue::GetFieldContext(frame->value_factory())
           .set_unbox_null_wrapper_types(unboxing_option_ ==
                                         ProtoWrapperTypeOptions::kUnsetNull),
-      StructValue::FieldId(field_));
+      field_);
 }
 
 absl::optional<Handle<Value>> CheckForMarkedAttributes(
@@ -130,11 +130,10 @@ Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
                              const std::string& field,
                              cel::MemoryManager& memory_manager,
                              cel::TypeManager& type_manager) {
-  StructValue::FieldId field_id(field);
   Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
 
   absl::StatusOr<bool> result =
-      msg->HasField(StructValue::HasFieldContext(type_manager), field_id);
+      msg->HasFieldByName(StructValue::HasFieldContext(type_manager), field);
 
   if (!result.ok()) {
     return CreateErrorValueFromView(
