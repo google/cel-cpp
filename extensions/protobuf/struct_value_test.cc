@@ -880,914 +880,539 @@ TEST_P(ProtoStructValueTest, ValueGetField) {
       });
 }
 
-TEST_P(ProtoStructValueTest, NullValueListGetField) {
-  TypeFactory type_factory(memory_manager());
+void TestGetListField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
+        set_field_tester) {
+  TypeFactory type_factory(memory_manager);
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_null_value"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
+  ASSERT_OK_AND_ASSIGN(auto field,
+                       value_without->GetFieldByName(
+                           StructValue::GetFieldContext(value_factory), name));
+  ASSERT_TRUE(field->Is<ListValue>());
+  ASSERT_NO_FATAL_FAILURE(unset_field_tester(field.As<ListValue>()));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_null_value(NULL_VALUE);
-                           message.add_repeated_null_value(NULL_VALUE);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_null_value"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[null, null]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_TRUE(field_value->Is<NullValue>());
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_TRUE(field_value->Is<NullValue>());
+      ProtoValue::Create(value_factory, CreateTestMessage(test_message_maker)));
+  ASSERT_OK_AND_ASSIGN(field,
+                       value_with->GetFieldByName(
+                           StructValue::GetFieldContext(value_factory), name));
+  ASSERT_TRUE(field->Is<ListValue>());
+  ASSERT_NO_FATAL_FAILURE(
+      set_field_tester(value_factory, field.As<ListValue>()));
+}
+
+#define TEST_GET_LIST_FIELD(...) \
+  ASSERT_NO_FATAL_FAILURE(TestGetListField(__VA_ARGS__))
+
+void EmptyListFieldTester(const Handle<ListValue>& field) {
+  EXPECT_EQ(field->size(), 0);
+  EXPECT_TRUE(field->empty());
+  EXPECT_EQ(field->DebugString(), "[]");
+}
+
+TEST_P(ProtoStructValueTest, NullValueListGetField) {
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_null_value", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_null_value(NULL_VALUE);
+        message.add_repeated_null_value(NULL_VALUE);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[null, null]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_TRUE(field_value->Is<NullValue>());
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_TRUE(field_value->Is<NullValue>());
+      });
 }
 
 TEST_P(ProtoStructValueTest, BoolListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_bool"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_bool(true);
-                           message.add_repeated_bool(false);
-                         })));
-  ASSERT_OK_AND_ASSIGN(
-      field, value_with->GetFieldByName(
-                 StructValue::GetFieldContext(value_factory), "repeated_bool"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[true, false]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_TRUE(field_value.As<BoolValue>()->value());
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_FALSE(field_value.As<BoolValue>()->value());
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_bool", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_bool(true);
+        message.add_repeated_bool(false);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[true, false]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_TRUE(field_value.As<BoolValue>()->value());
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_FALSE(field_value.As<BoolValue>()->value());
+      });
 }
 
 TEST_P(ProtoStructValueTest, Int32ListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_int32"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int32(1);
-                           message.add_repeated_int32(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_int32"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1, 0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_int32", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_int32(1);
+        message.add_repeated_int32(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1, 0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, Int64ListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_int64"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int64(1);
-                           message.add_repeated_int64(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_int64"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1, 0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_int64", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_int64(1);
+        message.add_repeated_int64(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1, 0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, Uint32ListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_uint32"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint32(1);
-                           message.add_repeated_uint32(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_uint32"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_uint32", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_uint32(1);
+        message.add_repeated_uint32(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1u, 0u]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, Uint64ListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_uint64"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint64(1);
-                           message.add_repeated_uint64(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_uint64"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_uint64", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_uint64(1);
+        message.add_repeated_uint64(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1u, 0u]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, FloatListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_float"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_float(1.0);
-                           message.add_repeated_float(0.0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_float"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_float", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_float(1.0);
+        message.add_repeated_float(0.0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, DoubleListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_double"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_double(1.0);
-                           message.add_repeated_double(0.0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_double"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_double", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_double(1.0);
+        message.add_repeated_double(0.0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, BytesListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_bytes"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_bytes("foo");
-                           message.add_repeated_bytes("bar");
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_bytes"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_bytes", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_bytes("foo");
+        message.add_repeated_bytes("bar");
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
+      });
 }
 
 TEST_P(ProtoStructValueTest, StringListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_string"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_string("foo");
-                           message.add_repeated_string("bar");
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_string"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_string", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_string("foo");
+        message.add_repeated_string("bar");
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
+      });
 }
 
 TEST_P(ProtoStructValueTest, DurationListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_duration"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_duration()->set_seconds(1);
-                           message.add_repeated_duration()->set_seconds(2);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_duration"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1s, 2s]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(1));
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(2));
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_duration", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_duration()->set_seconds(1);
+        message.add_repeated_duration()->set_seconds(2);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1s, 2s]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(1));
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<DurationValue>()->value(), absl::Seconds(2));
+      });
 }
 
 TEST_P(ProtoStructValueTest, TimestampListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_timestamp"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_timestamp()->set_seconds(1);
-                           message.add_repeated_timestamp()->set_seconds(2);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_timestamp"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(),
-            "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<TimestampValue>()->value(),
-            absl::UnixEpoch() + absl::Seconds(1));
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<TimestampValue>()->value(),
-            absl::UnixEpoch() + absl::Seconds(2));
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_timestamp", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_timestamp()->set_seconds(1);
+        message.add_repeated_timestamp()->set_seconds(2);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(),
+                  "[1970-01-01T00:00:01Z, 1970-01-01T00:00:02Z]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<TimestampValue>()->value(),
+                  absl::UnixEpoch() + absl::Seconds(1));
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<TimestampValue>()->value(),
+                  absl::UnixEpoch() + absl::Seconds(2));
+      });
 }
 
 TEST_P(ProtoStructValueTest, EnumListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_nested_enum"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_nested_enum(TestAllTypes::FOO);
-                           message.add_repeated_nested_enum(TestAllTypes::BAR);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_nested_enum"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(),
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_nested_enum", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_nested_enum(TestAllTypes::FOO);
+        message.add_repeated_nested_enum(TestAllTypes::BAR);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(
+            field->DebugString(),
             "[google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.FOO, "
             "google.api.expr.test.v1.proto3.TestAllTypes.NestedEnum.BAR]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::FOO);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::BAR);
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::FOO);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<EnumValue>()->number(), TestAllTypes::BAR);
+      });
 }
 
 TEST_P(ProtoStructValueTest, StructListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_nested_message"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_nested_message()->set_bb(1);
-                           message.add_repeated_nested_message()->set_bb(2);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_nested_message"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(
-      field->DebugString(),
-      "[google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 1}, "
-      "google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{bb: 2}]");
-  TestAllTypes::NestedMessage message;
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  message.set_bb(1);
-  EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
-              EqualsProto(message));
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  message.set_bb(2);
-  EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
-              EqualsProto(message));
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_nested_message", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_nested_message()->set_bb(1);
+        message.add_repeated_nested_message()->set_bb(2);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(),
+                  "[google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{"
+                  "bb: 1}, "
+                  "google.api.expr.test.v1.proto3.TestAllTypes.NestedMessage{"
+                  "bb: 2}]");
+        TestAllTypes::NestedMessage message;
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        message.set_bb(1);
+        EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
+                    EqualsProto(message));
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        message.set_bb(2);
+        EXPECT_THAT(*field_value.As<ProtoStructValue>()->value(),
+                    EqualsProto(message));
+      });
 }
 
 TEST_P(ProtoStructValueTest, BoolWrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_bool_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(
-          value_factory, CreateTestMessage([](TestAllTypes& message) {
-            message.add_repeated_bool_wrapper()->set_value(true);
-            message.add_repeated_bool_wrapper()->set_value(false);
-          })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_bool_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[true, false]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_TRUE(field_value.As<BoolValue>()->value());
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_FALSE(field_value.As<BoolValue>()->value());
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_bool_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_bool_wrapper()->set_value(true);
+        message.add_repeated_bool_wrapper()->set_value(false);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[true, false]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_TRUE(field_value.As<BoolValue>()->value());
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_FALSE(field_value.As<BoolValue>()->value());
+      });
 }
 
 TEST_P(ProtoStructValueTest, Int32WrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_int32_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int32_wrapper()->set_value(1);
-                           message.add_repeated_int32_wrapper()->set_value(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_int32_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1, 0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_int32_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_int32_wrapper()->set_value(1);
+        message.add_repeated_int32_wrapper()->set_value(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1, 0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, Int64WrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_int64_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_int64_wrapper()->set_value(1);
-                           message.add_repeated_int64_wrapper()->set_value(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_int64_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1, 0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_int64_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_int64_wrapper()->set_value(1);
+        message.add_repeated_int64_wrapper()->set_value(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1, 0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<IntValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, Uint32WrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_uint32_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint32_wrapper()->set_value(1);
-                           message.add_repeated_uint32_wrapper()->set_value(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_uint32_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_uint32_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_uint32_wrapper()->set_value(1);
+        message.add_repeated_uint32_wrapper()->set_value(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1u, 0u]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, Uint64WrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_uint64_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_uint64_wrapper()->set_value(1);
-                           message.add_repeated_uint64_wrapper()->set_value(0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_uint64_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1u, 0u]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_uint64_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_uint64_wrapper()->set_value(1);
+        message.add_repeated_uint64_wrapper()->set_value(0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1u, 0u]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 1);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<UintValue>()->value(), 0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, FloatWrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_float_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage([](TestAllTypes& message) {
-                           message.add_repeated_float_wrapper()->set_value(1.0);
-                           message.add_repeated_float_wrapper()->set_value(0.0);
-                         })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_float_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_float_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_float_wrapper()->set_value(1.0);
+        message.add_repeated_float_wrapper()->set_value(0.0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, DoubleWrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_double_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(
-          value_factory, CreateTestMessage([](TestAllTypes& message) {
-            message.add_repeated_double_wrapper()->set_value(1.0);
-            message.add_repeated_double_wrapper()->set_value(0.0);
-          })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_double_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_double_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_double_wrapper()->set_value(1.0);
+        message.add_repeated_double_wrapper()->set_value(0.0);
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[1.0, 0.0]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 1.0);
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<DoubleValue>()->value(), 0.0);
+      });
 }
 
 TEST_P(ProtoStructValueTest, BytesWrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_bytes_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(
-          value_factory, CreateTestMessage([](TestAllTypes& message) {
-            message.add_repeated_bytes_wrapper()->set_value("foo");
-            message.add_repeated_bytes_wrapper()->set_value("bar");
-          })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_bytes_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_bytes_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_bytes_wrapper()->set_value("foo");
+        message.add_repeated_bytes_wrapper()->set_value("bar");
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[b\"foo\", b\"bar\"]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "foo");
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<BytesValue>()->ToString(), "bar");
+      });
 }
 
 TEST_P(ProtoStructValueTest, StringWrapperListGetField) {
-  TypeFactory type_factory(memory_manager());
-  ProtoTypeProvider type_provider;
-  TypeManager type_manager(type_factory, type_provider);
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto value_without,
-                       ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(
-      auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory),
-                                    "repeated_string_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 0);
-  EXPECT_TRUE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[]");
-  ASSERT_OK_AND_ASSIGN(
-      auto value_with,
-      ProtoValue::Create(
-          value_factory, CreateTestMessage([](TestAllTypes& message) {
-            message.add_repeated_string_wrapper()->set_value("foo");
-            message.add_repeated_string_wrapper()->set_value("bar");
-          })));
-  ASSERT_OK_AND_ASSIGN(field, value_with->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory),
-                                  "repeated_string_wrapper"));
-  EXPECT_TRUE(field->Is<ListValue>());
-  EXPECT_EQ(field.As<ListValue>()->size(), 2);
-  EXPECT_FALSE(field.As<ListValue>()->empty());
-  EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
-  ASSERT_OK_AND_ASSIGN(
-      auto field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 0));
-  EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
-  ASSERT_OK_AND_ASSIGN(
-      field_value,
-      field.As<ListValue>()->Get(ListValue::GetContext(value_factory), 1));
-  EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_string_wrapper", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        message.add_repeated_string_wrapper()->set_value("foo");
+        message.add_repeated_string_wrapper()->set_value("bar");
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 2);
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->DebugString(), "[\"foo\", \"bar\"]");
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_EQ(field_value.As<StringValue>()->ToString(), "foo");
+        ASSERT_OK_AND_ASSIGN(
+            field_value, field->Get(ListValue::GetContext(value_factory), 1));
+        EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
+      });
 }
 
 template <typename MutableMapField, typename Pair>
