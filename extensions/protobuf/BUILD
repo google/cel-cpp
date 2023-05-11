@@ -194,6 +194,7 @@ cc_test(
         "//base/testing:value_matchers",
         "//extensions/protobuf/internal:testing",
         "//internal:testing",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
