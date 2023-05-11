@@ -22,6 +22,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/functional/function_ref.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
@@ -92,26 +93,63 @@ T Must(absl::StatusOr<T> status_or) {
   return Must(std::move(status_or).value());
 }
 
-template <typename TestMessageMaker>
-void TestHasField(MemoryManager& memory_manager, absl::string_view name,
-                  TestMessageMaker&& test_message_maker, bool found = true) {
+int TestMessageFieldNameToNumber(absl::string_view name) {
+  const auto* descriptor = TestAllTypes::descriptor();
+  return ABSL_DIE_IF_NULL(descriptor->FindFieldByName(name))->number();
+}
+
+void TestHasFieldImpl(
+    MemoryManager& memory_manager,
+    absl::FunctionRef<absl::StatusOr<bool>(const Handle<StructValue>&,
+                                           const StructValue::HasFieldContext&)>
+        has_field,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker, bool found) {
   TypeFactory type_factory(memory_manager);
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  EXPECT_THAT(value_without->HasFieldByName(
-                  StructValue::HasFieldContext(type_manager), name),
-              IsOkAndHolds(Eq(false)));
+  EXPECT_THAT(
+      has_field(value_without, StructValue::HasFieldContext(type_manager)),
+      IsOkAndHolds(Eq(false)));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage(std::forward<TestMessageMaker>(
-                             test_message_maker))));
-  EXPECT_THAT(value_with->HasFieldByName(
-                  StructValue::HasFieldContext(type_manager), name),
+      ProtoValue::Create(value_factory, CreateTestMessage(test_message_maker)));
+  EXPECT_THAT(has_field(value_with, StructValue::HasFieldContext(type_manager)),
               IsOkAndHolds(Eq(found)));
+}
+
+void TestHasFieldByName(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker, bool found) {
+  TestHasFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::HasFieldContext& context) {
+        return value->HasFieldByName(context, name);
+      },
+      test_message_maker, found);
+}
+
+void TestHasFieldByNumber(
+    MemoryManager& memory_manager, int64_t number,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker, bool found) {
+  TestHasFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::HasFieldContext& context) {
+        return value->HasFieldByNumber(context, number);
+      },
+      test_message_maker, found);
+}
+
+void TestHasField(MemoryManager& memory_manager, absl::string_view name,
+                  absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+                  bool found = true) {
+  TestHasFieldByName(memory_manager, name, test_message_maker, found);
+  TestHasFieldByNumber(memory_manager, TestMessageFieldNameToNumber(name),
+                       test_message_maker, found);
 }
 
 #define TEST_HAS_FIELD(...) ASSERT_NO_FATAL_FAILURE(TestHasField(__VA_ARGS__))
@@ -428,8 +466,11 @@ TEST_P(ProtoStructValueTest, ValueListHasField) {
                  [](TestAllTypes& message) { message.add_repeated_value(); });
 }
 
-void TestGetField(
-    MemoryManager& memory_manager, absl::string_view name,
+void TestGetFieldImpl(
+    MemoryManager& memory_manager,
+    absl::FunctionRef<absl::StatusOr<Handle<Value>>(
+        const Handle<StructValue>&, const StructValue::GetFieldContext&)>
+        get_field,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -440,17 +481,60 @@ void TestGetField(
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(auto field,
-                       value_without->GetFieldByName(
-                           StructValue::GetFieldContext(value_factory), name));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      get_field(value_without, StructValue::GetFieldContext(value_factory)));
   ASSERT_NO_FATAL_FAILURE(unset_field_tester(field));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory, CreateTestMessage(test_message_maker)));
-  ASSERT_OK_AND_ASSIGN(field,
-                       value_with->GetFieldByName(
-                           StructValue::GetFieldContext(value_factory), name));
+  ASSERT_OK_AND_ASSIGN(
+      field,
+      get_field(value_with, StructValue::GetFieldContext(value_factory)));
   ASSERT_NO_FATAL_FAILURE(set_field_tester(value_factory, field));
+}
+
+void TestGetFieldByName(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByName(context, name);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetFieldByNumber(
+    MemoryManager& memory_manager, int64_t number,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByNumber(context, number);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetFieldByName(memory_manager, name, unset_field_tester,
+                     test_message_maker, set_field_tester);
+  TestGetFieldByNumber(memory_manager, TestMessageFieldNameToNumber(name),
+                       unset_field_tester, test_message_maker,
+                       set_field_tester);
 }
 
 void TestGetField(
@@ -661,12 +745,15 @@ TEST_P(ProtoStructValueTest, MessageGetField) {
       });
 }
 
-template <typename TestMessageMaker, typename UnsetFieldTester,
-          typename SetFieldTester>
-void TestGetWrapperField(MemoryManager& memory_manager, absl::string_view name,
-                         UnsetFieldTester&& unset_field_tester,
-                         TestMessageMaker&& test_message_maker,
-                         SetFieldTester&& set_field_tester) {
+void TestGetWrapperFieldImpl(
+    MemoryManager& memory_manager,
+    absl::FunctionRef<absl::StatusOr<Handle<Value>>(
+        const Handle<StructValue>&, const StructValue::GetFieldContext&)>
+        get_field,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
   TypeFactory type_factory(memory_manager);
   ProtoTypeProvider type_provider;
   TypeManager type_manager(type_factory, type_provider);
@@ -675,26 +762,76 @@ void TestGetWrapperField(MemoryManager& memory_manager, absl::string_view name,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
   ASSERT_OK_AND_ASSIGN(
       auto field,
-      value_without->GetFieldByName(StructValue::GetFieldContext(value_factory)
-                                        .set_unbox_null_wrapper_types(true),
-                                    name));
+      get_field(value_without, StructValue::GetFieldContext(value_factory)
+                                   .set_unbox_null_wrapper_types(true)));
   EXPECT_TRUE(field->Is<NullValue>());
-  ASSERT_OK_AND_ASSIGN(field, value_without->GetFieldByName(
-                                  StructValue::GetFieldContext(value_factory)
-                                      .set_unbox_null_wrapper_types(false),
-                                  name));
-  ASSERT_NO_FATAL_FAILURE(
-      (std::forward<UnsetFieldTester>(unset_field_tester)(field)));
+  ASSERT_OK_AND_ASSIGN(
+      field,
+      get_field(value_without, StructValue::GetFieldContext(value_factory)
+                                   .set_unbox_null_wrapper_types(false)));
+  ASSERT_NO_FATAL_FAILURE(unset_field_tester(field));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
-      ProtoValue::Create(value_factory,
-                         CreateTestMessage(std::forward<TestMessageMaker>(
-                             test_message_maker))));
-  ASSERT_OK_AND_ASSIGN(field,
-                       value_with->GetFieldByName(
-                           StructValue::GetFieldContext(value_factory), name));
-  ASSERT_NO_FATAL_FAILURE(
-      (std::forward<SetFieldTester>(set_field_tester)(field)));
+      ProtoValue::Create(value_factory, CreateTestMessage(test_message_maker)));
+  ASSERT_OK_AND_ASSIGN(
+      field,
+      get_field(value_with, StructValue::GetFieldContext(value_factory)));
+  ASSERT_NO_FATAL_FAILURE(set_field_tester(value_factory, field));
+}
+
+void TestGetWrapperFieldByName(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetWrapperFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByName(context, name);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetWrapperFieldByNumber(
+    MemoryManager& memory_manager, int64_t number,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetWrapperFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByNumber(context, number);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetWrapperField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetWrapperFieldByName(memory_manager, name, unset_field_tester,
+                            test_message_maker, set_field_tester);
+  TestGetWrapperFieldByNumber(
+      memory_manager, TestMessageFieldNameToNumber(name), unset_field_tester,
+      test_message_maker, set_field_tester);
+}
+
+void TestGetWrapperField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(const Handle<Value>&)> set_field_tester) {
+  TestGetWrapperField(
+      memory_manager, name, unset_field_tester, test_message_maker,
+      [&](ValueFactory& value_factory, const Handle<Value>& field) {
+        set_field_tester(field);
+      });
 }
 
 #define TEST_GET_WRAPPER_FIELD(...) \
@@ -880,8 +1017,11 @@ TEST_P(ProtoStructValueTest, ValueGetField) {
       });
 }
 
-void TestGetListField(
-    MemoryManager& memory_manager, absl::string_view name,
+void TestGetListFieldImpl(
+    MemoryManager& memory_manager,
+    absl::FunctionRef<absl::StatusOr<Handle<Value>>(
+        const Handle<StructValue>&, const StructValue::GetFieldContext&)>
+        get_field,
     absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
@@ -892,20 +1032,63 @@ void TestGetListField(
   ValueFactory value_factory(type_manager);
   ASSERT_OK_AND_ASSIGN(auto value_without,
                        ProtoValue::Create(value_factory, CreateTestMessage()));
-  ASSERT_OK_AND_ASSIGN(auto field,
-                       value_without->GetFieldByName(
-                           StructValue::GetFieldContext(value_factory), name));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      get_field(value_without, StructValue::GetFieldContext(value_factory)));
   ASSERT_TRUE(field->Is<ListValue>());
   ASSERT_NO_FATAL_FAILURE(unset_field_tester(field.As<ListValue>()));
   ASSERT_OK_AND_ASSIGN(
       auto value_with,
       ProtoValue::Create(value_factory, CreateTestMessage(test_message_maker)));
-  ASSERT_OK_AND_ASSIGN(field,
-                       value_with->GetFieldByName(
-                           StructValue::GetFieldContext(value_factory), name));
+  ASSERT_OK_AND_ASSIGN(
+      field,
+      get_field(value_with, StructValue::GetFieldContext(value_factory)));
   ASSERT_TRUE(field->Is<ListValue>());
   ASSERT_NO_FATAL_FAILURE(
       set_field_tester(value_factory, field.As<ListValue>()));
+}
+
+void TestGetListFieldByName(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
+        set_field_tester) {
+  TestGetListFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByName(context, name);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetListFieldByNumber(
+    MemoryManager& memory_manager, int64_t number,
+    absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
+        set_field_tester) {
+  TestGetListFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByNumber(context, number);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetListField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<ListValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<ListValue>&)>
+        set_field_tester) {
+  TestGetListFieldByName(memory_manager, name, unset_field_tester,
+                         test_message_maker, set_field_tester);
+  TestGetListFieldByNumber(memory_manager, TestMessageFieldNameToNumber(name),
+                           unset_field_tester, test_message_maker,
+                           set_field_tester);
 }
 
 #define TEST_GET_LIST_FIELD(...) \
