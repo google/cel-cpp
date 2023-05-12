@@ -21,6 +21,7 @@
 
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -59,11 +60,15 @@ class MapType : public Type {
   const Handle<Type>& value() const;
 
  private:
+  friend class Type;
   friend class MemoryManager;
   friend class TypeFactory;
   friend class base_internal::TypeHandle;
   friend class base_internal::LegacyMapType;
   friend class base_internal::ModernMapType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 
   MapType() = default;
 };

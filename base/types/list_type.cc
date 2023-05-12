@@ -19,12 +19,23 @@
 
 #include "absl/base/macros.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/types/dyn_type.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(ListType);
+
+absl::Span<const absl::string_view> ListType::aliases() const {
+  if (element()->kind() == Kind::kDyn) {
+    // Currently google.protobuf.ListValue resolves to list<dyn>.
+    return absl::MakeConstSpan(
+        {absl::string_view("google.protobuf.ListValue")});
+  }
+  return absl::Span<const absl::string_view>();
+}
 
 std::string ListType::DebugString() const {
   return absl::StrCat(name(), "(", element()->DebugString(), ")");

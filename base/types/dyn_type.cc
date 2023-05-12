@@ -14,8 +14,16 @@
 
 #include "base/types/dyn_type.h"
 
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(DynType);
+
+absl::Span<const absl::string_view> DynType::aliases() const {
+  // Currently google.protobuf.Value also resolves to dyn.
+  return absl::MakeConstSpan({absl::string_view("google.protobuf.Value")});
+}
 
 }  // namespace cel

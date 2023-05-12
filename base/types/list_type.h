@@ -21,6 +21,7 @@
 
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -55,11 +56,15 @@ class ListType : public Type {
   }
 
  private:
+  friend class Type;
   friend class MemoryManager;
   friend class TypeFactory;
   friend class base_internal::TypeHandle;
   friend class base_internal::LegacyListType;
   friend class base_internal::ModernListType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 
   ListType() = default;
 };

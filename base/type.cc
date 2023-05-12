@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/base/optimization.h"
+#include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/any_type.h"
 #include "base/types/bool_type.h"
@@ -89,6 +90,20 @@ absl::string_view Type::name() const {
       return static_cast<const OpaqueType*>(this)->name();
     default:
       return "*unreachable*";
+  }
+}
+
+absl::Span<const absl::string_view> Type::aliases() const {
+  switch (kind()) {
+    case Kind::kDyn:
+      return static_cast<const DynType*>(this)->aliases();
+    case Kind::kList:
+      return static_cast<const ListType*>(this)->aliases();
+    case Kind::kMap:
+      return static_cast<const MapType*>(this)->aliases();
+    default:
+      // Everything else does not support aliases.
+      return absl::Span<const absl::string_view>();
   }
 }
 

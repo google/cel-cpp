@@ -16,6 +16,8 @@
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_DYN_TYPE_H_
 
 #include "absl/log/absl_check.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -46,8 +48,12 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
   using Base::DebugString;
 
  private:
+  friend class Type;
   friend class base_internal::LegacyListType;
   friend class base_internal::LegacyMapType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DynType, DynValue);
 };

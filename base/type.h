@@ -24,6 +24,7 @@
 #include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/type.h"  // IWYU pragma: export
@@ -90,6 +91,7 @@ class Type : public base_internal::Data {
   }
 
  private:
+  friend class TypeManager;
   friend class EnumType;
   friend class StructType;
   friend class ListType;
@@ -99,6 +101,11 @@ class Type : public base_internal::Data {
   friend class WrapperType;
   friend class base_internal::TypeHandle;
   friend class OpaqueType;
+
+  // This is used by TypeManager to determine whether a type has any known
+  // aliases. This is currently only used for JSON-like types. Pretend this
+  // doesn't exist.
+  absl::Span<const absl::string_view> aliases() const;
 
   static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
 

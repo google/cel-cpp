@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPE_MANAGER_H_
 
-#include <string>
-
 #include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
@@ -52,6 +50,11 @@ class TypeManager final {
       absl::string_view name);
 
  private:
+  Handle<Type> CacheType(absl::string_view name, Handle<Type>&& type);
+
+  Handle<Type> CacheTypeWithAliases(absl::string_view name,
+                                    Handle<Type>&& type);
+
   TypeFactory& type_factory_;
   TypeProvider& type_provider_;
 
