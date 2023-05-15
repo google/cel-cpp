@@ -102,7 +102,8 @@ struct RegisterEnumDescriptorTestT {
     // Portable version doesn't support registering at this time.
     CelTypeRegistry registry;
 
-    EXPECT_THAT(registry.Enums(), IsEmpty());
+    EXPECT_THAT(registry.ListResolveableEnums(),
+                UnorderedElementsAre("google.protobuf.NullValue"));
   }
 };
 
@@ -114,14 +115,10 @@ struct RegisterEnumDescriptorTestT<
     CelTypeRegistry registry;
     registry.Register(google::protobuf::GetEnumDescriptor<TestMessage::TestEnum>());
 
-    absl::flat_hash_set<std::string> enum_set;
-    for (auto enum_desc : registry.Enums()) {
-      enum_set.insert(enum_desc->full_name());
-    }
-    absl::flat_hash_set<std::string> expected_set{
-        "google.protobuf.NullValue",
-        "google.api.expr.runtime.TestMessage.TestEnum"};
-    EXPECT_THAT(enum_set, Eq(expected_set));
+    EXPECT_THAT(
+        registry.ListResolveableEnums(),
+        UnorderedElementsAre("google.protobuf.NullValue",
+                             "google.api.expr.runtime.TestMessage.TestEnum"));
 
     EXPECT_THAT(
         registry.resolveable_enums(),

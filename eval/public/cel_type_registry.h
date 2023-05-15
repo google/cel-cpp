@@ -89,6 +89,7 @@ class CelTypeRegistry {
       absl::string_view fully_qualified_type_name) const;
 
   // Return the set of enums configured within the type registry.
+  ABSL_DEPRECATED("Use GetRegisteredEnums to validate RegisterEnum calls.")
   inline const absl::flat_hash_set<const google::protobuf::EnumDescriptor*>& Enums()
       const {
     return enums_;
@@ -99,6 +100,23 @@ class CelTypeRegistry {
   const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
   resolveable_enums() const {
     return resolveable_enums_;
+  }
+
+  // Return the registered enums configured within the type registry.
+  //
+  // This is provided for validating registry setup, it should not be used
+  // internally.
+  //
+  // Invalidated whenever registered enums are updated.
+  absl::flat_hash_set<absl::string_view> ListResolveableEnums() const {
+    absl::flat_hash_set<absl::string_view> result;
+    result.reserve(resolveable_enums_.size());
+
+    for (const auto& entry : resolveable_enums_) {
+      result.insert(entry.first);
+    }
+
+    return result;
   }
 
  private:
