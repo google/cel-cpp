@@ -279,7 +279,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
           reference_map,
       google::api::expr::runtime::ExecutionPath* path,
       google::api::expr::runtime::BuilderWarnings* warnings,
-      google::protobuf::Arena* arena, PlannerContext::ProgramTree& program_tree,
+      PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
         execution_path_(path),
@@ -295,7 +295,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         builder_warnings_(warnings),
         regex_program_builder_(options_.regex_max_program_size),
         reference_map_(reference_map),
-        arena_(arena),
         program_tree_(program_tree),
         extension_context_(extension_context) {}
 
@@ -870,7 +869,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>* const
       reference_map_;
 
-  google::protobuf::Arena* const arena_;
   PlannerContext::ProgramTree& program_tree_;
   PlannerContext extension_context_;
 };
@@ -1327,18 +1325,16 @@ FlatExprBuilder::CreateExpressionImpl(
     effective_expr = &const_fold_buffer;
   }
 
-  auto arena = std::make_unique<google::protobuf::Arena>();
-
   std::vector<std::unique_ptr<ProgramOptimizer>> optimizers;
   for (const ProgramOptimizerFactory& optimizer_factory : program_optimizers_) {
     CEL_ASSIGN_OR_RETURN(optimizers.emplace_back(),
                          optimizer_factory(extension_context, ast_impl));
   }
-  FlatExprVisitor visitor(
-      resolver, options_, constant_idents,
-      enable_comprehension_vulnerability_check_, enable_regex_precompilation_,
-      optimizers, &ast_impl.reference_map(), &execution_path, &warnings_builder,
-      arena.get(), program_tree, extension_context);
+  FlatExprVisitor visitor(resolver, options_, constant_idents,
+                          enable_comprehension_vulnerability_check_,
+                          enable_regex_precompilation_, optimizers,
+                          &ast_impl.reference_map(), &execution_path,
+                          &warnings_builder, program_tree, extension_context);
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 
@@ -1346,15 +1342,9 @@ FlatExprBuilder::CreateExpressionImpl(
     return visitor.progress_status();
   }
 
-  if (arena->SpaceUsed() == 0) {
-    // No space in the arena was used, delete it.
-    arena.reset();
-  }
-
   std::unique_ptr<CelExpression> expression_impl =
       std::make_unique<CelExpressionFlatImpl>(std::move(execution_path),
-                                              GetTypeRegistry(), options_,
-                                              std::move(arena));
+                                              GetTypeRegistry(), options_);
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

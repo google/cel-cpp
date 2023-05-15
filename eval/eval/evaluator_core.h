@@ -286,10 +286,8 @@ class CelExpressionFlatImpl : public CelExpression {
   // bound).
   CelExpressionFlatImpl(ExecutionPath path,
                         const CelTypeRegistry* type_registry,
-                        const cel::RuntimeOptions& options,
-                        std::unique_ptr<const google::protobuf::Arena> arena = nullptr)
-      : arena_(std::move(arena)),
-        path_(std::move(path)),
+                        const cel::RuntimeOptions& options)
+      : path_(std::move(path)),
         type_registry_(*type_registry),
         options_(options) {}
 
@@ -321,8 +319,6 @@ class CelExpressionFlatImpl : public CelExpression {
                                  CelEvaluationListener callback) const override;
 
  private:
-  // Arena used while building the expression, must live as long.
-  const std::unique_ptr<const google::protobuf::Arena> arena_;
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
   cel::RuntimeOptions options_;
