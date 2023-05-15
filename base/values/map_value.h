@@ -210,7 +210,7 @@ class LegacyMapValue final : public MapValue, public InlineData {
   friend class base_internal::ValueHandle;
   friend class cel::MapValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);

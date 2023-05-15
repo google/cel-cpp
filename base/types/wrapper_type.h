@@ -117,7 +117,7 @@ class BoolWrapperType final : public WrapperType {
  private:
   friend class TypeFactory;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<BoolWrapperType>& Get();
 
@@ -154,7 +154,7 @@ class BytesWrapperType final : public WrapperType {
  private:
   friend class TypeFactory;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<BytesWrapperType>& Get();
 
@@ -191,7 +191,7 @@ class DoubleWrapperType final : public WrapperType {
  private:
   friend class TypeFactory;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<DoubleWrapperType>& Get();
 
@@ -228,7 +228,7 @@ class IntWrapperType final : public WrapperType {
  private:
   friend class TypeFactory;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<IntWrapperType>& Get();
 
@@ -265,7 +265,7 @@ class StringWrapperType final : public WrapperType {
  private:
   friend class TypeFactory;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<StringWrapperType>& Get();
 
@@ -302,7 +302,7 @@ class UintWrapperType final : public WrapperType {
  private:
   friend class TypeFactory;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<UintWrapperType>& Get();
 

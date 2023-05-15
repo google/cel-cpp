@@ -323,7 +323,7 @@ CEL_INTERNAL_VALUE_DECL(Value);
   friend class ValueFactory;                            \
   friend class base_internal::ValueHandle;              \
   template <size_t Size, size_t Align>                  \
-  friend class base_internal::AnyData;                  \
+  friend struct base_internal::AnyData;                 \
                                                         \
   value_class() = default;                              \
   value_class(const value_class&) = default;            \

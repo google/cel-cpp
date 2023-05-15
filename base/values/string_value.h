@@ -136,7 +136,7 @@ class InlinedCordStringValue final : public StringValue, public InlineData {
   friend class StringValue;
   friend class ValueFactory;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | AsInlineVariant(InlinedStringValueVariant::kCord) |
@@ -160,7 +160,7 @@ class InlinedStringViewStringValue final : public StringValue,
  private:
   friend class StringValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);

@@ -68,7 +68,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
  private:
   friend class base_internal::ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |

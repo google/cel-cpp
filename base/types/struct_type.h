@@ -265,7 +265,7 @@ class LegacyStructType final : public StructType, public InlineData {
   friend class cel::StructType;
   friend class LegacyStructValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   explicit LegacyStructType(uintptr_t msg)
       : StructType(), InlineData(kMetadata), msg_(msg) {}

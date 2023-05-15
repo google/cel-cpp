@@ -262,7 +262,7 @@ class LegacyStructValue final : public StructValue, public InlineData {
   friend class base_internal::ValueHandle;
   friend class cel::StructValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
   friend struct interop_internal::LegacyStructValueAccess;
 
   static constexpr uintptr_t kMetadata =

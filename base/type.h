@@ -375,7 +375,7 @@ CEL_INTERNAL_TYPE_DECL(Type);
   template <typename T, typename U>                                    \
   friend class base_internal::SimpleValue;                             \
   template <size_t Size, size_t Align>                                 \
-  friend class base_internal::AnyData;                                 \
+  friend struct base_internal::AnyData;                                \
                                                                        \
   ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<type_class>& Get(); \
                                                                        \

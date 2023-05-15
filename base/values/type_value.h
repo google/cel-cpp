@@ -56,7 +56,7 @@ class TypeValue : public Value {
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
   friend class base_internal::LegacyTypeValue;
   friend class base_internal::ModernTypeValue;
 
@@ -78,7 +78,7 @@ class LegacyTypeValue final : public TypeValue, InlineData {
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
@@ -103,7 +103,7 @@ class ModernTypeValue final : public TypeValue, InlineData {
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);

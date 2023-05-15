@@ -180,7 +180,7 @@ class LegacyListValue final : public ListValue, public InlineData {
   friend class base_internal::ValueHandle;
   friend class cel::ListValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);

@@ -121,7 +121,7 @@ class InlinedCordBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | AsInlineVariant(InlinedBytesValueVariant::kCord) |
@@ -144,7 +144,7 @@ class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);

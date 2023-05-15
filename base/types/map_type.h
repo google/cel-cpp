@@ -92,7 +92,7 @@ class LegacyMapType final : public MapType, public InlineData {
   friend class cel::MapType;
   friend class base_internal::TypeHandle;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline | base_internal::kTrivial |

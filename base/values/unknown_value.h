@@ -54,7 +54,7 @@ class UnknownValue final : public Value, public base_internal::InlineData {
  private:
   friend class ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
   friend struct interop_internal::UnknownValueAccess;
 
   static constexpr uintptr_t kMetadata =
