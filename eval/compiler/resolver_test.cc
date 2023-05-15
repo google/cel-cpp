@@ -80,14 +80,14 @@ TEST(ResolverTest, TestFindConstantEnum) {
                     func_registry.InternalGetRegistry(), &type_registry);
 
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
-  EXPECT_TRUE(enum_value);
-  EXPECT_TRUE(enum_value->Is<IntValue>());
+  ASSERT_TRUE(enum_value);
+  ASSERT_TRUE(enum_value->Is<IntValue>());
   EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
-  EXPECT_TRUE(enum_value);
-  EXPECT_TRUE(enum_value->Is<IntValue>());
+  ASSERT_TRUE(enum_value);
+  ASSERT_TRUE(enum_value->Is<IntValue>());
   EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(2L));
 }
 

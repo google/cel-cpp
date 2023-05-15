@@ -2,18 +2,23 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "base/values/enum_value.h"
 #include "eval/internal/interop.h"
+#include "eval/public/cel_type_registry.h"
 #include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
 
+using ::cel::EnumType;
 using ::cel::Handle;
+using ::cel::MemoryManager;
 using ::cel::Value;
 using ::cel::interop_internal::CreateIntValue;
 
@@ -43,23 +48,39 @@ Resolver::Resolver(absl::string_view container,
   }
 
   for (const auto& prefix : namespace_prefixes_) {
-    for (auto iter = type_registry->enums_map().begin();
-         iter != type_registry->enums_map().end(); ++iter) {
+    for (auto iter = type_registry->resolveable_enums().begin();
+         iter != type_registry->resolveable_enums().end(); ++iter) {
       absl::string_view enum_name = iter->first;
       if (!absl::StartsWith(enum_name, prefix)) {
         continue;
       }
 
       auto remainder = absl::StripPrefix(enum_name, prefix);
-      for (const auto& enumerator : iter->second) {
+      const Handle<EnumType>& enum_type = iter->second;
+
+      absl::StatusOr<cel::UniqueRef<cel::EnumType::ConstantIterator>>
+          enum_value_iter_or =
+              enum_type->NewConstantIterator(MemoryManager::Global());
+
+      // Errors are not expected from the implementation in the type registry,
+      // but we need to swallow the error case to avoid compiler/lint warnings.
+      if (!enum_value_iter_or.ok()) {
+        continue;
+      }
+      auto enum_value_iter = *std::move(enum_value_iter_or);
+      while (enum_value_iter->HasNext()) {
+        absl::StatusOr<EnumType::Constant> constant = enum_value_iter->Next();
+        if (!constant.ok()) {
+          break;
+        }
         // "prefixes" container is ascending-ordered. As such, we will be
         // assigning enum reference to the deepest available.
         // E.g. if both a.b.c.Name and a.b.Name are available, and
         // we try to reference "Name" with the scope of "a.b.c",
         // it will be resolved to "a.b.c.Name".
         auto key = absl::StrCat(remainder, !remainder.empty() ? "." : "",
-                                enumerator.name);
-        enum_value_map_[key] = CreateIntValue(enumerator.number);
+                                constant->name);
+        enum_value_map_[key] = CreateIntValue(constant->number);
       }
     }
   }

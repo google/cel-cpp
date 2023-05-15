@@ -7,9 +7,10 @@
 #include <vector>
 
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/message.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "base/types/enum_type.h"
 #include "base/values/type_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
@@ -19,14 +20,21 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::EnumType;
+using ::cel::Handle;
+using ::cel::MemoryManager;
 using ::cel::TypeValue;
 using testing::AllOf;
 using testing::Contains;
 using testing::Eq;
 using testing::IsEmpty;
 using testing::Key;
+using testing::Optional;
 using testing::Pair;
+using testing::Truly;
 using testing::UnorderedElementsAre;
+using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 class TestTypeProvider : public LegacyTypeProvider {
  public:
@@ -50,20 +58,31 @@ class TestTypeProvider : public LegacyTypeProvider {
 };
 
 MATCHER_P(MatchesEnumDescriptor, desc, "") {
-  const std::vector<CelTypeRegistry::Enumerator>& enumerators = arg;
+  const Handle<cel::EnumType>& enum_type = arg;
 
-  if (enumerators.size() != desc->value_count()) {
+  if (enum_type->constant_count() != desc->value_count()) {
     return false;
   }
 
-  for (int i = 0; i < desc->value_count(); i++) {
-    const auto* value_desc = desc->value(i);
-    const auto& enumerator = enumerators[i];
+  auto iter_or = enum_type->NewConstantIterator(MemoryManager::Global());
+  if (!iter_or.ok()) {
+    return false;
+  }
 
-    if (value_desc->name() != enumerator.name) {
+  auto iter = std::move(iter_or).value();
+
+  for (int i = 0; i < desc->value_count(); i++) {
+    absl::StatusOr<EnumType::Constant> constant = iter->Next();
+    if (!constant.ok()) {
       return false;
     }
-    if (value_desc->number() != enumerator.number) {
+
+    const auto* value_desc = desc->value(i);
+
+    if (value_desc->name() != constant->name) {
+      return false;
+    }
+    if (value_desc->number() != constant->number) {
       return false;
     }
   }
@@ -105,7 +124,7 @@ struct RegisterEnumDescriptorTestT<
     EXPECT_THAT(enum_set, Eq(expected_set));
 
     EXPECT_THAT(
-        registry.enums_map(),
+        registry.resolveable_enums(),
         AllOf(
             Contains(Pair(
                 "google.protobuf.NullValue",
@@ -134,22 +153,98 @@ TEST(CelTypeRegistryTest, RegisterEnum) {
                             {"TEST_ENUM_3", 30},
                         });
 
-  EXPECT_THAT(
-      registry.enums_map(),
-      Contains(Pair("google.api.expr.runtime.TestMessage.TestEnum",
-                    Contains(testing::Truly(
-                        [](const CelTypeRegistry::Enumerator& enumerator) {
-                          return enumerator.name == "TEST_ENUM_2" &&
-                                 enumerator.number == 20;
-                        })))));
+  EXPECT_THAT(registry.resolveable_enums(),
+              Contains(Pair(
+                  "google.api.expr.runtime.TestMessage.TestEnum",
+                  testing::Truly([](const Handle<EnumType>& enum_type) {
+                    auto constant =
+                        enum_type->FindConstantByName("TEST_ENUM_2");
+                    return enum_type->name() ==
+                               "google.api.expr.runtime.TestMessage.TestEnum" &&
+                           constant.value()->number == 20;
+                  }))));
+}
+
+MATCHER_P(ConstantIntValue, x, "") {
+  const EnumType::Constant& constant = arg;
+
+  return constant.number == x;
+}
+
+MATCHER_P(ConstantName, x, "") {
+  const EnumType::Constant& constant = arg;
+
+  return constant.name == x;
+}
+
+TEST(CelTypeRegistryTest, ImplementsEnumType) {
+  CelTypeRegistry registry;
+  registry.RegisterEnum("google.api.expr.runtime.TestMessage.TestEnum",
+                        {
+                            {"TEST_ENUM_UNSPECIFIED", 0},
+                            {"TEST_ENUM_1", 10},
+                            {"TEST_ENUM_2", 20},
+                            {"TEST_ENUM_3", 30},
+                        });
+
+  ASSERT_THAT(registry.resolveable_enums(),
+              Contains(Key("google.api.expr.runtime.TestMessage.TestEnum")));
+
+  const Handle<EnumType>& enum_type = registry.resolveable_enums().at(
+      "google.api.expr.runtime.TestMessage.TestEnum");
+
+  EXPECT_TRUE(enum_type->Is<EnumType>());
+
+  EXPECT_THAT(enum_type->FindConstantByName("TEST_ENUM_UNSPECIFIED"),
+              IsOkAndHolds(Optional(ConstantIntValue(0))));
+  EXPECT_THAT(enum_type->FindConstantByName("TEST_ENUM_1"),
+              IsOkAndHolds(Optional(ConstantIntValue(10))));
+  EXPECT_THAT(enum_type->FindConstantByName("TEST_ENUM_4"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+
+  EXPECT_THAT(enum_type->FindConstantByNumber(20),
+              IsOkAndHolds(Optional(ConstantName("TEST_ENUM_2"))));
+  EXPECT_THAT(enum_type->FindConstantByNumber(30),
+              IsOkAndHolds(Optional(ConstantName("TEST_ENUM_3"))));
+  EXPECT_THAT(enum_type->FindConstantByNumber(42),
+              IsOkAndHolds(Eq(absl::nullopt)));
+
+  std::vector<std::string> names;
+  ASSERT_OK_AND_ASSIGN(auto iter,
+                       enum_type->NewConstantIterator(MemoryManager::Global()));
+  while (iter->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(absl::string_view name, iter->NextName());
+    names.push_back(std::string(name));
+  }
+
+  EXPECT_THAT(names,
+              UnorderedElementsAre("TEST_ENUM_UNSPECIFIED", "TEST_ENUM_1",
+                                   "TEST_ENUM_2", "TEST_ENUM_3"));
+  EXPECT_THAT(iter->NextName(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
+
+  std::vector<int> numbers;
+  ASSERT_OK_AND_ASSIGN(iter,
+                       enum_type->NewConstantIterator(MemoryManager::Global()));
+  while (iter->HasNext()) {
+    ASSERT_OK_AND_ASSIGN(numbers.emplace_back(), iter->NextNumber());
+  }
+
+  EXPECT_THAT(numbers, UnorderedElementsAre(0, 10, 20, 30));
+  EXPECT_THAT(iter->NextNumber(),
+              StatusIs(absl::StatusCode::kFailedPrecondition));
 }
 
 TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
   CelTypeRegistry registry;
 
-  ASSERT_THAT(registry.enums_map(), Contains(Key("google.protobuf.NullValue")));
-  EXPECT_THAT(registry.enums_map().at("google.protobuf.NullValue"),
-              UnorderedElementsAre(EqualsEnumerator("NULL_VALUE", 0)));
+  ASSERT_THAT(registry.resolveable_enums(),
+              Contains(Key("google.protobuf.NullValue")));
+  EXPECT_THAT(registry.resolveable_enums()
+                  .at("google.protobuf.NullValue")
+                  ->FindConstantByName("NULL_VALUE"),
+              IsOkAndHolds(Optional(Truly(
+                  [](const EnumType::Constant& c) { return c.number == 0; }))));
 }
 
 TEST(CelTypeRegistryTest, TestRegisterTypeName) {

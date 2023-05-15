@@ -899,10 +899,13 @@ cc_library(
     hdrs = ["cel_type_registry.h"],
     deps = [
         "//base:handle",
+        "//base:memory",
+        "//base:type",
         "//base:value",
         "//eval/internal:interop",
         "//eval/public/structs:legacy_type_provider",
         "//internal:no_destructor",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -919,12 +922,14 @@ cc_test(
     srcs = ["cel_type_registry_test.cc"],
     deps = [
         ":cel_type_registry",
+        "//base:type",
         "//base:value",
         "//eval/public/structs:legacy_type_provider",
         "//eval/testutil:test_message_cc_proto",
         "//internal:testing",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )

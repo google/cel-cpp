@@ -282,6 +282,7 @@ cc_library(
     hdrs = ["resolver.h"],
     deps = [
         "//base:kind",
+        "//base:value",
         "//eval/internal:interop",
         "//eval/public:cel_type_registry",
         "//runtime:function_overload_reference",

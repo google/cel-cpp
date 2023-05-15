@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "google/protobuf/descriptor.h"
+#include "absl/base/attributes.h"
+#include "absl/base/call_once.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -14,6 +16,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "base/handle.h"
+#include "base/types/enum_type.h"
 #include "base/value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 
@@ -33,7 +36,7 @@ namespace google::api::expr::runtime {
 // pools.
 class CelTypeRegistry {
  public:
-  // Internal representation for enumerators.
+  // Representation of an enum constant.
   struct Enumerator {
     std::string name;
     int64_t number;
@@ -75,7 +78,7 @@ class CelTypeRegistry {
   std::shared_ptr<const LegacyTypeProvider> GetFirstTypeProvider() const;
 
   // Find a type adapter given a fully qualified type name.
-  // Adapter provides a generic interface for the reflecion operations the
+  // Adapter provides a generic interface for the reflection operations the
   // interpreter needs to provide.
   absl::optional<LegacyTypeAdapter> FindTypeAdapter(
       absl::string_view fully_qualified_type_name) const;
@@ -92,10 +95,10 @@ class CelTypeRegistry {
   }
 
   // Return the registered enums configured within the type registry in the
-  // internal format.
-  const absl::flat_hash_map<std::string, std::vector<Enumerator>>& enums_map()
-      const {
-    return enums_map_;
+  // internal format that can be identified as int constants at plan time.
+  const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+  resolveable_enums() const {
+    return resolveable_enums_;
   }
 
  private:
@@ -106,7 +109,8 @@ class CelTypeRegistry {
   // Set of registered enums.
   absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
   // Internal representation for enums.
-  absl::flat_hash_map<std::string, std::vector<Enumerator>> enums_map_;
+  absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>
+      resolveable_enums_;
   std::vector<std::shared_ptr<LegacyTypeProvider>> type_providers_;
 };
 
