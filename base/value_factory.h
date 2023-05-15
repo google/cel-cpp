@@ -196,6 +196,8 @@ class ValueFactory final {
   // already been validated as utf-8.
   Handle<StringValue> CreateUncheckedStringValue(std::string value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  Handle<StringValue> CreateUncheckedStringValue(absl::Cord value)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   absl::StatusOr<Handle<StringValue>> CreateStringValue(absl::Cord value)
       ABSL_ATTRIBUTE_LIFETIME_BOUND;

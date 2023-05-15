@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
@@ -35,7 +34,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
-#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/memory.h"
 #include "base/types/struct_type.h"
@@ -55,6 +53,7 @@
 #include "eval/public/structs/proto_message_type_adapter.h"
 #include "extensions/protobuf/enum_type.h"
 #include "extensions/protobuf/internal/map_reflection.h"
+#include "extensions/protobuf/internal/reflection.h"
 #include "extensions/protobuf/internal/time.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -95,16 +94,6 @@ namespace cel::extensions {
 namespace protobuf_internal {
 
 namespace {
-
-struct DebugStringFromStringWrapperVisitor final {
-  std::string operator()(absl::string_view value) const {
-    return StringValue::DebugString(value);
-  }
-
-  std::string operator()(const absl::Cord& value) const {
-    return StringValue::DebugString(value);
-  }
-};
 
 class HeapDynamicParsedProtoStructValue : public DynamicParsedProtoStructValue {
  public:
@@ -217,8 +206,7 @@ std::string StringValueDebugStringFromProto(const google::protobuf::Message& mes
   if (ABSL_PREDICT_FALSE(!value_or_status.ok())) {
     return std::string("**google.protobuf.StringValue**");
   }
-  return absl::visit(protobuf_internal::DebugStringFromStringWrapperVisitor{},
-                     *value_or_status);
+  return StringValue::DebugString(*value_or_status);
 }
 
 std::string UintValueDebugStringFromProto(const google::protobuf::Message& message) {
@@ -1194,14 +1182,8 @@ class ParsedProtoListValue<StringValue, google::protobuf::Message>
     const auto& field = fields_.Get(static_cast<int>(index), scratch.get());
     CEL_ASSIGN_OR_RETURN(auto wrapped,
                          protobuf_internal::UnwrapStringValueProto(field));
-    if (absl::holds_alternative<absl::string_view>(wrapped)) {
-      return context.value_factory().CreateBorrowedStringValue(
-          owner_from_this(), absl::get<absl::string_view>(wrapped));
-    } else {
-      ABSL_ASSERT(absl::holds_alternative<absl::Cord>(wrapped));
-      return context.value_factory().CreateStringValue(
-          absl::get<absl::Cord>(std::move(wrapped)));
-    }
+    return context.value_factory().CreateUncheckedStringValue(
+        std::move(wrapped));
   }
 
  private:
@@ -1658,14 +1640,8 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
             CEL_ASSIGN_OR_RETURN(auto wrapped,
                                  protobuf_internal::UnwrapStringValueProto(
                                      proto_value.GetMessageValue()));
-            if (absl::holds_alternative<absl::string_view>(wrapped)) {
-              return context.value_factory().CreateBorrowedStringValue(
-                  owner_from_this(), absl::get<absl::string_view>(wrapped));
-            } else {
-              ABSL_ASSERT(absl::holds_alternative<absl::Cord>(wrapped));
-              return context.value_factory().CreateStringValue(
-                  absl::get<absl::Cord>(std::move(wrapped)));
-            }
+            return context.value_factory().CreateUncheckedStringValue(
+                std::move(wrapped));
           }
           case Kind::kUint: {
             // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL
@@ -2533,14 +2509,9 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
       return context.value_factory().CreateBoolValue(
           reflect.GetBool(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_STRING:
-      if (field_desc.options().ctype() == google::protobuf::FieldOptions::CORD &&
-          !field_desc.is_extension()) {
-        return context.value_factory().CreateStringValue(
-            reflect.GetCord(value(), &field_desc));
-      } else {
-        return context.value_factory().CreateBorrowedStringValue(
-            owner_from_this(), reflect.GetStringView(value(), &field_desc));
-      }
+      return protobuf_internal::GetBorrowedStringField(
+          context.value_factory(), owner_from_this(), value(), &reflect,
+          &field_desc);
     case google::protobuf::FieldDescriptor::TYPE_GROUP:
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
@@ -2619,14 +2590,8 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
                   auto wrapped,
                   protobuf_internal::UnwrapStringValueProto(reflect.GetMessage(
                       value(), &field_desc, type()->factory_)));
-              if (absl::holds_alternative<absl::string_view>(wrapped)) {
-                return context.value_factory().CreateBorrowedStringValue(
-                    owner_from_this(), absl::get<absl::string_view>(wrapped));
-              } else {
-                ABSL_ASSERT(absl::holds_alternative<absl::Cord>(wrapped));
-                return context.value_factory().CreateStringValue(
-                    absl::get<absl::Cord>(std::move(wrapped)));
-              }
+              return context.value_factory().CreateUncheckedStringValue(
+                  std::move(wrapped));
             }
             case Kind::kUint: {
               CEL_ASSIGN_OR_RETURN(
@@ -2649,14 +2614,9 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
           ABSL_UNREACHABLE();
       }
     case google::protobuf::FieldDescriptor::TYPE_BYTES:
-      if (field_desc.options().ctype() == google::protobuf::FieldOptions::CORD &&
-          !field_desc.is_extension()) {
-        return context.value_factory().CreateBytesValue(
-            reflect.GetCord(value(), &field_desc));
-      } else {
-        return context.value_factory().CreateBorrowedBytesValue(
-            owner_from_this(), reflect.GetStringView(value(), &field_desc));
-      }
+      return protobuf_internal::GetBorrowedBytesField(
+          context.value_factory(), owner_from_this(), value(), &reflect,
+          &field_desc);
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
       switch (field.type->kind()) {
         case Kind::kNullType:

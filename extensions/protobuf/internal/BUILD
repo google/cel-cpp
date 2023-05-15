@@ -45,6 +45,20 @@ cc_library(
 )
 
 cc_library(
+    name = "reflection",
+    srcs = ["reflection.cc"],
+    hdrs = ["reflection.h"],
+    deps = [
+        "//base:handle",
+        "//base:owner",
+        "//base:value",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "testing",
     testonly = True,
     hdrs = ["testing.h"],
@@ -94,7 +108,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
-        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
     ],
 )

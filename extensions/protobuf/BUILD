@@ -158,6 +158,7 @@ cc_library(
         "//eval/public:message_wrapper",
         "//eval/public/structs:proto_message_type_adapter",
         "//extensions/protobuf/internal:map_reflection",
+        "//extensions/protobuf/internal:reflection",
         "//extensions/protobuf/internal:time",
         "//extensions/protobuf/internal:wrappers",
         "//internal:casts",
@@ -174,7 +175,6 @@ cc_library(
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
     ],
 )

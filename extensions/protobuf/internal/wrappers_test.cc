@@ -25,7 +25,6 @@ namespace cel::extensions::protobuf_internal {
 namespace {
 
 using testing::Eq;
-using testing::VariantWith;
 using cel::internal::IsOkAndHolds;
 
 TEST(BoolWrapper, Generated) {
@@ -124,7 +123,7 @@ TEST(IntWrapper, Custom) {
 
 TEST(StringWrapper, Generated) {
   EXPECT_THAT(UnwrapStringValueProto(google::protobuf::StringValue()),
-              IsOkAndHolds(VariantWith<absl::string_view>("")));
+              IsOkAndHolds(absl::Cord()));
 }
 
 TEST(StringWrapper, Custom) {
@@ -140,7 +139,7 @@ TEST(StringWrapper, Custom) {
   factory.SetDelegateToGeneratedFactory(false);
   EXPECT_THAT(UnwrapStringValueProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.StringValue"))),
-              IsOkAndHolds(VariantWith<absl::string_view>("")));
+              IsOkAndHolds(absl::Cord()));
 }
 
 TEST(UintWrapper, Generated) {

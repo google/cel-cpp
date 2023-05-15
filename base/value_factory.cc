@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/values/string_value.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -156,6 +157,17 @@ Handle<StringValue> ValueFactory::CreateUncheckedStringValue(
 
   return HandleFactory<StringValue>::Make<StringStringValue>(memory_manager(),
                                                              std::move(value));
+}
+
+Handle<StringValue> ValueFactory::CreateUncheckedStringValue(absl::Cord value) {
+  // Avoid persisting empty strings which may have underlying storage after
+  // mutating.
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+
+  return HandleFactory<StringValue>::Make<InlinedCordStringValue>(
+      std::move(value));
 }
 
 absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(

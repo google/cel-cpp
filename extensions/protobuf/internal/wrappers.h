@@ -17,8 +17,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "google/protobuf/message.h"
 
 namespace cel::extensions::protobuf_internal {
@@ -38,8 +36,8 @@ absl::StatusOr<int64_t> UnwrapInt32ValueProto(const google::protobuf::Message& m
 
 absl::StatusOr<int64_t> UnwrapInt64ValueProto(const google::protobuf::Message& message);
 
-absl::StatusOr<absl::variant<absl::string_view, absl::Cord>>
-UnwrapStringValueProto(const google::protobuf::Message& message);
+absl::StatusOr<absl::Cord> UnwrapStringValueProto(
+    const google::protobuf::Message& message);
 
 absl::StatusOr<uint64_t> UnwrapUIntValueProto(const google::protobuf::Message& message);
 

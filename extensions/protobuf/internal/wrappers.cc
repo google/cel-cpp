@@ -15,7 +15,6 @@
 #include "extensions/protobuf/internal/wrappers.h"
 
 #include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/descriptor.pb.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "internal/casts.h"
@@ -36,7 +35,7 @@ absl::StatusOr<P> UnwrapValueProto(const google::protobuf::Message& message,
   }
   if (desc == T::descriptor()) {
     // Fast path.
-    return cel::internal::down_cast<const T&>(message).value();
+    return P(cel::internal::down_cast<const T&>(message).value());
   }
   const auto* reflect = message.GetReflection();
   if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
@@ -123,41 +122,11 @@ absl::StatusOr<int64_t> UnwrapInt64ValueProto(const google::protobuf::Message& m
       &google::protobuf::Reflection::GetInt64);
 }
 
-absl::StatusOr<absl::variant<absl::string_view, absl::Cord>>
-UnwrapStringValueProto(const google::protobuf::Message& message) {
-  const auto* desc = message.GetDescriptor();
-  if (ABSL_PREDICT_FALSE(desc == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing descriptor"));
-  }
-  if (desc == google::protobuf::StringValue::descriptor()) {
-    // Fast path.
-    return absl::string_view(
-        cel::internal::down_cast<const google::protobuf::StringValue&>(message)
-            .value());
-  }
-  const auto* reflect = message.GetReflection();
-  if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing reflection"));
-  }
-  const auto* value_field =
-      desc->FindFieldByNumber(google::protobuf::StringValue::kValueFieldNumber);
-  if (ABSL_PREDICT_FALSE(value_field == nullptr)) {
-    return absl::InternalError(
-        absl::StrCat(message.GetTypeName(), " missing value field descriptor"));
-  }
-  if (ABSL_PREDICT_FALSE(value_field->cpp_type() !=
-                         google::protobuf::FieldDescriptor::CPPTYPE_STRING)) {
-    return absl::InternalError(absl::StrCat(
-        message.GetTypeName(),
-        " has unexpected value field type: ", value_field->cpp_type_name()));
-  }
-  if (value_field->options().ctype() == google::protobuf::FieldOptions::CORD &&
-      !value_field->is_extension()) {
-    return reflect->GetCord(message, value_field);
-  }
-  return reflect->GetStringView(message, value_field);
+absl::StatusOr<absl::Cord> UnwrapStringValueProto(
+    const google::protobuf::Message& message) {
+  return UnwrapValueProto<google::protobuf::StringValue, absl::Cord>(
+      message, google::protobuf::FieldDescriptor::CPPTYPE_STRING,
+      &google::protobuf::Reflection::GetCord);
 }
 
 absl::StatusOr<uint64_t> UnwrapUIntValueProto(const google::protobuf::Message& message) {

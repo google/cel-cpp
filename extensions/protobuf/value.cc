@@ -22,9 +22,9 @@
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
+#include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
-#include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
 #include "absl/base/macros.h"
@@ -37,11 +37,11 @@
 #include "absl/strings/string_view.h"
 #include "absl/strings/strip.h"
 #include "absl/time/time.h"
-#include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
+#include "extensions/protobuf/internal/reflection.h"
 #include "extensions/protobuf/internal/time.h"
 #include "extensions/protobuf/internal/wrappers.h"
 #include "extensions/protobuf/memory_manager.h"
@@ -51,18 +51,6 @@
 namespace cel::extensions {
 
 namespace {
-
-struct CreateStringValueFromProtoVisitor final {
-  ValueFactory& value_factory;
-
-  absl::StatusOr<Handle<Value>> operator()(absl::string_view value) const {
-    return value_factory.CreateStringValue(value);
-  }
-
-  absl::StatusOr<Handle<Value>> operator()(absl::Cord value) const {
-    return value_factory.CreateStringValue(std::move(value));
-  }
-};
 
 void AppendJsonValueDebugString(std::string& out,
                                 const google::protobuf::Value& value);
@@ -788,16 +776,14 @@ absl::StatusOr<Handle<Value>> StringValueMessageCopyConverter(
     ValueFactory& value_factory, const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
                        protobuf_internal::UnwrapStringValueProto(value));
-  return absl::visit(CreateStringValueFromProtoVisitor{value_factory},
-                     std::move(wrapped));
+  return value_factory.CreateUncheckedStringValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> StringValueMessageMoveConverter(
     ValueFactory& value_factory, google::protobuf::Message&& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
                        protobuf_internal::UnwrapStringValueProto(value));
-  return absl::visit(CreateStringValueFromProtoVisitor{value_factory},
-                     std::move(wrapped));
+  return value_factory.CreateUncheckedStringValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> StringValueMessageBorrowConverter(
@@ -805,8 +791,7 @@ absl::StatusOr<Handle<Value>> StringValueMessageBorrowConverter(
     const google::protobuf::Message& value) {
   CEL_ASSIGN_OR_RETURN(auto wrapped,
                        protobuf_internal::UnwrapStringValueProto(value));
-  return absl::visit(CreateStringValueFromProtoVisitor{value_factory},
-                     std::move(wrapped));
+  return value_factory.CreateUncheckedStringValue(std::move(wrapped));
 }
 
 absl::StatusOr<Handle<Value>> UInt32ValueMessageCopyConverter(
@@ -1166,8 +1151,8 @@ absl::StatusOr<Handle<Value>> ValueMessageCopyConverter(
       return value_factory.CreateDoubleValue(
           reflect->GetDouble(value, field_desc));
     case google::protobuf::Value::kStringValueFieldNumber:
-      return value_factory.CreateStringValue(
-          reflect->GetStringView(value, field_desc));
+      return protobuf_internal::GetStringField(value_factory, value, reflect,
+                                               field_desc);
     case google::protobuf::Value::kListValueFieldNumber:
       return ListValueMessageCopyConverter(
           value_factory, reflect->GetMessage(value, field_desc));
@@ -1212,8 +1197,8 @@ absl::StatusOr<Handle<Value>> ValueMessageMoveConverter(
       return value_factory.CreateDoubleValue(
           reflect->GetDouble(value, field_desc));
     case google::protobuf::Value::kStringValueFieldNumber:
-      return value_factory.CreateStringValue(
-          reflect->GetStringView(value, field_desc));
+      return protobuf_internal::GetStringField(value_factory, value, reflect,
+                                               field_desc);
     case google::protobuf::Value::kListValueFieldNumber:
       return ListValueMessageMoveConverter(
           value_factory,
@@ -1261,8 +1246,8 @@ absl::StatusOr<Handle<Value>> ValueMessageBorrowConverter(
       return value_factory.CreateDoubleValue(
           reflect->GetDouble(value, field_desc));
     case google::protobuf::Value::kStringValueFieldNumber:
-      return value_factory.CreateBorrowedStringValue(
-          std::move(owner), reflect->GetStringView(value, field_desc));
+      return protobuf_internal::GetBorrowedStringField(
+          value_factory, std::move(owner), value, reflect, field_desc);
     case google::protobuf::Value::kListValueFieldNumber:
       return ListValueMessageBorrowConverter(
           owner, value_factory, reflect->GetMessage(value, field_desc));
@@ -1309,8 +1294,8 @@ absl::StatusOr<Handle<Value>> ValueMessageOwnConverter(
       return value_factory.CreateDoubleValue(
           reflect->GetDouble(*value, field_desc));
     case google::protobuf::Value::kStringValueFieldNumber:
-      return value_factory.CreateStringValue(
-          reflect->GetStringView(*value, field_desc));
+      return protobuf_internal::GetStringField(value_factory, *value, reflect,
+                                               field_desc);
     case google::protobuf::Value::kListValueFieldNumber:
       return ListValueMessageCopyConverter(
           value_factory, reflect->GetMessage(*value, field_desc));
@@ -1362,17 +1347,11 @@ absl::StatusOr<Handle<Value>> AnyMessageCopyConverter(
     return absl::InvalidArgumentError(
         "value field descriptor has unexpected type");
   }
-  std::string type_url_storage;
-  absl::string_view type_url;
-  if (!type_url_field->is_extension() &&
-      type_url_field->options().ctype() == google::protobuf::FieldOptions::CORD) {
-    type_url_storage = reflect->GetString(value, type_url_field);
-    type_url = type_url_storage;
-  } else {
-    type_url = reflect->GetStringView(value, type_url_field);
-  }
-  return ProtoValue::Create(value_factory, type_url,
-                            reflect->GetCord(value, value_field));
+  std::string type_url;
+  return ProtoValue::Create(
+      value_factory,
+      reflect->GetStringReference(value, type_url_field, &type_url),
+      reflect->GetCord(value, value_field));
 }
 
 absl::StatusOr<Handle<Value>> AnyMessageMoveConverter(
