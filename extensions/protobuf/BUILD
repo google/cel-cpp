@@ -192,6 +192,7 @@ cc_test(
         "//base:value",
         "//base/internal:memory_manager_testing",
         "//base/testing:value_matchers",
+        "//extensions/protobuf/internal:descriptors",
         "//extensions/protobuf/internal:testing",
         "//internal:testing",
         "@com_google_absl//absl/functional:function_ref",

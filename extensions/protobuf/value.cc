@@ -21,7 +21,10 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/timestamp.pb.h"
+#include "google/protobuf/descriptor.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
 #include "absl/base/macros.h"
@@ -32,6 +35,7 @@
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/strip.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "base/handle.h"
@@ -144,6 +148,8 @@ absl::StatusOr<Handle<Value>> CreateMemberJsonValue(
     ValueFactory& value_factory, const google::protobuf::Value& value,
     HandleFromThis&& owner_from_this) {
   switch (value.kind_case()) {
+    case google::protobuf::Value::KIND_NOT_SET:
+      ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::Value::kNullValue:
       return value_factory.GetNullValue();
     case google::protobuf::Value::kBoolValue:
@@ -1318,6 +1324,70 @@ absl::StatusOr<Handle<Value>> ValueMessageOwnConverter(
   }
 }
 
+absl::StatusOr<Handle<Value>> AnyMessageCopyConverter(
+    ValueFactory& value_factory, const google::protobuf::Message& value) {
+  const auto* descriptor = value.GetDescriptor();
+  if (descriptor == google::protobuf::Any::descriptor()) {
+    return ProtoValue::Create(
+        value_factory,
+        cel::internal::down_cast<const google::protobuf::Any&>(value));
+  }
+  const auto* reflect = value.GetReflection();
+  if (ABSL_PREDICT_FALSE(reflect == nullptr)) {
+    return absl::InvalidArgumentError(
+        "reflection missing for google.protobuf.Any");
+  }
+  const auto* type_url_field =
+      descriptor->FindFieldByNumber(google::protobuf::Any::kTypeUrlFieldNumber);
+  if (ABSL_PREDICT_FALSE(type_url_field == nullptr)) {
+    return absl::InvalidArgumentError(
+        "type_url field descriptor missing for google.protobuf.Any");
+  }
+  if (ABSL_PREDICT_FALSE(type_url_field->is_repeated() ||
+                         type_url_field->is_map() ||
+                         type_url_field->cpp_type() !=
+                             google::protobuf::FieldDescriptor::CPPTYPE_STRING)) {
+    return absl::InvalidArgumentError(
+        "type_url field descriptor has unexpected type");
+  }
+  const auto* value_field =
+      descriptor->FindFieldByNumber(google::protobuf::Any::kValueFieldNumber);
+  if (ABSL_PREDICT_FALSE(value_field == nullptr)) {
+    return absl::InvalidArgumentError(
+        "value field descriptor missing for google.protobuf.Any");
+  }
+  if (ABSL_PREDICT_FALSE(value_field->is_repeated() || value_field->is_map() ||
+                         value_field->cpp_type() !=
+                             google::protobuf::FieldDescriptor::CPPTYPE_STRING)) {
+    return absl::InvalidArgumentError(
+        "value field descriptor has unexpected type");
+  }
+  std::string type_url_storage;
+  absl::string_view type_url;
+  if (!type_url_field->is_extension() &&
+      type_url_field->options().ctype() == google::protobuf::FieldOptions::CORD) {
+    type_url_storage = reflect->GetString(value, type_url_field);
+    type_url = type_url_storage;
+  } else {
+    type_url = reflect->GetStringView(value, type_url_field);
+  }
+  return ProtoValue::Create(value_factory, type_url,
+                            reflect->GetCord(value, value_field));
+}
+
+absl::StatusOr<Handle<Value>> AnyMessageMoveConverter(
+    ValueFactory& value_factory, google::protobuf::Message&& value) {
+  // We currently do nothing special for moving.
+  return AnyMessageCopyConverter(value_factory, value);
+}
+
+absl::StatusOr<Handle<Value>> AnyMessageBorrowConverter(
+    Owner<Value>& owner, ValueFactory& value_factory,
+    const google::protobuf::Message& value) {
+  // We currently do nothing special for borrowing.
+  return AnyMessageCopyConverter(value_factory, value);
+}
+
 ABSL_CONST_INIT absl::once_flag proto_value_once;
 ABSL_CONST_INIT DynamicMessageConverter dynamic_message_converters[] = {
     {"google.protobuf.Duration", DurationMessageCopyConverter,
@@ -1348,6 +1418,8 @@ ABSL_CONST_INIT DynamicMessageConverter dynamic_message_converters[] = {
      ListValueMessageMoveConverter, ListValueMessageBorrowConverter},
     {"google.protobuf.Value", ValueMessageCopyConverter,
      ValueMessageMoveConverter, ValueMessageBorrowConverter},
+    {"google.protobuf.Any", AnyMessageCopyConverter, AnyMessageMoveConverter,
+     AnyMessageBorrowConverter},
 };
 
 DynamicMessageConverter* dynamic_message_converters_begin() {
@@ -1465,6 +1537,171 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(
     default:
       ABSL_UNREACHABLE();
   }
+}
+
+namespace {
+
+template <typename T>
+absl::StatusOr<T> UnpackTo(const absl::Cord& cord) {
+  T proto;
+  if (ABSL_PREDICT_FALSE(!proto.ParseFromCord(cord))) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("failed to unpack google.protobuf.Any as ",
+                     T::descriptor()->full_name()));
+  }
+  return proto;
+}
+
+}  // namespace
+
+absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
+                                                 absl::string_view type_url,
+                                                 const absl::Cord& payload) {
+  if (type_url.empty()) {
+    return value_factory.CreateErrorValue(
+        absl::UnknownError("invalid empty type URL in google.protobuf.Any"));
+  }
+  auto type_name = absl::StripPrefix(type_url, "type.googleapis.com/");
+  CEL_ASSIGN_OR_RETURN(auto type,
+                       value_factory.type_manager().ResolveType(type_name));
+  if (ABSL_PREDICT_FALSE(!type.has_value())) {
+    return value_factory.CreateErrorValue(
+        absl::NotFoundError(absl::StrCat("type not found: ", type_url)));
+  }
+  switch ((*type)->kind()) {
+    case Kind::kAny:
+      ABSL_DCHECK(type_name == "google.protobuf.Any") << type_name;
+      // google.protobuf.Any
+      //
+      // We refuse google.protobuf.Any wrapped in google.protobuf.Any.
+      return absl::InvalidArgumentError(
+          "refusing to unpack google.protobuf.Any to google.protobuf.Any");
+    case Kind::kStruct: {
+      if (!ProtoStructType::Is(**type)) {
+        return absl::FailedPreconditionError(
+            "google.protobuf.Any can only be unpacked to protocol "
+            "buffer message based structs");
+      }
+      const auto& struct_type = (*type)->As<ProtoStructType>();
+      const auto* prototype =
+          struct_type.factory_->GetPrototype(struct_type.descriptor_);
+      if (ABSL_PREDICT_FALSE(prototype == nullptr)) {
+        return absl::InternalError(absl::StrCat(
+            "protocol buffer message factory does not have prototype for ",
+            struct_type.DebugString()));
+      }
+      auto proto = absl::WrapUnique(prototype->New());
+      if (ABSL_PREDICT_FALSE(!proto->ParseFromCord(payload))) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("failed to unpack google.protobuf.Any to ",
+                         struct_type.DebugString()));
+      }
+      return ProtoStructValue::Create(value_factory, std::move(*proto));
+    }
+    case Kind::kWrapper: {
+      switch ((*type)->As<WrapperType>().wrapped()->kind()) {
+        case Kind::kBool: {
+          // google.protobuf.BoolValue
+          CEL_ASSIGN_OR_RETURN(auto proto,
+                               UnpackTo<google::protobuf::BoolValue>(payload));
+          return Create(value_factory, proto);
+        }
+        case Kind::kInt: {
+          // google.protobuf.{Int32Value,Int64Value}
+          if (type_name == "google.protobuf.Int32Value") {
+            CEL_ASSIGN_OR_RETURN(
+                auto proto, UnpackTo<google::protobuf::Int32Value>(payload));
+            return Create(value_factory, std::move(proto));
+          }
+          if (type_name == "google.protobuf.Int64Value") {
+            CEL_ASSIGN_OR_RETURN(
+                auto proto, UnpackTo<google::protobuf::Int64Value>(payload));
+            return Create(value_factory, std::move(proto));
+          }
+        } break;
+        case Kind::kUint: {
+          // google.protobuf.{UInt32Value,UInt64Value}
+          if (type_name == "google.protobuf.UInt32Value") {
+            CEL_ASSIGN_OR_RETURN(
+                auto proto, UnpackTo<google::protobuf::UInt32Value>(payload));
+            return Create(value_factory, std::move(proto));
+          }
+          if (type_name == "google.protobuf.UInt64Value") {
+            CEL_ASSIGN_OR_RETURN(
+                auto proto, UnpackTo<google::protobuf::UInt64Value>(payload));
+            return Create(value_factory, std::move(proto));
+          }
+        } break;
+        case Kind::kDouble: {
+          // google.protobuf.{FloatValue,DoubleValue}
+          if (type_name == "google.protobuf.FloatValue") {
+            CEL_ASSIGN_OR_RETURN(
+                auto proto, UnpackTo<google::protobuf::FloatValue>(payload));
+            return Create(value_factory, std::move(proto));
+          }
+          if (type_name == "google.protobuf.DoubleValue") {
+            CEL_ASSIGN_OR_RETURN(
+                auto proto, UnpackTo<google::protobuf::DoubleValue>(payload));
+            return Create(value_factory, std::move(proto));
+          }
+        } break;
+        case Kind::kBytes: {
+          // google.protobuf.BytesValue
+          CEL_ASSIGN_OR_RETURN(auto proto,
+                               UnpackTo<google::protobuf::BytesValue>(payload));
+          return Create(value_factory, std::move(proto));
+        }
+        case Kind::kString: {
+          // google.protobuf.StringValue
+          CEL_ASSIGN_OR_RETURN(
+              auto proto, UnpackTo<google::protobuf::StringValue>(payload));
+          return Create(value_factory, std::move(proto));
+        }
+        default:
+          ABSL_UNREACHABLE();
+      }
+    } break;
+    case Kind::kList: {
+      // google.protobuf.ListValue
+      ABSL_DCHECK(type_name == "google.protobuf.ListValue") << type_name;
+      CEL_ASSIGN_OR_RETURN(auto proto,
+                           UnpackTo<google::protobuf::ListValue>(payload));
+      return Create(value_factory, std::move(proto));
+    }
+    case Kind::kMap: {
+      // google.protobuf.Struct
+      ABSL_DCHECK(type_name == "google.protobuf.Struct") << type_name;
+      CEL_ASSIGN_OR_RETURN(auto proto,
+                           UnpackTo<google::protobuf::Struct>(payload));
+      return Create(value_factory, std::move(proto));
+    }
+    case Kind::kDyn: {
+      // google.protobuf.Value
+      ABSL_DCHECK(type_name == "google.protobuf.Value") << type_name;
+      CEL_ASSIGN_OR_RETURN(auto proto,
+                           UnpackTo<google::protobuf::Value>(payload));
+      return Create(value_factory, std::move(proto));
+    }
+    case Kind::kDuration: {
+      // google.protobuf.Duration
+      ABSL_DCHECK(type_name == "google.protobuf.Duration") << type_name;
+      CEL_ASSIGN_OR_RETURN(auto proto,
+                           UnpackTo<google::protobuf::Duration>(payload));
+      return Create(value_factory, proto);
+    }
+    case Kind::kTimestamp: {
+      // google.protobuf.Timestamp
+      ABSL_DCHECK(type_name == "google.protobuf.Timestamp") << type_name;
+      CEL_ASSIGN_OR_RETURN(auto proto,
+                           UnpackTo<google::protobuf::Timestamp>(payload));
+      return Create(value_factory, proto);
+    }
+    default:
+      break;
+  }
+  return absl::UnimplementedError(
+      absl::StrCat("google.protobuf.Any unpacking to ", (*type)->DebugString(),
+                   " is not implemented"));
 }
 
 namespace protobuf_internal {

@@ -16,15 +16,19 @@
 
 #include <memory>
 
+#include "google/protobuf/api.pb.h"
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
+#include "google/protobuf/wrappers.pb.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/testing/value_matchers.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
 #include "extensions/protobuf/enum_value.h"
+#include "extensions/protobuf/internal/descriptors.h"
 #include "extensions/protobuf/internal/testing.h"
+#include "extensions/protobuf/struct_value.h"
 #include "extensions/protobuf/type_provider.h"
 #include "internal/testing.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
@@ -596,6 +600,212 @@ TEST_P(ProtoValueTest, StaticRValueStruct) {
   EXPECT_THAT(value->Get(MapValue::GetContext(value_factory), key),
               IsOkAndHolds(Optional(ValueOf<BoolValue>(value_factory, true))));
 }
+
+enum class ProtoValueAnyTestRunner {
+  kGenerated,
+  kCustom,
+};
+
+template <typename S>
+void AbslStringify(S& sink, ProtoValueAnyTestRunner value) {
+  switch (value) {
+    case ProtoValueAnyTestRunner::kGenerated:
+      sink.Append("Generated");
+      break;
+    case ProtoValueAnyTestRunner::kCustom:
+      sink.Append("Custom");
+      break;
+  }
+}
+
+class ProtoValueAnyTest : public ProtoTest<ProtoValueAnyTestRunner> {
+ protected:
+  template <typename T>
+  void Run(
+      const T& message,
+      absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)> tester) {
+    google::protobuf::Any any;
+    ASSERT_TRUE(any.PackFrom(message));
+    switch (std::get<1>(GetParam())) {
+      case ProtoValueAnyTestRunner::kGenerated: {
+        TypeFactory type_factory(memory_manager());
+        ProtoTypeProvider type_provider;
+        TypeManager type_manager(type_factory, type_provider);
+        ValueFactory value_factory(type_manager);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             ProtoValue::Create(value_factory, message));
+        tester(value_factory, value);
+        return;
+      }
+      case ProtoValueAnyTestRunner::kCustom: {
+      }
+        protobuf_internal::WithCustomDescriptorPool(
+            memory_manager(), any, *T::descriptor(),
+            [&](TypeProvider& type_provider,
+                const google::protobuf::Message& custom_message) {
+              TypeFactory type_factory(memory_manager());
+              TypeManager type_manager(type_factory, type_provider);
+              ValueFactory value_factory(type_manager);
+              ASSERT_OK_AND_ASSIGN(
+                  auto value,
+                  ProtoValue::Create(value_factory, custom_message));
+              tester(value_factory, value);
+            });
+        return;
+    }
+  }
+
+  template <typename T>
+  void Run(const T& message,
+           absl::FunctionRef<void(const Handle<Value>&)> tester) {
+    Run(message, [&](ValueFactory& value_factory, const Handle<Value>& value) {
+      tester(value);
+    });
+  }
+};
+
+TEST_P(ProtoValueAnyTest, AnyBoolWrapper) {
+  google::protobuf::BoolValue payload;
+  payload.set_value(true);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<BoolValue>()->value(), true);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyInt32Wrapper) {
+  google::protobuf::Int32Value payload;
+  payload.set_value(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<IntValue>()->value(), 1);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyInt64Wrapper) {
+  google::protobuf::Int64Value payload;
+  payload.set_value(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<IntValue>()->value(), 1);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyUInt32Wrapper) {
+  google::protobuf::UInt32Value payload;
+  payload.set_value(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<UintValue>()->value(), 1);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyUInt64Wrapper) {
+  google::protobuf::UInt64Value payload;
+  payload.set_value(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<UintValue>()->value(), 1);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyFloatWrapper) {
+  google::protobuf::FloatValue payload;
+  payload.set_value(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<DoubleValue>()->value(), 1);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyDoubleWrapper) {
+  google::protobuf::DoubleValue payload;
+  payload.set_value(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<DoubleValue>()->value(), 1);
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyBytesWrapper) {
+  google::protobuf::BytesValue payload;
+  payload.set_value("foo");
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<BytesValue>()->ToString(), "foo");
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyStringWrapper) {
+  google::protobuf::StringValue payload;
+  payload.set_value("foo");
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<StringValue>()->ToString(), "foo");
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyDuration) {
+  google::protobuf::Duration payload;
+  payload.set_seconds(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<DurationValue>()->value(), absl::Seconds(1));
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyTimestamp) {
+  google::protobuf::Timestamp payload;
+  payload.set_seconds(1);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_EQ(value.As<TimestampValue>()->value(),
+              absl::UnixEpoch() + absl::Seconds(1));
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyValue) {
+  google::protobuf::Value payload;
+  payload.set_bool_value(true);
+  Run(payload, [](const Handle<Value>& value) {
+    EXPECT_TRUE(value.As<BoolValue>()->value());
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyListValue) {
+  google::protobuf::ListValue payload;
+  payload.add_values()->set_bool_value(true);
+  Run(payload, [](ValueFactory& value_factory, const Handle<Value>& value) {
+    ASSERT_TRUE(value->Is<ListValue>());
+    EXPECT_EQ(value.As<ListValue>()->size(), 1);
+    ASSERT_OK_AND_ASSIGN(
+        auto element,
+        value->As<ListValue>().Get(ListValue::GetContext(value_factory), 0));
+    ASSERT_TRUE(element->Is<BoolValue>());
+    EXPECT_TRUE(element.As<BoolValue>()->value());
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyMessage) {
+  google::protobuf::Struct payload;
+  payload.mutable_fields()->insert(
+      {"foo", google::protobuf::Value::default_instance()});
+  Run(payload, [](ValueFactory& value_factory, const Handle<Value>& value) {
+    ASSERT_TRUE(value->Is<MapValue>());
+    EXPECT_EQ(value.As<MapValue>()->size(), 1);
+    ASSERT_OK_AND_ASSIGN(auto key, value_factory.CreateStringValue("foo"));
+    ASSERT_OK_AND_ASSIGN(
+        auto field,
+        value->As<MapValue>().Get(MapValue::GetContext(value_factory), key));
+    ASSERT_TRUE(field.has_value());
+    ASSERT_TRUE((*field)->Is<NullValue>());
+  });
+}
+
+TEST_P(ProtoValueAnyTest, AnyStruct) {
+  google::protobuf::Api payload;
+  payload.set_name("foo");
+  Run(payload, [&payload](const Handle<Value>& value) {
+    ASSERT_TRUE(value->Is<ProtoStructValue>());
+    EXPECT_EQ(value->As<ProtoStructValue>().value()->SerializeAsString(),
+              payload.SerializeAsString());
+  });
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ProtoValueAnyTest, ProtoValueAnyTest,
+    testing::Combine(cel::base_internal::MemoryManagerTestModeAll(),
+                     testing::Values(ProtoValueAnyTestRunner::kGenerated,
+                                     ProtoValueAnyTestRunner::kCustom)));
 
 TEST_P(ProtoValueTest, StaticWrapperTypes) {
   TypeFactory type_factory(memory_manager());

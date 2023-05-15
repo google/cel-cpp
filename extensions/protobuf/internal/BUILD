@@ -20,6 +20,24 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "descriptors",
+    testonly = True,
+    srcs = ["descriptors.cc"],
+    hdrs = ["descriptors.h"],
+    deps = [
+        "//base:memory",
+        "//base:type",
+        "//extensions/protobuf:memory_manager",
+        "//extensions/protobuf:type",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "map_reflection",
     srcs = ["map_reflection.cc"],
     hdrs = ["map_reflection.h"],

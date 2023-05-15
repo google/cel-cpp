@@ -311,6 +311,11 @@ TEST_P(ProtoStructValueTest, ValueHasField) {
                  [](TestAllTypes& message) { message.mutable_single_value(); });
 }
 
+TEST_P(ProtoStructValueTest, AnyHasField) {
+  TEST_HAS_FIELD(memory_manager(), "single_any",
+                 [](TestAllTypes& message) { message.mutable_single_any(); });
+}
+
 TEST_P(ProtoStructValueTest, NullValueListHasField) {
   TEST_HAS_FIELD(memory_manager(), "repeated_null_value",
                  [](TestAllTypes& message) {
@@ -464,6 +469,11 @@ TEST_P(ProtoStructValueTest, StructListHasField) {
 TEST_P(ProtoStructValueTest, ValueListHasField) {
   TEST_HAS_FIELD(memory_manager(), "repeated_value",
                  [](TestAllTypes& message) { message.add_repeated_value(); });
+}
+
+TEST_P(ProtoStructValueTest, AnyListHasField) {
+  TEST_HAS_FIELD(memory_manager(), "repeated_any",
+                 [](TestAllTypes& message) { message.add_repeated_any(); });
 }
 
 void TestGetFieldImpl(
@@ -1011,6 +1021,20 @@ TEST_P(ProtoStructValueTest, ValueGetField) {
       [](const Handle<Value>& field) { EXPECT_TRUE(field->Is<NullValue>()); },
       [](TestAllTypes& message) {
         message.mutable_single_value()->set_bool_value(true);
+      },
+      [](const Handle<Value>& field) {
+        EXPECT_TRUE(field->As<BoolValue>().value());
+      });
+}
+
+TEST_P(ProtoStructValueTest, AnyGetField) {
+  TEST_GET_FIELD(
+      memory_manager(), "single_any",
+      [](const Handle<Value>& field) { EXPECT_TRUE(field->Is<ErrorValue>()); },
+      [](TestAllTypes& message) {
+        google::protobuf::BoolValue proto;
+        proto.set_value(true);
+        ASSERT_TRUE(message.mutable_single_any()->PackFrom(proto));
       },
       [](const Handle<Value>& field) {
         EXPECT_TRUE(field->As<BoolValue>().value());
@@ -1595,6 +1619,24 @@ TEST_P(ProtoStructValueTest, StringWrapperListGetField) {
         ASSERT_OK_AND_ASSIGN(
             field_value, field->Get(ListValue::GetContext(value_factory), 1));
         EXPECT_EQ(field_value.As<StringValue>()->ToString(), "bar");
+      });
+}
+
+TEST_P(ProtoStructValueTest, AnyListGetField) {
+  TEST_GET_LIST_FIELD(
+      memory_manager(), "repeated_any", EmptyListFieldTester,
+      [](TestAllTypes& message) {
+        google::protobuf::BoolValue proto;
+        proto.set_value(true);
+        ASSERT_TRUE(message.add_repeated_any()->PackFrom(proto));
+      },
+      [](ValueFactory& value_factory, const Handle<ListValue>& field) {
+        EXPECT_EQ(field->size(), 1);
+        EXPECT_FALSE(field->empty());
+        ASSERT_OK_AND_ASSIGN(
+            auto field_value,
+            field->Get(ListValue::GetContext(value_factory), 0));
+        EXPECT_TRUE(field_value.As<BoolValue>()->value());
       });
 }
 

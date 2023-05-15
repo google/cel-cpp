@@ -135,6 +135,13 @@ TEST_P(BuiltinTypeProviderTest, ProvidesStructWrapperType) {
   EXPECT_TRUE(struct_type->As<MapType>()->value()->Is<DynType>());
 }
 
+TEST_P(BuiltinTypeProviderTest, ProvidesAnyType) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_THAT(
+      TypeProvider::Builtin().ProvideType(type_factory, "google.protobuf.Any"),
+      IsOkAndHolds(Optional(Eq(type_factory.GetAnyType()))));
+}
+
 TEST_P(BuiltinTypeProviderTest, DoesNotProvide) {
   TypeFactory type_factory(memory_manager());
   ASSERT_THAT(

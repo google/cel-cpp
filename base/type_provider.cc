@@ -50,6 +50,7 @@ class BuiltinTypeProvider final : public TypeProvider {
             {"google.protobuf.Struct", GetStructType},
             {"type", GetTypeType},
             {"google.protobuf.Value", GetValueType},
+            {"google.protobuf.Any", GetAnyType},
             {"google.protobuf.BoolValue", GetBoolWrapperType},
             {"google.protobuf.BytesValue", GetBytesWrapperType},
             {"google.protobuf.DoubleValue", GetDoubleWrapperType},
@@ -172,7 +173,11 @@ class BuiltinTypeProvider final : public TypeProvider {
     return type_factory.GetDynType();
   }
 
-  std::array<BuiltinType, 25> types_;
+  static absl::StatusOr<Handle<Type>> GetAnyType(TypeFactory& type_factory) {
+    return type_factory.GetAnyType();
+  }
+
+  std::array<BuiltinType, 26> types_;
 };
 
 }  // namespace

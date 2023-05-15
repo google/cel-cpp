@@ -17,6 +17,7 @@
 
 #include <type_traits>
 
+#include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -126,6 +127,12 @@ class ProtoType final {
   template <typename T>
   using NotWrapperMessage = std::negation<WrapperMessage<T>>;
 
+  template <typename T>
+  using AnyMessage = std::is_same<google::protobuf::Any, std::decay_t<T>>;
+
+  template <typename T>
+  using NotAnyMessage = std::negation<AnyMessage<T>>;
+
  public:
   // Resolve Type from a protocol buffer enum descriptor.
   static absl::StatusOr<Handle<Type>> Resolve(
@@ -155,7 +162,8 @@ class ProtoType final {
   template <typename T>
   static std::enable_if_t<
       std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
-                         NotTimestampMessage<T>, NotWrapperMessage<T>>,
+                         NotTimestampMessage<T>, NotWrapperMessage<T>,
+                         NotAnyMessage<T>>,
       absl::StatusOr<Handle<ProtoStructType>>>
   Resolve(TypeManager& type_manager) {
     return ProtoStructType::Resolve<T>(type_manager);

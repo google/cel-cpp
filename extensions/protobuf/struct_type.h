@@ -33,6 +33,7 @@ namespace cel::extensions {
 class ProtoTypeProvider;
 class ProtoStructValue;
 class ProtoType;
+class ProtoValue;
 namespace protobuf_internal {
 class ParsedProtoStructValue;
 }
@@ -75,6 +76,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
  private:
   friend class ProtoStructTypeFieldIterator;
   friend class ProtoType;
+  friend class ProtoValue;
   friend class ProtoTypeProvider;
   friend class ProtoStructValue;
   friend class protobuf_internal::ParsedProtoStructValue;

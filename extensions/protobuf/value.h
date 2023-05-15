@@ -19,12 +19,14 @@
 #include <type_traits>
 #include <utility>
 
+#include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/base/attributes.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/time/time.h"
 #include "base/handle.h"
 #include "base/owner.h"
@@ -122,6 +124,12 @@ class ProtoValue final {
   template <typename T>
   using NotJsonMessage = std::negation<JsonMessage<T>>;
 
+  template <typename T>
+  using AnyMessage = std::is_same<google::protobuf::Any, std::decay_t<T>>;
+
+  template <typename T>
+  using NotAnyMessage = std::negation<AnyMessage<T>>;
+
  public:
   // Create a new EnumValue from a generated protocol buffer enum.
   template <typename T>
@@ -148,7 +156,7 @@ class ProtoValue final {
   static std::enable_if_t<
       std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
                          NotTimestampMessage<T>, NotWrapperMessage<T>,
-                         NotJsonMessage<T>>,
+                         NotJsonMessage<T>, NotAnyMessage<T>>,
       absl::StatusOr<Handle<ProtoStructValue>>>
   Create(ValueFactory& value_factory, T&& value) {
     return ProtoStructValue::Create(value_factory, std::forward<T>(value));
@@ -158,7 +166,7 @@ class ProtoValue final {
   static std::enable_if_t<
       std::conjunction_v<DerivedMessage<T>, NotDurationMessage<T>,
                          NotTimestampMessage<T>, NotWrapperMessage<T>,
-                         NotJsonMessage<T>>,
+                         NotJsonMessage<T>, NotAnyMessage<T>>,
       absl::StatusOr<Handle<ProtoStructValue>>>
   CreateBorrowed(ValueFactory& value_factory,
                  const T& value ABSL_ATTRIBUTE_LIFETIME_BOUND) {
@@ -233,6 +241,15 @@ class ProtoValue final {
       ValueFactory& value_factory, const google::protobuf::UInt64Value& value) {
     return value_factory.CreateUintValue(value.value());
   }
+
+  // Create a new Value from google.protobuf.Any.
+  static absl::StatusOr<Handle<Value>> Create(
+      ValueFactory& value_factory, const google::protobuf::Any& value) {
+    return Create(value_factory, value.type_url(), absl::Cord(value.value()));
+  }
+  static absl::StatusOr<Handle<Value>> Create(ValueFactory& value_factory,
+                                              absl::string_view type_url,
+                                              const absl::Cord& payload);
 
   static absl::StatusOr<Handle<ListValue>> Create(
       ValueFactory& value_factory, google::protobuf::ListValue value);

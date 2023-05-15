@@ -63,11 +63,11 @@ absl::StatusOr<Handle<Type>> ProtoType::Resolve(
         absl::StrCat("Missing protocol buffer type implementation for \"",
                      descriptor.full_name(), "\""));
   }
-  if (ABSL_PREDICT_FALSE(!(*type)->Is<ProtoStructType>() &&
-                         !(*type)->Is<DurationType>() &&
-                         !(*type)->Is<TimestampType>() &&
-                         !(*type)->Is<WrapperType>() && !IsJsonList(**type) &&
-                         !IsJsonMap(**type) && !(*type)->Is<DynType>())) {
+  if (ABSL_PREDICT_FALSE(
+          !(*type)->Is<ProtoStructType>() && !(*type)->Is<DurationType>() &&
+          !(*type)->Is<TimestampType>() && !(*type)->Is<WrapperType>() &&
+          !IsJsonList(**type) && !IsJsonMap(**type) &&
+          !(*type)->Is<DynType>() && !(*type)->Is<AnyType>())) {
     return absl::FailedPreconditionError(
         absl::StrCat("Unexpected protocol buffer type implementation for \"",
                      descriptor.full_name(), "\": ", (*type)->DebugString()));
