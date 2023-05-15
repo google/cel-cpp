@@ -260,7 +260,7 @@ class ArenaMemoryManager : public MemoryManager {
 
 // STL allocator implementation which is backed by MemoryManager.
 template <typename T>
-class Allocator final {
+class Allocator {
  public:
   using value_type = T;
   using pointer = T*;
