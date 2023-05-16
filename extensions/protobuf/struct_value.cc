@@ -1602,55 +1602,61 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
           case Kind::kAny:
             return ProtoValue::Create(context.value_factory(),
                                       proto_value.GetMessageValue());
-          case Kind::kBool: {
-            // google.protobuf.BoolValue, mapped to CEL primitive bool type for
-            // map values.
-            CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                 protobuf_internal::UnwrapBoolValueProto(
-                                     proto_value.GetMessageValue()));
-            return context.value_factory().CreateBoolValue(wrapped);
-          }
-          case Kind::kBytes: {
-            // google.protobuf.BytesValue, mapped to CEL primitive bytes type
-            // for map values.
-            CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                 protobuf_internal::UnwrapBytesValueProto(
-                                     proto_value.GetMessageValue()));
-            return context.value_factory().CreateBytesValue(std::move(wrapped));
-          }
-          case Kind::kDouble: {
-            // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL primitive
-            // double type for map values.
-            CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                 protobuf_internal::UnwrapDoubleValueProto(
-                                     proto_value.GetMessageValue()));
-            return context.value_factory().CreateDoubleValue(wrapped);
-          }
-          case Kind::kInt: {
-            // google.protobuf.{Int32Value,Int64Value}, mapped to CEL primitive
-            // int type for map values.
-            CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                 protobuf_internal::UnwrapIntValueProto(
-                                     proto_value.GetMessageValue()));
-            return context.value_factory().CreateIntValue(wrapped);
-          }
-          case Kind::kString: {
-            // google.protobuf.StringValue, mapped to CEL primitive bytes type
-            // for map values.
-            CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                 protobuf_internal::UnwrapStringValueProto(
-                                     proto_value.GetMessageValue()));
-            return context.value_factory().CreateUncheckedStringValue(
-                std::move(wrapped));
-          }
-          case Kind::kUint: {
-            // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL
-            // primitive uint type for map values.
-            CEL_ASSIGN_OR_RETURN(auto wrapped,
-                                 protobuf_internal::UnwrapUIntValueProto(
-                                     proto_value.GetMessageValue()));
-            return context.value_factory().CreateUintValue(wrapped);
-          }
+          case Kind::kWrapper:
+            switch (type->As<WrapperType>().wrapped()->kind()) {
+              case Kind::kBool: {
+                // google.protobuf.BoolValue, mapped to CEL primitive bool type
+                // for map values.
+                CEL_ASSIGN_OR_RETURN(auto wrapped,
+                                     protobuf_internal::UnwrapBoolValueProto(
+                                         proto_value.GetMessageValue()));
+                return context.value_factory().CreateBoolValue(wrapped);
+              }
+              case Kind::kBytes: {
+                // google.protobuf.BytesValue, mapped to CEL primitive bytes
+                // type for map values.
+                CEL_ASSIGN_OR_RETURN(auto wrapped,
+                                     protobuf_internal::UnwrapBytesValueProto(
+                                         proto_value.GetMessageValue()));
+                return context.value_factory().CreateBytesValue(
+                    std::move(wrapped));
+              }
+              case Kind::kDouble: {
+                // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL
+                // primitive double type for map values.
+                CEL_ASSIGN_OR_RETURN(auto wrapped,
+                                     protobuf_internal::UnwrapDoubleValueProto(
+                                         proto_value.GetMessageValue()));
+                return context.value_factory().CreateDoubleValue(wrapped);
+              }
+              case Kind::kInt: {
+                // google.protobuf.{Int32Value,Int64Value}, mapped to CEL
+                // primitive int type for map values.
+                CEL_ASSIGN_OR_RETURN(auto wrapped,
+                                     protobuf_internal::UnwrapIntValueProto(
+                                         proto_value.GetMessageValue()));
+                return context.value_factory().CreateIntValue(wrapped);
+              }
+              case Kind::kString: {
+                // google.protobuf.StringValue, mapped to CEL primitive bytes
+                // type for map values.
+                CEL_ASSIGN_OR_RETURN(auto wrapped,
+                                     protobuf_internal::UnwrapStringValueProto(
+                                         proto_value.GetMessageValue()));
+                return context.value_factory().CreateUncheckedStringValue(
+                    std::move(wrapped));
+              }
+              case Kind::kUint: {
+                // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL
+                // primitive uint type for map values.
+                CEL_ASSIGN_OR_RETURN(auto wrapped,
+                                     protobuf_internal::UnwrapUIntValueProto(
+                                         proto_value.GetMessageValue()));
+                return context.value_factory().CreateUintValue(wrapped);
+              }
+              default:
+                ABSL_UNREACHABLE();
+            }
           case Kind::kStruct:
             return context.value_factory()
                 .CreateBorrowedStructValue<

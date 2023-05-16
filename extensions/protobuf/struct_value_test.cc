@@ -762,6 +762,7 @@ void TestGetWrapperFieldImpl(
     absl::FunctionRef<absl::StatusOr<Handle<Value>>(
         const Handle<StructValue>&, const StructValue::GetFieldContext&)>
         get_field,
+    absl::string_view debug_string,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -777,6 +778,7 @@ void TestGetWrapperFieldImpl(
       get_field(value_without, StructValue::GetFieldContext(value_factory)
                                    .set_unbox_null_wrapper_types(true)));
   EXPECT_TRUE(field->Is<NullValue>());
+  EXPECT_EQ(field->DebugString(), "null");
   ASSERT_OK_AND_ASSIGN(
       field,
       get_field(value_without, StructValue::GetFieldContext(value_factory)
@@ -788,11 +790,13 @@ void TestGetWrapperFieldImpl(
   ASSERT_OK_AND_ASSIGN(
       field,
       get_field(value_with, StructValue::GetFieldContext(value_factory)));
+  EXPECT_EQ(field->DebugString(), debug_string);
   ASSERT_NO_FATAL_FAILURE(set_field_tester(value_factory, field));
 }
 
 void TestGetWrapperFieldByName(
     MemoryManager& memory_manager, absl::string_view name,
+    absl::string_view debug_string,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -803,11 +807,12 @@ void TestGetWrapperFieldByName(
           const StructValue::GetFieldContext& context) {
         return value->GetFieldByName(context, name);
       },
-      unset_field_tester, test_message_maker, set_field_tester);
+      debug_string, unset_field_tester, test_message_maker, set_field_tester);
 }
 
 void TestGetWrapperFieldByNumber(
     MemoryManager& memory_manager, int64_t number,
+    absl::string_view debug_string,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
@@ -818,29 +823,33 @@ void TestGetWrapperFieldByNumber(
           const StructValue::GetFieldContext& context) {
         return value->GetFieldByNumber(context, number);
       },
+      debug_string, unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetWrapperField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::string_view debug_string,
+    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
+        set_field_tester) {
+  TestGetWrapperFieldByName(memory_manager, name, debug_string,
+                            unset_field_tester, test_message_maker,
+                            set_field_tester);
+  TestGetWrapperFieldByNumber(
+      memory_manager, TestMessageFieldNameToNumber(name), debug_string,
       unset_field_tester, test_message_maker, set_field_tester);
 }
 
 void TestGetWrapperField(
     MemoryManager& memory_manager, absl::string_view name,
-    absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
-    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
-    absl::FunctionRef<void(ValueFactory&, const Handle<Value>&)>
-        set_field_tester) {
-  TestGetWrapperFieldByName(memory_manager, name, unset_field_tester,
-                            test_message_maker, set_field_tester);
-  TestGetWrapperFieldByNumber(
-      memory_manager, TestMessageFieldNameToNumber(name), unset_field_tester,
-      test_message_maker, set_field_tester);
-}
-
-void TestGetWrapperField(
-    MemoryManager& memory_manager, absl::string_view name,
+    absl::string_view debug_string,
     absl::FunctionRef<void(const Handle<Value>&)> unset_field_tester,
     absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
     absl::FunctionRef<void(const Handle<Value>&)> set_field_tester) {
   TestGetWrapperField(
-      memory_manager, name, unset_field_tester, test_message_maker,
+      memory_manager, name, debug_string, unset_field_tester,
+      test_message_maker,
       [&](ValueFactory& value_factory, const Handle<Value>& field) {
         set_field_tester(field);
       });
@@ -851,7 +860,7 @@ void TestGetWrapperField(
 
 TEST_P(ProtoStructValueTest, BoolWrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_bool_wrapper",
+      memory_manager(), "single_bool_wrapper", "true",
       [](const Handle<Value>& field) {
         EXPECT_FALSE(field.As<BoolValue>()->value());
       },
@@ -865,7 +874,7 @@ TEST_P(ProtoStructValueTest, BoolWrapperGetField) {
 
 TEST_P(ProtoStructValueTest, Int32WrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_int32_wrapper",
+      memory_manager(), "single_int32_wrapper", "1",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<IntValue>()->value(), 0);
       },
@@ -879,7 +888,7 @@ TEST_P(ProtoStructValueTest, Int32WrapperGetField) {
 
 TEST_P(ProtoStructValueTest, Int64WrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_int64_wrapper",
+      memory_manager(), "single_int64_wrapper", "1",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<IntValue>()->value(), 0);
       },
@@ -893,7 +902,7 @@ TEST_P(ProtoStructValueTest, Int64WrapperGetField) {
 
 TEST_P(ProtoStructValueTest, Uint32WrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_uint32_wrapper",
+      memory_manager(), "single_uint32_wrapper", "1u",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<UintValue>()->value(), 0);
       },
@@ -907,7 +916,7 @@ TEST_P(ProtoStructValueTest, Uint32WrapperGetField) {
 
 TEST_P(ProtoStructValueTest, Uint64WrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_uint64_wrapper",
+      memory_manager(), "single_uint64_wrapper", "1u",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<UintValue>()->value(), 0);
       },
@@ -921,7 +930,7 @@ TEST_P(ProtoStructValueTest, Uint64WrapperGetField) {
 
 TEST_P(ProtoStructValueTest, FloatWrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_float_wrapper",
+      memory_manager(), "single_float_wrapper", "1.0",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<DoubleValue>()->value(), 0);
       },
@@ -935,7 +944,7 @@ TEST_P(ProtoStructValueTest, FloatWrapperGetField) {
 
 TEST_P(ProtoStructValueTest, DoubleWrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_double_wrapper",
+      memory_manager(), "single_double_wrapper", "1.0",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<DoubleValue>()->value(), 0);
       },
@@ -949,7 +958,7 @@ TEST_P(ProtoStructValueTest, DoubleWrapperGetField) {
 
 TEST_P(ProtoStructValueTest, BytesWrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_bytes_wrapper",
+      memory_manager(), "single_bytes_wrapper", "b\"foo\"",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<BytesValue>()->ToString(), "");
       },
@@ -963,7 +972,7 @@ TEST_P(ProtoStructValueTest, BytesWrapperGetField) {
 
 TEST_P(ProtoStructValueTest, StringWrapperGetField) {
   TEST_GET_WRAPPER_FIELD(
-      memory_manager(), "single_string_wrapper",
+      memory_manager(), "single_string_wrapper", "\"foo\"",
       [](const Handle<Value>& field) {
         EXPECT_EQ(field.As<StringValue>()->ToString(), "");
       },
@@ -1641,6 +1650,83 @@ TEST_P(ProtoStructValueTest, AnyListGetField) {
         EXPECT_TRUE(field_value.As<BoolValue>()->value());
       });
 }
+
+void TestGetMapFieldImpl(
+    MemoryManager& memory_manager,
+    absl::FunctionRef<absl::StatusOr<Handle<Value>>(
+        const Handle<StructValue>&, const StructValue::GetFieldContext&)>
+        get_field,
+    absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
+        set_field_tester) {
+  TypeFactory type_factory(memory_manager);
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto value_without,
+                       ProtoValue::Create(value_factory, CreateTestMessage()));
+  ASSERT_OK_AND_ASSIGN(
+      auto field,
+      get_field(value_without, StructValue::GetFieldContext(value_factory)));
+  ASSERT_TRUE(field->Is<MapValue>());
+  ASSERT_NO_FATAL_FAILURE(unset_field_tester(field.As<MapValue>()));
+  ASSERT_OK_AND_ASSIGN(
+      auto value_with,
+      ProtoValue::Create(value_factory, CreateTestMessage(test_message_maker)));
+  ASSERT_OK_AND_ASSIGN(
+      field,
+      get_field(value_with, StructValue::GetFieldContext(value_factory)));
+  ASSERT_TRUE(field->Is<MapValue>());
+  ASSERT_NO_FATAL_FAILURE(
+      set_field_tester(value_factory, field.As<MapValue>()));
+}
+
+void TestGetMapFieldByName(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
+        set_field_tester) {
+  TestGetMapFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByName(context, name);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetMapFieldByNumber(
+    MemoryManager& memory_manager, int64_t number,
+    absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
+        set_field_tester) {
+  TestGetMapFieldImpl(
+      memory_manager,
+      [&](const Handle<StructValue>& value,
+          const StructValue::GetFieldContext& context) {
+        return value->GetFieldByNumber(context, number);
+      },
+      unset_field_tester, test_message_maker, set_field_tester);
+}
+
+void TestGetMapField(
+    MemoryManager& memory_manager, absl::string_view name,
+    absl::FunctionRef<void(const Handle<MapValue>&)> unset_field_tester,
+    absl::FunctionRef<void(TestAllTypes&)> test_message_maker,
+    absl::FunctionRef<void(ValueFactory&, const Handle<MapValue>&)>
+        set_field_tester) {
+  TestGetMapFieldByName(memory_manager, name, unset_field_tester,
+                        test_message_maker, set_field_tester);
+  TestGetMapFieldByNumber(memory_manager, TestMessageFieldNameToNumber(name),
+                          unset_field_tester, test_message_maker,
+                          set_field_tester);
+}
+
+#define TEST_GET_MAP_FIELD(...) \
+  ASSERT_NO_FATAL_FAILURE(TestGetMapField(__VA_ARGS__))
 
 template <typename MutableMapField, typename Pair>
 void TestMapHasField(MemoryManager& memory_manager,
@@ -2978,6 +3064,266 @@ TEST_P(ProtoStructValueTest, BoolMessageMapGetField) {
       &TestAllTypes::mutable_map_bool_message, &ValueFactory::CreateBoolValue,
       nullptr, std::make_pair(false, CreateTestNestedMessage(1)),
       std::make_pair(true, CreateTestNestedMessage(2)), nullptr);
+}
+
+void EmptyMapTester(const Handle<MapValue>& field) {
+  EXPECT_TRUE(field->empty());
+  EXPECT_EQ(field->size(), 0);
+  EXPECT_EQ(field->DebugString(), "{}");
+}
+
+TEST_P(ProtoStructValueTest, BoolStructMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_struct", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::Struct proto;
+        google::protobuf::Value value;
+        value.set_bool_value(false);
+        proto.mutable_fields()->insert({"foo", value});
+        message.mutable_map_bool_struct()->insert({false, proto});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<MapValue>());
+        EXPECT_EQ((*value).As<MapValue>()->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto subvalue,
+                             (*value).As<MapValue>()->Get(
+                                 MapValue::GetContext(value_factory),
+                                 Must(value_factory.CreateStringValue("foo"))));
+        ASSERT_TRUE(subvalue);
+        ASSERT_TRUE((*subvalue)->Is<BoolValue>());
+        EXPECT_FALSE((*subvalue)->As<BoolValue>().value());
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolValueMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_value", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::Value value;
+        value.set_bool_value(true);
+        message.mutable_map_bool_value()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<BoolValue>());
+        EXPECT_TRUE((*value)->As<BoolValue>().value());
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolListValueMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_list_value", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::ListValue value;
+        value.add_values();
+        message.mutable_map_bool_list_value()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<ListValue>());
+        EXPECT_FALSE((*value)->As<ListValue>().empty());
+        EXPECT_EQ((*value)->As<ListValue>().size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto element,
+                             (*value)->As<ListValue>().Get(
+                                 ListValue::GetContext(value_factory), 0));
+        ASSERT_TRUE(element->Is<NullValue>());
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolBoolWrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_bool_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::BoolValue value;
+        value.set_value(true);
+        message.mutable_map_bool_bool_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<BoolValue>());
+        EXPECT_TRUE((*value)->As<BoolValue>().value());
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolInt32WrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_int32_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::Int32Value value;
+        value.set_value(1);
+        message.mutable_map_bool_int32_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<IntValue>());
+        EXPECT_EQ((*value)->As<IntValue>().value(), 1);
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolInt64WrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_int64_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::Int64Value value;
+        value.set_value(1);
+        message.mutable_map_bool_int64_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<IntValue>());
+        EXPECT_EQ((*value)->As<IntValue>().value(), 1);
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolUInt32WrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_uint32_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::UInt32Value value;
+        value.set_value(1);
+        message.mutable_map_bool_uint32_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<UintValue>());
+        EXPECT_EQ((*value)->As<UintValue>().value(), 1);
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolUInt64WrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_uint64_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::UInt64Value value;
+        value.set_value(1);
+        message.mutable_map_bool_uint64_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<UintValue>());
+        EXPECT_EQ((*value)->As<UintValue>().value(), 1);
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolFloatWrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_float_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::FloatValue value;
+        value.set_value(1);
+        message.mutable_map_bool_float_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<DoubleValue>());
+        EXPECT_EQ((*value)->As<DoubleValue>().value(), 1);
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolDoubleWrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_double_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::DoubleValue value;
+        value.set_value(1);
+        message.mutable_map_bool_double_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<DoubleValue>());
+        EXPECT_EQ((*value)->As<DoubleValue>().value(), 1);
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolBytesWrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_bytes_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::BytesValue value;
+        value.set_value("foo");
+        message.mutable_map_bool_bytes_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<BytesValue>());
+        EXPECT_EQ((*value)->As<BytesValue>().ToString(), "foo");
+      });
+}
+
+TEST_P(ProtoStructValueTest, BoolStringWrapperMapGetField) {
+  TEST_GET_MAP_FIELD(
+      memory_manager(), "map_bool_string_wrapper", EmptyMapTester,
+      [](TestAllTypes& message) {
+        google::protobuf::StringValue value;
+        value.set_value("foo");
+        message.mutable_map_bool_string_wrapper()->insert({false, value});
+      },
+      [](ValueFactory& value_factory, const Handle<MapValue>& field) {
+        EXPECT_FALSE(field->empty());
+        EXPECT_EQ(field->size(), 1);
+        ASSERT_OK_AND_ASSIGN(auto value,
+                             field->Get(MapValue::GetContext(value_factory),
+                                        value_factory.CreateBoolValue(false)));
+        ASSERT_TRUE(value);
+        ASSERT_TRUE((*value)->Is<StringValue>());
+        EXPECT_EQ((*value)->As<StringValue>().ToString(), "foo");
+      });
 }
 
 TEST_P(ProtoStructValueTest, Int32NullValueMapGetField) {
