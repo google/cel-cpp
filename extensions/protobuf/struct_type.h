@@ -43,7 +43,7 @@ class ProtoStructTypeFieldIterator;
 class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
   static bool Is(const Type& type) {
-    return type.kind() == Kind::kStruct &&
+    return CEL_STRUCT_TYPE_CLASS::Is(type) &&
            cel::base_internal::GetStructTypeTypeId(
                static_cast<const StructType&>(type)) ==
                cel::internal::TypeId<ProtoStructType>();

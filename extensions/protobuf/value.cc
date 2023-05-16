@@ -529,7 +529,7 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(
                     absl::WrapUnique(value->release_struct_value()));
     default:
       return absl::InvalidArgumentError(absl::StrCat(
-          "unexpected google.protobuf.Value kind: %d", value->kind_case()));
+          "unexpected google.protobuf.Value kind: ", value->kind_case()));
   }
 }
 
@@ -552,7 +552,7 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(
       return Create(value_factory, std::move(*value.mutable_struct_value()));
     default:
       return absl::InvalidArgumentError(absl::StrCat(
-          "unexpected google.protobuf.Value kind: %d", value.kind_case()));
+          "unexpected google.protobuf.Value kind: ", value.kind_case()));
   }
 }
 
@@ -579,7 +579,7 @@ absl::StatusOr<Handle<Value>> ProtoValue::CreateBorrowed(
                             value.struct_value());
     default:
       return absl::InvalidArgumentError(absl::StrCat(
-          "unexpected google.protobuf.Value kind: %d", value.kind_case()));
+          "unexpected google.protobuf.Value kind: ", value.kind_case()));
   }
 }
 

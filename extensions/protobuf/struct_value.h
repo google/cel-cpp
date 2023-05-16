@@ -64,7 +64,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
 
  public:
   static bool Is(const Value& value) {
-    return value.kind() == Kind::kStruct &&
+    return CEL_STRUCT_VALUE_CLASS::Is(value) &&
            cel::base_internal::GetStructValueTypeId(
                static_cast<const StructValue&>(value)) ==
                cel::internal::TypeId<ProtoStructValue>();
