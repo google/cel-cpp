@@ -44,7 +44,10 @@ class CelFunctionRegistry {
   // Function registration should be performed prior to
   // CelExpression creation.
   absl::Status Register(std::unique_ptr<CelFunction> function) {
-    return Register(function->descriptor(), std::move(function));
+    // We need to copy the descriptor, otherwise there is no guarantee that the
+    // lvalue reference to the descriptor is valid as function may be destroyed.
+    auto descriptor = function->descriptor();
+    return Register(descriptor, std::move(function));
   }
 
   absl::Status Register(const cel::FunctionDescriptor& descriptor,
