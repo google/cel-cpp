@@ -23,7 +23,8 @@ CEL_INTERNAL_TYPE_IMPL(DynType);
 
 absl::Span<const absl::string_view> DynType::aliases() const {
   // Currently google.protobuf.Value also resolves to dyn.
-  return absl::MakeConstSpan({absl::string_view("google.protobuf.Value")});
+  static constexpr absl::string_view kAliases[] = {"google.protobuf.Value"};
+  return absl::MakeConstSpan(kAliases);
 }
 
 }  // namespace cel

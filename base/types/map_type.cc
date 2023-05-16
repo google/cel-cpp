@@ -29,9 +29,10 @@ namespace cel {
 CEL_INTERNAL_TYPE_IMPL(MapType);
 
 absl::Span<const absl::string_view> MapType::aliases() const {
+  static constexpr absl::string_view kAliases[] = {"google.protobuf.Struct"};
   if (key()->kind() == Kind::kString && value()->kind() == Kind::kDyn) {
     // Currently google.protobuf.Struct resolves to map<string, dyn>.
-    return absl::MakeConstSpan({absl::string_view("google.protobuf.Struct")});
+    return absl::MakeConstSpan(kAliases);
   }
   return absl::Span<const absl::string_view>();
 }

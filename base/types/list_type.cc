@@ -29,10 +29,10 @@ namespace cel {
 CEL_INTERNAL_TYPE_IMPL(ListType);
 
 absl::Span<const absl::string_view> ListType::aliases() const {
+  static constexpr absl::string_view kAliases[] = {"google.protobuf.ListValue"};
   if (element()->kind() == Kind::kDyn) {
     // Currently google.protobuf.ListValue resolves to list<dyn>.
-    return absl::MakeConstSpan(
-        {absl::string_view("google.protobuf.ListValue")});
+    return absl::MakeConstSpan(kAliases);
   }
   return absl::Span<const absl::string_view>();
 }
