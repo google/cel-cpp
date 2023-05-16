@@ -35,6 +35,9 @@ class TypeFactory;
 // of the registered providers. If the type can't be resolved, the operation
 // will result in an error.
 //
+// Type provider implementations must be effectively immutable and threadsafe.
+// The type registry uses this property to aggressively cache results.
+//
 // Note: This API is not finalized. Consult the CEL team before introducing new
 // implementations.
 class TypeProvider {

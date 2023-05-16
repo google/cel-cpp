@@ -99,7 +99,9 @@ class ValueFactory final {
 
   TypeFactory& type_factory() const { return type_manager().type_factory(); }
 
-  TypeProvider& type_provider() const { return type_manager().type_provider(); }
+  const TypeProvider& type_provider() const {
+    return type_manager().type_provider();
+  }
 
   TypeManager& type_manager() const { return type_manager_; }
 

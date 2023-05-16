@@ -27,7 +27,7 @@
 
 namespace cel {
 
-// TypeManager is a union of the TypeFactory and TypeRegistry, allowing for both
+// TypeManager is a union of the TypeFactory and TypeProvider, allowing for both
 // the instantiation of type implementations, loading of type implementations,
 // and registering type implementations.
 //
@@ -44,7 +44,7 @@ class TypeManager final {
 
   TypeFactory& type_factory() const { return type_factory_; }
 
-  TypeProvider& type_provider() const { return type_provider_; }
+  const TypeProvider& type_provider() const { return type_provider_; }
 
   absl::StatusOr<absl::optional<Handle<Type>>> ResolveType(
       absl::string_view name);
@@ -56,7 +56,7 @@ class TypeManager final {
                                     Handle<Type>&& type);
 
   TypeFactory& type_factory_;
-  TypeProvider& type_provider_;
+  const TypeProvider& type_provider_;
 
   absl::Mutex mutex_;
   // std::string as the key because we also cache types which do not exist.
