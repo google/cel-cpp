@@ -6,9 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/descriptor.h"
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -88,13 +85,6 @@ class CelTypeRegistry {
   cel::Handle<cel::Value> FindType(
       absl::string_view fully_qualified_type_name) const;
 
-  // Return the set of enums configured within the type registry.
-  ABSL_DEPRECATED("Use GetRegisteredEnums to validate RegisterEnum calls.")
-  inline const absl::flat_hash_set<const google::protobuf::EnumDescriptor*>& Enums()
-      const {
-    return enums_;
-  }
-
   // Return the registered enums configured within the type registry in the
   // internal format that can be identified as int constants at plan time.
   const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
@@ -124,8 +114,6 @@ class CelTypeRegistry {
   // node_hash_set provides pointer-stability, which is required for the
   // strings backing CelType objects.
   mutable absl::node_hash_set<std::string> types_ ABSL_GUARDED_BY(mutex_);
-  // Set of registered enums.
-  absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
   // Internal representation for enums.
   absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>
       resolveable_enums_;

@@ -2,12 +2,9 @@
 
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/struct.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/string_view.h"
@@ -19,7 +16,7 @@
 #include "base/types/enum_type.h"
 #include "base/value.h"
 #include "eval/internal/interop.h"
-#include "internal/no_destructor.h"
+#include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
 
@@ -49,7 +46,6 @@ const absl::node_hash_set<std::string>& GetCoreTypes() {
   return *kCoreTypes;
 }
 
-using DescriptorSet = absl::flat_hash_set<const google::protobuf::EnumDescriptor*>;
 using EnumMap = absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>;
 
 // Type factory for ref-counted type instances.
@@ -154,35 +150,6 @@ void AddEnumFromDescriptor(const google::protobuf::EnumDescriptor* desc,
   registry.RegisterEnum(desc->full_name(), std::move(enumerators));
 }
 
-// Portable version. Add overloads for specific core supported enums.
-template <typename T, typename U = void>
-struct EnumAdderT {
-  template <typename EnumT>
-  void AddEnum(DescriptorSet&) {}
-};
-
-template <typename T>
-struct EnumAdderT<T, typename std::enable_if<
-                         std::is_base_of_v<google::protobuf::Message, T>, void>::type> {
-  template <typename EnumT>
-  void AddEnum(DescriptorSet& set) {
-    set.insert(google::protobuf::GetEnumDescriptor<EnumT>());
-  }
-};
-
-// Enable loading the linked descriptor if using the full proto runtime.
-// Otherwise, only support explicitly defined enums.
-using EnumAdder = EnumAdderT<google::protobuf::Struct>;
-
-const absl::flat_hash_set<const google::protobuf::EnumDescriptor*>& GetCoreEnums() {
-  static cel::internal::NoDestructor<DescriptorSet> kCoreEnums([]() {
-    absl::flat_hash_set<const google::protobuf::EnumDescriptor*> instance;
-    EnumAdder().AddEnum<google::protobuf::NullValue>(instance);
-    return instance;
-  }());
-  return *kCoreEnums;
-}
-
 }  // namespace
 
 absl::StatusOr<absl::optional<ResolveableEnumType::Constant>>
@@ -207,8 +174,7 @@ ResolveableEnumType::FindConstantByNumber(int64_t number) const {
   return absl::nullopt;
 }
 
-CelTypeRegistry::CelTypeRegistry()
-    : types_(GetCoreTypes()), enums_(GetCoreEnums()) {
+CelTypeRegistry::CelTypeRegistry() : types_(GetCoreTypes()) {
   RegisterEnum("google.protobuf.NullValue", {{"NULL_VALUE", 0}});
 }
 
@@ -219,7 +185,6 @@ void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
 }
 
 void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_descriptor) {
-  enums_.insert(enum_descriptor);
   AddEnumFromDescriptor(enum_descriptor, *this);
 }
 
