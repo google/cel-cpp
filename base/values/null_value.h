@@ -48,6 +48,7 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
   using Base::type;
 
  private:
+  NullValue() = default;
   CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(NullValue);
 };
 

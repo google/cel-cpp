@@ -115,6 +115,7 @@ cc_test(
         "//eval/public/testing:matchers",
         "//internal:testing",
         "//parser",
+        "//testutil:util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

@@ -22,7 +22,6 @@
 #include "base/types/string_type.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
-#include "re2/re2.h"
 
 namespace cel {
 

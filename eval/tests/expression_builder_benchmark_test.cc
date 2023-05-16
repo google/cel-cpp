@@ -37,6 +37,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using google::api::expr::v1alpha1::CheckedExpr;
 using google::api::expr::v1alpha1::ParsedExpr;
 
 enum BenchmarkParam : int {

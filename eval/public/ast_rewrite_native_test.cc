@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "google/protobuf/text_format.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
 #include "extensions/protobuf/ast_converters.h"

@@ -47,9 +47,9 @@ namespace google::api::expr::runtime::internal {
 namespace {
 
 using testing::Eq;
-using testing::EqualsProto;
 using testing::UnorderedPointwise;
 using cel::internal::StatusIs;
+using testutil::EqualsProto;
 
 using google::protobuf::Duration;
 using google::protobuf::ListValue;
@@ -109,7 +109,7 @@ class ProtobufDescriptorAnyPackingApis : public LegacyAnyPackingApis {
   absl::Status Pack(const google::protobuf::MessageLite* message,
                     google::protobuf::Any& any_message) const override {
     const google::protobuf::Message* message_ptr =
-        down_cast<const google::protobuf::Message*>(message);
+        cel::internal::down_cast<const google::protobuf::Message*>(message);
     any_message.PackFrom(*message_ptr);
     return absl::OkStatus();
   }
@@ -164,7 +164,7 @@ class CelProtoWrapperTest : public ::testing::Test {
     EXPECT_OK(result);
     tested_message = *result;
     EXPECT_TRUE(tested_message != nullptr);
-    EXPECT_THAT(*tested_message, testutil::EqualsProto(message));
+    EXPECT_THAT(*tested_message, EqualsProto(message));
 
     // Test the same as above, but with allocated message.
     MessageType* created_message = Arena::CreateMessage<MessageType>(arena());
@@ -173,7 +173,7 @@ class CelProtoWrapperTest : public ::testing::Test {
     EXPECT_EQ(created_message, *result);
     created_message = *result;
     EXPECT_TRUE(created_message != nullptr);
-    EXPECT_THAT(*created_message, testutil::EqualsProto(message));
+    EXPECT_THAT(*created_message, EqualsProto(message));
   }
 
   template <class MessageType, class T>
@@ -209,7 +209,7 @@ class CelProtoWrapperTest : public ::testing::Test {
       return;
     }
     EXPECT_TRUE(cel_value.IsMessage());
-    EXPECT_THAT(cel_value.MessageOrDie(), testutil::EqualsProto(*result));
+    EXPECT_THAT(cel_value.MessageOrDie(), EqualsProto(*result));
   }
 
   std::unique_ptr<google::protobuf::Message> ReflectedCopy(
@@ -260,7 +260,7 @@ TEST_F(CelProtoWrapperTest, TestDuration) {
   Duration out;
   auto status = cel::internal::EncodeDuration(value.DurationOrDie(), &out);
   EXPECT_TRUE(status.ok());
-  EXPECT_THAT(out, testutil::EqualsProto(msg_duration));
+  EXPECT_THAT(out, EqualsProto(msg_duration));
 }
 
 // This test verifies CelValue support of Timestamp type.
@@ -275,7 +275,7 @@ TEST_F(CelProtoWrapperTest, TestTimestamp) {
   Timestamp out;
   auto status = cel::internal::EncodeTime(value.TimestampOrDie(), &out);
   EXPECT_TRUE(status.ok());
-  EXPECT_THAT(out, testutil::EqualsProto(msg_timestamp));
+  EXPECT_THAT(out, EqualsProto(msg_timestamp));
 }
 
 // Dynamic Values test

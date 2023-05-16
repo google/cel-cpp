@@ -23,6 +23,7 @@
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "google/protobuf/descriptor.pb.h"
 #include "absl/functional/function_ref.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
@@ -38,6 +39,7 @@
 #include "extensions/protobuf/type_provider.h"
 #include "extensions/protobuf/value.h"
 #include "internal/testing.h"
+#include "testutil/util.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
@@ -49,11 +51,11 @@ namespace {
 
 using FieldId = ::cel::extensions::ProtoStructType::FieldId;
 using ::cel_testing::ValueOf;
+using google::api::expr::testutil::EqualsProto;
 using testing::Eq;
-using testing::EqualsProto;
 using testing::Optional;
-using testing::status::CanonicalStatusIs;
 using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 using TestAllTypes = ::google::api::expr::test::v1::proto3::TestAllTypes;
 using NullValueProto = ::google::protobuf::NullValue;
@@ -1868,11 +1870,11 @@ void TestMapGetField(MemoryManager& memory_manager,
   EXPECT_THAT(field.As<MapValue>()->Get(
                   MapValue::GetContext(value_factory),
                   value_factory.CreateErrorValue(absl::CancelledError())),
-              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+              StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(field.As<MapValue>()->Has(
                   MapValue::HasContext(),
                   value_factory.CreateErrorValue(absl::CancelledError())),
-              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+              StatusIs(absl::StatusCode::kInvalidArgument));
   ASSERT_OK_AND_ASSIGN(
       auto keys,
       field.As<MapValue>()->ListKeys(MapValue::ListKeysContext(value_factory)));
@@ -1960,11 +1962,11 @@ void TestStringMapGetField(MemoryManager& memory_manager,
   EXPECT_THAT(field.As<MapValue>()->Get(
                   MapValue::GetContext(value_factory),
                   value_factory.CreateErrorValue(absl::CancelledError())),
-              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+              StatusIs(absl::StatusCode::kInvalidArgument));
   EXPECT_THAT(field.As<MapValue>()->Has(
                   MapValue::HasContext(),
                   value_factory.CreateErrorValue(absl::CancelledError())),
-              CanonicalStatusIs(absl::StatusCode::kInvalidArgument));
+              StatusIs(absl::StatusCode::kInvalidArgument));
   ASSERT_OK_AND_ASSIGN(
       auto keys,
       field.As<MapValue>()->ListKeys(MapValue::ListKeysContext(value_factory)));
@@ -4123,7 +4125,7 @@ TEST_P(ProtoStructValueTest, NewFieldIteratorIds) {
     actual_ids.insert(id);
   }
   EXPECT_THAT(iterator->NextId(StructValue::GetFieldContext(value_factory)),
-              CanonicalStatusIs(absl::StatusCode::kFailedPrecondition));
+              StatusIs(absl::StatusCode::kFailedPrecondition));
   std::set<StructType::FieldId> expected_ids = {
       FieldIdFactory::Make(13), FieldIdFactory::Make(1),
       FieldIdFactory::Make(2),  FieldIdFactory::Make(3),
@@ -4169,7 +4171,7 @@ TEST_P(ProtoStructValueTest, NewFieldIteratorValues) {
     actual_values.push_back(std::move(value));
   }
   EXPECT_THAT(iterator->NextValue(StructValue::GetFieldContext(value_factory)),
-              CanonicalStatusIs(absl::StatusCode::kFailedPrecondition));
+              StatusIs(absl::StatusCode::kFailedPrecondition));
   // We cannot really test actual_types, as hand translating TestAllTypes would
   // be obnoxious. Otherwise we would simply be testing the same logic against
   // itself, which would not be useful.

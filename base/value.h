@@ -325,7 +325,6 @@ CEL_INTERNAL_VALUE_DECL(Value);
   template <size_t Size, size_t Align>                  \
   friend struct base_internal::AnyData;                 \
                                                         \
-  value_class() = default;                              \
   value_class(const value_class&) = default;            \
   value_class(value_class&&) = default;                 \
   value_class& operator=(const value_class&) = default; \

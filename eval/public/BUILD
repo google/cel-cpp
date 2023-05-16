@@ -888,7 +888,7 @@ cc_test(
         "//extensions/protobuf:ast_converters",
         "//internal:testing",
         "//parser",
-        "//testutil:util",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

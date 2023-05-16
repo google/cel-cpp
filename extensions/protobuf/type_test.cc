@@ -28,8 +28,8 @@ namespace cel::extensions {
 namespace {
 
 using ::cel_testing::TypeIs;
-using testing::status::CanonicalStatusIs;
 using cel::internal::IsOkAndHolds;
+using cel::internal::StatusIs;
 
 using ProtoTypeTest = ProtoTest<>;
 
@@ -95,7 +95,7 @@ TEST_P(ProtoTypeTest, ResolveNotFound) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   EXPECT_THAT(
       ProtoType::Resolve(type_manager, *google::protobuf::Api::descriptor()),
-      CanonicalStatusIs(absl::StatusCode::kNotFound));
+      StatusIs(absl::StatusCode::kNotFound));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoTypeTest, ProtoTypeTest,

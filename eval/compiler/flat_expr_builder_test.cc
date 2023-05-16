@@ -28,6 +28,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/field_mask.pb.h"
 #include "google/protobuf/descriptor.pb.h"
+#include "google/protobuf/text_format.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"

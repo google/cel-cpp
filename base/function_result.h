@@ -26,7 +26,7 @@ namespace cel {
 // allows for lazy evaluation of expensive functions.
 class FunctionResult final {
  public:
-  FunctionResult() = default;
+  FunctionResult() = delete;
   FunctionResult(const FunctionResult&) = default;
   FunctionResult(FunctionResult&&) = default;
   FunctionResult& operator=(const FunctionResult&) = default;

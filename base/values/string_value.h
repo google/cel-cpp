@@ -30,8 +30,7 @@
 #include "base/type.h"
 #include "base/types/string_type.h"
 #include "base/value.h"
-
-class RE2;
+#include "re2/re2.h"
 
 namespace cel {
 

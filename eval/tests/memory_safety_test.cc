@@ -33,13 +33,15 @@
 #include "eval/public/testing/matchers.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "testutil/util.h"
 
 namespace google::api::expr::runtime {
 namespace {
 
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::rpc::context::AttributeContext;
-using testing::EqualsProto;
 using cel::internal::IsOkAndHolds;
+using testutil::EqualsProto;
 
 struct TestCase {
   std::string name;

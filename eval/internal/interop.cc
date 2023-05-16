@@ -578,7 +578,7 @@ Handle<Value> LegacyValueToModernValueOrDie(
     google::protobuf::Arena* arena, const google::api::expr::runtime::CelValue& value,
     bool unchecked) {
   auto modern_value = FromLegacyValue(arena, value, unchecked);
-  CHECK_OK(modern_value);  // Crash OK
+  ABSL_CHECK_OK(modern_value);  // Crash OK
   return std::move(modern_value).value();
 }
 
@@ -614,7 +614,7 @@ std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(
     google::protobuf::Arena* arena, const Handle<Value>& value, bool unchecked) {
   auto legacy_value = ToLegacyValue(arena, value, unchecked);
-  CHECK_OK(legacy_value);  // Crash OK
+  ABSL_CHECK_OK(legacy_value);  // Crash OK
   return std::move(legacy_value).value();
 }
 

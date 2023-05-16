@@ -547,7 +547,7 @@ class CelList {
   virtual ~CelList() {}
 
  private:
-  friend class cel::interop_internal::CelListAccess;
+  friend struct cel::interop_internal::CelListAccess;
 
   virtual cel::internal::TypeInfo TypeId() const {
     return cel::internal::TypeInfo();
@@ -625,7 +625,7 @@ class CelMap {
   virtual ~CelMap() {}
 
  private:
-  friend class cel::interop_internal::CelMapAccess;
+  friend struct cel::interop_internal::CelMapAccess;
 
   virtual cel::internal::TypeInfo TypeId() const {
     return cel::internal::TypeInfo();

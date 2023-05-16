@@ -31,6 +31,7 @@
 #include "extensions/protobuf/struct_value.h"
 #include "extensions/protobuf/type_provider.h"
 #include "internal/testing.h"
+#include "testutil/util.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
 #include "google/protobuf/generated_enum_reflection.h"
 
@@ -38,8 +39,8 @@ namespace cel::extensions {
 namespace {
 
 using ::cel_testing::ValueOf;
+using google::api::expr::testutil::EqualsProto;
 using testing::Eq;
-using testing::EqualsProto;
 using testing::Optional;
 using cel::internal::IsOkAndHolds;
 
