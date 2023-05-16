@@ -67,6 +67,12 @@ class PlannerContext {
   // Note: this is invalidated after a sibling or parent is updated.
   ExecutionPathView GetSubplan(const cel::ast::internal::Expr& node) const;
 
+  // Extract the plan steps for the given expr.
+  // The backing execution path is not resized -- a later call must
+  // overwrite the extracted region.
+  absl::StatusOr<ExecutionPath> ExtractSubplan(
+      const cel::ast::internal::Expr& node);
+
   // Note: this can only safely be called on the node being visited.
   absl::Status ReplaceSubplan(const cel::ast::internal::Expr& node,
                               ExecutionPath path);

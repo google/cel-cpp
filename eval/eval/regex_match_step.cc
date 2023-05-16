@@ -29,9 +29,8 @@ namespace {
 
 using ::cel::interop_internal::CreateBoolValue;
 
-inline constexpr int kNumRegexMatchArguments = 2;
+inline constexpr int kNumRegexMatchArguments = 1;
 inline constexpr size_t kRegexMatchStepSubject = 0;
-inline constexpr size_t kRegexMatchStepPattern = 1;
 
 class RegexMatchStep final : public ExpressionStepBase {
  public:
@@ -47,21 +46,10 @@ class RegexMatchStep final : public ExpressionStepBase {
     }
     auto input_args = frame->value_stack().GetSpan(kNumRegexMatchArguments);
     const auto& subject = input_args[kRegexMatchStepSubject];
-    const auto& pattern = input_args[kRegexMatchStepPattern];
     if (!subject->Is<cel::StringValue>()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "First argument for regular "
                           "expression match must be a string");
-    }
-    if (!pattern->Is<cel::StringValue>()) {
-      return absl::Status(absl::StatusCode::kInternal,
-                          "Second argument for regular "
-                          "expression match must be a string");
-    }
-    if (!pattern.As<cel::StringValue>()->Equals(re2_->pattern())) {
-      return absl::Status(
-          absl::StatusCode::kInternal,
-          "Original pattern and supplied pattern are not the same");
     }
     bool match = subject.As<cel::StringValue>()->Matches(*re2_);
     frame->value_stack().Pop(kNumRegexMatchArguments);

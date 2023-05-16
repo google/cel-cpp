@@ -318,6 +318,8 @@ class CelExpressionFlatImpl : public CelExpression {
                                  CelEvaluationState* state,
                                  CelEvaluationListener callback) const override;
 
+  const ExecutionPath& path() const { return path_; }
+
  private:
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;

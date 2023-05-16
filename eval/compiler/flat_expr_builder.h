@@ -71,10 +71,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
     program_optimizers_.push_back(std::move(optimizer));
   }
 
-  void set_enable_regex_precompilation(bool enable) {
-    enable_regex_precompilation_ = enable;
-  }
-
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
       const google::api::expr::v1alpha1::Expr* expr,
       const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
@@ -105,7 +101,6 @@ class FlatExprBuilder : public CelExpressionBuilder {
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
   std::vector<ProgramOptimizerFactory> program_optimizers_;
 
-  bool enable_regex_precompilation_ = false;
   bool enable_comprehension_vulnerability_check_ = false;
   bool constant_folding_ = false;
   google::protobuf::Arena* constant_arena_ = nullptr;

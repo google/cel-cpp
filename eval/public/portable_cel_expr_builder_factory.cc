@@ -24,6 +24,7 @@
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/qualified_reference_resolver.h"
+#include "eval/compiler/regex_precompilation_optimization.h"
 #include "eval/public/cel_options.h"
 #include "runtime/runtime_options.h"
 
@@ -50,7 +51,6 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   // many build dependencies by default.
   builder->set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);
-  builder->set_enable_regex_precompilation(options.enable_regex_precompilation);
 
   if (options.constant_folding && options.enable_updated_constant_folding) {
     builder->AddProgramOptimizer(
@@ -59,6 +59,11 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   } else {
     builder->set_constant_folding(options.constant_folding,
                                   options.constant_arena);
+  }
+
+  if (options.enable_regex_precompilation) {
+    builder->AddProgramOptimizer(
+        CreateRegexPrecompilationExtension(options.regex_max_program_size));
   }
 
   return builder;

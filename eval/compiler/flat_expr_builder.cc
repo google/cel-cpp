@@ -41,7 +41,6 @@
 #include "base/ast.h"
 #include "base/ast_internal.h"
 #include "base/internal/ast_impl.h"
-#include "base/values/string_value.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -56,7 +55,6 @@
 #include "eval/eval/ident_step.h"
 #include "eval/eval/jump_step.h"
 #include "eval/eval/logic_step.h"
-#include "eval/eval/regex_match_step.h"
 #include "eval/eval/select_step.h"
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
@@ -75,7 +73,6 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Handle;
-using ::cel::StringValue;
 using ::cel::Value;
 using ::cel::ast::Ast;
 using ::cel::ast::internal::AstImpl;
@@ -92,66 +89,8 @@ using Comprehension = ::google::api::expr::v1alpha1::Expr::Comprehension;
 
 constexpr int64_t kExprIdNotFromAst = -1;
 
-template <typename ExprT>
-bool IsFunctionOverload(
-    const ExprT& expr, absl::string_view function, absl::string_view overload,
-    size_t arity,
-    const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
-        reference_map) {
-  if (reference_map == nullptr || !expr.has_call_expr()) {
-    return false;
-  }
-  const auto& call_expr = expr.call_expr();
-  if (call_expr.function() != function) {
-    return false;
-  }
-  if (call_expr.args().size() + (call_expr.has_target() ? 1 : 0) != arity) {
-    return false;
-  }
-  auto reference = reference_map->find(expr.id());
-  if (reference != reference_map->end() &&
-      reference->second.overload_id().size() == 1 &&
-      reference->second.overload_id().front() == overload) {
-    return true;
-  }
-  return false;
-}
-
 // Forward declare to resolve circular dependency for short_circuiting visitors.
 class FlatExprVisitor;
-
-// Abstraction for deduplicating regular expressions over the course of a single
-// create expression call. Should not be used during evaluation. Uses
-// std::shared_ptr and std::weak_ptr.
-class RegexProgramBuilder final {
- public:
-  explicit RegexProgramBuilder(int max_program_size)
-      : max_program_size_(max_program_size) {}
-
-  absl::StatusOr<std::shared_ptr<const RE2>> BuildRegexProgram(
-      std::string pattern) {
-    auto existing = programs_.find(pattern);
-    if (existing != programs_.end()) {
-      if (auto program = existing->second.lock(); program) {
-        return program;
-      }
-      programs_.erase(existing);
-    }
-    auto program = std::make_shared<RE2>(pattern);
-    if (max_program_size_ > 0 && program->ProgramSize() > max_program_size_) {
-      return absl::InvalidArgumentError("exceeded RE2 max program size");
-    }
-    if (!program->ok()) {
-      return absl::InvalidArgumentError("invalid_argument");
-    }
-    programs_.insert({std::move(pattern), program});
-    return program;
-  }
-
- private:
-  const int max_program_size_;
-  absl::flat_hash_map<std::string, std::weak_ptr<const RE2>> programs_;
-};
 
 // A convenience wrapper for offset-calculating logic.
 class Jump {
@@ -273,7 +212,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       const cel::RuntimeOptions& options,
       const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
       bool enable_comprehension_vulnerability_check,
-      bool enable_regex_precompilation,
       absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
           reference_map,
@@ -290,10 +228,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         constant_idents_(constant_idents),
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
-        enable_regex_precompilation_(enable_regex_precompilation),
         program_optimizers_(program_optimizers),
         builder_warnings_(warnings),
-        regex_program_builder_(options_.regex_max_program_size),
         reference_map_(reference_map),
         program_tree_(program_tree),
         extension_context_(extension_context) {}
@@ -550,20 +486,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     size_t num_args = call_expr->args().size() + (receiver_style ? 1 : 0);
     auto arguments_matcher = ArgumentsMatcher(num_args);
 
-    // Check to see if this is regular expression matching and the pattern is a
-    // constant.
-    if (options_.enable_regex && enable_regex_precompilation_ &&
-        IsOptimizeableMatchesCall(*expr, *call_expr)) {
-      auto program = regex_program_builder_.BuildRegexProgram(
-          GetConstantString(call_expr->args().back()));
-      if (!program.ok()) {
-        SetProgressStatusError(program.status());
-        return;
-      }
-      AddStep(CreateRegexMatchStep(std::move(program).value(), expr->id()));
-      return;
-    }
-
     // Check to see if this is a special case of add that should really be
     // treated as a list append
     if (options_.enable_comprehension_list_append &&
@@ -798,37 +720,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
  private:
-  bool IsConstantString(const cel::ast::internal::Expr& expr) const {
-    if (expr.has_const_expr() && expr.const_expr().has_string_value()) {
-      return true;
-    }
-    if (!expr.has_ident_expr()) {
-      return false;
-    }
-    auto const_value = constant_idents_.find(expr.ident_expr().name());
-    return const_value != constant_idents_.end() &&
-           const_value->second->Is<StringValue>();
-  }
-
-  std::string GetConstantString(const cel::ast::internal::Expr& expr) const {
-    ABSL_ASSERT(IsConstantString(expr));
-    if (expr.has_const_expr()) {
-      return expr.const_expr().string_value();
-    }
-    return constant_idents_.find(expr.ident_expr().name())
-        ->second.As<StringValue>()
-        ->ToString();
-  }
-
-  bool IsOptimizeableMatchesCall(
-      const cel::ast::internal::Expr& expr,
-      const cel::ast::internal::Call& call_expr) const {
-    return IsFunctionOverload(expr,
-                              google::api::expr::runtime::builtin::kRegexMatch,
-                              "matches_string", 2, reference_map_) &&
-           IsConstantString(call_expr.args().back());
-  }
-
   const google::api::expr::runtime::Resolver& resolver_;
   google::api::expr::runtime::ExecutionPath* execution_path_;
   absl::Status progress_status_;
@@ -860,12 +751,10 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   std::stack<const cel::ast::internal::Comprehension*> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
-  bool enable_regex_precompilation_;
 
   absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   google::api::expr::runtime::BuilderWarnings* builder_warnings_;
 
-  RegexProgramBuilder regex_program_builder_;
   const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>* const
       reference_map_;
 
@@ -1331,8 +1220,7 @@ FlatExprBuilder::CreateExpressionImpl(
                          optimizer_factory(extension_context, ast_impl));
   }
   FlatExprVisitor visitor(resolver, options_, constant_idents,
-                          enable_comprehension_vulnerability_check_,
-                          enable_regex_precompilation_, optimizers,
+                          enable_comprehension_vulnerability_check_, optimizers,
                           &ast_impl.reference_map(), &execution_path,
                           &warnings_builder, program_tree, extension_context);
 

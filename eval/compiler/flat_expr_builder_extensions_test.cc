@@ -42,7 +42,6 @@ class PlannerContextTest : public testing::Test {
       : type_registry_(),
         function_registry_(),
         resolver_("", function_registry_, &type_registry_) {}
-  void SetUp() override {}
 
  protected:
   CelTypeRegistry type_registry_;
@@ -151,6 +150,65 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   EXPECT_THAT(context.GetSubplan(a),
               ElementsAre(UniquePtrHolds(new_a_step_ptr)));
   EXPECT_THAT(context.GetSubplan(b), IsEmpty());
+}
+
+TEST_F(PlannerContextTest, ExtractPlan) {
+  Expr a;
+  Expr b;
+  Expr c;
+  PlannerContext::ProgramTree tree;
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+
+  const ExpressionStep* b_step_ptr = path[0].get();
+  const ExpressionStep* c_step_ptr = path[1].get();
+  const ExpressionStep* a_step_ptr = path[2].get();
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
+                                                 UniquePtrHolds(c_step_ptr),
+                                                 UniquePtrHolds(a_step_ptr)));
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath extracted, context.ExtractSubplan(b));
+
+  EXPECT_THAT(extracted, ElementsAre(UniquePtrHolds(b_step_ptr)));
+  // Check that ownership was passed.
+  EXPECT_NE(extracted[0], path[0]);
+}
+
+TEST_F(PlannerContextTest, ExtractPlanFailsOnUnfinishedNode) {
+  Expr a;
+  Expr b;
+  Expr c;
+  PlannerContext::ProgramTree tree;
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+
+  // Mark a incomplete.
+  tree[&a].range_len = -1;
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  EXPECT_THAT(context.ExtractSubplan(a), StatusIs(absl::StatusCode::kInternal));
+}
+
+TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
+  Expr a;
+  Expr b;
+  Expr c;
+  PlannerContext::ProgramTree tree;
+
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  ASSERT_OK(context.ReplaceSubplan(a, {}));
+
+  EXPECT_THAT(context.ExtractSubplan(b), StatusIs(absl::StatusCode::kInternal));
 }
 
 TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {

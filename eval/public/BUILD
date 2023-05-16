@@ -1250,6 +1250,7 @@ cc_library(
         "//eval/compiler:constant_folding",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:qualified_reference_resolver",
+        "//eval/compiler:regex_precompilation_optimization",
         "//eval/public/structs:legacy_type_provider",
         "//runtime:runtime_options",
         "@com_google_absl//absl/status",

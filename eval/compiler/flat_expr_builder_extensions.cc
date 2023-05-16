@@ -41,6 +41,32 @@ ExecutionPathView PlannerContext::GetSubplan(
       .subspan(info.range_start, info.range_len);
 }
 
+absl::StatusOr<ExecutionPath> PlannerContext::ExtractSubplan(
+    const cel::ast::internal::Expr& node) {
+  auto iter = program_tree_.find(&node);
+  if (iter == program_tree_.end()) {
+    return absl::InternalError("attempted to rewrite unknown program step");
+  }
+
+  ProgramInfo& info = iter->second;
+
+  if (info.range_len == -1) {
+    // Initial planning for this node hasn't finished.
+    return absl::InternalError(
+        "attempted to rewrite program step before completion.");
+  }
+
+  ExecutionPath out;
+  out.reserve(info.range_len);
+
+  out.insert(out.begin(),
+             std::move_iterator(execution_path_.begin() + info.range_start),
+             std::move_iterator(execution_path_.begin() + info.range_start +
+                                info.range_len));
+
+  return out;
+}
+
 absl::Status PlannerContext::ReplaceSubplan(
     const cel::ast::internal::Expr& node, ExecutionPath path) {
   auto iter = program_tree_.find(&node);

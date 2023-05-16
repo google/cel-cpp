@@ -71,7 +71,6 @@ cc_library(
         "//eval/eval:ident_step",
         "//eval/eval:jump_step",
         "//eval/eval:logic_step",
-        "//eval/eval:regex_match_step",
         "//eval/eval:select_step",
         "//eval/eval:shadowable_value_step",
         "//eval/eval:ternary_step",
@@ -359,6 +358,45 @@ cc_test(
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_library(
+    name = "regex_precompilation_optimization",
+    srcs = ["regex_precompilation_optimization.cc"],
+    hdrs = ["regex_precompilation_optimization.h"],
+    deps = [
+        ":flat_expr_builder_extensions",
+        "//base:ast_internal",
+        "//base:builtins",
+        "//base:value",
+        "//base/internal:ast_impl",
+        "//eval/eval:compiler_constant_step",
+        "//eval/eval:regex_match_step",
+        "//internal:casts",
+        "//internal:rtti",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "regex_precompilation_optimization_test",
+    srcs = ["regex_precompilation_optimization_test.cc"],
+    deps = [
+        ":flat_expr_builder",
+        ":flat_expr_builder_extensions",
+        ":regex_precompilation_optimization",
+        "//base:ast_internal",
+        "//base/internal:ast_impl",
+        "//eval/eval:evaluator_core",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_options",
+        "//internal:testing",
+        "//parser",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
