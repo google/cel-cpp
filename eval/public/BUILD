@@ -289,6 +289,7 @@ cc_library(
         ":cel_options",
         ":cel_value",
         ":comparison_functions",
+        ":container_function_registrar",
         ":equality_function_registrar",
         ":logical_function_registrar",
         ":portable_cel_function_adapter",
@@ -307,6 +308,7 @@ cc_library(
         "//internal:time",
         "//internal:utf8",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
@@ -423,6 +425,51 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "container_function_registrar",
+    srcs = [
+        "container_function_registrar.cc",
+    ],
+    hdrs = [
+        "container_function_registrar.h",
+    ],
+    deps = [
+        ":cel_function_registry",
+        ":cel_options",
+        ":portable_cel_function_adapter",
+        "//base:builtins",
+        "//base:function_adapter",
+        "//base:handle",
+        "//base:value",
+        "//eval/eval:mutable_list_impl",
+        "//eval/internal:interop",
+        "//eval/public/containers:container_backed_list_impl",
+        "//extensions/protobuf:memory_manager",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "container_function_registrar_test",
+    size = "small",
+    srcs = [
+        "container_function_registrar_test.cc",
+    ],
+    deps = [
+        ":activation",
+        ":cel_expr_builder_factory",
+        ":cel_expression",
+        ":cel_value",
+        ":container_function_registrar",
+        ":equality_function_registrar",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/testing:matchers",
+        "//internal:testing",
+        "//parser",
     ],
 )
 

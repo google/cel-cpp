@@ -15,19 +15,19 @@
 #include "eval/public/builtin_func_registrar.h"
 
 #include <array>
-#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <limits>
 #include <string>
-#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/civil_time.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
 #include "base/function_adapter.h"
@@ -47,6 +47,7 @@
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/comparison_functions.h"
+#include "eval/public/container_function_registrar.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/equality_function_registrar.h"
 #include "eval/public/logical_function_registrar.h"
@@ -358,24 +359,6 @@ CelValue HeterogeneousEqualityIn(Arena* arena, CelValue value,
   return CelValue::CreateBool(false);
 }
 
-// AppendList will append the elements in value2 to value1.
-//
-// This call will only be invoked within comprehensions where `value1` is an
-// intermediate result which cannot be directly assigned or co-mingled with a
-// user-provided list.
-const CelList* AppendList(Arena* arena, const CelList* value1,
-                          const CelList* value2) {
-  // The `value1` object cannot be directly addressed and is an intermediate
-  // variable. Once the comprehension completes this value will in effect be
-  // treated as immutable.
-  MutableListImpl* mutable_list = const_cast<MutableListImpl*>(
-      cel::internal::down_cast<const MutableListImpl*>(value1));
-  for (int i = 0; i < value2->size(); i++) {
-    mutable_list->Append((*value2).Get(arena, i));
-  }
-  return mutable_list;
-}
-
 // Concatenation for string type.
 absl::StatusOr<Handle<StringValue>> ConcatString(ValueFactory& factory,
                                                  const StringValue& value1,
@@ -390,43 +373,6 @@ absl::StatusOr<Handle<BytesValue>> ConcatBytes(ValueFactory& factory,
                                                const BytesValue& value2) {
   return factory.CreateBytesValue(
       absl::StrCat(value1.ToString(), value2.ToString()));
-}
-
-// Concatenation for CelList type.
-absl::StatusOr<Handle<ListValue>> ConcatList(ValueFactory& factory,
-                                             const Handle<ListValue>& value1,
-                                             const Handle<ListValue>& value2) {
-  std::vector<CelValue> joined_values;
-
-  int size1 = value1->size();
-  if (size1 == 0) {
-    return value2;
-  }
-  int size2 = value2->size();
-  if (size2 == 0) {
-    return value1;
-  }
-  joined_values.reserve(size1 + size2);
-
-  Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
-      factory.memory_manager());
-
-  ListValue::GetContext context(factory);
-  for (int i = 0; i < size1; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value1->Get(context, i));
-    joined_values.push_back(
-        cel::interop_internal::ModernValueToLegacyValueOrDie(arena, elem));
-  }
-  for (int i = 0; i < size2; i++) {
-    CEL_ASSIGN_OR_RETURN(Handle<Value> elem, value2->Get(context, i));
-    joined_values.push_back(
-        cel::interop_internal::ModernValueToLegacyValueOrDie(arena, elem));
-  }
-
-  auto concatenated =
-      Arena::Create<ContainerBackedListImpl>(arena, joined_values);
-
-  return cel::interop_internal::CreateLegacyListValue(concatenated);
 }
 
 // Timestamp
@@ -1600,49 +1546,6 @@ absl::Status RegisterTimeFunctions(CelFunctionRegistry* registry,
 
   return absl::OkStatus();
 }
-
-int64_t MapSizeImpl(ValueFactory&, const MapValue& value) {
-  return value.size();
-}
-
-int64_t ListSizeImpl(ValueFactory&, const ListValue& value) {
-  return value.size();
-}
-
-absl::Status RegisterContainerFunctions(CelFunctionRegistry* registry,
-                                        const InterpreterOptions& options) {
-  // receiver style = true/false
-  // Support both the global and receiver style size() for lists and maps.
-  for (bool receiver_style : {true, false}) {
-    CEL_RETURN_IF_ERROR(registry->Register(
-        UnaryFunctionAdapter<int64_t, const ListValue&>::CreateDescriptor(
-            builtin::kSize, receiver_style),
-        UnaryFunctionAdapter<int64_t, const ListValue&>::WrapFunction(
-            ListSizeImpl)));
-
-    CEL_RETURN_IF_ERROR(registry->Register(
-        UnaryFunctionAdapter<int64_t, const MapValue&>::CreateDescriptor(
-            builtin::kSize, receiver_style),
-        UnaryFunctionAdapter<int64_t, const MapValue&>::WrapFunction(
-            MapSizeImpl)));
-  }
-
-  if (options.enable_list_concat) {
-    CEL_RETURN_IF_ERROR(registry->Register(
-        BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, const ListValue&,
-                              const ListValue&>::CreateDescriptor(builtin::kAdd,
-                                                                  false),
-        BinaryFunctionAdapter<
-            absl::StatusOr<Handle<Value>>, const Handle<ListValue>&,
-            const Handle<ListValue>&>::WrapFunction(ConcatList)));
-  }
-
-  return registry->Register(PortableBinaryFunctionAdapter<
-                            const CelList*, const CelList*,
-                            const CelList*>::Create(builtin::kRuntimeListAppend,
-                                                    false, AppendList));
-}
-
 }  // namespace
 
 absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
