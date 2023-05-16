@@ -18,7 +18,9 @@
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "google/protobuf/duration.pb.h"
+#include "google/protobuf/struct.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "absl/functional/function_ref.h"
@@ -1970,6 +1972,84 @@ TEST_P(ProtoStructValueTest, BoolMessageMapHasField) {
                   std::make_pair(true, TestAllTypes::NestedMessage()));
 }
 
+TEST_P(ProtoStructValueTest, BoolAnyMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_any",
+                  &TestAllTypes::mutable_map_bool_any,
+                  std::make_pair(true, google::protobuf::Any()));
+}
+
+TEST_P(ProtoStructValueTest, BoolStructMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_struct",
+                  &TestAllTypes::mutable_map_bool_struct,
+                  std::make_pair(true, google::protobuf::Struct()));
+}
+
+TEST_P(ProtoStructValueTest, BoolValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_value",
+                  &TestAllTypes::mutable_map_bool_value,
+                  std::make_pair(true, google::protobuf::Value()));
+}
+
+TEST_P(ProtoStructValueTest, BoolListValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_list_value",
+                  &TestAllTypes::mutable_map_bool_list_value,
+                  std::make_pair(true, google::protobuf::ListValue()));
+}
+
+TEST_P(ProtoStructValueTest, BoolInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_int64_wrapper",
+                  &TestAllTypes::mutable_map_bool_int64_wrapper,
+                  std::make_pair(true, google::protobuf::Int64Value()));
+}
+
+TEST_P(ProtoStructValueTest, BoolInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_int32_wrapper",
+                  &TestAllTypes::mutable_map_bool_int32_wrapper,
+                  std::make_pair(true, google::protobuf::Int32Value()));
+}
+
+TEST_P(ProtoStructValueTest, BoolDoubleWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_double_wrapper",
+                  &TestAllTypes::mutable_map_bool_double_wrapper,
+                  std::make_pair(true, google::protobuf::DoubleValue()));
+}
+
+TEST_P(ProtoStructValueTest, BoolFloatWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_float_wrapper",
+                  &TestAllTypes::mutable_map_bool_float_wrapper,
+                  std::make_pair(true, google::protobuf::FloatValue()));
+}
+
+TEST_P(ProtoStructValueTest, BoolUInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_uint64_wrapper",
+                  &TestAllTypes::mutable_map_bool_uint64_wrapper,
+                  std::make_pair(true, google::protobuf::UInt64Value()));
+}
+
+TEST_P(ProtoStructValueTest, BoolUInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_uint32_wrapper",
+                  &TestAllTypes::mutable_map_bool_uint32_wrapper,
+                  std::make_pair(true, google::protobuf::UInt32Value()));
+}
+
+TEST_P(ProtoStructValueTest, BoolStringWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_string_wrapper",
+                  &TestAllTypes::mutable_map_bool_string_wrapper,
+                  std::make_pair(true, google::protobuf::StringValue()));
+}
+
+TEST_P(ProtoStructValueTest, BoolBoolWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_bool_wrapper",
+                  &TestAllTypes::mutable_map_bool_bool_wrapper,
+                  std::make_pair(true, google::protobuf::BoolValue()));
+}
+
+TEST_P(ProtoStructValueTest, BoolBytesWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_bool_bytes_wrapper",
+                  &TestAllTypes::mutable_map_bool_bytes_wrapper,
+                  std::make_pair(true, google::protobuf::BytesValue()));
+}
+
 TEST_P(ProtoStructValueTest, Int32NullValueMapHasField) {
   TestMapHasField(memory_manager(), "map_int32_null_value",
                   &TestAllTypes::mutable_map_int32_null_value,
@@ -2052,6 +2132,84 @@ TEST_P(ProtoStructValueTest, Int32MessageMapHasField) {
                   std::make_pair(1, TestAllTypes::NestedMessage()));
 }
 
+TEST_P(ProtoStructValueTest, Int32AnyMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_any",
+                  &TestAllTypes::mutable_map_int32_any,
+                  std::make_pair(1, google::protobuf::Any()));
+}
+
+TEST_P(ProtoStructValueTest, Int32StructMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_struct",
+                  &TestAllTypes::mutable_map_int32_struct,
+                  std::make_pair(1, google::protobuf::Struct()));
+}
+
+TEST_P(ProtoStructValueTest, Int32ValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_value",
+                  &TestAllTypes::mutable_map_int32_value,
+                  std::make_pair(1, google::protobuf::Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int32ListValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_list_value",
+                  &TestAllTypes::mutable_map_int32_list_value,
+                  std::make_pair(1, google::protobuf::ListValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int32Int64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_int64_wrapper",
+                  &TestAllTypes::mutable_map_int32_int64_wrapper,
+                  std::make_pair(1, google::protobuf::Int64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int32Int32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_int32_wrapper",
+                  &TestAllTypes::mutable_map_int32_int32_wrapper,
+                  std::make_pair(1, google::protobuf::Int32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int32DoubleWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_double_wrapper",
+                  &TestAllTypes::mutable_map_int32_double_wrapper,
+                  std::make_pair(1, google::protobuf::DoubleValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int32FloatWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_float_wrapper",
+                  &TestAllTypes::mutable_map_int32_float_wrapper,
+                  std::make_pair(1, google::protobuf::FloatValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int32UInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_uint64_wrapper",
+                  &TestAllTypes::mutable_map_int32_uint64_wrapper,
+                  std::make_pair(1, google::protobuf::UInt64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int32UInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_uint32_wrapper",
+                  &TestAllTypes::mutable_map_int32_uint32_wrapper,
+                  std::make_pair(1, google::protobuf::UInt32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int32StringWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_string_wrapper",
+                  &TestAllTypes::mutable_map_int32_string_wrapper,
+                  std::make_pair(1, google::protobuf::StringValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int32BoolWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_bool_wrapper",
+                  &TestAllTypes::mutable_map_int32_bool_wrapper,
+                  std::make_pair(1, google::protobuf::BoolValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int32BytesWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int32_bytes_wrapper",
+                  &TestAllTypes::mutable_map_int32_bytes_wrapper,
+                  std::make_pair(1, google::protobuf::BytesValue()));
+}
+
 TEST_P(ProtoStructValueTest, Int64NullValueMapHasField) {
   TestMapHasField(memory_manager(), "map_int64_null_value",
                   &TestAllTypes::mutable_map_int64_null_value,
@@ -2132,6 +2290,84 @@ TEST_P(ProtoStructValueTest, Int64MessageMapHasField) {
   TestMapHasField(memory_manager(), "map_int64_message",
                   &TestAllTypes::mutable_map_int64_message,
                   std::make_pair(1, TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, Int64AnyMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_any",
+                  &TestAllTypes::mutable_map_int64_any,
+                  std::make_pair(1, google::protobuf::Any()));
+}
+
+TEST_P(ProtoStructValueTest, Int64StructMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_struct",
+                  &TestAllTypes::mutable_map_int64_struct,
+                  std::make_pair(1, google::protobuf::Struct()));
+}
+
+TEST_P(ProtoStructValueTest, Int64ValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_value",
+                  &TestAllTypes::mutable_map_int64_value,
+                  std::make_pair(1, google::protobuf::Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int64ListValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_list_value",
+                  &TestAllTypes::mutable_map_int64_list_value,
+                  std::make_pair(1, google::protobuf::ListValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int64Int64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_int64_wrapper",
+                  &TestAllTypes::mutable_map_int64_int64_wrapper,
+                  std::make_pair(1, google::protobuf::Int64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int64Int32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_int32_wrapper",
+                  &TestAllTypes::mutable_map_int64_int32_wrapper,
+                  std::make_pair(1, google::protobuf::Int32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int64DoubleWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_double_wrapper",
+                  &TestAllTypes::mutable_map_int64_double_wrapper,
+                  std::make_pair(1, google::protobuf::DoubleValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int64FloatWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_float_wrapper",
+                  &TestAllTypes::mutable_map_int64_float_wrapper,
+                  std::make_pair(1, google::protobuf::FloatValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int64UInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_uint64_wrapper",
+                  &TestAllTypes::mutable_map_int64_uint64_wrapper,
+                  std::make_pair(1, google::protobuf::UInt64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int64UInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_uint32_wrapper",
+                  &TestAllTypes::mutable_map_int64_uint32_wrapper,
+                  std::make_pair(1, google::protobuf::UInt32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Int64StringWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_string_wrapper",
+                  &TestAllTypes::mutable_map_int64_string_wrapper,
+                  std::make_pair(1, google::protobuf::StringValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int64BoolWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_bool_wrapper",
+                  &TestAllTypes::mutable_map_int64_bool_wrapper,
+                  std::make_pair(1, google::protobuf::BoolValue()));
+}
+
+TEST_P(ProtoStructValueTest, Int64BytesWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_int64_bytes_wrapper",
+                  &TestAllTypes::mutable_map_int64_bytes_wrapper,
+                  std::make_pair(1, google::protobuf::BytesValue()));
 }
 
 TEST_P(ProtoStructValueTest, Uint32NullValueMapHasField) {
@@ -2218,6 +2454,84 @@ TEST_P(ProtoStructValueTest, Uint32MessageMapHasField) {
                   std::make_pair(1u, TestAllTypes::NestedMessage()));
 }
 
+TEST_P(ProtoStructValueTest, Uint32AnyMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_any",
+                  &TestAllTypes::mutable_map_uint32_any,
+                  std::make_pair(1, google::protobuf::Any()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32StructMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_struct",
+                  &TestAllTypes::mutable_map_uint32_struct,
+                  std::make_pair(1, google::protobuf::Struct()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32ValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_value",
+                  &TestAllTypes::mutable_map_uint32_value,
+                  std::make_pair(1, google::protobuf::Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32ListValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_list_value",
+                  &TestAllTypes::mutable_map_uint32_list_value,
+                  std::make_pair(1, google::protobuf::ListValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32Int64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_int64_wrapper",
+                  &TestAllTypes::mutable_map_uint32_int64_wrapper,
+                  std::make_pair(1, google::protobuf::Int64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32Int32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_int32_wrapper",
+                  &TestAllTypes::mutable_map_uint32_int32_wrapper,
+                  std::make_pair(1, google::protobuf::Int32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32DoubleWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_double_wrapper",
+                  &TestAllTypes::mutable_map_uint32_double_wrapper,
+                  std::make_pair(1, google::protobuf::DoubleValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32FloatWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_float_wrapper",
+                  &TestAllTypes::mutable_map_uint32_float_wrapper,
+                  std::make_pair(1, google::protobuf::FloatValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32UInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_uint64_wrapper",
+                  &TestAllTypes::mutable_map_uint32_uint64_wrapper,
+                  std::make_pair(1, google::protobuf::UInt64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32UInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_uint32_wrapper",
+                  &TestAllTypes::mutable_map_uint32_uint32_wrapper,
+                  std::make_pair(1, google::protobuf::UInt32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32StringWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_string_wrapper",
+                  &TestAllTypes::mutable_map_uint32_string_wrapper,
+                  std::make_pair(1, google::protobuf::StringValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32BoolWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_bool_wrapper",
+                  &TestAllTypes::mutable_map_uint32_bool_wrapper,
+                  std::make_pair(1, google::protobuf::BoolValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint32BytesWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint32_bytes_wrapper",
+                  &TestAllTypes::mutable_map_uint32_bytes_wrapper,
+                  std::make_pair(1, google::protobuf::BytesValue()));
+}
+
 TEST_P(ProtoStructValueTest, Uint64NullValueMapHasField) {
   TestMapHasField(memory_manager(), "map_uint64_null_value",
                   &TestAllTypes::mutable_map_uint64_null_value,
@@ -2302,6 +2616,84 @@ TEST_P(ProtoStructValueTest, Uint64MessageMapHasField) {
                   std::make_pair(1u, TestAllTypes::NestedMessage()));
 }
 
+TEST_P(ProtoStructValueTest, Uint64AnyMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_any",
+                  &TestAllTypes::mutable_map_uint64_any,
+                  std::make_pair(1, google::protobuf::Any()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64StructMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_struct",
+                  &TestAllTypes::mutable_map_uint64_struct,
+                  std::make_pair(1, google::protobuf::Struct()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64ValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_value",
+                  &TestAllTypes::mutable_map_uint64_value,
+                  std::make_pair(1, google::protobuf::Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64ListValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_list_value",
+                  &TestAllTypes::mutable_map_uint64_list_value,
+                  std::make_pair(1, google::protobuf::ListValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64Int64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_int64_wrapper",
+                  &TestAllTypes::mutable_map_uint64_int64_wrapper,
+                  std::make_pair(1, google::protobuf::Int64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64Int32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_int32_wrapper",
+                  &TestAllTypes::mutable_map_uint64_int32_wrapper,
+                  std::make_pair(1, google::protobuf::Int32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64DoubleWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_double_wrapper",
+                  &TestAllTypes::mutable_map_uint64_double_wrapper,
+                  std::make_pair(1, google::protobuf::DoubleValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64FloatWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_float_wrapper",
+                  &TestAllTypes::mutable_map_uint64_float_wrapper,
+                  std::make_pair(1, google::protobuf::FloatValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64UInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_uint64_wrapper",
+                  &TestAllTypes::mutable_map_uint64_uint64_wrapper,
+                  std::make_pair(1, google::protobuf::UInt64Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64UInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_uint32_wrapper",
+                  &TestAllTypes::mutable_map_uint64_uint32_wrapper,
+                  std::make_pair(1, google::protobuf::UInt32Value()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64StringWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_string_wrapper",
+                  &TestAllTypes::mutable_map_uint64_string_wrapper,
+                  std::make_pair(1, google::protobuf::StringValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64BoolWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_bool_wrapper",
+                  &TestAllTypes::mutable_map_uint64_bool_wrapper,
+                  std::make_pair(1, google::protobuf::BoolValue()));
+}
+
+TEST_P(ProtoStructValueTest, Uint64BytesWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_uint64_bytes_wrapper",
+                  &TestAllTypes::mutable_map_uint64_bytes_wrapper,
+                  std::make_pair(1, google::protobuf::BytesValue()));
+}
+
 TEST_P(ProtoStructValueTest, StringNullValueMapHasField) {
   TestMapHasField(memory_manager(), "map_string_null_value",
                   &TestAllTypes::mutable_map_string_null_value,
@@ -2384,6 +2776,84 @@ TEST_P(ProtoStructValueTest, StringMessageMapHasField) {
   TestMapHasField(memory_manager(), "map_string_message",
                   &TestAllTypes::mutable_map_string_message,
                   std::make_pair("foo", TestAllTypes::NestedMessage()));
+}
+
+TEST_P(ProtoStructValueTest, StringAnyMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_any",
+                  &TestAllTypes::mutable_map_string_any,
+                  std::make_pair("foo", google::protobuf::Any()));
+}
+
+TEST_P(ProtoStructValueTest, StringStructMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_struct",
+                  &TestAllTypes::mutable_map_string_struct,
+                  std::make_pair("foo", google::protobuf::Struct()));
+}
+
+TEST_P(ProtoStructValueTest, StringValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_value",
+                  &TestAllTypes::mutable_map_string_value,
+                  std::make_pair("foo", google::protobuf::Value()));
+}
+
+TEST_P(ProtoStructValueTest, StringListValueMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_list_value",
+                  &TestAllTypes::mutable_map_string_list_value,
+                  std::make_pair("foo", google::protobuf::ListValue()));
+}
+
+TEST_P(ProtoStructValueTest, StringInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_int64_wrapper",
+                  &TestAllTypes::mutable_map_string_int64_wrapper,
+                  std::make_pair("foo", google::protobuf::Int64Value()));
+}
+
+TEST_P(ProtoStructValueTest, StringInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_int32_wrapper",
+                  &TestAllTypes::mutable_map_string_int32_wrapper,
+                  std::make_pair("foo", google::protobuf::Int32Value()));
+}
+
+TEST_P(ProtoStructValueTest, StringDoubleWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_double_wrapper",
+                  &TestAllTypes::mutable_map_string_double_wrapper,
+                  std::make_pair("foo", google::protobuf::DoubleValue()));
+}
+
+TEST_P(ProtoStructValueTest, StringFloatWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_float_wrapper",
+                  &TestAllTypes::mutable_map_string_float_wrapper,
+                  std::make_pair("foo", google::protobuf::FloatValue()));
+}
+
+TEST_P(ProtoStructValueTest, StringUInt64WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_uint64_wrapper",
+                  &TestAllTypes::mutable_map_string_uint64_wrapper,
+                  std::make_pair("foo", google::protobuf::UInt64Value()));
+}
+
+TEST_P(ProtoStructValueTest, StringUInt32WrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_uint32_wrapper",
+                  &TestAllTypes::mutable_map_string_uint32_wrapper,
+                  std::make_pair("foo", google::protobuf::UInt32Value()));
+}
+
+TEST_P(ProtoStructValueTest, StringStringWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_string_wrapper",
+                  &TestAllTypes::mutable_map_string_string_wrapper,
+                  std::make_pair("foo", google::protobuf::StringValue()));
+}
+
+TEST_P(ProtoStructValueTest, StringBoolWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_bool_wrapper",
+                  &TestAllTypes::mutable_map_string_bool_wrapper,
+                  std::make_pair("foo", google::protobuf::BoolValue()));
+}
+
+TEST_P(ProtoStructValueTest, StringBytesWrapperMapHasField) {
+  TestMapHasField(memory_manager(), "map_string_bytes_wrapper",
+                  &TestAllTypes::mutable_map_string_bytes_wrapper,
+                  std::make_pair("foo", google::protobuf::BytesValue()));
 }
 
 TEST_P(ProtoStructValueTest, BoolNullValueMapGetField) {

@@ -14,7 +14,9 @@
 
 #include "extensions/protobuf/type.h"
 
+#include "google/protobuf/api.pb.h"
 #include "google/protobuf/wrappers.pb.h"
+#include "absl/status/status.h"
 #include "base/internal/memory_manager_testing.h"
 #include "base/testing/type_matchers.h"
 #include "base/type_factory.h"
@@ -26,6 +28,7 @@ namespace cel::extensions {
 namespace {
 
 using ::cel_testing::TypeIs;
+using testing::status::CanonicalStatusIs;
 using cel::internal::IsOkAndHolds;
 
 using ProtoTypeTest = ProtoTest<>;
@@ -85,6 +88,14 @@ TEST_P(ProtoTypeTest, DynamicWrapperTypes) {
   EXPECT_THAT(ProtoType::Resolve(type_manager,
                                  *google::protobuf::UInt64Value::descriptor()),
               IsOkAndHolds(TypeIs<UintWrapperType>()));
+}
+
+TEST_P(ProtoTypeTest, ResolveNotFound) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  EXPECT_THAT(
+      ProtoType::Resolve(type_manager, *google::protobuf::Api::descriptor()),
+      CanonicalStatusIs(absl::StatusCode::kNotFound));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoTypeTest, ProtoTypeTest,
