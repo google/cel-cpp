@@ -20,9 +20,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <string>
 #include <type_traits>
-#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
@@ -31,8 +29,7 @@
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
-#include "base/internal/unknown_set.h"
-#include "base/types/enum_type.h"
+#include "base/internal/type.h"
 #include "internal/rtti.h"
 
 namespace cel {
@@ -89,9 +86,9 @@ struct InlineValue final {
       absl::string_view string_value;
       uintptr_t owner;
     } string_value;
-    Handle<Type> type_value;
+    AnyType type_value;
     struct {
-      Handle<EnumType> type;
+      AnyType type;
       int64_t number;
     } enum_value;
   };

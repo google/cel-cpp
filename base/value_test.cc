@@ -629,16 +629,16 @@ TEST_P(ValueTest, Swap) {
   EXPECT_EQ(rhs, value_factory.CreateIntValue(0));
 }
 
-using DebugStringTest = ValueTest;
+using ValueDebugStringTest = ValueTest;
 
-TEST_P(DebugStringTest, NullValue) {
+TEST_P(ValueDebugStringTest, NullValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   EXPECT_EQ(value_factory.GetNullValue()->DebugString(), "null");
 }
 
-TEST_P(DebugStringTest, BoolValue) {
+TEST_P(ValueDebugStringTest, BoolValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -646,7 +646,7 @@ TEST_P(DebugStringTest, BoolValue) {
   EXPECT_EQ(value_factory.CreateBoolValue(true)->DebugString(), "true");
 }
 
-TEST_P(DebugStringTest, IntValue) {
+TEST_P(ValueDebugStringTest, IntValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -661,7 +661,7 @@ TEST_P(DebugStringTest, IntValue) {
             "9223372036854775807");
 }
 
-TEST_P(DebugStringTest, UintValue) {
+TEST_P(ValueDebugStringTest, UintValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -672,7 +672,7 @@ TEST_P(DebugStringTest, UintValue) {
             "18446744073709551615u");
 }
 
-TEST_P(DebugStringTest, DoubleValue) {
+TEST_P(ValueDebugStringTest, DoubleValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -707,7 +707,7 @@ TEST_P(DebugStringTest, DoubleValue) {
       "-infinity");
 }
 
-TEST_P(DebugStringTest, DurationValue) {
+TEST_P(ValueDebugStringTest, DurationValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -715,7 +715,7 @@ TEST_P(DebugStringTest, DurationValue) {
             internal::FormatDuration(absl::ZeroDuration()).value());
 }
 
-TEST_P(DebugStringTest, TimestampValue) {
+TEST_P(ValueDebugStringTest, TimestampValue) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -723,7 +723,7 @@ TEST_P(DebugStringTest, TimestampValue) {
             internal::FormatTimestamp(absl::UnixEpoch()).value());
 }
 
-INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
+INSTANTIATE_TEST_SUITE_P(ValueDebugStringTest, ValueDebugStringTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
 
@@ -2034,9 +2034,9 @@ TEST_P(ValueTest, Enum) {
   EXPECT_NE(two_value, one_value);
 }
 
-using EnumTypeTest = ValueTest;
+using EnumValueTest = ValueTest;
 
-TEST_P(EnumTypeTest, NewInstance) {
+TEST_P(EnumValueTest, NewInstance) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
@@ -2059,7 +2059,16 @@ TEST_P(EnumTypeTest, NewInstance) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
+TEST_P(EnumValueTest, UnknownConstantDebugString) {
+  TypeFactory type_factory(memory_manager());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto enum_type,
+                       type_factory.CreateEnumType<TestEnumType>());
+  EXPECT_EQ(EnumValue::DebugString(*enum_type, 3), "test_enum.TestEnum(3)");
+}
+
+INSTANTIATE_TEST_SUITE_P(EnumValueTest, EnumValueTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeTupleName);
 
@@ -2455,15 +2464,6 @@ TEST(TypeValue, SkippableDestructor) {
   ValueFactory value_factory(type_manager);
   auto type_value = value_factory.CreateTypeValue(type_factory.GetBoolType());
   EXPECT_TRUE(base_internal::Metadata::IsDestructorSkippable(*type_value));
-}
-
-TEST(EnumValueTest, UnknownConstantDebugString) {
-  TypeFactory type_factory(MemoryManager::Global());
-  TypeManager type_manager(type_factory, TypeProvider::Builtin());
-  ValueFactory value_factory(type_manager);
-  ASSERT_OK_AND_ASSIGN(auto enum_type,
-                       type_factory.CreateEnumType<TestEnumType>());
-  EXPECT_EQ(EnumValue::DebugString(*enum_type, 3), "test_enum.TestEnum(3)");
 }
 
 Handle<NullValue> DefaultNullValue(ValueFactory& value_factory) {

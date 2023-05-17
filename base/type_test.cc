@@ -611,78 +611,78 @@ INSTANTIATE_TEST_SUITE_P(OptionalTypeTest, OptionalTypeTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 
-class DebugStringTest : public TypeTest {};
+class TypeDebugStringTest : public TypeTest {};
 
-TEST_P(DebugStringTest, NullType) {
+TEST_P(TypeDebugStringTest, NullType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetNullType()->DebugString(), "null_type");
 }
 
-TEST_P(DebugStringTest, ErrorType) {
+TEST_P(TypeDebugStringTest, ErrorType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetErrorType()->DebugString(), "*error*");
 }
 
-TEST_P(DebugStringTest, DynType) {
+TEST_P(TypeDebugStringTest, DynType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDynType()->DebugString(), "dyn");
 }
 
-TEST_P(DebugStringTest, AnyType) {
+TEST_P(TypeDebugStringTest, AnyType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetAnyType()->DebugString(), "google.protobuf.Any");
 }
 
-TEST_P(DebugStringTest, BoolType) {
+TEST_P(TypeDebugStringTest, BoolType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolType()->DebugString(), "bool");
 }
 
-TEST_P(DebugStringTest, IntType) {
+TEST_P(TypeDebugStringTest, IntType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntType()->DebugString(), "int");
 }
 
-TEST_P(DebugStringTest, UintType) {
+TEST_P(TypeDebugStringTest, UintType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintType()->DebugString(), "uint");
 }
 
-TEST_P(DebugStringTest, DoubleType) {
+TEST_P(TypeDebugStringTest, DoubleType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleType()->DebugString(), "double");
 }
 
-TEST_P(DebugStringTest, StringType) {
+TEST_P(TypeDebugStringTest, StringType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringType()->DebugString(), "string");
 }
 
-TEST_P(DebugStringTest, BytesType) {
+TEST_P(TypeDebugStringTest, BytesType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesType()->DebugString(), "bytes");
 }
 
-TEST_P(DebugStringTest, DurationType) {
+TEST_P(TypeDebugStringTest, DurationType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDurationType()->DebugString(),
             "google.protobuf.Duration");
 }
 
-TEST_P(DebugStringTest, TimestampType) {
+TEST_P(TypeDebugStringTest, TimestampType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTimestampType()->DebugString(),
             "google.protobuf.Timestamp");
 }
 
-TEST_P(DebugStringTest, EnumType) {
+TEST_P(TypeDebugStringTest, EnumType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(enum_type->DebugString(), "test_enum.TestEnum");
 }
 
-TEST_P(DebugStringTest, StructType) {
+TEST_P(TypeDebugStringTest, StructType) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ASSERT_OK_AND_ASSIGN(
@@ -691,14 +691,14 @@ TEST_P(DebugStringTest, StructType) {
   EXPECT_EQ(struct_type->DebugString(), "test_struct.TestStruct");
 }
 
-TEST_P(DebugStringTest, ListType) {
+TEST_P(TypeDebugStringTest, ListType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetBoolType()));
   EXPECT_EQ(list_type->DebugString(), "list(bool)");
 }
 
-TEST_P(DebugStringTest, MapType) {
+TEST_P(TypeDebugStringTest, MapType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
@@ -706,55 +706,55 @@ TEST_P(DebugStringTest, MapType) {
   EXPECT_EQ(map_type->DebugString(), "map(string, bool)");
 }
 
-TEST_P(DebugStringTest, TypeType) {
+TEST_P(TypeDebugStringTest, TypeType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTypeType()->DebugString(), "type");
 }
 
-TEST_P(DebugStringTest, OptionalType) {
+TEST_P(TypeDebugStringTest, OptionalType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
                                                type_factory.GetStringType()));
   EXPECT_EQ(optional_type->DebugString(), "optional<string>");
 }
 
-TEST_P(DebugStringTest, BoolWrapperType) {
+TEST_P(TypeDebugStringTest, BoolWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolWrapperType()->DebugString(),
             "google.protobuf.BoolValue");
 }
 
-TEST_P(DebugStringTest, BytesWrapperType) {
+TEST_P(TypeDebugStringTest, BytesWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesWrapperType()->DebugString(),
             "google.protobuf.BytesValue");
 }
 
-TEST_P(DebugStringTest, DoubleWrapperType) {
+TEST_P(TypeDebugStringTest, DoubleWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleWrapperType()->DebugString(),
             "google.protobuf.DoubleValue");
 }
 
-TEST_P(DebugStringTest, IntWrapperType) {
+TEST_P(TypeDebugStringTest, IntWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntWrapperType()->DebugString(),
             "google.protobuf.Int64Value");
 }
 
-TEST_P(DebugStringTest, StringWrapperType) {
+TEST_P(TypeDebugStringTest, StringWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringWrapperType()->DebugString(),
             "google.protobuf.StringValue");
 }
 
-TEST_P(DebugStringTest, UintWrapperType) {
+TEST_P(TypeDebugStringTest, UintWrapperType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintWrapperType()->DebugString(),
             "google.protobuf.UInt64Value");
 }
 
-INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
+INSTANTIATE_TEST_SUITE_P(TypeDebugStringTest, TypeDebugStringTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 

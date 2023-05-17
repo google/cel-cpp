@@ -85,7 +85,6 @@ cc_library(
     ],
     deps = [
         ":data",
-        "//base:handle",
         "//base:kind",
         "//internal:rtti",
     ],
@@ -110,9 +109,8 @@ cc_library(
     ],
     deps = [
         ":data",
-        ":unknown_set",
+        ":type",
         "//base:handle",
-        "//base:type",
         "//internal:rtti",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

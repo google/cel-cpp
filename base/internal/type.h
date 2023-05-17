@@ -19,7 +19,6 @@
 
 #include <cstdint>
 
-#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "internal/rtti.h"
