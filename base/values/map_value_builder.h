@@ -15,12 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_MAP_VALUE_BUILDER_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_MAP_VALUE_BUILDER_H_
 
-#include <functional>
-#include <list>
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
@@ -36,7 +33,7 @@ namespace cel {
 
 // Abstract interface for building MapValue.
 //
-// MapValueBuilderInterface is not re-usable, once Build() is called the state
+// MapValueBuilderInterface is not reusable, once Build() is called the state
 // of MapValueBuilderInterface is undefined.
 class MapValueBuilderInterface {
  public:
@@ -46,33 +43,19 @@ class MapValueBuilderInterface {
 
   // Insert a new entry. Returns true if the key did not already exist and the
   // insertion was performed, false otherwise.
-  virtual absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                                      const Handle<Value>& value) = 0;
-  virtual absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                                      Handle<Value>&& value) = 0;
-  virtual absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                                      const Handle<Value>& value) = 0;
-  virtual absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                                      Handle<Value>&& value) = 0;
+  virtual absl::StatusOr<bool> Insert(Handle<Value> key,
+                                      Handle<Value> value) = 0;
 
   // Update an already existing entry. Returns true if the key already existed
   // and the update was performed, false otherwise.
   virtual absl::StatusOr<bool> Update(const Handle<Value>& key,
-                                      const Handle<Value>& value) = 0;
-  virtual absl::StatusOr<bool> Update(const Handle<Value>& key,
-                                      Handle<Value>&& value) = 0;
+                                      Handle<Value> value) = 0;
 
   // A combination of Insert and Update, where the entry is inserted if it
   // doesn't already exist or it is updated. Returns true if insertion occurred,
   // false otherwise.
-  virtual absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                              const Handle<Value>& value) = 0;
-  virtual absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                              Handle<Value>&& value) = 0;
-  virtual absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                              const Handle<Value>& value) = 0;
-  virtual absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                              Handle<Value>&& value) = 0;
+  virtual absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                              Handle<Value> value) = 0;
 
   // Returns whether the given key has been inserted.
   virtual bool Has(const Handle<Value>& key) const = 0;
@@ -177,7 +160,7 @@ struct MapKeyEqualer<Handle<Value>> {
 };
 
 // For MapValueBuilder we use a linked hash map to preserve insertion order.
-// This mimics protobuf and ensures some reproducability, making testing easier.
+// This mimics protobuf and ensures some reproducibility, making testing easier.
 
 // Implementation used by MapValueBuilder when both the key and value are
 // represented as Value and not some C++ primitive.
@@ -517,63 +500,21 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, const Handle<V>& value) {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, Handle<V>&& value) {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const Handle<V>& value) {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Insert(Handle<K> key, Handle<V> value) {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Update(key.As<K>(), value.As<V>());
+                              Handle<Value> value) override {
+    return Update(key.As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Update(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, const Handle<V>& value) {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V> value) {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -582,40 +523,12 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key,
-                                      const Handle<V>& value) {
-    return storage_.insert_or_assign(key, value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, Handle<V>&& value) {
-    return storage_.insert_or_assign(key, std::move(value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, const Handle<V>& value) {
-    return storage_.insert_or_assign(std::move(key), value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, Handle<V>&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -683,65 +596,21 @@ class MapValueBuilderImpl<K, Value, void, void>
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value);
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key).As<K>(), std::move(value));
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), std::move(value));
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value);
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), std::move(value));
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key,
-                              const Handle<Value>& value) {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, Handle<Value>&& value) {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const Handle<Value>& value) {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, Handle<Value>&& value) {
+  absl::StatusOr<bool> Insert(Handle<K> key, Handle<Value> value) {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Update(key.As<K>(), value);
-  }
-
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
+                              Handle<Value> value) override {
     return Update(key.As<K>(), std::move(value));
   }
 
-  absl::StatusOr<bool> Update(const Handle<K>& key,
-                              const Handle<Value>& value) {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<Value>&& value) {
+  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<Value> value) {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -750,42 +619,12 @@ class MapValueBuilderImpl<K, Value, void, void>
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value);
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrUpdate(std::move(key).As<K>(), std::move(value));
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), std::move(value));
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value);
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), std::move(value));
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key,
-                                      const Handle<Value>& value) {
-    return storage_.insert_or_assign(key, value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key,
-                                      Handle<Value>&& value) {
-    return storage_.insert_or_assign(key, std::move(value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key,
-                                      const Handle<Value>& value) {
-    return storage_.insert_or_assign(std::move(key), value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, Handle<Value>&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<Value> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -853,65 +692,21 @@ class MapValueBuilderImpl<Value, V, void, void>
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Insert(key, value.As<V>());
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Insert(key, value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return Insert(std::move(key), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
-    return Insert(std::move(key), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<V>& value) {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<Value>& key, Handle<V>&& value) {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key, const Handle<V>& value) {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<V> value) {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Update(key, value.As<V>());
+                              Handle<Value> value) override {
+    return Update(key, std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Update(key, value.As<V>());
-  }
-
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<V>& value) {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const Handle<Value>& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Update(const Handle<Value>& key, Handle<V> value) {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -920,42 +715,12 @@ class MapValueBuilderImpl<Value, V, void, void>
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key, value.As<V>());
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrUpdate(std::move(key), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key, value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(std::move(key), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(std::move(key), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<V>& value) {
-    return storage_.insert_or_assign(key, value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<V>&& value) {
-    return storage_.insert_or_assign(key, std::move(value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<V>& value) {
-    return storage_.insert_or_assign(std::move(key), value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key, Handle<V>&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key, Handle<V> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -1017,39 +782,13 @@ class MapValueBuilderImpl<Value, Value, void, void>
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
+                              Handle<Value> value) override {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -1058,23 +797,8 @@ class MapValueBuilderImpl<Value, Value, void, void>
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return storage_.insert_or_assign(key, value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return storage_.insert_or_assign(key, std::move(value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return storage_.insert_or_assign(std::move(key), value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -1141,87 +865,29 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, const Handle<V>& value) {
-    return Insert(key->value(), value);
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Insert(Handle<K> key, Handle<V> value) {
     return Insert(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const Handle<V>& value) {
-    return Insert(key->value(), value);
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, Handle<V>&& value) {
-    return Insert(key->value(), std::move(value));
-  }
-
-  absl::StatusOr<bool> Insert(const K& key, const Handle<V>& value) {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const K& key, Handle<V>&& value) {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(K&& key, const Handle<V>& value) {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(K&& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Insert(UK key, Handle<V> value) {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Update(key.As<K>(), value.As<V>());
+                              Handle<Value> value) override {
+    return Update(key.As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Update(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V> value) {
+    return Update(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> Update(const Handle<K>& key, const Handle<V>& value) {
-    return Update(key, value);
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V>&& value) {
-    return Update(std::move(key), std::move(value));
-  }
-
-  absl::StatusOr<bool> Update(const K& key, const Handle<V>& value) {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const K& key, Handle<V>&& value) {
+  absl::StatusOr<bool> Update(const UK& key, Handle<V> value) {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -1230,56 +896,16 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key,
-                                      const Handle<V>& value) {
-    return InsertOrUpdate(key->value(), value);
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, Handle<V>&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
     return InsertOrUpdate(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, const Handle<V>& value) {
-    return InsertOrUpdate(key->value(), value);
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, Handle<V>&& value) {
-    return InsertOrUpdate(key->value(), std::move(value));
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const K& key, const Handle<V>& value) {
-    return storage_.insert_or_assign(key, value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const K& key, Handle<V>&& value) {
-    return storage_.insert_or_assign(key, std::move(value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(K&& key, const Handle<V>& value) {
-    return storage_.insert_or_assign(std::move(key), value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(K&& key, Handle<V>&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(UK key, Handle<V> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -1347,87 +973,29 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> Insert(Handle<K> key, Handle<V> value) {
+    return Insert(std::move(key), value->value());
   }
 
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, const Handle<V>& value) {
-    return Insert(key, value->value());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, Handle<V>&& value) {
-    return Insert(key, value->value());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const Handle<V>& value) {
-    return Insert(key, value->value());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, Handle<V>&& value) {
-    return Insert(key, value->value());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, const UV& value) {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, UV&& value) {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const UV& value) {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, UV&& value) {
+  absl::StatusOr<bool> Insert(Handle<K> key, UV value) {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Update(key.As<K>(), value.As<V>());
+                              Handle<Value> value) override {
+    return Update(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Update(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, const Handle<V>& value) {
+  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V> value) {
     return Update(key, value->value());
   }
 
-  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V>&& value) {
-    return Update(key, value->value());
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, const UV& value) {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, UV&& value) {
+  absl::StatusOr<bool> Update(const Handle<K>& key, UV value) {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -1436,61 +1004,17 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
+    return InsertOrUpdate(std::move(key), value->value());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key,
-                                      const Handle<V>& value) {
-    return InsertOrUpdate(key, value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, Handle<V>&& value) {
-    return InsertOrUpdate(key, value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, const Handle<V>& value) {
-    return InsertOrUpdate(key, value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, Handle<V>&& value) {
-    return InsertOrUpdate(key, value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, const UV& value) {
-    return storage_.insert_or_assign(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, UV&& value) {
-    return storage_.insert_or_assign(std::make_pair(key, std::move(value)))
-        .second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, const UV& value) {
-    return storage_.insert_or_assign(std::make_pair(std::move(key), value))
-        .second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, UV&& value) {
-    return storage_
-        .insert_or_assign(std::make_pair(std::move(key), std::move(value)))
-        .second;
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, UV value) {
+    return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
   bool Has(const Handle<Value>& key) const override { return Has(key.As<K>()); }
@@ -1558,135 +1082,45 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
     return out;
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Insert(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              const Handle<Value>& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<Value>&& key,
-                              Handle<Value>&& value) override {
-    return Insert(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, const Handle<V>& value) {
+  absl::StatusOr<bool> Insert(Handle<K> key, Handle<V> value) {
     return Insert(key->value(), value->value());
   }
 
-  absl::StatusOr<bool> Insert(const Handle<K>& key, Handle<V>&& value) {
-    return Insert(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const Handle<V>& value) {
-    return Insert(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, Handle<V>&& value) {
-    return Insert(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, const V& value) {
-    return Insert(key->value(), value);
-  }
-
-  absl::StatusOr<bool> Insert(const Handle<K>& key, V&& value) {
+  absl::StatusOr<bool> Insert(Handle<K> key, UV value) {
     return Insert(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> Insert(Handle<K>&& key, const V& value) {
-    return Insert(key->value(), value);
-  }
-
-  absl::StatusOr<bool> Insert(Handle<K>&& key, V&& value) {
-    return Insert(key->value(), std::move(value));
-  }
-
-  absl::StatusOr<bool> Insert(const K& key, const Handle<V>& value) {
-    return Insert(key, value->value());
-  }
-
-  absl::StatusOr<bool> Insert(const K& key, Handle<V>&& value) {
-    return Insert(key, value->value());
-  }
-
-  absl::StatusOr<bool> Insert(K&& key, const Handle<V>& value) {
+  absl::StatusOr<bool> Insert(UK key, Handle<V> value) {
     return Insert(std::move(key), value->value());
   }
 
-  absl::StatusOr<bool> Insert(K&& key, Handle<V>&& value) {
-    return Insert(std::move(key), value->value());
-  }
-
-  absl::StatusOr<bool> Insert(const UK& key, const UV& value) {
-    return storage_.insert(std::make_pair(key, value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(const UK& key, UV&& value) {
-    return storage_.insert(std::make_pair(key, std::move(value))).second;
-  }
-
-  absl::StatusOr<bool> Insert(UK&& key, const UV& value) {
-    return storage_.insert(std::make_pair(std::move(key), value)).second;
-  }
-
-  absl::StatusOr<bool> Insert(UK&& key, UV&& value) {
+  absl::StatusOr<bool> Insert(UK key, UV value) {
     return storage_.insert(std::make_pair(std::move(key), std::move(value)))
         .second;
   }
 
   absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              const Handle<Value>& value) override {
-    return Update(key.As<K>(), value.As<V>());
+                              Handle<Value> value) override {
+    return Update(key.As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> Update(const Handle<Value>& key,
-                              Handle<Value>&& value) override {
-    return Update(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, const Handle<V>& value) {
+  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V> value) {
     return Update(key->value(), value->value());
   }
 
-  absl::StatusOr<bool> Update(const Handle<K>& key, Handle<V>&& value) {
-    return Update(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, const V& value) {
-    return Update(key->value(), value);
-  }
-
-  absl::StatusOr<bool> Update(const Handle<K>& key, V&& value) {
+  absl::StatusOr<bool> Update(const Handle<K>& key, V value) {
     return Update(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> Update(const K& key, const Handle<V>& value) {
+  absl::StatusOr<bool> Update(const UK& key, Handle<V> value) {
     return Update(key, value->value());
   }
 
-  absl::StatusOr<bool> Update(const K& key, Handle<V>&& value) {
-    return Update(key, value->value());
-  }
-
-  absl::StatusOr<bool> Update(const UK& key, const UV& value) {
-    auto existing = storage_.find(key);
-    if (existing == storage_.end()) {
-      return false;
-    }
-    existing->second = value;
-    return true;
-  }
-
-  absl::StatusOr<bool> Update(const UK& key, UV&& value) {
+  absl::StatusOr<bool> Update(const UK& key, UV value) {
     auto existing = storage_.find(key);
     if (existing == storage_.end()) {
       return false;
@@ -1695,88 +1129,24 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
+  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<Value>& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      const Handle<Value>& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value>&& key,
-                                      Handle<Value>&& value) override {
-    return InsertOrUpdate(key.As<K>(), value.As<V>());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key,
-                                      const Handle<V>& value) {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
     return InsertOrUpdate(key->value(), value->value());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, Handle<V>&& value) {
-    return InsertOrUpdate(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, const Handle<V>& value) {
-    return InsertOrUpdate(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, Handle<V>&& value) {
-    return InsertOrUpdate(key->value(), value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, const V& value) {
-    return InsertOrUpdate(key->value(), value);
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const Handle<K>& key, V&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, UV value) {
     return InsertOrUpdate(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, const V& value) {
-    return InsertOrUpdate(key->value(), value);
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K>&& key, V&& value) {
-    return InsertOrUpdate(key->value(), std::move(value));
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const K& key, const Handle<V>& value) {
-    return InsertOrUpdate(key, value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const K& key, Handle<V>&& value) {
-    return InsertOrUpdate(key, value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(K&& key, const Handle<V>& value) {
+  absl::StatusOr<bool> InsertOrUpdate(UK key, Handle<V> value) {
     return InsertOrUpdate(std::move(key), value->value());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(K&& key, Handle<V>&& value) {
-    return InsertOrUpdate(std::move(key), value->value());
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const UK& key, const UV& value) {
-    return storage_.insert_or_assign(key, value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(const UK& key, UV&& value) {
-    return storage_.insert_or_assign(key, std::move(value)).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(UK&& key, const UV& value) {
-    return storage_.insert_or_assign(std::move(key), value).second;
-  }
-
-  absl::StatusOr<bool> InsertOrUpdate(UK&& key, UV&& value) {
+  absl::StatusOr<bool> InsertOrUpdate(UK key, UV value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -1784,7 +1154,7 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
 
   bool Has(const Handle<K>& key) const { return Has(key->value()); }
 
-  bool Has(UK key) const { return storage_.find(key) != storage_.end(); }
+  bool Has(const UK& key) const { return storage_.find(key) != storage_.end(); }
 
   size_t size() const override { return storage_.size(); }
 

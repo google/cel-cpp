@@ -31,7 +31,7 @@ namespace cel {
 
 // Abstract interface for building ListValue.
 //
-// ListValueBuilderInterface is not re-usable, once Build() is called the state
+// ListValueBuilderInterface is not reusable, once Build() is called the state
 // of ListValueBuilderInterface is undefined.
 class ListValueBuilderInterface {
  public:
@@ -39,9 +39,7 @@ class ListValueBuilderInterface {
 
   virtual std::string DebugString() const = 0;
 
-  virtual absl::Status Add(const Handle<Value>& value) = 0;
-
-  virtual absl::Status Add(Handle<Value>&& value) = 0;
+  virtual absl::Status Add(Handle<Value> value) = 0;
 
   virtual size_t size() const = 0;
 
@@ -112,20 +110,11 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
     return out;
   }
 
-  absl::Status Add(const Handle<Value>& value) override {
-    return Add(value.As<T>());
+  absl::Status Add(Handle<Value> value) override {
+    return Add(std::move(value).As<T>());
   }
 
-  absl::Status Add(Handle<Value>&& value) override {
-    return Add(value.As<T>());
-  }
-
-  absl::Status Add(const Handle<T>& value) {
-    storage_.push_back(value);
-    return absl::OkStatus();
-  }
-
-  absl::Status Add(Handle<T>&& value) {
+  absl::Status Add(Handle<T> value) {
     storage_.push_back(std::move(value));
     return absl::OkStatus();
   }
@@ -176,12 +165,7 @@ class ListValueBuilderImpl<Value, void> : public ListValueBuilderInterface {
     return out;
   }
 
-  absl::Status Add(const Handle<Value>& value) override {
-    storage_.push_back(value);
-    return absl::OkStatus();
-  }
-
-  absl::Status Add(Handle<Value>&& value) override {
+  absl::Status Add(Handle<Value> value) override {
     storage_.push_back(std::move(value));
     return absl::OkStatus();
   }
@@ -233,20 +217,14 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
     return out;
   }
 
-  absl::Status Add(const Handle<Value>& value) override {
-    return Add(value.As<T>());
-  }
-
-  absl::Status Add(Handle<Value>&& value) override {
-    return Add(value.As<T>());
+  absl::Status Add(Handle<Value> value) override {
+    return Add(std::move(value).As<T>());
   }
 
   absl::Status Add(const Handle<T>& value) { return Add(value->value()); }
 
-  absl::Status Add(Handle<T>&& value) { return Add(value->value()); }
-
   absl::Status Add(U value) {
-    storage_.push_back(value);
+    storage_.push_back(std::move(value));
     return absl::OkStatus();
   }
 
