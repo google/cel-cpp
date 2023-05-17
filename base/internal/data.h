@@ -189,7 +189,7 @@ class HeapData /* : public Data */ {
   // our destructor called. Subclasses should override this if they want their
   // destructor to be skippable, by default it is not.
   static bool IsDestructorSkippable(
-      const HeapData& data ABSL_ATTRIBUTE_UNUSED) noexcept {
+      const HeapData& data ABSL_ATTRIBUTE_UNUSED) {
     return false;
   }
 

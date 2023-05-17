@@ -53,15 +53,14 @@ class UniqueRef final {
 
   UniqueRef(const UniqueRef<T>&) = delete;
 
-  UniqueRef(UniqueRef<T>&& other) noexcept
-      : ref_(other.ref_), owned_(other.owned_) {
+  UniqueRef(UniqueRef<T>&& other) : ref_(other.ref_), owned_(other.owned_) {
     other.ref_ = nullptr;
     other.owned_ = false;
   }
 
   template <typename F,
             typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  UniqueRef(UniqueRef<F>&& other) noexcept  // NOLINT
+  UniqueRef(UniqueRef<F>&& other)  // NOLINT
       : ref_(other.ref_), owned_(other.owned_) {
     other.ref_ = nullptr;
     other.owned_ = false;
@@ -79,7 +78,7 @@ class UniqueRef final {
 
   UniqueRef<T>& operator=(const UniqueRef<T>&) = delete;
 
-  UniqueRef<T>& operator=(UniqueRef<T>&& other) noexcept {
+  UniqueRef<T>& operator=(UniqueRef<T>&& other) {
     if (ABSL_PREDICT_TRUE(this != &other)) {
       if (ref_ != nullptr) {
         if (owned_) {
@@ -98,7 +97,7 @@ class UniqueRef final {
 
   template <typename F,
             typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  UniqueRef<T>& operator=(UniqueRef<F>&& other) noexcept {  // NOLINT
+  UniqueRef<T>& operator=(UniqueRef<F>&& other) {  // NOLINT
     if (ABSL_PREDICT_TRUE(this != &other)) {
       if (ref_ != nullptr) {
         if (owned_) {

@@ -109,7 +109,7 @@ class ModernListType final : public ListType, public HeapData {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const ModernListType& type) noexcept {
+  static bool IsDestructorSkippable(const ModernListType& type) {
     return Metadata::IsDestructorSkippable(*type.element());
   }
 

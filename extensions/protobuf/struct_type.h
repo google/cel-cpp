@@ -85,7 +85,7 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
   static bool IsDestructorSkippable(
-      const ProtoStructType& type ABSL_ATTRIBUTE_UNUSED) noexcept {
+      const ProtoStructType& type ABSL_ATTRIBUTE_UNUSED) {
     // Our destructor is useless, we only hold pointers to protobuf-owned data.
     return true;
   }

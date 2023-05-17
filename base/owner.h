@@ -42,19 +42,17 @@ class Owner {
 
   Owner() = delete;
 
-  Owner(const Owner<T>& other) noexcept : owner_(other.owner_) {
+  Owner(const Owner<T>& other) : owner_(other.owner_) {
     if (owner_ != nullptr) {
       metadata_type::Ref(*owner_);
     }
   }
 
-  Owner(Owner<T>&& other) noexcept : owner_(other.owner_) {
-    other.owner_ = nullptr;
-  }
+  Owner(Owner<T>&& other) : owner_(other.owner_) { other.owner_ = nullptr; }
 
   template <typename F,
             typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  Owner(const Owner<F>& other) noexcept : owner_(other.owner_) {  // NOLINT
+  Owner(const Owner<F>& other) : owner_(other.owner_) {  // NOLINT
     if (owner_ != nullptr) {
       metadata_type::Ref(*owner_);
     }
@@ -66,7 +64,7 @@ class Owner {
     other.owner_ = nullptr;
   }
 
-  Owner<T>& operator=(const Owner<T>& other) noexcept {
+  Owner<T>& operator=(const Owner<T>& other) {
     if (this != &other) {
       if (static_cast<bool>(other)) {
         metadata_type::Ref(*other.owner_);
@@ -79,7 +77,7 @@ class Owner {
     return *this;
   }
 
-  Owner<T>& operator=(Owner<T>&& other) noexcept {
+  Owner<T>& operator=(Owner<T>&& other) {
     if (this != &other) {
       if (static_cast<bool>(*this)) {
         metadata_type::Unref(*owner_);
@@ -92,7 +90,7 @@ class Owner {
 
   template <typename F,
             typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  Owner<T>& operator=(const Owner<F>& other) noexcept {
+  Owner<T>& operator=(const Owner<F>& other) {
     if (this != &other) {
       if (static_cast<bool>(other)) {
         metadata_type::Ref(*other.owner_);

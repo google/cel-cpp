@@ -98,7 +98,7 @@ class EmptyOptionalValue final : public OptionalValue {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const EmptyOptionalValue& value) noexcept {
+  static bool IsDestructorSkippable(const EmptyOptionalValue& value) {
     return base_internal::Metadata::IsDestructorSkippable(*value.type());
   }
 
@@ -117,7 +117,7 @@ class FullOptionalValue final : public OptionalValue {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const FullOptionalValue& value) noexcept {
+  static bool IsDestructorSkippable(const FullOptionalValue& value) {
     return base_internal::Metadata::IsDestructorSkippable(*value.type()) &&
            base_internal::Metadata::IsDestructorSkippable(*value.value());
   }

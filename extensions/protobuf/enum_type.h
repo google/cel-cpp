@@ -72,7 +72,7 @@ class ProtoEnumType final : public EnumType {
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
   static bool IsDestructorSkippable(
-      const ProtoEnumType& type ABSL_ATTRIBUTE_UNUSED) noexcept {
+      const ProtoEnumType& type ABSL_ATTRIBUTE_UNUSED) {
     // Our destructor is useless, we only hold pointers to protobuf-owned data.
     return true;
   }

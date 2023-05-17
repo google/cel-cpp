@@ -40,37 +40,37 @@ class Handle final : private base_internal::HandlePolicy<T> {
   // Default constructs the handle, setting it to an empty state. It is
   // undefined behavior to call any functions that attempt to dereference or
   // access `T` when in an empty state.
-  Handle() noexcept = default;
+  Handle() = default;
 
-  Handle(const Handle<T>&) noexcept = default;
-
-  template <typename F,
-            typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  Handle(const Handle<F>& handle) noexcept : impl_(handle.impl_) {}  // NOLINT
-
-  Handle(Handle<T>&&) noexcept = default;
+  Handle(const Handle<T>&) = default;
 
   template <typename F,
             typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
-  Handle(Handle<F>&& handle) noexcept  // NOLINT
+  Handle(const Handle<F>& handle) : impl_(handle.impl_) {}  // NOLINT
+
+  Handle(Handle<T>&&) = default;
+
+  template <typename F,
+            typename = std::enable_if_t<std::is_convertible_v<F*, T*>>>
+  Handle(Handle<F>&& handle)  // NOLINT
       : impl_(std::move(handle.impl_)) {}
 
-  ~Handle() noexcept = default;
+  ~Handle() = default;
 
-  Handle<T>& operator=(const Handle<T>&) noexcept = default;
+  Handle<T>& operator=(const Handle<T>&) = default;
 
-  Handle<T>& operator=(Handle<T>&&) noexcept = default;
+  Handle<T>& operator=(Handle<T>&&) = default;
 
   template <typename F>
   std::enable_if_t<std::is_convertible_v<F*, T*>, Handle<T>&>  // NOLINT
-  operator=(const Handle<F>& handle) noexcept {
+  operator=(const Handle<F>& handle) {
     impl_ = handle.impl_;
     return *this;
   }
 
   template <typename F>
   std::enable_if_t<std::is_convertible_v<F*, T*>, Handle<T>&>  // NOLINT
-  operator=(Handle<F>&& handle) noexcept {
+  operator=(Handle<F>&& handle) {
     impl_ = std::move(handle.impl_);
     return *this;
   }
@@ -81,11 +81,11 @@ class Handle final : private base_internal::HandlePolicy<T> {
   // Handle<Resource> handle;
   // handle.As<const SubResource>()->SubMethod();
   template <typename F>
-  std::enable_if_t<
-      std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
-                         std::is_same<F, T>>,
-      Handle<F>&>
-  As() & noexcept ABSL_MUST_USE_RESULT {
+      std::enable_if_t<
+          std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
+                             std::is_same<F, T>>,
+          Handle<F>&>
+      As() & ABSL_MUST_USE_RESULT {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
@@ -107,11 +107,11 @@ class Handle final : private base_internal::HandlePolicy<T> {
   // Handle<Resource> handle;
   // handle.As<const SubResource>()->SubMethod();
   template <typename F>
-  std::enable_if_t<
-      std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
-                         std::is_same<F, T>>,
-      Handle<F>&&>
-  As() && noexcept ABSL_MUST_USE_RESULT {
+      std::enable_if_t<
+          std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
+                             std::is_same<F, T>>,
+          Handle<F>&&>
+      As() && ABSL_MUST_USE_RESULT {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
@@ -137,7 +137,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
       std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
                          std::is_same<F, T>>,
       const Handle<F>&>
-  As() const& noexcept ABSL_MUST_USE_RESULT {
+  As() const& ABSL_MUST_USE_RESULT {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
@@ -163,7 +163,7 @@ class Handle final : private base_internal::HandlePolicy<T> {
       std::disjunction_v<std::is_base_of<F, T>, std::is_base_of<T, F>,
                          std::is_same<F, T>>,
       const Handle<F>&&>
-  As() const&& noexcept ABSL_MUST_USE_RESULT {
+  As() const&& ABSL_MUST_USE_RESULT {
     static_assert(std::is_same_v<Impl, typename Handle<F>::Impl>,
                   "Handle<T> and Handle<F> must have the same "
                   "implementation type");
@@ -179,20 +179,20 @@ class Handle final : private base_internal::HandlePolicy<T> {
     return std::move(*reinterpret_cast<const Handle<F>*>(this));
   }
 
-  T& operator*() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T& operator*() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(static_cast<bool>(*this)) << "cannot dereference empty handle";
     return static_cast<T&>(*impl_.get());
   }
 
-  T* operator->() const noexcept ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  T* operator->() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
     ABSL_DCHECK(static_cast<bool>(*this)) << "cannot dereference empty handle";
     return static_cast<T*>(impl_.get());
   }
 
   // Tests whether the handle is not empty, returning false if it is empty.
-  explicit operator bool() const noexcept { return static_cast<bool>(impl_); }
+  explicit operator bool() const { return static_cast<bool>(impl_); }
 
-  friend void swap(Handle<T>& lhs, Handle<T>& rhs) noexcept {
+  friend void swap(Handle<T>& lhs, Handle<T>& rhs) {
     std::swap(lhs.impl_, rhs.impl_);
   }
 

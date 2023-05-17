@@ -74,7 +74,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  static uintptr_t AdditionalMetadata(const EnumType& type) noexcept {
+  static uintptr_t AdditionalMetadata(const EnumType& type) {
     static_assert(
         std::is_base_of_v<base_internal::InlineData, EnumValue>,
         "This logic relies on the fact that EnumValue is stored inline");

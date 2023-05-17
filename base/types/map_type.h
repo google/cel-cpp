@@ -115,7 +115,7 @@ class ModernMapType final : public MapType, public HeapData {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const ModernMapType& type) noexcept {
+  static bool IsDestructorSkippable(const ModernMapType& type) {
     return Metadata::IsDestructorSkippable(*type.key()) &&
            Metadata::IsDestructorSkippable(*type.value());
   }

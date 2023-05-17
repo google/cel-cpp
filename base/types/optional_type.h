@@ -57,7 +57,7 @@ class OptionalType final : public OpaqueType {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const OptionalType& type) noexcept {
+  static bool IsDestructorSkippable(const OptionalType& type) {
     return base_internal::Metadata::IsDestructorSkippable(*type.type());
   }
 
