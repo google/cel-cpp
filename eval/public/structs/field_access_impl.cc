@@ -599,7 +599,7 @@ class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
 
   bool SetMessage(const Message* value) const {
     if (!value) {
-      LOG(ERROR) << "Message is NULL";
+      ABSL_LOG(ERROR) << "Message is NULL";
       return true;
     }
     if (value->GetDescriptor()->full_name() ==

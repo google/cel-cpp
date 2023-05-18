@@ -16,7 +16,7 @@
 
 #include <stack>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal.h"
 #include "eval/public/ast_visitor_native.h"
@@ -174,7 +174,7 @@ struct PostVisitor {
                                         &position);
       }
       void operator()(absl::monostate) {
-        LOG(ERROR) << "Unsupported Expr kind";
+        ABSL_LOG(ERROR) << "Unsupported Expr kind";
       }
     } handler{visitor, record.expr,
               SourcePosition(expr->id(), record.source_info)};

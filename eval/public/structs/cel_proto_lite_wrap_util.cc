@@ -698,7 +698,7 @@ absl::StatusOr<BytesValue*> CreateMessageFromValue(
   if (wrapper == nullptr) {
     wrapper = google::protobuf::Arena::CreateMessage<BytesValue>(arena);
   }
-  wrapper->set_value(view_val.value().data(), view_val.value().size());
+  wrapper->set_value(view_val.value());
   return wrapper;
 }
 
@@ -782,7 +782,7 @@ absl::StatusOr<StringValue*> CreateMessageFromValue(
   if (wrapper == nullptr) {
     wrapper = google::protobuf::Arena::CreateMessage<StringValue>(arena);
   }
-  wrapper->set_value(view_val.value().data(), view_val.value().size());
+  wrapper->set_value(view_val.value());
   return wrapper;
 }
 
@@ -950,7 +950,7 @@ absl::StatusOr<Value*> CreateMessageFromValue(
     case CelValue::Type::kString: {
       CelValue::StringHolder val;
       if (cel_value.GetValue(&val)) {
-        wrapper->set_string_value(val.value().data(), val.value().size());
+        wrapper->set_string_value(val.value());
       }
     } break;
     case CelValue::Type::kTimestamp: {

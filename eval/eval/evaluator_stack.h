@@ -46,8 +46,8 @@ class EvaluatorStack {
   // Please note that calls to Push may invalidate returned Span object.
   absl::Span<const cel::Handle<cel::Value>> GetSpan(size_t size) const {
     if (!HasEnough(size)) {
-      LOG(ERROR) << "Requested span size (" << size
-                 << ") exceeds current stack size: " << current_size_;
+      ABSL_LOG(ERROR) << "Requested span size (" << size
+                      << ") exceeds current stack size: " << current_size_;
     }
     return absl::Span<const cel::Handle<cel::Value>>(
         stack_.data() + current_size_ - size, size);
@@ -65,7 +65,7 @@ class EvaluatorStack {
   // Checking that stack is not empty is caller's responsibility.
   const cel::Handle<cel::Value>& Peek() const {
     if (empty()) {
-      LOG(ERROR) << "Peeking on empty EvaluatorStack";
+      ABSL_LOG(ERROR) << "Peeking on empty EvaluatorStack";
     }
     return stack_[current_size_ - 1];
   }
@@ -74,7 +74,7 @@ class EvaluatorStack {
   // Checking that stack is not empty is caller's responsibility.
   const AttributeTrail& PeekAttribute() const {
     if (empty()) {
-      LOG(ERROR) << "Peeking on empty EvaluatorStack";
+      ABSL_LOG(ERROR) << "Peeking on empty EvaluatorStack";
     }
     return attribute_stack_[current_size_ - 1];
   }
@@ -83,8 +83,8 @@ class EvaluatorStack {
   // Checking that stack has enough elements is caller's responsibility.
   void Pop(size_t size) {
     if (!HasEnough(size)) {
-      LOG(ERROR) << "Trying to pop more elements (" << size
-                 << ") than the current stack size: " << current_size_;
+      ABSL_LOG(ERROR) << "Trying to pop more elements (" << size
+                      << ") than the current stack size: " << current_size_;
     }
     while (size > 0) {
       stack_.pop_back();
@@ -101,7 +101,7 @@ class EvaluatorStack {
 
   void Push(cel::Handle<cel::Value> value, AttributeTrail attribute) {
     if (current_size_ >= max_size()) {
-      LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
+      ABSL_LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
     }
     stack_.push_back(std::move(value));
     attribute_stack_.push_back(std::move(attribute));
@@ -118,7 +118,7 @@ class EvaluatorStack {
   // Checking that stack is not empty is caller's responsibility.
   void PopAndPush(cel::Handle<cel::Value> value, AttributeTrail attribute) {
     if (empty()) {
-      LOG(ERROR) << "Cannot PopAndPush on empty stack.";
+      ABSL_LOG(ERROR) << "Cannot PopAndPush on empty stack.";
     }
     stack_[current_size_ - 1] = std::move(value);
     attribute_stack_[current_size_ - 1] = std::move(attribute);

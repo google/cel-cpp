@@ -46,7 +46,7 @@ class LegacyTypeProvider : public cel::TypeProvider {
   // created ones, the TypeInfoApis returned from this method should be the same
   // as the ones used in value creation.
   virtual absl::optional<const LegacyTypeInfoApis*> ProvideLegacyTypeInfo(
-      absl::string_view name) const {
+      ABSL_ATTRIBUTE_UNUSED absl::string_view name) const {
     return absl::nullopt;
   }
 
@@ -61,7 +61,8 @@ class LegacyTypeProvider : public cel::TypeProvider {
   // TODO(issues/5): Move protobuf-Any API from top level
   // [Legacy]TypeProviders.
   virtual absl::optional<const LegacyAnyPackingApis*>
-  ProvideLegacyAnyPackingApis(absl::string_view name) const {
+  ProvideLegacyAnyPackingApis(
+      ABSL_ATTRIBUTE_UNUSED absl::string_view name) const {
     return absl::nullopt;
   }
 };

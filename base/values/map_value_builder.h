@@ -22,11 +22,13 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/status/statusor.h"
+#include "absl/types/variant.h"
 #include "base/memory.h"
 #include "base/value_factory.h"
 #include "base/values/list_value_builder.h"
 #include "base/values/map_value.h"
 #include "internal/linked_hash_map.h"
+#include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
 namespace cel {
@@ -54,7 +56,7 @@ class MapValueBuilderInterface {
   // A combination of Insert and Update, where the entry is inserted if it
   // doesn't already exist or it is updated. Returns true if insertion occurred,
   // false otherwise.
-  virtual absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  virtual absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                               Handle<Value> value) = 0;
 
   // Returns whether the given key has been inserted.
@@ -159,6 +161,29 @@ struct MapKeyEqualer<Handle<Value>> {
   }
 };
 
+template <typename Map, typename KeyDebugStringer, typename ValueDebugStringer>
+std::string ComposeMapValueDebugString(
+    const Map& map, const KeyDebugStringer& key_debug_stringer,
+    const ValueDebugStringer& value_debug_stringer) {
+  std::string out;
+  out.push_back('{');
+  auto current = map.begin();
+  if (current != map.end()) {
+    out.append(key_debug_stringer(current->first));
+    out.append(": ");
+    out.append(value_debug_stringer(current->second));
+    ++current;
+    for (; current != map.end(); ++current) {
+      out.append(", ");
+      out.append(key_debug_stringer(current->first));
+      out.append(": ");
+      out.append(value_debug_stringer(current->second));
+    }
+  }
+  out.push_back('}');
+  return out;
+}
+
 // For MapValueBuilder we use a linked hash map to preserve insertion order.
 // This mimics protobuf and ensures some reproducibility, making testing easier.
 
@@ -175,23 +200,10 @@ class DynamicMapValue final : public AbstractMapValue {
       : AbstractMapValue(std::move(type)), storage_(std::move(storage)) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   size_t size() const override { return storage_.size(); }
@@ -250,24 +262,12 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
       : AbstractMapValue(std::move(type)), storage_(std::move(storage)) {}
 
   std::string DebugString() const override {
-    using key_value_traits = ValueTraits<K>;
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(key_value_traits::DebugString(current->first));
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(key_value_traits::DebugString(current->first));
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const underlying_key_type& value) {
+          return ValueTraits<K>::DebugString(value);
+        },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   size_t size() const override { return storage_.size(); }
@@ -290,8 +290,9 @@ class StaticMapValue<K, void> final : public AbstractMapValue {
 
   absl::StatusOr<Handle<ListValue>> ListKeys(
       const ListKeysContext& context) const override {
-    ListValueBuilder<K> keys(context.value_factory(),
-                             type()->key().template As<K>());
+    ListValueBuilder<K> keys(
+        context.value_factory(),
+        type()->key().template As<typename ValueTraits<K>::type_type>());
     keys.reserve(size());
     for (const auto& current : storage_) {
       CEL_RETURN_IF_ERROR(keys.Add(current.first));
@@ -323,24 +324,12 @@ class StaticMapValue<void, V> final : public AbstractMapValue {
       : AbstractMapValue(std::move(type)), storage_(std::move(storage)) {}
 
   std::string DebugString() const override {
-    using value_value_traits = ValueTraits<V>;
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(value_value_traits::DebugString(current->second));
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(value_value_traits::DebugString(current->second));
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const underlying_value_type& value) {
+          return ValueTraits<V>::DebugString(value);
+        });
   }
 
   size_t size() const override { return storage_.size(); }
@@ -398,25 +387,14 @@ class StaticMapValue final : public AbstractMapValue {
       : AbstractMapValue(std::move(type)), storage_(std::move(storage)) {}
 
   std::string DebugString() const override {
-    using key_value_traits = ValueTraits<K>;
-    using value_value_traits = ValueTraits<V>;
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(key_value_traits::DebugString(current->first));
-      out.append(": ");
-      out.append(value_value_traits::DebugString(current->second));
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(key_value_traits::DebugString(current->first));
-        out.append(": ");
-        out.append(value_value_traits::DebugString(current->second));
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const underlying_key_type& value) {
+          return ValueTraits<K>::DebugString(value);
+        },
+        [](const underlying_value_type& value) {
+          return ValueTraits<V>::DebugString(value);
+        });
   }
 
   size_t size() const override { return storage_.size(); }
@@ -457,6 +435,30 @@ class StaticMapValue final : public AbstractMapValue {
   hash_map_type storage_;
 };
 
+// ComposableMapType is a variant which represents either the MapType or the
+// key and value Type for creating a MapType.
+template <typename K, typename V>
+using ComposableMapType =
+    absl::variant<std::pair<Handle<K>, Handle<V>>, Handle<MapType>>;
+
+// Create a MapType from ComposableMapType.
+template <typename K, typename V>
+absl::StatusOr<Handle<MapType>> ComposeMapType(
+    ValueFactory& value_factory, ComposableMapType<K, V>&& composable) {
+  return absl::visit(
+      internal::Overloaded{
+          [&value_factory](std::pair<Handle<K>, Handle<V>>&& key_value)
+              -> absl::StatusOr<Handle<MapType>> {
+            return value_factory.type_factory().CreateMapType(
+                std::move(key_value).first, std::move(key_value).second);
+          },
+          [](Handle<MapType>&& map) -> absl::StatusOr<Handle<MapType>> {
+            return std::move(map);
+          },
+      },
+      std::move(composable));
+}
+
 // Implementation of MapValueBuilder. Specialized to store some value types are
 // C++ primitives, avoiding Handle overhead. Anything that does not have a C++
 // primitive is stored as Handle<Value>.
@@ -475,29 +477,22 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
                       Handle<typename ValueTraits<K>::type_type> key,
                       Handle<typename ValueTraits<V>::type_type> value)
       : MapValueBuilderInterface(value_factory),
-        key_(std::move(key)),
-        value_(std::move(value)),
+        type_(std::make_pair(std::move(key), std::move(value))),
+        storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
+            value_factory.memory_manager()}) {}
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<MapType> type)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -523,12 +518,12 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
-    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
+    return InsertOrAssign(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, Handle<V> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -543,15 +538,16 @@ class MapValueBuilderImpl<K, V, void, void> : public MapValueBuilderInterface {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<MapValue>> Build() && override {
-    CEL_ASSIGN_OR_RETURN(
-        auto type, value_factory().type_factory().CreateMapType(key_, value_));
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         ComposeMapType(value_factory(), std::move(type_)));
     return value_factory().template CreateMapValue<DynamicMapValue>(
         std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<typename ValueTraits<K>::type_type> key_;
-  Handle<typename ValueTraits<V>::type_type> value_;
+  ComposableMapType<typename ValueTraits<K>::type_type,
+                    typename ValueTraits<V>::type_type>
+      type_;
   internal::LinkedHashMap<
       Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
       MapKeyEqualer<Handle<Value>>,
@@ -577,23 +573,10 @@ class MapValueBuilderImpl<K, Value, void, void>
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -619,12 +602,12 @@ class MapValueBuilderImpl<K, Value, void, void>
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
-    return InsertOrUpdate(std::move(key).As<K>(), std::move(value));
+    return InsertOrAssign(std::move(key).As<K>(), std::move(value));
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<Value> value) {
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, Handle<Value> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -673,23 +656,10 @@ class MapValueBuilderImpl<Value, V, void, void>
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -715,12 +685,12 @@ class MapValueBuilderImpl<Value, V, void, void>
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
-    return InsertOrUpdate(std::move(key), std::move(value).As<V>());
+    return InsertOrAssign(std::move(key), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key, Handle<V> value) {
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key, Handle<V> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -749,6 +719,103 @@ class MapValueBuilderImpl<Value, V, void, void>
       storage_;
 };
 
+// Specialization for key type being Value itself and value type has some C++
+// primitive representation.
+template <typename V, typename UV>
+class MapValueBuilderImpl<Value, V, void, UV>
+    : public MapValueBuilderInterface {
+ public:
+  static_assert(std::is_base_of_v<Value, V>);
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<Type> key,
+                      Handle<typename ValueTraits<V>::type_type> value)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::make_pair(std::move(key), std::move(value))),
+        storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
+            value_factory.memory_manager()}) {}
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<MapType> type)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::move(type)),
+        storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
+            value_factory.memory_manager()}) {}
+
+  std::string DebugString() const override {
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const UV& value) { return ValueTraits<V>::DebugString(value); });
+  }
+
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
+    return Insert(std::move(key), std::move(value).As<V>());
+  }
+
+  absl::StatusOr<bool> Insert(Handle<Value> key, Handle<V> value) {
+    return Insert(std::move(key), value->value());
+  }
+
+  absl::StatusOr<bool> Insert(Handle<Value> key, UV value) {
+    return storage_.insert(std::make_pair(std::move(key), std::move(value)))
+        .second;
+  }
+
+  absl::StatusOr<bool> Update(const Handle<Value>& key,
+                              Handle<Value> value) override {
+    return Update(key, std::move(value).As<V>());
+  }
+
+  absl::StatusOr<bool> Update(const Handle<Value>& key, Handle<V> value) {
+    return Update(key, value->value());
+  }
+
+  absl::StatusOr<bool> Update(const Handle<Value>& key, UV value) {
+    auto existing = storage_.find(key);
+    if (existing == storage_.end()) {
+      return false;
+    }
+    existing->second = std::move(value);
+    return true;
+  }
+
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
+                                      Handle<Value> value) override {
+    return InsertOrAssign(std::move(key), std::move(value).As<V>());
+  }
+
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key, Handle<V> value) {
+    return InsertOrAssign(std::move(key), value->value());
+  }
+
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key, UV value) {
+    return storage_.insert_or_assign(std::move(key), std::move(value)).second;
+  }
+
+  bool Has(const Handle<Value>& key) const override {
+    return storage_.find(key) != storage_.end();
+  }
+
+  size_t size() const override { return storage_.size(); }
+
+  bool empty() const override { return storage_.empty(); }
+
+  absl::StatusOr<Handle<MapValue>> Build() && override {
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         ComposeMapType(value_factory(), std::move(type_)));
+    return value_factory().template CreateMapValue<StaticMapValue<void, V>>(
+        std::move(type), std::move(storage_));
+  }
+
+ private:
+  ComposableMapType<Type, typename ValueTraits<V>::type_type> type_;
+  internal::LinkedHashMap<Handle<Value>, UV, MapKeyHasher<Handle<Value>>,
+                          MapKeyEqualer<Handle<Value>>,
+                          Allocator<std::pair<const Handle<Value>, UV>>>
+      storage_;
+};
+
 // Specialization for key type and value type being Value itself.
 template <>
 class MapValueBuilderImpl<Value, Value, void, void>
@@ -757,29 +824,22 @@ class MapValueBuilderImpl<Value, Value, void, void>
   MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
                       Handle<Type> key, Handle<Type> value)
       : MapValueBuilderInterface(value_factory),
-        key_(std::move(key)),
-        value_(std::move(value)),
+        type_(std::make_pair(std::move(key), std::move(value))),
+        storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
+            value_factory.memory_manager()}) {}
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<MapType> type)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, Handle<Value>>>{
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -797,7 +857,7 @@ class MapValueBuilderImpl<Value, Value, void, void>
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
@@ -811,15 +871,14 @@ class MapValueBuilderImpl<Value, Value, void, void>
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<MapValue>> Build() && override {
-    CEL_ASSIGN_OR_RETURN(
-        auto type, value_factory().type_factory().CreateMapType(key_, value_));
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         ComposeMapType(value_factory(), std::move(type_)));
     return value_factory().template CreateMapValue<DynamicMapValue>(
         std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<Type> key_;
-  Handle<Type> value_;
+  ComposableMapType<Type, Type> type_;
   internal::LinkedHashMap<
       Handle<Value>, Handle<Value>, MapKeyHasher<Handle<Value>>,
       MapKeyEqualer<Handle<Value>>,
@@ -840,29 +899,22 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
                       Handle<typename ValueTraits<K>::type_type> key,
                       Handle<typename ValueTraits<V>::type_type> value)
       : MapValueBuilderInterface(value_factory),
-        key_(std::move(key)),
-        value_(std::move(value)),
+        type_(std::make_pair(std::move(key), std::move(value))),
+        storage_(Allocator<std::pair<const UK, Handle<Value>>>{
+            value_factory.memory_manager()}) {}
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<MapType> type)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::move(type)),
         storage_(Allocator<std::pair<const UK, Handle<Value>>>{
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(ValueTraits<K>::DebugString(current->first));
-      out.append(": ");
-      out.append(current->second->DebugString());
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(ValueTraits<K>::DebugString(current->first));
-        out.append(": ");
-        out.append(current->second->DebugString());
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const UK& value) { return ValueTraits<K>::DebugString(value); },
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -896,16 +948,16 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
-    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
+    return InsertOrAssign(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
-    return InsertOrUpdate(key->value(), std::move(value));
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, Handle<V> value) {
+    return InsertOrAssign(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(UK key, Handle<V> value) {
+  absl::StatusOr<bool> InsertOrAssign(UK key, Handle<V> value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -920,15 +972,16 @@ class MapValueBuilderImpl<K, V, UK, void> : public MapValueBuilderInterface {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<MapValue>> Build() && override {
-    CEL_ASSIGN_OR_RETURN(
-        auto type, value_factory().type_factory().CreateMapType(key_, value_));
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         ComposeMapType(value_factory(), std::move(type_)));
     return value_factory().template CreateMapValue<StaticMapValue<K, void>>(
         std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<typename ValueTraits<K>::type_type> key_;
-  Handle<typename ValueTraits<V>::type_type> value_;
+  ComposableMapType<typename ValueTraits<K>::type_type,
+                    typename ValueTraits<V>::type_type>
+      type_;
   internal::LinkedHashMap<UK, Handle<Value>, MapKeyHasher<UK>,
                           MapKeyEqualer<UK>,
                           Allocator<std::pair<const UK, Handle<Value>>>>
@@ -948,29 +1001,22 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
                       Handle<typename ValueTraits<K>::type_type> key,
                       Handle<typename ValueTraits<V>::type_type> value)
       : MapValueBuilderInterface(value_factory),
-        key_(std::move(key)),
-        value_(std::move(value)),
+        type_(std::make_pair(std::move(key), std::move(value))),
+        storage_(Allocator<std::pair<const Handle<Value>, UV>>{
+            value_factory.memory_manager()}) {}
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<MapType> type)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::move(type)),
         storage_(Allocator<std::pair<const Handle<Value>, UV>>{
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(current->first->DebugString());
-      out.append(": ");
-      out.append(ValueTraits<V>::DebugString(current->second));
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(current->first->DebugString());
-        out.append(": ");
-        out.append(ValueTraits<V>::DebugString(current->second));
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); },
+        [](const UV& value) { return ValueTraits<V>::DebugString(value); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -1004,16 +1050,16 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
-    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
+    return InsertOrAssign(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
-    return InsertOrUpdate(std::move(key), value->value());
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, Handle<V> value) {
+    return InsertOrAssign(std::move(key), value->value());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, UV value) {
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, UV value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -1028,15 +1074,16 @@ class MapValueBuilderImpl<K, V, void, UV> : public MapValueBuilderInterface {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<MapValue>> Build() && override {
-    CEL_ASSIGN_OR_RETURN(
-        auto type, value_factory().type_factory().CreateMapType(key_, value_));
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         ComposeMapType(value_factory(), std::move(type_)));
     return value_factory().template CreateMapValue<StaticMapValue<void, V>>(
         std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<typename ValueTraits<K>::type_type> key_;
-  Handle<typename ValueTraits<V>::type_type> value_;
+  ComposableMapType<typename ValueTraits<K>::type_type,
+                    typename ValueTraits<V>::type_type>
+      type_;
   internal::LinkedHashMap<Handle<Value>, UV, MapKeyHasher<Handle<Value>>,
                           MapKeyEqualer<Handle<Value>>,
                           Allocator<std::pair<const Handle<Value>, UV>>>
@@ -1057,29 +1104,22 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
                       Handle<typename ValueTraits<K>::type_type> key,
                       Handle<typename ValueTraits<V>::type_type> value)
       : MapValueBuilderInterface(value_factory),
-        key_(std::move(key)),
-        value_(std::move(value)),
+        type_(std::make_pair(std::move(key), std::move(value))),
+        storage_(Allocator<std::pair<const UK, UV>>{
+            value_factory.memory_manager()}) {}
+
+  MapValueBuilderImpl(ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+                      Handle<MapType> type)
+      : MapValueBuilderInterface(value_factory),
+        type_(std::move(type)),
         storage_(Allocator<std::pair<const UK, UV>>{
             value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    std::string out;
-    out.push_back('{');
-    auto current = storage_.begin();
-    if (current != storage_.end()) {
-      out.append(ValueTraits<K>::DebugString(current->first));
-      out.append(": ");
-      out.append(ValueTraits<V>::DebugString(current->second));
-      ++current;
-      for (; current != storage_.end(); ++current) {
-        out.append(", ");
-        out.append(ValueTraits<K>::DebugString(current->first));
-        out.append(": ");
-        out.append(ValueTraits<V>::DebugString(current->second));
-      }
-    }
-    out.push_back('}');
-    return out;
+    return ComposeMapValueDebugString(
+        storage_,
+        [](const UK& value) { return ValueTraits<K>::DebugString(value); },
+        [](const UV& value) { return ValueTraits<V>::DebugString(value); });
   }
 
   absl::StatusOr<bool> Insert(Handle<Value> key, Handle<Value> value) override {
@@ -1129,24 +1169,24 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
     return true;
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<Value> key,
+  absl::StatusOr<bool> InsertOrAssign(Handle<Value> key,
                                       Handle<Value> value) override {
-    return InsertOrUpdate(std::move(key).As<K>(), std::move(value).As<V>());
+    return InsertOrAssign(std::move(key).As<K>(), std::move(value).As<V>());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, Handle<V> value) {
-    return InsertOrUpdate(key->value(), value->value());
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, Handle<V> value) {
+    return InsertOrAssign(key->value(), value->value());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(Handle<K> key, UV value) {
-    return InsertOrUpdate(key->value(), std::move(value));
+  absl::StatusOr<bool> InsertOrAssign(Handle<K> key, UV value) {
+    return InsertOrAssign(key->value(), std::move(value));
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(UK key, Handle<V> value) {
-    return InsertOrUpdate(std::move(key), value->value());
+  absl::StatusOr<bool> InsertOrAssign(UK key, Handle<V> value) {
+    return InsertOrAssign(std::move(key), value->value());
   }
 
-  absl::StatusOr<bool> InsertOrUpdate(UK key, UV value) {
+  absl::StatusOr<bool> InsertOrAssign(UK key, UV value) {
     return storage_.insert_or_assign(std::move(key), std::move(value)).second;
   }
 
@@ -1161,15 +1201,16 @@ class MapValueBuilderImpl : public MapValueBuilderInterface {
   bool empty() const override { return storage_.empty(); }
 
   absl::StatusOr<Handle<MapValue>> Build() && override {
-    CEL_ASSIGN_OR_RETURN(
-        auto type, value_factory().type_factory().CreateMapType(key_, value_));
+    CEL_ASSIGN_OR_RETURN(auto type,
+                         ComposeMapType(value_factory(), std::move(type_)));
     return value_factory().template CreateMapValue<StaticMapValue<K, V>>(
         std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<typename ValueTraits<K>::type_type> key_;
-  Handle<typename ValueTraits<V>::type_type> value_;
+  ComposableMapType<typename ValueTraits<K>::type_type,
+                    typename ValueTraits<V>::type_type>
+      type_;
   internal::LinkedHashMap<UK, UV, MapKeyHasher<UK>, MapKeyEqualer<UK>,
                           Allocator<std::pair<const UK, UV>>>
       storage_;

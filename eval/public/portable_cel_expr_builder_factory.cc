@@ -34,8 +34,8 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     std::unique_ptr<LegacyTypeProvider> type_provider,
     const InterpreterOptions& options) {
   if (type_provider == nullptr) {
-    LOG(ERROR) << "Cannot pass nullptr as type_provider to "
-                  "CreatePortableExprBuilder";
+    ABSL_LOG(ERROR) << "Cannot pass nullptr as type_provider to "
+                       "CreatePortableExprBuilder";
     return nullptr;
   }
   cel::RuntimeOptions runtime_options = ConvertToRuntimeOptions(options);

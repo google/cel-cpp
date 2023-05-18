@@ -53,7 +53,7 @@ ProtobufDescriptorProvider::ProvideLegacyTypeInfo(
 std::unique_ptr<ProtoMessageTypeAdapter> ProtobufDescriptorProvider::GetType(
     absl::string_view name) const {
   const google::protobuf::Descriptor* descriptor =
-      descriptor_pool_->FindMessageTypeByName(std::string(name));
+      descriptor_pool_->FindMessageTypeByName(name);
   if (descriptor == nullptr) {
     return nullptr;
   }

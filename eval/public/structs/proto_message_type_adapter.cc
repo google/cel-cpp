@@ -86,7 +86,7 @@ absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
                                   absl::string_view field_name) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const Reflection* reflection = message->GetReflection();
-  const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
+  const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name);
   if (field_desc == nullptr && reflection != nullptr) {
     // Search to see whether the field name is referring to an extension.
     field_desc = reflection->FindKnownExtensionByName(field_name);
@@ -122,7 +122,7 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
                                       cel::MemoryManager& memory_manager) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const Reflection* reflection = message->GetReflection();
-  const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
+  const FieldDescriptor* field_desc = descriptor->FindFieldByName(field_name);
   if (field_desc == nullptr && reflection != nullptr) {
     std::string ext_name(field_name);
     field_desc = reflection->FindKnownExtensionByName(ext_name);
@@ -332,7 +332,7 @@ ProtoMessageTypeAdapter::NewInstance(cel::MemoryManager& memory_manager) const {
 }
 
 bool ProtoMessageTypeAdapter::DefinesField(absl::string_view field_name) const {
-  return descriptor_->FindFieldByName(std::string(field_name)) != nullptr;
+  return descriptor_->FindFieldByName(field_name) != nullptr;
 }
 
 absl::StatusOr<bool> ProtoMessageTypeAdapter::HasField(
@@ -365,7 +365,7 @@ absl::Status ProtoMessageTypeAdapter::SetField(
                        UnwrapMessage(instance, "SetField"));
 
   const google::protobuf::FieldDescriptor* field_descriptor =
-      descriptor_->FindFieldByName(std::string(field_name));
+      descriptor_->FindFieldByName(field_name);
   CEL_RETURN_IF_ERROR(
       ValidateSetFieldOp(field_descriptor != nullptr, field_name, "not found"));
 

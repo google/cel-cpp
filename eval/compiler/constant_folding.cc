@@ -359,7 +359,7 @@ class ConstantFoldingTransform {
     }
 
     bool operator()(absl::monostate) {
-      LOG(ERROR) << "Unsupported Expr kind";
+      ABSL_LOG(ERROR) << "Unsupported Expr kind";
       return false;
     }
 
