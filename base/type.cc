@@ -101,6 +101,8 @@ absl::Span<const absl::string_view> Type::aliases() const {
       return static_cast<const ListType*>(this)->aliases();
     case Kind::kMap:
       return static_cast<const MapType*>(this)->aliases();
+    case Kind::kWrapper:
+      return static_cast<const WrapperType*>(this)->aliases();
     default:
       // Everything else does not support aliases.
       return absl::Span<const absl::string_view>();

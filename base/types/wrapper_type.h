@@ -22,6 +22,7 @@
 #include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -69,12 +70,16 @@ class WrapperType : public Type, base_internal::InlineData {
   const Handle<Type>& wrapped() const;
 
  private:
+  friend class Type;
   friend class BoolWrapperType;
   friend class BytesWrapperType;
   friend class DoubleWrapperType;
   friend class IntWrapperType;
   friend class StringWrapperType;
   friend class UintWrapperType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 
   using Base::Base;
 };
@@ -189,6 +194,7 @@ class DoubleWrapperType final : public WrapperType {
   const Handle<DoubleType>& wrapped() const { return DoubleType::Get(); }
 
  private:
+  friend class WrapperType;
   friend class TypeFactory;
   template <size_t Size, size_t Align>
   friend struct base_internal::AnyData;
@@ -202,6 +208,9 @@ class DoubleWrapperType final : public WrapperType {
        << base_internal::kInlineVariantShift);
 
   constexpr DoubleWrapperType() : WrapperType(kMetadata) {}
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 };
 
 class IntWrapperType final : public WrapperType {
@@ -226,6 +235,7 @@ class IntWrapperType final : public WrapperType {
   const Handle<IntType>& wrapped() const { return IntType::Get(); }
 
  private:
+  friend class WrapperType;
   friend class TypeFactory;
   template <size_t Size, size_t Align>
   friend struct base_internal::AnyData;
@@ -239,6 +249,9 @@ class IntWrapperType final : public WrapperType {
        << base_internal::kInlineVariantShift);
 
   constexpr IntWrapperType() : WrapperType(kMetadata) {}
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 };
 
 class StringWrapperType final : public WrapperType {
@@ -300,6 +313,7 @@ class UintWrapperType final : public WrapperType {
   const Handle<UintType>& wrapped() const { return UintType::Get(); }
 
  private:
+  friend class WrapperType;
   friend class TypeFactory;
   template <size_t Size, size_t Align>
   friend struct base_internal::AnyData;
@@ -313,6 +327,9 @@ class UintWrapperType final : public WrapperType {
        << base_internal::kInlineVariantShift);
 
   constexpr UintWrapperType() : WrapperType(kMetadata) {}
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
 };
 
 extern template class Handle<WrapperType>;

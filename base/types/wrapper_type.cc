@@ -15,6 +15,8 @@
 #include "base/types/wrapper_type.h"
 
 #include "absl/base/optimization.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 
 namespace cel {
 
@@ -46,6 +48,20 @@ absl::string_view WrapperType::name() const {
   }
 }
 
+absl::Span<const absl::string_view> WrapperType::aliases() const {
+  switch (base_internal::Metadata::GetInlineVariant<Kind>(*this)) {
+    case Kind::kDouble:
+      return static_cast<const DoubleWrapperType*>(this)->aliases();
+    case Kind::kInt:
+      return static_cast<const IntWrapperType*>(this)->aliases();
+    case Kind::kUint:
+      return static_cast<const UintWrapperType*>(this)->aliases();
+    default:
+      // The other wrappers do not have aliases.
+      return absl::Span<const absl::string_view>();
+  }
+}
+
 const Handle<Type>& WrapperType::wrapped() const {
   switch (base_internal::Metadata::GetInlineVariant<Kind>(*this)) {
     case Kind::kBool:
@@ -64,6 +80,24 @@ const Handle<Type>& WrapperType::wrapped() const {
       // There are only 6 wrapper types.
       ABSL_UNREACHABLE();
   }
+}
+
+absl::Span<const absl::string_view> DoubleWrapperType::aliases() const {
+  static constexpr absl::string_view kAliases[] = {
+      "google.protobuf.FloatValue"};
+  return absl::MakeConstSpan(kAliases);
+}
+
+absl::Span<const absl::string_view> IntWrapperType::aliases() const {
+  static constexpr absl::string_view kAliases[] = {
+      "google.protobuf.Int32Value"};
+  return absl::MakeConstSpan(kAliases);
+}
+
+absl::Span<const absl::string_view> UintWrapperType::aliases() const {
+  static constexpr absl::string_view kAliases[] = {
+      "google.protobuf.UInt32Value"};
+  return absl::MakeConstSpan(kAliases);
 }
 
 }  // namespace cel
