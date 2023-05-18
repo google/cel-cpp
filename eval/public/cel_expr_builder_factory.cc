@@ -39,13 +39,13 @@ std::unique_ptr<CelExpressionBuilder> CreateCelExpressionBuilder(
     google::protobuf::MessageFactory* message_factory,
     const InterpreterOptions& options) {
   if (descriptor_pool == nullptr) {
-    LOG(ERROR) << "Cannot pass nullptr as descriptor pool to "
-                  "CreateCelExpressionBuilder";
+    ABSL_LOG(ERROR) << "Cannot pass nullptr as descriptor pool to "
+                       "CreateCelExpressionBuilder";
     return nullptr;
   }
   if (auto s = ValidateStandardMessageTypes(*descriptor_pool); !s.ok()) {
-    LOG(WARNING) << "Failed to validate standard message types: "
-                 << s.ToString();  // NOLINT: OSS compatibility
+    ABSL_LOG(WARNING) << "Failed to validate standard message types: "
+                      << s.ToString();  // NOLINT: OSS compatibility
     return nullptr;
   }
 

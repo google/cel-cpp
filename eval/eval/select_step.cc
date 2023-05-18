@@ -116,7 +116,7 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
-    LOG(ERROR)
+    ABSL_LOG(ERROR)
         << "Invalid attribute pattern matched select path: "
         << attribute_string.status().ToString();  // NOLINT: OSS compatibility
     return CreateErrorValueFromView(Arena::Create<absl::Status>(
