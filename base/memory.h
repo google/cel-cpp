@@ -185,7 +185,7 @@ class MemoryManager {
           T(std::forward<Args>(args)...);
       if constexpr (!std::is_trivially_destructible_v<T>) {
         if constexpr (base_internal::HasIsDestructorSkippable<T>::value) {
-          if (!T::IsDestructorSkippable(*pointer)) {
+          if (!pointer->IsDestructorSkippable()) {
             OwnDestructor(pointer,
                           &base_internal::MemoryManagerDestructor<T>::Destruct);
           }
@@ -356,6 +356,18 @@ class Allocator {
   // own MemoryManager.
   bool allocation_only_;
 };
+
+// GCC before 12 has buggy friendship. Instead of calculating friendship at the
+// point of evaluation it does so at the point where it is written. This macro
+// ensures compatibility by friending both so IsDestructorSkippable works
+// correctly.
+#define CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE()                  \
+ private:                                                       \
+  friend class ::cel::MemoryManager;                            \
+  template <typename, typename>                                 \
+  friend struct ::cel::base_internal::HasIsDestructorSkippable; \
+                                                                \
+  bool IsDestructorSkippable() const
 
 namespace base_internal {
 

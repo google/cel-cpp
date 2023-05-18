@@ -17,6 +17,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/log/die_if_null.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "base/type_manager.h"
 #include "base/types/enum_type.h"
@@ -71,8 +72,7 @@ class ProtoEnumType final : public EnumType {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(
-      const ProtoEnumType& type ABSL_ATTRIBUTE_UNUSED) {
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
     // Our destructor is useless, we only hold pointers to protobuf-owned data.
     return true;
   }

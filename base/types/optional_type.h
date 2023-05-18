@@ -21,6 +21,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "base/types/opaque_type.h"
 #include "internal/rtti.h"
@@ -57,8 +58,8 @@ class OptionalType final : public OpaqueType {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const OptionalType& type) {
-    return base_internal::Metadata::IsDestructorSkippable(*type.type());
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return base_internal::Metadata::IsDestructorSkippable(*type());
   }
 
   explicit OptionalType(Handle<Type> type) : type_(std::move(type)) {}

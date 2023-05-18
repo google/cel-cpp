@@ -32,8 +32,7 @@ struct HasIsDestructorSkippable : std::false_type {};
 
 template <typename T>
 struct HasIsDestructorSkippable<
-    T,
-    std::void_t<decltype(T::IsDestructorSkippable(std::declval<const T&>()))>>
+    T, std::void_t<decltype(std::declval<const T&>().IsDestructorSkippable())>>
     : std::true_type {};
 
 }  // namespace cel::base_internal

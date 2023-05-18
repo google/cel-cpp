@@ -24,6 +24,7 @@
 #include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 
 namespace cel {
@@ -115,9 +116,9 @@ class ModernMapType final : public MapType, public HeapData {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const ModernMapType& type) {
-    return Metadata::IsDestructorSkippable(*type.key()) &&
-           Metadata::IsDestructorSkippable(*type.value());
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return Metadata::IsDestructorSkippable(*key()) &&
+           Metadata::IsDestructorSkippable(*value());
   }
 
   explicit ModernMapType(Handle<Type> key, Handle<Type> value);

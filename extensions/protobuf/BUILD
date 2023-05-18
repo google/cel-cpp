@@ -95,8 +95,9 @@ cc_library(
         "type_provider.h",
     ],
     deps = [
+        "//base:data",
         "//base:handle",
-        "//base:type",
+        "//base:memory",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:die_if_null",

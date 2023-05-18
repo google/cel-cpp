@@ -21,6 +21,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "base/handle.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "base/types/optional_type.h"
 #include "base/value.h"
@@ -98,8 +99,8 @@ class EmptyOptionalValue final : public OptionalValue {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const EmptyOptionalValue& value) {
-    return base_internal::Metadata::IsDestructorSkippable(*value.type());
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return base_internal::Metadata::IsDestructorSkippable(*type());
   }
 
   explicit EmptyOptionalValue(Handle<OptionalType> type)
@@ -117,9 +118,9 @@ class FullOptionalValue final : public OptionalValue {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const FullOptionalValue& value) {
-    return base_internal::Metadata::IsDestructorSkippable(*value.type()) &&
-           base_internal::Metadata::IsDestructorSkippable(*value.value());
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return base_internal::Metadata::IsDestructorSkippable(*type()) &&
+           base_internal::Metadata::IsDestructorSkippable(*value());
   }
 
   FullOptionalValue(Handle<OptionalType> type, Handle<Value> value)

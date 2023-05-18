@@ -24,6 +24,7 @@
 #include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 
 namespace cel {
@@ -109,8 +110,8 @@ class ModernListType final : public ListType, public HeapData {
 
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called.
-  static bool IsDestructorSkippable(const ModernListType& type) {
-    return Metadata::IsDestructorSkippable(*type.element());
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return Metadata::IsDestructorSkippable(*element());
   }
 
   explicit ModernListType(Handle<Type> element);
