@@ -23,9 +23,12 @@
 #include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/variant.h"
+#include "absl/utility/utility.h"
 #include "base/memory.h"
 #include "base/value_factory.h"
 #include "base/values/list_value.h"
+#include "internal/overloaded.h"
 
 namespace cel {
 
@@ -75,6 +78,53 @@ class ListValueBuilder;
 
 namespace base_internal {
 
+// ComposableListType is a variant which represents either the ListType or the
+// element Type for creating a ListType.
+template <typename T>
+using ComposableListType = absl::variant<Handle<T>, Handle<ListType>>;
+
+// Create a ListType from ComposableListType.
+template <typename T>
+absl::StatusOr<Handle<ListType>> ComposeListType(
+    ValueFactory& value_factory, ComposableListType<T>&& composable) {
+  return absl::visit(
+      internal::Overloaded{
+          [&value_factory](
+              Handle<T>&& element) -> absl::StatusOr<Handle<ListType>> {
+            return value_factory.type_factory().CreateListType(
+                std::move(element));
+          },
+          [](Handle<ListType>&& list) -> absl::StatusOr<Handle<ListType>> {
+            return std::move(list);
+          },
+      },
+      std::move(composable));
+}
+
+template <typename List, typename DebugStringer>
+std::string ComposeListValueDebugString(const List& list,
+                                        const DebugStringer& debug_stringer) {
+  std::string out;
+  out.push_back('[');
+  auto current = list.begin();
+  if (current != list.end()) {
+    out.append(debug_stringer(*current));
+    ++current;
+    for (; current != list.end(); ++current) {
+      out.append(", ");
+      out.append(debug_stringer(*current));
+    }
+  }
+  out.push_back(']');
+  return out;
+}
+
+struct ComposedListType {
+  explicit ComposedListType() = default;
+};
+
+inline constexpr ComposedListType kComposedListType{};
+
 // Implementation of ListValueBuilder. Specialized to store some value types as
 // C++ primitives, avoiding Handle overhead. Anything that does not have a C++
 // primitive is stored as Handle<Value>.
@@ -92,22 +142,22 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
       ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
       Handle<typename ValueTraits<T>::type_type> type)
       : ListValueBuilderInterface(value_factory),
-        type_(std::move(type)),
+        type_(absl::in_place_type<Handle<typename ValueTraits<T>::type_type>>,
+              std::move(type)),
+        storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
+
+  ListValueBuilderImpl(
+      ComposedListType,
+      ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+      Handle<ListType> type)
+      : ListValueBuilderInterface(value_factory),
+        type_(absl::in_place_type<Handle<ListType>>, std::move(type)),
         storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    size_t count = size();
-    std::string out;
-    out.push_back('[');
-    if (count != 0) {
-      out.append(storage_[0]->DebugString());
-      for (size_t index = 1; index < count; index++) {
-        out.append(", ");
-        out.append(storage_[index]->DebugString());
-      }
-    }
-    out.push_back(']');
-    return out;
+    return ComposeListValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::Status Add(Handle<Value> value) override {
@@ -127,14 +177,14 @@ class ListValueBuilderImpl<T, void> : public ListValueBuilderInterface {
 
   absl::StatusOr<Handle<ListValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
-                         value_factory().type_factory().CreateListType(type_));
+                         ComposeListType(value_factory(), std::move(type_)));
     return value_factory()
         .template CreateListValue<base_internal::DynamicListValue>(
             std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<typename ValueTraits<T>::type_type> type_;
+  ComposableListType<typename ValueTraits<T>::type_type> type_;
   std::vector<Handle<Value>, Allocator<Handle<Value>>> storage_;
 };
 
@@ -147,22 +197,21 @@ class ListValueBuilderImpl<Value, void> : public ListValueBuilderInterface {
       ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
       Handle<Type> type)
       : ListValueBuilderInterface(value_factory),
-        type_(std::move(type)),
+        type_(absl::in_place_type<Handle<Type>>, std::move(type)),
+        storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
+
+  ListValueBuilderImpl(
+      ComposedListType,
+      ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+      Handle<ListType> type)
+      : ListValueBuilderInterface(value_factory),
+        type_(absl::in_place_type<Handle<ListType>>, std::move(type)),
         storage_(Allocator<Handle<Value>>{value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    size_t count = size();
-    std::string out;
-    out.push_back('[');
-    if (count != 0) {
-      out.append(storage_[0]->DebugString());
-      for (size_t index = 1; index < count; index++) {
-        out.append(", ");
-        out.append(storage_[index]->DebugString());
-      }
-    }
-    out.push_back(']');
-    return out;
+    return ComposeListValueDebugString(
+        storage_,
+        [](const Handle<Value>& value) { return value->DebugString(); });
   }
 
   absl::Status Add(Handle<Value> value) override {
@@ -178,14 +227,14 @@ class ListValueBuilderImpl<Value, void> : public ListValueBuilderInterface {
 
   absl::StatusOr<Handle<ListValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
-                         value_factory().type_factory().CreateListType(type_));
+                         ComposeListType(value_factory(), std::move(type_)));
     return value_factory()
         .template CreateListValue<base_internal::DynamicListValue>(
             std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<Type> type_;
+  ComposableListType<Type> type_;
   std::vector<Handle<Value>, Allocator<Handle<Value>>> storage_;
 };
 
@@ -198,23 +247,22 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
       ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
       Handle<typename ValueTraits<T>::type_type> type)
       : ListValueBuilderInterface(value_factory),
-        type_(std::move(type)),
+        type_(absl::in_place_type<Handle<typename ValueTraits<T>::type_type>>,
+              std::move(type)),
+        storage_(Allocator<U>{value_factory.memory_manager()}) {}
+
+  ListValueBuilderImpl(
+      ComposedListType,
+      ABSL_ATTRIBUTE_LIFETIME_BOUND ValueFactory& value_factory,
+      Handle<ListType> type)
+      : ListValueBuilderInterface(value_factory),
+        type_(absl::in_place_type<Handle<ListType>>, std::move(type)),
         storage_(Allocator<U>{value_factory.memory_manager()}) {}
 
   std::string DebugString() const override {
-    using value_traits = ValueTraits<T>;
-    size_t count = size();
-    std::string out;
-    out.push_back('[');
-    if (count != 0) {
-      out.append(value_traits::DebugString(storage_[0]));
-      for (size_t index = 1; index < count; index++) {
-        out.append(", ");
-        out.append(value_traits::DebugString(storage_[index]));
-      }
-    }
-    out.push_back(']');
-    return out;
+    return ComposeListValueDebugString(storage_, [](const U& value) {
+      return ValueTraits<T>::DebugString(value);
+    });
   }
 
   absl::Status Add(Handle<Value> value) override {
@@ -236,14 +284,14 @@ class ListValueBuilderImpl : public ListValueBuilderInterface {
 
   absl::StatusOr<Handle<ListValue>> Build() && override {
     CEL_ASSIGN_OR_RETURN(auto type,
-                         value_factory().type_factory().CreateListType(type_));
+                         ComposeListType(value_factory(), std::move(type_)));
     return value_factory()
         .template CreateListValue<base_internal::StaticListValue<T>>(
             std::move(type), std::move(storage_));
   }
 
  private:
-  Handle<typename ValueTraits<T>::type_type> type_;
+  ComposableListType<typename ValueTraits<T>::type_type> type_;
   std::vector<U, Allocator<U>> storage_;
 };
 
@@ -256,6 +304,8 @@ class ListValueBuilder final
  private:
   using Impl = base_internal::ListValueBuilderImpl<
       T, typename base_internal::ValueTraits<T>::underlying_type>;
+
+  static_assert(!std::is_same_v<T, ListValue>);
 
  public:
   using Impl::Impl;
