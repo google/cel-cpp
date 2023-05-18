@@ -17,7 +17,7 @@
 #include <stack>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/types/variant.h"
 #include "eval/public/ast_visitor.h"
 #include "eval/public/source_position.h"
@@ -197,7 +197,7 @@ struct PostVisitor {
                                         &position);
         break;
       default:
-        LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
+        ABSL_LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();
     }
 
     visitor->PostVisitExpr(expr, &position);

@@ -468,7 +468,7 @@ google::protobuf::Message* MessageFromValue(
   if (!value.GetValue(&view_val)) {
     return nullptr;
   }
-  wrapper->set_value(view_val.value().data(), view_val.value().size());
+  wrapper->set_value(view_val.value());
   return wrapper;
 }
 
@@ -536,7 +536,7 @@ google::protobuf::Message* MessageFromValue(
   if (!value.GetValue(&view_val)) {
     return nullptr;
   }
-  wrapper->set_value(view_val.value().data(), view_val.value().size());
+  wrapper->set_value(view_val.value());
   return wrapper;
 }
 
@@ -682,7 +682,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json,
     case CelValue::Type::kString: {
       CelValue::StringHolder val;
       if (value.GetValue(&val)) {
-        json->set_string_value(val.value().data(), val.value().size());
+        json->set_string_value(val.value());
         return json;
       }
     } break;

@@ -25,7 +25,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -489,7 +489,8 @@ class CelValue {
 
   // Crashes with a null pointer error.
   static void CrashNullPointer(Type type) ABSL_ATTRIBUTE_COLD {
-    LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
+    ABSL_LOG(FATAL) << "Null pointer supplied for "
+                    << TypeName(type);  // Crash ok
   }
 
   // Null pointer checker for pointer-based types.
@@ -502,9 +503,9 @@ class CelValue {
   // Crashes with a type mismatch error.
   static void CrashTypeMismatch(Type requested_type,
                                 Type actual_type) ABSL_ATTRIBUTE_COLD {
-    LOG(FATAL) << "Type mismatch"                             // Crash ok
-               << ": expected " << TypeName(requested_type)   // Crash ok
-               << ", encountered " << TypeName(actual_type);  // Crash ok
+    ABSL_LOG(FATAL) << "Type mismatch"                             // Crash ok
+                    << ": expected " << TypeName(requested_type)   // Crash ok
+                    << ", encountered " << TypeName(actual_type);  // Crash ok
   }
 
   // Gets value of type specified

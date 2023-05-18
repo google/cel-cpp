@@ -23,7 +23,7 @@ namespace cel::extensions {
 absl::StatusOr<absl::optional<Handle<Type>>> ProtoTypeProvider::ProvideType(
     TypeFactory& type_factory, absl::string_view name) const {
   {
-    const auto* desc = pool_->FindMessageTypeByName(std::string(name));
+    const auto* desc = pool_->FindMessageTypeByName(name);
     if (desc != nullptr) {
       return type_factory.CreateStructType<ProtoStructType>(desc, factory_);
     }

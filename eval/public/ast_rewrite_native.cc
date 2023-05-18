@@ -17,7 +17,7 @@
 #include <stack>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/types/variant.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
@@ -199,7 +199,7 @@ struct PostVisitor {
         visitor->PostVisitComprehension(&comprehension, expr, position);
       }
       void operator()(absl::monostate) {
-        LOG(ERROR) << "Unsupported Expr kind";
+        ABSL_LOG(ERROR) << "Unsupported Expr kind";
       }
     } handler{visitor, record.expr, &position};
     absl::visit(handler, record.expr->expr_kind());
