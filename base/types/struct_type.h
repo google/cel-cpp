@@ -15,23 +15,29 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_STRUCT_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_STRUCT_TYPE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
-#include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 #include "internal/rtti.h"
 
 namespace cel {
+
+namespace interop_internal {
+struct LegacyStructTypeAccess;
+}
 
 class MemoryManager;
 class StructValue;
@@ -46,20 +52,41 @@ class StructType : public Type {
 
   class FieldId final {
    public:
+    FieldId() = delete;
+
+    FieldId(const FieldId&) = default;
+    FieldId(FieldId&&) = default;
+    FieldId& operator=(const FieldId&) = default;
+    FieldId& operator=(FieldId&&) = default;
+
+    std::string DebugString() const;
+
+    friend bool operator==(const FieldId& lhs, const FieldId& rhs) {
+      return lhs.data_ == rhs.data_;
+    }
+
+    friend bool operator<(const FieldId& lhs, const FieldId& rhs);
+
+    template <typename H>
+    friend H AbslHashValue(H state, const FieldId& id) {
+      return H::combine(std::move(state), id.data_);
+    }
+
+    template <typename S>
+    friend void AbslStringify(S& sink, const FieldId& id) {
+      sink.Append(id.DebugString());
+    }
+
+   private:
+    friend class StructType;
+    friend class StructValue;
+    friend struct base_internal::FieldIdFactory;
+
     explicit FieldId(absl::string_view name)
         : data_(absl::in_place_type<absl::string_view>, name) {}
 
     explicit FieldId(int64_t number)
         : data_(absl::in_place_type<int64_t>, number) {}
-
-    FieldId() = delete;
-
-    FieldId(const FieldId&) = default;
-    FieldId& operator=(const FieldId&) = default;
-
-   private:
-    friend class StructType;
-    friend class StructValue;
 
     absl::variant<absl::string_view, int64_t> data_;
   };
@@ -68,30 +95,59 @@ class StructType : public Type {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
+  using Type::Is;
+
+  static const StructType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to struct";
+    return static_cast<const StructType&>(type);
+  }
+
   Kind kind() const { return kKind; }
 
-  absl::string_view name() const;
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
+  size_t field_count() const;
 
-  bool Equals(const Type& other) const;
+  // Find the field definition for the given identifier. If the field does
+  // not exist, an OK status and empty optional is returned. If the field
+  // exists, an OK status and the field is returned. Otherwise an error is
+  // returned.
+  absl::StatusOr<absl::optional<Field>> FindField(TypeManager& type_manager,
+                                                  FieldId id) const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Find the field definition for the given identifier.
-  absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
+  // Called by FindField.
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager,
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  // Called by FindField.
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager,
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  class FieldIterator;
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const;
+  static FieldId MakeFieldId(absl::string_view name) { return FieldId(name); }
 
-  // Called by FindField.
-  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
-                                        absl::string_view name) const;
+  static FieldId MakeFieldId(int64_t number) { return FieldId(number); }
 
-  // Called by FindField.
-  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                          int64_t number) const;
+  template <typename E>
+  static std::enable_if_t<
+      std::conjunction_v<
+          std::is_enum<E>,
+          std::is_convertible<std::underlying_type_t<E>, int64_t>>,
+      FieldId>
+  MakeFieldId(E e) {
+    return MakeFieldId(
+        static_cast<int64_t>(static_cast<std::underlying_type_t<E>>(e)));
+  }
 
  private:
   friend internal::TypeInfo base_internal::GetStructTypeTypeId(
@@ -101,7 +157,7 @@ class StructType : public Type {
   friend struct FindFieldVisitor;
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class base_internal::TypeHandle;
   friend class StructValue;
   friend class base_internal::LegacyStructType;
   friend class base_internal::AbstractStructType;
@@ -112,6 +168,47 @@ class StructType : public Type {
   internal::TypeInfo TypeId() const;
 };
 
+// Field describes a single field in a struct. All fields are valid so long as
+// StructType is valid, except Field::type which is managed.
+struct StructType::Field final {
+  explicit Field(FieldId id, absl::string_view name, int64_t number,
+                 Handle<Type> type, const void* hint = nullptr)
+      : id(id), name(name), number(number), type(std::move(type)), hint(hint) {}
+
+  // Identifier which allows the most efficient form of lookup, compared to
+  // looking up by name or number.
+  FieldId id;
+  // The field name.
+  absl::string_view name;
+  // The field number.
+  int64_t number;
+  // The field type;
+  Handle<Type> type;
+  // Some implementation-specific data that can be laundered to the value
+  // implementation for this type to enable potential optimizations.
+  const void* hint = nullptr;
+};
+
+class StructType::FieldIterator {
+ public:
+  using FieldId = StructType::FieldId;
+  using Field = StructType::Field;
+
+  virtual ~FieldIterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Field> Next(TypeManager& type_manager) = 0;
+
+  virtual absl::StatusOr<FieldId> NextId(TypeManager& type_manager);
+
+  virtual absl::StatusOr<absl::string_view> NextName(TypeManager& type_manager);
+
+  virtual absl::StatusOr<int64_t> NextNumber(TypeManager& type_manager);
+
+  virtual absl::StatusOr<Handle<Type>> NextType(TypeManager& type_manager);
+};
+
 namespace base_internal {
 
 // In an ideal world we would just make StructType a heap type. Unfortunately we
@@ -120,105 +217,113 @@ namespace base_internal {
 // variant.
 
 ABSL_ATTRIBUTE_WEAK absl::string_view MessageTypeName(uintptr_t msg);
-ABSL_ATTRIBUTE_WEAK bool MessageTypeHash(uintptr_t msg, absl::HashState state);
-ABSL_ATTRIBUTE_WEAK bool MessageTypeEquals(uintptr_t lhs, const Type& rhs);
+ABSL_ATTRIBUTE_WEAK size_t MessageTypeFieldCount(uintptr_t msg);
 
-class LegacyStructType final : public StructType,
-                               public base_internal::InlineData {
+class LegacyStructValueFieldIterator;
+
+class LegacyStructType final : public StructType, public InlineData {
  public:
   static bool Is(const Type& type) {
-    return type.kind() == kKind &&
+    return StructType::Is(type) &&
            static_cast<const StructType&>(type).TypeId() ==
                internal::TypeId<LegacyStructType>();
   }
 
-  absl::string_view name() const;
+  using StructType::Is;
+
+  static const LegacyStructType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to struct";
+    return static_cast<const LegacyStructType&>(type);
+  }
+
+  absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Always returns the same string.
   std::string DebugString() const { return std::string(name()); }
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Type& other) const;
+  size_t field_count() const;
 
   // Always returns an error.
-  absl::StatusOr<Field> FindField(TypeManager& type_manager, FieldId id) const;
-
- protected:
-  // Always returns an error.
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const;
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager,
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   // Always returns an error.
-  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
-                                        absl::string_view name) const;
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager,
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  // Always returns an error.
-  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                          int64_t number) const;
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
 
+  friend class LegacyStructValueFieldIterator;
+  friend struct interop_internal::LegacyStructTypeAccess;
   friend class cel::StructType;
-  friend class base_internal::LegacyStructValue;
+  friend class LegacyStructValue;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   explicit LegacyStructType(uintptr_t msg)
-      : StructType(), base_internal::InlineData(kMetadata), msg_(msg) {}
+      : StructType(), InlineData(kMetadata), msg_(msg) {}
 
   internal::TypeInfo TypeId() const {
     return internal::TypeId<LegacyStructType>();
   }
 
-  // This is a type erased pointer to google::protobuf::Message or google::protobuf::MessageLite. It
-  // is not tagged.
+  // This is a type erased pointer to google::protobuf::Message or LegacyTypeInfoApis. It
+  // is tagged when it is google::protobuf::Message.
   uintptr_t msg_;
 };
 
-class AbstractStructType : public StructType, public base_internal::HeapData {
+class AbstractStructType : public StructType, public HeapData {
  public:
   static bool Is(const Type& type) {
-    return type.kind() == kKind &&
+    return StructType::Is(type) &&
            static_cast<const StructType&>(type).TypeId() !=
                internal::TypeId<LegacyStructType>();
   }
 
-  virtual absl::string_view name() const = 0;
+  using StructType::Is;
+
+  static const AbstractStructType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to struct";
+    return static_cast<const AbstractStructType&>(type);
+  }
+
+  virtual absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
   virtual std::string DebugString() const { return std::string(name()); }
 
-  virtual void HashValue(absl::HashState state) const;
+  virtual size_t field_count() const = 0;
 
-  virtual bool Equals(const Type& other) const;
+  // Called by FindField.
+  virtual absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager,
+      absl::string_view name) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+  // Called by FindField.
+  virtual absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager,
+      int64_t number) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+  virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 
  protected:
   AbstractStructType();
 
-  virtual absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const = 0;
-
-  // Called by FindField.
-  virtual absl::StatusOr<Field> FindFieldByName(
-      TypeManager& type_manager, absl::string_view name) const = 0;
-
-  // Called by FindField.
-  virtual absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                                  int64_t number) const = 0;
-
  private:
-  friend internal::TypeInfo base_internal::GetStructTypeTypeId(
-      const StructType& struct_type);
+  friend internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
   struct FindFieldVisitor;
 
   friend struct FindFieldVisitor;
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class TypeHandle;
   friend class StructValue;
   friend class cel::StructType;
 
@@ -257,26 +362,33 @@ class AbstractStructType : public StructType, public base_internal::HeapData {
 #define CEL_IMPLEMENT_STRUCT_TYPE(struct_type) \
   CEL_INTERNAL_IMPLEMENT_TYPE(Struct, struct_type)
 
-struct StructType::Field final {
-  explicit Field(absl::string_view name, int64_t number,
-                 Persistent<const Type> type)
-      : name(name), number(number), type(std::move(type)) {}
-
-  // The field name.
-  absl::string_view name;
-  // The field number.
-  int64_t number;
-  // The field type;
-  Persistent<const Type> type;
-};
-
 CEL_INTERNAL_TYPE_DECL(StructType);
 
 namespace base_internal {
 
+// This should be used for testing only, and is private.
+struct FieldIdFactory {
+  static StructType::FieldId Make(absl::string_view name) {
+    return StructType::FieldId(name);
+  }
+
+  static StructType::FieldId Make(int64_t number) {
+    return StructType::FieldId(number);
+  }
+};
+
 inline internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type) {
   return struct_type.TypeId();
 }
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<StructType> {
+  using value_type = StructValue;
+};
 
 }  // namespace base_internal
 

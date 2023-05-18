@@ -19,7 +19,9 @@
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
+#include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "base/kind.h"
 #include "base/type.h"
@@ -30,26 +32,34 @@ namespace cel {
 
 class ErrorValue final : public Value, public base_internal::InlineData {
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      const absl::Status& value);
+
   static constexpr Kind kKind = ErrorType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const ErrorValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to error";
+    return static_cast<const ErrorValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const ErrorType> type() const { return ErrorType::Get(); }
+  Handle<ErrorType> type() const { return ErrorType::Get(); }
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
-
-  constexpr const absl::Status& value() const { return value_; }
+  const absl::Status& value() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
-  friend class PersistentValueHandle;
+  friend class ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
+  friend struct interop_internal::ErrorValueAccess;
 
   static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
@@ -58,15 +68,75 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   explicit ErrorValue(absl::Status value)
       : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
-  ErrorValue(const ErrorValue&) = default;
-  ErrorValue(ErrorValue&&) = default;
-  ErrorValue& operator=(const ErrorValue&) = default;
-  ErrorValue& operator=(ErrorValue&&) = default;
+  explicit ErrorValue(const absl::Status* value_ptr)
+      : base_internal::InlineData(kMetadata | base_internal::kTrivial),
+        value_ptr_(value_ptr) {}
 
-  absl::Status value_;
+  ErrorValue(const ErrorValue& other) : ErrorValue(other.value_) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  ErrorValue(ErrorValue&& other) : ErrorValue(std::move(other.value_)) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  ~ErrorValue() {
+    // Only called when `value_` is the active member.
+    value_.~Status();
+  }
+
+  ErrorValue& operator=(const ErrorValue& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = other.value_;
+    }
+    return *this;
+  }
+
+  ErrorValue& operator=(ErrorValue&& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = std::move(other.value_);
+    }
+    return *this;
+  }
+
+  union {
+    absl::Status value_;
+    const absl::Status* value_ptr_;
+  };
 };
 
 CEL_INTERNAL_VALUE_DECL(ErrorValue);
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<ErrorValue> {
+  using type = ErrorValue;
+
+  using type_type = ErrorType;
+
+  using underlying_type = absl::Status;
+
+  static std::string DebugString(const underlying_type& value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

@@ -14,12 +14,12 @@
 
 #include "base/type.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
-#include "absl/base/macros.h"
 #include "absl/base/optimization.h"
-#include "base/handle.h"
+#include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/any_type.h"
 #include "base/types/bool_type.h"
@@ -33,13 +33,14 @@
 #include "base/types/list_type.h"
 #include "base/types/map_type.h"
 #include "base/types/null_type.h"
+#include "base/types/opaque_type.h"
 #include "base/types/string_type.h"
 #include "base/types/struct_type.h"
 #include "base/types/timestamp_type.h"
 #include "base/types/type_type.h"
 #include "base/types/uint_type.h"
 #include "base/types/unknown_type.h"
-#include "internal/unreachable.h"
+#include "base/types/wrapper_type.h"
 
 namespace cel {
 
@@ -83,8 +84,26 @@ absl::string_view Type::name() const {
       return static_cast<const StructType*>(this)->name();
     case Kind::kUnknown:
       return static_cast<const UnknownType*>(this)->name();
+    case Kind::kWrapper:
+      return static_cast<const WrapperType*>(this)->name();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueType*>(this)->name();
     default:
       return "*unreachable*";
+  }
+}
+
+absl::Span<const absl::string_view> Type::aliases() const {
+  switch (kind()) {
+    case Kind::kDyn:
+      return static_cast<const DynType*>(this)->aliases();
+    case Kind::kList:
+      return static_cast<const ListType*>(this)->aliases();
+    case Kind::kMap:
+      return static_cast<const MapType*>(this)->aliases();
+    default:
+      // Everything else does not support aliases.
+      return absl::Span<const absl::string_view>();
   }
 }
 
@@ -126,106 +145,189 @@ std::string Type::DebugString() const {
       return static_cast<const StructType*>(this)->DebugString();
     case Kind::kUnknown:
       return static_cast<const UnknownType*>(this)->DebugString();
+    case Kind::kWrapper:
+      return static_cast<const WrapperType*>(this)->DebugString();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueType*>(this)->DebugString();
     default:
       return "*unreachable*";
   }
 }
 
-bool Type::Equals(const Type& other) const {
-  if (this == &other) {
+bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
+  if (&lhs == &rhs) {
     return true;
   }
-  switch (kind()) {
+  switch (kind) {
     case Kind::kNullType:
-      return static_cast<const NullType*>(this)->Equals(other);
+      return true;
     case Kind::kError:
-      return static_cast<const ErrorType*>(this)->Equals(other);
+      return true;
     case Kind::kDyn:
-      return static_cast<const DynType*>(this)->Equals(other);
+      return true;
     case Kind::kAny:
-      return static_cast<const AnyType*>(this)->Equals(other);
+      return true;
     case Kind::kType:
-      return static_cast<const TypeType*>(this)->Equals(other);
+      return true;
     case Kind::kBool:
-      return static_cast<const BoolType*>(this)->Equals(other);
+      return true;
     case Kind::kInt:
-      return static_cast<const IntType*>(this)->Equals(other);
+      return true;
     case Kind::kUint:
-      return static_cast<const UintType*>(this)->Equals(other);
+      return true;
     case Kind::kDouble:
-      return static_cast<const DoubleType*>(this)->Equals(other);
+      return true;
     case Kind::kString:
-      return static_cast<const StringType*>(this)->Equals(other);
+      return true;
     case Kind::kBytes:
-      return static_cast<const BytesType*>(this)->Equals(other);
+      return true;
     case Kind::kEnum:
-      return static_cast<const EnumType*>(this)->Equals(other);
+      return static_cast<const EnumType&>(lhs).name() ==
+             static_cast<const EnumType&>(rhs).name();
     case Kind::kDuration:
-      return static_cast<const DurationType*>(this)->Equals(other);
+      return true;
     case Kind::kTimestamp:
-      return static_cast<const TimestampType*>(this)->Equals(other);
+      return true;
     case Kind::kList:
-      return static_cast<const ListType*>(this)->Equals(other);
+      return static_cast<const ListType&>(lhs).element() ==
+             static_cast<const ListType&>(rhs).element();
     case Kind::kMap:
-      return static_cast<const MapType*>(this)->Equals(other);
+      return static_cast<const MapType&>(lhs).key() ==
+                 static_cast<const MapType&>(rhs).key() &&
+             static_cast<const MapType&>(lhs).value() ==
+                 static_cast<const MapType&>(rhs).value();
     case Kind::kStruct:
-      return static_cast<const StructType*>(this)->Equals(other);
+      return static_cast<const StructType&>(lhs).name() ==
+             static_cast<const StructType&>(rhs).name();
     case Kind::kUnknown:
-      return static_cast<const UnknownType*>(this)->Equals(other);
+      return true;
+    case Kind::kWrapper:
+      return static_cast<const WrapperType&>(lhs).wrapped() ==
+             static_cast<const WrapperType&>(rhs).wrapped();
+    case Kind::kOpaque: {
+      if (static_cast<const OpaqueType&>(lhs).name() !=
+          static_cast<const OpaqueType&>(rhs).name()) {
+        return false;
+      }
+      const auto& lhs_parameters =
+          static_cast<const OpaqueType&>(lhs).parameters();
+      const auto& rhs_parameters =
+          static_cast<const OpaqueType&>(rhs).parameters();
+      return lhs_parameters.size() == rhs_parameters.size() &&
+             std::equal(lhs_parameters.begin(), lhs_parameters.end(),
+                        rhs_parameters.begin());
+    }
     default:
-      return kind() == other.kind() && name() == other.name();
+      return false;
   }
 }
 
-void Type::HashValue(absl::HashState state) const {
-  switch (kind()) {
+void Type::HashValue(const Type& type, Kind kind, absl::HashState state) {
+  switch (kind) {
     case Kind::kNullType:
-      return static_cast<const NullType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const NullType&>(type).name());
+      return;
     case Kind::kError:
-      return static_cast<const ErrorType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const ErrorType&>(type).name());
+      return;
     case Kind::kDyn:
-      return static_cast<const DynType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const DynType&>(type).name());
+      return;
     case Kind::kAny:
-      return static_cast<const AnyType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const AnyType&>(type).name());
+      return;
     case Kind::kType:
-      return static_cast<const TypeType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const TypeType&>(type).name());
+      return;
     case Kind::kBool:
-      return static_cast<const BoolType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const BoolType&>(type).name());
+      return;
     case Kind::kInt:
-      return static_cast<const IntType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const IntType&>(type).name());
+      return;
     case Kind::kUint:
-      return static_cast<const UintType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const UintType&>(type).name());
+      return;
     case Kind::kDouble:
-      return static_cast<const DoubleType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const DoubleType&>(type).name());
+      return;
     case Kind::kString:
-      return static_cast<const StringType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const StringType&>(type).name());
+      return;
     case Kind::kBytes:
-      return static_cast<const BytesType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const BytesType&>(type).name());
+      return;
     case Kind::kEnum:
-      return static_cast<const EnumType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const EnumType&>(type).name());
+      return;
     case Kind::kDuration:
-      return static_cast<const DurationType*>(this)->HashValue(
-          std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const DurationType&>(type).name());
+      return;
     case Kind::kTimestamp:
-      return static_cast<const TimestampType*>(this)->HashValue(
-          std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const TimestampType&>(type).name());
+      return;
     case Kind::kList:
-      return static_cast<const ListType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state),
+                               static_cast<const ListType&>(type).element(),
+                               kind, static_cast<const ListType&>(type).name());
+      return;
     case Kind::kMap:
-      return static_cast<const MapType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state),
+                               static_cast<const MapType&>(type).key(),
+                               static_cast<const MapType&>(type).value(), kind,
+                               static_cast<const MapType&>(type).name());
+      return;
     case Kind::kStruct:
-      return static_cast<const StructType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const StructType&>(type).name());
+      return;
     case Kind::kUnknown:
-      return static_cast<const UnknownType*>(this)->HashValue(std::move(state));
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const UnknownType&>(type).name());
+      return;
+    case Kind::kWrapper:
+      absl::HashState::combine(
+          std::move(state), static_cast<const WrapperType&>(type).wrapped(),
+          kind, static_cast<const WrapperType&>(type).name());
+      return;
+    case Kind::kOpaque: {
+      const auto& parameters =
+          static_cast<const OpaqueType&>(type).parameters();
+      for (const auto& parameter : parameters) {
+        state = absl::HashState::combine(std::move(state), parameter);
+      }
+      absl::HashState::combine(std::move(state), kind,
+                               static_cast<const OpaqueType&>(type).name());
+      return;
+    }
     default:
-      absl::HashState::combine(std::move(state), kind(), name());
       return;
   }
 }
 
+bool Type::Equals(const Type& other) const { return Equals(*this, other); }
+
+void Type::HashValue(absl::HashState state) const {
+  HashValue(*this, std::move(state));
+}
+
 namespace base_internal {
 
-bool PersistentTypeHandle::Equals(const PersistentTypeHandle& other) const {
+bool TypeHandle::Equals(const TypeHandle& other) const {
   const auto* self = static_cast<const Type*>(data_.get());
   const auto* that = static_cast<const Type*>(other.data_.get());
   if (self == that) {
@@ -234,94 +336,107 @@ bool PersistentTypeHandle::Equals(const PersistentTypeHandle& other) const {
   if (self == nullptr || that == nullptr) {
     return false;
   }
-  return self->Equals(*that);
+  Kind kind = self->kind();
+  return kind == that->kind() && Type::Equals(*self, *that, kind);
 }
 
-void PersistentTypeHandle::HashValue(absl::HashState state) const {
+void TypeHandle::HashValue(absl::HashState state) const {
   if (const auto* pointer = static_cast<const Type*>(data_.get());
       ABSL_PREDICT_TRUE(pointer != nullptr)) {
-    pointer->HashValue(std::move(state));
+    Type::HashValue(*pointer, pointer->kind(), std::move(state));
   }
 }
 
-void PersistentTypeHandle::CopyFrom(const PersistentTypeHandle& other) {
+void TypeHandle::CopyFrom(const TypeHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
-  if (ABSL_PREDICT_FALSE(locality == DataLocality::kStoredInline &&
-                         !other.data_.IsTriviallyCopyable())) {
-    // Type currently has only trivially copyable inline
-    // representations.
-    internal::unreachable();
+  if (locality == DataLocality::kStoredInline) {
+    if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
+      // Type currently has only trivially copyable inline
+      // representations.
+      ABSL_UNREACHABLE();
+    } else {
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
+    }
   } else {
-    // We can simply just copy the bytes.
-    data_.CopyFrom(other.data_);
+    data_.set_pointer(other.data_.pointer());
     if (locality == DataLocality::kReferenceCounted) {
       Ref();
     }
   }
 }
 
-void PersistentTypeHandle::MoveFrom(PersistentTypeHandle& other) {
+void TypeHandle::MoveFrom(TypeHandle& other) {
   // data_ is currently uninitialized.
-  auto locality = other.data_.locality();
-  if (ABSL_PREDICT_FALSE(locality == DataLocality::kStoredInline &&
-                         !other.data_.IsTriviallyCopyable())) {
-    // Type currently has only trivially copyable inline
-    // representations.
-    internal::unreachable();
+  if (other.data_.IsStoredInline()) {
+    if (ABSL_PREDICT_FALSE(!other.data_.IsTrivial())) {
+      // Type currently has only trivially copyable inline
+      // representations.
+      ABSL_UNREACHABLE();
+    } else {
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
+    }
   } else {
-    // We can simply just copy the bytes.
-    data_.MoveFrom(other.data_);
+    data_.set_pointer(other.data_.pointer());
   }
+  other.data_.Clear();
 }
 
-void PersistentTypeHandle::CopyAssign(const PersistentTypeHandle& other) {
+void TypeHandle::CopyAssign(const TypeHandle& other) {
   // data_ is initialized.
   Destruct();
   CopyFrom(other);
 }
 
-void PersistentTypeHandle::MoveAssign(PersistentTypeHandle& other) {
+void TypeHandle::MoveAssign(TypeHandle& other) {
   // data_ is initialized.
   Destruct();
   MoveFrom(other);
 }
 
-void PersistentTypeHandle::Destruct() {
+void TypeHandle::Destruct() {
   switch (data_.locality()) {
     case DataLocality::kNull:
-      break;
+      return;
     case DataLocality::kStoredInline:
-      if (ABSL_PREDICT_FALSE(!data_.IsTriviallyDestructible())) {
+      if (ABSL_PREDICT_FALSE(!data_.IsTrivial())) {
         // Type currently has only trivially destructible inline
         // representations.
-        internal::unreachable();
+        ABSL_UNREACHABLE();
       }
-      break;
+      return;
     case DataLocality::kReferenceCounted:
       Unref();
-      break;
+      return;
     case DataLocality::kArenaAllocated:
-      break;
+      return;
   }
 }
 
-void PersistentTypeHandle::Delete() const {
-  switch (data_.kind()) {
+void TypeHandle::Delete() const {
+  switch (data_.kind_heap()) {
     case Kind::kList:
-      delete static_cast<ListType*>(static_cast<Type*>(data_.get()));
-      break;
+      delete static_cast<ModernListType*>(
+          static_cast<ListType*>(static_cast<Type*>(data_.get_heap())));
+      return;
     case Kind::kMap:
-      delete static_cast<MapType*>(static_cast<Type*>(data_.get()));
-      break;
+      delete static_cast<ModernMapType*>(
+          static_cast<MapType*>(static_cast<Type*>(data_.get_heap())));
+      return;
     case Kind::kEnum:
-      delete static_cast<EnumType*>(static_cast<Type*>(data_.get()));
-      break;
+      delete static_cast<EnumType*>(static_cast<Type*>(data_.get_heap()));
+      return;
     case Kind::kStruct:
-      delete static_cast<AbstractStructType*>(static_cast<Type*>(data_.get()));
-      break;
+      delete static_cast<AbstractStructType*>(
+          static_cast<Type*>(data_.get_heap()));
+      return;
+    case Kind::kOpaque:
+      delete static_cast<OpaqueType*>(static_cast<Type*>(data_.get_heap()));
+      return;
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 

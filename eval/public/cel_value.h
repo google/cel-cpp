@@ -34,21 +34,27 @@
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/kind.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_value_internal.h"
 #include "eval/public/message_wrapper.h"
+#include "eval/public/unknown_set.h"
 #include "internal/casts.h"
+#include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "internal/utf8.h"
+
+namespace cel::interop_internal {
+struct CelListAccess;
+struct CelMapAccess;
+}  // namespace cel::interop_internal
 
 namespace google::api::expr::runtime {
 
 using CelError = absl::Status;
 
-// Break cyclic depdendencies for container types.
+// Break cyclic dependencies for container types.
 class CelList;
 class CelMap;
-class UnknownSet;
 class LegacyTypeAdapter;
 
 class CelValue {
@@ -215,6 +221,10 @@ class CelValue {
 
   static CelValue CreateDuration(absl::Duration value);
 
+  static CelValue CreateUncheckedDuration(absl::Duration value) {
+    return CelValue(value);
+  }
+
   static CelValue CreateTimestamp(absl::Time value) { return CelValue(value); }
 
   static CelValue CreateList(const CelList* value) {
@@ -292,10 +302,14 @@ class CelValue {
   // Returns stored const Message* value.
   // Fails if stored value type is not const Message*.
   const google::protobuf::Message* MessageOrDie() const {
-    MessageWrapper wrapped = GetValueOrDie<MessageWrapper>(Type::kMessage);
+    MessageWrapper wrapped = MessageWrapperOrDie();
     ABSL_ASSERT(wrapped.HasFullProto());
     return cel::internal::down_cast<const google::protobuf::Message*>(
         wrapped.message_ptr());
+  }
+
+  MessageWrapper MessageWrapperOrDie() const {
+    return GetValueOrDie<MessageWrapper>(Type::kMessage);
   }
 
   // Returns stored duration value.
@@ -473,13 +487,6 @@ class CelValue {
   template <class T>
   explicit CelValue(T value) : value_(value) {}
 
-  // This is provided for backwards compatibility with resolving null to message
-  // overloads.
-  static CelValue CreateNullMessage() {
-    return CelValue(
-        MessageWrapper(static_cast<const google::protobuf::Message*>(nullptr), nullptr));
-  }
-
   // Crashes with a null pointer error.
   static void CrashNullPointer(Type type) ABSL_ATTRIBUTE_COLD {
     LOG(FATAL) << "Null pointer supplied for " << TypeName(type);  // Crash ok
@@ -525,12 +532,26 @@ class CelList {
  public:
   virtual CelValue operator[](int index) const = 0;
 
+  // Like `operator[](int)` above, but also accepts an arena. Prefer calling
+  // this variant if the arena is known.
+  virtual CelValue Get(google::protobuf::Arena* arena, int index) const {
+    static_cast<void>(arena);
+    return (*this)[index];
+  }
+
   // List size
   virtual int size() const = 0;
   // Default empty check. Can be overridden in subclass for performance.
   virtual bool empty() const { return size() == 0; }
 
   virtual ~CelList() {}
+
+ private:
+  friend struct cel::interop_internal::CelListAccess;
+
+  virtual cel::internal::TypeInfo TypeId() const {
+    return cel::internal::TypeInfo();
+  }
 };
 
 // CelMap is a base class for map accessors.
@@ -552,6 +573,14 @@ class CelMap {
   // TODO(issues/122): Make this method const correct.
   virtual absl::optional<CelValue> operator[](CelValue key) const = 0;
 
+  // Like `operator[](CelValue)` above, but also accepts an arena. Prefer
+  // calling this variant if the arena is known.
+  virtual absl::optional<CelValue> Get(google::protobuf::Arena* arena,
+                                       CelValue key) const {
+    static_cast<void>(arena);
+    return (*this)[key];
+  }
+
   // Return whether the key is present within the map.
   //
   // Typically, key resolution will be a simple boolean result; however, there
@@ -564,7 +593,8 @@ class CelMap {
   virtual absl::StatusOr<bool> Has(const CelValue& key) const {
     // This check safeguards against issues with invalid key types such as NaN.
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(key));
-    auto value = (*this)[key];
+    google::protobuf::Arena arena;
+    auto value = (*this).Get(&arena, key);
     if (!value.has_value()) {
       return false;
     }
@@ -585,7 +615,21 @@ class CelMap {
   // ownership is passed.
   virtual absl::StatusOr<const CelList*> ListKeys() const = 0;
 
+  // Like `ListKeys()` above, but also accepts an arena. Prefer calling this
+  // variant if the arena is known.
+  virtual absl::StatusOr<const CelList*> ListKeys(google::protobuf::Arena* arena) const {
+    static_cast<void>(arena);
+    return ListKeys();
+  }
+
   virtual ~CelMap() {}
+
+ private:
+  friend struct cel::interop_internal::CelMapAccess;
+
+  virtual cel::internal::TypeInfo TypeId() const {
+    return cel::internal::TypeInfo();
+  }
 };
 
 // Utility method that generates CelValue containing CelError.
@@ -600,17 +644,12 @@ CelValue CreateErrorValue(
     absl::StatusCode error_code = absl::StatusCode::kUnknown);
 
 // Utility method for generating a CelValue from an absl::Status.
-inline CelValue CreateErrorValue(cel::MemoryManager& manager
-                                     ABSL_ATTRIBUTE_LIFETIME_BOUND,
-                                 const absl::Status& status) {
-  return CreateErrorValue(manager, status.message(), status.code());
-}
+CelValue CreateErrorValue(cel::MemoryManager& manager
+                              ABSL_ATTRIBUTE_LIFETIME_BOUND,
+                          const absl::Status& status);
 
 // Utility method for generating a CelValue from an absl::Status.
-inline CelValue CreateErrorValue(google::protobuf::Arena* arena,
-                                 const absl::Status& status) {
-  return CreateErrorValue(arena, status.message(), status.code());
-}
+CelValue CreateErrorValue(google::protobuf::Arena* arena, const absl::Status& status);
 
 // Create an error for failed overload resolution, optionally including the name
 // of the function.

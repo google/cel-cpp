@@ -16,22 +16,19 @@
 #define THIRD_PARTY_CEL_CPP_BASE_ATTRIBUTE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
 #include "base/kind.h"
 
-namespace google::api::expr {
+namespace google::api::expr::v1alpha1 {
 class Expr;
-namespace runtime {
-class CelValue;
-}
 }  // namespace google::api::expr
 
 namespace cel {
@@ -46,11 +43,24 @@ class AttributeQualifier final {
   using Variant = absl::variant<Kind, int64_t, uint64_t, std::string, bool>;
 
  public:
-  // Factory method.
-  //
-  // TODO(issues/5): deprecate this and move it to a standalone method
-  static AttributeQualifier Create(
-      const google::api::expr::runtime::CelValue& value);
+  static AttributeQualifier OfInt(int64_t value) {
+    return AttributeQualifier(absl::in_place_type<int64_t>, std::move(value));
+  }
+
+  static AttributeQualifier OfUint(uint64_t value) {
+    return AttributeQualifier(absl::in_place_type<uint64_t>, std::move(value));
+  }
+
+  static AttributeQualifier OfString(std::string value) {
+    return AttributeQualifier(absl::in_place_type<std::string>,
+                              std::move(value));
+  }
+
+  static AttributeQualifier OfBool(bool value) {
+    return AttributeQualifier(absl::in_place_type<bool>, std::move(value));
+  }
+
+  AttributeQualifier() = default;
 
   AttributeQualifier(const AttributeQualifier&) = default;
   AttributeQualifier(AttributeQualifier&&) = default;
@@ -97,13 +107,9 @@ class AttributeQualifier final {
     return (key.has_value() && key.value() == other_key);
   }
 
-  bool IsMatch(const google::api::expr::runtime::CelValue& value) const;
-
  private:
   friend class Attribute;
   friend struct ComparatorVisitor;
-
-  AttributeQualifier() = default;
 
   template <typename T>
   AttributeQualifier(absl::in_place_type_t<T> in_place_type, T&& value)
@@ -111,11 +117,61 @@ class AttributeQualifier final {
 
   bool IsMatch(const AttributeQualifier& other) const;
 
-  // The previous implementation of Attribute preserved all CelValue
+  // The previous implementation of Attribute preserved all value
   // instances, regardless of whether they are supported in this context or not.
   // We represented unsupported types by using the first alternative and thus
   // preserve backwards compatibility with the result of `type()` above.
   Variant value_;
+};
+
+// AttributeQualifierPattern matches a segment in
+// attribute resolutuion path. AttributeQualifierPattern is capable of
+// matching path elements of types string/int64_t/uint64/bool.
+class AttributeQualifierPattern final {
+ private:
+  // Qualifier value. If not set, treated as wildcard.
+  std::optional<AttributeQualifier> value_;
+
+  explicit AttributeQualifierPattern(std::optional<AttributeQualifier> value)
+      : value_(std::move(value)) {}
+
+ public:
+  static AttributeQualifierPattern OfInt(int64_t value) {
+    return AttributeQualifierPattern(AttributeQualifier::OfInt(value));
+  }
+
+  static AttributeQualifierPattern OfUint(uint64_t value) {
+    return AttributeQualifierPattern(AttributeQualifier::OfUint(value));
+  }
+
+  static AttributeQualifierPattern OfString(std::string value) {
+    return AttributeQualifierPattern(
+        AttributeQualifier::OfString(std::move(value)));
+  }
+
+  static AttributeQualifierPattern OfBool(bool value) {
+    return AttributeQualifierPattern(AttributeQualifier::OfBool(value));
+  }
+
+  static AttributeQualifierPattern CreateWildcard() {
+    return AttributeQualifierPattern(std::nullopt);
+  }
+
+  explicit AttributeQualifierPattern(AttributeQualifier qualifier)
+      : AttributeQualifierPattern(
+            std::optional<AttributeQualifier>(std::move(qualifier))) {}
+
+  bool IsWildcard() const { return !value_.has_value(); }
+
+  bool IsMatch(const AttributeQualifier& qualifier) const {
+    if (IsWildcard()) return true;
+    return value_.value() == qualifier;
+  }
+
+  bool IsMatch(absl::string_view other_key) const {
+    if (!value_.has_value()) return true;
+    return value_->IsMatch(other_key);
+  }
 };
 
 // Attribute represents resolved attribute path.
@@ -159,6 +215,59 @@ class Attribute final {
   };
 
   std::shared_ptr<const Impl> impl_;
+};
+
+// AttributePattern is a fully-qualified absolute attribute path pattern.
+// Supported segments steps in the path are:
+// - field selection;
+// - map lookup by key;
+// - list access by index.
+class AttributePattern final {
+ public:
+  // MatchType enum specifies how closely pattern is matching the attribute:
+  enum class MatchType {
+    NONE,     // Pattern does not match attribute itself nor its children
+    PARTIAL,  // Pattern matches an entity nested within attribute;
+    FULL      // Pattern matches an attribute itself.
+  };
+
+  AttributePattern(std::string variable,
+                   std::vector<AttributeQualifierPattern> qualifier_path)
+      : variable_(std::move(variable)),
+        qualifier_path_(std::move(qualifier_path)) {}
+
+  absl::string_view variable() const { return variable_; }
+
+  const std::vector<AttributeQualifierPattern>& qualifier_path() const {
+    return qualifier_path_;
+  }
+
+  // Matches the pattern to an attribute.
+  // Distinguishes between no-match, partial match and full match cases.
+  MatchType IsMatch(const Attribute& attribute) const {
+    MatchType result = MatchType::NONE;
+    if (attribute.variable_name() != variable_) {
+      return result;
+    }
+
+    auto max_index = qualifier_path().size();
+    result = MatchType::FULL;
+    if (qualifier_path().size() > attribute.qualifier_path().size()) {
+      max_index = attribute.qualifier_path().size();
+      result = MatchType::PARTIAL;
+    }
+
+    for (size_t i = 0; i < max_index; i++) {
+      if (!(qualifier_path()[i].IsMatch(attribute.qualifier_path()[i]))) {
+        return MatchType::NONE;
+      }
+    }
+    return result;
+  }
+
+ private:
+  std::string variable_;
+  std::vector<AttributeQualifierPattern> qualifier_path_;
 };
 
 }  // namespace cel

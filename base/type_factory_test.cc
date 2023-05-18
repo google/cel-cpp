@@ -15,7 +15,7 @@
 #include "base/type_factory.h"
 
 #include "absl/status/status.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -39,6 +39,26 @@ TEST(TypeFactory, CreateMapTypeCaches) {
                        type_factory.CreateMapType(type_factory.GetStringType(),
                                                   type_factory.GetBoolType()));
   EXPECT_EQ(map_type_1.operator->(), map_type_2.operator->());
+}
+
+TEST(TypeFactory, JsonValueType) {
+  TypeFactory type_factory(MemoryManager::Global());
+  EXPECT_EQ(type_factory.GetJsonValueType(), type_factory.GetDynType());
+}
+
+TEST(TypeFactory, JsonListType) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       type_factory.CreateListType(type_factory.GetDynType()));
+  EXPECT_EQ(type, type_factory.GetJsonListType());
+}
+
+TEST(TypeFactory, JsonMapType) {
+  TypeFactory type_factory(MemoryManager::Global());
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetDynType()));
+  EXPECT_EQ(type, type_factory.GetJsonMapType());
 }
 
 }  // namespace

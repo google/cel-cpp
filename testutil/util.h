@@ -37,15 +37,26 @@ class ProtoStringMatcher {
       : expected_(expected) {}
 
   explicit inline ProtoStringMatcher(const google::protobuf::Message& expected)
-      : expected_(expected.DebugString()) {}
+      : expected_(expected.DebugString()),
+        expected_bytes_(expected.SerializeAsString()) {}
 
   template <typename Message>
   bool MatchAndExplain(const Message& p,
                        ::testing::MatchResultListener* /* listener */) const;
 
+  bool MatchAndExplain(const google::protobuf::Message& p,
+                       ::testing::MatchResultListener* /* listener */) const {
+    return p.SerializeAsString() == expected_bytes_;
+  }
+
   template <typename Message>
   bool MatchAndExplain(const Message* p,
                        ::testing::MatchResultListener* /* listener */) const;
+
+  bool MatchAndExplain(const google::protobuf::MessageLite* p,
+                       ::testing::MatchResultListener* /* listener */) const {
+    return p->SerializeAsString() == expected_bytes_;
+  }
 
   inline void DescribeTo(::std::ostream* os) const { *os << expected_; }
   inline void DescribeNegationTo(::std::ostream* os) const {
@@ -54,6 +65,7 @@ class ProtoStringMatcher {
 
  private:
   const std::string expected_;
+  const std::string expected_bytes_;
 };
 
 // Polymorphic matcher to compare any two protos.

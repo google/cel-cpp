@@ -20,6 +20,7 @@
 #include "absl/base/attributes.h"
 #include "absl/base/macros.h"
 #include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/types/bytes_type.h"
 #include "internal/strings.h"
@@ -32,11 +33,11 @@ namespace {
 
 struct BytesValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
-    return internal::FormatBytesLiteral(value);
+    return BytesValue::DebugString(value);
   }
 
   std::string operator()(const absl::Cord& value) const {
-    return internal::FormatBytesLiteral(static_cast<std::string>(value));
+    return BytesValue::DebugString(value);
   }
 };
 
@@ -211,14 +212,31 @@ absl::Cord BytesValue::ToCord() const {
     case base_internal::DataLocality::kNull:
       return absl::Cord();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return absl::MakeCordFromExternal(
             static_cast<const base_internal::InlinedStringViewBytesValue*>(this)
                 ->value_,
             []() {});
       } else {
-        return static_cast<const base_internal::InlinedCordBytesValue*>(this)
-            ->value_;
+        switch (base_internal::Metadata::GetInlineVariant<
+                base_internal::InlinedBytesValueVariant>(*this)) {
+          case base_internal::InlinedBytesValueVariant::kCord:
+            return static_cast<const base_internal::InlinedCordBytesValue*>(
+                       this)
+                ->value_;
+          case base_internal::InlinedBytesValueVariant::kStringView: {
+            const Value* owner =
+                static_cast<const base_internal::InlinedStringViewBytesValue*>(
+                    this)
+                    ->owner_;
+            base_internal::Metadata::Ref(*owner);
+            return absl::MakeCordFromExternal(
+                static_cast<const base_internal::InlinedStringViewBytesValue*>(
+                    this)
+                    ->value_,
+                [owner]() { base_internal::ValueMetadata::Unref(*owner); });
+          }
+        }
       }
     case base_internal::DataLocality::kReferenceCounted:
       base_internal::Metadata::Ref(*this);
@@ -233,6 +251,14 @@ absl::Cord BytesValue::ToCord() const {
       return absl::Cord(
           static_cast<const base_internal::StringBytesValue*>(this)->value_);
   }
+}
+
+std::string BytesValue::DebugString(absl::string_view value) {
+  return internal::FormatBytesLiteral(value);
+}
+
+std::string BytesValue::DebugString(const absl::Cord& value) {
+  return internal::FormatBytesLiteral(static_cast<std::string>(value));
 }
 
 std::string BytesValue::DebugString() const {
@@ -256,17 +282,28 @@ base_internal::BytesValueRep BytesValue::rep() const {
     case base_internal::DataLocality::kNull:
       return base_internal::BytesValueRep();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return base_internal::BytesValueRep(
             absl::in_place_type<absl::string_view>,
             static_cast<const base_internal::InlinedStringViewBytesValue*>(this)
                 ->value_);
       } else {
-        return base_internal::BytesValueRep(
-            absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
-            std::cref(
-                static_cast<const base_internal::InlinedCordBytesValue*>(this)
-                    ->value_));
+        switch (base_internal::Metadata::GetInlineVariant<
+                base_internal::InlinedBytesValueVariant>(*this)) {
+          case base_internal::InlinedBytesValueVariant::kCord:
+            return base_internal::BytesValueRep(
+                absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
+                std::cref(
+                    static_cast<const base_internal::InlinedCordBytesValue*>(
+                        this)
+                        ->value_));
+          case base_internal::InlinedBytesValueVariant::kStringView:
+            return base_internal::BytesValueRep(
+                absl::in_place_type<absl::string_view>,
+                static_cast<const base_internal::InlinedStringViewBytesValue*>(
+                    this)
+                    ->value_);
+        }
       }
     case base_internal::DataLocality::kReferenceCounted:
       ABSL_FALLTHROUGH_INTENDED;
@@ -287,6 +324,41 @@ StringBytesValue::StringBytesValue(std::string value)
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
+
+InlinedStringViewBytesValue::~InlinedStringViewBytesValue() {
+  if (owner_ != nullptr) {
+    ValueMetadata::Unref(*owner_);
+  }
+}
+
+InlinedStringViewBytesValue& InlinedStringViewBytesValue::operator=(
+    const InlinedStringViewBytesValue& other) {
+  if (ABSL_PREDICT_TRUE(this != &other)) {
+    if (other.owner_ != nullptr) {
+      Metadata::Ref(*other.owner_);
+    }
+    if (owner_ != nullptr) {
+      ValueMetadata::Unref(*owner_);
+    }
+    value_ = other.value_;
+    owner_ = other.owner_;
+  }
+  return *this;
+}
+
+InlinedStringViewBytesValue& InlinedStringViewBytesValue::operator=(
+    InlinedStringViewBytesValue&& other) {
+  if (ABSL_PREDICT_TRUE(this != &other)) {
+    if (owner_ != nullptr) {
+      ValueMetadata::Unref(*owner_);
+    }
+    value_ = other.value_;
+    owner_ = other.owner_;
+    other.value_ = absl::string_view();
+    other.owner_ = nullptr;
+  }
+  return *this;
 }
 
 }  // namespace base_internal

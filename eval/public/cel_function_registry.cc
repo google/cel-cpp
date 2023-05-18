@@ -1,140 +1,129 @@
 #include "eval/public/cel_function_registry.h"
 
-#include <string>
+#include <algorithm>
+#include <initializer_list>
+#include <iterator>
+#include <memory>
 #include <utility>
+#include <vector>
+
+#include "absl/status/status.h"
+#include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
+#include "base/function.h"
+#include "base/function_descriptor.h"
+#include "base/type_manager.h"
+#include "base/type_provider.h"
+#include "base/value.h"
+#include "base/value_factory.h"
+#include "eval/internal/interop.h"
+#include "eval/public/cel_function.h"
+#include "eval/public/cel_options.h"
+#include "eval/public/cel_value.h"
+#include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
+#include "runtime/function_overload_reference.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
+namespace {
 
-absl::Status CelFunctionRegistry::Register(
-    std::unique_ptr<CelFunction> function) {
-  const CelFunctionDescriptor& descriptor = function->descriptor();
+// Legacy cel function that proxies to the modern cel::Function interface.
+//
+// This is used to wrap new-style cel::Functions for clients consuming
+// legacy CelFunction-based APIs. The evaluate implementation on this class
+// should not be called by the CEL evaluator, but a sensible result is returned
+// for unit tests that haven't been migrated to the new APIs yet.
+class ProxyToModernCelFunction : public CelFunction {
+ public:
+  ProxyToModernCelFunction(const cel::FunctionDescriptor& descriptor,
+                           const cel::Function& implementation)
+      : CelFunction(descriptor), implementation_(&implementation) {}
 
-  if (DescriptorRegistered(descriptor)) {
-    return absl::Status(
-        absl::StatusCode::kAlreadyExists,
-        "CelFunction with specified parameters already registered");
+  absl::Status Evaluate(absl::Span<const CelValue> args, CelValue* result,
+                        google::protobuf::Arena* arena) const override {
+    // This is only safe for use during interop where the MemoryManager is
+    // assumed to always be backed by a google::protobuf::Arena instance. After all
+    // dependencies on legacy CelFunction are removed, we can remove this
+    // implementation.
+    cel::extensions::ProtoMemoryManager memory_manager(arena);
+    cel::TypeFactory type_factory(memory_manager);
+    cel::TypeManager type_manager(type_factory, cel::TypeProvider::Builtin());
+    cel::ValueFactory value_factory(type_manager);
+    cel::FunctionEvaluationContext context(value_factory);
+
+    std::vector<cel::Handle<cel::Value>> modern_args =
+        cel::interop_internal::LegacyValueToModernValueOrDie(arena, args);
+
+    CEL_ASSIGN_OR_RETURN(auto modern_result,
+                         implementation_->Invoke(context, modern_args));
+
+    *result = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        arena, modern_result);
+
+    return absl::OkStatus();
   }
-  if (!ValidateNonStrictOverload(descriptor)) {
-    return absl::Status(absl::StatusCode::kAlreadyExists,
-                        "Only one overload is allowed for non-strict function");
-  }
 
-  auto& overloads = functions_[descriptor.name()];
-  overloads.static_overloads.push_back(std::move(function));
-  return absl::OkStatus();
-}
+ private:
+  // owned by the registry
+  const cel::Function* implementation_;
+};
 
-absl::Status CelFunctionRegistry::RegisterLazyFunction(
-    const CelFunctionDescriptor& descriptor,
-    std::unique_ptr<CelFunctionProvider> factory) {
-  if (DescriptorRegistered(descriptor)) {
-    return absl::Status(
-        absl::StatusCode::kAlreadyExists,
-        "CelFunction with specified parameters already registered");
-  }
-  if (!ValidateNonStrictOverload(descriptor)) {
-    return absl::Status(absl::StatusCode::kAlreadyExists,
-                        "Only one overload is allowed for non-strict function");
-  }
-  auto& overloads = functions_[descriptor.name()];
-  LazyFunctionEntry entry = std::make_unique<LazyFunctionEntry::element_type>(
-      descriptor, std::move(factory));
-  overloads.lazy_overloads.push_back(std::move(entry));
+}  // namespace
 
+absl::Status CelFunctionRegistry::RegisterAll(
+    std::initializer_list<Registrar> registrars,
+    const InterpreterOptions& opts) {
+  for (Registrar registrar : registrars) {
+    CEL_RETURN_IF_ERROR(registrar(this, opts));
+  }
   return absl::OkStatus();
 }
 
 std::vector<const CelFunction*> CelFunctionRegistry::FindOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<CelValue::Type>& types) const {
-  std::vector<const CelFunction*> matched_funcs;
+  std::vector<cel::FunctionOverloadReference> matched_funcs =
+      modern_registry_.FindStaticOverloads(name, receiver_style, types);
 
-  auto overloads = functions_.find(name);
-  if (overloads == functions_.end()) {
-    return matched_funcs;
-  }
+  // For backwards compatibility, lazily initialize a legacy CEL function
+  // if required.
+  // The registry should remain add-only until migration to the new type is
+  // complete, so this should work whether the function was introduced via
+  // the modern registry or the old registry wrapping a modern instance.
+  std::vector<const CelFunction*> results;
+  results.reserve(matched_funcs.size());
 
-  for (const auto& func_ptr : overloads->second.static_overloads) {
-    if (func_ptr->descriptor().ShapeMatches(receiver_style, types)) {
-      matched_funcs.push_back(func_ptr.get());
+  {
+    absl::MutexLock lock(&mu_);
+    for (cel::FunctionOverloadReference entry : matched_funcs) {
+      std::unique_ptr<CelFunction>& legacy_impl =
+          functions_[&entry.implementation];
+
+      if (legacy_impl == nullptr) {
+        legacy_impl = std::make_unique<ProxyToModernCelFunction>(
+            entry.descriptor, entry.implementation);
+      }
+      results.push_back(legacy_impl.get());
     }
   }
-
-  return matched_funcs;
+  return results;
 }
 
-std::vector<const CelFunctionProvider*> CelFunctionRegistry::FindLazyOverloads(
+std::vector<const CelFunctionDescriptor*>
+CelFunctionRegistry::FindLazyOverloads(
     absl::string_view name, bool receiver_style,
     const std::vector<CelValue::Type>& types) const {
-  std::vector<const CelFunctionProvider*> matched_funcs;
+  std::vector<LazyOverload> lazy_overloads =
+      modern_registry_.FindLazyOverloads(name, receiver_style, types);
+  std::vector<const CelFunctionDescriptor*> result;
+  result.reserve(lazy_overloads.size());
 
-  auto overloads = functions_.find(name);
-  if (overloads == functions_.end()) {
-    return matched_funcs;
+  for (const LazyOverload& overload : lazy_overloads) {
+    result.push_back(&overload.descriptor);
   }
-
-  for (const LazyFunctionEntry& entry : overloads->second.lazy_overloads) {
-    if (entry->first.ShapeMatches(receiver_style, types)) {
-      matched_funcs.push_back(entry->second.get());
-    }
-  }
-
-  return matched_funcs;
-}
-
-absl::node_hash_map<std::string, std::vector<const CelFunctionDescriptor*>>
-CelFunctionRegistry::ListFunctions() const {
-  absl::node_hash_map<std::string, std::vector<const CelFunctionDescriptor*>>
-      descriptor_map;
-
-  for (const auto& entry : functions_) {
-    std::vector<const CelFunctionDescriptor*> descriptors;
-    const RegistryEntry& function_entry = entry.second;
-    descriptors.reserve(function_entry.static_overloads.size() +
-                        function_entry.lazy_overloads.size());
-    for (const auto& func : function_entry.static_overloads) {
-      descriptors.push_back(&func->descriptor());
-    }
-    for (const LazyFunctionEntry& func : function_entry.lazy_overloads) {
-      descriptors.push_back(&func->first);
-    }
-    descriptor_map[entry.first] = std::move(descriptors);
-  }
-
-  return descriptor_map;
-}
-
-bool CelFunctionRegistry::DescriptorRegistered(
-    const CelFunctionDescriptor& descriptor) const {
-  return !(FindOverloads(descriptor.name(), descriptor.receiver_style(),
-                         descriptor.types())
-               .empty()) ||
-         !(FindLazyOverloads(descriptor.name(), descriptor.receiver_style(),
-                             descriptor.types())
-               .empty());
-}
-
-bool CelFunctionRegistry::ValidateNonStrictOverload(
-    const CelFunctionDescriptor& descriptor) const {
-  auto overloads = functions_.find(descriptor.name());
-  if (overloads == functions_.end()) {
-    return true;
-  }
-  const RegistryEntry& entry = overloads->second;
-  if (!descriptor.is_strict()) {
-    // If the newly added overload is a non-strict function, we require that
-    // there are no other overloads, which is not possible here.
-    return false;
-  }
-  // If the newly added overload is a strict function, we need to make sure
-  // that no previous overloads are registered non-strict. If the list of
-  // overload is not empty, we only need to check the first overload. This is
-  // because if the first overload is strict, other overloads must also be
-  // strict by the rule.
-  return (entry.static_overloads.empty() ||
-          entry.static_overloads[0]->descriptor().is_strict()) &&
-         (entry.lazy_overloads.empty() ||
-          entry.lazy_overloads[0]->first.is_strict());
+  return result;
 }
 
 }  // namespace google::api::expr::runtime

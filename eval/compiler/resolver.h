@@ -2,14 +2,16 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_RESOLVER_H_
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "eval/public/cel_function_registry.h"
+#include "base/kind.h"
 #include "eval/public/cel_type_registry.h"
-#include "eval/public/cel_value.h"
+#include "runtime/function_overload_reference.h"
+#include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -24,14 +26,14 @@ namespace google::api::expr::runtime {
 class Resolver {
  public:
   Resolver(absl::string_view container,
-           const CelFunctionRegistry* function_registry,
+           const cel::FunctionRegistry& function_registry,
            const CelTypeRegistry* type_registry,
            bool resolve_qualified_type_identifiers = true);
 
-  ~Resolver() {}
+  ~Resolver() = default;
 
   // FindConstant will return an enum constant value or a type value if one
-  // exists for the given name.
+  // exists for the given name. An empty handle will be returned if none exists.
   //
   // Since enums and type identifiers are specified as (potentially) qualified
   // names within an expression, there is the chance that the name provided
@@ -39,13 +41,8 @@ class Resolver {
   // based type name. For this reason, within parsed only expressions, the
   // constant should be treated as a value that can be shadowed by a runtime
   // provided value.
-  absl::optional<CelValue> FindConstant(absl::string_view name,
-                                        int64_t expr_id) const;
-
-  // FindDescriptor returns the protobuf message descriptor for the given name
-  // if one exists.
-  const google::protobuf::Descriptor* FindDescriptor(absl::string_view name,
-                                           int64_t expr_id) const;
+  cel::Handle<cel::Value> FindConstant(absl::string_view name,
+                                       int64_t expr_id) const;
 
   // FindTypeAdapter returns the adapter for the given type name if one exists,
   // following resolution rules for the expression container.
@@ -54,15 +51,15 @@ class Resolver {
 
   // FindLazyOverloads returns the set, possibly empty, of lazy overloads
   // matching the given function signature.
-  std::vector<const CelFunctionProvider*> FindLazyOverloads(
+  std::vector<cel::FunctionRegistry::LazyOverload> FindLazyOverloads(
       absl::string_view name, bool receiver_style,
-      const std::vector<CelValue::Type>& types, int64_t expr_id = -1) const;
+      const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 
   // FindOverloads returns the set, possibly empty, of eager function overloads
   // matching the given function signature.
-  std::vector<const CelFunction*> FindOverloads(
+  std::vector<cel::FunctionOverloadReference> FindOverloads(
       absl::string_view name, bool receiver_style,
-      const std::vector<CelValue::Type>& types, int64_t expr_id = -1) const;
+      const std::vector<cel::Kind>& types, int64_t expr_id = -1) const;
 
   // FullyQualifiedNames returns the set of fully qualified names which may be
   // derived from the base_name within the specified expression container.
@@ -71,8 +68,8 @@ class Resolver {
 
  private:
   std::vector<std::string> namespace_prefixes_;
-  absl::flat_hash_map<std::string, CelValue> enum_value_map_;
-  const CelFunctionRegistry* function_registry_;
+  absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
+  const cel::FunctionRegistry& function_registry_;
   const CelTypeRegistry* type_registry_;
   bool resolve_qualified_type_identifiers_;
 };
@@ -82,10 +79,10 @@ class Resolver {
 // evaluator (just check the right call style and number of arguments), but we
 // should have enough type information in a checked expr to  find a more
 // specific candidate list.
-inline std::vector<CelValue::Type> ArgumentsMatcher(int argument_count) {
-  std::vector<CelValue::Type> argument_matcher(argument_count);
+inline std::vector<cel::Kind> ArgumentsMatcher(int argument_count) {
+  std::vector<cel::Kind> argument_matcher(argument_count);
   for (int i = 0; i < argument_count; i++) {
-    argument_matcher[i] = CelValue::Type::kAny;
+    argument_matcher[i] = cel::Kind::kAny;
   }
   return argument_matcher;
 }

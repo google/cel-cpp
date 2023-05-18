@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <utility>
 
-#include "base/function.h"
+#include "base/function_descriptor.h"
 
 namespace cel {
 
@@ -26,7 +26,7 @@ namespace cel {
 // allows for lazy evaluation of expensive functions.
 class FunctionResult final {
  public:
-  FunctionResult() = default;
+  FunctionResult() = delete;
   FunctionResult(const FunctionResult&) = default;
   FunctionResult(FunctionResult&&) = default;
   FunctionResult& operator=(const FunctionResult&) = default;

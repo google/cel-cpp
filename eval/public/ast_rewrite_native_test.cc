@@ -16,17 +16,19 @@
 
 #include <string>
 
-#include "base/ast_utility.h"
+#include "google/protobuf/text_format.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
+#include "extensions/protobuf/ast_converters.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
-#include "testutil/util.h"
 
 namespace cel::ast::internal {
 
 namespace {
 
+using ::cel::extensions::internal::ConvertProtoExprToNative;
+using ::cel::extensions::internal::ConvertProtoParsedExprToNative;
 using testing::_;
 using testing::ElementsAre;
 using testing::InSequence;
@@ -531,7 +533,7 @@ class RewriterExample : public AstRewriterBase {
 TEST(AstRewrite, SelectRewriteExample) {
   ASSERT_OK_AND_ASSIGN(
       ParsedExpr parsed,
-      ToNative(
+      ConvertProtoParsedExprToNative(
           google::api::expr::parser::Parse("com.google.Identifier").value()));
   RewriterExample example;
   ASSERT_TRUE(
@@ -544,7 +546,7 @@ TEST(AstRewrite, SelectRewriteExample) {
         ident_expr { name: "com.google.Identifier" }
       )pb",
       &expected_expr);
-  EXPECT_EQ(parsed.expr(), ToNative(expected_expr).value());
+  EXPECT_EQ(parsed.expr(), ConvertProtoExprToNative(expected_expr).value());
 }
 
 // Rewrites x -> y -> z to demonstrate traversal when a node is rewritten on
@@ -583,7 +585,8 @@ class PreRewriterExample : public AstRewriterBase {
 
 TEST(AstRewrite, PreAndPostVisitExpample) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed,
-                       ToNative(google::api::expr::parser::Parse("x").value()));
+                       ConvertProtoParsedExprToNative(
+                           google::api::expr::parser::Parse("x").value()));
   PreRewriterExample visitor;
   ASSERT_TRUE(
       AstRewrite(&parsed.mutable_expr(), &parsed.source_info(), &visitor));
@@ -595,7 +598,7 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
         ident_expr { name: "z" }
       )pb",
       &expected_expr);
-  EXPECT_EQ(parsed.expr(), ToNative(expected_expr).value());
+  EXPECT_EQ(parsed.expr(), ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(visitor.visited_idents(), ElementsAre("y"));
 }
 

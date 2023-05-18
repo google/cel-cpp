@@ -1,15 +1,12 @@
 #include "eval/eval/evaluator_stack.h"
 
+#include "eval/internal/interop.h"
+
 namespace google::api::expr::runtime {
 
 void EvaluatorStack::Clear() {
-  for (auto& v : stack_) {
-    v = CelValue();
-  }
-  for (auto& attr : attribute_stack_) {
-    attr = AttributeTrail();
-  }
-
+  stack_.clear();
+  attribute_stack_.clear();
   current_size_ = 0;
 }
 

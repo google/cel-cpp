@@ -18,6 +18,7 @@
 #include <limits>
 
 #include "absl/types/optional.h"
+#include "eval/public/cel_value.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -25,20 +26,6 @@ namespace {
 
 using testing::Optional;
 
-constexpr double kNan = std::numeric_limits<double>::quiet_NaN();
-constexpr double kInfinity = std::numeric_limits<double>::infinity();
-
-TEST(CelNumber, Basic) {
-  EXPECT_GT(CelNumber(1.1), CelNumber::FromInt64(1));
-  EXPECT_LT(CelNumber::FromUint64(1), CelNumber(1.1));
-  EXPECT_EQ(CelNumber(1.1), CelNumber(1.1));
-
-  EXPECT_EQ(CelNumber::FromUint64(1), CelNumber::FromUint64(1));
-  EXPECT_EQ(CelNumber::FromInt64(1), CelNumber::FromUint64(1));
-  EXPECT_GT(CelNumber::FromUint64(1), CelNumber::FromInt64(-1));
-
-  EXPECT_EQ(CelNumber::FromInt64(-1), CelNumber::FromInt64(-1));
-}
 
 TEST(CelNumber, GetNumberFromCelValue) {
   EXPECT_THAT(GetNumberFromCelValue(CelValue::CreateDouble(1.1)),
@@ -52,32 +39,7 @@ TEST(CelNumber, GetNumberFromCelValue) {
             absl::nullopt);
 }
 
-TEST(CelNumber, Conversions) {
-  EXPECT_TRUE(CelNumber::FromDouble(1.0).LosslessConvertibleToInt());
-  EXPECT_TRUE(CelNumber::FromDouble(1.0).LosslessConvertibleToUint());
-  EXPECT_FALSE(CelNumber::FromDouble(1.1).LosslessConvertibleToInt());
-  EXPECT_FALSE(CelNumber::FromDouble(1.1).LosslessConvertibleToUint());
-  EXPECT_TRUE(CelNumber::FromDouble(-1.0).LosslessConvertibleToInt());
-  EXPECT_FALSE(CelNumber::FromDouble(-1.0).LosslessConvertibleToUint());
-  EXPECT_TRUE(
-      CelNumber::FromDouble(kDoubleToIntMin).LosslessConvertibleToInt());
 
-  // Need to add/substract a large number since double resolution is low at this
-  // range.
-  EXPECT_FALSE(CelNumber::FromDouble(kMaxDoubleRepresentableAsUint +
-                                     RoundingError<uint64_t>())
-                   .LosslessConvertibleToUint());
-  EXPECT_FALSE(CelNumber::FromDouble(kMaxDoubleRepresentableAsInt +
-                                     RoundingError<int64_t>())
-                   .LosslessConvertibleToInt());
-  EXPECT_FALSE(
-      CelNumber::FromDouble(kDoubleToIntMin - 1025).LosslessConvertibleToInt());
-
-  EXPECT_EQ(CelNumber::FromInt64(1).AsUint(), 1u);
-  EXPECT_EQ(CelNumber::FromUint64(1).AsInt(), 1);
-  EXPECT_EQ(CelNumber::FromDouble(1.0).AsUint(), 1);
-  EXPECT_EQ(CelNumber::FromDouble(1.0).AsInt(), 1);
-}
 
 }  // namespace
 }  // namespace google::api::expr::runtime

@@ -19,34 +19,48 @@
 
 #include "absl/base/macros.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "base/internal/data.h"
+#include "base/types/dyn_type.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(ListType);
 
-ListType::ListType(Persistent<const Type> element)
-    : base_internal::HeapData(kKind), element_(std::move(element)) {
-  // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
-  ABSL_ASSERT(
-      reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
-      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+absl::Span<const absl::string_view> ListType::aliases() const {
+  static constexpr absl::string_view kAliases[] = {"google.protobuf.ListValue"};
+  if (element()->kind() == Kind::kDyn) {
+    // Currently google.protobuf.ListValue resolves to list<dyn>.
+    return absl::MakeConstSpan(kAliases);
+  }
+  return absl::Span<const absl::string_view>();
 }
 
 std::string ListType::DebugString() const {
   return absl::StrCat(name(), "(", element()->DebugString(), ")");
 }
 
-bool ListType::Equals(const Type& other) const {
-  if (kind() != other.kind()) {
-    return false;
+const Handle<Type>& ListType::element() const {
+  if (base_internal::Metadata::IsStoredInline(*this)) {
+    return static_cast<const base_internal::LegacyListType&>(*this).element();
   }
-  return element() == static_cast<const ListType&>(other).element();
+  return static_cast<const base_internal::ModernListType&>(*this).element();
 }
 
-void ListType::HashValue(absl::HashState state) const {
-  // We specifically hash the element first and then call the parent method to
-  // avoid hash suffix/prefix collisions.
-  absl::HashState::combine(std::move(state), element(), kind(), name());
+namespace base_internal {
+
+const Handle<Type>& LegacyListType::element() const {
+  return DynType::Get().As<Type>();
 }
+
+ModernListType::ModernListType(Handle<Type> element)
+    : ListType(), HeapData(kKind), element_(std::move(element)) {
+  // Ensure `Type*` and `HeapData*` are not thunked.
+  ABSL_ASSERT(reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
+              reinterpret_cast<uintptr_t>(static_cast<HeapData*>(this)));
+}
+
+}  // namespace base_internal
 
 }  // namespace cel

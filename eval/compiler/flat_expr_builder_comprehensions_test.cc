@@ -40,6 +40,7 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -50,8 +51,9 @@ using testing::HasSubstr;
 using cel::internal::StatusIs;
 
 TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
-  FlatExprBuilder builder;
-  builder.set_enable_comprehension_list_append(true);
+  cel::RuntimeOptions options;
+  options.enable_comprehension_list_append = true;
+  FlatExprBuilder builder(options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr,
                        parser::Parse("[1, 2].filter(x, [3, 4].all(y, x < y))"));
@@ -68,8 +70,9 @@ TEST(FlatExprBuilderComprehensionsTest, NestedComp) {
 }
 
 TEST(FlatExprBuilderComprehensionsTest, MapComp) {
-  FlatExprBuilder builder;
-  builder.set_enable_comprehension_list_append(true);
+  cel::RuntimeOptions options;
+  options.enable_comprehension_list_append = true;
+  FlatExprBuilder builder(options);
 
   ASSERT_OK_AND_ASSIGN(auto parsed_expr, parser::Parse("[1, 2].map(x, x * 2)"));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
@@ -86,6 +89,43 @@ TEST(FlatExprBuilderComprehensionsTest, MapComp) {
               test::EqualsCelValue(CelValue::CreateInt64(2)));
   EXPECT_THAT((*result.ListOrDie())[1],
               test::EqualsCelValue(CelValue::CreateInt64(4)));
+}
+
+TEST(FlatExprBuilderComprehensionsTest, ListCompWithUnknowns) {
+  cel::RuntimeOptions options;
+  options.unknown_processing = UnknownProcessingOptions::kAttributeAndFunction;
+  FlatExprBuilder builder(options);
+
+  ASSERT_OK_AND_ASSIGN(auto parsed_expr,
+                       parser::Parse("items.exists(i, i < 0)"));
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto cel_expr,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  activation.set_unknown_attribute_patterns({CelAttributePattern{
+      "items",
+      {CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1))}}});
+  ContainerBackedListImpl list_impl = ContainerBackedListImpl({
+      CelValue::CreateInt64(1),
+      // element items[1] is marked unknown, so the computation should produce
+      // and unknown set.
+      CelValue::CreateInt64(-1),
+      CelValue::CreateInt64(2),
+  });
+  activation.InsertValue("items", CelValue::CreateList(&list_impl));
+
+  google::protobuf::Arena arena;
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr->Evaluate(activation, &arena));
+  ASSERT_TRUE(result.IsUnknownSet()) << result.DebugString();
+
+  const auto& attrs = result.UnknownSetOrDie()->unknown_attributes();
+  EXPECT_THAT(attrs, testing::SizeIs(1));
+  EXPECT_THAT(attrs.begin()->variable_name(), testing::Eq("items"));
+  EXPECT_THAT(attrs.begin()->qualifier_path(), testing::SizeIs(1));
+  EXPECT_THAT(attrs.begin()->qualifier_path().at(0).GetInt64Key().value(),
+              testing::Eq(1));
 }
 
 TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
@@ -115,8 +155,8 @@ TEST(FlatExprBuilderComprehensionsTest, InvalidComprehensionWithRewrite) {
           }
         })pb",
       &expr);
-
-  FlatExprBuilder builder;
+  cel::RuntimeOptions options;
+  FlatExprBuilder builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -167,7 +207,8 @@ TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithConcatVulernability) {
         })pb",
       &expr);
 
-  FlatExprBuilder builder;
+  cel::RuntimeOptions options;
+  FlatExprBuilder builder(options);
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
@@ -262,7 +303,8 @@ TEST(FlatExprBuilderComprehensionsTest, ComprehensionWithStructVulernability) {
       )pb",
       &expr);
 
-  FlatExprBuilder builder;
+  cel::RuntimeOptions options;
+  FlatExprBuilder builder(options);
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),
@@ -328,7 +370,8 @@ TEST(FlatExprBuilderComprehensionsTest,
       )pb",
       &expr);
 
-  FlatExprBuilder builder;
+  cel::RuntimeOptions options;
+  FlatExprBuilder builder(options);
   builder.set_enable_comprehension_vulnerability_check(true);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   EXPECT_THAT(builder.CreateExpression(&expr).status(),

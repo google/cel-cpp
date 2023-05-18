@@ -18,7 +18,7 @@
 
 #include "absl/log/log.h"
 #include "absl/types/variant.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
 

@@ -16,14 +16,17 @@
 
 #include <string>
 
+#include "absl/time/time.h"
 #include "internal/time.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(TimestampValue);
 
-std::string TimestampValue::DebugString() const {
-  return internal::FormatTimestamp(value()).value();
+std::string TimestampValue::DebugString(absl::Time value) {
+  return internal::DebugStringTimestamp(value);
 }
+
+std::string TimestampValue::DebugString() const { return DebugString(value()); }
 
 }  // namespace cel

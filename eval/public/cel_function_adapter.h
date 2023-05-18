@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <type_traits>
 #include <utility>
 
 #include "google/protobuf/message.h"
@@ -18,7 +20,7 @@ namespace internal {
 // A type code matcher that adds support for google::protobuf::Message.
 struct ProtoAdapterTypeCodeMatcher {
   template <typename T>
-  constexpr std::optional<CelValue::Type> type_code() {
+  constexpr static std::optional<CelValue::Type> type_code() {
     if constexpr (std::is_same_v<T, const google::protobuf::Message*>) {
       return CelValue::Type::kMessage;
     } else {
@@ -44,15 +46,6 @@ struct ProtoAdapterValueConverter
     return absl::OkStatus();
   }
 };
-
-// Internal alias for message enabled function adapter.
-// TODO(issues/5): follow-up will introduce lite proto (via
-// CelValue::MessageWrapper) equivalent.
-template <typename ReturnType, typename... Arguments>
-using ProtoMessageFunctionAdapter =
-    internal::FunctionAdapter<internal::ProtoAdapterTypeCodeMatcher,
-                              internal::ProtoAdapterValueConverter, ReturnType,
-                              Arguments...>;
 }  // namespace internal
 
 // FunctionAdapter is a helper class that simplifies creation of CelFunction
@@ -109,7 +102,9 @@ using ProtoMessageFunctionAdapter =
 //
 template <typename ReturnType, typename... Arguments>
 using FunctionAdapter =
-    internal::ProtoMessageFunctionAdapter<ReturnType, Arguments...>;
+    internal::FunctionAdapterImpl<internal::ProtoAdapterTypeCodeMatcher,
+                                  internal::ProtoAdapterValueConverter>::
+        FunctionAdapter<ReturnType, Arguments...>;
 
 }  // namespace google::api::expr::runtime
 

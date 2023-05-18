@@ -17,7 +17,6 @@
 #include <cstddef>
 
 #include "absl/base/macros.h"
-#include "absl/base/optimization.h"
 
 namespace cel::extensions {
 

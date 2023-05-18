@@ -1,5 +1,6 @@
 #include "eval/eval/ident_step.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -10,6 +11,7 @@
 #include "eval/public/activation.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -29,10 +31,8 @@ TEST(IdentStepTest, TestIdentStep) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{});
 
   Activation activation;
   Arena arena;
@@ -58,10 +58,8 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{});
 
   Activation activation;
   Arena arena;
@@ -83,12 +81,9 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
 
   ExecutionPath path;
   path.push_back(std::move(step));
-
-  auto dummy_expr = absl::make_unique<Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {},
-                             /*enable_unknowns=*/false);
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   Arena arena;
@@ -122,11 +117,11 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
+  options.enable_missing_attribute_errors = true;
 
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {}, false, false,
-                             /*enable_missing_attribute_errors=*/true);
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   Arena arena;
@@ -161,11 +156,10 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  auto dummy_expr = absl::make_unique<Expr>();
-
   // Expression with unknowns enabled.
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {}, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   Arena arena;

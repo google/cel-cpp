@@ -17,9 +17,11 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
-#include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
+#include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/type.h"
 #include "base/types/type_type.h"
@@ -27,45 +29,132 @@
 
 namespace cel {
 
-class TypeValue final : public Value, public base_internal::InlineData {
+class TypeValue : public Value {
  public:
   static constexpr Kind kKind = TypeType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const TypeValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to type";
+    return static_cast<const TypeValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const TypeType> type() const { return TypeType::Get(); }
+  Handle<TypeType> type() const { return TypeType::Get(); }
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
+  absl::string_view name() const;
 
-  bool Equals(const Value& other) const;
-
-  constexpr const Persistent<const Type>& value() const { return value_; }
+  bool Equals(const TypeValue& other) const;
 
  private:
-  friend class PersistentValueHandle;
+  friend class ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
+  friend class base_internal::LegacyTypeValue;
+  friend class base_internal::ModernTypeValue;
 
-  static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
-
-  explicit TypeValue(Persistent<const Type> value)
-      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
-
+  TypeValue() = default;
   TypeValue(const TypeValue&) = default;
   TypeValue(TypeValue&&) = default;
   TypeValue& operator=(const TypeValue&) = default;
   TypeValue& operator=(TypeValue&&) = default;
-
-  Persistent<const Type> value_;
 };
 
 CEL_INTERNAL_VALUE_DECL(TypeValue);
+
+namespace base_internal {
+
+class LegacyTypeValue final : public TypeValue, InlineData {
+ public:
+  absl::string_view name() const { return value_; }
+
+ private:
+  friend class ValueHandle;
+  template <size_t Size, size_t Align>
+  friend struct base_internal::AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
+
+  explicit LegacyTypeValue(absl::string_view value)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedTypeValueVariant::kLegacy)),
+        value_(value) {}
+
+  LegacyTypeValue(const LegacyTypeValue&) = default;
+  LegacyTypeValue(LegacyTypeValue&&) = default;
+  LegacyTypeValue& operator=(const LegacyTypeValue&) = default;
+  LegacyTypeValue& operator=(LegacyTypeValue&&) = default;
+
+  absl::string_view value_;
+};
+
+class ModernTypeValue final : public TypeValue, InlineData {
+ public:
+  absl::string_view name() const { return value_->name(); }
+
+ private:
+  friend class ValueHandle;
+  template <size_t Size, size_t Align>
+  friend struct base_internal::AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
+
+  static uintptr_t AdditionalMetadata(const Type& type) {
+    static_assert(
+        std::is_base_of_v<base_internal::InlineData, LegacyTypeValue>,
+        "This logic relies on the fact that EnumValue is stored inline");
+    // Because LegacyTypeValue is stored inline and has only one member, we can
+    // be considered trivial if Handle<Type> has a skippable destructor.
+    return Metadata::IsDestructorSkippable(type) ? kTrivial : uintptr_t{0};
+  }
+
+  explicit ModernTypeValue(Handle<Type> value)
+      : InlineData(kMetadata | AdditionalMetadata(*value) |
+                   AsInlineVariant(InlinedTypeValueVariant::kModern)),
+        value_(std::move(value)) {}
+
+  ModernTypeValue(const ModernTypeValue&) = default;
+  ModernTypeValue(ModernTypeValue&&) = default;
+  ModernTypeValue& operator=(const ModernTypeValue&) = default;
+  ModernTypeValue& operator=(ModernTypeValue&&) = default;
+
+  Handle<Type> value_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<TypeValue> {
+  using type = TypeValue;
+
+  using type_type = TypeType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

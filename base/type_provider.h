@@ -19,6 +19,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/type.h"
 
@@ -34,6 +35,9 @@ class TypeFactory;
 // of the registered providers. If the type can't be resolved, the operation
 // will result in an error.
 //
+// Type provider implementations must be effectively immutable and threadsafe.
+// The type registry uses this property to aggressively cache results.
+//
 // Note: This API is not finalized. Consult the CEL team before introducing new
 // implementations.
 class TypeProvider {
@@ -44,11 +48,11 @@ class TypeProvider {
 
   virtual ~TypeProvider() = default;
 
-  // Return a persistent handle to a Type for the fully qualified type name, if
+  // Return a Handle handle to a Type for the fully qualified type name, if
   // available.
   //
   // An empty handle is returned if the provider cannot find the requested type.
-  virtual absl::StatusOr<Persistent<const Type>> ProvideType(
+  virtual absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
       TypeFactory&, absl::string_view) const {
     return absl::UnimplementedError("ProvideType is not yet implemented");
   }

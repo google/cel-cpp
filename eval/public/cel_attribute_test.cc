@@ -44,7 +44,7 @@ class DummyList : public CelList {
 };
 
 TEST(CelAttributeQualifierTest, TestBoolAccess) {
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateBool(true));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateBool(true));
 
   EXPECT_FALSE(qualifier.GetStringKey().has_value());
   EXPECT_FALSE(qualifier.GetInt64Key().has_value());
@@ -54,7 +54,7 @@ TEST(CelAttributeQualifierTest, TestBoolAccess) {
 }
 
 TEST(CelAttributeQualifierTest, TestInt64Access) {
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateInt64(1));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateInt64(1));
 
   EXPECT_FALSE(qualifier.GetBoolKey().has_value());
   EXPECT_FALSE(qualifier.GetStringKey().has_value());
@@ -65,7 +65,7 @@ TEST(CelAttributeQualifierTest, TestInt64Access) {
 }
 
 TEST(CelAttributeQualifierTest, TestUint64Access) {
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateUint64(1));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateUint64(1));
 
   EXPECT_FALSE(qualifier.GetBoolKey().has_value());
   EXPECT_FALSE(qualifier.GetStringKey().has_value());
@@ -77,7 +77,7 @@ TEST(CelAttributeQualifierTest, TestUint64Access) {
 
 TEST(CelAttributeQualifierTest, TestStringAccess) {
   const std::string test = "test";
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateString(&test));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateString(&test));
 
   EXPECT_FALSE(qualifier.GetBoolKey().has_value());
   EXPECT_FALSE(qualifier.GetInt64Key().has_value());
@@ -89,197 +89,117 @@ TEST(CelAttributeQualifierTest, TestStringAccess) {
 
 void TestAllInequalities(const CelAttributeQualifier& qualifier) {
   EXPECT_FALSE(qualifier ==
-               CelAttributeQualifier::Create(CelValue::CreateBool(false)));
+               CreateCelAttributeQualifier(CelValue::CreateBool(false)));
   EXPECT_FALSE(qualifier ==
-               CelAttributeQualifier::Create(CelValue::CreateInt64(0)));
+               CreateCelAttributeQualifier(CelValue::CreateInt64(0)));
   EXPECT_FALSE(qualifier ==
-               CelAttributeQualifier::Create(CelValue::CreateUint64(0)));
+               CreateCelAttributeQualifier(CelValue::CreateUint64(0)));
   const std::string test = "Those are not the droids you are looking for.";
   EXPECT_FALSE(qualifier ==
-               CelAttributeQualifier::Create(CelValue::CreateString(&test)));
+               CreateCelAttributeQualifier(CelValue::CreateString(&test)));
 }
 
 TEST(CelAttributeQualifierTest, TestBoolComparison) {
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateBool(true));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateBool(true));
   TestAllInequalities(qualifier);
   EXPECT_TRUE(qualifier ==
-              CelAttributeQualifier::Create(CelValue::CreateBool(true)));
+              CreateCelAttributeQualifier(CelValue::CreateBool(true)));
 }
 
 TEST(CelAttributeQualifierTest, TestInt64Comparison) {
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateInt64(true));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateInt64(true));
   TestAllInequalities(qualifier);
   EXPECT_TRUE(qualifier ==
-              CelAttributeQualifier::Create(CelValue::CreateInt64(true)));
+              CreateCelAttributeQualifier(CelValue::CreateInt64(true)));
 }
 
 TEST(CelAttributeQualifierTest, TestUint64Comparison) {
-  auto qualifier = CelAttributeQualifier::Create(CelValue::CreateUint64(true));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateUint64(true));
   TestAllInequalities(qualifier);
   EXPECT_TRUE(qualifier ==
-              CelAttributeQualifier::Create(CelValue::CreateUint64(true)));
+              CreateCelAttributeQualifier(CelValue::CreateUint64(true)));
 }
 
 TEST(CelAttributeQualifierTest, TestStringComparison) {
   const std::string kTest = "test";
-  auto qualifier =
-      CelAttributeQualifier::Create(CelValue::CreateString(&kTest));
+  auto qualifier = CreateCelAttributeQualifier(CelValue::CreateString(&kTest));
   TestAllInequalities(qualifier);
   EXPECT_TRUE(qualifier ==
-              CelAttributeQualifier::Create(CelValue::CreateString(&kTest)));
-}
-
-void TestAllCelValueMismatches(const CelAttributeQualifierPattern& qualifier) {
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateNull()));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateBool(false)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateInt64(0)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateUint64(0)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateDouble(0.)));
-
-  const std::string kStr = "Those are not the droids you are looking for.";
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateString(&kStr)));
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateBytes(&kStr)));
-
-  Duration msg_duration;
-  msg_duration.set_seconds(0);
-  msg_duration.set_nanos(0);
-  EXPECT_FALSE(
-      qualifier.IsMatch(CelProtoWrapper::CreateDuration(&msg_duration)));
-
-  Timestamp msg_timestamp;
-  msg_timestamp.set_seconds(0);
-  msg_timestamp.set_nanos(0);
-  EXPECT_FALSE(
-      qualifier.IsMatch(CelProtoWrapper::CreateTimestamp(&msg_timestamp)));
-
-  DummyList dummy_list;
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateList(&dummy_list)));
-
-  DummyMap dummy_map;
-  EXPECT_FALSE(qualifier.IsMatch(CelValue::CreateMap(&dummy_map)));
-
-  google::protobuf::Arena arena;
-  EXPECT_FALSE(qualifier.IsMatch(CreateErrorValue(&arena, kStr)));
+              CreateCelAttributeQualifier(CelValue::CreateString(&kTest)));
 }
 
 void TestAllQualifierMismatches(const CelAttributeQualifierPattern& qualifier) {
   const std::string test = "Those are not the droids you are looking for.";
   EXPECT_FALSE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateBool(false))));
+      CreateCelAttributeQualifier(CelValue::CreateBool(false))));
+  EXPECT_FALSE(
+      qualifier.IsMatch(CreateCelAttributeQualifier(CelValue::CreateInt64(0))));
   EXPECT_FALSE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateInt64(0))));
+      CreateCelAttributeQualifier(CelValue::CreateUint64(0))));
   EXPECT_FALSE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateUint64(0))));
-  EXPECT_FALSE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateString(&test))));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueBoolMatch) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateBool(true));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateBool(true);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueInt64Match) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateInt64(1);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueUint64Match) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateUint64(1));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateUint64(1);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
-}
-
-TEST(CelAttributeQualifierPatternTest, TestCelValueStringMatch) {
-  std::string kTest = "test";
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateString(&kTest));
-
-  TestAllCelValueMismatches(qualifier);
-
-  CelValue value_match = CelValue::CreateString(&kTest);
-
-  EXPECT_TRUE(qualifier.IsMatch(value_match));
+      CreateCelAttributeQualifier(CelValue::CreateString(&test))));
 }
 
 TEST(CelAttributeQualifierPatternTest, TestQualifierBoolMatch) {
   auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateBool(true));
+      CreateCelAttributeQualifierPattern(CelValue::CreateBool(true));
 
   TestAllQualifierMismatches(qualifier);
 
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateBool(true))));
+      CreateCelAttributeQualifier(CelValue::CreateBool(true))));
 }
 
 TEST(CelAttributeQualifierPatternTest, TestQualifierInt64Match) {
-  auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1));
+  auto qualifier = CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1));
 
   TestAllQualifierMismatches(qualifier);
-  EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateInt64(1))));
+  EXPECT_TRUE(
+      qualifier.IsMatch(CreateCelAttributeQualifier(CelValue::CreateInt64(1))));
 }
 
 TEST(CelAttributeQualifierPatternTest, TestQualifierUint64Match) {
   auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateUint64(1));
+      CreateCelAttributeQualifierPattern(CelValue::CreateUint64(1));
 
   TestAllQualifierMismatches(qualifier);
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateUint64(1))));
+      CreateCelAttributeQualifier(CelValue::CreateUint64(1))));
 }
 
 TEST(CelAttributeQualifierPatternTest, TestQualifierStringMatch) {
   const std::string test = "test";
   auto qualifier =
-      CelAttributeQualifierPattern::Create(CelValue::CreateString(&test));
+      CreateCelAttributeQualifierPattern(CelValue::CreateString(&test));
 
   TestAllQualifierMismatches(qualifier);
 
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateString(&test))));
+      CreateCelAttributeQualifier(CelValue::CreateString(&test))));
 }
 
 TEST(CelAttributeQualifierPatternTest, TestQualifierWildcardMatch) {
   auto qualifier = CelAttributeQualifierPattern::CreateWildcard();
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateBool(false))));
+      CreateCelAttributeQualifier(CelValue::CreateBool(false))));
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateBool(true))));
+      CreateCelAttributeQualifier(CelValue::CreateBool(true))));
+  EXPECT_TRUE(
+      qualifier.IsMatch(CreateCelAttributeQualifier(CelValue::CreateInt64(0))));
+  EXPECT_TRUE(
+      qualifier.IsMatch(CreateCelAttributeQualifier(CelValue::CreateInt64(1))));
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateInt64(0))));
+      CreateCelAttributeQualifier(CelValue::CreateUint64(0))));
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateInt64(1))));
-  EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateUint64(0))));
-  EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateUint64(1))));
+      CreateCelAttributeQualifier(CelValue::CreateUint64(1))));
 
   const std::string kTest1 = "test1";
   const std::string kTest2 = "test2";
 
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateString(&kTest1))));
+      CreateCelAttributeQualifier(CelValue::CreateString(&kTest1))));
   EXPECT_TRUE(qualifier.IsMatch(
-      CelAttributeQualifier::Create(CelValue::CreateString(&kTest2))));
+      CreateCelAttributeQualifier(CelValue::CreateString(&kTest2))));
 }
 
 TEST(CreateCelAttributePattern, Basic) {
@@ -290,11 +210,6 @@ TEST(CreateCelAttributePattern, Basic) {
 
   EXPECT_THAT(pattern.variable(), Eq("abc"));
   ASSERT_THAT(pattern.qualifier_path(), SizeIs(5));
-  EXPECT_TRUE(
-      pattern.qualifier_path()[0].IsMatch(CelValue::CreateStringView(kTest)));
-  EXPECT_TRUE(pattern.qualifier_path()[1].IsMatch(CelValue::CreateUint64(1)));
-  EXPECT_TRUE(pattern.qualifier_path()[2].IsMatch(CelValue::CreateInt64(-1)));
-  EXPECT_TRUE(pattern.qualifier_path()[3].IsMatch(CelValue::CreateBool(false)));
   EXPECT_TRUE(pattern.qualifier_path()[4].IsWildcard());
 }
 
@@ -323,9 +238,9 @@ TEST(CelAttribute, AsStringBasic) {
   CelAttribute attr(
       expr,
       {
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual1")),
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual2")),
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual3")),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual2")),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual3")),
       });
 
   ASSERT_OK_AND_ASSIGN(std::string string_format, attr.AsString());
@@ -340,9 +255,9 @@ TEST(CelAttribute, AsStringInvalidRoot) {
   CelAttribute attr(
       expr,
       {
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual1")),
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual2")),
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual3")),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual2")),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual3")),
       });
 
   EXPECT_EQ(attr.AsString().status().code(),
@@ -355,17 +270,17 @@ TEST(CelAttribute, InvalidQualifiers) {
   google::protobuf::Arena arena;
 
   CelAttribute attr1(expr, {
-                               CelAttributeQualifier::Create(
+                               CreateCelAttributeQualifier(
                                    CelValue::CreateDuration(absl::Minutes(2))),
                            });
   CelAttribute attr2(expr,
                      {
-                         CelAttributeQualifier::Create(
+                         CreateCelAttributeQualifier(
                              CelProtoWrapper::CreateMessage(&expr, &arena)),
                      });
   CelAttribute attr3(
       expr, {
-                CelAttributeQualifier::Create(CelValue::CreateBool(false)),
+                CreateCelAttributeQualifier(CelValue::CreateBool(false)),
             });
 
   // Implementation detail: Messages as attribute qualifiers are unsupported,
@@ -391,10 +306,10 @@ TEST(CelAttribute, AsStringQualiferTypes) {
   CelAttribute attr(
       expr,
       {
-          CelAttributeQualifier::Create(CelValue::CreateStringView("qual1")),
-          CelAttributeQualifier::Create(CelValue::CreateUint64(1)),
-          CelAttributeQualifier::Create(CelValue::CreateInt64(-1)),
-          CelAttributeQualifier::Create(CelValue::CreateBool(false)),
+          CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
+          CreateCelAttributeQualifier(CelValue::CreateUint64(1)),
+          CreateCelAttributeQualifier(CelValue::CreateInt64(-1)),
+          CreateCelAttributeQualifier(CelValue::CreateBool(false)),
       });
 
   ASSERT_OK_AND_ASSIGN(std::string string_format, attr.AsString());

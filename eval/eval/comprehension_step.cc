@@ -1,6 +1,7 @@
 #include "eval/eval/comprehension_step.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -8,10 +9,17 @@
 #include "absl/strings/str_cat.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/cel_attribute.h"
+#include "eval/internal/errors.h"
+#include "eval/internal/interop.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
+
+namespace {
+
+using ::cel::interop_internal::CreateErrorValueFromView;
+
+}  // namespace
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var
@@ -85,54 +93,65 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
   auto state = frame->value_stack().GetSpan(5);
-  auto attr = frame->value_stack().GetAttributeSpan(5);
 
   // Get range from the stack.
-  CelValue iter_range = state[POS_ITER_RANGE];
-  if (!iter_range.IsList()) {
+  auto iter_range = state[POS_ITER_RANGE];
+  if (!iter_range->Is<cel::ListValue>()) {
     frame->value_stack().Pop(5);
-    if (iter_range.IsError() || iter_range.IsUnknownSet()) {
-      frame->value_stack().Push(iter_range);
+    if (iter_range->Is<cel::ErrorValue>() ||
+        iter_range->Is<cel::UnknownValue>()) {
+      frame->value_stack().Push(std::move(iter_range));
       return frame->JumpTo(error_jump_offset_);
     }
-    frame->value_stack().Push(
-        CreateNoMatchingOverloadError(frame->memory_manager(), "<iter_range>"));
+    frame->value_stack().Push(CreateErrorValueFromView(
+        ::cel::interop_internal::CreateNoMatchingOverloadError(
+            frame->memory_manager(), "<iter_range>")));
     return frame->JumpTo(error_jump_offset_);
   }
-  const CelList* cel_list = iter_range.ListOrDie();
-  const AttributeTrail iter_range_attr = attr[POS_ITER_RANGE];
 
   // Get the current index off the stack.
-  CelValue current_index_value = state[POS_CURRENT_INDEX];
-  if (!current_index_value.IsInt64()) {
+  const auto& current_index_value = state[POS_CURRENT_INDEX];
+  if (!current_index_value->Is<cel::IntValue>()) {
     return absl::InternalError(
         absl::StrCat("ComprehensionNextStep: want int64_t, got ",
-                     CelValue::TypeName(current_index_value.type())));
+                     CelValue::TypeName(current_index_value->kind())));
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
-  int64_t current_index = current_index_value.Int64OrDie();
+  int64_t current_index = current_index_value.As<cel::IntValue>()->value();
   if (current_index == -1) {
     CEL_RETURN_IF_ERROR(frame->PushIterFrame(iter_var_, accu_var_));
   }
 
+  AttributeTrail iter_range_attr;
+  AttributeTrail iter_trail;
+  if (frame->enable_unknowns()) {
+    auto attr = frame->value_stack().GetAttributeSpan(5);
+    iter_range_attr = attr[POS_ITER_RANGE];
+    iter_trail =
+        iter_range_attr.Step(cel::AttributeQualifier::OfInt(current_index + 1),
+                             frame->memory_manager());
+  }
+
   // Update stack for breaking out of loop or next round.
-  CelValue loop_step = state[POS_LOOP_STEP];
+  auto loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
   CEL_RETURN_IF_ERROR(frame->SetAccuVar(loop_step));
-  if (current_index >= cel_list->size() - 1) {
+  if (current_index >=
+      static_cast<int64_t>(iter_range.As<cel::ListValue>()->size()) - 1) {
     CEL_RETURN_IF_ERROR(frame->ClearIterVar());
     return frame->JumpTo(jump_offset_);
   }
-  frame->value_stack().Push(iter_range, iter_range_attr);
+  frame->value_stack().Push(iter_range, std::move(iter_range_attr));
   current_index += 1;
 
-  CelValue current_value = (*cel_list)[current_index];
-  frame->value_stack().Push(CelValue::CreateInt64(current_index));
-  AttributeTrail iter_trail = iter_range_attr.Step(
-      CelAttributeQualifier::Create(CelValue::CreateInt64(current_index)),
-      frame->memory_manager());
+  CEL_ASSIGN_OR_RETURN(auto current_value,
+                       iter_range.As<cel::ListValue>()->Get(
+                           cel::ListValue::GetContext(frame->value_factory()),
+                           static_cast<size_t>(current_index)));
+  frame->value_stack().Push(
+      cel::interop_internal::CreateIntValue(current_index));
   frame->value_stack().Push(current_value, iter_trail);
   CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, std::move(iter_trail)));
   return absl::OkStatus();
@@ -163,21 +182,23 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(5)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  CelValue loop_condition_value = frame->value_stack().Peek();
-  if (!loop_condition_value.IsBool()) {
+  auto loop_condition_value = frame->value_stack().Peek();
+  if (!loop_condition_value->Is<cel::BoolValue>()) {
     frame->value_stack().Pop(5);
-    if (loop_condition_value.IsError() || loop_condition_value.IsUnknownSet()) {
-      frame->value_stack().Push(loop_condition_value);
+    if (loop_condition_value->Is<cel::ErrorValue>() ||
+        loop_condition_value->Is<cel::UnknownValue>()) {
+      frame->value_stack().Push(std::move(loop_condition_value));
     } else {
-      frame->value_stack().Push(CreateNoMatchingOverloadError(
-          frame->memory_manager(), "<loop_condition>"));
+      frame->value_stack().Push(CreateErrorValueFromView(
+          ::cel::interop_internal::CreateNoMatchingOverloadError(
+              frame->memory_manager(), "<loop_condition>")));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.
     CEL_RETURN_IF_ERROR(frame->PopIterFrame());
     return frame->JumpTo(error_jump_offset_);
   }
-  bool loop_condition = loop_condition_value.BoolOrDie();
+  bool loop_condition = loop_condition_value.As<cel::BoolValue>()->value();
   frame->value_stack().Pop(1);  // loop_condition
   if (!loop_condition && shortcircuiting_) {
     frame->value_stack().Pop(3);  // current_value, current_index, iter_range
@@ -198,9 +219,9 @@ absl::Status ComprehensionFinish::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(2)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  CelValue result = frame->value_stack().Peek();
+  auto result = frame->value_stack().Peek();
   frame->value_stack().Pop(1);  // result
-  frame->value_stack().PopAndPush(result);
+  frame->value_stack().PopAndPush(std::move(result));
   CEL_RETURN_IF_ERROR(frame->PopIterFrame());
   return absl::OkStatus();
 }
@@ -215,7 +236,7 @@ class ListKeysStep : public ExpressionStepBase {
 };
 
 std::unique_ptr<ExpressionStep> CreateListKeysStep(int64_t expr_id) {
-  return absl::make_unique<ListKeysStep>(expr_id);
+  return std::make_unique<ListKeysStep>(expr_id);
 }
 
 absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
@@ -227,17 +248,17 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
         frame->value_stack().GetAttributeSpan(1), nullptr,
         /*use_partial=*/true);
     if (unknown) {
-      frame->value_stack().PopAndPush(CelValue::CreateUnknownSet(unknown));
+      frame->value_stack().PopAndPush(
+          cel::interop_internal::CreateUnknownValueFromView(unknown));
       return absl::OkStatus();
     }
   }
 
-  const CelValue& map = frame->value_stack().Peek();
-  auto list_keys = map.MapOrDie()->ListKeys();
-  if (!list_keys.ok()) {
-    return std::move(list_keys).status();
-  }
-  frame->value_stack().PopAndPush(CelValue::CreateList(*list_keys));
+  CEL_ASSIGN_OR_RETURN(
+      auto list_keys,
+      frame->value_stack().Peek().As<cel::MapValue>()->ListKeys(
+          cel::MapValue::ListKeysContext(frame->value_factory())));
+  frame->value_stack().PopAndPush(std::move(list_keys));
   return absl::OkStatus();
 }
 
@@ -245,8 +266,7 @@ absl::Status ListKeysStep::Evaluate(ExecutionFrame* frame) const {
   if (!frame->value_stack().HasEnough(1)) {
     return absl::Status(absl::StatusCode::kInternal, "Value stack underflow");
   }
-  const CelValue& map_value = frame->value_stack().Peek();
-  if (map_value.IsMap()) {
+  if (frame->value_stack().Peek()->Is<cel::MapValue>()) {
     return ProjectKeys(frame);
   }
   return absl::OkStatus();

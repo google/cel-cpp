@@ -15,33 +15,38 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_MAP_TYPE_H_
 
-#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <string>
-#include <utility>
 
-#include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 
 namespace cel {
 
 class MemoryManager;
 class TypeFactory;
+class MapValue;
 
 // MapType represents a map type. A map is container of key and value pairs
 // where each key appears at most once.
-class MapType final : public Type, public base_internal::HeapData {
-  // I would have liked to make this class final, but we cannot instantiate
-  // Persistent<const Type> or Transient<const Type> at this point. It must be
-  // done after the post include below. Maybe we should separate out the post
-  // includes on a per type basis so we can do that?
+class MapType : public Type {
  public:
   static constexpr Kind kKind = Kind::kMap;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
+
+  using Type::Is;
+
+  static const MapType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to map";
+    return static_cast<const MapType&>(type);
+  }
 
   Kind kind() const { return kKind; }
 
@@ -49,28 +54,89 @@ class MapType final : public Type, public base_internal::HeapData {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Type& other) const;
-
   // Returns the type of the keys in the map.
-  const Persistent<const Type>& key() const { return key_; }
+  const Handle<Type>& key() const;
 
   // Returns the type of the values in the map.
-  const Persistent<const Type>& value() const { return value_; }
+  const Handle<Type>& value() const;
+
+ private:
+  friend class Type;
+  friend class MemoryManager;
+  friend class TypeFactory;
+  friend class base_internal::TypeHandle;
+  friend class base_internal::LegacyMapType;
+  friend class base_internal::ModernMapType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
+
+  MapType() = default;
+};
+
+CEL_INTERNAL_TYPE_DECL(MapType);
+
+namespace base_internal {
+
+// LegacyMapType is used by LegacymapValue for compatibility with the legacy
+// API. It's key and value are always the dynamic type regardless of whether the
+// the expression is checked or not.
+class LegacyMapType final : public MapType, public InlineData {
+ public:
+  const Handle<Type>& key() const;
+
+  const Handle<Type>& value() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class cel::MapType;
+  friend class base_internal::TypeHandle;
+  template <size_t Size, size_t Align>
+  friend struct AnyData;
 
-  explicit MapType(Persistent<const Type> key, Persistent<const Type> value);
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTrivial |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  const Persistent<const Type> key_;
-  const Persistent<const Type> value_;
+  LegacyMapType() : MapType(), InlineData(kMetadata) {}
 };
 
-CEL_INTERNAL_TYPE_DECL(MapType);
+class ModernMapType final : public MapType, public HeapData {
+ public:
+  const Handle<Type>& key() const { return key_; }
+
+  const Handle<Type>& value() const { return value_; }
+
+ private:
+  friend class cel::MemoryManager;
+  friend class TypeFactory;
+  friend class cel::MapType;
+  friend class base_internal::TypeHandle;
+
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called.
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return Metadata::IsDestructorSkippable(*key()) &&
+           Metadata::IsDestructorSkippable(*value());
+  }
+
+  explicit ModernMapType(Handle<Type> key, Handle<Type> value);
+
+  const Handle<Type> key_;
+  const Handle<Type> value_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<MapType> {
+  using value_type = MapValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

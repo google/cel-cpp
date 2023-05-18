@@ -15,11 +15,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_UNKNOWN_VALUE_H_
 
-#include <memory>
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "base/attribute_set.h"
 #include "base/function_result_set.h"
 #include "base/internal/unknown_set.h"
@@ -28,55 +27,107 @@
 
 namespace cel {
 
-class UnknownValue final : public Value, public base_internal::HeapData {
+class UnknownValue final : public Value, public base_internal::InlineData {
  public:
   static constexpr Kind kKind = UnknownType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const UnknownValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to unknown";
+    return static_cast<const UnknownValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const UnknownType> type() const { return UnknownType::Get(); }
+  const Handle<UnknownType>& type() const { return UnknownType::Get(); }
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
+  const AttributeSet& attribute_set() const;
 
-  bool Equals(const Value& other) const;
-
-  const AttributeSet& attribute_set() const {
-    return impl_ != nullptr ? impl_->attributes
-                            : base_internal::EmptyAttributeSet();
-  }
-
-  const FunctionResultSet& function_result_set() const {
-    return impl_ != nullptr ? impl_->function_results
-                            : base_internal::EmptyFunctionResultSet();
-  }
+  const FunctionResultSet& function_result_set() const;
 
  private:
-  friend class cel::MemoryManager;
-  friend class ValueFactory;
-  friend std::shared_ptr<base_internal::UnknownSetImpl>
-  interop_internal::GetUnknownValueImpl(
-      const Persistent<const UnknownValue>& value);
-  friend void interop_internal::SetUnknownValueImpl(
-      Persistent<UnknownValue>& value,
-      std::shared_ptr<base_internal::UnknownSetImpl> impl);
+  friend class ValueHandle;
+  template <size_t Size, size_t Align>
+  friend struct base_internal::AnyData;
+  friend struct interop_internal::UnknownValueAccess;
 
-  UnknownValue() : UnknownValue(nullptr) {}
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  explicit UnknownValue(std::shared_ptr<base_internal::UnknownSetImpl> impl);
+  explicit UnknownValue(base_internal::UnknownSet value)
+      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
 
-  UnknownValue(AttributeSet attribute_set,
-               FunctionResultSet function_result_set)
-      : UnknownValue(std::make_shared<base_internal::UnknownSetImpl>(
-            std::move(attribute_set), std::move(function_result_set))) {}
+  explicit UnknownValue(const base_internal::UnknownSet* value_ptr)
+      : base_internal::InlineData(kMetadata | base_internal::kTrivial),
+        value_ptr_(value_ptr) {}
 
-  std::shared_ptr<base_internal::UnknownSetImpl> impl_;
+  UnknownValue(const UnknownValue& other) : UnknownValue(other.value_) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  UnknownValue(UnknownValue&& other) : UnknownValue(std::move(other.value_)) {
+    // Only called when `other.value_` is the active member.
+  }
+
+  ~UnknownValue() {
+    // Only called when `value_` is the active member.
+    value_.~UnknownSet();
+  }
+
+  UnknownValue& operator=(const UnknownValue& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = other.value_;
+    }
+    return *this;
+  }
+
+  UnknownValue& operator=(UnknownValue&& other) {
+    // Only called when `value_` and `other.value_` are the active members.
+    if (ABSL_PREDICT_TRUE(this != &other)) {
+      value_ = std::move(other.value_);
+    }
+    return *this;
+  }
+
+  union {
+    base_internal::UnknownSet value_;
+    const base_internal::UnknownSet* value_ptr_;
+  };
 };
 
 CEL_INTERNAL_VALUE_DECL(UnknownValue);
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<UnknownValue> {
+  using type = UnknownValue;
+
+  using type_type = UnknownType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

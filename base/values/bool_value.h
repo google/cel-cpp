@@ -17,6 +17,8 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/bool_type.h"
 #include "base/value.h"
 
@@ -27,23 +29,27 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
   using Base = base_internal::SimpleValue<BoolType, bool>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(bool value);
+
   using Base::kKind;
 
   using Base::Is;
 
-  static Persistent<const BoolValue> False(ValueFactory& value_factory);
+  static const BoolValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to bool";
+    return static_cast<const BoolValue&>(value);
+  }
 
-  static Persistent<const BoolValue> True(ValueFactory& value_factory);
+  static Handle<BoolValue> False(ValueFactory& value_factory);
+
+  static Handle<BoolValue> True(ValueFactory& value_factory);
 
   using Base::kind;
 
   using Base::type;
 
   std::string DebugString() const;
-
-  using Base::HashValue;
-
-  using Base::Equals;
 
   using Base::value;
 
@@ -54,6 +60,44 @@ class BoolValue final : public base_internal::SimpleValue<BoolType, bool> {
 };
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(BoolValue);
+
+template <typename H>
+H AbslHashValue(H state, const BoolValue& value) {
+  return H::combine(std::move(state), value.value());
+}
+
+inline bool operator==(const BoolValue& lhs, const BoolValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<BoolValue> {
+  using type = BoolValue;
+
+  using type_type = BoolType;
+
+  using underlying_type = bool;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

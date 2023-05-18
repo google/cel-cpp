@@ -8,13 +8,12 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
-cc_test(
-    name = "benchmark_test",
-    size = "small",
+cc_library(
+    name = "benchmark_testlib",
+    testonly = True,
     srcs = [
         "benchmark_test.cc",
     ],
-    tags = ["manual"],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
@@ -30,16 +29,40 @@ cc_test(
         "//internal:status_macros",
         "//internal:testing",
         "//parser",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_github_google_benchmark//:benchmark_main",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+    alwayslink = True,
+)
+
+cc_test(
+    name = "benchmark_test",
+    size = "small",
+    deps = [
+        ":benchmark_testlib",
+        "@com_github_google_benchmark//:benchmark",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+# copybara:strip_begin
+# benchy will still need the enable_optimizations flag since it isn't using blaze run directly.
+# copybara:strip_end
+cc_test(
+    name = "const_folding_benchmark_test",
+    size = "small",
+    args = ["--enable_optimizations"],
+    deps = [
+        ":benchmark_testlib",
+        "@com_github_google_benchmark//:benchmark",
+        "@com_github_google_benchmark//:benchmark_main",
     ],
 )
 
@@ -78,6 +101,30 @@ cc_test(
 )
 
 cc_test(
+    name = "memory_safety_test",
+    srcs = [
+        "memory_safety_test.cc",
+    ],
+    deps = [
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_function_adapter",
+        "//eval/public:cel_options",
+        "//eval/public/testing:matchers",
+        "//internal:testing",
+        "//parser",
+        "//testutil:util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
     name = "expression_builder_benchmark_test",
     size = "small",
     srcs = [
@@ -85,24 +132,18 @@ cc_test(
     ],
     deps = [
         ":request_context_cc_proto",
-        "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
         "//eval/public:cel_expr_builder_factory",
         "//eval/public:cel_expression",
         "//eval/public:cel_options",
-        "//eval/public:cel_value",
-        "//eval/public/containers:container_backed_list_impl",
-        "//eval/public/containers:container_backed_map_impl",
-        "//eval/public/structs:cel_proto_wrapper",
         "//internal:benchmark",
         "//internal:status_macros",
         "//internal:testing",
         "//parser",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],

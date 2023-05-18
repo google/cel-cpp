@@ -28,7 +28,7 @@ UnknownAttributeSet MakeAttribute(Arena* arena, int64_t id) {
   expr.mutable_ident_expr()->set_name("x");
 
   std::vector<CelAttributeQualifier> attr_trail{
-      CelAttributeQualifier::Create(CelValue::CreateInt64(id))};
+      CreateCelAttributeQualifier(CelValue::CreateInt64(id))};
 
   return UnknownAttributeSet({CelAttribute(expr, std::move(attr_trail))});
 }

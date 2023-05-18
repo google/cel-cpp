@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_UNKNOWN_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_UNKNOWN_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -33,21 +34,31 @@ class UnknownType final : public base_internal::SimpleType<Kind::kUnknown> {
 
   using Base::Is;
 
+  static const UnknownType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const UnknownType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(UnknownType, UnknownValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(UnknownType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<UnknownType> {
+  using value_type = UnknownValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

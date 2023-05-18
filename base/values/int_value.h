@@ -18,6 +18,8 @@
 #include <cstdint>
 #include <string>
 
+#include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/int_type.h"
 #include "base/value.h"
 
@@ -28,19 +30,23 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
   using Base = base_internal::SimpleValue<IntType, int64_t>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(int64_t value);
+
   using Base::kKind;
 
   using Base::Is;
+
+  static const IntValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to int";
+    return static_cast<const IntValue&>(value);
+  }
 
   using Base::kind;
 
   using Base::type;
 
   std::string DebugString() const;
-
-  using Base::HashValue;
-
-  using Base::Equals;
 
   using Base::value;
 
@@ -51,6 +57,44 @@ class IntValue final : public base_internal::SimpleValue<IntType, int64_t> {
 };
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(IntValue);
+
+template <typename H>
+H AbslHashValue(H state, const IntValue& value) {
+  return H::combine(std::move(state), value.value());
+}
+
+inline bool operator==(const IntValue& lhs, const IntValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<IntValue> {
+  using type = IntValue;
+
+  using type_type = IntType;
+
+  using underlying_type = int64_t;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

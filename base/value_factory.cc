@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "base/handle.h"
 #include "base/value.h"
+#include "base/values/string_value.h"
 #include "internal/status_macros.h"
 #include "internal/time.h"
 #include "internal/utf8.h"
@@ -31,77 +32,67 @@ namespace cel {
 
 namespace {
 
+using base_internal::HandleFactory;
 using base_internal::InlinedCordBytesValue;
 using base_internal::InlinedCordStringValue;
 using base_internal::InlinedStringViewBytesValue;
 using base_internal::InlinedStringViewStringValue;
-using base_internal::PersistentHandleFactory;
 using base_internal::StringBytesValue;
 using base_internal::StringStringValue;
 
 }  // namespace
 
-Persistent<const NullValue> NullValue::Get(ValueFactory& value_factory) {
+Handle<NullValue> NullValue::Get(ValueFactory& value_factory) {
   return value_factory.GetNullValue();
 }
 
-Persistent<const NullValue> ValueFactory::GetNullValue() {
-  return PersistentHandleFactory<const NullValue>::Make<NullValue>();
-}
-
-Persistent<const ErrorValue> ValueFactory::CreateErrorValue(
-    absl::Status status) {
+Handle<ErrorValue> ValueFactory::CreateErrorValue(absl::Status status) {
   if (ABSL_PREDICT_FALSE(status.ok())) {
     status = absl::UnknownError(
         "If you are seeing this message the caller attempted to construct an "
         "error value from a successful status. Refusing to fail successfully.");
   }
-  return PersistentHandleFactory<const ErrorValue>::Make<ErrorValue>(
-      std::move(status));
+  return HandleFactory<ErrorValue>::Make<ErrorValue>(std::move(status));
 }
 
-Persistent<const BoolValue> BoolValue::False(ValueFactory& value_factory) {
+Handle<BoolValue> BoolValue::False(ValueFactory& value_factory) {
   return value_factory.CreateBoolValue(false);
 }
 
-Persistent<const BoolValue> BoolValue::True(ValueFactory& value_factory) {
+Handle<BoolValue> BoolValue::True(ValueFactory& value_factory) {
   return value_factory.CreateBoolValue(true);
 }
 
-Persistent<const DoubleValue> DoubleValue::NaN(ValueFactory& value_factory) {
+Handle<DoubleValue> DoubleValue::NaN(ValueFactory& value_factory) {
   return value_factory.CreateDoubleValue(
       std::numeric_limits<double>::quiet_NaN());
 }
 
-Persistent<const DoubleValue> DoubleValue::PositiveInfinity(
-    ValueFactory& value_factory) {
+Handle<DoubleValue> DoubleValue::PositiveInfinity(ValueFactory& value_factory) {
   return value_factory.CreateDoubleValue(
       std::numeric_limits<double>::infinity());
 }
 
-Persistent<const DoubleValue> DoubleValue::NegativeInfinity(
-    ValueFactory& value_factory) {
+Handle<DoubleValue> DoubleValue::NegativeInfinity(ValueFactory& value_factory) {
   return value_factory.CreateDoubleValue(
       -std::numeric_limits<double>::infinity());
 }
 
-Persistent<const DurationValue> DurationValue::Zero(
-    ValueFactory& value_factory) {
+Handle<DurationValue> DurationValue::Zero(ValueFactory& value_factory) {
   // Should never fail, tests assert this.
   return value_factory.CreateDurationValue(absl::ZeroDuration()).value();
 }
 
-Persistent<const TimestampValue> TimestampValue::UnixEpoch(
-    ValueFactory& value_factory) {
+Handle<TimestampValue> TimestampValue::UnixEpoch(ValueFactory& value_factory) {
   // Should never fail, tests assert this.
   return value_factory.CreateTimestampValue(absl::UnixEpoch()).value();
 }
 
-Persistent<const StringValue> StringValue::Empty(ValueFactory& value_factory) {
+Handle<StringValue> StringValue::Empty(ValueFactory& value_factory) {
   return value_factory.GetStringValue();
 }
 
-absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
+absl::StatusOr<Handle<StringValue>> StringValue::Concat(
     ValueFactory& value_factory, const StringValue& lhs,
     const StringValue& rhs) {
   absl::Cord cord;
@@ -110,11 +101,11 @@ absl::StatusOr<Persistent<const StringValue>> StringValue::Concat(
   return value_factory.CreateStringValue(std::move(cord));
 }
 
-Persistent<const BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
+Handle<BytesValue> BytesValue::Empty(ValueFactory& value_factory) {
   return value_factory.GetBytesValue();
 }
 
-absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
+absl::StatusOr<Handle<BytesValue>> BytesValue::Concat(
     ValueFactory& value_factory, const BytesValue& lhs, const BytesValue& rhs) {
   absl::Cord cord;
   cord.Append(lhs.ToCord());
@@ -122,81 +113,25 @@ absl::StatusOr<Persistent<const BytesValue>> BytesValue::Concat(
   return value_factory.CreateBytesValue(std::move(cord));
 }
 
-struct EnumType::NewInstanceVisitor final {
-  const Persistent<const EnumType>& enum_type;
-  ValueFactory& value_factory;
-
-  absl::StatusOr<Persistent<const EnumValue>> operator()(
-      absl::string_view name) const {
-    TypedEnumValueFactory factory(value_factory, enum_type);
-    return enum_type->NewInstanceByName(factory, name);
-  }
-
-  absl::StatusOr<Persistent<const EnumValue>> operator()(int64_t number) const {
-    TypedEnumValueFactory factory(value_factory, enum_type);
-    return enum_type->NewInstanceByNumber(factory, number);
-  }
-};
-
-absl::StatusOr<Persistent<const EnumValue>> EnumValue::New(
-    const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
-    EnumType::ConstantId id) {
-  CEL_ASSIGN_OR_RETURN(
-      auto enum_value,
-      absl::visit(EnumType::NewInstanceVisitor{enum_type, value_factory},
-                  id.data_));
-  if (!enum_value->type_) {
-    // In case somebody is caching, we avoid setting the type_ if it has already
-    // been set, to avoid a race condition where one CPU sees a half written
-    // pointer.
-    const_cast<EnumValue&>(*enum_value).type_ = enum_type;
-  }
-  return enum_value;
-}
-
-absl::StatusOr<Persistent<StructValue>> StructValue::New(
-    const Persistent<const StructType>& struct_type,
-    ValueFactory& value_factory) {
-  TypedStructValueFactory factory(value_factory, struct_type);
-  CEL_ASSIGN_OR_RETURN(auto struct_value, struct_type->NewInstance(factory));
-  return struct_value;
-}
-
-Persistent<const BoolValue> ValueFactory::CreateBoolValue(bool value) {
-  return PersistentHandleFactory<const BoolValue>::Make<BoolValue>(value);
-}
-
-Persistent<const IntValue> ValueFactory::CreateIntValue(int64_t value) {
-  return PersistentHandleFactory<const IntValue>::Make<IntValue>(value);
-}
-
-Persistent<const UintValue> ValueFactory::CreateUintValue(uint64_t value) {
-  return PersistentHandleFactory<const UintValue>::Make<UintValue>(value);
-}
-
-Persistent<const DoubleValue> ValueFactory::CreateDoubleValue(double value) {
-  return PersistentHandleFactory<const DoubleValue>::Make<DoubleValue>(value);
-}
-
-absl::StatusOr<Persistent<const BytesValue>> ValueFactory::CreateBytesValue(
+absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValue(
     std::string value) {
   if (value.empty()) {
     return GetEmptyBytesValue();
   }
-  return PersistentHandleFactory<const BytesValue>::Make<StringBytesValue>(
-      memory_manager(), std::move(value));
+  return HandleFactory<BytesValue>::Make<StringBytesValue>(memory_manager(),
+                                                           std::move(value));
 }
 
-absl::StatusOr<Persistent<const BytesValue>> ValueFactory::CreateBytesValue(
+absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValue(
     absl::Cord value) {
   if (value.empty()) {
     return GetEmptyBytesValue();
   }
-  return PersistentHandleFactory<const BytesValue>::Make<InlinedCordBytesValue>(
+  return HandleFactory<BytesValue>::Make<InlinedCordBytesValue>(
       std::move(value));
 }
 
-absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
+absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(
     std::string value) {
   // Avoid persisting empty strings which may have underlying storage after
   // mutating.
@@ -208,11 +143,34 @@ absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
     return absl::InvalidArgumentError(
         "Illegal byte sequence in UTF-8 encoded string");
   }
-  return PersistentHandleFactory<const StringValue>::Make<StringStringValue>(
-      memory_manager(), std::move(value));
+  return HandleFactory<StringValue>::Make<StringStringValue>(memory_manager(),
+                                                             std::move(value));
 }
 
-absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
+Handle<StringValue> ValueFactory::CreateUncheckedStringValue(
+    std::string value) {
+  // Avoid persisting empty strings which may have underlying storage after
+  // mutating.
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+
+  return HandleFactory<StringValue>::Make<StringStringValue>(memory_manager(),
+                                                             std::move(value));
+}
+
+Handle<StringValue> ValueFactory::CreateUncheckedStringValue(absl::Cord value) {
+  // Avoid persisting empty strings which may have underlying storage after
+  // mutating.
+  if (value.empty()) {
+    return GetEmptyStringValue();
+  }
+
+  return HandleFactory<StringValue>::Make<InlinedCordStringValue>(
+      std::move(value));
+}
+
+absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValue(
     absl::Cord value) {
   if (value.empty()) {
     return GetEmptyStringValue();
@@ -222,56 +180,37 @@ absl::StatusOr<Persistent<const StringValue>> ValueFactory::CreateStringValue(
     return absl::InvalidArgumentError(
         "Illegal byte sequence in UTF-8 encoded string");
   }
-  return PersistentHandleFactory<const StringValue>::Make<
-      InlinedCordStringValue>(std::move(value));
+  return HandleFactory<StringValue>::Make<InlinedCordStringValue>(
+      std::move(value));
 }
 
-absl::StatusOr<Persistent<const DurationValue>>
-ValueFactory::CreateDurationValue(absl::Duration value) {
+absl::StatusOr<Handle<DurationValue>> ValueFactory::CreateDurationValue(
+    absl::Duration value) {
   CEL_RETURN_IF_ERROR(internal::ValidateDuration(value));
-  return PersistentHandleFactory<const DurationValue>::Make<DurationValue>(
-      value);
+  return CreateUncheckedDurationValue(value);
 }
 
-absl::StatusOr<Persistent<const TimestampValue>>
-ValueFactory::CreateTimestampValue(absl::Time value) {
+absl::StatusOr<Handle<TimestampValue>> ValueFactory::CreateTimestampValue(
+    absl::Time value) {
   CEL_RETURN_IF_ERROR(internal::ValidateTimestamp(value));
-  return PersistentHandleFactory<const TimestampValue>::Make<TimestampValue>(
-      value);
+  return CreateUncheckedTimestampValue(value);
 }
 
-Persistent<const TypeValue> ValueFactory::CreateTypeValue(
-    const Persistent<const Type>& value) {
-  return PersistentHandleFactory<const TypeValue>::Make<TypeValue>(value);
-}
-
-Persistent<UnknownValue> ValueFactory::CreateUnknownValue(
+Handle<UnknownValue> ValueFactory::CreateUnknownValue(
     AttributeSet attribute_set, FunctionResultSet function_result_set) {
-  return PersistentHandleFactory<UnknownValue>::Make<UnknownValue>(
-      memory_manager(), std::move(attribute_set),
-      std::move(function_result_set));
+  return HandleFactory<UnknownValue>::Make<UnknownValue>(
+      base_internal::UnknownSet(std::move(attribute_set),
+                                std::move(function_result_set)));
 }
 
-absl::StatusOr<Persistent<const BytesValue>>
-ValueFactory::CreateBytesValueFromView(absl::string_view value) {
-  return PersistentHandleFactory<const BytesValue>::Make<
-      InlinedStringViewBytesValue>(value);
+absl::StatusOr<Handle<BytesValue>> ValueFactory::CreateBytesValueFromView(
+    absl::string_view value) {
+  return HandleFactory<BytesValue>::Make<InlinedStringViewBytesValue>(value);
 }
 
-Persistent<const BytesValue> ValueFactory::GetEmptyBytesValue() {
-  return PersistentHandleFactory<const BytesValue>::Make<
-      InlinedStringViewBytesValue>(absl::string_view());
-}
-
-Persistent<const StringValue> ValueFactory::GetEmptyStringValue() {
-  return PersistentHandleFactory<const StringValue>::Make<
-      InlinedStringViewStringValue>(absl::string_view());
-}
-
-absl::StatusOr<Persistent<const StringValue>>
-ValueFactory::CreateStringValueFromView(absl::string_view value) {
-  return PersistentHandleFactory<const StringValue>::Make<
-      InlinedStringViewStringValue>(value);
+absl::StatusOr<Handle<StringValue>> ValueFactory::CreateStringValueFromView(
+    absl::string_view value) {
+  return HandleFactory<StringValue>::Make<InlinedStringViewStringValue>(value);
 }
 
 }  // namespace cel

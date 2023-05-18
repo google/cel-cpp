@@ -29,6 +29,11 @@ enum class MemoryManagerTestMode {
 
 std::string MemoryManagerTestModeToString(MemoryManagerTestMode mode);
 
+template <typename S>
+void AbslStringify(S& sink, MemoryManagerTestMode mode) {
+  sink.Append(MemoryManagerTestModeToString(mode));
+}
+
 inline auto MemoryManagerTestModeAll() {
   return testing::Values(MemoryManagerTestMode::kGlobal,
                          MemoryManagerTestMode::kArena);

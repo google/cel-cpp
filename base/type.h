@@ -21,10 +21,10 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/optimization.h"
 #include "absl/hash/hash.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
-#include "absl/utility/utility.h"
+#include "absl/types/span.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/internal/type.h"  // IWYU pragma: export
@@ -33,6 +33,7 @@
 
 namespace cel {
 
+class Value;
 class EnumType;
 class StructType;
 class ListType;
@@ -40,16 +41,17 @@ class MapType;
 class TypeFactory;
 class TypeProvider;
 class TypeManager;
-
+class WrapperType;
+class OpaqueType;
 class ValueFactory;
-class TypedEnumValueFactory;
-class TypedStructValueFactory;
 
-// A representation of a CEL type that enables reflection, for static analysis,
-// and introspection, for program construction, of types.
+// A representation of a CEL type that enables introspection, for program
+// construction, of types.
 class Type : public base_internal::Data {
  public:
   static bool Is(const Type& type ABSL_ATTRIBUTE_UNUSED) { return true; }
+
+  static const Type& Cast(const Type& type) { return type; }
 
   // Returns the type kind.
   Kind kind() const { return base_internal::Metadata::Kind(*this); }
@@ -63,13 +65,63 @@ class Type : public base_internal::Data {
 
   bool Equals(const Type& other) const;
 
+  template <typename T>
+  bool Is() const {
+    static_assert(!std::is_const_v<T>, "T must not be const");
+    static_assert(!std::is_volatile_v<T>, "T must not be volatile");
+    static_assert(!std::is_pointer_v<T>, "T must not be a pointer");
+    static_assert(!std::is_reference_v<T>, "T must not be a reference");
+    static_assert(std::is_base_of_v<Type, T>, "T must be derived from Type");
+    return T::Is(*this);
+  }
+
+  template <typename T>
+  const T& As() const {
+    static_assert(!std::is_const_v<T>, "T must not be const");
+    static_assert(!std::is_volatile_v<T>, "T must not be volatile");
+    static_assert(!std::is_pointer_v<T>, "T must not be a pointer");
+    static_assert(!std::is_reference_v<T>, "T must not be a reference");
+    static_assert(std::is_base_of_v<Type, T>, "T must be derived from Type");
+    return T::Cast(*this);
+  }
+
+  template <typename Sink>
+  friend void AbslStringify(Sink& sink, const Type& type) {
+    sink.Append(type.DebugString());
+  }
+
  private:
+  friend class TypeManager;
   friend class EnumType;
   friend class StructType;
   friend class ListType;
   friend class MapType;
   template <Kind K>
   friend class base_internal::SimpleType;
+  friend class WrapperType;
+  friend class base_internal::TypeHandle;
+  friend class OpaqueType;
+
+  // This is used by TypeManager to determine whether a type has any known
+  // aliases. This is currently only used for JSON-like types. Pretend this
+  // doesn't exist.
+  absl::Span<const absl::string_view> aliases() const;
+
+  static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
+
+  static bool Equals(const Type& lhs, const Type& rhs) {
+    if (&lhs == &rhs) {
+      return true;
+    }
+    Kind lhs_kind = lhs.kind();
+    return lhs_kind == rhs.kind() && Equals(lhs, rhs, lhs_kind);
+  }
+
+  static void HashValue(const Type& type, Kind kind, absl::HashState state);
+
+  static void HashValue(const Type& type, absl::HashState state) {
+    HashValue(type, type.kind(), std::move(state));
+  }
 
   Type() = default;
   Type(const Type&) = default;
@@ -77,20 +129,6 @@ class Type : public base_internal::Data {
   Type& operator=(const Type&) = default;
   Type& operator=(Type&&) = default;
 };
-
-template <typename H>
-H AbslHashValue(H state, const Type& type) {
-  type.HashValue(absl::HashState::Create(&state));
-  return state;
-}
-
-inline bool operator==(const Type& lhs, const Type& rhs) {
-  return lhs.Equals(rhs);
-}
-
-inline bool operator!=(const Type& lhs, const Type& rhs) {
-  return !operator==(lhs, rhs);
-}
 
 }  // namespace cel
 
@@ -101,53 +139,76 @@ namespace cel {
 
 namespace base_internal {
 
-class PersistentTypeHandle final {
+class TypeMetadata final {
  public:
-  PersistentTypeHandle() = default;
+  TypeMetadata() = delete;
+
+  static void Ref(const Type& type);
+
+  static void Unref(const Type& type);
+
+  static bool IsReferenceCounted(const Type& type);
+};
+
+class TypeHandle final {
+ public:
+  using base_type = Type;
+
+  TypeHandle() = default;
 
   template <typename T, typename... Args>
-  explicit PersistentTypeHandle(absl::in_place_type_t<T>, Args&&... args) {
+  explicit TypeHandle(InPlaceStoredInline<T>, Args&&... args) {
     data_.ConstructInline<T>(std::forward<Args>(args)...);
   }
 
-  explicit PersistentTypeHandle(const Type& type) { data_.ConstructHeap(type); }
+  explicit TypeHandle(InPlaceArenaAllocated, Type& arg) {
+    data_.ConstructArenaAllocated(arg);
+  }
 
-  PersistentTypeHandle(const PersistentTypeHandle& other) { CopyFrom(other); }
+  explicit TypeHandle(InPlaceReferenceCounted, Type& arg) {
+    data_.ConstructReferenceCounted(arg);
+  }
 
-  PersistentTypeHandle(PersistentTypeHandle&& other) { MoveFrom(other); }
+  TypeHandle(const TypeHandle& other) { CopyFrom(other); }
 
-  ~PersistentTypeHandle() { Destruct(); }
+  TypeHandle(TypeHandle&& other) { MoveFrom(other); }
 
-  PersistentTypeHandle& operator=(const PersistentTypeHandle& other) {
-    if (this != &other) {
+  ~TypeHandle() { Destruct(); }
+
+  TypeHandle& operator=(const TypeHandle& other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
       CopyAssign(other);
     }
     return *this;
   }
 
-  PersistentTypeHandle& operator=(PersistentTypeHandle&& other) {
-    if (this != &other) {
+  TypeHandle& operator=(TypeHandle&& other) {
+    if (ABSL_PREDICT_TRUE(this != &other)) {
       MoveAssign(other);
     }
     return *this;
   }
 
-  Type* get() const { return reinterpret_cast<Type*>(data_.get()); }
+  Type* get() const { return static_cast<Type*>(data_.get()); }
 
   explicit operator bool() const { return !data_.IsNull(); }
 
-  bool Equals(const PersistentTypeHandle& other) const;
+  bool Equals(const TypeHandle& other) const;
 
   void HashValue(absl::HashState state) const;
 
  private:
-  void CopyFrom(const PersistentTypeHandle& other);
+  static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
 
-  void MoveFrom(PersistentTypeHandle& other);
+  static void HashValue(const Type& type, Kind kind, absl::HashState state);
 
-  void CopyAssign(const PersistentTypeHandle& other);
+  void CopyFrom(const TypeHandle& other);
 
-  void MoveAssign(PersistentTypeHandle& other);
+  void MoveFrom(TypeHandle& other);
+
+  void CopyAssign(const TypeHandle& other);
+
+  void MoveAssign(TypeHandle& other);
 
   void Ref() const { data_.Ref(); }
 
@@ -165,33 +226,30 @@ class PersistentTypeHandle final {
 };
 
 template <typename H>
-H AbslHashValue(H state, const PersistentTypeHandle& handle) {
+H AbslHashValue(H state, const TypeHandle& handle) {
   handle.HashValue(absl::HashState::Create(&state));
   return state;
 }
 
-inline bool operator==(const PersistentTypeHandle& lhs,
-                       const PersistentTypeHandle& rhs) {
+inline bool operator==(const TypeHandle& lhs, const TypeHandle& rhs) {
   return lhs.Equals(rhs);
 }
 
-inline bool operator!=(const PersistentTypeHandle& lhs,
-                       const PersistentTypeHandle& rhs) {
+inline bool operator!=(const TypeHandle& lhs, const TypeHandle& rhs) {
   return !operator==(lhs, rhs);
 }
 
-// Specialization for Type providing the implementation to `Persistent`.
+// Specialization for Type providing the implementation to `Handle`.
 template <>
-struct HandleTraits<HandleType::kPersistent, Type> {
-  using handle_type = PersistentTypeHandle;
+struct HandleTraits<Type> {
+  using handle_type = TypeHandle;
 };
 
-// Partial specialization for `Persistent` for all classes derived from Type.
+// Partial specialization for `Handle` for all classes derived from Type.
 template <typename T>
-struct HandleTraits<
-    HandleType::kPersistent, T,
-    std::enable_if_t<(std::is_base_of_v<Type, T> && !std::is_same_v<Type, T>)>>
-    final : public HandleTraits<HandleType::kPersistent, Type> {};
+struct HandleTraits<T, std::enable_if_t<(std::is_base_of_v<Type, T> &&
+                                         !std::is_same_v<Type, T>)>>
+    final : public HandleTraits<Type> {};
 
 template <Kind K>
 struct SimpleTypeName;
@@ -274,6 +332,8 @@ class SimpleType : public Type, public InlineData {
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
+  using Type::Is;
+
   constexpr SimpleType() : InlineData(kMetadata) {}
 
   SimpleType(const SimpleType&) = default;
@@ -287,18 +347,18 @@ class SimpleType : public Type, public InlineData {
 
   std::string DebugString() const { return std::string(name()); }
 
-  void HashValue(absl::HashState state) const {
-    absl::HashState::combine(std::move(state), kind(), name());
-  }
-
-  bool Equals(const Type& other) const { return kind() == other.kind(); }
-
  private:
-  friend class PersistentTypeHandle;
+  friend class TypeHandle;
 
   static constexpr uintptr_t kMetadata =
-      kStoredInline | kTriviallyCopyable | kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << kKindShift);
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
+};
+
+template <>
+struct TypeTraits<Type> {
+  using type = Type;
+
+  using value_type = Value;
 };
 
 }  // namespace base_internal
@@ -307,23 +367,22 @@ CEL_INTERNAL_TYPE_DECL(Type);
 
 }  // namespace cel
 
-#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)         \
- private:                                                                 \
-  friend class value_class;                                               \
-  friend class TypeFactory;                                               \
-  friend class base_internal::PersistentTypeHandle;                       \
-  template <typename T, typename U>                                       \
-  friend class base_internal::SimpleValue;                                \
-  template <size_t Size, size_t Align>                                    \
-  friend class base_internal::AnyData;                                    \
-                                                                          \
-  ABSL_ATTRIBUTE_PURE_FUNCTION static const Persistent<const type_class>& \
-  Get();                                                                  \
-                                                                          \
-  type_class() = default;                                                 \
-  type_class(const type_class&) = default;                                \
-  type_class(type_class&&) = default;                                     \
-  type_class& operator=(const type_class&) = default;                     \
+#define CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(type_class, value_class)      \
+ private:                                                              \
+  friend class value_class;                                            \
+  friend class TypeFactory;                                            \
+  friend class base_internal::TypeHandle;                              \
+  template <typename T, typename U>                                    \
+  friend class base_internal::SimpleValue;                             \
+  template <size_t Size, size_t Align>                                 \
+  friend struct base_internal::AnyData;                                \
+                                                                       \
+  ABSL_ATTRIBUTE_PURE_FUNCTION static const Handle<type_class>& Get(); \
+                                                                       \
+  type_class() = default;                                              \
+  type_class(const type_class&) = default;                             \
+  type_class(type_class&&) = default;                                  \
+  type_class& operator=(const type_class&) = default;                  \
   type_class& operator=(type_class&&) = default
 
 #define CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(type_class)        \

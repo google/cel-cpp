@@ -16,6 +16,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/status/status.h"
+#include "absl/strings/escaping.h"
 #include "absl/strings/str_split.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -34,6 +35,8 @@ using ::google::protobuf::util::JsonStringToMessage;
 using ::google::protobuf::util::MessageToJsonString;
 
 ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
+ABSL_FLAG(bool, updated_opt, false,
+          "Enable optimizations (constant folding updated)");
 ABSL_FLAG(bool, base64_encode, false, "Enable base64 encoding in pipe mode.");
 
 namespace google::api::expr::runtime {
@@ -149,10 +152,10 @@ class ConformanceServiceImpl {
   const google::api::expr::test::v1::proto3::TestAllTypes* proto3_tests_;
 };
 
-absl::Status Base64DecodeToMessage(absl::string_view b64Data,
+absl::Status Base64DecodeToMessage(absl::string_view b64_data,
                                    google::protobuf::Message* out) {
   std::string data;
-  if (!absl::Base64Unescape(b64Data, &data)) {
+  if (!absl::Base64Unescape(b64_data, &data)) {
     return absl::InvalidArgumentError("invalid base64");
   }
   if (!out->ParseFromString(data)) {
@@ -196,19 +199,22 @@ class PipeCodec {
   bool base64_encoded_;
 };
 
-int RunServer(bool optimize, bool base64Encoded) {
+int RunServer(bool optimize, bool base64_encoded, bool updated_optimize) {
   google::protobuf::Arena arena;
-  PipeCodec pipe_codec(base64Encoded);
+  PipeCodec pipe_codec(base64_encoded);
   InterpreterOptions options;
   options.enable_qualified_type_identifiers = true;
   options.enable_timestamp_duration_overflow_errors = true;
   options.enable_heterogeneous_equality = true;
   options.enable_empty_wrapper_null_unboxing = true;
 
-  if (optimize) {
+  if (optimize || updated_optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
     options.constant_folding = true;
     options.constant_arena = &arena;
+  }
+  if (updated_optimize) {
+    options.enable_updated_constant_folding = true;
   }
 
   std::unique_ptr<CelExpressionBuilder> builder =
@@ -281,5 +287,6 @@ int RunServer(bool optimize, bool base64Encoded) {
 int main(int argc, char** argv) {
   absl::ParseCommandLine(argc, argv);
   return google::api::expr::runtime::RunServer(
-      absl::GetFlag(FLAGS_opt), absl::GetFlag(FLAGS_base64_encode));
+      absl::GetFlag(FLAGS_opt), absl::GetFlag(FLAGS_base64_encode),
+      absl::GetFlag(FLAGS_updated_opt));
 }

@@ -21,9 +21,10 @@
 #include "absl/base/attributes.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "base/handle.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/types/any_type.h"
 #include "base/types/bool_type.h"
 #include "base/types/bytes_type.h"
@@ -36,102 +37,181 @@
 #include "base/types/list_type.h"
 #include "base/types/map_type.h"
 #include "base/types/null_type.h"
+#include "base/types/optional_type.h"
 #include "base/types/string_type.h"
 #include "base/types/struct_type.h"
 #include "base/types/timestamp_type.h"
 #include "base/types/type_type.h"
 #include "base/types/uint_type.h"
 #include "base/types/unknown_type.h"
+#include "base/types/wrapper_type.h"
 
 namespace cel {
 
 // TypeFactory provides member functions to get and create type implementations
 // of builtin types.
-//
-// While TypeFactory is not final and has a virtual destructor, inheriting it is
-// forbidden outside of the CEL codebase.
 class TypeFactory final {
  private:
   template <typename T, typename U, typename V>
-  using EnableIfBaseOfT =
-      std::enable_if_t<std::is_base_of_v<T, std::remove_const_t<U>>, V>;
+  using EnableIfBaseOfT = std::enable_if_t<std::is_base_of_v<T, U>, V>;
 
  public:
   explicit TypeFactory(
-      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND)
-      : memory_manager_(memory_manager) {}
+      MemoryManager& memory_manager ABSL_ATTRIBUTE_LIFETIME_BOUND);
 
   TypeFactory(const TypeFactory&) = delete;
+  TypeFactory(TypeFactory&&) = delete;
   TypeFactory& operator=(const TypeFactory&) = delete;
+  TypeFactory& operator=(TypeFactory&&) = delete;
 
-  Persistent<const NullType> GetNullType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<NullType>& GetNullType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return NullType::Get();
+  }
 
-  Persistent<const ErrorType> GetErrorType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<ErrorType>& GetErrorType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return ErrorType::Get();
+  }
 
-  Persistent<const DynType> GetDynType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<DynType>& GetDynType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DynType::Get();
+  }
 
-  Persistent<const AnyType> GetAnyType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<AnyType>& GetAnyType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return AnyType::Get();
+  }
 
-  Persistent<const BoolType> GetBoolType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<BoolType>& GetBoolType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BoolType::Get();
+  }
 
-  Persistent<const IntType> GetIntType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<IntType>& GetIntType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return IntType::Get();
+  }
 
-  Persistent<const UintType> GetUintType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<UintType>& GetUintType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return UintType::Get();
+  }
 
-  Persistent<const DoubleType> GetDoubleType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<DoubleType>& GetDoubleType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DoubleType::Get();
+  }
 
-  Persistent<const StringType> GetStringType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<StringType>& GetStringType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return StringType::Get();
+  }
 
-  Persistent<const BytesType> GetBytesType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<BytesType>& GetBytesType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BytesType::Get();
+  }
 
-  Persistent<const DurationType> GetDurationType()
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<DurationType>& GetDurationType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DurationType::Get();
+  }
 
-  Persistent<const TimestampType> GetTimestampType()
-      ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  const Handle<TimestampType>& GetTimestampType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return TimestampType::Get();
+  }
+
+  const Handle<TypeType>& GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return TypeType::Get();
+  }
+
+  const Handle<UnknownType>& GetUnknownType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return UnknownType::Get();
+  }
+
+  const Handle<BoolWrapperType>& GetBoolWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BoolWrapperType::Get();
+  }
+
+  const Handle<BytesWrapperType>& GetBytesWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return BytesWrapperType::Get();
+  }
+
+  const Handle<DoubleWrapperType>& GetDoubleWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return DoubleWrapperType::Get();
+  }
+
+  const Handle<IntWrapperType>& GetIntWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return IntWrapperType::Get();
+  }
+
+  const Handle<StringWrapperType>& GetStringWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return StringWrapperType::Get();
+  }
+
+  const Handle<UintWrapperType>& GetUintWrapperType()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return UintWrapperType::Get();
+  }
+
+  const Handle<Type>& GetJsonValueType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return GetDynType().As<Type>();
+  }
+
+  const Handle<ListType>& GetJsonListType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return json_list_type_;
+  }
+
+  const Handle<MapType>& GetJsonMapType() ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return json_map_type_;
+  }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<EnumType, T, absl::StatusOr<Persistent<T>>> CreateEnumType(
+  EnableIfBaseOfT<EnumType, T, absl::StatusOr<Handle<T>>> CreateEnumType(
       Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::PersistentHandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
+    return base_internal::HandleFactory<T>::template Make<T>(
+        memory_manager(), std::forward<Args>(args)...);
   }
 
   template <typename T, typename... Args>
-  EnableIfBaseOfT<StructType, T, absl::StatusOr<Persistent<T>>>
-  CreateStructType(Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
-    return base_internal::PersistentHandleFactory<T>::template Make<
-        std::remove_const_t<T>>(memory_manager(), std::forward<Args>(args)...);
+  EnableIfBaseOfT<StructType, T, absl::StatusOr<Handle<T>>> CreateStructType(
+      Args&&... args) ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return base_internal::HandleFactory<T>::template Make<T>(
+        memory_manager(), std::forward<Args>(args)...);
   }
 
-  absl::StatusOr<Persistent<const ListType>> CreateListType(
-      const Persistent<const Type>& element) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<Handle<ListType>> CreateListType(const Handle<Type>& element)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  absl::StatusOr<Persistent<const MapType>> CreateMapType(
-      const Persistent<const Type>& key,
-      const Persistent<const Type>& value) ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<Handle<MapType>> CreateMapType(const Handle<Type>& key,
+                                                const Handle<Type>& value)
+      ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
-  Persistent<const TypeType> GetTypeType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
-
-  Persistent<const UnknownType> GetUnknownType() ABSL_ATTRIBUTE_LIFETIME_BOUND;
+  absl::StatusOr<Handle<OptionalType>> CreateOptionalType(
+      const Handle<Type>& type) ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
   MemoryManager& memory_manager() const { return memory_manager_; }
 
  private:
   MemoryManager& memory_manager_;
 
+  Handle<ListType> json_list_type_;
+  Handle<MapType> json_map_type_;
+
   absl::Mutex list_types_mutex_;
   // Mapping from list element types to the list type. This allows us to cache
   // list types and avoid re-creating the same type.
-  absl::flat_hash_map<Persistent<const Type>, Persistent<const ListType>>
-      list_types_ ABSL_GUARDED_BY(list_types_mutex_);
+  absl::flat_hash_map<Handle<Type>, Handle<ListType>> list_types_
+      ABSL_GUARDED_BY(list_types_mutex_);
 
   absl::Mutex map_types_mutex_;
   // Mapping from map key and value types to the map type. This allows us to
   // cache map types and avoid re-creating the same type.
-  absl::flat_hash_map<std::pair<Persistent<const Type>, Persistent<const Type>>,
-                      Persistent<const MapType>>
+  absl::flat_hash_map<std::pair<Handle<Type>, Handle<Type>>, Handle<MapType>>
       map_types_ ABSL_GUARDED_BY(map_types_mutex_);
+
+  absl::Mutex optional_types_mutex_;
+  // Mapping from type to the optional type. This allows us to cache optional
+  // types and avoid re-creating the same type.
+  absl::flat_hash_map<Handle<Type>, Handle<OptionalType>> optional_types_
+      ABSL_GUARDED_BY(optional_types_mutex_);
 };
 
 }  // namespace cel

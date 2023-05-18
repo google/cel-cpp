@@ -24,6 +24,7 @@ cc_library(
         "message_wrapper.h",
     ],
     deps = [
+        "//base/internal:message_wrapper",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/numeric:bits",
         "@com_google_protobuf//:protobuf",
@@ -71,11 +72,14 @@ cc_library(
     deps = [
         ":cel_value_internal",
         ":message_wrapper",
+        ":unknown_set",
         "//base:kind",
-        "//base:memory_manager",
+        "//base:memory",
+        "//eval/internal:errors",
         "//eval/public/structs:legacy_type_info_apis",
         "//extensions/protobuf:memory_manager",
         "//internal:casts",
+        "//internal:rtti",
         "//internal:status_macros",
         "//internal:utf8",
         "@com_google_absl//absl/base:core_headers",
@@ -101,10 +105,7 @@ cc_library(
     ],
     deps = [
         ":cel_value",
-        ":cel_value_internal",
         "//base:attributes",
-        "//internal:status_macros",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:optional",
@@ -181,10 +182,17 @@ cc_library(
     ],
     deps = [
         ":cel_value",
-        "//base:functions",
+        "//base:function",
+        "//base:function_descriptor",
+        "//base:handle",
+        "//base:value",
+        "//eval/internal:interop",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -256,24 +264,12 @@ cc_test(
 )
 
 cc_library(
-    name = "cel_function_provider",
-    srcs = [
-        "cel_function_provider.cc",
-    ],
-    hdrs = [
-        "cel_function_provider.h",
-    ],
-    deps = [
-        ":base_activation",
-        ":cel_function",
-        "@com_google_absl//absl/status:statusor",
-    ],
-)
-
-cc_library(
     name = "cel_builtins",
     hdrs = [
         "cel_builtins.h",
+    ],
+    deps = [
+        "//base:builtins",
     ],
 )
 
@@ -293,9 +289,18 @@ cc_library(
         ":cel_options",
         ":cel_value",
         ":comparison_functions",
+        ":container_function_registrar",
+        ":equality_function_registrar",
+        ":logical_function_registrar",
         ":portable_cel_function_adapter",
+        "//base:function_adapter",
+        "//base:handle",
+        "//base:type",
+        "//base:value",
         "//eval/eval:mutable_list_impl",
+        "//eval/internal:interop",
         "//eval/public/containers:container_backed_list_impl",
+        "//extensions/protobuf:memory_manager",
         "//internal:casts",
         "//internal:overflow",
         "//internal:proto_time_encoding",
@@ -303,10 +308,10 @@ cc_library(
         "//internal:time",
         "//internal:utf8",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
         "@com_googlesource_code_re2//:re2",
     ],
 )
@@ -320,26 +325,12 @@ cc_library(
         "comparison_functions.h",
     ],
     deps = [
-        ":cel_builtins",
         ":cel_function_registry",
-        ":cel_number",
         ":cel_options",
-        ":cel_value",
-        ":message_wrapper",
-        ":portable_cel_function_adapter",
-        "//eval/eval:mutable_list_impl",
-        "//eval/public/structs:legacy_type_adapter",
-        "//eval/public/structs:legacy_type_info_apis",
-        "//internal:casts",
-        "//internal:overflow",
-        "//internal:status_macros",
-        "//internal:time",
-        "//internal:utf8",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "//runtime/standard:comparison_functions",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:optional",
-        "@com_googlesource_code_re2//:re2",
     ],
 )
 
@@ -351,18 +342,73 @@ cc_test(
     ],
     deps = [
         ":activation",
-        ":cel_builtins",
         ":cel_expr_builder_factory",
         ":cel_expression",
         ":cel_function_registry",
         ":cel_options",
         ":cel_value",
         ":comparison_functions",
+        "//eval/public/testing:matchers",
+        "//internal:status_macros",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "equality_function_registrar",
+    srcs = [
+        "equality_function_registrar.cc",
+    ],
+    hdrs = [
+        "equality_function_registrar.h",
+    ],
+    deps = [
+        ":cel_builtins",
+        ":cel_function_registry",
+        ":cel_number",
+        ":cel_options",
+        ":cel_value",
         ":message_wrapper",
-        ":set_util",
+        ":portable_cel_function_adapter",
+        "//base:function_adapter",
+        "//base:kind",
+        "//base:value",
+        "//eval/public/structs:legacy_type_adapter",
+        "//eval/public/structs:legacy_type_info_apis",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "equality_function_registrar_test",
+    size = "small",
+    srcs = [
+        "equality_function_registrar_test.cc",
+    ],
+    deps = [
+        ":activation",
+        ":cel_builtins",
+        ":cel_expr_builder_factory",
+        ":cel_expression",
+        ":cel_function_registry",
+        ":cel_options",
+        ":cel_value",
+        ":equality_function_registrar",
+        ":message_wrapper",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
-        "//eval/public/containers:field_backed_list_impl",
         "//eval/public/structs:cel_proto_wrapper",
         "//eval/public/structs:trivial_legacy_type_info",
         "//eval/public/testing:matchers",
@@ -378,6 +424,100 @@ cc_test(
         "@com_google_absl//absl/types:variant",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_googleapis//google/rpc/context:attribute_context_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "container_function_registrar",
+    srcs = [
+        "container_function_registrar.cc",
+    ],
+    hdrs = [
+        "container_function_registrar.h",
+    ],
+    deps = [
+        ":cel_function_registry",
+        ":cel_options",
+        ":portable_cel_function_adapter",
+        "//base:builtins",
+        "//base:function_adapter",
+        "//base:handle",
+        "//base:value",
+        "//eval/eval:mutable_list_impl",
+        "//eval/internal:interop",
+        "//eval/public/containers:container_backed_list_impl",
+        "//extensions/protobuf:memory_manager",
+        "@com_google_absl//absl/status",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "container_function_registrar_test",
+    size = "small",
+    srcs = [
+        "container_function_registrar_test.cc",
+    ],
+    deps = [
+        ":activation",
+        ":cel_expr_builder_factory",
+        ":cel_expression",
+        ":cel_value",
+        ":container_function_registrar",
+        ":equality_function_registrar",
+        "//eval/public/containers:container_backed_list_impl",
+        "//eval/public/testing:matchers",
+        "//internal:testing",
+        "//parser",
+    ],
+)
+
+cc_library(
+    name = "logical_function_registrar",
+    srcs = [
+        "logical_function_registrar.cc",
+    ],
+    hdrs = [
+        "logical_function_registrar.h",
+    ],
+    deps = [
+        ":cel_builtins",
+        ":cel_function_registry",
+        ":cel_options",
+        "//base:function_adapter",
+        "//base:function_descriptor",
+        "//base:value",
+        "//eval/internal:errors",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "logical_function_registrar_test",
+    size = "small",
+    srcs = [
+        "logical_function_registrar_test.cc",
+    ],
+    deps = [
+        ":activation",
+        ":cel_expr_builder_factory",
+        ":cel_expression",
+        ":cel_options",
+        ":cel_value",
+        ":logical_function_registrar",
+        ":portable_cel_function_adapter",
+        "//eval/public/testing:matchers",
+        "//internal:no_destructor",
+        "//internal:testing",
+        "//parser",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -435,7 +575,7 @@ cc_library(
     srcs = ["source_position_native.cc"],
     hdrs = ["source_position_native.h"],
     deps = [
-        "//base:ast",
+        "//base:ast_internal",
     ],
 )
 
@@ -468,7 +608,7 @@ cc_library(
     ],
     deps = [
         ":source_position_native",
-        "//base:ast",
+        "//base:ast_internal",
     ],
 )
 
@@ -510,7 +650,7 @@ cc_library(
     deps = [
         ":ast_visitor_native",
         ":source_position_native",
-        "//base:ast",
+        "//base:ast_internal",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/types:variant",
     ],
@@ -518,10 +658,14 @@ cc_library(
 
 cc_library(
     name = "cel_options",
+    srcs = [
+        "cel_options.cc",
+    ],
     hdrs = [
         "cel_options.h",
     ],
     deps = [
+        "//runtime:runtime_options",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -570,11 +714,26 @@ cc_library(
     hdrs = ["cel_function_registry.h"],
     deps = [
         ":cel_function",
-        ":cel_function_provider",
         ":cel_options",
         ":cel_value",
+        "//base:function",
+        "//base:function_descriptor",
+        "//base:kind",
+        "//base:type",
+        "//base:value",
+        "//eval/internal:interop",
+        "//extensions/protobuf:memory_manager",
+        "//internal:status_macros",
+        "//runtime:function_overload_reference",
+        "//runtime:function_registry",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -589,8 +748,8 @@ cc_test(
         ":cel_value_internal",
         ":unknown_attribute_set",
         ":unknown_set",
-        "//base:kind",
-        "//base:memory_manager",
+        "//base:memory",
+        "//eval/internal:errors",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:trivial_legacy_type_info",
         "//eval/public/testing:matchers",
@@ -726,10 +885,10 @@ cc_test(
         ":ast_rewrite_native",
         ":ast_visitor_native",
         ":source_position_native",
-        "//base:ast_utility",
+        "//extensions/protobuf:ast_converters",
         "//internal:testing",
         "//parser",
-        "//testutil:util",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -751,19 +910,6 @@ cc_test(
 )
 
 cc_test(
-    name = "cel_function_provider_test",
-    srcs = [
-        "cel_function_provider_test.cc",
-    ],
-    deps = [
-        ":activation",
-        ":cel_function_provider",
-        "//internal:status_macros",
-        "//internal:testing",
-    ],
-)
-
-cc_test(
     name = "cel_function_registry_test",
     srcs = [
         "cel_function_registry_test.cc",
@@ -771,10 +917,11 @@ cc_test(
     deps = [
         ":activation",
         ":cel_function",
-        ":cel_function_provider",
         ":cel_function_registry",
-        "//internal:status_macros",
+        "//base:kind",
+        "//eval/internal:adapter_activation_impl",
         "//internal:testing",
+        "//runtime:function_overload_reference",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
@@ -798,15 +945,16 @@ cc_library(
     srcs = ["cel_type_registry.cc"],
     hdrs = ["cel_type_registry.h"],
     deps = [
-        ":cel_value",
+        "//base:handle",
+        "//base:memory",
+        "//base:type",
+        "//base:value",
+        "//eval/internal:interop",
         "//eval/public/structs:legacy_type_provider",
-        "//internal:no_destructor",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_set",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
@@ -819,12 +967,14 @@ cc_test(
     srcs = ["cel_type_registry_test.cc"],
     deps = [
         ":cel_type_registry",
-        ":cel_value",
+        "//base:type",
+        "//base:value",
         "//eval/public/structs:legacy_type_provider",
         "//eval/testutil:test_message_cc_proto",
         "//internal:testing",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -942,8 +1092,8 @@ cc_library(
     srcs = ["unknown_function_result_set.cc"],
     hdrs = ["unknown_function_result_set.h"],
     deps = [
-        ":cel_function",
-        "//base:functions",
+        "//base:function_result",
+        "//base:function_result_set",
     ],
 )
 
@@ -1085,7 +1235,8 @@ cc_library(
     hdrs = ["cel_number.h"],
     deps = [
         ":cel_value",
-        "@com_google_absl//absl/types:variant",
+        "//runtime/internal:number",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -1096,9 +1247,41 @@ cc_library(
     deps = [
         ":cel_expression",
         ":cel_options",
+        "//eval/compiler:constant_folding",
         "//eval/compiler:flat_expr_builder",
+        "//eval/compiler:qualified_reference_resolver",
+        "//eval/compiler:regex_precompilation_optimization",
         "//eval/public/structs:legacy_type_provider",
+        "//runtime:runtime_options",
         "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "string_extension_func_registrar",
+    srcs = ["string_extension_func_registrar.cc"],
+    hdrs = ["string_extension_func_registrar.h"],
+    deps = [
+        ":cel_function",
+        ":cel_function_adapter",
+        ":cel_function_registry",
+        ":cel_value",
+        "//eval/public/containers:container_backed_list_impl",
+        "//internal:status_macros",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "string_extension_func_registrar_test",
+    srcs = ["string_extension_func_registrar_test.cc"],
+    deps = [
+        ":builtin_func_registrar",
+        ":cel_value",
+        ":string_extension_func_registrar",
+        "//eval/public/containers:container_backed_list_impl",
+        "//internal:testing",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
     ],
 )
 
@@ -1115,24 +1298,13 @@ cc_test(
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:legacy_type_provider",
         "//eval/testutil:test_message_cc_proto",
+        "//extensions/protobuf:memory_manager",
         "//internal:casts",
         "//internal:proto_time_encoding",
         "//internal:testing",
         "//parser",
-        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "cel_number_test",
-    srcs = ["cel_number_test.cc"],
-    deps = [
-        ":cel_number",
-        "//internal:testing",
-        "@com_google_absl//absl/types:optional",
     ],
 )

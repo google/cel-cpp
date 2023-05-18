@@ -21,13 +21,17 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
-#include "absl/types/span.h"
-#include "base/ast.h"
-#include "base/memory_manager.h"
-#include "eval/compiler/resolver.h"
+#include "base/ast_internal.h"
+#include "base/handle.h"
+#include "base/memory.h"
+#include "base/type_manager.h"
+#include "base/value.h"
+#include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
+#include "eval/internal/adapter_activation_impl.h"
+#include "eval/internal/interop.h"
 #include "eval/public/base_activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
@@ -35,6 +39,9 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/rtti.h"
+#include "runtime/activation_interface.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -46,7 +53,7 @@ using Expr = ::google::api::expr::v1alpha1::Expr;
 // Class Expression represents single execution step.
 class ExpressionStep {
  public:
-  virtual ~ExpressionStep() {}
+  virtual ~ExpressionStep() = default;
 
   // Performs actual evaluation.
   // Values are passed between Expression objects via EvaluatorStack, which is
@@ -67,20 +74,26 @@ class ExpressionStep {
 
   // Returns if the execution step comes from AST.
   virtual bool ComesFromAst() const = 0;
+
+  // Return the type of the underlying expression step for special handling in
+  // the planning phase. This should only be overridden by special cases, and
+  // callers must not make any assumptions about the default case.
+  virtual cel::internal::TypeInfo TypeId() const = 0;
 };
 
 using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;
+using ExecutionPathView =
+    absl::Span<const std::unique_ptr<const ExpressionStep>>;
 
 class CelExpressionFlatEvaluationState : public CelEvaluationState {
  public:
-  CelExpressionFlatEvaluationState(
-      size_t value_stack_size, const std::set<std::string>& iter_variable_names,
-      google::protobuf::Arena* arena);
+  CelExpressionFlatEvaluationState(size_t value_stack_size,
+                                   google::protobuf::Arena* arena);
 
   struct ComprehensionVarEntry {
     absl::string_view name;
     // present if we're in part of the loop context where this can be accessed.
-    absl::optional<CelValue> value;
+    cel::Handle<cel::Value> value;
     AttributeTrail attr_trail;
   };
 
@@ -97,20 +110,26 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   IterFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
-  std::set<std::string>& iter_variable_names() { return iter_variable_names_; }
-
   google::protobuf::Arena* arena() { return memory_manager_.arena(); }
 
   cel::MemoryManager& memory_manager() { return memory_manager_; }
 
+  cel::TypeFactory& type_factory() { return type_factory_; }
+
+  cel::TypeManager& type_manager() { return type_manager_; }
+
+  cel::ValueFactory& value_factory() { return value_factory_; }
+
  private:
-  EvaluatorStack value_stack_;
-  std::set<std::string> iter_variable_names_;
-  std::vector<IterFrame> iter_stack_;
   // TODO(issues/5): State owns a ProtoMemoryManager to adapt from the client
   // provided arena. In the future, clients will have to maintain the particular
   // manager they want to use for evaluation.
   cel::extensions::ProtoMemoryManager memory_manager_;
+  EvaluatorStack value_stack_;
+  std::vector<IterFrame> iter_stack_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
 };
 
 // ExecutionFrame provides context for expression evaluation.
@@ -121,32 +140,29 @@ class ExecutionFrame {
   // activation provides bindings between parameter names and values.
   // arena serves as allocation manager during the expression evaluation.
 
-  ExecutionFrame(const ExecutionPath& flat, const BaseActivation& activation,
-                 const CelTypeRegistry* type_registry, int max_iterations,
-                 CelExpressionFlatEvaluationState* state, bool enable_unknowns,
-                 bool enable_unknown_function_results,
-                 bool enable_missing_attribute_errors,
-                 bool enable_null_coercion,
-                 bool enable_heterogeneous_numeric_lookups)
+  ExecutionFrame(ExecutionPathView flat, const BaseActivation& activation,
+                 const CelTypeRegistry* type_registry,
+                 const cel::RuntimeOptions& options,
+                 CelExpressionFlatEvaluationState* state)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
+        modern_activation_(activation),
         type_registry_(*type_registry),
-        enable_unknowns_(enable_unknowns),
-        enable_unknown_function_results_(enable_unknown_function_results),
-        enable_missing_attribute_errors_(enable_missing_attribute_errors),
-        enable_null_coercion_(enable_null_coercion),
-        enable_heterogeneous_numeric_lookups_(
-            enable_heterogeneous_numeric_lookups),
-        attribute_utility_(&activation.unknown_attribute_patterns(),
-                           &activation.missing_attribute_patterns(),
+        options_(options),
+        attribute_utility_(modern_activation_.GetUnknownAttributes(),
+                           modern_activation_.GetMissingAttributes(),
                            state->memory_manager()),
-        max_iterations_(max_iterations),
+        max_iterations_(options_.comprehension_max_iterations),
         iterations_(0),
         state_(state) {}
 
   // Returns next expression to evaluate.
   const ExpressionStep* Next();
+
+  // Evaluate the execution frame to completion.
+  absl::StatusOr<cel::Handle<cel::Value>> Evaluate(
+      const CelEvaluationListener& listener);
 
   // Intended for use only in conditionals.
   absl::Status JumpTo(int offset) {
@@ -162,21 +178,32 @@ class ExecutionFrame {
   }
 
   EvaluatorStack& value_stack() { return state_->value_stack(); }
-  bool enable_unknowns() const { return enable_unknowns_; }
-  bool enable_unknown_function_results() const {
-    return enable_unknown_function_results_;
-  }
-  bool enable_missing_attribute_errors() const {
-    return enable_missing_attribute_errors_;
+
+  bool enable_unknowns() const {
+    return options_.unknown_processing !=
+           cel::UnknownProcessingOptions::kDisabled;
   }
 
-  bool enable_null_coercion() const { return enable_null_coercion_; }
+  bool enable_unknown_function_results() const {
+    return options_.unknown_processing ==
+           cel::UnknownProcessingOptions::kAttributeAndFunction;
+  }
+
+  bool enable_missing_attribute_errors() const {
+    return options_.enable_missing_attribute_errors;
+  }
 
   bool enable_heterogeneous_numeric_lookups() const {
-    return enable_heterogeneous_numeric_lookups_;
+    return options_.enable_heterogeneous_equality;
   }
 
   cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
+
+  cel::TypeFactory& type_factory() { return state_->type_factory(); }
+
+  cel::TypeManager& type_manager() { return state_->type_manager(); }
+
+  cel::ValueFactory& value_factory() { return state_->value_factory(); }
 
   const CelTypeRegistry& type_registry() { return type_registry_; }
 
@@ -187,6 +214,11 @@ class ExecutionFrame {
   // Returns reference to Activation
   const BaseActivation& activation() const { return activation_; }
 
+  // Returns reference to the modern API activation.
+  const cel::ActivationInterface& modern_activation() const {
+    return modern_activation_;
+  }
+
   // Creates a new frame for the iteration variables identified by iter_var_name
   // and accu_var_name.
   absl::Status PushIterFrame(absl::string_view iter_var_name,
@@ -196,16 +228,16 @@ class ExecutionFrame {
   absl::Status PopIterFrame();
 
   // Sets the value of the accumuation variable
-  absl::Status SetAccuVar(const CelValue& val);
+  absl::Status SetAccuVar(cel::Handle<cel::Value> value);
 
   // Sets the value of the accumulation variable
-  absl::Status SetAccuVar(const CelValue& val, AttributeTrail trail);
+  absl::Status SetAccuVar(cel::Handle<cel::Value> value, AttributeTrail trail);
 
   // Sets the value of the iteration variable
-  absl::Status SetIterVar(const CelValue& val);
+  absl::Status SetIterVar(cel::Handle<cel::Value> value);
 
   // Sets the value of the iteration variable
-  absl::Status SetIterVar(const CelValue& val, AttributeTrail trail);
+  absl::Status SetIterVar(cel::Handle<cel::Value> value, AttributeTrail trail);
 
   // Clears the value of the iteration variable
   absl::Status ClearIterVar();
@@ -213,13 +245,8 @@ class ExecutionFrame {
   // Gets the current value of either an iteration variable or accumulation
   // variable.
   // Returns false if the variable is not yet set or has been cleared.
-  bool GetIterVar(const std::string& name, CelValue* val) const;
-
-  // Gets the current attribute trail of either an iteration variable or
-  // accumulation variable.
-  // Returns false if the variable is not currently in use (SetIterVar has not
-  // been called since init or last clear).
-  bool GetIterAttr(const std::string& name, const AttributeTrail** val) const;
+  bool GetIterVar(absl::string_view name, cel::Handle<cel::Value>* value,
+                  AttributeTrail* trail) const;
 
   // Increment iterations and return an error if the iteration budget is
   // exceeded
@@ -237,14 +264,11 @@ class ExecutionFrame {
 
  private:
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
-  const ExecutionPath& execution_path_;
+  ExecutionPathView execution_path_;
   const BaseActivation& activation_;
+  cel::interop_internal::AdapterActivationImpl modern_activation_;
   const CelTypeRegistry& type_registry_;
-  bool enable_unknowns_;
-  bool enable_unknown_function_results_;
-  bool enable_missing_attribute_errors_;
-  bool enable_null_coercion_;
-  bool enable_heterogeneous_numeric_lookups_;
+  const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
@@ -260,27 +284,12 @@ class CelExpressionFlatImpl : public CelExpression {
   // flattened AST tree. Max iterations dictates the maximum number of
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
-  // TODO(issues/5): Remove unused parameter \a root_expr.
-  CelExpressionFlatImpl(
-      ABSL_ATTRIBUTE_UNUSED const cel::ast::internal::Expr* root_expr,
-      ExecutionPath path, const CelTypeRegistry* type_registry,
-      int max_iterations, std::set<std::string> iter_variable_names,
-      bool enable_unknowns = false,
-      bool enable_unknown_function_results = false,
-      bool enable_missing_attribute_errors = false,
-      bool enable_null_coercion = true,
-      bool enable_heterogeneous_equality = false,
-      std::unique_ptr<cel::ast::internal::Expr> rewritten_expr = nullptr)
-      : rewritten_expr_(std::move(rewritten_expr)),
-        path_(std::move(path)),
+  CelExpressionFlatImpl(ExecutionPath path,
+                        const CelTypeRegistry* type_registry,
+                        const cel::RuntimeOptions& options)
+      : path_(std::move(path)),
         type_registry_(*type_registry),
-        max_iterations_(max_iterations),
-        iter_variable_names_(std::move(iter_variable_names)),
-        enable_unknowns_(enable_unknowns),
-        enable_unknown_function_results_(enable_unknown_function_results),
-        enable_missing_attribute_errors_(enable_missing_attribute_errors),
-        enable_null_coercion_(enable_null_coercion),
-        enable_heterogeneous_equality_(enable_heterogeneous_equality) {}
+        options_(options) {}
 
   // Move-only
   CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
@@ -309,18 +318,12 @@ class CelExpressionFlatImpl : public CelExpression {
                                  CelEvaluationState* state,
                                  CelEvaluationListener callback) const override;
 
+  const ExecutionPath& path() const { return path_; }
+
  private:
-  // Maintain lifecycle of a modified expression.
-  std::unique_ptr<cel::ast::internal::Expr> rewritten_expr_;
   const ExecutionPath path_;
   const CelTypeRegistry& type_registry_;
-  const int max_iterations_;
-  const std::set<std::string> iter_variable_names_;
-  bool enable_unknowns_;
-  bool enable_unknown_function_results_;
-  bool enable_missing_attribute_errors_;
-  bool enable_null_coercion_;
-  bool enable_heterogeneous_equality_;
+  cel::RuntimeOptions options_;
 };
 
 }  // namespace google::api::expr::runtime

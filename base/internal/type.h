@@ -19,19 +19,19 @@
 
 #include <cstdint>
 
-#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "internal/rtti.h"
 
 namespace cel {
 
+class Value;
 class EnumType;
 class StructType;
 
 namespace base_internal {
 
-class PersistentTypeHandle;
+class TypeHandle;
 
 class ListTypeImpl;
 class MapTypeImpl;
@@ -39,6 +39,11 @@ class LegacyStructType;
 class AbstractStructType;
 class LegacyStructValue;
 class AbstractStructValue;
+class LegacyListType;
+class ModernListType;
+class LegacyMapType;
+class ModernMapType;
+struct FieldIdFactory;
 
 template <Kind K>
 class SimpleType;
@@ -49,30 +54,52 @@ internal::TypeInfo GetEnumTypeTypeId(const EnumType& enum_type);
 
 internal::TypeInfo GetStructTypeTypeId(const StructType& struct_type);
 
-inline constexpr size_t kTypeInlineSize = sizeof(void*);
-inline constexpr size_t kTypeInlineAlign = alignof(void*);
+struct InlineType final {
+  uintptr_t vptr;
+  union {
+    uintptr_t legacy;
+  };
+};
 
-struct AnyType final : public AnyData<kTypeInlineSize, kTypeInlineAlign> {};
+inline constexpr size_t kTypeInlineSize = sizeof(InlineType);
+inline constexpr size_t kTypeInlineAlign = alignof(InlineType);
+
+static_assert(kTypeInlineSize <= 16,
+              "Size of an inline type should be less than 16 bytes.");
+static_assert(kTypeInlineAlign <= alignof(std::max_align_t),
+              "Alignment of an inline type should not be overaligned.");
+
+using AnyType = AnyData<kTypeInlineSize, kTypeInlineAlign>;
+
+// Metaprogramming utility for interacting with Type.
+//
+// TypeTraits<T>::type is an alias for T.
+// TypeTraits<T>::value_type is the corresponding Value for T.
+template <typename T>
+struct TypeTraits;
 
 }  // namespace base_internal
 
 }  // namespace cel
 
-#define CEL_INTERNAL_TYPE_DECL(name)      \
-  extern template class Persistent<name>; \
-  extern template class Persistent<const name>
+#define CEL_INTERNAL_TYPE_DECL(name) extern template class Handle<name>
 
-#define CEL_INTERNAL_TYPE_IMPL(name) \
-  template class Persistent<name>;   \
-  template class Persistent<const name>
+#define CEL_INTERNAL_TYPE_IMPL(name) template class Handle<name>
 
-#define CEL_INTERNAL_DECLARE_TYPE(base, derived)           \
- public:                                                   \
-  static bool Is(const ::cel::Type& type);                 \
-                                                           \
- private:                                                  \
-  friend class ::cel::base_internal::PersistentTypeHandle; \
-                                                           \
+#define CEL_INTERNAL_DECLARE_TYPE(base, derived)      \
+ public:                                              \
+  static bool Is(const ::cel::Type& type);            \
+                                                      \
+  using ::cel::base##Type::Is;                        \
+                                                      \
+  static const derived& Cast(const cel::Type& type) { \
+    ABSL_ASSERT(Is(type));                            \
+    return static_cast<const derived&>(type);         \
+  }                                                   \
+                                                      \
+ private:                                             \
+  friend class ::cel::base_internal::TypeHandle;      \
+                                                      \
   ::cel::internal::TypeInfo TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_TYPE(base, derived)                            \

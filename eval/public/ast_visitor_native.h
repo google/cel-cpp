@@ -17,7 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_NATIVE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_NATIVE_H_
 
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/public/source_position_native.h"
 
 namespace cel {

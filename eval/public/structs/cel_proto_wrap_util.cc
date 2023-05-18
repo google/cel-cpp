@@ -28,6 +28,7 @@
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/message.h"
+#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
@@ -41,6 +42,8 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/overflow.h"
 #include "internal/proto_time_encoding.h"
+#include "google/protobuf/descriptor.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime::internal {
 
@@ -77,7 +80,8 @@ constexpr int64_t kMaxIntJSON = (1ll << 53) - 1;
 constexpr int64_t kMinIntJSON = -kMaxIntJSON;
 
 // Forward declaration for google.protobuf.Value
-google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json);
+google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json,
+                                  google::protobuf::Arena* arena);
 
 // IsJSONSafe indicates whether the int is safely representable as a floating
 // point value in JSON.
@@ -185,8 +189,22 @@ class DynamicMap : public CelMap {
 // protobuf message.
 class ValueFactory {
  public:
-  ValueFactory(const ProtobufValueFactory& factory, google::protobuf::Arena* arena)
-      : factory_(factory), arena_(arena) {}
+  ValueFactory(const ProtobufValueFactory& value_factory,
+               const google::protobuf::DescriptorPool* descriptor_pool,
+               google::protobuf::Arena* arena, google::protobuf::MessageFactory* message_factory)
+      : value_factory_(value_factory),
+        descriptor_pool_(descriptor_pool),
+        arena_(arena),
+        message_factory_(message_factory) {}
+
+  // Note: this overload should only be used in the context of accessing struct
+  // value members, which have already been adapted to the generated message
+  // types.
+  ValueFactory(const ProtobufValueFactory& value_factory, google::protobuf::Arena* arena)
+      : value_factory_(value_factory),
+        descriptor_pool_(DescriptorPool::generated_pool()),
+        arena_(arena),
+        message_factory_(MessageFactory::generated_factory()) {}
 
   CelValue ValueFromMessage(const Duration* duration) {
     return CelValue::CreateDuration(DecodeDuration(*duration));
@@ -197,13 +215,13 @@ class ValueFactory {
   }
 
   CelValue ValueFromMessage(const ListValue* list_values) {
-    return CelValue::CreateList(
-        Arena::Create<DynamicList>(arena_, list_values, factory_, arena_));
+    return CelValue::CreateList(Arena::Create<DynamicList>(
+        arena_, list_values, value_factory_, arena_));
   }
 
   CelValue ValueFromMessage(const Struct* struct_value) {
-    return CelValue::CreateMap(
-        Arena::Create<DynamicMap>(arena_, struct_value, factory_, arena_));
+    return CelValue::CreateMap(Arena::Create<DynamicMap>(
+        arena_, struct_value, value_factory_, arena_));
   }
 
   CelValue ValueFromMessage(const Any* any_value,
@@ -241,12 +259,11 @@ class ValueFactory {
       return CreateErrorValue(arena_, "Failed to unpack Any into message");
     }
 
-    return UnwrapMessageToValue(nested_message, factory_, arena_);
+    return UnwrapMessageToValue(nested_message, value_factory_, arena_);
   }
 
   CelValue ValueFromMessage(const Any* any_value) {
-    return ValueFromMessage(any_value, DescriptorPool::generated_pool(),
-                            MessageFactory::generated_factory());
+    return ValueFromMessage(any_value, descriptor_pool_, message_factory_);
   }
 
   CelValue ValueFromMessage(const BoolValue* wrapper) {
@@ -298,17 +315,21 @@ class ValueFactory {
       case Value::KindCase::kBoolValue:
         return CelValue::CreateBool(value->bool_value());
       case Value::KindCase::kStructValue:
-        return UnwrapMessageToValue(&value->struct_value(), factory_, arena_);
+        return UnwrapMessageToValue(&value->struct_value(), value_factory_,
+                                    arena_);
       case Value::KindCase::kListValue:
-        return UnwrapMessageToValue(&value->list_value(), factory_, arena_);
+        return UnwrapMessageToValue(&value->list_value(), value_factory_,
+                                    arena_);
       default:
         return CelValue::CreateNull();
     }
   }
 
  private:
-  const ProtobufValueFactory& factory_;
+  const ProtobufValueFactory& value_factory_;
+  const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::Arena* arena_;
+  MessageFactory* message_factory_;
 };
 
 // Class makes CelValue from generic protobuf Message.
@@ -323,6 +344,12 @@ class ValueFromMessageMaker {
                                            Arena* arena) {
     const MessageType* message =
         google::protobuf::DynamicCastToGenerated<const MessageType>(msg);
+
+    // Copy the original descriptor pool and message factory for unpacking 'Any'
+    // values.
+    google::protobuf::MessageFactory* message_factory =
+        msg->GetReflection()->GetMessageFactory();
+    const google::protobuf::DescriptorPool* pool = msg->GetDescriptor()->file()->pool();
     if (message == nullptr) {
       auto message_copy = Arena::CreateMessage<MessageType>(arena);
       if (MessageType::descriptor() == msg->GetDescriptor()) {
@@ -338,7 +365,8 @@ class ValueFromMessageMaker {
         }
       }
     }
-    return ValueFactory(factory, arena).ValueFromMessage(message);
+    return ValueFactory(factory, pool, arena, message_factory)
+        .ValueFromMessage(message);
   }
 
   static absl::optional<CelValue> CreateValue(
@@ -408,7 +436,9 @@ absl::optional<CelValue> DynamicMap::operator[](CelValue key) const {
   return ValueFactory(factory_, arena_).ValueFromMessage(&it->second);
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Duration* duration) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, Duration* duration,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   absl::Duration val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -420,7 +450,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Duration* dur
   return duration;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, BoolValue* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, BoolValue* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   bool val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -429,7 +461,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, BoolValue* wr
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, BytesValue* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, BytesValue* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   CelValue::BytesHolder view_val;
   if (!value.GetValue(&view_val)) {
     return nullptr;
@@ -438,7 +472,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, BytesValue* w
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, DoubleValue* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, DoubleValue* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   double val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -447,7 +483,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, DoubleValue* 
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, FloatValue* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, FloatValue* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   double val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -465,7 +503,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, FloatValue* w
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Int32Value* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, Int32Value* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   int64_t val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -478,7 +518,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Int32Value* w
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Int64Value* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, Int64Value* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   int64_t val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -487,7 +529,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Int64Value* w
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, StringValue* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, StringValue* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   CelValue::StringHolder view_val;
   if (!value.GetValue(&view_val)) {
     return nullptr;
@@ -496,7 +540,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, StringValue* 
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Timestamp* timestamp) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, Timestamp* timestamp,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   absl::Time val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -508,7 +554,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Timestamp* ti
   return timestamp;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, UInt32Value* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, UInt32Value* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   uint64_t val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -521,7 +569,9 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, UInt32Value* 
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, UInt64Value* wrapper) {
+google::protobuf::Message* MessageFromValue(
+    const CelValue& value, UInt64Value* wrapper,
+    google::protobuf::Arena* arena ABSL_ATTRIBUTE_UNUSED = nullptr) {
   uint64_t val;
   if (!value.GetValue(&val)) {
     return nullptr;
@@ -530,15 +580,16 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, UInt64Value* 
   return wrapper;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, ListValue* json_list) {
+google::protobuf::Message* MessageFromValue(const CelValue& value, ListValue* json_list,
+                                  google::protobuf::Arena* arena) {
   if (!value.IsList()) {
     return nullptr;
   }
   const CelList& list = *value.ListOrDie();
   for (int i = 0; i < list.size(); i++) {
-    auto e = list[i];
+    auto e = list.Get(arena, i);
     Value* elem = json_list->add_values();
-    auto result = MessageFromValue(e, elem);
+    auto result = MessageFromValue(e, elem, arena);
     if (result == nullptr) {
       return nullptr;
     }
@@ -546,27 +597,28 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, ListValue* js
   return json_list;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Struct* json_struct) {
+google::protobuf::Message* MessageFromValue(const CelValue& value, Struct* json_struct,
+                                  google::protobuf::Arena* arena) {
   if (!value.IsMap()) {
     return nullptr;
   }
   const CelMap& map = *value.MapOrDie();
-  const auto& keys = *map.ListKeys().value();
+  const auto& keys = *map.ListKeys(arena).value();
   auto fields = json_struct->mutable_fields();
   for (int i = 0; i < keys.size(); i++) {
-    auto k = keys[i];
+    auto k = keys.Get(arena, i);
     // If the key is not a string type, abort the conversion.
     if (!k.IsString()) {
       return nullptr;
     }
     absl::string_view key = k.StringOrDie().value();
 
-    auto v = map[k];
+    auto v = map.Get(arena, k);
     if (!v.has_value()) {
       return nullptr;
     }
     Value field_value;
-    auto result = MessageFromValue(*v, &field_value);
+    auto result = MessageFromValue(*v, &field_value, arena);
     // If the value is not a valid JSON type, abort the conversion.
     if (result == nullptr) {
       return nullptr;
@@ -576,7 +628,8 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Struct* json_
   return json_struct;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json) {
+google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json,
+                                  google::protobuf::Arena* arena) {
   switch (value.type()) {
     case CelValue::Type::kBool: {
       bool val;
@@ -659,13 +712,13 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json) 
       }
     } break;
     case CelValue::Type::kList: {
-      auto lv = MessageFromValue(value, json->mutable_list_value());
+      auto lv = MessageFromValue(value, json->mutable_list_value(), arena);
       if (lv != nullptr) {
         return json;
       }
     } break;
     case CelValue::Type::kMap: {
-      auto sv = MessageFromValue(value, json->mutable_struct_value());
+      auto sv = MessageFromValue(value, json->mutable_struct_value(), arena);
       if (sv != nullptr) {
         return json;
       }
@@ -679,7 +732,8 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Value* json) 
   return nullptr;
 }
 
-google::protobuf::Message* MessageFromValue(const CelValue& value, Any* any) {
+google::protobuf::Message* MessageFromValue(const CelValue& value, Any* any,
+                                  google::protobuf::Arena* arena) {
   // In open source, any->PackFrom() returns void rather than boolean.
   switch (value.type()) {
     case CelValue::Type::kBool: {
@@ -748,7 +802,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Any* any) {
     } break;
     case CelValue::Type::kList: {
       ListValue v;
-      auto msg = MessageFromValue(value, &v);
+      auto msg = MessageFromValue(value, &v, arena);
       if (msg != nullptr) {
         any->PackFrom(*msg);
         return any;
@@ -756,7 +810,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Any* any) {
     } break;
     case CelValue::Type::kMap: {
       Struct v;
-      auto msg = MessageFromValue(value, &v);
+      auto msg = MessageFromValue(value, &v, arena);
       if (msg != nullptr) {
         any->PackFrom(*msg);
         return any;
@@ -764,7 +818,7 @@ google::protobuf::Message* MessageFromValue(const CelValue& value, Any* any) {
     } break;
     case CelValue::Type::kNullType: {
       Value v;
-      auto msg = MessageFromValue(value, &v);
+      auto msg = MessageFromValue(value, &v, arena);
       if (msg != nullptr) {
         any->PackFrom(*msg);
         return any;
@@ -817,7 +871,7 @@ class MessageFromValueMaker {
     // Otherwise, allocate an empty message type, and attempt to populate it
     // using the proper MessageFromValue overload.
     auto* msg_buffer = Arena::CreateMessage<MessageType>(arena);
-    return MessageFromValue(value, msg_buffer);
+    return MessageFromValue(value, msg_buffer, arena);
   }
 
   static google::protobuf::Message* MaybeWrapMessage(const google::protobuf::Descriptor* descriptor,

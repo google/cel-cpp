@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_BOOL_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
 class BoolValue;
+class BoolWrapperType;
 
 class BoolType final : public base_internal::SimpleType<Kind::kBool> {
  private:
@@ -33,21 +35,33 @@ class BoolType final : public base_internal::SimpleType<Kind::kBool> {
 
   using Base::Is;
 
+  static const BoolType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const BoolType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  friend class BoolWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(BoolType, BoolValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(BoolType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<BoolType> {
+  using value_type = BoolValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

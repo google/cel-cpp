@@ -1,5 +1,6 @@
 #include "eval/eval/evaluator_core.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -8,17 +9,19 @@
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/test_type_registry.h"
+#include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::runtime::RegisterBuiltinFunctions;
 using testing::_;
@@ -29,13 +32,17 @@ using testing::Eq;
 class FakeConstExpressionStep : public ExpressionStep {
  public:
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    frame->value_stack().Push(CelValue::CreateInt64(0));
+    frame->value_stack().Push(CreateIntValue(0));
     return absl::OkStatus();
   }
 
   int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
+
+  cel::internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeInfo();
+  }
 };
 
 // Fake expression implementation
@@ -43,39 +50,41 @@ class FakeConstExpressionStep : public ExpressionStep {
 class FakeIncrementExpressionStep : public ExpressionStep {
  public:
   absl::Status Evaluate(ExecutionFrame* frame) const override {
-    CelValue value = frame->value_stack().Peek();
+    CelValue value = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), frame->value_stack().Peek());
     frame->value_stack().Pop(1);
     EXPECT_TRUE(value.IsInt64());
     int64_t val = value.Int64OrDie();
-    frame->value_stack().Push(CelValue::CreateInt64(val + 1));
+    frame->value_stack().Push(CreateIntValue(val + 1));
     return absl::OkStatus();
   }
 
   int64_t id() const override { return 0; }
 
   bool ComesFromAst() const override { return true; }
+
+  cel::internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeInfo();
+  }
 };
 
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionPath path;
-  auto const_step = absl::make_unique<const FakeConstExpressionStep>();
-  auto incr_step1 = absl::make_unique<const FakeIncrementExpressionStep>();
-  auto incr_step2 = absl::make_unique<const FakeIncrementExpressionStep>();
+  auto const_step = std::make_unique<const FakeConstExpressionStep>();
+  auto incr_step1 = std::make_unique<const FakeIncrementExpressionStep>();
+  auto incr_step2 = std::make_unique<const FakeIncrementExpressionStep>();
 
   path.push_back(std::move(const_step));
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<Expr>();
+  auto dummy_expr = std::make_unique<Expr>();
 
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   Activation activation;
-  CelExpressionFlatEvaluationState state(path.size(), {}, nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
-                       /*enable_unknowns=*/false,
-                       /*enable_unknown_funcion_results=*/false,
-                       /*enable_missing_attribute_errors=*/false,
-                       /*enable_null_coercion=*/true,
-                       /*enable_heterogeneous_numeric_lookups=*/true);
+  CelExpressionFlatEvaluationState state(path.size(), nullptr);
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), options, &state);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -93,57 +102,50 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
   ExecutionPath path;
-  CelExpressionFlatEvaluationState state(path.size(), {test_iter_var}, nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(), 0, &state,
-                       /*enable_unknowns=*/false,
-                       /*enable_unknown_funcion_results=*/false,
-                       /*enable_missing_attribute_errors=*/false,
-                       /*enable_null_coercion=*/true,
-                       /*enable_heterogeneous_numeric_lookups=*/true);
+  CelExpressionFlatEvaluationState state(path.size(), nullptr);
+  cel::RuntimeOptions options;
+  options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
+  ExecutionFrame frame(path, activation, &TestTypeRegistry(), options, &state);
 
-  CelValue original = CelValue::CreateInt64(test_value);
+  auto original = cel::interop_internal::CreateIntValue(test_value);
   Expr ident;
   ident.mutable_ident_expr()->set_name("var");
 
   AttributeTrail original_trail =
       AttributeTrail(ident, manager)
-          .Step(CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
-                manager);
-  CelValue result;
-  const AttributeTrail* trail;
+          .Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager);
+  cel::Handle<cel::Value> result;
+  AttributeTrail trail;
 
   ASSERT_OK(frame.PushIterFrame(test_iter_var, test_accu_var));
 
   // Nothing is there yet
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result));
+  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, nullptr));
   ASSERT_OK(frame.SetIterVar(original, original_trail));
 
   // Nothing is there yet
-  ASSERT_FALSE(frame.GetIterVar(test_accu_var, &result));
-  ASSERT_OK(frame.SetAccuVar(CelValue::CreateBool(true)));
-  ASSERT_TRUE(frame.GetIterVar(test_accu_var, &result));
-  ASSERT_TRUE(result.IsBool());
-  EXPECT_EQ(result.BoolOrDie(), true);
+  ASSERT_FALSE(frame.GetIterVar(test_accu_var, &result, nullptr));
+  ASSERT_OK(frame.SetAccuVar(cel::interop_internal::CreateBoolValue(true)));
+  ASSERT_TRUE(frame.GetIterVar(test_accu_var, &result, nullptr));
+  ASSERT_TRUE(result->Is<cel::BoolValue>());
+  EXPECT_EQ(result.As<cel::BoolValue>()->value(), true);
 
   // Make sure its now there
-  ASSERT_TRUE(frame.GetIterVar(test_iter_var, &result));
-  ASSERT_TRUE(frame.GetIterAttr(test_iter_var, &trail));
+  ASSERT_TRUE(frame.GetIterVar(test_iter_var, &result, &trail));
 
-  int64_t result_value;
-  ASSERT_TRUE(result.GetValue(&result_value));
+  int64_t result_value = result.As<cel::IntValue>()->value();
   EXPECT_EQ(test_value, result_value);
-  ASSERT_TRUE(trail->attribute().has_variable_name());
-  ASSERT_EQ(trail->attribute().variable_name(), "var");
+  ASSERT_TRUE(trail.attribute().has_variable_name());
+  ASSERT_EQ(trail.attribute().variable_name(), "var");
 
   // Test that it goes away properly
   ASSERT_OK(frame.ClearIterVar());
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result));
-  ASSERT_FALSE(frame.GetIterAttr(test_iter_var, &trail));
+  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, &trail));
 
   ASSERT_OK(frame.PopIterFrame());
 
   // Access on empty stack ok, but no value.
-  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result));
+  ASSERT_FALSE(frame.GetIterVar(test_iter_var, &result, nullptr));
 
   // Pop empty stack
   ASSERT_FALSE(frame.PopIterFrame().ok());
@@ -154,18 +156,16 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
 
 TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   ExecutionPath path;
-  auto const_step = absl::make_unique<FakeConstExpressionStep>();
-  auto incr_step1 = absl::make_unique<FakeIncrementExpressionStep>();
-  auto incr_step2 = absl::make_unique<FakeIncrementExpressionStep>();
+  auto const_step = std::make_unique<FakeConstExpressionStep>();
+  auto incr_step1 = std::make_unique<FakeIncrementExpressionStep>();
+  auto incr_step2 = std::make_unique<FakeIncrementExpressionStep>();
 
   path.push_back(std::move(const_step));
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  auto dummy_expr = absl::make_unique<cel::ast::internal::Expr>();
-
-  CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                             &TestTypeRegistry(), 0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{});
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -241,9 +241,10 @@ TEST(EvaluatorCoreTest, TraceTest) {
   result_expr->set_id(25);
   result_expr->mutable_const_expr()->set_bool_value(true);
 
-  FlatExprBuilder builder;
+  cel::RuntimeOptions options;
+  options.short_circuiting = false;
+  FlatExprBuilder builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
-  builder.set_shortcircuiting(false);
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));
 

@@ -1,12 +1,13 @@
 #include "eval/eval/comprehension_step.h"
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/wrappers.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -15,10 +16,8 @@
 #include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
@@ -40,13 +39,17 @@ Ident CreateIdent(const std::string& var) {
 
 class ListKeysStepTest : public testing::Test {
  public:
-  ListKeysStepTest() {}
+  ListKeysStepTest() = default;
 
   std::unique_ptr<CelExpressionFlatImpl> MakeExpression(
       ExecutionPath&& path, bool unknown_attributes = false) {
+    cel::RuntimeOptions options;
+    if (unknown_attributes) {
+      options.unknown_processing =
+          cel::UnknownProcessingOptions::kAttributeAndFunction;
+    }
     return std::make_unique<CelExpressionFlatImpl>(
-        &dummy_expr_, std::move(path), &TestTypeRegistry(), 0,
-        std::set<std::string>(), unknown_attributes, unknown_attributes);
+        std::move(path), &TestTypeRegistry(), options);
   }
 
  private:
@@ -145,8 +148,8 @@ TEST_F(ListKeysStepTest, MapPartiallyUnknown) {
   activation.InsertValue("var", CelProtoWrapper::CreateMessage(&value, &arena));
   activation.set_unknown_attribute_patterns({CelAttributePattern(
       "var",
-      {CelAttributeQualifierPattern::Create(CelValue::CreateStringView("key2")),
-       CelAttributeQualifierPattern::Create(CelValue::CreateStringView("foo")),
+      {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("key2")),
+       CreateCelAttributeQualifierPattern(CelValue::CreateStringView("foo")),
        CelAttributeQualifierPattern::CreateWildcard()})});
 
   auto eval_result = expression->Evaluate(activation, &arena);

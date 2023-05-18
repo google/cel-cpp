@@ -17,6 +17,8 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "base/types/null_type.h"
 #include "base/value.h"
 
@@ -27,27 +29,54 @@ class NullValue final : public base_internal::SimpleValue<NullType, void> {
   using Base = base_internal::SimpleValue<NullType, void>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString();
+
   using Base::kKind;
 
   using Base::Is;
 
-  static Persistent<const NullValue> Get(ValueFactory& value_factory);
+  static const NullValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to null";
+    return static_cast<const NullValue&>(value);
+  }
+
+  static Handle<NullValue> Get(ValueFactory& value_factory);
 
   using Base::kind;
 
   using Base::type;
 
-  std::string DebugString() const;
-
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  NullValue() = default;
   CEL_INTERNAL_SIMPLE_VALUE_MEMBERS(NullValue);
 };
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(NullValue);
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<NullValue> {
+  using type = NullValue;
+
+  using type_type = NullType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

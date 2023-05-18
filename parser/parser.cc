@@ -561,7 +561,7 @@ ParserVisitor::ParserVisitor(absl::string_view description,
       max_recursion_depth_(max_recursion_depth),
       add_macro_calls_(add_macro_calls) {
   for (const auto& m : macros) {
-    macros_.emplace(m.macroKey(), m);
+    macros_.emplace(m.key(), m);
   }
 }
 
@@ -1068,7 +1068,7 @@ bool ParserVisitor::ExpandMacro(int64_t expr_id, const std::string& function,
     }
   }
 
-  Expr expr = m->second.expand(sf_, expr_id, target, args);
+  Expr expr = m->second.Expand(sf_, expr_id, target, args);
   if (expr.expr_kind_case() != Expr::EXPR_KIND_NOT_SET) {
     *macro_expr = std::move(expr);
     if (add_macro_calls_) {

@@ -14,17 +14,56 @@
 
 #include "base/types/enum_type.h"
 
-#include <utility>
+#include <string>
 
 #include "absl/base/macros.h"
-#include "absl/hash/hash.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "internal/overloaded.h"
+#include "internal/status_macros.h"
 
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(EnumType);
+
+bool operator<(const EnumType::ConstantId& lhs,
+               const EnumType::ConstantId& rhs) {
+  return absl::visit(
+      internal::Overloaded{
+          [&rhs](absl::string_view lhs_name) {
+            return absl::visit(
+                internal::Overloaded{// (absl::string_view, absl::string_view)
+                                     [lhs_name](absl::string_view rhs_name) {
+                                       return lhs_name < rhs_name;
+                                     },
+                                     // (absl::string_view, int64_t)
+                                     [](int64_t rhs_number) { return false; }},
+                rhs.data_);
+          },
+          [&rhs](int64_t lhs_number) {
+            return absl::visit(
+                internal::Overloaded{
+                    // (int64_t, absl::string_view)
+                    [](absl::string_view rhs_name) { return true; },
+                    // (int64_t, int64_t)
+                    [lhs_number](int64_t rhs_number) {
+                      return lhs_number < rhs_number;
+                    },
+                },
+                rhs.data_);
+          }},
+      lhs.data_);
+}
+
+std::string EnumType::ConstantId::DebugString() const {
+  return absl::visit(
+      internal::Overloaded{
+          [](absl::string_view name) { return std::string(name); },
+          [](int64_t number) { return absl::StrCat(number); }},
+      data_);
+}
 
 EnumType::EnumType() : base_internal::HeapData(kKind) {
   // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
@@ -36,27 +75,29 @@ EnumType::EnumType() : base_internal::HeapData(kKind) {
 struct EnumType::FindConstantVisitor final {
   const EnumType& enum_type;
 
-  absl::StatusOr<Constant> operator()(absl::string_view name) const {
+  absl::StatusOr<absl::optional<Constant>> operator()(
+      absl::string_view name) const {
     return enum_type.FindConstantByName(name);
   }
 
-  absl::StatusOr<Constant> operator()(int64_t number) const {
+  absl::StatusOr<absl::optional<Constant>> operator()(int64_t number) const {
     return enum_type.FindConstantByNumber(number);
   }
 };
 
-absl::StatusOr<EnumType::Constant> EnumType::FindConstant(ConstantId id) const {
+absl::StatusOr<absl::optional<EnumType::Constant>> EnumType::FindConstant(
+    ConstantId id) const {
   return absl::visit(FindConstantVisitor{*this}, id.data_);
 }
 
-void EnumType::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), kind(), name(), TypeId());
+absl::StatusOr<absl::string_view> EnumType::ConstantIterator::NextName() {
+  CEL_ASSIGN_OR_RETURN(auto constant, Next());
+  return constant.name;
 }
 
-bool EnumType::Equals(const Type& other) const {
-  return kind() == other.kind() &&
-         name() == static_cast<const EnumType&>(other).name() &&
-         TypeId() == static_cast<const EnumType&>(other).TypeId();
+absl::StatusOr<int64_t> EnumType::ConstantIterator::NextNumber() {
+  CEL_ASSIGN_OR_RETURN(auto constant, Next());
+  return constant.number;
 }
 
 }  // namespace cel

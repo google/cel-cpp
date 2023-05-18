@@ -22,7 +22,7 @@
 #include "absl/status/status.h"
 #include "base/handle.h"
 #include "base/internal/memory_manager_testing.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
@@ -33,7 +33,9 @@
 namespace cel {
 namespace {
 
-using cel::internal::StatusIs;
+using testing::ElementsAre;
+using testing::Eq;
+using cel::internal::IsOkAndHolds;
 
 enum class TestEnum {
   kValue1 = 1,
@@ -46,35 +48,37 @@ class TestEnumType final : public EnumType {
 
   absl::string_view name() const override { return "test_enum.TestEnum"; }
 
- protected:
-  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByName(
-      TypedEnumValueFactory& factory, absl::string_view name) const override {
-    return absl::UnimplementedError("");
+  size_t constant_count() const override { return 2; }
+
+  absl::StatusOr<UniqueRef<ConstantIterator>> NewConstantIterator(
+      MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError(
+        "EnumType::NewConstantIterator is unimplemented");
   }
 
-  absl::StatusOr<Persistent<const EnumValue>> NewInstanceByNumber(
-      TypedEnumValueFactory& factory, int64_t number) const override {
-    return absl::UnimplementedError("");
-  }
-
-  absl::StatusOr<Constant> FindConstantByName(
+  absl::StatusOr<absl::optional<Constant>> FindConstantByName(
       absl::string_view name) const override {
     if (name == "VALUE1") {
-      return Constant("VALUE1", static_cast<int64_t>(TestEnum::kValue1));
+      return Constant(MakeConstantId(TestEnum::kValue1), "VALUE1",
+                      static_cast<int64_t>(TestEnum::kValue1));
     } else if (name == "VALUE2") {
-      return Constant("VALUE2", static_cast<int64_t>(TestEnum::kValue2));
+      return Constant(MakeConstantId(TestEnum::kValue2), "VALUE2",
+                      static_cast<int64_t>(TestEnum::kValue2));
     }
-    return absl::NotFoundError("");
+    return absl::nullopt;
   }
 
-  absl::StatusOr<Constant> FindConstantByNumber(int64_t number) const override {
+  absl::StatusOr<absl::optional<Constant>> FindConstantByNumber(
+      int64_t number) const override {
     switch (number) {
       case 1:
-        return Constant("VALUE1", static_cast<int64_t>(TestEnum::kValue1));
+        return Constant(MakeConstantId(TestEnum::kValue1), "VALUE1",
+                        static_cast<int64_t>(TestEnum::kValue1));
       case 2:
-        return Constant("VALUE2", static_cast<int64_t>(TestEnum::kValue2));
+        return Constant(MakeConstantId(TestEnum::kValue2), "VALUE2",
+                        static_cast<int64_t>(TestEnum::kValue2));
       default:
-        return absl::NotFoundError("");
+        return absl::nullopt;
     }
   }
 
@@ -95,43 +99,49 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
  public:
   absl::string_view name() const override { return "test_struct.TestStruct"; }
 
- protected:
-  absl::StatusOr<Persistent<StructValue>> NewInstance(
-      TypedStructValueFactory& factory) const override {
-    return absl::UnimplementedError("");
+  size_t field_count() const override { return 4; }
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError(
+        "StructType::NewFieldIterator() is unimplemented");
   }
 
-  absl::StatusOr<Field> FindFieldByName(TypeManager& type_manager,
-                                        absl::string_view name) const override {
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const override {
     if (name == "bool_field") {
-      return Field("bool_field", 0, type_manager.type_factory().GetBoolType());
+      return Field(MakeFieldId(0), "bool_field", 0,
+                   type_manager.type_factory().GetBoolType());
     } else if (name == "int_field") {
-      return Field("int_field", 1, type_manager.type_factory().GetIntType());
+      return Field(MakeFieldId(1), "int_field", 1,
+                   type_manager.type_factory().GetIntType());
     } else if (name == "uint_field") {
-      return Field("uint_field", 2, type_manager.type_factory().GetUintType());
+      return Field(MakeFieldId(2), "uint_field", 2,
+                   type_manager.type_factory().GetUintType());
     } else if (name == "double_field") {
-      return Field("double_field", 3,
+      return Field(MakeFieldId(3), "double_field", 3,
                    type_manager.type_factory().GetDoubleType());
     }
-    return absl::NotFoundError("");
+    return absl::nullopt;
   }
 
-  absl::StatusOr<Field> FindFieldByNumber(TypeManager& type_manager,
-                                          int64_t number) const override {
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const override {
     switch (number) {
       case 0:
-        return Field("bool_field", 0,
+        return Field(MakeFieldId(0), "bool_field", 0,
                      type_manager.type_factory().GetBoolType());
       case 1:
-        return Field("int_field", 1, type_manager.type_factory().GetIntType());
+        return Field(MakeFieldId(1), "int_field", 1,
+                     type_manager.type_factory().GetIntType());
       case 2:
-        return Field("uint_field", 2,
+        return Field(MakeFieldId(2), "uint_field", 2,
                      type_manager.type_factory().GetUintType());
       case 3:
-        return Field("double_field", 3,
+        return Field(MakeFieldId(3), "double_field", 3,
                      type_manager.type_factory().GetDoubleType());
       default:
-        return absl::NotFoundError("");
+        return absl::nullopt;
     }
   }
 
@@ -142,7 +152,7 @@ class TestStructType final : public CEL_STRUCT_TYPE_CLASS {
 CEL_IMPLEMENT_STRUCT_TYPE(TestStructType);
 
 template <typename T>
-Persistent<T> Must(absl::StatusOr<Persistent<T>> status_or_handle) {
+Handle<T> Must(absl::StatusOr<Handle<T>> status_or_handle) {
   return std::move(status_or_handle).value();
 }
 
@@ -177,31 +187,31 @@ class TypeTest
   std::unique_ptr<ArenaMemoryManager> memory_manager_;
 };
 
-TEST(Type, PersistentHandleTypeTraits) {
-  EXPECT_TRUE(std::is_default_constructible_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_swappable_v<Persistent<Type>>);
-  EXPECT_TRUE(std::is_default_constructible_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_copy_constructible_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_move_constructible_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_copy_assignable_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_move_assignable_v<Persistent<const Type>>);
-  EXPECT_TRUE(std::is_swappable_v<Persistent<const Type>>);
+TEST(Type, HandleTypeTraits) {
+  EXPECT_TRUE(std::is_default_constructible_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_swappable_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_default_constructible_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_copy_constructible_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_move_constructible_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_copy_assignable_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_move_assignable_v<Handle<Type>>);
+  EXPECT_TRUE(std::is_swappable_v<Handle<Type>>);
 }
 
 TEST_P(TypeTest, CopyConstructor) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> type(type_factory.GetIntType());
+  Handle<Type> type(type_factory.GetIntType());
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, MoveConstructor) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> from(type_factory.GetIntType());
-  Persistent<const Type> to(std::move(from));
+  Handle<Type> from(type_factory.GetIntType());
+  Handle<Type> to(std::move(from));
   IS_INITIALIZED(from);
   EXPECT_FALSE(from);
   EXPECT_EQ(to, type_factory.GetIntType());
@@ -209,15 +219,15 @@ TEST_P(TypeTest, MoveConstructor) {
 
 TEST_P(TypeTest, CopyAssignment) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> type(type_factory.GetNullType());
+  Handle<Type> type(type_factory.GetNullType());
   type = type_factory.GetIntType();
   EXPECT_EQ(type, type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, MoveAssignment) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> from(type_factory.GetIntType());
-  Persistent<const Type> to(type_factory.GetNullType());
+  Handle<Type> from(type_factory.GetIntType());
+  Handle<Type> to(type_factory.GetNullType());
   to = std::move(from);
   IS_INITIALIZED(from);
   EXPECT_FALSE(from);
@@ -226,8 +236,8 @@ TEST_P(TypeTest, MoveAssignment) {
 
 TEST_P(TypeTest, Swap) {
   TypeFactory type_factory(memory_manager());
-  Persistent<const Type> lhs = type_factory.GetIntType();
-  Persistent<const Type> rhs = type_factory.GetUintType();
+  Handle<Type> lhs = type_factory.GetIntType();
+  Handle<Type> rhs = type_factory.GetUintType();
   std::swap(lhs, rhs);
   EXPECT_EQ(lhs, type_factory.GetUintType());
   EXPECT_EQ(rhs, type_factory.GetIntType());
@@ -237,257 +247,128 @@ TEST_P(TypeTest, Swap) {
 // extension for struct member initiation by name for it to be worth it. That
 // feature is not available in C++17.
 
+template <typename T>
+void TestTypeIs(const Handle<T>& type) {
+  EXPECT_EQ(type->template Is<NullType>(), (std::is_same<T, NullType>::value));
+  EXPECT_EQ(type->template Is<DynType>(), (std::is_same<T, DynType>::value));
+  EXPECT_EQ(type->template Is<AnyType>(), (std::is_same<T, AnyType>::value));
+  EXPECT_EQ(type->template Is<BoolType>(), (std::is_same<T, BoolType>::value));
+  EXPECT_EQ(type->template Is<IntType>(), (std::is_same<T, IntType>::value));
+  EXPECT_EQ(type->template Is<UintType>(), (std::is_same<T, UintType>::value));
+  EXPECT_EQ(type->template Is<DoubleType>(),
+            (std::is_same<T, DoubleType>::value));
+  EXPECT_EQ(type->template Is<StringType>(),
+            (std::is_same<T, StringType>::value));
+  EXPECT_EQ(type->template Is<BytesType>(),
+            (std::is_same<T, BytesType>::value));
+  EXPECT_EQ(type->template Is<DurationType>(),
+            (std::is_same<T, DurationType>::value));
+  EXPECT_EQ(type->template Is<TimestampType>(),
+            (std::is_same<T, TimestampType>::value));
+  EXPECT_EQ(type->template Is<EnumType>(),
+            (std::is_base_of<EnumType, T>::value));
+  EXPECT_EQ(type->template Is<StructType>(),
+            (std::is_base_of<StructType, T>::value));
+  EXPECT_EQ(type->template Is<ListType>(), (std::is_same<T, ListType>::value));
+  EXPECT_EQ(type->template Is<MapType>(), (std::is_same<T, MapType>::value));
+  EXPECT_EQ(type->template Is<TypeType>(), (std::is_same<T, TypeType>::value));
+  EXPECT_EQ(type->template Is<UnknownType>(),
+            (std::is_same<T, UnknownType>::value));
+  EXPECT_EQ(type->template Is<WrapperType>(),
+            (std::is_base_of<WrapperType, T>::value));
+  EXPECT_EQ(type->template Is<BoolWrapperType>(),
+            (std::is_same<T, BoolWrapperType>::value));
+  EXPECT_EQ(type->template Is<BytesWrapperType>(),
+            (std::is_same<T, BytesWrapperType>::value));
+  EXPECT_EQ(type->template Is<DoubleWrapperType>(),
+            (std::is_same<T, DoubleWrapperType>::value));
+  EXPECT_EQ(type->template Is<IntWrapperType>(),
+            (std::is_same<T, IntWrapperType>::value));
+  EXPECT_EQ(type->template Is<StringWrapperType>(),
+            (std::is_same<T, StringWrapperType>::value));
+  EXPECT_EQ(type->template Is<UintWrapperType>(),
+            (std::is_same<T, UintWrapperType>::value));
+  EXPECT_EQ(type->template Is<OpaqueType>(),
+            (std::is_base_of<OpaqueType, T>::value));
+  EXPECT_EQ(type->template Is<OptionalType>(),
+            (std::is_same<T, OptionalType>::value));
+}
+
 TEST_P(TypeTest, Null) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetNullType()->kind(), Kind::kNullType);
   EXPECT_EQ(type_factory.GetNullType()->name(), "null_type");
-  EXPECT_TRUE(type_factory.GetNullType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetNullType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetNullType());
 }
 
 TEST_P(TypeTest, Error) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetErrorType()->kind(), Kind::kError);
   EXPECT_EQ(type_factory.GetErrorType()->name(), "*error*");
-  EXPECT_FALSE(type_factory.GetErrorType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetErrorType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetErrorType());
 }
 
 TEST_P(TypeTest, Dyn) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDynType()->kind(), Kind::kDyn);
   EXPECT_EQ(type_factory.GetDynType()->name(), "dyn");
-  EXPECT_FALSE(type_factory.GetDynType().Is<NullType>());
-  EXPECT_TRUE(type_factory.GetDynType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetDynType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetDynType());
 }
 
 TEST_P(TypeTest, Any) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetAnyType()->kind(), Kind::kAny);
   EXPECT_EQ(type_factory.GetAnyType()->name(), "google.protobuf.Any");
-  EXPECT_FALSE(type_factory.GetAnyType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<DynType>());
-  EXPECT_TRUE(type_factory.GetAnyType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetAnyType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetAnyType());
 }
 
 TEST_P(TypeTest, Bool) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolType()->kind(), Kind::kBool);
   EXPECT_EQ(type_factory.GetBoolType()->name(), "bool");
-  EXPECT_FALSE(type_factory.GetBoolType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<AnyType>());
-  EXPECT_TRUE(type_factory.GetBoolType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetBoolType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetBoolType());
 }
 
 TEST_P(TypeTest, Int) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntType()->kind(), Kind::kInt);
   EXPECT_EQ(type_factory.GetIntType()->name(), "int");
-  EXPECT_FALSE(type_factory.GetIntType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<BoolType>());
-  EXPECT_TRUE(type_factory.GetIntType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetIntType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, Uint) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintType()->kind(), Kind::kUint);
   EXPECT_EQ(type_factory.GetUintType()->name(), "uint");
-  EXPECT_FALSE(type_factory.GetUintType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<IntType>());
-  EXPECT_TRUE(type_factory.GetUintType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetUintType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetUintType());
 }
 
 TEST_P(TypeTest, Double) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleType()->kind(), Kind::kDouble);
   EXPECT_EQ(type_factory.GetDoubleType()->name(), "double");
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<UintType>());
-  EXPECT_TRUE(type_factory.GetDoubleType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetDoubleType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetDoubleType());
 }
 
 TEST_P(TypeTest, String) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringType()->kind(), Kind::kString);
   EXPECT_EQ(type_factory.GetStringType()->name(), "string");
-  EXPECT_FALSE(type_factory.GetStringType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<DoubleType>());
-  EXPECT_TRUE(type_factory.GetStringType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetStringType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetStringType());
 }
 
 TEST_P(TypeTest, Bytes) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesType()->kind(), Kind::kBytes);
   EXPECT_EQ(type_factory.GetBytesType()->name(), "bytes");
-  EXPECT_FALSE(type_factory.GetBytesType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<StringType>());
-  EXPECT_TRUE(type_factory.GetBytesType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetBytesType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetBytesType());
 }
 
 TEST_P(TypeTest, Duration) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDurationType()->kind(), Kind::kDuration);
   EXPECT_EQ(type_factory.GetDurationType()->name(), "google.protobuf.Duration");
-  EXPECT_FALSE(type_factory.GetDurationType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<BytesType>());
-  EXPECT_TRUE(type_factory.GetDurationType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetDurationType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetDurationType());
 }
 
 TEST_P(TypeTest, Timestamp) {
@@ -495,23 +376,7 @@ TEST_P(TypeTest, Timestamp) {
   EXPECT_EQ(type_factory.GetTimestampType()->kind(), Kind::kTimestamp);
   EXPECT_EQ(type_factory.GetTimestampType()->name(),
             "google.protobuf.Timestamp");
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<DurationType>());
-  EXPECT_TRUE(type_factory.GetTimestampType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetTimestampType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetTimestampType());
 }
 
 TEST_P(TypeTest, Enum) {
@@ -520,24 +385,7 @@ TEST_P(TypeTest, Enum) {
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(enum_type->kind(), Kind::kEnum);
   EXPECT_EQ(enum_type->name(), "test_enum.TestEnum");
-  EXPECT_FALSE(enum_type.Is<NullType>());
-  EXPECT_FALSE(enum_type.Is<DynType>());
-  EXPECT_FALSE(enum_type.Is<AnyType>());
-  EXPECT_FALSE(enum_type.Is<BoolType>());
-  EXPECT_FALSE(enum_type.Is<IntType>());
-  EXPECT_FALSE(enum_type.Is<UintType>());
-  EXPECT_FALSE(enum_type.Is<DoubleType>());
-  EXPECT_FALSE(enum_type.Is<StringType>());
-  EXPECT_FALSE(enum_type.Is<BytesType>());
-  EXPECT_FALSE(enum_type.Is<DurationType>());
-  EXPECT_FALSE(enum_type.Is<TimestampType>());
-  EXPECT_TRUE(enum_type.Is<EnumType>());
-  EXPECT_TRUE(enum_type.Is<TestEnumType>());
-  EXPECT_FALSE(enum_type.Is<StructType>());
-  EXPECT_FALSE(enum_type.Is<ListType>());
-  EXPECT_FALSE(enum_type.Is<MapType>());
-  EXPECT_FALSE(enum_type.Is<TypeType>());
-  EXPECT_FALSE(enum_type.Is<UnknownType>());
+  TestTypeIs(enum_type);
 }
 
 TEST_P(TypeTest, Struct) {
@@ -548,24 +396,7 @@ TEST_P(TypeTest, Struct) {
       type_manager.type_factory().CreateStructType<TestStructType>());
   EXPECT_EQ(struct_type->kind(), Kind::kStruct);
   EXPECT_EQ(struct_type->name(), "test_struct.TestStruct");
-  EXPECT_FALSE(struct_type.Is<NullType>());
-  EXPECT_FALSE(struct_type.Is<DynType>());
-  EXPECT_FALSE(struct_type.Is<AnyType>());
-  EXPECT_FALSE(struct_type.Is<BoolType>());
-  EXPECT_FALSE(struct_type.Is<IntType>());
-  EXPECT_FALSE(struct_type.Is<UintType>());
-  EXPECT_FALSE(struct_type.Is<DoubleType>());
-  EXPECT_FALSE(struct_type.Is<StringType>());
-  EXPECT_FALSE(struct_type.Is<BytesType>());
-  EXPECT_FALSE(struct_type.Is<DurationType>());
-  EXPECT_FALSE(struct_type.Is<TimestampType>());
-  EXPECT_FALSE(struct_type.Is<EnumType>());
-  EXPECT_TRUE(struct_type.Is<StructType>());
-  EXPECT_TRUE(struct_type.Is<TestStructType>());
-  EXPECT_FALSE(struct_type.Is<ListType>());
-  EXPECT_FALSE(struct_type.Is<MapType>());
-  EXPECT_FALSE(struct_type.Is<TypeType>());
-  EXPECT_FALSE(struct_type.Is<UnknownType>());
+  TestTypeIs(struct_type);
 }
 
 TEST_P(TypeTest, List) {
@@ -577,23 +408,7 @@ TEST_P(TypeTest, List) {
   EXPECT_EQ(list_type->kind(), Kind::kList);
   EXPECT_EQ(list_type->name(), "list");
   EXPECT_EQ(list_type->element(), type_factory.GetBoolType());
-  EXPECT_FALSE(list_type.Is<NullType>());
-  EXPECT_FALSE(list_type.Is<DynType>());
-  EXPECT_FALSE(list_type.Is<AnyType>());
-  EXPECT_FALSE(list_type.Is<BoolType>());
-  EXPECT_FALSE(list_type.Is<IntType>());
-  EXPECT_FALSE(list_type.Is<UintType>());
-  EXPECT_FALSE(list_type.Is<DoubleType>());
-  EXPECT_FALSE(list_type.Is<StringType>());
-  EXPECT_FALSE(list_type.Is<BytesType>());
-  EXPECT_FALSE(list_type.Is<DurationType>());
-  EXPECT_FALSE(list_type.Is<TimestampType>());
-  EXPECT_FALSE(list_type.Is<EnumType>());
-  EXPECT_FALSE(list_type.Is<StructType>());
-  EXPECT_TRUE(list_type.Is<ListType>());
-  EXPECT_FALSE(list_type.Is<MapType>());
-  EXPECT_FALSE(list_type.Is<TypeType>());
-  EXPECT_FALSE(list_type.Is<UnknownType>());
+  TestTypeIs(list_type);
 }
 
 TEST_P(TypeTest, Map) {
@@ -611,69 +426,79 @@ TEST_P(TypeTest, Map) {
   EXPECT_EQ(map_type->name(), "map");
   EXPECT_EQ(map_type->key(), type_factory.GetStringType());
   EXPECT_EQ(map_type->value(), type_factory.GetBoolType());
-  EXPECT_FALSE(map_type.Is<NullType>());
-  EXPECT_FALSE(map_type.Is<DynType>());
-  EXPECT_FALSE(map_type.Is<AnyType>());
-  EXPECT_FALSE(map_type.Is<BoolType>());
-  EXPECT_FALSE(map_type.Is<IntType>());
-  EXPECT_FALSE(map_type.Is<UintType>());
-  EXPECT_FALSE(map_type.Is<DoubleType>());
-  EXPECT_FALSE(map_type.Is<StringType>());
-  EXPECT_FALSE(map_type.Is<BytesType>());
-  EXPECT_FALSE(map_type.Is<DurationType>());
-  EXPECT_FALSE(map_type.Is<TimestampType>());
-  EXPECT_FALSE(map_type.Is<EnumType>());
-  EXPECT_FALSE(map_type.Is<StructType>());
-  EXPECT_FALSE(map_type.Is<ListType>());
-  EXPECT_TRUE(map_type.Is<MapType>());
-  EXPECT_FALSE(map_type.Is<TypeType>());
-  EXPECT_FALSE(map_type.Is<UnknownType>());
+  TestTypeIs(map_type);
 }
 
 TEST_P(TypeTest, TypeType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTypeType()->kind(), Kind::kType);
   EXPECT_EQ(type_factory.GetTypeType()->name(), "type");
-  EXPECT_FALSE(type_factory.GetTypeType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<MapType>());
-  EXPECT_TRUE(type_factory.GetTypeType().Is<TypeType>());
-  EXPECT_FALSE(type_factory.GetTypeType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetTypeType());
 }
 
 TEST_P(TypeTest, UnknownType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUnknownType()->kind(), Kind::kUnknown);
   EXPECT_EQ(type_factory.GetUnknownType()->name(), "*unknown*");
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<NullType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<DynType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<AnyType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<BoolType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<IntType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<UintType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<DoubleType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<StringType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<BytesType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<DurationType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<TimestampType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<EnumType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<StructType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<ListType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<MapType>());
-  EXPECT_FALSE(type_factory.GetUnknownType().Is<TypeType>());
-  EXPECT_TRUE(type_factory.GetUnknownType().Is<UnknownType>());
+  TestTypeIs(type_factory.GetUnknownType());
+}
+
+TEST_P(TypeTest, OptionalType) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_EQ(optional_type->kind(), Kind::kOpaque);
+  EXPECT_EQ(optional_type->name(), "optional");
+  TestTypeIs(optional_type);
+  TestTypeIs<StringType>(optional_type->type().As<StringType>());
+}
+
+TEST_P(TypeTest, BoolWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetBoolWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetBoolWrapperType()->name(),
+            "google.protobuf.BoolValue");
+  TestTypeIs(type_factory.GetBoolWrapperType());
+}
+
+TEST_P(TypeTest, ByteWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetBytesWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetBytesWrapperType()->name(),
+            "google.protobuf.BytesValue");
+  TestTypeIs(type_factory.GetBytesWrapperType());
+}
+
+TEST_P(TypeTest, DoubleWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetDoubleWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetDoubleWrapperType()->name(),
+            "google.protobuf.DoubleValue");
+  TestTypeIs(type_factory.GetDoubleWrapperType());
+}
+
+TEST_P(TypeTest, IntWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetIntWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetIntWrapperType()->name(),
+            "google.protobuf.Int64Value");
+  TestTypeIs(type_factory.GetIntWrapperType());
+}
+
+TEST_P(TypeTest, StringWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetStringWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetStringWrapperType()->name(),
+            "google.protobuf.StringValue");
+  TestTypeIs(type_factory.GetStringWrapperType());
+}
+
+TEST_P(TypeTest, UintWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetUintWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetUintWrapperType()->name(),
+            "google.protobuf.UInt64Value");
+  TestTypeIs(type_factory.GetUintWrapperType());
 }
 
 using EnumTypeTest = TypeTest;
@@ -683,30 +508,26 @@ TEST_P(EnumTypeTest, FindConstant) {
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
 
-  ASSERT_OK_AND_ASSIGN(auto value1,
-                       enum_type->FindConstant(EnumType::ConstantId("VALUE1")));
-  EXPECT_EQ(value1.name, "VALUE1");
-  EXPECT_EQ(value1.number, 1);
+  ASSERT_OK_AND_ASSIGN(auto value1, enum_type->FindConstantByName("VALUE1"));
+  EXPECT_EQ(value1->name, "VALUE1");
+  EXPECT_EQ(value1->number, 1);
 
-  ASSERT_OK_AND_ASSIGN(value1,
-                       enum_type->FindConstant(EnumType::ConstantId(1)));
-  EXPECT_EQ(value1.name, "VALUE1");
-  EXPECT_EQ(value1.number, 1);
+  ASSERT_OK_AND_ASSIGN(value1, enum_type->FindConstantByNumber(1));
+  EXPECT_EQ(value1->name, "VALUE1");
+  EXPECT_EQ(value1->number, 1);
 
-  ASSERT_OK_AND_ASSIGN(auto value2,
-                       enum_type->FindConstant(EnumType::ConstantId("VALUE2")));
-  EXPECT_EQ(value2.name, "VALUE2");
-  EXPECT_EQ(value2.number, 2);
+  ASSERT_OK_AND_ASSIGN(auto value2, enum_type->FindConstantByName("VALUE2"));
+  EXPECT_EQ(value2->name, "VALUE2");
+  EXPECT_EQ(value2->number, 2);
 
-  ASSERT_OK_AND_ASSIGN(value2,
-                       enum_type->FindConstant(EnumType::ConstantId(2)));
-  EXPECT_EQ(value2.name, "VALUE2");
-  EXPECT_EQ(value2.number, 2);
+  ASSERT_OK_AND_ASSIGN(value2, enum_type->FindConstantByNumber(2));
+  EXPECT_EQ(value2->name, "VALUE2");
+  EXPECT_EQ(value2->number, 2);
 
-  EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId("VALUE3")),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(enum_type->FindConstant(EnumType::ConstantId(3)),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(enum_type->FindConstantByName("VALUE3"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(enum_type->FindConstantByNumber(3),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 INSTANTIATE_TEST_SUITE_P(EnumTypeTest, EnumTypeTest,
@@ -723,140 +544,145 @@ TEST_P(StructTypeTest, FindField) {
       type_manager.type_factory().CreateStructType<TestStructType>());
 
   ASSERT_OK_AND_ASSIGN(
-      auto field1,
-      struct_type->FindField(type_manager, StructType::FieldId("bool_field")));
-  EXPECT_EQ(field1.name, "bool_field");
-  EXPECT_EQ(field1.number, 0);
-  EXPECT_EQ(field1.type, type_manager.type_factory().GetBoolType());
+      auto field1, struct_type->FindFieldByName(type_manager, "bool_field"));
+  EXPECT_EQ(field1->name, "bool_field");
+  EXPECT_EQ(field1->number, 0);
+  EXPECT_EQ(field1->type, type_manager.type_factory().GetBoolType());
+
+  ASSERT_OK_AND_ASSIGN(field1, struct_type->FindFieldByNumber(type_manager, 0));
+  EXPECT_EQ(field1->name, "bool_field");
+  EXPECT_EQ(field1->number, 0);
+  EXPECT_EQ(field1->type, type_manager.type_factory().GetBoolType());
+
+  ASSERT_OK_AND_ASSIGN(auto field2,
+                       struct_type->FindFieldByName(type_manager, "int_field"));
+  EXPECT_EQ(field2->name, "int_field");
+  EXPECT_EQ(field2->number, 1);
+  EXPECT_EQ(field2->type, type_manager.type_factory().GetIntType());
+
+  ASSERT_OK_AND_ASSIGN(field2, struct_type->FindFieldByNumber(type_manager, 1));
+  EXPECT_EQ(field2->name, "int_field");
+  EXPECT_EQ(field2->number, 1);
+  EXPECT_EQ(field2->type, type_manager.type_factory().GetIntType());
 
   ASSERT_OK_AND_ASSIGN(
-      field1, struct_type->FindField(type_manager, StructType::FieldId(0)));
-  EXPECT_EQ(field1.name, "bool_field");
-  EXPECT_EQ(field1.number, 0);
-  EXPECT_EQ(field1.type, type_manager.type_factory().GetBoolType());
+      auto field3, struct_type->FindFieldByName(type_manager, "uint_field"));
+  EXPECT_EQ(field3->name, "uint_field");
+  EXPECT_EQ(field3->number, 2);
+  EXPECT_EQ(field3->type, type_manager.type_factory().GetUintType());
+
+  ASSERT_OK_AND_ASSIGN(field3, struct_type->FindFieldByNumber(type_manager, 2));
+  EXPECT_EQ(field3->name, "uint_field");
+  EXPECT_EQ(field3->number, 2);
+  EXPECT_EQ(field3->type, type_manager.type_factory().GetUintType());
 
   ASSERT_OK_AND_ASSIGN(
-      auto field2,
-      struct_type->FindField(type_manager, StructType::FieldId("int_field")));
-  EXPECT_EQ(field2.name, "int_field");
-  EXPECT_EQ(field2.number, 1);
-  EXPECT_EQ(field2.type, type_manager.type_factory().GetIntType());
+      auto field4, struct_type->FindFieldByName(type_manager, "double_field"));
+  EXPECT_EQ(field4->name, "double_field");
+  EXPECT_EQ(field4->number, 3);
+  EXPECT_EQ(field4->type, type_manager.type_factory().GetDoubleType());
 
-  ASSERT_OK_AND_ASSIGN(
-      field2, struct_type->FindField(type_manager, StructType::FieldId(1)));
-  EXPECT_EQ(field2.name, "int_field");
-  EXPECT_EQ(field2.number, 1);
-  EXPECT_EQ(field2.type, type_manager.type_factory().GetIntType());
+  ASSERT_OK_AND_ASSIGN(field4, struct_type->FindFieldByNumber(type_manager, 3));
+  EXPECT_EQ(field4->name, "double_field");
+  EXPECT_EQ(field4->number, 3);
+  EXPECT_EQ(field4->type, type_manager.type_factory().GetDoubleType());
 
-  ASSERT_OK_AND_ASSIGN(
-      auto field3,
-      struct_type->FindField(type_manager, StructType::FieldId("uint_field")));
-  EXPECT_EQ(field3.name, "uint_field");
-  EXPECT_EQ(field3.number, 2);
-  EXPECT_EQ(field3.type, type_manager.type_factory().GetUintType());
-
-  ASSERT_OK_AND_ASSIGN(
-      field3, struct_type->FindField(type_manager, StructType::FieldId(2)));
-  EXPECT_EQ(field3.name, "uint_field");
-  EXPECT_EQ(field3.number, 2);
-  EXPECT_EQ(field3.type, type_manager.type_factory().GetUintType());
-
-  ASSERT_OK_AND_ASSIGN(
-      auto field4, struct_type->FindField(type_manager,
-                                          StructType::FieldId("double_field")));
-  EXPECT_EQ(field4.name, "double_field");
-  EXPECT_EQ(field4.number, 3);
-  EXPECT_EQ(field4.type, type_manager.type_factory().GetDoubleType());
-
-  ASSERT_OK_AND_ASSIGN(
-      field4, struct_type->FindField(type_manager, StructType::FieldId(3)));
-  EXPECT_EQ(field4.name, "double_field");
-  EXPECT_EQ(field4.number, 3);
-  EXPECT_EQ(field4.type, type_manager.type_factory().GetDoubleType());
-
-  EXPECT_THAT(struct_type->FindField(type_manager,
-                                     StructType::FieldId("missing_field")),
-              StatusIs(absl::StatusCode::kNotFound));
-  EXPECT_THAT(struct_type->FindField(type_manager, StructType::FieldId(4)),
-              StatusIs(absl::StatusCode::kNotFound));
+  EXPECT_THAT(struct_type->FindFieldByName(type_manager, "missing_field"),
+              IsOkAndHolds(Eq(absl::nullopt)));
+  EXPECT_THAT(struct_type->FindFieldByNumber(type_manager, 4),
+              IsOkAndHolds(Eq(absl::nullopt)));
 }
 
 INSTANTIATE_TEST_SUITE_P(StructTypeTest, StructTypeTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
 
-class DebugStringTest : public TypeTest {};
+class OptionalTypeTest : public TypeTest {};
 
-TEST_P(DebugStringTest, NullType) {
+TEST_P(OptionalTypeTest, Parameters) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_THAT(optional_type->parameters(),
+              ElementsAre(type_factory.GetStringType()));
+}
+
+INSTANTIATE_TEST_SUITE_P(OptionalTypeTest, OptionalTypeTest,
+                         base_internal::MemoryManagerTestModeAll(),
+                         base_internal::MemoryManagerTestModeName);
+
+class TypeDebugStringTest : public TypeTest {};
+
+TEST_P(TypeDebugStringTest, NullType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetNullType()->DebugString(), "null_type");
 }
 
-TEST_P(DebugStringTest, ErrorType) {
+TEST_P(TypeDebugStringTest, ErrorType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetErrorType()->DebugString(), "*error*");
 }
 
-TEST_P(DebugStringTest, DynType) {
+TEST_P(TypeDebugStringTest, DynType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDynType()->DebugString(), "dyn");
 }
 
-TEST_P(DebugStringTest, AnyType) {
+TEST_P(TypeDebugStringTest, AnyType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetAnyType()->DebugString(), "google.protobuf.Any");
 }
 
-TEST_P(DebugStringTest, BoolType) {
+TEST_P(TypeDebugStringTest, BoolType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBoolType()->DebugString(), "bool");
 }
 
-TEST_P(DebugStringTest, IntType) {
+TEST_P(TypeDebugStringTest, IntType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetIntType()->DebugString(), "int");
 }
 
-TEST_P(DebugStringTest, UintType) {
+TEST_P(TypeDebugStringTest, UintType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetUintType()->DebugString(), "uint");
 }
 
-TEST_P(DebugStringTest, DoubleType) {
+TEST_P(TypeDebugStringTest, DoubleType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDoubleType()->DebugString(), "double");
 }
 
-TEST_P(DebugStringTest, StringType) {
+TEST_P(TypeDebugStringTest, StringType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetStringType()->DebugString(), "string");
 }
 
-TEST_P(DebugStringTest, BytesType) {
+TEST_P(TypeDebugStringTest, BytesType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetBytesType()->DebugString(), "bytes");
 }
 
-TEST_P(DebugStringTest, DurationType) {
+TEST_P(TypeDebugStringTest, DurationType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetDurationType()->DebugString(),
             "google.protobuf.Duration");
 }
 
-TEST_P(DebugStringTest, TimestampType) {
+TEST_P(TypeDebugStringTest, TimestampType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTimestampType()->DebugString(),
             "google.protobuf.Timestamp");
 }
 
-TEST_P(DebugStringTest, EnumType) {
+TEST_P(TypeDebugStringTest, EnumType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
   EXPECT_EQ(enum_type->DebugString(), "test_enum.TestEnum");
 }
 
-TEST_P(DebugStringTest, StructType) {
+TEST_P(TypeDebugStringTest, StructType) {
   TypeFactory type_factory(memory_manager());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ASSERT_OK_AND_ASSIGN(
@@ -865,14 +691,14 @@ TEST_P(DebugStringTest, StructType) {
   EXPECT_EQ(struct_type->DebugString(), "test_struct.TestStruct");
 }
 
-TEST_P(DebugStringTest, ListType) {
+TEST_P(TypeDebugStringTest, ListType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto list_type,
                        type_factory.CreateListType(type_factory.GetBoolType()));
   EXPECT_EQ(list_type->DebugString(), "list(bool)");
 }
 
-TEST_P(DebugStringTest, MapType) {
+TEST_P(TypeDebugStringTest, MapType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto map_type,
                        type_factory.CreateMapType(type_factory.GetStringType(),
@@ -880,39 +706,118 @@ TEST_P(DebugStringTest, MapType) {
   EXPECT_EQ(map_type->DebugString(), "map(string, bool)");
 }
 
-TEST_P(DebugStringTest, TypeType) {
+TEST_P(TypeDebugStringTest, TypeType) {
   TypeFactory type_factory(memory_manager());
   EXPECT_EQ(type_factory.GetTypeType()->DebugString(), "type");
 }
 
-INSTANTIATE_TEST_SUITE_P(DebugStringTest, DebugStringTest,
+TEST_P(TypeDebugStringTest, OptionalType) {
+  TypeFactory type_factory(memory_manager());
+  ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
+                                               type_factory.GetStringType()));
+  EXPECT_EQ(optional_type->DebugString(), "optional<string>");
+}
+
+TEST_P(TypeDebugStringTest, BoolWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetBoolWrapperType()->DebugString(),
+            "google.protobuf.BoolValue");
+}
+
+TEST_P(TypeDebugStringTest, BytesWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetBytesWrapperType()->DebugString(),
+            "google.protobuf.BytesValue");
+}
+
+TEST_P(TypeDebugStringTest, DoubleWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetDoubleWrapperType()->DebugString(),
+            "google.protobuf.DoubleValue");
+}
+
+TEST_P(TypeDebugStringTest, IntWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetIntWrapperType()->DebugString(),
+            "google.protobuf.Int64Value");
+}
+
+TEST_P(TypeDebugStringTest, StringWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetStringWrapperType()->DebugString(),
+            "google.protobuf.StringValue");
+}
+
+TEST_P(TypeDebugStringTest, UintWrapperType) {
+  TypeFactory type_factory(memory_manager());
+  EXPECT_EQ(type_factory.GetUintWrapperType()->DebugString(),
+            "google.protobuf.UInt64Value");
+}
+
+INSTANTIATE_TEST_SUITE_P(TypeDebugStringTest, TypeDebugStringTest,
                          base_internal::MemoryManagerTestModeAll(),
                          base_internal::MemoryManagerTestModeName);
+
+TEST(ListType, DestructorSkippable) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  ASSERT_OK_AND_ASSIGN(auto trivial_list_type,
+                       type_factory.CreateListType(type_factory.GetBoolType()));
+  EXPECT_TRUE(
+      base_internal::Metadata::IsDestructorSkippable(*trivial_list_type));
+}
+
+TEST(MapType, DestructorSkippable) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  ASSERT_OK_AND_ASSIGN(auto trivial_map_type,
+                       type_factory.CreateMapType(type_factory.GetStringType(),
+                                                  type_factory.GetBoolType()));
+  EXPECT_TRUE(
+      base_internal::Metadata::IsDestructorSkippable(*trivial_map_type));
+}
+
+TEST(OptionalType, DestructorSkippable) {
+  auto memory_manager = ArenaMemoryManager::Default();
+  TypeFactory type_factory(*memory_manager);
+  ASSERT_OK_AND_ASSIGN(
+      auto trivial_optional_type,
+      type_factory.CreateOptionalType(type_factory.GetStringType()));
+  EXPECT_TRUE(
+      base_internal::Metadata::IsDestructorSkippable(*trivial_optional_type));
+}
 
 TEST_P(TypeTest, SupportsAbslHash) {
   TypeFactory type_factory(memory_manager());
   EXPECT_TRUE(absl::VerifyTypeImplementsAbslHashCorrectly({
-      Persistent<const Type>(type_factory.GetNullType()),
-      Persistent<const Type>(type_factory.GetErrorType()),
-      Persistent<const Type>(type_factory.GetDynType()),
-      Persistent<const Type>(type_factory.GetAnyType()),
-      Persistent<const Type>(type_factory.GetBoolType()),
-      Persistent<const Type>(type_factory.GetIntType()),
-      Persistent<const Type>(type_factory.GetUintType()),
-      Persistent<const Type>(type_factory.GetDoubleType()),
-      Persistent<const Type>(type_factory.GetStringType()),
-      Persistent<const Type>(type_factory.GetBytesType()),
-      Persistent<const Type>(type_factory.GetDurationType()),
-      Persistent<const Type>(type_factory.GetTimestampType()),
-      Persistent<const Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
-      Persistent<const Type>(
-          Must(type_factory.CreateStructType<TestStructType>())),
-      Persistent<const Type>(
+      Handle<Type>(type_factory.GetNullType()),
+      Handle<Type>(type_factory.GetErrorType()),
+      Handle<Type>(type_factory.GetDynType()),
+      Handle<Type>(type_factory.GetAnyType()),
+      Handle<Type>(type_factory.GetBoolType()),
+      Handle<Type>(type_factory.GetIntType()),
+      Handle<Type>(type_factory.GetUintType()),
+      Handle<Type>(type_factory.GetDoubleType()),
+      Handle<Type>(type_factory.GetStringType()),
+      Handle<Type>(type_factory.GetBytesType()),
+      Handle<Type>(type_factory.GetDurationType()),
+      Handle<Type>(type_factory.GetTimestampType()),
+      Handle<Type>(Must(type_factory.CreateEnumType<TestEnumType>())),
+      Handle<Type>(Must(type_factory.CreateStructType<TestStructType>())),
+      Handle<Type>(
           Must(type_factory.CreateListType(type_factory.GetBoolType()))),
-      Persistent<const Type>(Must(type_factory.CreateMapType(
+      Handle<Type>(Must(type_factory.CreateMapType(
           type_factory.GetStringType(), type_factory.GetBoolType()))),
-      Persistent<const Type>(type_factory.GetTypeType()),
-      Persistent<const Type>(type_factory.GetUnknownType()),
+      Handle<Type>(type_factory.GetTypeType()),
+      Handle<Type>(type_factory.GetUnknownType()),
+      Handle<Type>(type_factory.GetBoolWrapperType()),
+      Handle<Type>(type_factory.GetBytesWrapperType()),
+      Handle<Type>(type_factory.GetDoubleWrapperType()),
+      Handle<Type>(type_factory.GetIntWrapperType()),
+      Handle<Type>(type_factory.GetStringWrapperType()),
+      Handle<Type>(type_factory.GetUintWrapperType()),
+      Handle<Type>(
+          Must(type_factory.CreateOptionalType(type_factory.GetStringType()))),
   }));
 }
 

@@ -21,6 +21,7 @@
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 #include "testutil/util.h"
 
 namespace google::api::expr::runtime {
@@ -75,8 +76,11 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), &type_registry, 0, {},
-                                 enable_unknowns);
+  cel::RuntimeOptions options;
+  if (enable_unknowns) {
+    options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  }
+  CelExpressionFlatImpl cel_expr(std::move(path), &type_registry, options);
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -162,8 +166,12 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
                        CreateCreateStructStep(create_struct, expr1.id()));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), &TestTypeRegistry(),
-                                 0, {}, enable_unknowns);
+  cel::RuntimeOptions options;
+  if (enable_unknowns) {
+    options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  }
+
+  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -188,8 +196,11 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
                                         expr1.id()));
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl cel_expr(&expr1, std::move(path), &type_registry, 0, {},
-                                 GetParam());
+  cel::RuntimeOptions options;
+  if (GetParam()) {
+    options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
+  }
+  CelExpressionFlatImpl cel_expr(std::move(path), &type_registry, options);
   Activation activation;
 
   google::protobuf::Arena arena;

@@ -22,8 +22,10 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(UintValue);
 
-std::string UintValue::DebugString() const {
-  return absl::StrCat(value(), "u");
+std::string UintValue::DebugString(uint64_t value) {
+  return absl::StrCat(value, "u");
 }
+
+std::string UintValue::DebugString() const { return DebugString(value()); }
 
 }  // namespace cel

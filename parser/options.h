@@ -50,7 +50,7 @@ struct ParserOptions final {
 
 namespace google::api::expr::parser {
 
-using ParserOptions = cel::ParserOptions;
+using ParserOptions = ::cel::ParserOptions;
 
 ABSL_DEPRECATED("Use ParserOptions().error_recovery_limit instead.")
 inline constexpr int kDefaultErrorRecoveryLimit =

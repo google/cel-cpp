@@ -18,29 +18,15 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_OPTIONS_H_
 
 #include "google/protobuf/arena.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
-// Options for unknown processing.
-enum class UnknownProcessingOptions {
-  // No unknown processing.
-  kDisabled,
-  // Only attributes supported.
-  kAttributeOnly,
-  // Attributes and functions supported. Function results are dependent on the
-  // logic for handling unknown_attributes, so clients must opt in to both.
-  kAttributeAndFunction
-};
+using UnknownProcessingOptions = cel::UnknownProcessingOptions;
 
-// Options for handling unset wrapper types on field access.
-enum class ProtoWrapperTypeOptions {
-  // Default: legacy behavior following proto semantics (unset behaves as though
-  // it is set to default value).
-  kUnsetProtoDefault,
-  // CEL spec behavior, unset wrapper is treated as a null value when accessed.
-  kUnsetNull,
-};
+using ProtoWrapperTypeOptions = cel::ProtoWrapperTypeOptions;
 
+// LINT.IfChange
 // Interpreter options for controlling evaluation and builtin functions.
 struct InterpreterOptions {
   // Level of unknown support enabled.
@@ -66,6 +52,7 @@ struct InterpreterOptions {
   // Note that expression tracing applies a modified expression if this option
   // is enabled.
   bool constant_folding = false;
+  bool enable_updated_constant_folding = false;
   google::protobuf::Arena* constant_arena = nullptr;
 
   // Enable comprehension expressions (e.g. exists, all)
@@ -78,7 +65,7 @@ struct InterpreterOptions {
 
   // Enable list append within comprehensions. Note, this option is not safe
   // with hand-rolled ASTs.
-  int enable_comprehension_list_append = false;
+  bool enable_comprehension_list_append = false;
 
   // Enable RE2 match() overload.
   bool enable_regex = true;
@@ -121,14 +108,6 @@ struct InterpreterOptions {
   // comprehension expressions.
   bool enable_comprehension_vulnerability_check = false;
 
-  // Enable coercing null cel values to messages in function resolution. This
-  // allows extension functions that previously depended on representing null
-  // values as nullptr messages to function.
-  //
-  // Note: This will be disabled by default in the future after clients that
-  // depend on the legacy function resolution are identified.
-  bool enable_null_to_message_coercion = true;
-
   // Enable heterogeneous comparisons (e.g. support for cross-type comparisons).
   bool enable_heterogeneous_equality = true;
 
@@ -160,6 +139,9 @@ struct InterpreterOptions {
   // overriden the default `matches` function you should not enable this option.
   bool enable_regex_precompilation = false;
 };
+// LINT.ThenChange(//depot/google3/runtime/runtime_options.h)
+
+cel::RuntimeOptions ConvertToRuntimeOptions(const InterpreterOptions& options);
 
 }  // namespace google::api::expr::runtime
 

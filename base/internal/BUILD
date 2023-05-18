@@ -16,13 +16,21 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
+package_group(
+    name = "ast_visibility",
+    packages = [
+        "//base/...",
+        "//eval/...",
+        "//extensions/...",
+    ],
+)
+
 cc_library(
     name = "data",
     hdrs = ["data.h"],
     deps = [
         "//base:kind",
-        "//internal:assume_aligned",
-        "//internal:launder",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/numeric:bits",
     ],
@@ -35,18 +43,6 @@ cc_library(
     hdrs = ["handle.h"],
     deps = [
         ":data",
-    ],
-)
-
-cc_library(
-    name = "managed_memory",
-    srcs = ["managed_memory.cc"],
-    hdrs = ["managed_memory.h"],
-    deps = [
-        ":data",
-        "@com_google_absl//absl/base:config",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/numeric:bits",
     ],
 )
 
@@ -68,6 +64,11 @@ cc_library(
 )
 
 cc_library(
+    name = "message_wrapper",
+    hdrs = ["message_wrapper.h"],
+)
+
+cc_library(
     name = "operators",
     hdrs = ["operators.h"],
     deps = [
@@ -84,7 +85,6 @@ cc_library(
     ],
     deps = [
         ":data",
-        "//base:handle",
         "//base:kind",
         "//internal:rtti",
     ],
@@ -96,7 +96,7 @@ cc_library(
     hdrs = ["unknown_set.h"],
     deps = [
         "//base:attributes",
-        "//base:functions",
+        "//base:function_result_set",
         "//internal:no_destructor",
         "@com_google_absl//absl/base:core_headers",
     ],
@@ -109,14 +109,73 @@ cc_library(
     ],
     deps = [
         ":data",
-        ":unknown_set",
+        ":type",
         "//base:handle",
-        "//base:type",
         "//internal:rtti",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_library(
+    name = "ast_impl",
+    srcs = ["ast_impl.cc"],
+    hdrs = ["ast_impl.h"],
+    deps = [
+        "//base:ast",
+        "//base:ast_internal",
+        "//internal:casts",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "ast_impl_test",
+    srcs = ["ast_impl_test.cc"],
+    deps = [
+        ":ast_impl",
+        "//base:ast",
+        "//base:ast_internal",
+        "//extensions/protobuf:ast_converters",
+        "//internal:testing",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "function_adapter",
+    hdrs = [
+        "function_adapter.h",
+    ],
+    deps = [
+        "//base:handle",
+        "//base:kind",
+        "//base:value",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "function_adapter_test",
+    srcs = ["function_adapter_test.cc"],
+    deps = [
+        ":function_adapter",
+        "//base:handle",
+        "//base:kind",
+        "//base:memory",
+        "//base:type",
+        "//base:value",
+        "//internal:testing",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
     ],
 )

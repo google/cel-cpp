@@ -15,6 +15,7 @@
 #include "eval/public/ast_rewrite.h"
 
 #include <stack>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/log/log.h"
@@ -191,6 +192,8 @@ struct PostVisitor {
       case Expr::kComprehensionExpr:
         visitor->PostVisitComprehension(&expr->comprehension_expr(), expr,
                                         &position);
+        break;
+      case Expr::EXPR_KIND_NOT_SET:
         break;
       default:
         LOG(ERROR) << "Unsupported Expr kind: " << expr->expr_kind_case();

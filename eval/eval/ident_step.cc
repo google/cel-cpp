@@ -1,6 +1,7 @@
 #include "eval/eval/ident_step.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -11,14 +12,21 @@
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/unknown_attribute_set.h"
+#include "eval/internal/errors.h"
+#include "eval/internal/interop.h"
 #include "extensions/protobuf/memory_manager.h"
+#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Handle;
+using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateMissingAttributeError;
+using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::google::protobuf::Arena;
 
 class IdentStep : public ExpressionStepBase {
  public:
@@ -28,69 +36,72 @@ class IdentStep : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result,
-                          AttributeTrail* trail) const;
+  struct IdentResult {
+    Handle<Value> value;
+    AttributeTrail trail;
+  };
+
+  absl::StatusOr<IdentResult> DoEvaluate(ExecutionFrame* frame) const;
 
   std::string name_;
 };
 
-absl::Status IdentStep::DoEvaluate(ExecutionFrame* frame, CelValue* result,
-                                   AttributeTrail* trail) const {
-  // Special case - iterator looked up in
-  if (frame->GetIterVar(name_, result)) {
-    const AttributeTrail* iter_trail;
-    if (frame->GetIterAttr(name_, &iter_trail)) {
-      *trail = *iter_trail;
-    }
-    return absl::OkStatus();
-  }
-
-  // TODO(issues/5): Update ValueProducer to support generic memory manager
-  // API.
+absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
+    ExecutionFrame* frame) const {
+  IdentResult result;
   google::protobuf::Arena* arena =
       ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
 
-  auto value = frame->activation().FindValue(name_, arena);
+  // Special case - comprehension variables mask any activation vars.
+  bool iter_var = frame->GetIterVar(name_, &result.value, &result.trail);
 
   // Populate trails if either MissingAttributeError or UnknownPattern
   // is enabled.
-  if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
-    *trail = AttributeTrail(name_);
-  }
+  if (!iter_var) {
+    if (frame->enable_missing_attribute_errors() || frame->enable_unknowns()) {
+      result.trail = AttributeTrail(name_);
+    }
 
-  if (frame->enable_missing_attribute_errors() && !name_.empty() &&
-      frame->attribute_utility().CheckForMissingAttribute(*trail)) {
-    *result = CreateMissingAttributeError(frame->memory_manager(), name_);
-    return absl::OkStatus();
-  }
-
-  if (frame->enable_unknowns()) {
-    if (frame->attribute_utility().CheckForUnknown(*trail, false)) {
-      auto unknown_set =
-          frame->attribute_utility().CreateUnknownSet(trail->attribute());
-      *result = CelValue::CreateUnknownSet(unknown_set);
-      return absl::OkStatus();
+    if (frame->enable_missing_attribute_errors() && !name_.empty() &&
+        frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
+      result.value = cel::interop_internal::CreateErrorValueFromView(
+          CreateMissingAttributeError(frame->memory_manager(), name_));
+      return result;
     }
   }
 
-  if (value.has_value()) {
-    *result = value.value();
-  } else {
-    *result = CreateErrorValue(
-        frame->memory_manager(),
-        absl::StrCat("No value with name \"", name_, "\" found in Activation"));
+  if (frame->enable_unknowns()) {
+    if (frame->attribute_utility().CheckForUnknown(result.trail, false)) {
+      auto unknown_set =
+          frame->attribute_utility().CreateUnknownSet(result.trail.attribute());
+      result.value = CreateUnknownValueFromView(unknown_set);
+      return result;
+    }
+  }
+  if (iter_var) {
+    return result;
   }
 
-  return absl::OkStatus();
+  CEL_ASSIGN_OR_RETURN(auto value, frame->modern_activation().FindVariable(
+                                       frame->value_factory(), name_));
+
+  if (value.has_value()) {
+    result.value = std::move(value).value();
+    return result;
+  }
+
+  result.value = cel::interop_internal::CreateErrorValueFromView(
+      Arena::Create<absl::Status>(arena, absl::StatusCode::kUnknown,
+                                  absl::StrCat("No value with name \"", name_,
+                                               "\" found in Activation")));
+
+  return result;
 }
 
 absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
-  CelValue result;
-  AttributeTrail trail;
+  CEL_ASSIGN_OR_RETURN(IdentResult result, DoEvaluate(frame));
 
-  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result, &trail));
-
-  frame->value_stack().Push(result, std::move(trail));
+  frame->value_stack().Push(std::move(result.value), std::move(result.trail));
 
   return absl::OkStatus();
 }
@@ -99,7 +110,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
     const cel::ast::internal::Ident& ident_expr, int64_t expr_id) {
-  return absl::make_unique<IdentStep>(ident_expr.name(), expr_id);
+  return std::make_unique<IdentStep>(ident_expr.name(), expr_id);
 }
 
 }  // namespace google::api::expr::runtime

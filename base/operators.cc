@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,157 +14,287 @@
 
 #include "base/operators.h"
 
-#include <memory>
+#include <algorithm>
+#include <array>
 
 #include "absl/base/attributes.h"
 #include "absl/base/call_once.h"
-#include "absl/base/macros.h"
-#include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-
-// Macro definining all the operators and their properties.
-// (1) - The identifier.
-// (2) - The display name if applicable, otherwise an empty string.
-// (3) - The name.
-// (4) - The precedence if applicable, otherwise 0.
-// (5) - The arity.
-#define CEL_OPERATORS_ENUM(XX)                          \
-  XX(Conditional, "", "_?_:_", 8, 3)                    \
-  XX(LogicalOr, "||", "_||_", 7, 2)                     \
-  XX(LogicalAnd, "&&", "_&&_", 6, 2)                    \
-  XX(Equals, "==", "_==_", 5, 2)                        \
-  XX(NotEquals, "!=", "_!=_", 5, 2)                     \
-  XX(Less, "<", "_<_", 5, 2)                            \
-  XX(LessEquals, "<=", "_<=_", 5, 2)                    \
-  XX(Greater, ">", "_>_", 5, 2)                         \
-  XX(GreaterEquals, ">=", "_>=_", 5, 2)                 \
-  XX(In, "in", "@in", 5, 2)                             \
-  XX(OldIn, "in", "_in_", 5, 2)                         \
-  XX(Add, "+", "_+_", 4, 2)                             \
-  XX(Subtract, "-", "_-_", 4, 2)                        \
-  XX(Multiply, "*", "_*_", 3, 2)                        \
-  XX(Divide, "/", "_/_", 3, 2)                          \
-  XX(Modulo, "%", "_%_", 3, 2)                          \
-  XX(LogicalNot, "!", "!_", 2, 1)                       \
-  XX(Negate, "-", "-_", 2, 1)                           \
-  XX(Index, "", "_[_]", 1, 2)                           \
-  XX(NotStrictlyFalse, "", "@not_strictly_false", 0, 1) \
-  XX(OldNotStrictlyFalse, "", "__not_strictly_false__", 0, 1)
+#include "absl/log/absl_check.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "base/internal/operators.h"
 
 namespace cel {
 
 namespace {
 
+using base_internal::OperatorData;
+
+struct OperatorDataNameComparer {
+  using is_transparent = void;
+
+  bool operator()(const OperatorData* lhs, const OperatorData* rhs) const {
+    return lhs->name < rhs->name;
+  }
+
+  bool operator()(const OperatorData* lhs, absl::string_view rhs) const {
+    return lhs->name < rhs;
+  }
+
+  bool operator()(absl::string_view lhs, const OperatorData* rhs) const {
+    return lhs < rhs->name;
+  }
+};
+
+struct OperatorDataDisplayNameComparer {
+  using is_transparent = void;
+
+  bool operator()(const OperatorData* lhs, const OperatorData* rhs) const {
+    return lhs->display_name < rhs->display_name;
+  }
+
+  bool operator()(const OperatorData* lhs, absl::string_view rhs) const {
+    return lhs->display_name < rhs;
+  }
+
+  bool operator()(absl::string_view lhs, const OperatorData* rhs) const {
+    return lhs < rhs->display_name;
+  }
+};
+
+#define CEL_OPERATORS_DATA(id, symbol, name, precedence, arity) \
+  ABSL_CONST_INIT const OperatorData id##_storage = {           \
+      OperatorId::k##id, name, symbol, precedence, arity};
+CEL_INTERNAL_OPERATORS_ENUM(CEL_OPERATORS_DATA)
+#undef CEL_OPERATORS_DATA
+
+#define CEL_OPERATORS_COUNT(id, symbol, name, precedence, arity) +1
+
+using OperatorsArray =
+    std::array<const OperatorData*,
+               0 + CEL_INTERNAL_OPERATORS_ENUM(CEL_OPERATORS_COUNT)>;
+
+using UnaryOperatorsArray =
+    std::array<const OperatorData*,
+               0 + CEL_INTERNAL_UNARY_OPERATORS_ENUM(CEL_OPERATORS_COUNT)>;
+
+using BinaryOperatorsArray =
+    std::array<const OperatorData*,
+               0 + CEL_INTERNAL_BINARY_OPERATORS_ENUM(CEL_OPERATORS_COUNT)>;
+
+using TernaryOperatorsArray =
+    std::array<const OperatorData*,
+               0 + CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_OPERATORS_COUNT)>;
+
+#undef CEL_OPERATORS_COUNT
+
 ABSL_CONST_INIT absl::once_flag operators_once_flag;
-ABSL_CONST_INIT const absl::flat_hash_map<absl::string_view, Operator>*
-    operators_by_name = nullptr;
-ABSL_CONST_INIT const absl::flat_hash_map<absl::string_view, Operator>*
-    operators_by_display_name = nullptr;
-ABSL_CONST_INIT const absl::flat_hash_map<absl::string_view, Operator>*
-    unary_operators = nullptr;
-ABSL_CONST_INIT const absl::flat_hash_map<absl::string_view, Operator>*
-    binary_operators = nullptr;
+
+#define CEL_OPERATORS_DO(id, symbol, name, precedence, arity) &id##_storage,
+
+OperatorsArray operators_by_name = {
+    CEL_INTERNAL_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+OperatorsArray operators_by_display_name = {
+    CEL_INTERNAL_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+UnaryOperatorsArray unary_operators_by_name = {
+    CEL_INTERNAL_UNARY_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+UnaryOperatorsArray unary_operators_by_display_name = {
+    CEL_INTERNAL_UNARY_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+BinaryOperatorsArray binary_operators_by_name = {
+    CEL_INTERNAL_BINARY_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+BinaryOperatorsArray binary_operators_by_display_name = {
+    CEL_INTERNAL_BINARY_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+TernaryOperatorsArray ternary_operators_by_name = {
+    CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+TernaryOperatorsArray ternary_operators_by_display_name = {
+    CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_OPERATORS_DO)};
+
+#undef CEL_OPERATORS_DO
 
 void InitializeOperators() {
-  ABSL_ASSERT(operators_by_name == nullptr);
-  ABSL_ASSERT(operators_by_display_name == nullptr);
-  ABSL_ASSERT(unary_operators == nullptr);
-  ABSL_ASSERT(binary_operators == nullptr);
-  auto operators_by_name_ptr =
-      std::make_unique<absl::flat_hash_map<absl::string_view, Operator>>();
-  auto operators_by_display_name_ptr =
-      std::make_unique<absl::flat_hash_map<absl::string_view, Operator>>();
-  auto unary_operators_ptr =
-      std::make_unique<absl::flat_hash_map<absl::string_view, Operator>>();
-  auto binary_operators_ptr =
-      std::make_unique<absl::flat_hash_map<absl::string_view, Operator>>();
-
-#define CEL_DEFINE_OPERATORS_BY_NAME(id, symbol, name, precedence, arity) \
-  if constexpr (!absl::string_view(name).empty()) {                       \
-    operators_by_name_ptr->insert({name, Operator::id()});                \
-  }
-  CEL_OPERATORS_ENUM(CEL_DEFINE_OPERATORS_BY_NAME)
-#undef CEL_DEFINE_OPERATORS_BY_NAME
-
-#define CEL_DEFINE_OPERATORS_BY_SYMBOL(id, symbol, name, precedence, arity) \
-  if constexpr (!absl::string_view(symbol).empty()) {                       \
-    operators_by_display_name_ptr->insert({symbol, Operator::id()});        \
-  }
-  CEL_OPERATORS_ENUM(CEL_DEFINE_OPERATORS_BY_SYMBOL)
-#undef CEL_DEFINE_OPERATORS_BY_SYMBOL
-
-#define CEL_DEFINE_UNARY_OPERATORS(id, symbol, name, precedence, arity) \
-  if constexpr (!absl::string_view(symbol).empty() && arity == 1) {     \
-    unary_operators_ptr->insert({symbol, Operator::id()});              \
-  }
-  CEL_OPERATORS_ENUM(CEL_DEFINE_UNARY_OPERATORS)
-#undef CEL_DEFINE_UNARY_OPERATORS
-
-#define CEL_DEFINE_BINARY_OPERATORS(id, symbol, name, precedence, arity) \
-  if constexpr (!absl::string_view(symbol).empty() && arity == 2) {      \
-    binary_operators_ptr->insert({symbol, Operator::id()});              \
-  }
-  CEL_OPERATORS_ENUM(CEL_DEFINE_BINARY_OPERATORS)
-#undef CEL_DEFINE_BINARY_OPERATORS
-
-  operators_by_name = operators_by_name_ptr.release();
-  operators_by_display_name = operators_by_display_name_ptr.release();
-  unary_operators = unary_operators_ptr.release();
-  binary_operators = binary_operators_ptr.release();
+  std::stable_sort(operators_by_name.begin(), operators_by_name.end(),
+                   OperatorDataNameComparer{});
+  std::stable_sort(operators_by_display_name.begin(),
+                   operators_by_display_name.end(),
+                   OperatorDataDisplayNameComparer{});
+  std::stable_sort(unary_operators_by_name.begin(),
+                   unary_operators_by_name.end(), OperatorDataNameComparer{});
+  std::stable_sort(unary_operators_by_display_name.begin(),
+                   unary_operators_by_display_name.end(),
+                   OperatorDataDisplayNameComparer{});
+  std::stable_sort(binary_operators_by_name.begin(),
+                   binary_operators_by_name.end(), OperatorDataNameComparer{});
+  std::stable_sort(binary_operators_by_display_name.begin(),
+                   binary_operators_by_display_name.end(),
+                   OperatorDataDisplayNameComparer{});
+  std::stable_sort(ternary_operators_by_name.begin(),
+                   ternary_operators_by_name.end(), OperatorDataNameComparer{});
+  std::stable_sort(ternary_operators_by_display_name.begin(),
+                   ternary_operators_by_display_name.end(),
+                   OperatorDataDisplayNameComparer{});
 }
-
-#define CEL_DEFINE_OPERATOR_DATA(id, symbol, name, precedence, arity) \
-  ABSL_CONST_INIT constexpr base_internal::OperatorData k##id##Data(  \
-      OperatorId::k##id, name, symbol, precedence, arity);
-CEL_OPERATORS_ENUM(CEL_DEFINE_OPERATOR_DATA)
-#undef CEL_DEFINE_OPERATOR_DATA
 
 }  // namespace
 
-#define CEL_DEFINE_OPERATOR(id, symbol, name, precedence, arity) \
-  Operator Operator::id() { return Operator(std::addressof(k##id##Data)); }
-CEL_OPERATORS_ENUM(CEL_DEFINE_OPERATOR)
-#undef CEL_DEFINE_OPERATOR
-
-absl::StatusOr<Operator> Operator::FindByName(absl::string_view input) {
-  absl::call_once(operators_once_flag, InitializeOperators);
-  auto it = operators_by_name->find(input);
-  if (it != operators_by_name->end()) {
-    return it->second;
-  }
-  return absl::NotFoundError(absl::StrCat("No such operator: ", input));
+UnaryOperator::UnaryOperator(Operator op) : data_(op.data_) {
+  ABSL_CHECK(op.arity() == Arity::kUnary);  // Crask OK
 }
 
-absl::StatusOr<Operator> Operator::FindByDisplayName(absl::string_view input) {
-  absl::call_once(operators_once_flag, InitializeOperators);
-  auto it = operators_by_display_name->find(input);
-  if (it != operators_by_display_name->end()) {
-    return it->second;
-  }
-  return absl::NotFoundError(absl::StrCat("No such operator: ", input));
+BinaryOperator::BinaryOperator(Operator op) : data_(op.data_) {
+  ABSL_CHECK(op.arity() == Arity::kBinary);  // Crask OK
 }
 
-absl::StatusOr<Operator> Operator::FindUnaryByDisplayName(
+TernaryOperator::TernaryOperator(Operator op) : data_(op.data_) {
+  ABSL_CHECK(op.arity() == Arity::kTernary);  // Crask OK
+}
+
+#define CEL_UNARY_OPERATOR(id, symbol, name, precedence, arity) \
+  UnaryOperator Operator::id() { return UnaryOperator(&id##_storage); }
+
+CEL_INTERNAL_UNARY_OPERATORS_ENUM(CEL_UNARY_OPERATOR)
+
+#undef CEL_UNARY_OPERATOR
+
+#define CEL_BINARY_OPERATOR(id, symbol, name, precedence, arity) \
+  BinaryOperator Operator::id() { return BinaryOperator(&id##_storage); }
+
+CEL_INTERNAL_BINARY_OPERATORS_ENUM(CEL_BINARY_OPERATOR)
+
+#undef CEL_BINARY_OPERATOR
+
+#define CEL_TERNARY_OPERATOR(id, symbol, name, precedence, arity) \
+  TernaryOperator Operator::id() { return TernaryOperator(&id##_storage); }
+
+CEL_INTERNAL_TERNARY_OPERATORS_ENUM(CEL_TERNARY_OPERATOR)
+
+#undef CEL_TERNARY_OPERATOR
+
+absl::optional<Operator> Operator::FindByName(absl::string_view input) {
+  absl::call_once(operators_once_flag, InitializeOperators);
+  if (input.empty()) {
+    return absl::nullopt;
+  }
+  auto it =
+      std::lower_bound(operators_by_name.cbegin(), operators_by_name.cend(),
+                       input, OperatorDataNameComparer{});
+  if (it == operators_by_name.cend() || (*it)->name != input) {
+    return absl::nullopt;
+  }
+  return Operator(*it);
+}
+
+absl::optional<Operator> Operator::FindByDisplayName(absl::string_view input) {
+  absl::call_once(operators_once_flag, InitializeOperators);
+  if (input.empty()) {
+    return absl::nullopt;
+  }
+  auto it = std::lower_bound(operators_by_display_name.cbegin(),
+                             operators_by_display_name.cend(), input,
+                             OperatorDataDisplayNameComparer{});
+  if (it == operators_by_name.cend() || (*it)->display_name != input) {
+    return absl::nullopt;
+  }
+  return Operator(*it);
+}
+
+absl::optional<UnaryOperator> UnaryOperator::FindByName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
-  auto it = unary_operators->find(input);
-  if (it != unary_operators->end()) {
-    return it->second;
+  if (input.empty()) {
+    return absl::nullopt;
   }
-  return absl::NotFoundError(absl::StrCat("No such unary operator: ", input));
+  auto it = std::lower_bound(unary_operators_by_name.cbegin(),
+                             unary_operators_by_name.cend(), input,
+                             OperatorDataNameComparer{});
+  if (it == unary_operators_by_name.cend() || (*it)->name != input) {
+    return absl::nullopt;
+  }
+  return UnaryOperator(*it);
 }
 
-absl::StatusOr<Operator> Operator::FindBinaryByDisplayName(
+absl::optional<UnaryOperator> UnaryOperator::FindByDisplayName(
     absl::string_view input) {
   absl::call_once(operators_once_flag, InitializeOperators);
-  auto it = binary_operators->find(input);
-  if (it != binary_operators->end()) {
-    return it->second;
+  if (input.empty()) {
+    return absl::nullopt;
   }
-  return absl::NotFoundError(absl::StrCat("No such binary operator: ", input));
+  auto it = std::lower_bound(unary_operators_by_display_name.cbegin(),
+                             unary_operators_by_display_name.cend(), input,
+                             OperatorDataDisplayNameComparer{});
+  if (it == unary_operators_by_display_name.cend() ||
+      (*it)->display_name != input) {
+    return absl::nullopt;
+  }
+  return UnaryOperator(*it);
+}
+
+absl::optional<BinaryOperator> BinaryOperator::FindByName(
+    absl::string_view input) {
+  absl::call_once(operators_once_flag, InitializeOperators);
+  if (input.empty()) {
+    return absl::nullopt;
+  }
+  auto it = std::lower_bound(binary_operators_by_name.cbegin(),
+                             binary_operators_by_name.cend(), input,
+                             OperatorDataNameComparer{});
+  if (it == binary_operators_by_name.cend() || (*it)->name != input) {
+    return absl::nullopt;
+  }
+  return BinaryOperator(*it);
+}
+
+absl::optional<BinaryOperator> BinaryOperator::FindByDisplayName(
+    absl::string_view input) {
+  absl::call_once(operators_once_flag, InitializeOperators);
+  if (input.empty()) {
+    return absl::nullopt;
+  }
+  auto it = std::lower_bound(binary_operators_by_display_name.cbegin(),
+                             binary_operators_by_display_name.cend(), input,
+                             OperatorDataDisplayNameComparer{});
+  if (it == binary_operators_by_display_name.cend() ||
+      (*it)->display_name != input) {
+    return absl::nullopt;
+  }
+  return BinaryOperator(*it);
+}
+
+absl::optional<TernaryOperator> TernaryOperator::FindByName(
+    absl::string_view input) {
+  absl::call_once(operators_once_flag, InitializeOperators);
+  if (input.empty()) {
+    return absl::nullopt;
+  }
+  auto it = std::lower_bound(ternary_operators_by_name.cbegin(),
+                             ternary_operators_by_name.cend(), input,
+                             OperatorDataNameComparer{});
+  if (it == ternary_operators_by_name.cend() || (*it)->name != input) {
+    return absl::nullopt;
+  }
+  return TernaryOperator(*it);
+}
+
+absl::optional<TernaryOperator> TernaryOperator::FindByDisplayName(
+    absl::string_view input) {
+  absl::call_once(operators_once_flag, InitializeOperators);
+  if (input.empty()) {
+    return absl::nullopt;
+  }
+  auto it = std::lower_bound(ternary_operators_by_display_name.cbegin(),
+                             ternary_operators_by_display_name.cend(), input,
+                             OperatorDataDisplayNameComparer{});
+  if (it == ternary_operators_by_display_name.cend() ||
+      (*it)->display_name != input) {
+    return absl::nullopt;
+  }
+  return TernaryOperator(*it);
 }
 
 }  // namespace cel
-
-#undef CEL_OPERATORS_ENUM

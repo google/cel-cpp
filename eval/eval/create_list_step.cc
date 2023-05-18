@@ -1,16 +1,25 @@
 #include "eval/eval/create_list_step.h"
 
 #include <cstdint>
+#include <memory>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "base/handle.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/eval/mutable_list_impl.h"
+#include "eval/internal/interop.h"
 #include "eval/public/containers/container_backed_list_impl.h"
+#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using ::cel::interop_internal::CreateLegacyListValue;
+using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
 
 class CreateListStep : public ExpressionStepBase {
  public:
@@ -39,12 +48,12 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
   auto args = frame->value_stack().GetSpan(list_size_);
 
-  CelValue result;
+  cel::Handle<cel::Value> result;
   for (const auto& arg : args) {
-    if (arg.IsError()) {
+    if (arg->Is<cel::ErrorValue>()) {
       result = arg;
       frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(result);
+      frame->value_stack().Push(std::move(result));
       return absl::OkStatus();
     }
   }
@@ -56,28 +65,29 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
         /*initial_set=*/nullptr,
         /*use_partial=*/true);
     if (unknown_set != nullptr) {
-      result = CelValue::CreateUnknownSet(unknown_set);
+      result = CreateUnknownValueFromView(unknown_set);
       frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(result);
+      frame->value_stack().Push(std::move(result));
       return absl::OkStatus();
     }
   }
 
-  CelList* cel_list;
+  auto* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
+      frame->memory_manager());
+
   if (immutable_) {
-    cel_list = frame->memory_manager()
-                   .New<ContainerBackedListImpl>(
-                       std::vector<CelValue>(args.begin(), args.end()))
-                   .release();
+    // TODO(issues/5): switch to new cel::ListValue in phase 2
+    result =
+        CreateLegacyListValue(google::protobuf::Arena::Create<ContainerBackedListImpl>(
+            arena,
+            ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
   } else {
-    cel_list = frame->memory_manager()
-                   .New<MutableListImpl>(
-                       std::vector<CelValue>(args.begin(), args.end()))
-                   .release();
+    // TODO(issues/5): switch to new cel::ListValue in phase 2
+    result = CreateLegacyListValue(google::protobuf::Arena::Create<MutableListImpl>(
+        arena, ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
   }
-  result = CelValue::CreateList(cel_list);
   frame->value_stack().Pop(list_size_);
-  frame->value_stack().Push(result);
+  frame->value_stack().Push(std::move(result));
   return absl::OkStatus();
 }
 
@@ -85,13 +95,13 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
     const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
-  return absl::make_unique<CreateListStep>(
+  return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(), /*immutable=*/true);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
     const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
-  return absl::make_unique<CreateListStep>(
+  return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(), /*immutable=*/false);
 }
 

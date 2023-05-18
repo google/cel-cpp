@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_NULL_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_NULL_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -33,21 +34,31 @@ class NullType final : public base_internal::SimpleType<Kind::kNullType> {
 
   using Base::Is;
 
+  static const NullType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const NullType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(NullType, NullValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(NullType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<NullType> {
+  using value_type = NullValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

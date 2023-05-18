@@ -17,7 +17,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_
 
-#include "base/ast.h"
+#include "base/ast_internal.h"
 
 namespace cel {
 namespace ast {

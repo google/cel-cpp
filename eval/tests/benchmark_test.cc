@@ -11,6 +11,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
+#include "absl/flags/flag.h"
 #include "absl/strings/match.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -25,6 +26,9 @@
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "parser/parser.h"
+#include "google/protobuf/arena.h"
+
+ABSL_FLAG(bool, enable_optimizations, false, "enable const folding opt");
 
 namespace google {
 namespace api {
@@ -34,16 +38,31 @@ namespace runtime {
 namespace {
 
 using ::google::api::expr::v1alpha1::Expr;
+using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
 using ::google::rpc::context::AttributeContext;
+
+InterpreterOptions GetOptions(google::protobuf::Arena& arena) {
+  InterpreterOptions options;
+
+  if (absl::GetFlag(FLAGS_enable_optimizations)) {
+    options.enable_updated_constant_folding = true;
+    options.constant_arena = &arena;
+    options.constant_folding = true;
+  }
+
+  return options;
+}
 
 // Benchmark test
 // Evaluates cel expression:
 // '1 + 1 + 1 .... +1'
 static void BM_Eval(benchmark::State& state) {
-  auto builder = CreateCelExpressionBuilder();
-  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  ASSERT_OK(reg_status);
+  google::protobuf::Arena arena;
+  InterpreterOptions options = GetOptions(arena);
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   int len = state.range(0);
 
@@ -84,9 +103,11 @@ absl::Status EmptyCallback(int64_t expr_id, const CelValue& value,
 // Traces cel expression with an empty callback:
 // '1 + 1 + 1 .... +1'
 static void BM_Eval_Trace(benchmark::State& state) {
-  auto builder = CreateCelExpressionBuilder();
-  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  ASSERT_OK(reg_status);
+  google::protobuf::Arena arena;
+  InterpreterOptions options = GetOptions(arena);
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   int len = state.range(0);
 
@@ -124,9 +145,11 @@ BENCHMARK(BM_Eval_Trace)->Range(1, 10000);
 // Evaluates cel expression:
 // '"a" + "a" + "a" .... + "a"'
 static void BM_EvalString(benchmark::State& state) {
-  auto builder = CreateCelExpressionBuilder();
-  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  ASSERT_OK(reg_status);
+  google::protobuf::Arena arena;
+  InterpreterOptions options = GetOptions(arena);
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   int len = state.range(0);
 
@@ -164,9 +187,11 @@ BENCHMARK(BM_EvalString)->Range(1, 10000);
 // Traces cel expression with an empty callback:
 // '"a" + "a" + "a" .... + "a"'
 static void BM_EvalString_Trace(benchmark::State& state) {
-  auto builder = CreateCelExpressionBuilder();
-  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry());
-  ASSERT_OK(reg_status);
+  google::protobuf::Arena arena;
+  InterpreterOptions options = GetOptions(arena);
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   int len = state.range(0);
 
@@ -258,12 +283,12 @@ void BM_PolicySymbolic(benchmark::State& state) {
     ])
    ))cel"));
 
-  InterpreterOptions options;
+  InterpreterOptions options = GetOptions(arena);
   options.constant_folding = true;
   options.constant_arena = &arena;
 
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   SourceInfo source_info;
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
@@ -316,8 +341,10 @@ void BM_PolicySymbolicMap(benchmark::State& state) {
      request.ip in ["10.0.1.1",  "10.0.1.2", "10.0.1.3"])
    ))cel"));
 
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   SourceInfo source_info;
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
@@ -347,8 +374,10 @@ void BM_PolicySymbolicProto(benchmark::State& state) {
      request.ip in ["10.0.1.1",  "10.0.1.2", "10.0.1.3"])
    ))cel"));
 
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
 
   SourceInfo source_info;
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder->CreateExpression(
@@ -435,10 +464,12 @@ void BM_Comprehension(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  InterpreterOptions options;
+
+  InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, nullptr));
   for (auto _ : state) {
@@ -466,10 +497,11 @@ void BM_Comprehension_Trace(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  InterpreterOptions options;
+  InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, nullptr));
   for (auto _ : state) {
@@ -487,8 +519,11 @@ void BM_HasMap(benchmark::State& state) {
   Activation activation;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("has(request.path) && !has(request.ip)"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -514,8 +549,10 @@ void BM_HasProto(benchmark::State& state) {
   Activation activation;
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("has(request.path) && !has(request.ip)"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry(), options);
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -541,8 +578,10 @@ void BM_HasProtoMap(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
                        parser::Parse("has(request.headers.create_time) && "
                                      "!has(request.headers.update_time)"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry(), options);
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -567,8 +606,10 @@ void BM_ReadProtoMap(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
      request.headers.create_time == "2021-01-01"
    )cel"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry(), options);
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -593,8 +634,10 @@ void BM_NestedProtoFieldRead(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
       !request.a.b.c.d.e
    )cel"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry(), options);
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -619,8 +662,10 @@ void BM_NestedProtoFieldReadDefaults(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
       !request.a.b.c.d.e
    )cel"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  auto reg_status = RegisterBuiltinFunctions(builder->GetRegistry(), options);
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -644,8 +689,10 @@ void BM_ProtoStructAccess(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
       has(request.auth.claims.iss) && request.auth.claims.iss == 'accounts.google.com'
    )cel"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -672,8 +719,10 @@ void BM_ProtoListAccess(benchmark::State& state) {
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr, parser::Parse(R"cel(
       "//.../accessLevels/MY_LEVEL_4" in request.auth.access_levels
    )cel"));
-  auto builder = CreateCelExpressionBuilder();
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  InterpreterOptions options = GetOptions(arena);
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&parsed_expr.expr(), nullptr));
 
@@ -806,10 +855,11 @@ void BM_NestedComprehension(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  InterpreterOptions options;
+  InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, nullptr));
 
@@ -838,11 +888,11 @@ void BM_NestedComprehension_Trace(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  InterpreterOptions options;
+  InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder->CreateExpression(&expr, nullptr));
 
@@ -871,11 +921,11 @@ void BM_ListComprehension(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  InterpreterOptions options;
+  InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
   ASSERT_OK_AND_ASSIGN(
       auto cel_expr, builder->CreateExpression(&(parsed_expr.expr()), nullptr));
 
@@ -904,11 +954,11 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
 
   ContainerBackedListImpl cel_list(std::move(list));
   activation.InsertValue("list", CelValue::CreateList(&cel_list));
-  InterpreterOptions options;
+  InterpreterOptions options = GetOptions(arena);
   options.comprehension_max_iterations = 10000000;
   options.enable_comprehension_list_append = true;
   auto builder = CreateCelExpressionBuilder(options);
-  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
   ASSERT_OK_AND_ASSIGN(
       auto cel_expr, builder->CreateExpression(&(parsed_expr.expr()), nullptr));
 
@@ -921,6 +971,41 @@ void BM_ListComprehension_Trace(benchmark::State& state) {
 }
 
 BENCHMARK(BM_ListComprehension_Trace)->Range(1, 1 << 16);
+
+void BM_ListComprehension_Opt(benchmark::State& state) {
+  google::protobuf::Arena arena;
+  Activation activation;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("list.map(x, x * 2)"));
+
+  int len = state.range(0);
+  std::vector<CelValue> list;
+  list.reserve(len);
+  for (int i = 0; i < len; i++) {
+    list.push_back(CelValue::CreateInt64(1));
+  }
+
+  ContainerBackedListImpl cel_list(std::move(list));
+  activation.InsertValue("list", CelValue::CreateList(&cel_list));
+  InterpreterOptions options;
+  options.constant_arena = &arena;
+  options.constant_folding = true;
+  options.comprehension_max_iterations = 10000000;
+  options.enable_comprehension_list_append = true;
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_expr, builder->CreateExpression(&(parsed_expr.expr()), nullptr));
+
+  for (auto _ : state) {
+    ASSERT_OK_AND_ASSIGN(CelValue result,
+                         cel_expr->Evaluate(activation, &arena));
+    ASSERT_TRUE(result.IsList());
+    ASSERT_EQ(result.ListOrDie()->size(), len);
+  }
+}
+
+BENCHMARK(BM_ListComprehension_Opt)->Range(1, 1 << 16);
 
 void BM_ComprehensionCpp(benchmark::State& state) {
   google::protobuf::Arena arena;

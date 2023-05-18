@@ -95,7 +95,7 @@ antlr_library = rule(
         "package": attr.string(),
         "_tool": attr.label(
             executable = True,
-            cfg = "host",  # buildifier: disable=attr-cfg
+            cfg = "exec",  # buildifier: disable=attr-cfg
             default = Label("//bazel:antlr4_tool"),
         ),
     },

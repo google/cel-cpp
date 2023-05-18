@@ -3,12 +3,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/cel_function.h"
-#include "eval/public/cel_function_provider.h"
 
 namespace google::api::expr::runtime {
 
@@ -16,14 +15,14 @@ namespace google::api::expr::runtime {
 // resolved at runtime (lazily) from an input Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call, int64_t expr_id,
-    std::vector<const CelFunctionProvider*>& lazy_overloads);
+    std::vector<CelFunctionRegistry::LazyOverload> lazy_overloads);
 
 // Factory method for Call-based execution step where the function has been
 // statically resolved from a set of eagerly functions configured in the
 // CelFunctionRegistry.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call, int64_t expr_id,
-    std::vector<const CelFunction*>& overloads);
+    std::vector<cel::FunctionOverloadReference> overloads);
 
 }  // namespace google::api::expr::runtime
 

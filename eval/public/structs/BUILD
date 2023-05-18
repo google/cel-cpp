@@ -60,6 +60,7 @@ cc_library(
         "//eval/testutil:test_message_cc_proto",
         "//internal:overflow",
         "//internal:proto_time_encoding",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -191,8 +192,9 @@ cc_library(
     name = "legacy_type_provider",
     hdrs = ["legacy_type_provider.h"],
     deps = [
+        ":legacy_any_packing",
         ":legacy_type_adapter",
-        "//base:type_provider",
+        "//base:type",
         "@com_google_absl//absl/types:optional",
     ],
 )
@@ -201,7 +203,7 @@ cc_library(
     name = "legacy_type_adapter",
     hdrs = ["legacy_type_adapter.h"],
     deps = [
-        "//base:memory_manager",
+        "//base:memory",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "@com_google_absl//absl/status",
@@ -233,7 +235,7 @@ cc_library(
         ":field_access_impl",
         ":legacy_type_adapter",
         ":legacy_type_info_apis",
-        "//base:memory_manager",
+        "//base:memory",
         "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
@@ -325,6 +327,9 @@ cc_library(
     srcs = ["cel_proto_lite_wrap_util.cc"],
     hdrs = ["cel_proto_lite_wrap_util.h"],
     deps = [
+        ":legacy_any_packing",
+        ":legacy_type_info_apis",
+        ":legacy_type_provider",
         "//eval/public:cel_value",
         "//eval/testutil:test_message_cc_proto",
         "//internal:casts",
@@ -340,12 +345,22 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "legacy_any_packing",
+    hdrs = ["legacy_any_packing.h"],
+    deps = [
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
 cc_test(
     name = "cel_proto_lite_wrap_util_test",
     srcs = ["cel_proto_lite_wrap_util_test.cc"],
     deps = [
         ":cel_proto_lite_wrap_util",
-        ":trivial_legacy_type_info",
+        ":legacy_any_packing",
+        ":protobuf_descriptor_type_provider",
         "//eval/public:cel_value",
         "//eval/public/containers:container_backed_list_impl",
         "//eval/public/containers:container_backed_map_impl",
@@ -374,8 +389,35 @@ cc_test(
     name = "legacy_type_provider_test",
     srcs = ["legacy_type_provider_test.cc"],
     deps = [
+        ":legacy_any_packing",
         ":legacy_type_info_apis",
         ":legacy_type_provider",
         "//internal:testing",
+    ],
+)
+
+cc_test(
+    name = "dynamic_descriptor_pool_end_to_end_test",
+    srcs = ["dynamic_descriptor_pool_end_to_end_test.cc"],
+    deps = [
+        ":cel_proto_descriptor_pool_builder",
+        ":cel_proto_wrapper",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public:cel_expr_builder_factory",
+        "//eval/public:cel_expression",
+        "//eval/public:cel_options",
+        "//eval/public/testing:matchers",
+        "//internal:proto_util",
+        "//internal:testing",
+        "//internal:time",
+        "//parser",
+        "//testutil:util",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )

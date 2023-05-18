@@ -691,8 +691,8 @@ TEST(UnknownsIterAttrTest, IterAttributeTrail) {
   // var[1]['elem1'] is unknown
   activation.set_unknown_attribute_patterns({CelAttributePattern(
       "var", {
-                 CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
-                 CelAttributeQualifierPattern::Create(
+                 CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1)),
+                 CreateCelAttributeQualifierPattern(
                      CelValue::CreateStringView("elem1")),
              })});
 
@@ -879,11 +879,11 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailMap) {
 
   // var[1]['key'] is unknown
   activation.set_unknown_attribute_patterns({CelAttributePattern(
-      "var", {
-                 CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
-                 CelAttributeQualifierPattern::Create(
-                     CelValue::CreateStringView("key")),
-             })});
+      "var",
+      {
+          CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1)),
+          CreateCelAttributeQualifierPattern(CelValue::CreateStringView("key")),
+      })});
 
   ASSERT_OK(activation.InsertFunction(std::make_unique<FunctionImpl>(
       "Fn", FunctionResponse::kFalse, CelValue::Type::kDouble)));
@@ -1000,8 +1000,8 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailFilterValues) {
   // var[1]['value_key'] is unknown
   activation.set_unknown_attribute_patterns({CelAttributePattern(
       "var", {
-                 CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
-                 CelAttributeQualifierPattern::Create(
+                 CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1)),
+                 CreateCelAttributeQualifierPattern(
                      CelValue::CreateStringView("value_key")),
              })});
 
@@ -1051,15 +1051,15 @@ TEST(UnknownsIterAttrTest, IterAttributeTrailFilterConditions) {
       {CelAttributePattern(
            "var",
            {
-               CelAttributeQualifierPattern::Create(CelValue::CreateInt64(1)),
-               CelAttributeQualifierPattern::Create(
+               CreateCelAttributeQualifierPattern(CelValue::CreateInt64(1)),
+               CreateCelAttributeQualifierPattern(
                    CelValue::CreateStringView("filter_key")),
            }),
        CelAttributePattern(
            "var",
            {
-               CelAttributeQualifierPattern::Create(CelValue::CreateInt64(0)),
-               CelAttributeQualifierPattern::Create(
+               CreateCelAttributeQualifierPattern(CelValue::CreateInt64(0)),
+               CreateCelAttributeQualifierPattern(
                    CelValue::CreateStringView("filter_key")),
            })});
 

@@ -87,7 +87,10 @@ absl::StatusOr<bool> HasFieldImpl(const google::protobuf::Message* message,
   ABSL_ASSERT(descriptor == message->GetDescriptor());
   const Reflection* reflection = message->GetReflection();
   const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
-
+  if (field_desc == nullptr && reflection != nullptr) {
+    // Search to see whether the field name is referring to an extension.
+    field_desc = reflection->FindKnownExtensionByName(field_name);
+  }
   if (field_desc == nullptr) {
     return absl::NotFoundError(absl::StrCat("no_such_field : ", field_name));
   }
@@ -118,8 +121,12 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
                                       ProtoWrapperTypeOptions unboxing_option,
                                       cel::MemoryManager& memory_manager) {
   ABSL_ASSERT(descriptor == message->GetDescriptor());
+  const Reflection* reflection = message->GetReflection();
   const FieldDescriptor* field_desc = descriptor->FindFieldByName(std::string(field_name));
-
+  if (field_desc == nullptr && reflection != nullptr) {
+    std::string ext_name(field_name);
+    field_desc = reflection->FindKnownExtensionByName(ext_name);
+  }
   if (field_desc == nullptr) {
     return CreateNoSuchFieldError(memory_manager, field_name);
   }
@@ -127,15 +134,15 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
 
   if (field_desc->is_map()) {
-    auto map = memory_manager.New<internal::FieldBackedMapImpl>(
-        message, field_desc, &MessageCelValueFactory, arena);
+    auto* map = google::protobuf::Arena::Create<internal::FieldBackedMapImpl>(
+        arena, message, field_desc, &MessageCelValueFactory, arena);
 
-    return CelValue::CreateMap(map.release());
+    return CelValue::CreateMap(map);
   }
   if (field_desc->is_repeated()) {
-    auto list = memory_manager.New<internal::FieldBackedListImpl>(
-        message, field_desc, &MessageCelValueFactory, arena);
-    return CelValue::CreateList(list.release());
+    auto* list = google::protobuf::Arena::Create<internal::FieldBackedListImpl>(
+        arena, message, field_desc, &MessageCelValueFactory, arena);
+    return CelValue::CreateList(list);
   }
 
   CEL_ASSIGN_OR_RETURN(
@@ -145,7 +152,26 @@ absl::StatusOr<CelValue> GetFieldImpl(const google::protobuf::Message* message,
   return result;
 }
 
+std::vector<absl::string_view> ListFieldsImpl(
+    const CelValue::MessageWrapper& instance) {
+  if (instance.message_ptr() == nullptr) {
+    return std::vector<absl::string_view>();
+  }
+  const auto* message =
+      cel::internal::down_cast<const google::protobuf::Message*>(instance.message_ptr());
+  const auto* reflect = message->GetReflection();
+  std::vector<const google::protobuf::FieldDescriptor*> fields;
+  reflect->ListFields(*message, &fields);
+  std::vector<absl::string_view> field_names;
+  field_names.reserve(fields.size());
+  for (const auto* field : fields) {
+    field_names.emplace_back(field->name());
+  }
+  return field_names;
+}
+
 class DucktypedMessageAdapter : public LegacyTypeAccessApis,
+                                public LegacyTypeMutationApis,
                                 public LegacyTypeInfoApis {
  public:
   // Implement field access APIs.
@@ -205,7 +231,59 @@ class DucktypedMessageAdapter : public LegacyTypeAccessApis,
     return message->ShortDebugString();
   }
 
+  bool DefinesField(absl::string_view field_name) const override {
+    // Pretend all our fields exist. Real errors will be returned from field
+    // getters and setters.
+    return true;
+  }
+
+  absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
+      cel::MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError("NewInstance is not implemented");
+  }
+
+  absl::StatusOr<CelValue> AdaptFromWellKnownType(
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder instance) const override {
+    if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
+      return absl::UnimplementedError(
+          "MessageLite is not supported, descriptor is required");
+    }
+    return ProtoMessageTypeAdapter(
+               cel::internal::down_cast<const google::protobuf::Message*>(
+                   instance.message_ptr())
+                   ->GetDescriptor(),
+               nullptr)
+        .AdaptFromWellKnownType(memory_manager, instance);
+  }
+
+  absl::Status SetField(
+      absl::string_view field_name, const CelValue& value,
+      cel::MemoryManager& memory_manager,
+      CelValue::MessageWrapper::Builder& instance) const override {
+    if (!instance.HasFullProto() || instance.message_ptr() == nullptr) {
+      return absl::UnimplementedError(
+          "MessageLite is not supported, descriptor is required");
+    }
+    return ProtoMessageTypeAdapter(
+               cel::internal::down_cast<const google::protobuf::Message*>(
+                   instance.message_ptr())
+                   ->GetDescriptor(),
+               nullptr)
+        .SetField(field_name, value, memory_manager, instance);
+  }
+
+  std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const override {
+    return ListFieldsImpl(instance);
+  }
+
   const LegacyTypeAccessApis* GetAccessApis(
+      const MessageWrapper& wrapped_message) const override {
+    return this;
+  }
+
+  const LegacyTypeMutationApis* GetMutationApis(
       const MessageWrapper& wrapped_message) const override {
     return this;
   }
@@ -235,6 +313,11 @@ absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
 
 absl::StatusOr<CelValue::MessageWrapper::Builder>
 ProtoMessageTypeAdapter::NewInstance(cel::MemoryManager& memory_manager) const {
+  if (message_factory_ == nullptr) {
+    return absl::UnimplementedError(
+        absl::StrCat("Cannot create message ", descriptor_->name()));
+  }
+
   // This implementation requires arena-backed memory manager.
   google::protobuf::Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
   const Message* prototype = message_factory_->GetPrototype(descriptor_);
@@ -312,11 +395,11 @@ absl::Status ProtoMessageTypeAdapter::SetField(
         ValidateSetFieldOp(value_field_descriptor != nullptr, field_name,
                            "failed to find value field descriptor"));
 
-    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys());
+    CEL_ASSIGN_OR_RETURN(const CelList* key_list, cel_map->ListKeys(arena));
     for (int i = 0; i < key_list->size(); i++) {
-      CelValue key = (*key_list)[i];
+      CelValue key = (*key_list).Get(arena, i);
 
-      auto value = (*cel_map)[key];
+      auto value = (*cel_map).Get(arena, key);
       CEL_RETURN_IF_ERROR(ValidateSetFieldOp(value.has_value(), field_name,
                                              "error serializing CelMap"));
       Message* entry_msg = mutable_message->GetReflection()->AddMessage(
@@ -335,7 +418,7 @@ absl::Status ProtoMessageTypeAdapter::SetField(
 
     for (int i = 0; i < cel_list->size(); i++) {
       CEL_RETURN_IF_ERROR(internal::AddValueToRepeatedField(
-          (*cel_list)[i], field_descriptor, mutable_message, arena));
+          (*cel_list).Get(arena, i), field_descriptor, mutable_message, arena));
     }
   } else {
     CEL_RETURN_IF_ERROR(internal::SetValueToSingleField(
@@ -369,6 +452,11 @@ bool ProtoMessageTypeAdapter::IsEqualTo(
     return false;
   }
   return ProtoEquals(**lhs, **rhs);
+}
+
+std::vector<absl::string_view> ProtoMessageTypeAdapter::ListFields(
+    const CelValue::MessageWrapper& instance) const {
+  return ListFieldsImpl(instance);
 }
 
 const LegacyTypeInfoApis& GetGenericProtoTypeInfoInstance() {

@@ -14,6 +14,7 @@
 
 #include "parser/macro.h"
 
+#include <cstdint>
 #include <utility>
 
 #include "absl/status/status.h"

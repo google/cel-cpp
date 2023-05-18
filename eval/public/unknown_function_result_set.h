@@ -3,7 +3,6 @@
 
 #include "base/function_result.h"
 #include "base/function_result_set.h"
-#include "eval/public/cel_function.h"
 
 namespace google {
 namespace api {

@@ -1,3 +1,4 @@
+#include <memory>
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
@@ -230,42 +231,8 @@ constexpr char kNullMessageHandlingExpr[] = R"pb(
   >
 )pb";
 
-TEST(EndToEndTest, LegacyNullMessageHandling) {
-  InterpreterOptions options;
-  options.enable_null_to_message_coercion = true;
-
-  Expr expr;
-  ASSERT_TRUE(
-      google::protobuf::TextFormat::ParseFromString(kNullMessageHandlingExpr, &expr));
-  SourceInfo info;
-
-  auto builder = CreateCelExpressionBuilder(options);
-  std::vector<CelValue> extension_calls;
-  ASSERT_OK(builder->GetRegistry()->Register(
-      absl::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
-
-  ASSERT_OK_AND_ASSIGN(auto expression,
-                       builder->CreateExpression(&expr, &info));
-
-  Activation activation;
-  google::protobuf::Arena arena;
-  activation.InsertValue("test_message", CelValue::CreateNull());
-
-  ASSERT_OK_AND_ASSIGN(CelValue result,
-                       expression->Evaluate(activation, &arena));
-  bool result_value;
-  ASSERT_TRUE(result.GetValue(&result_value)) << result.DebugString();
-  ASSERT_TRUE(result_value);
-
-  ASSERT_THAT(extension_calls, testing::SizeIs(1));
-
-  ASSERT_TRUE(extension_calls[0].IsMessage());
-  ASSERT_TRUE(extension_calls[0].MessageOrDie() == nullptr);
-}
-
 TEST(EndToEndTest, StrictNullHandling) {
   InterpreterOptions options;
-  options.enable_null_to_message_coercion = false;
 
   Expr expr;
   ASSERT_TRUE(
@@ -275,7 +242,7 @@ TEST(EndToEndTest, StrictNullHandling) {
   auto builder = CreateCelExpressionBuilder(options);
   std::vector<CelValue> extension_calls;
   ASSERT_OK(builder->GetRegistry()->Register(
-      absl::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
+      std::make_unique<RecordArgFunction>("RecordArg", &extension_calls)));
 
   ASSERT_OK_AND_ASSIGN(auto expression,
                        builder->CreateExpression(&expr, &info));
@@ -291,6 +258,45 @@ TEST(EndToEndTest, StrictNullHandling) {
   EXPECT_THAT(*result_value,
               StatusIs(absl::StatusCode::kUnknown,
                        testing::HasSubstr("No matching overloads")));
+}
+
+TEST(EndToEndTest, OutOfRangeDurationConstant) {
+  InterpreterOptions options;
+  options.enable_timestamp_duration_overflow_errors = true;
+
+  Expr expr;
+  // Duration representable in absl::Duration, but out of range for CelValue
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"(
+          call_expr {
+          function: "type"
+          args {
+            const_expr {
+              duration_value {
+                seconds: 28552639587287040
+              }
+            }
+          }
+        })",
+      &expr));
+  SourceInfo info;
+
+  auto builder = CreateCelExpressionBuilder(options);
+  ASSERT_OK(RegisterBuiltinFunctions(builder->GetRegistry(), options));
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder->CreateExpression(&expr, &info));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+  const CelError* result_value;
+  ASSERT_TRUE(result.GetValue(&result_value)) << result.DebugString();
+  EXPECT_THAT(*result_value,
+              StatusIs(absl::StatusCode::kInvalidArgument,
+                       testing::HasSubstr("Duration is out of range")));
 }
 
 }  // namespace

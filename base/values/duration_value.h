@@ -17,6 +17,8 @@
 
 #include <string>
 
+#include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/time/time.h"
 #include "base/types/duration_type.h"
 #include "base/value.h"
@@ -29,21 +31,26 @@ class DurationValue final
   using Base = base_internal::SimpleValue<DurationType, absl::Duration>;
 
  public:
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      absl::Duration value);
+
   using Base::kKind;
 
   using Base::Is;
 
-  static Persistent<const DurationValue> Zero(ValueFactory& value_factory);
+  static const DurationValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to google.protobuf.Duration";
+    return static_cast<const DurationValue&>(value);
+  }
+
+  static Handle<DurationValue> Zero(ValueFactory& value_factory);
 
   using Base::kind;
 
   using Base::type;
 
   std::string DebugString() const;
-
-  using Base::HashValue;
-
-  using Base::Equals;
 
   using Base::value;
 
@@ -54,6 +61,39 @@ class DurationValue final
 };
 
 CEL_INTERNAL_SIMPLE_VALUE_STANDALONES(DurationValue);
+
+inline bool operator==(const DurationValue& lhs, const DurationValue& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<DurationValue> {
+  using type = DurationValue;
+
+  using type_type = DurationType;
+
+  using underlying_type = absl::Duration;
+
+  static std::string DebugString(underlying_type value) {
+    return type::DebugString(value);
+  }
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, underlying_type value);
+
+  static underlying_type Unwrap(underlying_type value) { return value; }
+
+  static underlying_type Unwrap(const Handle<type>& value) {
+    return Unwrap(value->value());
+  }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

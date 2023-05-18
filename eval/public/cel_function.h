@@ -10,6 +10,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/function.h"
+#include "base/function_descriptor.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
@@ -28,7 +31,7 @@ using CelFunctionDescriptor = ::cel::FunctionDescriptor;
 // - amount of arguments and their types.
 // Function overloads are resolved based on their arguments and
 // receiver style.
-class CelFunction {
+class CelFunction : public ::cel::Function {
  public:
   // Build CelFunction from descriptor
   explicit CelFunction(CelFunctionDescriptor descriptor)
@@ -38,7 +41,7 @@ class CelFunction {
   CelFunction(const CelFunction& other) = delete;
   CelFunction& operator=(const CelFunction& other) = delete;
 
-  virtual ~CelFunction() {}
+  ~CelFunction() override = default;
 
   // Evaluates CelValue based on arguments supplied.
   // If result content is to be allocated (e.g. string concatenation),
@@ -58,6 +61,14 @@ class CelFunction {
   // arguments supplied.
   // Method is called during runtime.
   bool MatchArguments(absl::Span<const CelValue> arguments) const;
+
+  bool MatchArguments(
+      absl::Span<const cel::Handle<cel::Value>> arguments) const;
+
+  // Implements cel::Function.
+  absl::StatusOr<cel::Handle<cel::Value>> Invoke(
+      const cel::FunctionEvaluationContext& context,
+      absl::Span<const cel::Handle<cel::Value>> arguments) const override;
 
   // CelFunction descriptor
   const CelFunctionDescriptor& descriptor() const { return descriptor_; }

@@ -6,8 +6,10 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/public/cel_value.h"
+#include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
 
@@ -16,16 +18,16 @@ namespace google::api::expr::runtime {
 // stack as Span<>.
 class EvaluatorStack {
  public:
-  explicit EvaluatorStack(size_t max_size) : current_size_(0) {
-    stack_.resize(max_size);
-    attribute_stack_.resize(max_size);
+  explicit EvaluatorStack(size_t max_size)
+      : max_size_(max_size), current_size_(0) {
+    Reserve(max_size);
   }
 
   // Return the current stack size.
   size_t size() const { return current_size_; }
 
   // Return the maximum size of the stack.
-  size_t max_size() const { return stack_.size(); }
+  size_t max_size() const { return max_size_; }
 
   // Returns true if stack is empty.
   bool empty() const { return current_size_ == 0; }
@@ -42,13 +44,13 @@ class EvaluatorStack {
   // Gets the last size elements of the stack.
   // Checking that stack has enough elements is caller's responsibility.
   // Please note that calls to Push may invalidate returned Span object.
-  absl::Span<const CelValue> GetSpan(size_t size) const {
+  absl::Span<const cel::Handle<cel::Value>> GetSpan(size_t size) const {
     if (!HasEnough(size)) {
       LOG(ERROR) << "Requested span size (" << size
                  << ") exceeds current stack size: " << current_size_;
     }
-    return absl::Span<const CelValue>(stack_.data() + current_size_ - size,
-                                      size);
+    return absl::Span<const cel::Handle<cel::Value>>(
+        stack_.data() + current_size_ - size, size);
   }
 
   // Gets the last size attribute trails of the stack.
@@ -61,7 +63,7 @@ class EvaluatorStack {
 
   // Peeks the last element of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  const CelValue& Peek() const {
+  const cel::Handle<cel::Value>& Peek() const {
     if (empty()) {
       LOG(ERROR) << "Peeking on empty EvaluatorStack";
     }
@@ -85,69 +87,59 @@ class EvaluatorStack {
                  << ") than the current stack size: " << current_size_;
     }
     while (size > 0) {
-      size_t position = current_size_ - 1;
-      stack_[position] = CelValue::CreateNull();
-      attribute_stack_[position] = AttributeTrail();
+      stack_.pop_back();
+      attribute_stack_.pop_back();
       current_size_--;
       size--;
     }
   }
 
   // Put element on the top of the stack.
-  void Push(const CelValue& value) { Push(value, AttributeTrail()); }
+  void Push(cel::Handle<cel::Value> value) {
+    Push(std::move(value), AttributeTrail());
+  }
 
-  void Push(const CelValue& value, AttributeTrail attribute) {
-    if (current_size_ >= stack_.size()) {
+  void Push(cel::Handle<cel::Value> value, AttributeTrail attribute) {
+    if (current_size_ >= max_size()) {
       LOG(ERROR) << "No room to push more elements on to EvaluatorStack";
     }
-    stack_[current_size_] = value;
-    attribute_stack_[current_size_] = std::move(attribute);
+    stack_.push_back(std::move(value));
+    attribute_stack_.push_back(std::move(attribute));
     current_size_++;
   }
 
   // Replace element on the top of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(const CelValue& value) {
-    PopAndPush(value, AttributeTrail());
+  void PopAndPush(cel::Handle<cel::Value> value) {
+    PopAndPush(std::move(value), AttributeTrail());
   }
 
   // Replace element on the top of the stack.
   // Checking that stack is not empty is caller's responsibility.
-  void PopAndPush(const CelValue& value, AttributeTrail attribute) {
+  void PopAndPush(cel::Handle<cel::Value> value, AttributeTrail attribute) {
     if (empty()) {
       LOG(ERROR) << "Cannot PopAndPush on empty stack.";
     }
-    stack_[current_size_ - 1] = value;
+    stack_[current_size_ - 1] = std::move(value);
     attribute_stack_[current_size_ - 1] = std::move(attribute);
   }
 
+  // Update the max size of the stack and update capacity if needed.
+  void SetMaxSize(size_t size) {
+    max_size_ = size;
+    Reserve(size);
+  }
+
+ private:
   // Preallocate stack.
   void Reserve(size_t size) {
     stack_.reserve(size);
     attribute_stack_.reserve(size);
   }
 
-  // If overload resolution fails and some arguments are null, try coercing
-  // to message type nullptr.
-  // Returns true if any values are successfully converted.
-  bool CoerceNullValues(size_t size) {
-    if (!HasEnough(size)) {
-      LOG(ERROR) << "Trying to coerce more elements (" << size
-                 << ") than the current stack size: " << current_size_;
-    }
-    bool updated = false;
-    for (size_t i = current_size_ - size; i < stack_.size(); i++) {
-      if (stack_[i].IsNull()) {
-        stack_[i] = CelValue::CreateNullMessage();
-        updated = true;
-      }
-    }
-    return updated;
-  }
-
- private:
-  std::vector<CelValue> stack_;
+  std::vector<cel::Handle<cel::Value>> stack_;
   std::vector<AttributeTrail> attribute_stack_;
+  size_t max_size_;
   size_t current_size_;
 };
 

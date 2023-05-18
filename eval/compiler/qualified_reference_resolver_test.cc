@@ -1,19 +1,23 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/text_format.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "base/ast_utility.h"
+#include "base/ast.h"
+#include "base/internal/ast_impl.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "extensions/protobuf/ast_converters.h"
+#include "internal/casts.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
@@ -22,9 +26,12 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::ast::Ast;
+using ::cel::ast::internal::AstImpl;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::Reference;
 using ::cel::ast::internal::SourceInfo;
+using ::cel::extensions::internal::ConvertProtoExprToNative;
 using testing::Contains;
 using testing::ElementsAre;
 using testing::Eq;
@@ -78,25 +85,23 @@ MATCHER_P(StatusCodeIs, x, "") {
   return status.code() == x;
 }
 
-Expr ParseTestProto(const std::string& pb) {
+std::unique_ptr<AstImpl> ParseTestProto(const std::string& pb) {
   google::api::expr::v1alpha1::Expr expr;
   EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(pb, &expr));
-  return cel::ast::internal::ToNative(expr).value();
+  return absl::WrapUnique(cel::internal::down_cast<AstImpl*>(
+      cel::extensions::CreateAstFromParsedExpr(expr).value().release()));
 }
 
 TEST(ResolveReferences, Basic) {
-  Expr expr = ParseTestProto(kExpr);
-  SourceInfo source_info;
-  absl::flat_hash_map<int64_t, Reference> reference_map;
-  reference_map[2].set_name("foo.bar.var1");
-  reference_map[5].set_name("bar.foo.var2");
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
+  expr_ast->reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->reference_map()[5].set_name("bar.foo.var2");
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(R"pb(
@@ -113,44 +118,39 @@ TEST(ResolveReferences, Basic) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
-  Expr expr = ParseTestProto(kExpr);
-  SourceInfo source_info;
-  absl::flat_hash_map<int64_t, Reference> reference_map;
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(false));
 
   // reference to the same name also doesn't count as a rewrite.
-  reference_map[4].set_name("foo");
-  reference_map[7].set_name("bar");
+  expr_ast->reference_map()[4].set_name("foo");
+  expr_ast->reference_map()[7].set_name("bar");
 
-  result = ResolveReferences(&reference_map, registry, &source_info, warnings,
-                             &expr);
+  result = ResolveReferences(registry, warnings, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(false));
 }
 
 TEST(ResolveReferences, NamespacedIdent) {
-  Expr expr = ParseTestProto(kExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
   SourceInfo source_info;
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[2].set_name("foo.bar.var1");
-  reference_map[7].set_name("namespace_x.bar");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->reference_map()[7].set_name("namespace_x.bar");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(
@@ -180,11 +180,12 @@ TEST(ResolveReferences, NamespacedIdent) {
           }
         })pb",
       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, WarningOnPresenceTest) {
-  Expr expr = ParseTestProto(R"(
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(R"pb(
     id: 1
     select_expr {
       field: "var1"
@@ -199,18 +200,16 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
           }
         }
       }
-    })");
+    })pb");
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[1].set_name("foo.bar.var1");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[1].set_name("foo.bar.var1");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(
@@ -249,21 +248,19 @@ constexpr char kEnumExpr[] = R"(
 )";
 
 TEST(ResolveReferences, EnumConstReferenceUsed) {
-  Expr expr = ParseTestProto(kEnumExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kEnumExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[2].set_name("foo.bar.var1");
-  reference_map[5].set_name("bar.foo.Enum.ENUM_VAL1");
-  reference_map[5].mutable_value().set_int64_value(9);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
+  expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
   BuilderWarnings warnings;
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -281,26 +278,25 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
-  Expr expr = ParseTestProto(kEnumExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kEnumExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[2].set_name("foo.bar.var1");
-  reference_map[2].mutable_value().set_int64_value(2);
-  reference_map[5].set_name("bar.foo.Enum.ENUM_VAL1");
-  reference_map[5].mutable_value().set_int64_value(9);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->reference_map()[2].mutable_value().set_int64_value(2);
+  expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
+  expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
   BuilderWarnings warnings;
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -318,25 +314,24 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, ConstReferenceSkipped) {
-  Expr expr = ParseTestProto(kExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[2].set_name("foo.bar.var1");
-  reference_map[2].mutable_value().set_bool_value(true);
-  reference_map[5].set_name("bar.foo.var2");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[2].set_name("foo.bar.var1");
+  expr_ast->reference_map()[2].mutable_value().set_bool_value(true);
+  expr_ast->reference_map()[5].set_name("bar.foo.var2");
   BuilderWarnings warnings;
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -366,7 +361,8 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
                                           }
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 constexpr char kExtensionAndExpr[] = R"(
@@ -388,10 +384,9 @@ call_expr {
 })";
 
 TEST(ResolveReferences, FunctionReferenceBasic) {
-  Expr expr = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(
       CelFunctionDescriptor("boolean_and", false,
@@ -400,29 +395,28 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
                                 CelValue::Type::kBool,
                             })));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings;
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
 }
 
 TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
-  Expr expr = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings;
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(warnings.warnings(),
@@ -430,7 +424,7 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
 }
 
 TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
-  Expr expr = ParseTestProto(R"(
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(R"pb(
     id: 1
     call_expr {
       function: "*"
@@ -442,24 +436,22 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
         id: 3
         const_expr { bool_value: false }
       }
-    })");
+    })pb");
   SourceInfo source_info;
 
   std::vector<const char*> special_builtins{builtin::kAnd, builtin::kOr,
                                             builtin::kTernary, builtin::kIndex};
   for (const char* builtin_fn : special_builtins) {
-    absl::flat_hash_map<int64_t, Reference> reference_map;
     // Builtins aren't in the function registry.
     CelFunctionRegistry func_registry;
     CelTypeRegistry type_registry;
-    Resolver registry("", &func_registry, &type_registry);
+    Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
     BuilderWarnings warnings;
-    reference_map[1].mutable_overload_id().push_back(
+    expr_ast->reference_map()[1].mutable_overload_id().push_back(
         absl::StrCat("builtin.", builtin_fn));
-    expr.mutable_call_expr().set_function(builtin_fn);
+    expr_ast->root_expr().mutable_call_expr().set_function(builtin_fn);
 
-    auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                    warnings, &expr);
+    auto result = ResolveReferences(registry, warnings, *expr_ast);
 
     ASSERT_THAT(result, IsOkAndHolds(false));
     EXPECT_THAT(warnings.warnings(), IsEmpty());
@@ -468,18 +460,16 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
 
 TEST(ResolveReferences,
      FunctionReferenceMissingOverloadDetectedAndMissingReference) {
-  Expr expr = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings;
-  reference_map[1].set_name("udf_boolean_and");
+  expr_ast->reference_map()[1].set_name("udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(
@@ -492,36 +482,33 @@ TEST(ResolveReferences,
 }
 
 TEST(ResolveReferences, EmulatesEagerFailing) {
-  Expr expr = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
   BuilderWarnings warnings(/*fail_eagerly=*/true);
-  reference_map[1].set_name("udf_boolean_and");
+  expr_ast->reference_map()[1].set_name("udf_boolean_and");
 
   EXPECT_THAT(
-      ResolveReferences(&reference_map, registry, &source_info, warnings,
-                        &expr),
+      ResolveReferences(registry, warnings, *expr_ast),
       StatusIs(absl::StatusCode::kInvalidArgument,
                "Reference map doesn't provide overloads for boolean_and"));
 }
 
 TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
-  Expr expr = ParseTestProto(kExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[2].mutable_overload_id().push_back("udf_boolean_and");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[2].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(warnings.warnings(),
@@ -547,20 +534,20 @@ call_expr {
 })";
 
 TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
-  Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast =
+      ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(warnings.warnings(), IsEmpty());
@@ -568,18 +555,18 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
 
 TEST(ResolveReferences,
      FunctionReferenceWithTargetNoChangeMissingOverloadDetected) {
-  Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast =
+      ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   EXPECT_THAT(warnings.warnings(),
@@ -587,20 +574,20 @@ TEST(ResolveReferences,
 }
 
 TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
-  Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast =
+      ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -615,25 +602,27 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
                                         }
                                       )pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
 TEST(ResolveReferences,
      FunctionReferenceWithTargetToNamespacedFunctionInContainer) {
-  Expr expr = ParseTestProto(kReceiverCallExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast =
+      ParseTestProto(kReceiverCallExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("com.google", &func_registry, &type_registry);
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  Resolver registry("com.google", func_registry.InternalGetRegistry(),
+                    &type_registry);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -648,7 +637,8 @@ TEST(ResolveReferences,
                                         }
                                       )pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -679,10 +669,10 @@ call_expr {
 })";
 
 TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
-  Expr expr = ParseTestProto(kReceiverCallHasExtensionAndExpr);
+  std::unique_ptr<AstImpl> expr_ast =
+      ParseTestProto(kReceiverCallHasExtensionAndExpr);
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
@@ -690,18 +680,19 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.option.boolean_and", true, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[1].mutable_overload_id().push_back("udf_boolean_and");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[1].mutable_overload_id().push_back(
+      "udf_boolean_and");
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   // The target is unchanged because it is a test_only select.
   google::api::expr::v1alpha1::Expr expected_expr;
   google::protobuf::TextFormat::ParseFromString(kReceiverCallHasExtensionAndExpr,
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(warnings.warnings(), IsEmpty());
 }
 
@@ -773,23 +764,21 @@ comprehension_expr: {
 }
 )";
 TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
-  Expr expr = ParseTestProto(kComprehensionExpr);
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(kComprehensionExpr);
 
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[3].set_name("ENUM");
-  reference_map[3].mutable_value().set_int64_value(2);
-  reference_map[7].set_name("ENUM");
-  reference_map[7].mutable_value().set_int64_value(2);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[3].set_name("ENUM");
+  expr_ast->reference_map()[3].mutable_value().set_int64_value(2);
+  expr_ast->reference_map()[7].set_name("ENUM");
+  expr_ast->reference_map()[7].mutable_value().set_int64_value(2);
   BuilderWarnings warnings;
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -866,13 +855,14 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
           }
         })pb",
       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
 }
 
 TEST(ResolveReferences, ReferenceToId0Warns) {
   // ID 0 is unsupported since it is not normally used by parsers and is
   // ambiguous as an intentional ID or default for unset field.
-  Expr expr = ParseTestProto(R"pb(
+  std::unique_ptr<AstImpl> expr_ast = ParseTestProto(R"pb(
     id: 0
     select_expr {
       operand {
@@ -884,16 +874,14 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
 
   SourceInfo source_info;
 
-  absl::flat_hash_map<int64_t, Reference> reference_map;
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", &func_registry, &type_registry);
-  reference_map[0].set_name("pkg.var");
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  expr_ast->reference_map()[0].set_name("pkg.var");
   BuilderWarnings warnings;
 
-  auto result = ResolveReferences(&reference_map, registry, &source_info,
-                                  warnings, &expr);
+  auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(false));
   google::api::expr::v1alpha1::Expr expected_expr;
@@ -907,7 +895,8 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
                                           field: "var"
                                         })pb",
                                       &expected_expr);
-  EXPECT_EQ(expr, cel::ast::internal::ToNative(expected_expr).value());
+  EXPECT_EQ(expr_ast->root_expr(),
+            ConvertProtoExprToNative(expected_expr).value());
   EXPECT_THAT(
       warnings.warnings(),
       Contains(StatusIs(

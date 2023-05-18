@@ -23,24 +23,11 @@
 
 namespace cel::base_internal {
 
-// Enumeration of different types of handles.
-enum class HandleType {
-  kPersistent = 0,
-};
-
-template <HandleType H, typename T, typename = void>
+template <typename T, typename = void>
 struct HandleTraits;
 
-// Convenient aliases.
 template <typename T>
-using PersistentHandleTraits = HandleTraits<HandleType::kPersistent, T>;
-
-template <HandleType H, typename T>
 struct HandleFactory;
-
-// Convenient aliases.
-template <typename T>
-using PersistentHandleFactory = HandleFactory<HandleType::kPersistent, T>;
 
 // Non-virtual base class enforces type requirements via static_asserts for
 // types used with handles.
@@ -50,10 +37,38 @@ struct HandlePolicy {
   static_assert(!std::is_pointer_v<T>, "Handles do not support pointers");
   static_assert(std::is_class_v<T>, "Handles only support classes");
   static_assert(!std::is_volatile_v<T>, "Handles do not support volatile");
-  static_assert((std::is_base_of_v<Data, std::remove_const_t<T>> &&
-                 !std::is_same_v<Data, std::remove_const_t<T>>),
-                "Handles do not support this type");
+  static_assert(!std::is_const_v<T>, "Handles do not support const");
+  static_assert(IsDerivedDataV<T>, "Handles do not support this type");
 };
+
+// Tag type used to select the correct Handle constructor for constructing
+// inline data.
+template <typename F>
+struct InPlaceStoredInline {
+  explicit InPlaceStoredInline() = default;
+};
+
+template <typename F>
+inline constexpr InPlaceStoredInline<F> kInPlaceStoredInline =
+    InPlaceStoredInline<F>{};
+
+// Tag type used to select the correct Handle constructor for constructing
+// from reference counted data.
+struct InPlaceReferenceCounted {
+  explicit InPlaceReferenceCounted() = default;
+};
+
+inline constexpr InPlaceReferenceCounted kInPlaceReferenceCounted =
+    InPlaceReferenceCounted{};
+
+// Tag type used to select the correct Handle constructor for constructing
+// from arena allocated data.
+struct InPlaceArenaAllocated {
+  explicit InPlaceArenaAllocated() = default;
+};
+
+inline constexpr InPlaceArenaAllocated kInPlaceArenaAllocated =
+    InPlaceArenaAllocated{};
 
 }  // namespace cel::base_internal
 

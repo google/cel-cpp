@@ -1,14 +1,16 @@
 #include "eval/eval/function_step.h"
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
+#include "base/ast_internal.h"
+#include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/ident_step.h"
@@ -19,12 +21,14 @@
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
+#include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
 #include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -155,30 +159,30 @@ class SinkFunction : public CelFunction {
 void AddDefaults(CelFunctionRegistry& registry) {
   static UnknownSet* unknown_set = new UnknownSet();
   EXPECT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateInt64(3), "Const3"))
                   .ok());
   EXPECT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateInt64(2), "Const2"))
                   .ok());
   EXPECT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateUnknownSet(unknown_set), "ConstUnknown"))
                   .ok());
-  EXPECT_TRUE(registry.Register(absl::make_unique<AddFunction>()).ok());
+  EXPECT_TRUE(registry.Register(std::make_unique<AddFunction>()).ok());
 
   EXPECT_TRUE(
-      registry.Register(absl::make_unique<SinkFunction>(CelValue::Type::kList))
+      registry.Register(std::make_unique<SinkFunction>(CelValue::Type::kList))
           .ok());
 
   EXPECT_TRUE(
-      registry.Register(absl::make_unique<SinkFunction>(CelValue::Type::kMap))
+      registry.Register(std::make_unique<SinkFunction>(CelValue::Type::kMap))
           .ok());
 
   EXPECT_TRUE(
       registry
-          .Register(absl::make_unique<SinkFunction>(CelValue::Type::kMessage))
+          .Register(std::make_unique<SinkFunction>(CelValue::Type::kMessage))
           .ok());
 }
 
@@ -198,13 +202,13 @@ std::vector<CelValue::Type> ArgumentMatcher(const Call& call) {
 absl::StatusOr<std::unique_ptr<ExpressionStep>> MakeTestFunctionStep(
     const Call& call, const CelFunctionRegistry& registry) {
   auto argument_matcher = ArgumentMatcher(call);
-  auto lazy_overloads = registry.FindLazyOverloads(
+  auto lazy_overloads = registry.ModernFindLazyOverloads(
       call.function(), call.has_target(), argument_matcher);
   if (!lazy_overloads.empty()) {
     return CreateFunctionStep(call, GetExprId(), lazy_overloads);
   }
-  auto overloads = registry.FindOverloads(call.function(), call.has_target(),
-                                          argument_matcher);
+  auto overloads = registry.FindStaticOverloads(
+      call.function(), call.has_target(), argument_matcher);
   return CreateFunctionStep(call, GetExprId(), overloads);
 }
 
@@ -214,29 +218,12 @@ class FunctionStepTest
  public:
   // underlying expression impl moves path
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
-    bool unknowns = false;
-    bool unknown_function_results = false;
-    switch (GetParam()) {
-      case UnknownProcessingOptions::kAttributeAndFunction:
-        unknowns = true;
-        unknown_function_results = true;
-        break;
-      case UnknownProcessingOptions::kAttributeOnly:
-        unknowns = true;
-        unknown_function_results = false;
-        break;
-      case UnknownProcessingOptions::kDisabled:
-        unknowns = false;
-        unknown_function_results = false;
-        break;
-    }
-    return absl::make_unique<CelExpressionFlatImpl>(
-        &dummy_expr_, std::move(path), &TestTypeRegistry(), 0,
-        std::set<std::string>(), unknowns, unknown_function_results);
-  }
+    cel::RuntimeOptions options;
+    options.unknown_processing = GetParam();
 
- private:
-  Expr dummy_expr_;
+    return std::make_unique<CelExpressionFlatImpl>(
+        std::move(path), &TestTypeRegistry(), options);
+  }
 };
 
 TEST_P(FunctionStepTest, SimpleFunctionTest) {
@@ -303,7 +290,7 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
   AddDefaults(registry);
 
   ASSERT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateUint64(4), "Const4"))
                   .ok());
 
@@ -332,6 +319,48 @@ TEST_P(FunctionStepTest, TestNoMatchingOverloadsDuringEvaluation) {
                        testing::HasSubstr("_+_(int64, uint64)")));
 }
 
+// Test situation when no overloads match input arguments during evaluation.
+TEST_P(FunctionStepTest, TestNoMatchingOverloadsUnexpectedArgCount) {
+  ExecutionPath path;
+  BuilderWarnings warnings;
+
+  CelFunctionRegistry registry;
+  AddDefaults(registry);
+
+  Call call1 = ConstFunction::MakeCall("Const3");
+
+  // expect overloads for {int64_t, int64_t} but get call for {int64_t, int64_t, int64_t}.
+  Call add_call = AddFunction::MakeCall();
+  add_call.mutable_args().emplace_back();
+
+  ASSERT_OK_AND_ASSIGN(auto step0, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, MakeTestFunctionStep(call1, registry));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto step3,
+      CreateFunctionStep(add_call, -1,
+                         registry.FindStaticOverloads(
+                             add_call.function(), false,
+                             {cel::Kind::kInt64, cel::Kind::kInt64})));
+
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+  path.push_back(std::move(step3));
+
+  std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsError());
+  EXPECT_THAT(*value.ErrorOrDie(),
+              StatusIs(absl::StatusCode::kUnknown,
+                       testing::HasSubstr("_+_(int64, int64, int64)")));
+}
+
 // Test situation when no overloads match input arguments during evaluation
 // and at least one of arguments is error.
 TEST_P(FunctionStepTest,
@@ -345,11 +374,11 @@ TEST_P(FunctionStepTest,
 
   // Constants have ERROR type, while AddFunction expects INT.
   ASSERT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateError(&error0), "ConstError1"))
                   .ok());
   ASSERT_TRUE(registry
-                  .Register(absl::make_unique<ConstFunction>(
+                  .Register(std::make_unique<ConstFunction>(
                       CelValue::CreateError(&error1), "ConstError2"))
                   .ok());
 
@@ -372,7 +401,7 @@ TEST_P(FunctionStepTest,
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
-  EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
+  EXPECT_THAT(*value.ErrorOrDie(), Eq(error0));
 }
 
 TEST_P(FunctionStepTest, LazyFunctionTest) {
@@ -380,16 +409,15 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   Activation activation;
   CelFunctionRegistry registry;
   BuilderWarnings warnings;
-
   ASSERT_OK(
       registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const3")));
   ASSERT_OK(activation.InsertFunction(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(
       registry.RegisterLazyFunction(ConstFunction::CreateDescriptor("Const2")));
   ASSERT_OK(activation.InsertFunction(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
-  ASSERT_OK(registry.Register(absl::make_unique<AddFunction>()));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+  ASSERT_OK(registry.Register(std::make_unique<AddFunction>()));
 
   Call call1 = ConstFunction::MakeCall("Const3");
   Call call2 = ConstFunction::MakeCall("Const2");
@@ -412,6 +440,65 @@ TEST_P(FunctionStepTest, LazyFunctionTest) {
   EXPECT_THAT(value.Int64OrDie(), Eq(5));
 }
 
+TEST_P(FunctionStepTest, LazyFunctionOverloadingTest) {
+  ExecutionPath path;
+  Activation activation;
+  CelFunctionRegistry registry;
+  BuilderWarnings warnings;
+  auto floor_int = PortableUnaryFunctionAdapter<int64_t, int64_t>::Create(
+      "Floor", false, [](google::protobuf::Arena*, int64_t val) { return val; });
+  auto floor_double = PortableUnaryFunctionAdapter<int64_t, double>::Create(
+      "Floor", false,
+      [](google::protobuf::Arena*, double val) { return std::floor(val); });
+
+  ASSERT_OK(registry.RegisterLazyFunction(floor_int->descriptor()));
+  ASSERT_OK(activation.InsertFunction(std::move(floor_int)));
+  ASSERT_OK(registry.RegisterLazyFunction(floor_double->descriptor()));
+  ASSERT_OK(activation.InsertFunction(std::move(floor_double)));
+  ASSERT_OK(registry.Register(
+      PortableBinaryFunctionAdapter<bool, int64_t, int64_t>::Create(
+          "_<_", false, [](google::protobuf::Arena*, int64_t lhs, int64_t rhs) -> bool {
+            return lhs < rhs;
+          })));
+
+  cel::ast::internal::Constant lhs;
+  lhs.set_int64_value(20);
+  cel::ast::internal::Constant rhs;
+  rhs.set_double_value(21.9);
+
+  cel::ast::internal::Call call1;
+  call1.mutable_args().emplace_back();
+  call1.set_function("Floor");
+  cel::ast::internal::Call call2;
+  call2.mutable_args().emplace_back();
+  call2.set_function("Floor");
+
+  cel::ast::internal::Call lt_call;
+  lt_call.mutable_args().emplace_back();
+  lt_call.mutable_args().emplace_back();
+  lt_call.set_function("_<_");
+
+  ASSERT_OK_AND_ASSIGN(auto step0, CreateConstValueStep(lhs, -1));
+  ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
+  ASSERT_OK_AND_ASSIGN(auto step2, CreateConstValueStep(rhs, -1));
+  ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(call2, registry));
+  ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(lt_call, registry));
+
+  path.push_back(std::move(step0));
+  path.push_back(std::move(step1));
+  path.push_back(std::move(step2));
+  path.push_back(std::move(step3));
+  path.push_back(std::move(step4));
+
+  std::unique_ptr<CelExpressionFlatImpl> impl = GetExpression(std::move(path));
+
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
+  ASSERT_TRUE(value.IsBool());
+  EXPECT_TRUE(value.BoolOrDie());
+}
+
 // Test situation when no overloads match input arguments during evaluation
 // and at least one of arguments is error.
 TEST_P(FunctionStepTest,
@@ -429,11 +516,11 @@ TEST_P(FunctionStepTest,
   // Constants have ERROR type, while AddFunction expects INT.
   ASSERT_OK(registry.RegisterLazyFunction(
       ConstFunction::CreateDescriptor("ConstError1")));
-  ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
+  ASSERT_OK(activation.InsertFunction(std::make_unique<ConstFunction>(
       CelValue::CreateError(&error0), "ConstError1")));
   ASSERT_OK(registry.RegisterLazyFunction(
       ConstFunction::CreateDescriptor("ConstError2")));
-  ASSERT_OK(activation.InsertFunction(absl::make_unique<ConstFunction>(
+  ASSERT_OK(activation.InsertFunction(std::make_unique<ConstFunction>(
       CelValue::CreateError(&error1), "ConstError2")));
 
   Call call1 = ConstFunction::MakeCall("ConstError1");
@@ -452,7 +539,7 @@ TEST_P(FunctionStepTest,
 
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
-  EXPECT_THAT(value.ErrorOrDie(), Eq(&error0));
+  EXPECT_THAT(*value.ErrorOrDie(), Eq(error0));
 }
 
 std::string TestNameFn(testing::TestParamInfo<UnknownProcessingOptions> opt) {
@@ -478,22 +565,12 @@ class FunctionStepTestUnknowns
     : public testing::TestWithParam<UnknownProcessingOptions> {
  public:
   std::unique_ptr<CelExpressionFlatImpl> GetExpression(ExecutionPath&& path) {
-    bool unknown_functions;
-    switch (GetParam()) {
-      case UnknownProcessingOptions::kAttributeAndFunction:
-        unknown_functions = true;
-        break;
-      default:
-        unknown_functions = false;
-        break;
-    }
-    return absl::make_unique<CelExpressionFlatImpl>(
-        &expr_, std::move(path), &TestTypeRegistry(), 0,
-        std::set<std::string>(), true, unknown_functions);
-  }
+    cel::RuntimeOptions options;
+    options.unknown_processing = GetParam();
 
- private:
-  Expr expr_;
+    return std::make_unique<CelExpressionFlatImpl>(
+        std::move(path), &TestTypeRegistry(), options);
+  }
 };
 
 TEST_P(FunctionStepTestUnknowns, PassedUnknownTest) {
@@ -550,7 +627,7 @@ TEST_P(FunctionStepTestUnknowns, PartialUnknownHandlingTest) {
   activation.InsertValue("param", CelProtoWrapper::CreateMessage(&msg, &arena));
   CelAttributePattern pattern(
       "param",
-      {CelAttributeQualifierPattern::Create(CelValue::CreateBool(true))});
+      {CreateCelAttributeQualifierPattern(CelValue::CreateBool(true))});
 
   // Set attribute pattern that marks attribute "param[true]" as unknown.
   // It should result in "param" being handled as partially unknown, which is
@@ -571,7 +648,7 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
 
   ASSERT_TRUE(
       registry
-          .Register(absl::make_unique<ConstFunction>(error_value, "ConstError"))
+          .Register(std::make_unique<ConstFunction>(error_value, "ConstError"))
           .ok());
 
   Call call1 = ConstFunction::MakeCall("ConstError");
@@ -594,7 +671,7 @@ TEST_P(FunctionStepTestUnknowns, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK_AND_ASSIGN(CelValue value, impl->Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
-  ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());
+  ASSERT_EQ(*value.ErrorOrDie(), *error_value.ErrorOrDie());
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -608,11 +685,11 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   Call call1 = ConstFunction::MakeCall("Const2");
   Call call2 = ConstFunction::MakeCall("Const3");
@@ -625,11 +702,10 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -643,11 +719,11 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   // Add(Add(2, 3), Add(2, 3))
 
@@ -671,10 +747,10 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -688,11 +764,11 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   CelFunctionRegistry registry;
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(2), "Const2")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
+      std::make_unique<ConstFunction>(CelValue::CreateInt64(3), "Const3")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   // Add(Add(2, 3), Add(3, 2))
 
@@ -716,10 +792,10 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   path.push_back(std::move(step5));
   path.push_back(std::move(step6));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -738,11 +814,11 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   CelValue unknown_value = CelValue::CreateUnknownSet(&unknown_set);
 
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(error_value, "ConstError")));
+      std::make_unique<ConstFunction>(error_value, "ConstError")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<ConstFunction>(unknown_value, "ConstUnknown")));
+      std::make_unique<ConstFunction>(unknown_value, "ConstUnknown")));
   ASSERT_OK(registry.Register(
-      absl::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
+      std::make_unique<AddFunction>(ShouldReturnUnknown::kYes)));
 
   Call call1 = ConstFunction::MakeCall("ConstError");
   Call call2 = ConstFunction::MakeCall("ConstUnknown");
@@ -756,10 +832,10 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -767,7 +843,7 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
   ASSERT_TRUE(value.IsError());
   // Making sure we propagate the error.
-  ASSERT_EQ(value.ErrorOrDie(), error_value.ErrorOrDie());
+  ASSERT_EQ(*value.ErrorOrDie(), *error_value.ErrorOrDie());
 }
 
 class MessageFunction : public CelFunction {
@@ -824,125 +900,11 @@ class NullFunction : public CelFunction {
   }
 };
 
-// Setup for a simple evaluation plan that runs 'Fn(id)'.
-class FunctionStepNullCoercionTest : public testing::Test {
- public:
-  FunctionStepNullCoercionTest() {
-    identifier_expr_.set_id(GetExprId());
-    identifier_expr_.mutable_ident_expr().set_name("id");
-    call_expr_.set_id(GetExprId());
-    call_expr_.mutable_call_expr().set_function("Fn");
-    call_expr_.mutable_call_expr().mutable_args().emplace_back().set_id(
-        GetExprId());
-    activation_.InsertValue("id", CelValue::CreateNull());
-  }
-
- protected:
-  Expr dummy_expr_;
-  Expr identifier_expr_;
-  Expr call_expr_;
-  Activation activation_;
-  google::protobuf::Arena arena_;
-  CelFunctionRegistry registry_;
-};
-
-TEST_F(FunctionStepNullCoercionTest, EnabledSupportsMessageOverloads) {
-  ExecutionPath path;
-  ASSERT_OK(registry_.Register(std::make_unique<MessageFunction>()));
-
-  ASSERT_OK_AND_ASSIGN(
-      auto ident_step,
-      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
-  path.push_back(std::move(ident_step));
-
-  ASSERT_OK_AND_ASSIGN(auto call_step,
-                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
-
-  path.push_back(std::move(call_step));
-
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
-                             /*enable_null_coercion=*/true);
-
-  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
-  ASSERT_TRUE(value.IsString());
-  ASSERT_THAT(value.StringOrDie().value(), testing::Eq("message"));
-}
-
-TEST_F(FunctionStepNullCoercionTest, EnabledPrefersNullOverloads) {
-  ExecutionPath path;
-  ASSERT_OK(registry_.Register(std::make_unique<MessageFunction>()));
-  ASSERT_OK(registry_.Register(std::make_unique<NullFunction>()));
-
-  ASSERT_OK_AND_ASSIGN(
-      auto ident_step,
-      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
-  path.push_back(std::move(ident_step));
-
-  ASSERT_OK_AND_ASSIGN(auto call_step,
-                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
-
-  path.push_back(std::move(call_step));
-
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
-                             /*enable_null_coercion=*/true);
-
-  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
-  ASSERT_TRUE(value.IsString());
-  ASSERT_THAT(value.StringOrDie().value(), testing::Eq("null"));
-}
-
-TEST_F(FunctionStepNullCoercionTest, EnabledNullMessageDoesNotEscape) {
-  ExecutionPath path;
-  ASSERT_OK(registry_.Register(std::make_unique<MessageIdentityFunction>()));
-
-  ASSERT_OK_AND_ASSIGN(
-      auto ident_step,
-      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
-  path.push_back(std::move(ident_step));
-
-  ASSERT_OK_AND_ASSIGN(auto call_step,
-                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
-
-  path.push_back(std::move(call_step));
-
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
-                             /*enable_null_coercion=*/true);
-
-  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
-  ASSERT_TRUE(value.IsNull());
-  ASSERT_FALSE(value.IsMessage());
-}
-
-TEST_F(FunctionStepNullCoercionTest, Disabled) {
-  ExecutionPath path;
-  ASSERT_OK(registry_.Register(std::make_unique<MessageFunction>()));
-
-  ASSERT_OK_AND_ASSIGN(
-      auto ident_step,
-      CreateIdentStep(identifier_expr_.ident_expr(), identifier_expr_.id()));
-  path.push_back(std::move(ident_step));
-
-  ASSERT_OK_AND_ASSIGN(auto call_step,
-                       MakeTestFunctionStep(call_expr_.call_expr(), registry_));
-
-  path.push_back(std::move(call_step));
-
-  CelExpressionFlatImpl impl(&dummy_expr_, std::move(path), &TestTypeRegistry(),
-                             0, {}, true, true, true,
-                             /*enable_null_coercion=*/false);
-
-  ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation_, &arena_));
-  ASSERT_TRUE(value.IsError());
-}
-
 TEST(FunctionStepStrictnessTest,
      IfFunctionStrictAndGivenUnknownSkipsInvocation) {
   UnknownSet unknown_set;
   CelFunctionRegistry registry;
-  ASSERT_OK(registry.Register(absl::make_unique<ConstFunction>(
+  ASSERT_OK(registry.Register(std::make_unique<ConstFunction>(
       CelValue::CreateUnknownSet(&unknown_set), "ConstUnknown")));
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/true)));
@@ -955,9 +917,10 @@ TEST(FunctionStepStrictnessTest,
                        MakeTestFunctionStep(call1, registry));
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
-  Expr placeholder_expr;
-  CelExpressionFlatImpl impl(&placeholder_expr, std::move(path),
-                             &TestTypeRegistry(), 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
@@ -967,7 +930,7 @@ TEST(FunctionStepStrictnessTest,
 TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   UnknownSet unknown_set;
   CelFunctionRegistry registry;
-  ASSERT_OK(registry.Register(absl::make_unique<ConstFunction>(
+  ASSERT_OK(registry.Register(std::make_unique<ConstFunction>(
       CelValue::CreateUnknownSet(&unknown_set), "ConstUnknown")));
   ASSERT_OK(registry.Register(std::make_unique<SinkFunction>(
       CelValue::Type::kUnknownSet, /*is_strict=*/false)));
@@ -981,8 +944,10 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   Expr placeholder_expr;
-  CelExpressionFlatImpl impl(&placeholder_expr, std::move(path),
-                             &TestTypeRegistry(), 0, {}, true, true);
+  cel::RuntimeOptions options;
+  options.unknown_processing =
+      cel::UnknownProcessingOptions::kAttributeAndFunction;
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));

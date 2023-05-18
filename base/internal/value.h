@@ -21,7 +21,6 @@
 #include <functional>
 #include <memory>
 #include <type_traits>
-#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/strings/cord.h"
@@ -30,12 +29,12 @@
 #include "absl/types/variant.h"
 #include "base/handle.h"
 #include "base/internal/data.h"
-#include "base/internal/unknown_set.h"
-#include "base/types/enum_type.h"
+#include "base/internal/type.h"
 #include "internal/rtti.h"
 
 namespace cel {
 
+class Type;
 class BytesValue;
 class StringValue;
 class StructValue;
@@ -48,7 +47,7 @@ namespace base_internal {
 template <typename T, typename U>
 class SimpleValue;
 
-class PersistentValueHandle;
+class ValueHandle;
 
 internal::TypeInfo GetStructValueTypeId(const StructValue& struct_value);
 
@@ -83,9 +82,13 @@ struct InlineValue final {
     absl::Time time_value;
     absl::Status status_value;
     absl::Cord cord_value;
-    absl::string_view string_value;
     struct {
-      Persistent<const EnumType> type;
+      absl::string_view string_value;
+      uintptr_t owner;
+    } string_value;
+    AnyType type_value;
+    struct {
+      AnyType type;
       int64_t number;
     } enum_value;
   };
@@ -99,7 +102,17 @@ static_assert(kValueInlineSize <= 32,
 static_assert(kValueInlineAlign <= alignof(std::max_align_t),
               "Alignment of an inline value should not be overaligned.");
 
-struct AnyValue final : public AnyData<kValueInlineSize, kValueInlineAlign> {};
+using AnyValue = AnyData<kValueInlineSize, kValueInlineAlign>;
+
+// Metaprogramming utility for interacting with Value.
+//
+// ValueTraits<T>::type is an alias for T.
+// ValueTraits<T>::type_type is the corresponding Type for T.
+// ValueTraits<T>::underlying_type is the underlying C++ primitive for T if it
+// exists, otherwise void. ValueTraits<T>::DebugString accepts type or
+// underlying_type and returns the debug string.
+template <typename T>
+struct ValueTraits;
 
 class InlinedCordBytesValue;
 class InlinedStringViewBytesValue;
@@ -109,6 +122,12 @@ class InlinedStringViewStringValue;
 class StringStringValue;
 class LegacyStructValue;
 class AbstractStructValue;
+class LegacyListValue;
+class AbstractListValue;
+class LegacyMapValue;
+class AbstractMapValue;
+class LegacyTypeValue;
+class ModernTypeValue;
 
 using StringValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
@@ -116,38 +135,64 @@ using BytesValueRep =
     absl::variant<absl::string_view, std::reference_wrapper<const absl::Cord>>;
 struct UnknownSetImpl;
 
+// Enumeration used to differentiate between BytesValue's multiple inline
+// non-trivial implementations.
+enum class InlinedBytesValueVariant {
+  kCord = 0,
+  kStringView,
+};
+
+// Enumeration used to differentiate between StringValue's multiple inline
+// non-trivial implementations.
+enum class InlinedStringValueVariant {
+  kCord = 0,
+  kStringView,
+};
+
+// Enumeration used to differentiate between TypeValue's multiple inline
+// non-trivial implementations.
+enum class InlinedTypeValueVariant {
+  kLegacy = 0,
+  kModern,
+};
+
 }  // namespace base_internal
 
 namespace interop_internal {
 
 base_internal::StringValueRep GetStringValueRep(
-    const Persistent<const StringValue>& value);
-base_internal::BytesValueRep GetBytesValueRep(
-    const Persistent<const BytesValue>& value);
+    const Handle<StringValue>& value);
+base_internal::BytesValueRep GetBytesValueRep(const Handle<BytesValue>& value);
 std::shared_ptr<base_internal::UnknownSetImpl> GetUnknownValueImpl(
-    const Persistent<const UnknownValue>& value);
-void SetUnknownValueImpl(Persistent<UnknownValue>& value,
+    const Handle<UnknownValue>& value);
+void SetUnknownValueImpl(Handle<UnknownValue>& value,
                          std::shared_ptr<base_internal::UnknownSetImpl> impl);
+
+struct ErrorValueAccess;
+struct UnknownValueAccess;
 
 }  // namespace interop_internal
 
 }  // namespace cel
 
-#define CEL_INTERNAL_VALUE_DECL(name)     \
-  extern template class Persistent<name>; \
-  extern template class Persistent<const name>
+#define CEL_INTERNAL_VALUE_DECL(name) extern template class Handle<name>
 
-#define CEL_INTERNAL_VALUE_IMPL(name) \
-  template class Persistent<name>;    \
-  template class Persistent<const name>
+#define CEL_INTERNAL_VALUE_IMPL(name) template class Handle<name>
 
-#define CEL_INTERNAL_DECLARE_VALUE(base, derived)           \
- public:                                                    \
-  static bool Is(const ::cel::Value& value);                \
-                                                            \
- private:                                                   \
-  friend class ::cel::base_internal::PersistentValueHandle; \
-                                                            \
+#define CEL_INTERNAL_DECLARE_VALUE(base, derived)       \
+ public:                                                \
+  static bool Is(const ::cel::Value& value);            \
+                                                        \
+  using ::cel::base##Value::Is;                         \
+                                                        \
+  static const derived& Cast(const cel::Value& value) { \
+    ABSL_ASSERT(Is(value));                             \
+    return static_cast<const derived&>(value);          \
+  }                                                     \
+                                                        \
+ private:                                               \
+  friend class ::cel::base_internal::ValueHandle;       \
+                                                        \
   ::cel::internal::TypeInfo TypeId() const override;
 
 #define CEL_INTERNAL_IMPLEMENT_VALUE(base, derived)                           \

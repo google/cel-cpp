@@ -18,8 +18,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_LEGACY_TYPE_ADPATER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_LEGACY_TYPE_ADPATER_H_
 
+#include <vector>
+
 #include "absl/status/status.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 
@@ -89,6 +91,9 @@ class LegacyTypeAccessApis {
                          const CelValue::MessageWrapper&) const {
     return false;
   }
+
+  virtual std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const = 0;
 };
 
 // Type information about a legacy Struct type.

@@ -21,21 +21,15 @@
 
 namespace google::api::expr::runtime {
 
-// Implementation for general equality beteween CELValues. Exposed for
-// consistent behavior in set membership functions.
+// Register built in comparison functions (<, <=, >, >=).
 //
-// Returns nullopt if the comparison is undefined between differently typed
-// values.
-absl::optional<bool> CelValueEqualImpl(const CelValue& v1, const CelValue& v2);
-
-// Register built in comparison functions (==, !=, <, <=, >, >=).
+// Most users should prefer to use RegisterBuiltinFunctions.
 //
 // This is call is included in RegisterBuiltinFunctions -- calling both
 // RegisterBuiltinFunctions and RegisterComparisonFunctions directly on the same
 // registry will result in an error.
-absl::Status RegisterComparisonFunctions(
-    CelFunctionRegistry* registry,
-    const InterpreterOptions& options = InterpreterOptions());
+absl::Status RegisterComparisonFunctions(CelFunctionRegistry* registry,
+                                         const InterpreterOptions& options);
 
 }  // namespace google::api::expr::runtime
 

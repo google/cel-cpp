@@ -18,14 +18,19 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "base/values/string_value.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "re2/re2.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-inline constexpr int kNumRegexMatchArguments = 2;
+using ::cel::interop_internal::CreateBoolValue;
+
+inline constexpr int kNumRegexMatchArguments = 1;
+inline constexpr size_t kRegexMatchStepSubject = 0;
 
 class RegexMatchStep final : public ExpressionStepBase {
  public:
@@ -40,26 +45,15 @@ class RegexMatchStep final : public ExpressionStepBase {
                           "expression match");
     }
     auto input_args = frame->value_stack().GetSpan(kNumRegexMatchArguments);
-    const auto& subject = input_args[0];
-    const auto& pattern = input_args[1];
-    if (!subject.IsString()) {
+    const auto& subject = input_args[kRegexMatchStepSubject];
+    if (!subject->Is<cel::StringValue>()) {
       return absl::Status(absl::StatusCode::kInternal,
                           "First argument for regular "
                           "expression match must be a string");
     }
-    if (!pattern.IsString()) {
-      return absl::Status(absl::StatusCode::kInternal,
-                          "Second argument for regular "
-                          "expression match must be a string");
-    }
-    if (re2_->pattern() != pattern.StringOrDie().value()) {
-      return absl::Status(
-          absl::StatusCode::kInternal,
-          "Original pattern and supplied pattern are not the same");
-    }
-    bool match = RE2::PartialMatch(re2::StringPiece(subject.StringOrDie().value().data(), subject.StringOrDie().value().size()), *re2_);
+    bool match = subject.As<cel::StringValue>()->Matches(*re2_);
     frame->value_stack().Pop(kNumRegexMatchArguments);
-    frame->value_stack().Push(CelValue::CreateBool(match));
+    frame->value_stack().Push(CreateBoolValue(match));
     return absl::OkStatus();
   }
 

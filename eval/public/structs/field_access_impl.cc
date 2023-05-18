@@ -532,6 +532,19 @@ class FieldSetter {
   Arena* arena_;
 };
 
+bool MergeFromWithSerializeFallback(const google::protobuf::Message& value,
+                                    google::protobuf::Message& field) {
+  if (field.GetDescriptor() == value.GetDescriptor()) {
+    field.MergeFrom(value);
+    return true;
+  }
+  // TODO(issues/5): this indicates means we're mixing dynamic messages with
+  // generated messages. This is expected for WKTs where CEL explicitly requires
+  // wire format compatibility, but this may not be the expected behavior for
+  // other types.
+  return field.MergeFromString(value.SerializeAsString());
+}
+
 // Accessor class, to work with singular fields
 class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
  public:
@@ -589,24 +602,13 @@ class ScalarFieldSetter : public FieldSetter<ScalarFieldSetter> {
       LOG(ERROR) << "Message is NULL";
       return true;
     }
-
     if (value->GetDescriptor()->full_name() ==
         field_desc_->message_type()->full_name()) {
-      GetReflection()->MutableMessage(msg_, field_desc_)->MergeFrom(*value);
-      return true;
-
-    } else if (field_desc_->message_type()->full_name() == kProtobufAny) {
-      auto any_msg = google::protobuf::DynamicCastToGenerated<google::protobuf::Any>(
-          GetReflection()->MutableMessage(msg_, field_desc_));
-      if (any_msg == nullptr) {
-        // TODO(issues/68): This is probably a dynamic message. We should
-        // implement this once we add support for dynamic protobuf types.
-        return false;
-      }
-      any_msg->set_type_url(absl::StrCat(kTypeGoogleApisComPrefix,
-                                         value->GetDescriptor()->full_name()));
-      return value->SerializeToString(any_msg->mutable_value());
+      auto* assignable_field_msg =
+          GetReflection()->MutableMessage(msg_, field_desc_);
+      return MergeFromWithSerializeFallback(*value, *assignable_field_msg);
     }
+
     return false;
   }
 
@@ -677,8 +679,8 @@ class RepeatedFieldSetter : public FieldSetter<RepeatedFieldSetter> {
       return false;
     }
 
-    GetReflection()->AddMessage(msg_, field_desc_)->MergeFrom(*value);
-    return true;
+    auto* assignable_message = GetReflection()->AddMessage(msg_, field_desc_);
+    return MergeFromWithSerializeFallback(*value, *assignable_message);
   }
 
   bool SetEnum(const int64_t value) const {

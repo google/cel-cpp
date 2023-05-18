@@ -6,14 +6,15 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/descriptor.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
-#include "eval/public/cel_value.h"
+#include "base/handle.h"
+#include "base/types/enum_type.h"
+#include "base/value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 
 namespace google::api::expr::runtime {
@@ -32,7 +33,7 @@ namespace google::api::expr::runtime {
 // pools.
 class CelTypeRegistry {
  public:
-  // Internal representation for enumerators.
+  // Representation of an enum constant.
   struct Enumerator {
     std::string name;
     int64_t number;
@@ -40,7 +41,7 @@ class CelTypeRegistry {
 
   CelTypeRegistry();
 
-  ~CelTypeRegistry() {}
+  ~CelTypeRegistry() = default;
 
   // Register a fully qualified type name as a valid type for use within CEL
   // expressions.
@@ -74,26 +75,38 @@ class CelTypeRegistry {
   std::shared_ptr<const LegacyTypeProvider> GetFirstTypeProvider() const;
 
   // Find a type adapter given a fully qualified type name.
-  // Adapter provides a generic interface for the reflecion operations the
+  // Adapter provides a generic interface for the reflection operations the
   // interpreter needs to provide.
   absl::optional<LegacyTypeAdapter> FindTypeAdapter(
       absl::string_view fully_qualified_type_name) const;
 
   // Find a type's CelValue instance by its fully qualified name.
-  absl::optional<CelValue> FindType(
+  // An empty handle is returned if not found.
+  cel::Handle<cel::Value> FindType(
       absl::string_view fully_qualified_type_name) const;
 
-  // Return the set of enums configured within the type registry.
-  inline const absl::flat_hash_set<const google::protobuf::EnumDescriptor*>& Enums()
-      const {
-    return enums_;
+  // Return the registered enums configured within the type registry in the
+  // internal format that can be identified as int constants at plan time.
+  const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+  resolveable_enums() const {
+    return resolveable_enums_;
   }
 
-  // Return the registered enums configured within the type registry in the
-  // internal format.
-  const absl::flat_hash_map<std::string, std::vector<Enumerator>>& enums_map()
-      const {
-    return enums_map_;
+  // Return the registered enums configured within the type registry.
+  //
+  // This is provided for validating registry setup, it should not be used
+  // internally.
+  //
+  // Invalidated whenever registered enums are updated.
+  absl::flat_hash_set<absl::string_view> ListResolveableEnums() const {
+    absl::flat_hash_set<absl::string_view> result;
+    result.reserve(resolveable_enums_.size());
+
+    for (const auto& entry : resolveable_enums_) {
+      result.insert(entry.first);
+    }
+
+    return result;
   }
 
  private:
@@ -101,10 +114,9 @@ class CelTypeRegistry {
   // node_hash_set provides pointer-stability, which is required for the
   // strings backing CelType objects.
   mutable absl::node_hash_set<std::string> types_ ABSL_GUARDED_BY(mutex_);
-  // Set of registered enums.
-  absl::flat_hash_set<const google::protobuf::EnumDescriptor*> enums_;
   // Internal representation for enums.
-  absl::flat_hash_map<std::string, std::vector<Enumerator>> enums_map_;
+  absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>
+      resolveable_enums_;
   std::vector<std::shared_ptr<LegacyTypeProvider>> type_providers_;
 };
 

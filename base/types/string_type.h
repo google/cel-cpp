@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_STRING_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_STRING_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
 class StringValue;
+class StringWrapperType;
 
 class StringType final : public base_internal::SimpleType<Kind::kString> {
  private:
@@ -33,21 +35,33 @@ class StringType final : public base_internal::SimpleType<Kind::kString> {
 
   using Base::Is;
 
+  static const StringType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const StringType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  friend class StringWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(StringType, StringValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(StringType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<StringType> {
+  using value_type = StringValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

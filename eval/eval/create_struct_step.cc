@@ -4,22 +4,31 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/substitute.h"
 #include "eval/eval/expression_step_base.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
-class CreateStructStepForMessage : public ExpressionStepBase {
+using ::cel::Handle;
+using ::cel::Value;
+using ::cel::interop_internal::CreateErrorValueFromView;
+using ::cel::interop_internal::CreateLegacyMapValue;
+using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::cel::interop_internal::LegacyValueToModernValueOrDie;
+
+class CreateStructStepForMessage final : public ExpressionStepBase {
  public:
   struct FieldEntry {
     std::string field_name;
@@ -35,13 +44,13 @@ class CreateStructStepForMessage : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  absl::StatusOr<Handle<Value>> DoEvaluate(ExecutionFrame* frame) const;
 
   const LegacyTypeMutationApis* type_adapter_;
   std::vector<FieldEntry> entries_;
 };
 
-class CreateStructStepForMap : public ExpressionStepBase {
+class CreateStructStepForMap final : public ExpressionStepBase {
  public:
   CreateStructStepForMap(int64_t expr_id, size_t entry_count)
       : ExpressionStepBase(expr_id), entry_count_(entry_count) {}
@@ -49,16 +58,16 @@ class CreateStructStepForMap : public ExpressionStepBase {
   absl::Status Evaluate(ExecutionFrame* frame) const override;
 
  private:
-  absl::Status DoEvaluate(ExecutionFrame* frame, CelValue* result) const;
+  absl::StatusOr<Handle<Value>> DoEvaluate(ExecutionFrame* frame) const;
 
   size_t entry_count_;
 };
 
-absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
-                                                    CelValue* result) const {
+absl::StatusOr<Handle<Value>> CreateStructStepForMessage::DoEvaluate(
+    ExecutionFrame* frame) const {
   int entries_size = entries_.size();
 
-  absl::Span<const CelValue> args = frame->value_stack().GetSpan(entries_size);
+  auto args = frame->value_stack().GetSpan(entries_size);
 
   if (frame->enable_unknowns()) {
     auto unknown_set = frame->attribute_utility().MergeUnknowns(
@@ -66,26 +75,26 @@ absl::Status CreateStructStepForMessage::DoEvaluate(ExecutionFrame* frame,
         /*initial_set=*/nullptr,
         /*use_partial=*/true);
     if (unknown_set != nullptr) {
-      *result = CelValue::CreateUnknownSet(unknown_set);
-      return absl::OkStatus();
+      return CreateUnknownValueFromView(unknown_set);
     }
   }
 
+  // TODO(issues/5): switch to new cel::StructValue in phase 2
   CEL_ASSIGN_OR_RETURN(MessageWrapper::Builder instance,
                        type_adapter_->NewInstance(frame->memory_manager()));
 
   int index = 0;
   for (const auto& entry : entries_) {
-    const CelValue& arg = args[index++];
+    const CelValue& arg = cel::interop_internal::ModernValueToLegacyValueOrDie(
+        frame->memory_manager(), args[index++]);
 
     CEL_RETURN_IF_ERROR(type_adapter_->SetField(
         entry.field_name, arg, frame->memory_manager(), instance));
   }
 
-  CEL_ASSIGN_OR_RETURN(*result, type_adapter_->AdaptFromWellKnownType(
-                                    frame->memory_manager(), instance));
-
-  return absl::OkStatus();
+  CEL_ASSIGN_OR_RETURN(auto result, type_adapter_->AdaptFromWellKnownType(
+                                        frame->memory_manager(), instance));
+  return LegacyValueToModernValueOrDie(frame->memory_manager(), result);
 }
 
 absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
@@ -93,50 +102,59 @@ absl::Status CreateStructStepForMessage::Evaluate(ExecutionFrame* frame) const {
     return absl::InternalError("CreateStructStepForMessage: stack underflow");
   }
 
-  CelValue result;
-  absl::Status status = DoEvaluate(frame, &result);
-  if (!status.ok()) {
-    result = CreateErrorValue(frame->memory_manager(), status);
+  Handle<Value> result;
+  auto status_or_result = DoEvaluate(frame);
+  if (status_or_result.ok()) {
+    result = std::move(status_or_result).value();
+  } else {
+    result = CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
+        cel::extensions::ProtoMemoryManager::CastToProtoArena(
+            frame->memory_manager()),
+        status_or_result.status()));
   }
   frame->value_stack().Pop(entries_.size());
-  frame->value_stack().Push(result);
+  frame->value_stack().Push(std::move(result));
 
   return absl::OkStatus();
 }
 
-absl::Status CreateStructStepForMap::DoEvaluate(ExecutionFrame* frame,
-                                                CelValue* result) const {
-  absl::Span<const CelValue> args =
-      frame->value_stack().GetSpan(2 * entry_count_);
+absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
+    ExecutionFrame* frame) const {
+  auto args = frame->value_stack().GetSpan(2 * entry_count_);
 
   if (frame->enable_unknowns()) {
     const UnknownSet* unknown_set = frame->attribute_utility().MergeUnknowns(
         args, frame->value_stack().GetAttributeSpan(args.size()),
         /*initial_set=*/nullptr, true);
     if (unknown_set != nullptr) {
-      *result = CelValue::CreateUnknownSet(unknown_set);
-      return absl::OkStatus();
+      return CreateUnknownValueFromView(unknown_set);
     }
   }
 
-  std::vector<std::pair<CelValue, CelValue>> map_entries;
-  auto map_builder = frame->memory_manager().New<CelMapBuilder>();
+  // TODO(issues/5): switch to new cel::MapValue in phase 2
+  auto* map_builder = google::protobuf::Arena::Create<CelMapBuilder>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(
+          frame->memory_manager()));
 
   for (size_t i = 0; i < entry_count_; i += 1) {
     int map_key_index = 2 * i;
     int map_value_index = map_key_index + 1;
-    const CelValue& map_key = args[map_key_index];
+    const CelValue& map_key =
+        cel::interop_internal::ModernValueToLegacyValueOrDie(
+            frame->memory_manager(), args[map_key_index]);
     CEL_RETURN_IF_ERROR(CelValue::CheckMapKeyType(map_key));
-    auto key_status = map_builder->Add(map_key, args[map_value_index]);
+    auto key_status = map_builder->Add(
+        map_key, cel::interop_internal::ModernValueToLegacyValueOrDie(
+                     frame->memory_manager(), args[map_value_index]));
     if (!key_status.ok()) {
-      *result = CreateErrorValue(frame->memory_manager(), key_status);
-      return absl::OkStatus();
+      return CreateErrorValueFromView(google::protobuf::Arena::Create<absl::Status>(
+          cel::extensions::ProtoMemoryManager::CastToProtoArena(
+              frame->memory_manager()),
+          key_status));
     }
   }
 
-  *result = CelValue::CreateMap(map_builder.release());
-
-  return absl::OkStatus();
+  return CreateLegacyMapValue(map_builder);
 }
 
 absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
@@ -144,11 +162,10 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
     return absl::InternalError("CreateStructStepForMap: stack underflow");
   }
 
-  CelValue result;
-  CEL_RETURN_IF_ERROR(DoEvaluate(frame, &result));
+  CEL_ASSIGN_OR_RETURN(auto result, DoEvaluate(frame));
 
   frame->value_stack().Pop(2 * entry_count_);
-  frame->value_stack().Push(result);
+  frame->value_stack().Push(std::move(result));
 
   return absl::OkStatus();
 }

@@ -9,7 +9,7 @@
 #include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
-#include "base/memory_manager.h"
+#include "base/memory.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
@@ -28,7 +28,7 @@ namespace google::api::expr::runtime {
 // or supported.
 class AttributeTrail {
  public:
-  AttributeTrail() = default;
+  AttributeTrail() : attribute_(absl::nullopt) {}
 
   AttributeTrail(google::api::expr::v1alpha1::Expr root, cel::MemoryManager& manager);
 
@@ -42,9 +42,7 @@ class AttributeTrail {
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(const std::string* qualifier,
                       cel::MemoryManager& manager) const {
-    return Step(
-        CelAttributeQualifier::Create(CelValue::CreateString(qualifier)),
-        manager);
+    return Step(cel::AttributeQualifier::OfString(*qualifier), manager);
   }
 
   // Returns CelAttribute that corresponds to content of AttributeTrail.

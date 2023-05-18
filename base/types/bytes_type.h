@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_BYTES_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_BYTES_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
 class BytesValue;
+class BytesWrapperType;
 
 class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
  private:
@@ -33,21 +35,33 @@ class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
 
   using Base::Is;
 
+  static const BytesType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const BytesType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  friend class BytesWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(BytesType, BytesValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(BytesType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<BytesType> {
+  using value_type = BytesValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

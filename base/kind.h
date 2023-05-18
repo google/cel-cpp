@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 #define THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 
-#include <cstdint>
-
 #include "absl/base/attributes.h"
 #include "absl/strings/string_view.h"
 
@@ -44,6 +42,8 @@ enum class Kind /* : uint8_t */ {
   // New kinds not present in legacy CelValue.
   kEnum,
   kDyn,
+  kWrapper,
+  kOpaque,
 
   // Legacy aliases, deprecated do not use.
   kInt64 = kInt,
@@ -52,9 +52,9 @@ enum class Kind /* : uint8_t */ {
   kUnknownSet = kUnknown,
   kCelType = kType,
 
-  // INTERNAL: Do not exceed 127. Implementation details rely on the fact that
-  // we can store `Kind` using 7 bits.
-  kNotForUseWithExhaustiveSwitchStatements = 127,
+  // INTERNAL: Do not exceed 63. Implementation details rely on the fact that
+  // we can store `Kind` using 6 bits.
+  kNotForUseWithExhaustiveSwitchStatements = 63,
 };
 
 ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);

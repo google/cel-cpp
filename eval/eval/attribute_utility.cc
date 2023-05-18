@@ -2,9 +2,9 @@
 
 #include <utility>
 
-#include "eval/public/cel_value.h"
-#include "eval/public/unknown_attribute_set.h"
-#include "eval/public/unknown_set.h"
+#include "base/attribute_set.h"
+#include "base/values/unknown_value.h"
+#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 
@@ -14,12 +14,12 @@ bool AttributeUtility::CheckForMissingAttribute(
     return false;
   }
 
-  for (const auto& pattern : *missing_attribute_patterns_) {
+  for (const auto& pattern : missing_attribute_patterns_) {
     // (b/161297249) Preserving existing behavior for now, will add a streamz
     // for partial match, follow up with tightening up which fields are exposed
     // to the condition (w/ ajay and jim)
     if (pattern.IsMatch(trail.attribute()) ==
-        CelAttributePattern::MatchType::FULL) {
+        cel::AttributePattern::MatchType::FULL) {
       return true;
     }
   }
@@ -32,11 +32,11 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
   if (trail.empty()) {
     return false;
   }
-  for (const auto& pattern : *unknown_patterns_) {
+  for (const auto& pattern : unknown_patterns_) {
     auto current_match = pattern.IsMatch(trail.attribute());
-    if (current_match == CelAttributePattern::MatchType::FULL ||
+    if (current_match == cel::AttributePattern::MatchType::FULL ||
         (use_partial &&
-         current_match == CelAttributePattern::MatchType::PARTIAL)) {
+         current_match == cel::AttributePattern::MatchType::PARTIAL)) {
       return true;
     }
   }
@@ -48,13 +48,14 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
 // it together with initial_set (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
 const UnknownSet* AttributeUtility::MergeUnknowns(
-    absl::Span<const CelValue> args, const UnknownSet* initial_set) const {
+    absl::Span<const cel::Handle<cel::Value>> args,
+    const UnknownSet* initial_set) const {
   absl::optional<UnknownSet> result_set;
 
   for (const auto& value : args) {
-    if (!value.IsUnknownSet()) continue;
+    if (!value->Is<cel::UnknownValue>()) continue;
 
-    auto current_set = value.UnknownSetOrDie();
+    const auto& current_set = value.As<cel::UnknownValue>();
     if (!result_set.has_value()) {
       if (initial_set != nullptr) {
         result_set.emplace(*initial_set);
@@ -62,15 +63,18 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
         result_set.emplace();
       }
     }
-    result_set->Add(*current_set);
+    cel::base_internal::UnknownSetAccess::Add(
+        *result_set, UnknownSet(current_set->attribute_set(),
+                                current_set->function_result_set()));
   }
 
   if (!result_set.has_value()) {
     return initial_set;
   }
 
-  return memory_manager_.New<UnknownSet>(std::move(result_set).value())
-      .release();
+  return google::protobuf::Arena::Create<UnknownSet>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+      std::move(result_set).value());
 }
 
 // Creates merged UnknownAttributeSet.
@@ -78,9 +82,9 @@ const UnknownSet* AttributeUtility::MergeUnknowns(
 // patterns, merges attributes together with those from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-UnknownAttributeSet AttributeUtility::CheckForUnknowns(
+cel::AttributeSet AttributeUtility::CheckForUnknowns(
     absl::Span<const AttributeTrail> args, bool use_partial) const {
-  UnknownAttributeSet attribute_set;
+  cel::AttributeSet attribute_set;
 
   for (const auto& trail : args) {
     if (CheckForUnknown(trail, use_partial)) {
@@ -98,22 +102,44 @@ UnknownAttributeSet AttributeUtility::CheckForUnknowns(
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
 const UnknownSet* AttributeUtility::MergeUnknowns(
-    absl::Span<const CelValue> args, absl::Span<const AttributeTrail> attrs,
-    const UnknownSet* initial_set, bool use_partial) const {
-  UnknownAttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
+    absl::Span<const cel::Handle<cel::Value>> args,
+    absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,
+    bool use_partial) const {
+  cel::AttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
   if (!attr_set.empty()) {
     UnknownSet result_set(std::move(attr_set));
     if (initial_set != nullptr) {
-      result_set.Add(*initial_set);
+      cel::base_internal::UnknownSetAccess::Add(result_set, *initial_set);
     }
     for (const auto& value : args) {
-      if (!value.IsUnknownSet()) {
+      if (!value->Is<cel::UnknownValue>()) {
         continue;
       }
-      result_set.Add(*value.UnknownSetOrDie());
+      const auto& unknown_value = value.As<cel::UnknownValue>();
+      cel::base_internal::UnknownSetAccess::Add(
+          result_set, UnknownSet(unknown_value->attribute_set(),
+                                 unknown_value->function_result_set()));
     }
-    return memory_manager_.New<UnknownSet>(std::move(result_set)).release();
+    return google::protobuf::Arena::Create<UnknownSet>(
+        cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+        std::move(result_set));
   }
   return MergeUnknowns(args, initial_set);
 }
+
+const UnknownSet* AttributeUtility::CreateUnknownSet(
+    cel::Attribute attr) const {
+  return google::protobuf::Arena::Create<UnknownSet>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+      UnknownAttributeSet({std::move(attr)}));
+}
+
+const UnknownSet* AttributeUtility::CreateUnknownSet(
+    const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
+    absl::Span<const cel::Handle<cel::Value>> args) const {
+  return google::protobuf::Arena::Create<UnknownSet>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+      cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)));
+}
+
 }  // namespace google::api::expr::runtime

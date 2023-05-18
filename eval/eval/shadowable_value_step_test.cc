@@ -6,8 +6,11 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
+#include "base/handle.h"
+#include "base/value.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/test_type_registry.h"
+#include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_value.h"
 #include "internal/status_macros.h"
@@ -20,18 +23,18 @@ namespace {
 using ::google::protobuf::Arena;
 using testing::Eq;
 
-absl::StatusOr<CelValue> RunShadowableExpression(const std::string& identifier,
-                                                 const CelValue& value,
+absl::StatusOr<CelValue> RunShadowableExpression(std::string identifier,
+                                                 cel::Handle<cel::Value> value,
                                                  const Activation& activation,
                                                  Arena* arena) {
-  CEL_ASSIGN_OR_RETURN(auto step,
-                       CreateShadowableValueStep(identifier, value, 1));
+  CEL_ASSIGN_OR_RETURN(
+      auto step,
+      CreateShadowableValueStep(std::move(identifier), std::move(value), 1));
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  cel::ast::internal::Expr dummy_expr;
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path), &TestTypeRegistry(),
-                             0, {});
+  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
+                             cel::RuntimeOptions{});
   return impl.Evaluate(activation, arena);
 }
 
@@ -41,8 +44,7 @@ TEST(ShadowableValueStepTest, TestEvaluateNoShadowing) {
   Activation activation;
   Arena arena;
 
-  auto type_value =
-      CelValue::CreateCelType(CelValue::CelTypeHolder(&type_name));
+  auto type_value = cel::interop_internal::CreateTypeValueFromView(type_name);
   auto status =
       RunShadowableExpression(type_name, type_value, activation, &arena);
   ASSERT_OK(status);
@@ -60,8 +62,7 @@ TEST(ShadowableValueStepTest, TestEvaluateShadowedIdentifier) {
   activation.InsertValue(type_name, shadow_value);
   Arena arena;
 
-  auto type_value =
-      CelValue::CreateCelType(CelValue::CelTypeHolder(&type_name));
+  auto type_value = cel::interop_internal::CreateTypeValueFromView(type_name);
   auto status =
       RunShadowableExpression(type_name, type_value, activation, &arena);
   ASSERT_OK(status);

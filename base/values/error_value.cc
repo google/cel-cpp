@@ -14,62 +14,22 @@
 
 #include "base/values/error_value.h"
 
-#include <algorithm>
 #include <string>
-#include <utility>
 
-#include "absl/container/inlined_vector.h"
-#include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
+#include "absl/status/status.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(ErrorValue);
 
-namespace {
-
-struct StatusPayload final {
-  std::string key;
-  absl::Cord value;
-};
-
-void StatusHashValue(absl::HashState state, const absl::Status& status) {
-  // absl::Status::operator== compares `raw_code()`, `message()` and the
-  // payloads.
-  state = absl::HashState::combine(std::move(state), status.raw_code(),
-                                   status.message());
-  // In order to determistically hash, we need to put the payloads in sorted
-  // order. There is no guarantee from `absl::Status` on the order of the
-  // payloads returned from `absl::Status::ForEachPayload`.
-  //
-  // This should be the same inline size as
-  // `absl::status_internal::StatusPayloads`.
-  absl::InlinedVector<StatusPayload, 1> payloads;
-  status.ForEachPayload([&](absl::string_view key, const absl::Cord& value) {
-    payloads.push_back(StatusPayload{std::string(key), value});
-  });
-  std::stable_sort(
-      payloads.begin(), payloads.end(),
-      [](const StatusPayload& lhs, const StatusPayload& rhs) -> bool {
-        return lhs.key < rhs.key;
-      });
-  for (const auto& payload : payloads) {
-    state =
-        absl::HashState::combine(std::move(state), payload.key, payload.value);
-  }
+std::string ErrorValue::DebugString(const absl::Status& value) {
+  return value.ToString();
 }
 
-}  // namespace
+std::string ErrorValue::DebugString() const { return DebugString(value()); }
 
-std::string ErrorValue::DebugString() const { return value().ToString(); }
-
-bool ErrorValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == static_cast<const ErrorValue&>(other).value();
-}
-
-void ErrorValue::HashValue(absl::HashState state) const {
-  StatusHashValue(absl::HashState::combine(std::move(state), type()), value());
+const absl::Status& ErrorValue::value() const {
+  return base_internal::Metadata::IsTrivial(*this) ? *value_ptr_ : value_;
 }
 
 }  // namespace cel

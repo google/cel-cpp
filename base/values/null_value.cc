@@ -20,6 +20,6 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(NullValue);
 
-std::string NullValue::DebugString() const { return "null"; }
+std::string NullValue::DebugString() { return "null"; }
 
 }  // namespace cel

@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_UINT_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_UINT_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
 class UintValue;
+class UintWrapperType;
 
 class UintType final : public base_internal::SimpleType<Kind::kUint> {
  private:
@@ -33,21 +35,33 @@ class UintType final : public base_internal::SimpleType<Kind::kUint> {
 
   using Base::Is;
 
+  static const UintType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const UintType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  friend class UintWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(UintType, UintValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(UintType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<UintType> {
+  using value_type = UintValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

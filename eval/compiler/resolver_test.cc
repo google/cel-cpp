@@ -2,24 +2,26 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
-#include "google/protobuf/descriptor.h"
-#include "google/protobuf/message.h"
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
+#include "base/values/int_value.h"
+#include "base/values/type_value.h"
 #include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/structs/protobuf_descriptor_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::IntValue;
+using ::cel::TypeValue;
 using testing::Eq;
 
 class FakeFunction : public CelFunction {
@@ -36,7 +38,8 @@ class FakeFunction : public CelFunction {
 TEST(ResolverTest, TestFullyQualifiedNames) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver resolver("google.api.expr", &func_registry, &type_registry);
+  Resolver resolver("google.api.expr", func_registry.InternalGetRegistry(),
+                    &type_registry);
 
   auto names = resolver.FullyQualifiedNames("simple_name");
   std::vector<std::string> expected_names(
@@ -48,7 +51,8 @@ TEST(ResolverTest, TestFullyQualifiedNames) {
 TEST(ResolverTest, TestFullyQualifiedNamesPartiallyQualifiedName) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver resolver("google.api.expr", &func_registry, &type_registry);
+  Resolver resolver("google.api.expr", func_registry.InternalGetRegistry(),
+                    &type_registry);
 
   auto names = resolver.FullyQualifiedNames("expr.simple_name");
   std::vector<std::string> expected_names(
@@ -60,7 +64,8 @@ TEST(ResolverTest, TestFullyQualifiedNamesPartiallyQualifiedName) {
 TEST(ResolverTest, TestFullyQualifiedNamesAbsoluteName) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver resolver("google.api.expr", &func_registry, &type_registry);
+  Resolver resolver("google.api.expr", func_registry.InternalGetRegistry(),
+                    &type_registry);
 
   auto names = resolver.FullyQualifiedNames(".google.api.expr.absolute_name");
   EXPECT_THAT(names.size(), Eq(1));
@@ -71,30 +76,30 @@ TEST(ResolverTest, TestFindConstantEnum) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
   type_registry.Register(TestMessage::TestEnum_descriptor());
-  Resolver resolver("google.api.expr.runtime.TestMessage", &func_registry,
-                    &type_registry);
+  Resolver resolver("google.api.expr.runtime.TestMessage",
+                    func_registry.InternalGetRegistry(), &type_registry);
 
   auto enum_value = resolver.FindConstant("TestEnum.TEST_ENUM_1", -1);
-  EXPECT_TRUE(enum_value.has_value());
-  EXPECT_TRUE(enum_value->IsInt64());
-  EXPECT_THAT(enum_value->Int64OrDie(), Eq(1L));
+  ASSERT_TRUE(enum_value);
+  ASSERT_TRUE(enum_value->Is<IntValue>());
+  EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(1L));
 
   enum_value = resolver.FindConstant(
       ".google.api.expr.runtime.TestMessage.TestEnum.TEST_ENUM_2", -1);
-  EXPECT_TRUE(enum_value.has_value());
-  EXPECT_TRUE(enum_value->IsInt64());
-  EXPECT_THAT(enum_value->Int64OrDie(), Eq(2L));
+  ASSERT_TRUE(enum_value);
+  ASSERT_TRUE(enum_value->Is<IntValue>());
+  EXPECT_THAT(enum_value.As<IntValue>()->value(), Eq(2L));
 }
 
 TEST(ResolverTest, TestFindConstantUnqualifiedType) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver resolver("cel", &func_registry, &type_registry);
+  Resolver resolver("cel", func_registry.InternalGetRegistry(), &type_registry);
 
   auto type_value = resolver.FindConstant("int", -1);
-  EXPECT_TRUE(type_value.has_value());
-  EXPECT_TRUE(type_value->IsCelType());
-  EXPECT_THAT(type_value->CelTypeOrDie().value(), Eq("int"));
+  EXPECT_TRUE(type_value);
+  EXPECT_TRUE(type_value->Is<TypeValue>());
+  EXPECT_THAT(type_value.As<TypeValue>()->name(), Eq("int"));
 }
 
 TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
@@ -105,13 +110,13 @@ TEST(ResolverTest, TestFindConstantFullyQualifiedType) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  Resolver resolver("cel", &func_registry, &type_registry);
+  Resolver resolver("cel", func_registry.InternalGetRegistry(), &type_registry);
 
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
-  ASSERT_TRUE(type_value.has_value());
-  ASSERT_TRUE(type_value->IsCelType());
-  EXPECT_THAT(type_value->CelTypeOrDie().value(),
+  ASSERT_TRUE(type_value);
+  ASSERT_TRUE(type_value->Is<TypeValue>());
+  EXPECT_THAT(type_value.As<TypeValue>()->name(),
               Eq("google.api.expr.runtime.TestMessage"));
 }
 
@@ -122,16 +127,18 @@ TEST(ResolverTest, TestFindConstantQualifiedTypeDisabled) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  Resolver resolver("", &func_registry, &type_registry, false);
+  Resolver resolver("", func_registry.InternalGetRegistry(), &type_registry,
+                    false);
   auto type_value =
       resolver.FindConstant(".google.api.expr.runtime.TestMessage", -1);
-  EXPECT_FALSE(type_value.has_value());
+  EXPECT_FALSE(type_value);
 }
 
 TEST(ResolverTest, FindTypeAdapterBySimpleName) {
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver resolver("google.api.expr.runtime", &func_registry, &type_registry);
+  Resolver resolver("google.api.expr.runtime",
+                    func_registry.InternalGetRegistry(), &type_registry);
   type_registry.RegisterTypeProvider(
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
@@ -150,7 +157,8 @@ TEST(ResolverTest, FindTypeAdapterByQualifiedName) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  Resolver resolver("google.api.expr.runtime", &func_registry, &type_registry);
+  Resolver resolver("google.api.expr.runtime",
+                    func_registry.InternalGetRegistry(), &type_registry);
 
   absl::optional<LegacyTypeAdapter> adapter =
       resolver.FindTypeAdapter(".google.api.expr.runtime.TestMessage", -1);
@@ -165,7 +173,8 @@ TEST(ResolverTest, TestFindDescriptorNotFound) {
       std::make_unique<ProtobufDescriptorProvider>(
           google::protobuf::DescriptorPool::generated_pool(),
           google::protobuf::MessageFactory::generated_factory()));
-  Resolver resolver("google.api.expr.runtime", &func_registry, &type_registry);
+  Resolver resolver("google.api.expr.runtime",
+                    func_registry.InternalGetRegistry(), &type_registry);
 
   absl::optional<LegacyTypeAdapter> adapter =
       resolver.FindTypeAdapter("UndefinedMessage", -1);
@@ -182,17 +191,17 @@ TEST(ResolverTest, TestFindOverloads) {
   ASSERT_OK(status);
 
   CelTypeRegistry type_registry;
-  Resolver resolver("cel", &func_registry, &type_registry);
+  Resolver resolver("cel", func_registry.InternalGetRegistry(), &type_registry);
 
   auto overloads =
       resolver.FindOverloads("fake_func", false, ArgumentsMatcher(0));
   EXPECT_THAT(overloads.size(), Eq(1));
-  EXPECT_THAT(overloads[0]->descriptor().name(), Eq("fake_func"));
+  EXPECT_THAT(overloads[0].descriptor.name(), Eq("fake_func"));
 
   overloads =
       resolver.FindOverloads("fake_ns_func", false, ArgumentsMatcher(0));
   EXPECT_THAT(overloads.size(), Eq(1));
-  EXPECT_THAT(overloads[0]->descriptor().name(), Eq("cel.fake_ns_func"));
+  EXPECT_THAT(overloads[0].descriptor.name(), Eq("cel.fake_ns_func"));
 }
 
 TEST(ResolverTest, TestFindLazyOverloads) {
@@ -205,7 +214,7 @@ TEST(ResolverTest, TestFindLazyOverloads) {
   ASSERT_OK(status);
 
   CelTypeRegistry type_registry;
-  Resolver resolver("cel", &func_registry, &type_registry);
+  Resolver resolver("cel", func_registry.InternalGetRegistry(), &type_registry);
 
   auto overloads =
       resolver.FindLazyOverloads("fake_lazy_func", false, ArgumentsMatcher(0));

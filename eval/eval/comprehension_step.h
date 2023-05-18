@@ -2,12 +2,11 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_COMPREHENSION_STEP_H_
 
 #include <cstdint>
+#include <memory>
+#include <string>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
-#include "eval/public/cel_function.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 

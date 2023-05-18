@@ -3,12 +3,10 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/duration.pb.h"
-#include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/ast.h"
+#include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
@@ -33,17 +31,14 @@ absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
   CEL_ASSIGN_OR_RETURN(
       auto step,
       CreateConstValueStep(
-          google::api::expr::runtime::ConvertConstant(const_expr).value(),
-          expr->id()));
+          google::api::expr::runtime::ConvertConstant(const_expr), expr->id()));
 
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
 
-  Expr dummy_expr;
-
-  CelExpressionFlatImpl impl(&dummy_expr, std::move(path),
-                             &google::api::expr::runtime::TestTypeRegistry(), 0,
-                             {});
+  CelExpressionFlatImpl impl(std::move(path),
+                             &google::api::expr::runtime::TestTypeRegistry(),
+                             cel::RuntimeOptions{});
 
   google::api::expr::runtime::Activation activation;
 

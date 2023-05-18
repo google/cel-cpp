@@ -14,28 +14,8 @@
 
 #include "base/types/error_type.h"
 
-#include "absl/base/attributes.h"
-#include "absl/base/call_once.h"
-
 namespace cel {
 
 CEL_INTERNAL_TYPE_IMPL(ErrorType);
-
-namespace {
-
-ABSL_CONST_INIT absl::once_flag instance_once;
-alignas(Persistent<const ErrorType>) char instance_storage[sizeof(
-    Persistent<const ErrorType>)];
-
-}  // namespace
-
-const Persistent<const ErrorType>& ErrorType::Get() {
-  absl::call_once(instance_once, []() {
-    base_internal::PersistentHandleFactory<const ErrorType>::MakeAt<ErrorType>(
-        &instance_storage[0]);
-  });
-  return *reinterpret_cast<const Persistent<const ErrorType>*>(
-      &instance_storage[0]);
-}
 
 }  // namespace cel

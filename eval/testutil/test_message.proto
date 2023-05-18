@@ -45,21 +45,17 @@ message TestMessage {
 
   repeated int32 int32_list = 101;
   repeated int64 int64_list = 102;
-
   repeated uint32 uint32_list = 103;
   repeated uint64 uint64_list = 104;
-
   repeated float float_list = 105;
   repeated double double_list = 106;
-
   repeated string string_list = 107;
   repeated string cord_list = 108 [ctype = CORD];
   repeated bytes bytes_list = 109;
-
   repeated bool bool_list = 110;
-
   repeated TestEnum enum_list = 111;
   repeated TestMessage message_list = 112;
+  repeated google.protobuf.Timestamp timestamp_list = 113;
 
   map<int64, int32> int64_int32_map = 201;
   map<uint64, int32> uint64_int32_map = 202;
@@ -67,6 +63,11 @@ message TestMessage {
   map<bool, int32> bool_int32_map = 204;
   map<int32, int32> int32_int32_map = 205;
   map<uint32, uint32> uint32_uint32_map = 206;
+  map<int32, float> int32_float_map = 207;
+  map<int64, TestEnum> int64_enum_map = 208;
+  map<string, google.protobuf.Timestamp> string_timestamp_map = 209;
+  map<string, TestMessage> string_message_map = 210;
+  map<int64, google.protobuf.Timestamp> int64_timestamp_map = 211;
 
   // Well-known types.
   google.protobuf.Any any_value = 300;

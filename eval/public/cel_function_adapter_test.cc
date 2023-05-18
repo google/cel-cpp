@@ -16,8 +16,8 @@ namespace {
 
 TEST(CelFunctionAdapterTest, TestAdapterNoArg) {
   auto func = [](google::protobuf::Arena*) -> int64_t { return 100; };
-  ASSERT_OK_AND_ASSIGN(auto cel_func,
-                       (FunctionAdapter<int64_t>::Create("const", false, func)));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_func, (FunctionAdapter<int64_t>::Create("const", false, func)));
 
   absl::Span<CelValue> args;
   CelValue result = CelValue::CreateNull();
@@ -30,8 +30,9 @@ TEST(CelFunctionAdapterTest, TestAdapterNoArg) {
 TEST(CelFunctionAdapterTest, TestAdapterOneArg) {
   std::function<int64_t(google::protobuf::Arena*, int64_t)> func =
       [](google::protobuf::Arena* arena, int64_t i) -> int64_t { return i + 1; };
-  ASSERT_OK_AND_ASSIGN(auto cel_func, (FunctionAdapter<int64_t, int64_t>::Create(
-                                          "_++_", false, func)));
+  ASSERT_OK_AND_ASSIGN(
+      auto cel_func,
+      (FunctionAdapter<int64_t, int64_t>::Create("_++_", false, func)));
 
   std::vector<CelValue> args_vec;
   args_vec.push_back(CelValue::CreateInt64(99));
@@ -49,9 +50,9 @@ TEST(CelFunctionAdapterTest, TestAdapterTwoArgs) {
   auto func = [](google::protobuf::Arena* arena, int64_t i, int64_t j) -> int64_t {
     return i + j;
   };
-  ASSERT_OK_AND_ASSIGN(
-      auto cel_func,
-      (FunctionAdapter<int64_t, int64_t, int64_t>::Create("_++_", false, func)));
+  ASSERT_OK_AND_ASSIGN(auto cel_func,
+                       (FunctionAdapter<int64_t, int64_t, int64_t>::Create(
+                           "_++_", false, func)));
 
   std::vector<CelValue> args_vec;
   args_vec.push_back(CelValue::CreateInt64(20));

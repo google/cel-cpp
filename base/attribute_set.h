@@ -23,12 +23,14 @@
 
 namespace google::api::expr::runtime {
 class AttributeUtility;
-class UnknownSet;
 }  // namespace google::api::expr::runtime
 
 namespace cel {
 
 class UnknownValue;
+namespace base_internal {
+class UnknownSet;
+}
 
 // AttributeSet is a container for CEL attributes that are identified as
 // unknown during expression evaluation.
@@ -88,8 +90,8 @@ class AttributeSet final {
 
  private:
   friend class google::api::expr::runtime::AttributeUtility;
-  friend class google::api::expr::runtime::UnknownSet;
   friend class UnknownValue;
+  friend class base_internal::UnknownSet;
 
   void Add(const Attribute& attribute) { attributes_.insert(attribute); }
 

@@ -19,9 +19,7 @@ load(
 
 licenses(["notice"])
 
-package(
-    default_visibility = ["//visibility:public"],
-)
+package(default_visibility = ["//visibility:public"])
 
 flatbuffer_library_public(
     name = "flatbuffers_test",

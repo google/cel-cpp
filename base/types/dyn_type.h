@@ -15,6 +15,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_DYN_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_DYN_TYPE_H_
 
+#include "absl/log/absl_check.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/kind.h"
 #include "base/type.h"
 
@@ -33,21 +36,38 @@ class DynType final : public base_internal::SimpleType<Kind::kDyn> {
 
   using Base::Is;
 
+  static const DynType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const DynType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  friend class Type;
+  friend class base_internal::LegacyListType;
+  friend class base_internal::LegacyMapType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DynType, DynValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(DynType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<DynType> {
+  using value_type = DynValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

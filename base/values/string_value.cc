@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/strings/string_view.h"
 #include "base/types/string_type.h"
 #include "internal/strings.h"
 #include "internal/utf8.h"
@@ -30,11 +31,11 @@ namespace {
 
 struct StringValueDebugStringVisitor final {
   std::string operator()(absl::string_view value) const {
-    return internal::FormatStringLiteral(value);
+    return StringValue::DebugString(value);
   }
 
   std::string operator()(const absl::Cord& value) const {
-    return internal::FormatStringLiteral(static_cast<std::string>(value));
+    return StringValue::DebugString(value);
   }
 };
 
@@ -156,6 +157,21 @@ class CompareVisitor<StringValue> final {
   const StringValue& ref_;
 };
 
+struct MatchesVisitor final {
+  const RE2& re;
+
+  bool operator()(const absl::Cord& value) const {
+    if (auto flat = value.TryFlat(); flat.has_value()) {
+      return RE2::PartialMatch(*flat, re);
+    }
+    return RE2::PartialMatch(static_cast<std::string>(value), re);
+  }
+
+  bool operator()(absl::string_view value) const {
+    return RE2::PartialMatch(value, re);
+  }
+};
+
 class HashValueVisitor final {
  public:
   explicit HashValueVisitor(absl::HashState state) : state_(std::move(state)) {}
@@ -204,6 +220,10 @@ int StringValue::Compare(const StringValue& string) const {
   return absl::visit(CompareVisitor<StringValue>(*this), string.rep());
 }
 
+bool StringValue::Matches(const RE2& re) const {
+  return absl::visit(MatchesVisitor{re}, rep());
+}
+
 std::string StringValue::ToString() const {
   return absl::visit(ToStringVisitor{}, rep());
 }
@@ -213,15 +233,32 @@ absl::Cord StringValue::ToCord() const {
     case base_internal::DataLocality::kNull:
       return absl::Cord();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return absl::MakeCordFromExternal(
             static_cast<const base_internal::InlinedStringViewStringValue*>(
                 this)
                 ->value_,
             []() {});
       } else {
-        return static_cast<const base_internal::InlinedCordStringValue*>(this)
-            ->value_;
+        switch (base_internal::Metadata::GetInlineVariant<
+                base_internal::InlinedStringValueVariant>(*this)) {
+          case base_internal::InlinedStringValueVariant::kCord:
+            return static_cast<const base_internal::InlinedCordStringValue*>(
+                       this)
+                ->value_;
+          case base_internal::InlinedStringValueVariant::kStringView: {
+            const Value* owner =
+                static_cast<const base_internal::InlinedStringViewStringValue*>(
+                    this)
+                    ->owner_;
+            base_internal::Metadata::Ref(*owner);
+            return absl::MakeCordFromExternal(
+                static_cast<const base_internal::InlinedStringViewStringValue*>(
+                    this)
+                    ->value_,
+                [owner]() { base_internal::ValueMetadata::Unref(*owner); });
+          }
+        }
       }
     case base_internal::DataLocality::kReferenceCounted:
       base_internal::Metadata::Ref(*this);
@@ -236,6 +273,14 @@ absl::Cord StringValue::ToCord() const {
       return absl::Cord(
           static_cast<const base_internal::StringStringValue*>(this)->value_);
   }
+}
+
+std::string StringValue::DebugString(absl::string_view value) {
+  return internal::FormatStringLiteral(value);
+}
+
+std::string StringValue::DebugString(const absl::Cord& value) {
+  return internal::FormatStringLiteral(static_cast<std::string>(value));
 }
 
 std::string StringValue::DebugString() const {
@@ -259,18 +304,29 @@ base_internal::StringValueRep StringValue::rep() const {
     case base_internal::DataLocality::kNull:
       return base_internal::StringValueRep();
     case base_internal::DataLocality::kStoredInline:
-      if (base_internal::Metadata::IsTriviallyCopyable(*this)) {
+      if (base_internal::Metadata::IsTrivial(*this)) {
         return base_internal::StringValueRep(
             absl::in_place_type<absl::string_view>,
             static_cast<const base_internal::InlinedStringViewStringValue*>(
                 this)
                 ->value_);
       } else {
-        return base_internal::StringValueRep(
-            absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
-            std::cref(
-                static_cast<const base_internal::InlinedCordStringValue*>(this)
-                    ->value_));
+        switch (base_internal::Metadata::GetInlineVariant<
+                base_internal::InlinedStringValueVariant>(*this)) {
+          case base_internal::InlinedStringValueVariant::kCord:
+            return base_internal::StringValueRep(
+                absl::in_place_type<std::reference_wrapper<const absl::Cord>>,
+                std::cref(
+                    static_cast<const base_internal::InlinedCordStringValue*>(
+                        this)
+                        ->value_));
+          case base_internal::InlinedStringValueVariant::kStringView:
+            return base_internal::StringValueRep(
+                absl::in_place_type<absl::string_view>,
+                static_cast<const base_internal::InlinedStringViewStringValue*>(
+                    this)
+                    ->value_);
+        }
       }
     case base_internal::DataLocality::kReferenceCounted:
       ABSL_FALLTHROUGH_INTENDED;
@@ -291,6 +347,41 @@ StringStringValue::StringStringValue(std::string value)
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
+
+InlinedStringViewStringValue::~InlinedStringViewStringValue() {
+  if (owner_ != nullptr) {
+    ValueMetadata::Unref(*owner_);
+  }
+}
+
+InlinedStringViewStringValue& InlinedStringViewStringValue::operator=(
+    const InlinedStringViewStringValue& other) {
+  if (ABSL_PREDICT_TRUE(this != &other)) {
+    if (other.owner_ != nullptr) {
+      Metadata::Ref(*other.owner_);
+    }
+    if (owner_ != nullptr) {
+      ValueMetadata::Unref(*owner_);
+    }
+    value_ = other.value_;
+    owner_ = other.owner_;
+  }
+  return *this;
+}
+
+InlinedStringViewStringValue& InlinedStringViewStringValue::operator=(
+    InlinedStringViewStringValue&& other) {
+  if (ABSL_PREDICT_TRUE(this != &other)) {
+    if (owner_ != nullptr) {
+      ValueMetadata::Unref(*owner_);
+    }
+    value_ = other.value_;
+    owner_ = other.owner_;
+    other.value_ = absl::string_view();
+    other.owner_ = nullptr;
+  }
+  return *this;
 }
 
 }  // namespace base_internal

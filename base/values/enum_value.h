@@ -18,10 +18,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <utility>
 
-#include "absl/hash/hash.h"
-#include "absl/status/statusor.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
@@ -40,43 +40,86 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
-  static absl::StatusOr<Persistent<const EnumValue>> New(
-      const Persistent<const EnumType>& enum_type, ValueFactory& value_factory,
-      EnumType::ConstantId id);
+  using Value::Is;
+
+  static const EnumValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to enum";
+    return static_cast<const EnumValue&>(value);
+  }
+
+  static std::string DebugString(const EnumType& type, int64_t value);
+
+  static std::string DebugString(const EnumType& type,
+                                 const EnumType::Constant& value);
+
+  using ConstantId = EnumType::ConstantId;
 
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const EnumType> type() const { return type_; }
+  const Handle<EnumType>& type() const { return type_; }
 
   std::string DebugString() const;
-
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Value& other) const;
 
   constexpr int64_t number() const { return number_; }
 
   absl::string_view name() const;
 
  private:
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   template <size_t Size, size_t Align>
-  friend class base_internal::AnyData;
+  friend struct base_internal::AnyData;
 
   static constexpr uintptr_t kMetadata =
       base_internal::kStoredInline |
       (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  EnumValue(Persistent<const EnumType> type, int64_t number)
-      : base_internal::InlineData(kMetadata),
+  static uintptr_t AdditionalMetadata(const EnumType& type) {
+    static_assert(
+        std::is_base_of_v<base_internal::InlineData, EnumValue>,
+        "This logic relies on the fact that EnumValue is stored inline");
+    // Because EnumValue is stored inline and has only two members of which one
+    // is int64_t, we can be considered trivial if Handle<EnumType> has a
+    // skippable destructor.
+    return base_internal::Metadata::IsDestructorSkippable(type)
+               ? base_internal::kTrivial
+               : uintptr_t{0};
+  }
+
+  EnumValue(Handle<EnumType> type, int64_t number)
+      : base_internal::InlineData(kMetadata | AdditionalMetadata(*type)),
         type_(std::move(type)),
         number_(number) {}
 
-  Persistent<const EnumType> type_;
+  Handle<EnumType> type_;
   int64_t number_;
 };
 
 CEL_INTERNAL_VALUE_DECL(EnumValue);
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<EnumValue> {
+  using type = EnumValue;
+
+  using type_type = EnumType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

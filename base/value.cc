@@ -14,11 +14,14 @@
 
 #include "base/value.h"
 
-#include <cstddef>
 #include <string>
 #include <utility>
 
-#include "absl/base/macros.h"
+#include "absl/base/optimization.h"
+#include "base/handle.h"
+#include "base/internal/message_wrapper.h"
+#include "base/kind.h"
+#include "base/type.h"
 #include "base/values/bool_value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/double_value.h"
@@ -29,54 +32,56 @@
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/null_value.h"
+#include "base/values/opaque_value.h"
 #include "base/values/string_value.h"
 #include "base/values/struct_value.h"
 #include "base/values/timestamp_value.h"
 #include "base/values/type_value.h"
 #include "base/values/uint_value.h"
 #include "base/values/unknown_value.h"
-#include "internal/unreachable.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(Value);
 
-Persistent<const Type> Value::type() const {
+Handle<Type> Value::type() const {
   switch (kind()) {
     case Kind::kNullType:
-      return static_cast<const NullValue*>(this)->type().As<const Type>();
+      return static_cast<const NullValue*>(this)->type().As<Type>();
     case Kind::kError:
-      return static_cast<const ErrorValue*>(this)->type().As<const Type>();
+      return static_cast<const ErrorValue*>(this)->type().As<Type>();
     case Kind::kType:
-      return static_cast<const TypeValue*>(this)->type().As<const Type>();
+      return static_cast<const TypeValue*>(this)->type().As<Type>();
     case Kind::kBool:
-      return static_cast<const BoolValue*>(this)->type().As<const Type>();
+      return static_cast<const BoolValue*>(this)->type().As<Type>();
     case Kind::kInt:
-      return static_cast<const IntValue*>(this)->type().As<const Type>();
+      return static_cast<const IntValue*>(this)->type().As<Type>();
     case Kind::kUint:
-      return static_cast<const UintValue*>(this)->type().As<const Type>();
+      return static_cast<const UintValue*>(this)->type().As<Type>();
     case Kind::kDouble:
-      return static_cast<const DoubleValue*>(this)->type().As<const Type>();
+      return static_cast<const DoubleValue*>(this)->type().As<Type>();
     case Kind::kString:
-      return static_cast<const StringValue*>(this)->type().As<const Type>();
+      return static_cast<const StringValue*>(this)->type().As<Type>();
     case Kind::kBytes:
-      return static_cast<const BytesValue*>(this)->type().As<const Type>();
+      return static_cast<const BytesValue*>(this)->type().As<Type>();
     case Kind::kEnum:
-      return static_cast<const EnumValue*>(this)->type().As<const Type>();
+      return static_cast<const EnumValue*>(this)->type().As<Type>();
     case Kind::kDuration:
-      return static_cast<const DurationValue*>(this)->type().As<const Type>();
+      return static_cast<const DurationValue*>(this)->type().As<Type>();
     case Kind::kTimestamp:
-      return static_cast<const TimestampValue*>(this)->type().As<const Type>();
+      return static_cast<const TimestampValue*>(this)->type().As<Type>();
     case Kind::kList:
-      return static_cast<const ListValue*>(this)->type().As<const Type>();
+      return static_cast<const ListValue*>(this)->type().As<Type>();
     case Kind::kMap:
-      return static_cast<const MapValue*>(this)->type().As<const Type>();
+      return static_cast<const MapValue*>(this)->type().As<Type>();
     case Kind::kStruct:
-      return static_cast<const StructValue*>(this)->type().As<const Type>();
+      return static_cast<const StructValue*>(this)->type().As<Type>();
     case Kind::kUnknown:
-      return static_cast<const UnknownValue*>(this)->type().As<const Type>();
+      return static_cast<const UnknownValue*>(this)->type().As<Type>();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->type().As<Type>();
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 
@@ -114,98 +119,102 @@ std::string Value::DebugString() const {
       return static_cast<const StructValue*>(this)->DebugString();
     case Kind::kUnknown:
       return static_cast<const UnknownValue*>(this)->DebugString();
+    case Kind::kOpaque:
+      return static_cast<const OpaqueValue*>(this)->DebugString();
     default:
-      internal::unreachable();
-  }
-}
-
-void Value::HashValue(absl::HashState state) const {
-  switch (kind()) {
-    case Kind::kNullType:
-      return static_cast<const NullValue*>(this)->HashValue(std::move(state));
-    case Kind::kError:
-      return static_cast<const ErrorValue*>(this)->HashValue(std::move(state));
-    case Kind::kType:
-      return static_cast<const TypeValue*>(this)->HashValue(std::move(state));
-    case Kind::kBool:
-      return static_cast<const BoolValue*>(this)->HashValue(std::move(state));
-    case Kind::kInt:
-      return static_cast<const IntValue*>(this)->HashValue(std::move(state));
-    case Kind::kUint:
-      return static_cast<const UintValue*>(this)->HashValue(std::move(state));
-    case Kind::kDouble:
-      return static_cast<const DoubleValue*>(this)->HashValue(std::move(state));
-    case Kind::kString:
-      return static_cast<const StringValue*>(this)->HashValue(std::move(state));
-    case Kind::kBytes:
-      return static_cast<const BytesValue*>(this)->HashValue(std::move(state));
-    case Kind::kEnum:
-      return static_cast<const EnumValue*>(this)->HashValue(std::move(state));
-    case Kind::kDuration:
-      return static_cast<const DurationValue*>(this)->HashValue(
-          std::move(state));
-    case Kind::kTimestamp:
-      return static_cast<const TimestampValue*>(this)->HashValue(
-          std::move(state));
-    case Kind::kList:
-      return static_cast<const ListValue*>(this)->HashValue(std::move(state));
-    case Kind::kMap:
-      return static_cast<const MapValue*>(this)->HashValue(std::move(state));
-    case Kind::kStruct:
-      return static_cast<const StructValue*>(this)->HashValue(std::move(state));
-    case Kind::kUnknown:
-      return static_cast<const UnknownValue*>(this)->HashValue(
-          std::move(state));
-    default:
-      internal::unreachable();
-  }
-}
-
-bool Value::Equals(const Value& other) const {
-  if (this == &other) {
-    return true;
-  }
-  switch (kind()) {
-    case Kind::kNullType:
-      return static_cast<const NullValue*>(this)->Equals(other);
-    case Kind::kError:
-      return static_cast<const ErrorValue*>(this)->Equals(other);
-    case Kind::kType:
-      return static_cast<const TypeValue*>(this)->Equals(other);
-    case Kind::kBool:
-      return static_cast<const BoolValue*>(this)->Equals(other);
-    case Kind::kInt:
-      return static_cast<const IntValue*>(this)->Equals(other);
-    case Kind::kUint:
-      return static_cast<const UintValue*>(this)->Equals(other);
-    case Kind::kDouble:
-      return static_cast<const DoubleValue*>(this)->Equals(other);
-    case Kind::kString:
-      return static_cast<const StringValue*>(this)->Equals(other);
-    case Kind::kBytes:
-      return static_cast<const BytesValue*>(this)->Equals(other);
-    case Kind::kEnum:
-      return static_cast<const EnumValue*>(this)->Equals(other);
-    case Kind::kDuration:
-      return static_cast<const DurationValue*>(this)->Equals(other);
-    case Kind::kTimestamp:
-      return static_cast<const TimestampValue*>(this)->Equals(other);
-    case Kind::kList:
-      return static_cast<const ListValue*>(this)->Equals(other);
-    case Kind::kMap:
-      return static_cast<const MapValue*>(this)->Equals(other);
-    case Kind::kStruct:
-      return static_cast<const StructValue*>(this)->Equals(other);
-    case Kind::kUnknown:
-      return static_cast<const UnknownValue*>(this)->Equals(other);
-    default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
   }
 }
 
 namespace base_internal {
 
-bool PersistentValueHandle::Equals(const PersistentValueHandle& other) const {
+bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
+  switch (kind) {
+    case Kind::kNullType:
+      return true;
+    case Kind::kError:
+      return static_cast<const ErrorValue&>(lhs).value() ==
+             static_cast<const ErrorValue&>(rhs).value();
+    case Kind::kType:
+      return static_cast<const TypeValue&>(lhs).Equals(
+          static_cast<const TypeValue&>(rhs));
+    case Kind::kBool:
+      return static_cast<const BoolValue&>(lhs).value() ==
+             static_cast<const BoolValue&>(rhs).value();
+    case Kind::kInt:
+      return static_cast<const IntValue&>(lhs).value() ==
+             static_cast<const IntValue&>(rhs).value();
+    case Kind::kUint:
+      return static_cast<const UintValue&>(lhs).value() ==
+             static_cast<const UintValue&>(rhs).value();
+    case Kind::kDouble:
+      return static_cast<const DoubleValue&>(lhs).value() ==
+             static_cast<const DoubleValue&>(rhs).value();
+    case Kind::kString:
+      return static_cast<const StringValue&>(lhs).Equals(
+          static_cast<const StringValue&>(rhs));
+    case Kind::kBytes:
+      return static_cast<const BytesValue&>(lhs).Equals(
+          static_cast<const BytesValue&>(rhs));
+    case Kind::kEnum:
+      return static_cast<const EnumValue&>(lhs).number() ==
+                 static_cast<const EnumValue&>(rhs).number() &&
+             static_cast<const EnumValue&>(lhs).type() ==
+                 static_cast<const EnumValue&>(rhs).type();
+    case Kind::kDuration:
+      return static_cast<const DurationValue&>(lhs).value() ==
+             static_cast<const DurationValue&>(rhs).value();
+    case Kind::kTimestamp:
+      return static_cast<const TimestampValue&>(lhs).value() ==
+             static_cast<const TimestampValue&>(rhs).value();
+    case Kind::kList: {
+      bool stored_inline = Metadata::IsStoredInline(lhs);
+      if (stored_inline != Metadata::IsStoredInline(rhs)) {
+        return false;
+      }
+      if (stored_inline) {
+        return static_cast<const LegacyListValue&>(lhs).impl_ ==
+               static_cast<const LegacyListValue&>(rhs).impl_;
+      }
+      return &lhs == &rhs;
+    }
+    case Kind::kMap: {
+      bool stored_inline = Metadata::IsStoredInline(lhs);
+      if (stored_inline != Metadata::IsStoredInline(rhs)) {
+        return false;
+      }
+      if (stored_inline) {
+        return static_cast<const LegacyMapValue&>(lhs).impl_ ==
+               static_cast<const LegacyMapValue&>(rhs).impl_;
+      }
+      return &lhs == &rhs;
+    }
+    case Kind::kStruct: {
+      bool stored_inline = Metadata::IsStoredInline(lhs);
+      if (stored_inline != Metadata::IsStoredInline(rhs)) {
+        return false;
+      }
+      if (stored_inline) {
+        return (static_cast<const LegacyStructValue&>(lhs).msg_ &
+                kMessageWrapperPtrMask) ==
+               (static_cast<const LegacyStructValue&>(rhs).msg_ &
+                kMessageWrapperPtrMask);
+      }
+      return &lhs == &rhs;
+    }
+    case Kind::kUnknown:
+      return static_cast<const UnknownValue&>(lhs).attribute_set() ==
+                 static_cast<const UnknownValue&>(rhs).attribute_set() &&
+             static_cast<const UnknownValue&>(lhs).function_result_set() ==
+                 static_cast<const UnknownValue&>(rhs).function_result_set();
+    case Kind::kOpaque:
+      return &lhs == &rhs;
+    default:
+      ABSL_UNREACHABLE();
+  }
+}
+
+bool ValueHandle::Equals(const ValueHandle& other) const {
   const auto* self = static_cast<const Value*>(data_.get());
   const auto* that = static_cast<const Value*>(other.data_.get());
   if (self == that) {
@@ -214,161 +223,242 @@ bool PersistentValueHandle::Equals(const PersistentValueHandle& other) const {
   if (self == nullptr || that == nullptr) {
     return false;
   }
-  return *self == *that;
+  Kind kind = self->kind();
+  return kind == that->kind() && Equals(*self, *that, kind);
 }
 
-void PersistentValueHandle::HashValue(absl::HashState state) const {
-  if (const auto* pointer = static_cast<const Value*>(data_.get());
-      ABSL_PREDICT_TRUE(pointer != nullptr)) {
-    pointer->HashValue(std::move(state));
-  }
-}
-
-void PersistentValueHandle::CopyFrom(const PersistentValueHandle& other) {
+void ValueHandle::CopyFrom(const ValueHandle& other) {
   // data_ is currently uninitialized.
   auto locality = other.data_.locality();
-  if (locality == DataLocality::kStoredInline &&
-      !other.data_.IsTriviallyCopyable()) {
-    switch (other.data_.kind()) {
-      case Kind::kError:
-        data_.ConstructInline<ErrorValue>(
-            *static_cast<const ErrorValue*>(other.data_.get()));
-        break;
-      case Kind::kString:
-        data_.ConstructInline<InlinedCordStringValue>(
-            *static_cast<const InlinedCordStringValue*>(other.data_.get()));
-        break;
-      case Kind::kBytes:
-        data_.ConstructInline<InlinedCordBytesValue>(
-            *static_cast<const InlinedCordBytesValue*>(other.data_.get()));
-        break;
-      case Kind::kType:
-        data_.ConstructInline<TypeValue>(
-            *static_cast<const TypeValue*>(other.data_.get()));
-        break;
-      case Kind::kEnum:
-        data_.ConstructInline<EnumValue>(
-            *static_cast<const EnumValue*>(other.data_.get()));
-        break;
-      default:
-        internal::unreachable();
+  if (locality == DataLocality::kStoredInline) {
+    if (!other.data_.IsTrivial()) {
+      switch (other.data_.kind_inline()) {
+        case Kind::kError:
+          data_.ConstructInline<ErrorValue>(
+              *static_cast<const ErrorValue*>(other.data_.get_inline()));
+          return;
+        case Kind::kUnknown:
+          data_.ConstructInline<UnknownValue>(
+              *static_cast<const UnknownValue*>(other.data_.get_inline()));
+          return;
+        case Kind::kString:
+          switch (other.data_.inline_variant<InlinedStringValueVariant>()) {
+            case InlinedStringValueVariant::kCord:
+              data_.ConstructInline<InlinedCordStringValue>(
+                  *static_cast<const InlinedCordStringValue*>(
+                      other.data_.get_inline()));
+              break;
+            case InlinedStringValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewStringValue>(
+                  *static_cast<const InlinedStringViewStringValue*>(
+                      other.data_.get_inline()));
+              break;
+          }
+          return;
+        case Kind::kBytes:
+          switch (other.data_.inline_variant<InlinedBytesValueVariant>()) {
+            case InlinedBytesValueVariant::kCord:
+              data_.ConstructInline<InlinedCordBytesValue>(
+                  *static_cast<const InlinedCordBytesValue*>(
+                      other.data_.get_inline()));
+              break;
+            case InlinedBytesValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewBytesValue>(
+                  *static_cast<const InlinedStringViewBytesValue*>(
+                      other.data_.get_inline()));
+              break;
+          }
+          return;
+        case Kind::kType:
+          data_.ConstructInline<base_internal::ModernTypeValue>(
+              *static_cast<const base_internal::ModernTypeValue*>(
+                  other.data_.get_inline()));
+          return;
+        case Kind::kEnum:
+          data_.ConstructInline<EnumValue>(
+              *static_cast<const EnumValue*>(other.data_.get_inline()));
+          return;
+        default:
+          ABSL_UNREACHABLE();
+      }
+    } else {  // trivially copyable
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
     }
-  } else {
-    // We can simply just copy the bytes.
-    data_.CopyFrom(other.data_);
+  } else {  // not inline
+    data_.set_pointer(other.data_.pointer());
     if (locality == DataLocality::kReferenceCounted) {
       Ref();
     }
   }
 }
 
-void PersistentValueHandle::MoveFrom(PersistentValueHandle& other) {
+void ValueHandle::MoveFrom(ValueHandle& other) {
   // data_ is currently uninitialized.
-  auto locality = other.data_.locality();
-  if (locality == DataLocality::kStoredInline &&
-      !other.data_.IsTriviallyCopyable()) {
-    switch (other.data_.kind()) {
-      case Kind::kError:
-        data_.ConstructInline<ErrorValue>(
-            std::move(*static_cast<ErrorValue*>(other.data_.get())));
-        break;
-      case Kind::kString:
-        data_.ConstructInline<InlinedCordStringValue>(std::move(
-            *static_cast<InlinedCordStringValue*>(other.data_.get())));
-        break;
-      case Kind::kBytes:
-        data_.ConstructInline<InlinedCordBytesValue>(
-            std::move(*static_cast<InlinedCordBytesValue*>(other.data_.get())));
-        break;
-      case Kind::kType:
-        data_.ConstructInline<TypeValue>(
-            std::move(*static_cast<const TypeValue*>(other.data_.get())));
-        break;
-      case Kind::kEnum:
-        data_.ConstructInline<EnumValue>(
-            std::move(*static_cast<const EnumValue*>(other.data_.get())));
-        break;
-      default:
-        internal::unreachable();
+  if (other.data_.IsStoredInline()) {
+    if (!other.data_.IsTrivial()) {
+      switch (other.data_.kind_inline()) {
+        case Kind::kError:
+          data_.ConstructInline<ErrorValue>(
+              std::move(*static_cast<ErrorValue*>(other.data_.get_inline())));
+          other.data_.Destruct<ErrorValue>();
+          break;
+        case Kind::kUnknown:
+          data_.ConstructInline<UnknownValue>(
+              std::move(*static_cast<UnknownValue*>(other.data_.get_inline())));
+          other.data_.Destruct<UnknownValue>();
+          break;
+        case Kind::kString:
+          switch (other.data_.inline_variant<InlinedStringValueVariant>()) {
+            case InlinedStringValueVariant::kCord:
+              data_.ConstructInline<InlinedCordStringValue>(
+                  std::move(*static_cast<InlinedCordStringValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedCordStringValue>();
+              break;
+            case InlinedStringValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewStringValue>(
+                  std::move(*static_cast<InlinedStringViewStringValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedStringViewStringValue>();
+              break;
+          }
+          break;
+        case Kind::kBytes:
+          switch (other.data_.inline_variant<InlinedBytesValueVariant>()) {
+            case InlinedBytesValueVariant::kCord:
+              data_.ConstructInline<InlinedCordBytesValue>(
+                  std::move(*static_cast<InlinedCordBytesValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedCordBytesValue>();
+              break;
+            case InlinedBytesValueVariant::kStringView:
+              data_.ConstructInline<InlinedStringViewBytesValue>(
+                  std::move(*static_cast<InlinedStringViewBytesValue*>(
+                      other.data_.get_inline())));
+              other.data_.Destruct<InlinedStringViewBytesValue>();
+              break;
+          }
+          break;
+        case Kind::kType:
+          data_.ConstructInline<ModernTypeValue>(std::move(
+              *static_cast<const ModernTypeValue*>(other.data_.get_inline())));
+          other.data_.Destruct<ModernTypeValue>();
+          break;
+        case Kind::kEnum:
+          data_.ConstructInline<EnumValue>(std::move(
+              *static_cast<const EnumValue*>(other.data_.get_inline())));
+          other.data_.Destruct<EnumValue>();
+          break;
+        default:
+          ABSL_UNREACHABLE();
+      }
+    } else {  // trivially copyable
+      // We can simply just copy the bytes.
+      data_.CopyFrom(other.data_);
     }
-    other.Destruct();
-    other.data_.Clear();
-  } else {
-    // We can simply just copy the bytes.
-    data_.MoveFrom(other.data_);
+  } else {  // not inline
+    data_.set_pointer(other.data_.pointer());
   }
+  other.data_.Clear();
 }
 
-void PersistentValueHandle::CopyAssign(const PersistentValueHandle& other) {
+void ValueHandle::CopyAssign(const ValueHandle& other) {
   // data_ is initialized.
   Destruct();
   CopyFrom(other);
 }
 
-void PersistentValueHandle::MoveAssign(PersistentValueHandle& other) {
+void ValueHandle::MoveAssign(ValueHandle& other) {
   // data_ is initialized.
   Destruct();
   MoveFrom(other);
 }
 
-void PersistentValueHandle::Destruct() {
+void ValueHandle::Destruct() {
   switch (data_.locality()) {
     case DataLocality::kNull:
-      break;
+      return;
     case DataLocality::kStoredInline:
-      if (!data_.IsTriviallyDestructible()) {
-        switch (data_.kind()) {
+      if (!data_.IsTrivial()) {
+        switch (data_.kind_inline()) {
           case Kind::kError:
             data_.Destruct<ErrorValue>();
-            break;
+            return;
+          case Kind::kUnknown:
+            data_.Destruct<UnknownValue>();
+            return;
           case Kind::kString:
-            data_.Destruct<InlinedCordStringValue>();
-            break;
+            switch (data_.inline_variant<InlinedStringValueVariant>()) {
+              case InlinedStringValueVariant::kCord:
+                data_.Destruct<InlinedCordStringValue>();
+                break;
+              case InlinedStringValueVariant::kStringView:
+                data_.Destruct<InlinedStringViewStringValue>();
+                break;
+            }
+            return;
           case Kind::kBytes:
-            data_.Destruct<InlinedCordBytesValue>();
-            break;
+            switch (data_.inline_variant<InlinedBytesValueVariant>()) {
+              case InlinedBytesValueVariant::kCord:
+                data_.Destruct<InlinedCordBytesValue>();
+                break;
+              case InlinedBytesValueVariant::kStringView:
+                data_.Destruct<InlinedStringViewBytesValue>();
+                break;
+            }
+            return;
           case Kind::kType:
-            data_.Destruct<TypeValue>();
-            break;
+            data_.Destruct<ModernTypeValue>();
+            return;
           case Kind::kEnum:
             data_.Destruct<EnumValue>();
-            break;
+            return;
           default:
-            internal::unreachable();
+            ABSL_UNREACHABLE();
         }
       }
-      break;
+      return;
     case DataLocality::kReferenceCounted:
       Unref();
-      break;
+      return;
     case DataLocality::kArenaAllocated:
-      break;
+      return;
   }
 }
 
-void PersistentValueHandle::Delete() const {
-  switch (data_.kind()) {
+void ValueHandle::Delete() const {
+  Delete(data_.kind_heap(), *static_cast<const Value*>(data_.get_heap()));
+}
+
+void ValueHandle::Delete(Kind kind, const Value& value) {
+  switch (kind) {
     case Kind::kList:
-      delete static_cast<ListValue*>(static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<const AbstractListValue*>(&value);
+      return;
     case Kind::kMap:
-      delete static_cast<MapValue*>(static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<const AbstractMapValue*>(&value);
+      return;
     case Kind::kStruct:
-      delete static_cast<AbstractStructValue*>(
-          static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<const AbstractStructValue*>(&value);
+      return;
     case Kind::kString:
-      delete static_cast<StringStringValue*>(static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<const StringStringValue*>(&value);
+      return;
     case Kind::kBytes:
-      delete static_cast<StringBytesValue*>(static_cast<Value*>(data_.get()));
-      break;
-    case Kind::kUnknown:
-      delete static_cast<UnknownValue*>(static_cast<Value*>(data_.get()));
-      break;
+      delete static_cast<const StringBytesValue*>(&value);
+      return;
+    case Kind::kOpaque:
+      delete static_cast<const OpaqueValue*>(&value);
+      return;
     default:
-      internal::unreachable();
+      ABSL_UNREACHABLE();
+  }
+}
+
+void ValueMetadata::Unref(const Value& value) {
+  if (Metadata::Unref(value)) {
+    ValueHandle::Delete(Metadata::KindHeap(value), value);
   }
 }
 

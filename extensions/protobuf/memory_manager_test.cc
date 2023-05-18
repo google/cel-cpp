@@ -14,58 +14,11 @@
 
 #include "extensions/protobuf/memory_manager.h"
 
-#include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"
 #include "internal/testing.h"
 
 namespace cel::extensions {
 namespace {
-
-struct NotArenaCompatible final {
-  ~NotArenaCompatible() { Delete(); }
-
-  MOCK_METHOD(void, Delete, (), ());
-};
-
-TEST(ProtoMemoryManager, ArenaConstructable) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager memory_manager(&arena);
-  EXPECT_TRUE(
-      google::protobuf::Arena::is_arena_constructable<google::protobuf::Value>::value);
-  auto* object = NewInProtoArena<google::protobuf::Value>(memory_manager);
-  EXPECT_NE(object, nullptr);
-}
-
-TEST(ProtoMemoryManager, NotArenaConstructable) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager memory_manager(&arena);
-  EXPECT_FALSE(
-      google::protobuf::Arena::is_arena_constructable<NotArenaCompatible>::value);
-  auto* object = NewInProtoArena<NotArenaCompatible>(memory_manager);
-  EXPECT_NE(object, nullptr);
-  EXPECT_CALL(*object, Delete());
-}
-
-TEST(ProtoMemoryManagerNoArena, ArenaConstructable) {
-  ProtoMemoryManager memory_manager(nullptr);
-  EXPECT_TRUE(
-      google::protobuf::Arena::is_arena_constructable<google::protobuf::Value>::value);
-  auto* object = NewInProtoArena<google::protobuf::Value>(memory_manager);
-  EXPECT_NE(object, nullptr);
-  delete object;
-}
-
-TEST(ProtoMemoryManagerNoArena, NotArenaConstructable) {
-  ProtoMemoryManager memory_manager(nullptr);
-  EXPECT_FALSE(
-      google::protobuf::Arena::is_arena_constructable<NotArenaCompatible>::value);
-  auto* object = NewInProtoArena<NotArenaCompatible>(memory_manager);
-  EXPECT_NE(object, nullptr);
-  EXPECT_CALL(*object, Delete());
-  delete object;
-}
-
-struct TriviallyDestructible final {};
 
 struct NotTriviallyDestuctible final {
   ~NotTriviallyDestuctible() { Delete(); }
@@ -73,32 +26,15 @@ struct NotTriviallyDestuctible final {
   MOCK_METHOD(void, Delete, (), ());
 };
 
-TEST(ProtoMemoryManager, TriviallyDestructible) {
-  google::protobuf::Arena arena;
-  ProtoMemoryManager memory_manager(&arena);
-  EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
-  auto managed = memory_manager.New<TriviallyDestructible>();
-}
-
 TEST(ProtoMemoryManager, NotTriviallyDestuctible) {
   google::protobuf::Arena arena;
   ProtoMemoryManager memory_manager(&arena);
-  EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
-  auto managed = memory_manager.New<NotTriviallyDestuctible>();
-  EXPECT_CALL(*managed, Delete());
-}
-
-TEST(ProtoMemoryManagerNoArena, TriviallyDestructible) {
-  ProtoMemoryManager memory_manager(nullptr);
-  EXPECT_TRUE(std::is_trivially_destructible_v<TriviallyDestructible>);
-  auto managed = memory_manager.New<TriviallyDestructible>();
-}
-
-TEST(ProtoMemoryManagerNoArena, NotTriviallyDestuctible) {
-  ProtoMemoryManager memory_manager(nullptr);
-  EXPECT_FALSE(std::is_trivially_destructible_v<NotTriviallyDestuctible>);
-  auto managed = memory_manager.New<NotTriviallyDestuctible>();
-  EXPECT_CALL(*managed, Delete());
+  {
+    // Destructor is called when UniqueRef is destructed, not on MemoryManager
+    // destruction.
+    auto managed = MakeUnique<NotTriviallyDestuctible>(memory_manager);
+    EXPECT_CALL(*managed, Delete());
+  }
 }
 
 }  // namespace

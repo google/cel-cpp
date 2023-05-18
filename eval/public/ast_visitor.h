@@ -17,8 +17,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_H_
 
-#include "eval/public/source_position.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "eval/public/source_position.h"
 
 namespace google {
 namespace api {
@@ -60,10 +60,26 @@ class AstVisitor {
                              const SourcePosition*) {}
 
   // Const node handler.
+  // Invoked before child nodes are processed.
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // breakage. Change it in subsequent CLs.
+  virtual void PreVisitConst(const google::api::expr::v1alpha1::Constant*,
+                             const google::api::expr::v1alpha1::Expr*,
+                             const SourcePosition*) {}
+
+  // Const node handler.
   // Invoked after child nodes are processed.
   virtual void PostVisitConst(const google::api::expr::v1alpha1::Constant*,
                               const google::api::expr::v1alpha1::Expr*,
                               const SourcePosition*) = 0;
+
+  // Ident node handler.
+  // Invoked before child nodes are processed.
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // breakage. Change it in subsequent CLs.
+  virtual void PreVisitIdent(const google::api::expr::v1alpha1::Expr::Ident*,
+                             const google::api::expr::v1alpha1::Expr*,
+                             const SourcePosition*) {}
 
   // Ident node handler.
   // Invoked after child nodes are processed.
@@ -133,10 +149,26 @@ class AstVisitor {
                             const SourcePosition*) = 0;
 
   // CreateList node handler
+  // Invoked before child nodes are processed.
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // breakage. Change it in subsequent CLs.
+  virtual void PreVisitCreateList(const google::api::expr::v1alpha1::Expr::CreateList*,
+                                  const google::api::expr::v1alpha1::Expr*,
+                                  const SourcePosition*) {}
+
+  // CreateList node handler
   // Invoked after child nodes are processed.
   virtual void PostVisitCreateList(const google::api::expr::v1alpha1::Expr::CreateList*,
                                    const google::api::expr::v1alpha1::Expr*,
                                    const SourcePosition*) = 0;
+
+  // CreateStruct node handler
+  // Invoked before child nodes are processed.
+  // TODO(issues/22): this method is not pure virtual to avoid dependencies
+  // breakage. Change it in subsequent CLs.
+  virtual void PreVisitCreateStruct(
+      const google::api::expr::v1alpha1::Expr::CreateStruct*,
+      const google::api::expr::v1alpha1::Expr*, const SourcePosition*) {}
 
   // CreateStruct node handler
   // Invoked after child nodes are processed.

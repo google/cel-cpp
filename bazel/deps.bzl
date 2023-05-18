@@ -7,16 +7,14 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 def base_deps():
     """Base evaluator and test dependencies."""
 
-    # 2022-09-08
-    ABSL_SHA1 = "518984e432e0597fd4e66a9c52148e8dec2bb46a"
-    ABSL_SHA256 = "97e721f8f2a49c507190821a76cdf1c8b659eb49728e6dcf527670f943b2ba60"
+    # 2023-05-15
+    ABSL_SHA1 = "3aa3377ef66e6388ed19fd7c862bf0dc3a3630e0"
+    ABSL_SHA256 = "91b144618b8d608764b556d56eba07d4a6055429807e8d8fca0566cc5b66485e"
     http_archive(
         name = "com_google_absl",
         urls = ["https://github.com/abseil/abseil-cpp/archive/" + ABSL_SHA1 + ".zip"],
         strip_prefix = "abseil-cpp-" + ABSL_SHA1,
         sha256 = ABSL_SHA256,
-        patches = ["//bazel:abseil.patch"],
-        patch_args = ["-p1"],
     )
 
     # v1.11.0
@@ -39,9 +37,9 @@ def base_deps():
         sha256 = BENCHMARK_SHA256,
     )
 
-    # 2021-09-01
-    RE2_SHA1 = "8e08f47b11b413302749c0d8b17a1c94777495d5"
-    RE2_SHA256 = "d635a3353bb8ffc33b0779c97c1c9d6f2dbdda286106a73bbcf498f66edacd74"
+    # 2022-02-18
+    RE2_SHA1 = "f6834581a8913c03d087de1e5d5b479f8a870400"
+    RE2_SHA256 = "ef7f29b79f9e3a8e4030ea2a0f71a66bd99aa0376fe641d86d47d6129c7f5aed"
     http_archive(
         name = "com_googlesource_code_re2",
         urls = ["https://github.com/google/re2/archive/" + RE2_SHA1 + ".zip"],
@@ -49,8 +47,8 @@ def base_deps():
         sha256 = RE2_SHA256,
     )
 
-    PROTOBUF_VERSION = "3.21.1"
-    PROTOBUF_SHA = "a295dd3b9551d3e2749a9969583dea110c6cdcc39d02088f7c7bb1100077e081"
+    PROTOBUF_VERSION = "23.0"
+    PROTOBUF_SHA = "b8faf8487cc364e5c2b47a9abd77512bc79a6389ea45392ca938ba7617eae877"
     http_archive(
         name = "com_google_protobuf",
         sha256 = PROTOBUF_SHA,
@@ -124,10 +122,10 @@ def cel_spec_deps():
         ],
     )
 
-    CEL_SPEC_GIT_SHA = "2cfa4f6a2dd7cb101459f6a286a4920c7322649f"  # 9/7/2022
+    CEL_SPEC_GIT_SHA = "c8bbae9828aea503e17300affc7e0b7264a4983e"  # 4/28/2023
     http_archive(
         name = "com_google_cel_spec",
-        sha256 = "78bfc17821607919724b033f1ba6e636d0cdfe056363055f4ab7f46b19e6a184",
+        sha256 = "d19c06c91162b10c9d2a8f4799ce231ecfa100fb6f8258d767a56efcdfc9d46f",
         strip_prefix = "cel-spec-" + CEL_SPEC_GIT_SHA,
         urls = ["https://github.com/google/cel-spec/archive/" + CEL_SPEC_GIT_SHA + ".zip"],
     )

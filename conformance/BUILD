@@ -67,7 +67,7 @@ cc_binary(
 
 [
     sh_test(
-        name = "simple" + arg,
+        name = "simple" + arg.replace("--", "_"),
         srcs = ["@com_google_cel_spec//tests:conftest.sh"],
         args = [
             "$(location @com_google_cel_spec//tests/simple:simple_test)",
@@ -105,6 +105,7 @@ cc_binary(
     for arg in [
         "",
         "--opt",
+        "--updated_opt",
     ]
 ]
 

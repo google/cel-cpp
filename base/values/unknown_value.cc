@@ -14,32 +14,25 @@
 
 #include "base/values/unknown_value.h"
 
-#include <memory>
 #include <string>
 #include <utility>
-
-#include "absl/base/macros.h"
 
 namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(UnknownValue);
 
-UnknownValue::UnknownValue(std::shared_ptr<base_internal::UnknownSetImpl> impl)
-    : base_internal::HeapData(kKind), impl_(std::move(impl)) {
-  // Ensure `Value*` and `base_internal::HeapData*` are not thunked.
-  ABSL_ASSERT(
-      reinterpret_cast<uintptr_t>(static_cast<Value*>(this)) ==
-      reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
-}
-
 std::string UnknownValue::DebugString() const { return "*unknown*"; }
 
-void UnknownValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type());
+const AttributeSet& UnknownValue::attribute_set() const {
+  return base_internal::Metadata::IsTrivial(*this)
+             ? value_ptr_->unknown_attributes()
+             : value_.unknown_attributes();
 }
 
-bool UnknownValue::Equals(const Value& other) const {
-  return kind() == other.kind();
+const FunctionResultSet& UnknownValue::function_result_set() const {
+  return base_internal::Metadata::IsTrivial(*this)
+             ? value_ptr_->unknown_function_results()
+             : value_.unknown_function_results();
 }
 
 }  // namespace cel

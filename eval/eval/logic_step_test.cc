@@ -1,5 +1,6 @@
 #include "eval/eval/logic_step.h"
 
+#include <memory>
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
@@ -10,6 +11,7 @@
 #include "eval/public/unknown_set.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -40,9 +42,13 @@ class LogicStepTest : public testing::TestWithParam<bool> {
     CEL_ASSIGN_OR_RETURN(step, (is_or) ? CreateOrStep(2) : CreateAndStep(2));
     path.push_back(std::move(step));
 
-    auto dummy_expr = absl::make_unique<Expr>();
-    CelExpressionFlatImpl impl(dummy_expr.get(), std::move(path),
-                               &TestTypeRegistry(), 0, {}, enable_unknown);
+    auto dummy_expr = std::make_unique<Expr>();
+    cel::RuntimeOptions options;
+    if (enable_unknown) {
+      options.unknown_processing =
+          cel::UnknownProcessingOptions::kAttributeOnly;
+    }
+    CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(), options);
 
     Activation activation;
     activation.InsertValue("name0", arg0);

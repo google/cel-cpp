@@ -15,21 +15,33 @@
 #include "base/values/type_value.h"
 
 #include <string>
-#include <utility>
+
+#include "base/internal/data.h"
 
 namespace cel {
 
+namespace {
+
+using base_internal::InlinedTypeValueVariant;
+using base_internal::Metadata;
+
+}  // namespace
+
 CEL_INTERNAL_VALUE_IMPL(TypeValue);
 
-std::string TypeValue::DebugString() const { return value()->DebugString(); }
+std::string TypeValue::DebugString() const { return std::string(name()); }
 
-bool TypeValue::Equals(const Value& other) const {
-  return kind() == other.kind() &&
-         value() == static_cast<const TypeValue&>(other).value();
+bool TypeValue::Equals(const TypeValue& other) const {
+  return name() == static_cast<const TypeValue&>(other).name();
 }
 
-void TypeValue::HashValue(absl::HashState state) const {
-  absl::HashState::combine(std::move(state), type(), value());
+absl::string_view TypeValue::name() const {
+  switch (Metadata::GetInlineVariant<InlinedTypeValueVariant>(*this)) {
+    case InlinedTypeValueVariant::kLegacy:
+      return static_cast<const base_internal::LegacyTypeValue&>(*this).name();
+    case InlinedTypeValueVariant::kModern:
+      return static_cast<const base_internal::ModernTypeValue&>(*this).name();
+  }
 }
 
 }  // namespace cel

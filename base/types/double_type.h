@@ -15,12 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_DOUBLE_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_DOUBLE_TYPE_H_
 
+#include "absl/log/absl_check.h"
 #include "base/kind.h"
 #include "base/type.h"
 
 namespace cel {
 
 class DoubleValue;
+class DoubleWrapperType;
 
 class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
  private:
@@ -33,21 +35,33 @@ class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
 
   using Base::Is;
 
+  static const DoubleType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to " << kName;
+    return static_cast<const DoubleType&>(type);
+  }
+
   using Base::kind;
 
   using Base::name;
 
   using Base::DebugString;
 
-  using Base::HashValue;
-
-  using Base::Equals;
-
  private:
+  friend class DoubleWrapperType;
+
   CEL_INTERNAL_SIMPLE_TYPE_MEMBERS(DoubleType, DoubleValue);
 };
 
 CEL_INTERNAL_SIMPLE_TYPE_STANDALONES(DoubleType);
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<DoubleType> {
+  using value_type = DoubleValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

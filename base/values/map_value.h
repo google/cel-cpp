@@ -15,37 +15,233 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_MAP_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_MAP_VALUE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
 
-#include "absl/hash/hash.h"
+#include "absl/base/attributes.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
+#include "base/owner.h"
 #include "base/type.h"
 #include "base/types/map_type.h"
 #include "base/value.h"
+#include "base/values/list_value.h"
 #include "internal/rtti.h"
 
 namespace cel {
 
 class ListValue;
 class ValueFactory;
+class MemoryManager;
+class MapValueBuilderInterface;
+template <typename K, typename V>
+class MapValueBuilder;
 
 // MapValue represents an instance of cel::MapType.
-class MapValue : public Value, public base_internal::HeapData {
+class MapValue : public Value {
  public:
+  using BuilderInterface = MapValueBuilderInterface;
+  template <typename K, typename V>
+  using Builder = MapValueBuilder<K, V>;
+
   static constexpr Kind kKind = MapType::kKind;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const MapValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to map";
+    return static_cast<const MapValue&>(value);
+  }
+
   constexpr Kind kind() const { return kKind; }
 
-  const Persistent<const MapType> type() const { return type_; }
+  Handle<MapType> type() const;
+
+  std::string DebugString() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  class GetContext final {
+   public:
+    explicit GetContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
+
+    ValueFactory& value_factory() const { return value_factory_; }
+
+   private:
+    ValueFactory& value_factory_;
+  };
+
+  // Retrieves the value corresponding to the given key. If the key does not
+  // exist, an empty optional is returned. If the given key type is not
+  // compatible with the expected key type, an error is returned.
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      const GetContext& context, const Handle<Value>& key) const;
+
+  class HasContext final {};
+
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const;
+
+  class ListKeysContext final {
+   public:
+    explicit ListKeysContext(ValueFactory& value_factory)
+        : value_factory_(value_factory) {}
+
+    ValueFactory& value_factory() const { return value_factory_; }
+
+   private:
+    ValueFactory& value_factory_;
+  };
+
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      const ListKeysContext& context) const;
+
+  struct Entry final {
+    Entry(Handle<Value> key, Handle<Value> value)
+        : key(std::move(key)), value(std::move(value)) {}
+
+    Handle<Value> key;
+    Handle<Value> value;
+  };
+
+  class Iterator;
+
+  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+ private:
+  friend internal::TypeInfo base_internal::GetMapValueTypeId(
+      const MapValue& map_value);
+  friend class base_internal::ValueHandle;
+  friend class base_internal::LegacyMapValue;
+  friend class base_internal::AbstractMapValue;
+
+  MapValue() = default;
+
+  // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
+  internal::TypeInfo TypeId() const;
+};
+
+// Abstract class describes an iterator which can iterate over the entries in a
+// map. A default implementation is provided by `MapValue::NewIterator`, however
+// it is likely not as efficient as providing your own implementation.
+class MapValue::Iterator {
+ public:
+  using Entry = MapValue::Entry;
+
+  virtual ~Iterator() = default;
+
+  ABSL_MUST_USE_RESULT virtual bool HasNext() = 0;
+
+  virtual absl::StatusOr<Entry> Next(const MapValue::GetContext& context) = 0;
+
+  virtual absl::StatusOr<Handle<Value>> NextKey(
+      const MapValue::GetContext& context);
+
+  virtual absl::StatusOr<Handle<Value>> NextValue(
+      const MapValue::GetContext& context);
+};
+
+CEL_INTERNAL_VALUE_DECL(MapValue);
+
+namespace base_internal {
+
+ABSL_ATTRIBUTE_WEAK size_t LegacyMapValueSize(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK bool LegacyMapValueEmpty(uintptr_t impl);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<absl::optional<Handle<Value>>>
+LegacyMapValueGet(uintptr_t impl, ValueFactory& value_factory,
+                  const Handle<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<bool> LegacyMapValueHas(
+    uintptr_t impl, const Handle<Value>& key);
+ABSL_ATTRIBUTE_WEAK absl::StatusOr<Handle<ListValue>> LegacyMapValueListKeys(
+    uintptr_t impl, ValueFactory& value_factory);
+
+class LegacyMapValue final : public MapValue, public InlineData {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const MapValue&>(value).TypeId() ==
+               internal::TypeId<LegacyMapValue>();
+  }
+
+  using MapValue::Is;
+
+  static const LegacyMapValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const LegacyMapValue&>(value);
+  }
+
+  Handle<MapType> type() const;
+
+  std::string DebugString() const;
+
+  size_t size() const;
+
+  bool empty() const;
+
+  absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      const GetContext& context, const Handle<Value>& key) const;
+
+  absl::StatusOr<bool> Has(const HasContext& context,
+                           const Handle<Value>& key) const;
+
+  absl::StatusOr<Handle<ListValue>> ListKeys(
+      const ListKeysContext& context) const;
+
+  absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  constexpr uintptr_t value() const { return impl_; }
+
+ private:
+  friend class base_internal::ValueHandle;
+  friend class cel::MapValue;
+  template <size_t Size, size_t Align>
+  friend struct AnyData;
+
+  static constexpr uintptr_t kMetadata =
+      kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
+
+  explicit LegacyMapValue(uintptr_t impl)
+      : MapValue(), InlineData(kMetadata), impl_(impl) {}
+
+  internal::TypeInfo TypeId() const {
+    return internal::TypeId<LegacyMapValue>();
+  }
+  uintptr_t impl_;
+};
+
+class AbstractMapValue : public MapValue,
+                         public HeapData,
+                         public EnableOwnerFromThis<AbstractMapValue> {
+ public:
+  static bool Is(const Value& value) {
+    return value.kind() == kKind &&
+           static_cast<const MapValue&>(value).TypeId() !=
+               internal::TypeId<LegacyMapValue>();
+  }
+
+  using MapValue::Is;
+
+  static const AbstractMapValue& Cast(const Value& value) {
+    ABSL_ASSERT(Is(value));
+    return static_cast<const AbstractMapValue&>(value);
+  }
+
+  const Handle<MapType>& type() const { return type_; }
 
   virtual std::string DebugString() const = 0;
 
@@ -53,40 +249,43 @@ class MapValue : public Value, public base_internal::HeapData {
 
   virtual bool empty() const { return size() == 0; }
 
-  virtual bool Equals(const Value& other) const = 0;
+  virtual absl::StatusOr<absl::optional<Handle<Value>>> Get(
+      const GetContext& context, const Handle<Value>& key) const = 0;
 
-  virtual void HashValue(absl::HashState state) const = 0;
+  virtual absl::StatusOr<bool> Has(const HasContext& context,
+                                   const Handle<Value>& key) const = 0;
 
-  virtual absl::StatusOr<Persistent<const Value>> Get(
-      ValueFactory& value_factory,
-      const Persistent<const Value>& key) const = 0;
+  virtual absl::StatusOr<Handle<ListValue>> ListKeys(
+      const ListKeysContext& context) const = 0;
 
-  virtual absl::StatusOr<bool> Has(
-      const Persistent<const Value>& key) const = 0;
-
-  virtual absl::StatusOr<Persistent<const ListValue>> ListKeys(
-      ValueFactory& value_factory) const = 0;
+  virtual absl::StatusOr<UniqueRef<Iterator>> NewIterator(
+      MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
-  explicit MapValue(Persistent<const MapType> type);
+  explicit AbstractMapValue(Handle<MapType> type);
 
  private:
-  friend internal::TypeInfo base_internal::GetMapValueTypeId(
-      const MapValue& map_value);
-  friend class base_internal::PersistentValueHandle;
+  friend class cel::MapValue;
+  friend class base_internal::ValueHandle;
 
   // Called by CEL_IMPLEMENT_MAP_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
 
-  const Persistent<const MapType> type_;
+  const Handle<MapType> type_;
 };
 
-CEL_INTERNAL_VALUE_DECL(MapValue);
+inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
+  return map_value.TypeId();
+}
+
+}  // namespace base_internal
+
+#define CEL_MAP_VALUE_CLASS ::cel::base_internal::AbstractMapValue
 
 // CEL_DECLARE_MAP_VALUE declares `map_value` as an map value. It must
 // be part of the class definition of `map_value`.
 //
-// class MyMapValue : public cel::MapValue {
+// class MyMapValue : public CEL_MAP_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_MAP_VALUE(MyMapValue);
@@ -97,7 +296,7 @@ CEL_INTERNAL_VALUE_DECL(MapValue);
 // CEL_IMPLEMENT_MAP_VALUE implements `map_value` as an map
 // value. It must be called after the class definition of `map_value`.
 //
-// class MyMapValue : public cel::MapValue {
+// class MyMapValue : public CEL_MAP_VALUE_CLASS {
 //  ...
 // private:
 //   CEL_DECLARE_MAP_VALUE(MyMapValue);
@@ -109,9 +308,25 @@ CEL_INTERNAL_VALUE_DECL(MapValue);
 
 namespace base_internal {
 
-inline internal::TypeInfo GetMapValueTypeId(const MapValue& map_value) {
-  return map_value.TypeId();
-}
+template <>
+struct ValueTraits<MapValue> {
+  using type = MapValue;
+
+  using type_type = MapType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
+};
 
 }  // namespace base_internal
 

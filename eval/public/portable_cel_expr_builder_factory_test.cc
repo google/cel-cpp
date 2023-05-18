@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
@@ -32,6 +33,7 @@
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/casts.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/testing.h"
@@ -308,6 +310,16 @@ class DemoTestMessage : public LegacyTypeMutationApis,
       ProtoWrapperTypeOptions unboxing_option,
       cel::MemoryManager& memory_manager) const override;
 
+  std::vector<absl::string_view> ListFields(
+      const CelValue::MessageWrapper& instance) const override {
+    std::vector<absl::string_view> fields;
+    fields.reserve(fields_.size());
+    for (const auto& field : fields_) {
+      fields.emplace_back(field.first);
+    }
+    return fields;
+  }
+
  private:
   using Field = ProtoField<TestMessage>;
   const DemoTypeProvider& owning_provider_;
@@ -370,8 +382,9 @@ const LegacyTypeAccessApis* DemoTypeInfo::GetAccessApis(
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTimestamp::NewInstance(
     cel::MemoryManager& memory_manager) const {
-  auto ts = memory_manager.New<google::protobuf::Timestamp>();
-  return CelValue::MessageWrapper::Builder(ts.release());
+  auto* ts = google::protobuf::Arena::CreateMessage<google::protobuf::Timestamp>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager));
+  return CelValue::MessageWrapper::Builder(ts);
 }
 absl::StatusOr<CelValue> DemoTimestamp::AdaptFromWellKnownType(
     cel::MemoryManager& memory_manager,
@@ -421,8 +434,9 @@ DemoTestMessage::DemoTestMessage(const DemoTypeProvider* owning_provider)
 
 absl::StatusOr<CelValue::MessageWrapper::Builder> DemoTestMessage::NewInstance(
     cel::MemoryManager& memory_manager) const {
-  auto ts = memory_manager.New<TestMessage>();
-  return CelValue::MessageWrapper::Builder(ts.release());
+  auto* ts = google::protobuf::Arena::CreateMessage<TestMessage>(
+      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager));
+  return CelValue::MessageWrapper::Builder(ts);
 }
 
 absl::Status DemoTestMessage::SetField(

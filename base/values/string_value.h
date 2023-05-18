@@ -15,12 +15,13 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_VALUES_STRING_VALUE_H_
 
-#include <atomic>
 #include <cstddef>
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
@@ -29,6 +30,7 @@
 #include "base/type.h"
 #include "base/types/string_type.h"
 #include "base/value.h"
+#include "re2/re2.h"
 
 namespace cel {
 
@@ -39,20 +41,34 @@ class StringValue : public Value {
  public:
   static constexpr Kind kKind = StringType::kKind;
 
-  static Persistent<const StringValue> Empty(ValueFactory& value_factory);
+  static Handle<StringValue> Empty(ValueFactory& value_factory);
 
   // Concat concatenates the contents of two ByteValue, returning a new
   // ByteValue. The resulting ByteValue is not tied to the lifetime of either of
   // the input ByteValue.
-  static absl::StatusOr<Persistent<const StringValue>> Concat(
-      ValueFactory& value_factory, const StringValue& lhs,
-      const StringValue& rhs);
+  static absl::StatusOr<Handle<StringValue>> Concat(ValueFactory& value_factory,
+                                                    const StringValue& lhs,
+                                                    const StringValue& rhs);
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
+  using Value::Is;
+
+  static const StringValue& Cast(const Value& value) {
+    ABSL_DCHECK(Is(value)) << "cannot cast " << value.type()->name()
+                           << " to string";
+    return static_cast<const StringValue&>(value);
+  }
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      absl::string_view value);
+
+  ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
+      const absl::Cord& value);
+
   constexpr Kind kind() const { return kKind; }
 
-  Persistent<const StringType> type() const { return StringType::Get(); }
+  Handle<StringType> type() const { return StringType::Get(); }
 
   std::string DebugString() const;
 
@@ -68,6 +84,8 @@ class StringValue : public Value {
   int Compare(const absl::Cord& string) const;
   int Compare(const StringValue& string) const;
 
+  bool Matches(const RE2& re) const;
+
   std::string ToString() const;
 
   absl::Cord ToCord() const;
@@ -77,12 +95,12 @@ class StringValue : public Value {
   bool Equals(const Value& other) const;
 
  private:
-  friend class base_internal::PersistentValueHandle;
+  friend class base_internal::ValueHandle;
   friend class base_internal::InlinedCordStringValue;
   friend class base_internal::InlinedStringViewStringValue;
   friend class base_internal::StringStringValue;
   friend base_internal::StringValueRep interop_internal::GetStringValueRep(
-      const Persistent<const StringValue>& value);
+      const Handle<StringValue>& value);
 
   StringValue() = default;
   StringValue(const StringValue&) = default;
@@ -97,25 +115,34 @@ class StringValue : public Value {
 
 CEL_INTERNAL_VALUE_DECL(StringValue);
 
+template <typename H>
+H AbslHashValue(H state, const StringValue& value) {
+  value.HashValue(absl::HashState::Create(&state));
+  return state;
+}
+
+inline bool operator==(const StringValue& lhs, const StringValue& rhs) {
+  return lhs.Equals(rhs);
+}
+
 namespace base_internal {
 
 // Implementation of StringValue that is stored inlined within a handle. Since
 // absl::Cord is reference counted itself, this is more efficient than storing
 // this on the heap.
-class InlinedCordStringValue final : public StringValue,
-                                     public base_internal::InlineData {
+class InlinedCordStringValue final : public StringValue, public InlineData {
  private:
   friend class StringValue;
   friend class ValueFactory;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | AsInlineVariant(InlinedStringValueVariant::kCord) |
+      (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedCordStringValue(absl::Cord value)
-      : base_internal::InlineData(kMetadata), value_(std::move(value)) {}
+      : InlineData(kMetadata), value_(std::move(value)) {}
 
   InlinedCordStringValue(const InlinedCordStringValue&) = default;
   InlinedCordStringValue(InlinedCordStringValue&&) = default;
@@ -127,38 +154,70 @@ class InlinedCordStringValue final : public StringValue,
 
 // Implementation of StringValue that is stored inlined within a handle. This
 // class is inheritently unsafe and care should be taken when using it.
-// Typically this should only be used for empty strings or data that is static
-// and lives for the duration of a program.
 class InlinedStringViewStringValue final : public StringValue,
-                                           public base_internal::InlineData {
+                                           public InlineData {
  private:
   friend class StringValue;
-  friend class ValueFactory;
   template <size_t Size, size_t Align>
-  friend class AnyData;
+  friend struct AnyData;
 
   static constexpr uintptr_t kMetadata =
-      base_internal::kStoredInline | base_internal::kTriviallyCopyable |
-      base_internal::kTriviallyDestructible |
-      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
+      kStoredInline | (static_cast<uintptr_t>(kKind) << kKindShift);
 
   explicit InlinedStringViewStringValue(absl::string_view value)
-      : base_internal::InlineData(kMetadata), value_(value) {}
+      : InlinedStringViewStringValue(value, nullptr) {}
 
-  InlinedStringViewStringValue(const InlinedStringViewStringValue&) = default;
-  InlinedStringViewStringValue(InlinedStringViewStringValue&&) = default;
-  InlinedStringViewStringValue& operator=(const InlinedStringViewStringValue&) =
-      default;
-  InlinedStringViewStringValue& operator=(InlinedStringViewStringValue&&) =
-      default;
+  // Constructs `InlinedStringViewStringValue` backed by `value` which is owned
+  // by `owner`. `owner` may be nullptr, in which case `value` has no owner and
+  // must live for the duration of the underlying `MemoryManager`.
+  InlinedStringViewStringValue(absl::string_view value, const Value* owner)
+      : InlinedStringViewStringValue(value, owner, owner == nullptr) {}
+
+  InlinedStringViewStringValue(absl::string_view value, const Value* owner,
+                               bool trivial)
+      : InlineData(kMetadata | (trivial ? kTrivial : uintptr_t{0}) |
+                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+        value_(value),
+        owner_(trivial ? nullptr : owner) {}
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue(const InlinedStringViewStringValue& other)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+        value_(other.value_),
+        owner_(other.owner_) {
+    if (owner_ != nullptr) {
+      Metadata::Ref(*owner_);
+    }
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue(InlinedStringViewStringValue&& other)
+      : InlineData(kMetadata |
+                   AsInlineVariant(InlinedStringValueVariant::kStringView)),
+        value_(other.value_),
+        owner_(other.owner_) {
+    other.value_ = absl::string_view();
+    other.owner_ = nullptr;
+  }
+
+  // Only called when owner_ was, at some point, not nullptr.
+  ~InlinedStringViewStringValue();
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue& operator=(
+      const InlinedStringViewStringValue& other);
+
+  // Only called when owner_ was, at some point, not nullptr.
+  InlinedStringViewStringValue& operator=(InlinedStringViewStringValue&& other);
 
   absl::string_view value_;
+  const Value* owner_;
 };
 
 // Implementation of StringValue that uses std::string and is allocated on the
 // heap, potentially reference counted.
-class StringStringValue final : public StringValue,
-                                public base_internal::HeapData {
+class StringStringValue final : public StringValue, public HeapData {
  private:
   friend class cel::MemoryManager;
   friend class StringValue;
@@ -167,6 +226,30 @@ class StringStringValue final : public StringValue,
   explicit StringStringValue(std::string value);
 
   std::string value_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct ValueTraits<StringValue> {
+  using type = StringValue;
+
+  using type_type = StringType;
+
+  using underlying_type = void;
+
+  static std::string DebugString(const type& value) {
+    return value.DebugString();
+  }
+
+  static Handle<type> Wrap(ValueFactory& value_factory, Handle<type> value) {
+    static_cast<void>(value_factory);
+    return value;
+  }
+
+  static Handle<type> Unwrap(Handle<type> value) { return value; }
 };
 
 }  // namespace base_internal

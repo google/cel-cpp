@@ -15,28 +15,26 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_TYPES_LIST_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_TYPES_LIST_TYPE_H_
 
-#include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <string>
-#include <utility>
 
-#include "absl/hash/hash.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
+#include "base/memory.h"
 #include "base/type.h"
 
 namespace cel {
 
 class MemoryManager;
+class ListValue;
 
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
-class ListType final : public Type, public base_internal::HeapData {
-  // I would have liked to make this class final, but we cannot instantiate
-  // Persistent<const Type> or Transient<const Type> at this point. It must be
-  // done after the post include below. Maybe we should separate out the post
-  // includes on a per type basis so we can do that?
+class ListType : public Type {
  public:
   static constexpr Kind kKind = Kind::kList;
 
@@ -48,24 +46,89 @@ class ListType final : public Type, public base_internal::HeapData {
 
   std::string DebugString() const;
 
-  void HashValue(absl::HashState state) const;
-
-  bool Equals(const Type& other) const;
-
   // Returns the type of the elements in the list.
-  const Persistent<const Type>& element() const { return element_; }
+  const Handle<Type>& element() const;
+
+  using Type::Is;
+
+  static const ListType& Cast(const Type& type) {
+    ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to list";
+    return static_cast<const ListType&>(type);
+  }
+
+ private:
+  friend class Type;
+  friend class MemoryManager;
+  friend class TypeFactory;
+  friend class base_internal::TypeHandle;
+  friend class base_internal::LegacyListType;
+  friend class base_internal::ModernListType;
+
+  // See Type::aliases().
+  absl::Span<const absl::string_view> aliases() const;
+
+  ListType() = default;
+};
+
+CEL_INTERNAL_TYPE_DECL(ListType);
+
+namespace base_internal {
+
+// LegacyListType is used by LegacyListValue for compatibility with the legacy
+// API. It's element is always the dynamic type regardless of whether the the
+// expression is checked or not.
+class LegacyListType final : public ListType, public InlineData {
+ public:
+  // Returns the type of the elements in the list.
+  const Handle<Type>& element() const;
 
  private:
   friend class MemoryManager;
   friend class TypeFactory;
-  friend class base_internal::PersistentTypeHandle;
+  friend class cel::ListType;
+  friend class base_internal::TypeHandle;
+  template <size_t Size, size_t Align>
+  friend struct AnyData;
 
-  explicit ListType(Persistent<const Type> element);
+  static constexpr uintptr_t kMetadata =
+      base_internal::kStoredInline | base_internal::kTrivial |
+      (static_cast<uintptr_t>(kKind) << base_internal::kKindShift);
 
-  const Persistent<const Type> element_;
+  LegacyListType() : ListType(), InlineData(kMetadata) {}
 };
 
-CEL_INTERNAL_TYPE_DECL(ListType);
+class ModernListType final : public ListType, public HeapData {
+ public:
+  // Returns the type of the elements in the list.
+  const Handle<Type>& element() const { return element_; }
+
+ private:
+  friend class cel::MemoryManager;
+  friend class TypeFactory;
+  friend class cel::ListType;
+  friend class base_internal::TypeHandle;
+
+  // Called by Arena-based memory managers to determine whether we actually need
+  // our destructor called.
+  CEL_INTERNAL_IS_DESTRUCTOR_SKIPPABLE() {
+    return Metadata::IsDestructorSkippable(*element());
+  }
+
+  explicit ModernListType(Handle<Type> element);
+
+  const Handle<Type> element_;
+};
+
+}  // namespace base_internal
+
+namespace base_internal {
+
+template <>
+struct TypeTraits<ListType> {
+  using value_type = ListValue;
+};
+
+}  // namespace base_internal
 
 }  // namespace cel
 

@@ -1,6 +1,9 @@
 #include "eval/eval/attribute_utility.h"
 
+#include <vector>
+
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "eval/internal/interop.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -11,6 +14,9 @@
 namespace google::api::expr::runtime {
 
 using ::cel::extensions::ProtoMemoryManager;
+using ::cel::interop_internal::CreateBoolValue;
+using ::cel::interop_internal::CreateIntValue;
+using ::cel::interop_internal::CreateUnknownValueFromView;
 using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
 using testing::NotNull;
@@ -21,9 +27,9 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
   std::vector<CelAttributePattern> unknown_patterns = {
-      CelAttributePattern("unknown0", {CelAttributeQualifierPattern::Create(
+      CelAttributePattern("unknown0", {CreateCelAttributeQualifierPattern(
                                           CelValue::CreateInt64(1))}),
-      CelAttributePattern("unknown0", {CelAttributeQualifierPattern::Create(
+      CelAttributePattern("unknown0", {CreateCelAttributeQualifierPattern(
                                           CelValue::CreateInt64(2))}),
       CelAttributePattern("unknown1", {}),
       CelAttributePattern("unknown2", {}),
@@ -31,7 +37,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
-  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
   // no match for void trail
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), true));
@@ -49,14 +55,14 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   {
     ASSERT_TRUE(utility.CheckForUnknown(
         unknown_trail0.Step(
-            CelAttributeQualifier::Create(CelValue::CreateInt64(1)), manager),
+            CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager),
         false));
   }
 
   {
     ASSERT_TRUE(utility.CheckForUnknown(
         unknown_trail0.Step(
-            CelAttributeQualifier::Create(CelValue::CreateInt64(1)), manager),
+            CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager),
         true));
   }
 }
@@ -82,17 +88,17 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   CelAttribute attribute1(unknown_expr1, {});
   CelAttribute attribute2(unknown_expr2, {});
 
-  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
 
   UnknownSet unknown_set0(UnknownAttributeSet({attribute0}));
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
   UnknownSet unknown_set2(UnknownAttributeSet({attribute1, attribute2}));
-  std::vector<CelValue> values = {
-      CelValue::CreateUnknownSet(&unknown_set0),
-      CelValue::CreateUnknownSet(&unknown_set1),
-      CelValue::CreateBool(true),
-      CelValue::CreateInt64(1),
+  std::vector<cel::Handle<cel::Value>> values = {
+      CreateUnknownValueFromView(&unknown_set0),
+      CreateUnknownValueFromView(&unknown_set1),
+      CreateBoolValue(true),
+      CreateIntValue(1),
   };
 
   const UnknownSet* unknown_set = utility.MergeUnknowns(values, nullptr);
@@ -132,15 +138,15 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   CelAttribute attribute1(unknown_expr1, {});
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
 
-  AttributeUtility utility(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
 
   UnknownSet unknown_attr_set(utility.CheckForUnknowns(
       {
           AttributeTrail(),  // To make sure we handle empty trail gracefully.
-          trail0.Step(CelAttributeQualifier::Create(CelValue::CreateInt64(1)),
+          trail0.Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1)),
                       manager),
-          trail0.Step(CelAttributeQualifier::Create(CelValue::CreateInt64(2)),
+          trail0.Step(CreateCelAttributeQualifier(CelValue::CreateInt64(2)),
                       manager),
       },
       false));
@@ -167,17 +173,17 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
 
   AttributeTrail trail(*ident_expr, manager);
   trail = trail.Step(
-      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), manager);
+      CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
 
-  AttributeUtility utility0(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility0(unknown_patterns, missing_attribute_patterns,
                             manager);
   EXPECT_FALSE(utility0.CheckForMissingAttribute(trail));
 
   missing_attribute_patterns.push_back(CelAttributePattern(
-      "destination", {CelAttributeQualifierPattern::Create(
-                         CelValue::CreateStringView("ip"))}));
+      "destination",
+      {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("ip"))}));
 
-  AttributeUtility utility1(&unknown_patterns, &missing_attribute_patterns,
+  AttributeUtility utility1(unknown_patterns, missing_attribute_patterns,
                             manager);
   EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
@@ -195,10 +201,10 @@ TEST(AttributeUtilityTest, CreateUnknownSet) {
 
   AttributeTrail trail(*ident_expr, manager);
   trail = trail.Step(
-      CelAttributeQualifier::Create(CelValue::CreateStringView("ip")), manager);
+      CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
 
   std::vector<CelAttributePattern> empty_patterns;
-  AttributeUtility utility(&empty_patterns, &empty_patterns, manager);
+  AttributeUtility utility(empty_patterns, empty_patterns, manager);
 
   const UnknownSet* set = utility.CreateUnknownSet(trail.attribute());
   EXPECT_EQ(*set->unknown_attributes().begin()->AsString(), "destination.ip");

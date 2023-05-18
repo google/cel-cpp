@@ -22,6 +22,8 @@ namespace cel {
 
 CEL_INTERNAL_VALUE_IMPL(IntValue);
 
-std::string IntValue::DebugString() const { return absl::StrCat(value()); }
+std::string IntValue::DebugString(int64_t value) { return absl::StrCat(value); }
+
+std::string IntValue::DebugString() const { return DebugString(value()); }
 
 }  // namespace cel

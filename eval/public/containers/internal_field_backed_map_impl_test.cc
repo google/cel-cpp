@@ -14,6 +14,7 @@
 #include "eval/public/containers/internal_field_backed_map_impl.h"
 
 #include <limits>
+#include <memory>
 #include <string>
 
 #include "absl/status/status.h"
@@ -51,7 +52,7 @@ std::unique_ptr<FieldBackedMapTestImpl> CreateMap(const TestMessage* message,
   const google::protobuf::FieldDescriptor* field_desc =
       message->GetDescriptor()->FindFieldByName(field);
 
-  return absl::make_unique<FieldBackedMapTestImpl>(message, field_desc, arena);
+  return std::make_unique<FieldBackedMapTestImpl>(message, field_desc, arena);
 }
 
 TEST(FieldBackedMapImplTest, BadKeyTypeTest) {
