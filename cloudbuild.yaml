@@ -1,35 +1,29 @@
 steps:
-- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
-  entrypoint: bazel
+- name: 'gcr.io/cel-analysis/gcc-9:latest'
   args:
-  - '--output_base=/bazel'
+  - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
-  - '--test_output=errors'
   - '...'
-  id: bazel-test
-- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
-  entrypoint: bazel
-  args:
-  - '--output_base=/bazel'
-  - 'test'
-  - '--config=asan'
+  - '--compilation_mode=fastbuild'
   - '--test_output=errors'
-  - '...'
-  id: bazel-asan
-- name: 'gcr.io/cel-analysis/bazel:ubuntu_20_0_4'
-  entrypoint: bazel
+  - '--distdir=/bazel-distdir'
+  - '--show_timestamps'
+  id: gcc-9
+  waitFor: ['-']
+- name: 'gcr.io/cel-analysis/gcc-9:latest'
   env:
-  - 'CC=gcc'
-  - 'CXX=g++'
+  - 'CC=clang-11'
+  - 'CXX=clang++-11'
   args:
-  - '--output_base=/bazel'
+  - '--output_base=/bazel' # This is mandatory to avoid steps accidently sharing data.
   - 'test'
-  - '--test_output=errors'
   - '...'
-  id: bazel-gcc
+  - '--compilation_mode=fastbuild'
+  - '--test_output=errors'
+  - '--distdir=/bazel-distdir'
+  - '--show_timestamps'
+  id: clang-11
+  waitFor: ['-']
 timeout: 1h
 options:
-  machineType: 'N1_HIGHCPU_8'
-  volumes:
-  - name: bazel
-    path: /bazel
+  machineType: 'N1_HIGHCPU_32'
