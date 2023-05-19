@@ -279,15 +279,16 @@ TEST(ValueInterop, TypeToLegacy) {
   EXPECT_EQ(legacy_value.CelTypeOrDie().value(), "struct.that.does.not.Exist");
 }
 
-TEST(ValueInterop, ModernTypeUnimplemented) {
+TEST(ValueInterop, ModernTypeToStringView) {
   google::protobuf::Arena arena;
   extensions::ProtoMemoryManager memory_manager(&arena);
   TypeFactory type_factory(memory_manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
   auto value = value_factory.CreateTypeValue(type_factory.GetBoolType());
-  EXPECT_THAT(ToLegacyValue(&arena, value),
-              StatusIs(absl::StatusCode::kUnimplemented));
+  ASSERT_OK_AND_ASSIGN(CelValue legacy_value, ToLegacyValue(&arena, value));
+  ASSERT_TRUE(legacy_value.IsCelType());
+  EXPECT_EQ(legacy_value.CelTypeOrDie().value(), "bool");
 }
 
 TEST(ValueInterop, StringFromLegacy) {

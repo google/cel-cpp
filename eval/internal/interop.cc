@@ -437,16 +437,19 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       break;
     case Kind::kAny:
       break;
-    case Kind::kType:
+    case Kind::kType: {
       // Should be fine, so long as we are using an arena allocator.
       // We can only transport legacy type values.
       if (base_internal::Metadata::GetInlineVariant<
-              base_internal::InlinedTypeValueVariant>(*value) !=
+              base_internal::InlinedTypeValueVariant>(*value) ==
           base_internal::InlinedTypeValueVariant::kLegacy) {
-        return absl::UnimplementedError(
-            "only legacy type values can be used for interop");
+        return CelValue::CreateCelTypeView(value.As<TypeValue>()->name());
       }
-      return CelValue::CreateCelTypeView(value.As<TypeValue>()->name());
+      auto* type_name = google::protobuf::Arena::Create<std::string>(
+          arena, value.As<TypeValue>()->name());
+
+      return CelValue::CreateCelTypeView(*type_name);
+    }
     case Kind::kBool:
       return CelValue::CreateBool(value.As<BoolValue>()->value());
     case Kind::kInt:

@@ -30,30 +30,25 @@
 #include "absl/time/civil_time.h"
 #include "absl/time/time.h"
 #include "absl/types/optional.h"
+#include "base/builtins.h"
 #include "base/function_adapter.h"
 #include "base/handle.h"
-#include "base/type_factory.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "base/values/bytes_value.h"
 #include "base/values/list_value.h"
 #include "base/values/map_value.h"
 #include "base/values/string_value.h"
-#include "eval/eval/mutable_list_impl.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_number.h"
 #include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/comparison_functions.h"
 #include "eval/public/container_function_registrar.h"
-#include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/equality_function_registrar.h"
 #include "eval/public/logical_function_registrar.h"
 #include "eval/public/portable_cel_function_adapter.h"
-#include "extensions/protobuf/memory_manager.h"
-#include "internal/casts.h"
 #include "internal/overflow.h"
 #include "internal/proto_time_encoding.h"
 #include "internal/status_macros.h"
@@ -68,8 +63,6 @@ namespace {
 using ::cel::BinaryFunctionAdapter;
 using ::cel::BytesValue;
 using ::cel::Handle;
-using ::cel::ListValue;
-using ::cel::MapValue;
 using ::cel::StringValue;
 using ::cel::UnaryFunctionAdapter;
 using ::cel::Value;
@@ -235,19 +228,19 @@ template <class Type>
 absl::Status RegisterArithmeticFunctionsForType(CelFunctionRegistry* registry) {
   using FunctionAdapter = cel::BinaryFunctionAdapter<Handle<Value>, Type, Type>;
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::CreateDescriptor(builtin::kAdd, false),
+      FunctionAdapter::CreateDescriptor(cel::builtin::kAdd, false),
       FunctionAdapter::WrapFunction(&Add<Type>)));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::CreateDescriptor(builtin::kSubtract, false),
+      FunctionAdapter::CreateDescriptor(cel::builtin::kSubtract, false),
       FunctionAdapter::WrapFunction(&Sub<Type>)));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      FunctionAdapter::CreateDescriptor(builtin::kMultiply, false),
+      FunctionAdapter::CreateDescriptor(cel::builtin::kMultiply, false),
       FunctionAdapter::WrapFunction(&Mul<Type>)));
 
   return registry->Register(
-      FunctionAdapter::CreateDescriptor(builtin::kDivide, false),
+      FunctionAdapter::CreateDescriptor(cel::builtin::kDivide, false),
       FunctionAdapter::WrapFunction(&Div<Type>));
 }
 
@@ -261,13 +254,13 @@ absl::Status RegisterNumericArithmeticFunctions(
   // Modulo
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, int64_t, int64_t>::CreateDescriptor(
-          builtin::kModulo, false),
+          cel::builtin::kModulo, false),
       BinaryFunctionAdapter<Handle<Value>, int64_t, int64_t>::WrapFunction(
           &Modulo<int64_t>)));
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, uint64_t,
-                            uint64_t>::CreateDescriptor(builtin::kModulo,
+                            uint64_t>::CreateDescriptor(cel::builtin::kModulo,
                                                         false),
       BinaryFunctionAdapter<Handle<Value>, uint64_t, uint64_t>::WrapFunction(
           &Modulo<uint64_t>)));
@@ -275,7 +268,7 @@ absl::Status RegisterNumericArithmeticFunctions(
   // Negation group
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
-          builtin::kNeg, false),
+          cel::builtin::kNeg, false),
       UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
           [](ValueFactory& value_factory, int64_t value) -> Handle<Value> {
             auto inv = cel::internal::CheckedNegation(value);
@@ -286,7 +279,7 @@ absl::Status RegisterNumericArithmeticFunctions(
           })));
 
   return registry->Register(
-      UnaryFunctionAdapter<double, double>::CreateDescriptor(builtin::kNeg,
+      UnaryFunctionAdapter<double, double>::CreateDescriptor(cel::builtin::kNeg,
                                                              false),
       UnaryFunctionAdapter<double, double>::WrapFunction(
           [](ValueFactory&, double value) -> double { return -value; }));
@@ -547,9 +540,9 @@ bool StringStartsWith(ValueFactory&, const StringValue& value,
 absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
                                             const InterpreterOptions& options) {
   constexpr std::array<absl::string_view, 3> in_operators = {
-      builtin::kIn,            // @in for map and list types.
-      builtin::kInFunction,    // deprecated in() -- for backwards compat
-      builtin::kInDeprecated,  // deprecated _in_ -- for backwards compat
+      cel::builtin::kIn,            // @in for map and list types.
+      cel::builtin::kInFunction,    // deprecated in() -- for backwards compat
+      cel::builtin::kInDeprecated,  // deprecated _in_ -- for backwards compat
   };
 
   if (options.enable_list_contains) {
@@ -742,7 +735,7 @@ absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
                                 const StringValue&>;
       CEL_RETURN_IF_ERROR(
           registry->Register(MatchFnAdapter::CreateDescriptor(
-                                 builtin::kRegexMatch, receiver_style),
+                                 cel::builtin::kRegexMatch, receiver_style),
                              MatchFnAdapter::WrapFunction(regex_matches)));
     }
   }  // if options.enable_regex
@@ -756,19 +749,19 @@ absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
   for (bool receiver_style : {true, false}) {
     CEL_RETURN_IF_ERROR(registry->Register(
         BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            CreateDescriptor(builtin::kStringContains, receiver_style),
+            CreateDescriptor(cel::builtin::kStringContains, receiver_style),
         BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
             WrapFunction(StringContains)));
 
     CEL_RETURN_IF_ERROR(registry->Register(
         BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            CreateDescriptor(builtin::kStringEndsWith, receiver_style),
+            CreateDescriptor(cel::builtin::kStringEndsWith, receiver_style),
         BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
             WrapFunction(StringEndsWith)));
 
     CEL_RETURN_IF_ERROR(registry->Register(
         BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
-            CreateDescriptor(builtin::kStringStartsWith, receiver_style),
+            CreateDescriptor(cel::builtin::kStringStartsWith, receiver_style),
         BinaryFunctionAdapter<bool, const StringValue&, const StringValue&>::
             WrapFunction(StringStartsWith)));
   }
@@ -779,14 +772,14 @@ absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
         BinaryFunctionAdapter<absl::StatusOr<Handle<StringValue>>,
                               const StringValue&, const StringValue&>;
     CEL_RETURN_IF_ERROR(registry->Register(
-        StrCatFnAdapter::CreateDescriptor(builtin::kAdd, false),
+        StrCatFnAdapter::CreateDescriptor(cel::builtin::kAdd, false),
         StrCatFnAdapter::WrapFunction(&ConcatString)));
 
     using BytesCatFnAdapter =
         BinaryFunctionAdapter<absl::StatusOr<Handle<BytesValue>>,
                               const BytesValue&, const BytesValue&>;
     CEL_RETURN_IF_ERROR(registry->Register(
-        BytesCatFnAdapter::CreateDescriptor(builtin::kAdd, false),
+        BytesCatFnAdapter::CreateDescriptor(cel::builtin::kAdd, false),
         BytesCatFnAdapter::WrapFunction(&ConcatBytes)));
   }
 
@@ -807,11 +800,11 @@ absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>;
   CEL_RETURN_IF_ERROR(
       registry->Register(StrSizeFnAdapter::CreateDescriptor(
-                             builtin::kSize, /*receiver_style=*/true),
+                             cel::builtin::kSize, /*receiver_style=*/true),
                          StrSizeFnAdapter::WrapFunction(size_func)));
   CEL_RETURN_IF_ERROR(
       registry->Register(StrSizeFnAdapter::CreateDescriptor(
-                             builtin::kSize, /*receiver_style=*/false),
+                             cel::builtin::kSize, /*receiver_style=*/false),
                          StrSizeFnAdapter::WrapFunction(size_func)));
 
   // Bytes size
@@ -823,11 +816,11 @@ absl::Status RegisterStringFunctions(CelFunctionRegistry* registry,
   using BytesSizeFnAdapter = UnaryFunctionAdapter<int64_t, const BytesValue&>;
   CEL_RETURN_IF_ERROR(
       registry->Register(BytesSizeFnAdapter::CreateDescriptor(
-                             builtin::kSize, /*receiver_style=*/true),
+                             cel::builtin::kSize, /*receiver_style=*/true),
                          BytesSizeFnAdapter::WrapFunction(bytes_size_func)));
   CEL_RETURN_IF_ERROR(
       registry->Register(BytesSizeFnAdapter::CreateDescriptor(
-                             builtin::kSize, /*receiver_style=*/false),
+                             cel::builtin::kSize, /*receiver_style=*/false),
                          BytesSizeFnAdapter::WrapFunction(bytes_size_func)));
 
   return absl::OkStatus();
@@ -837,7 +830,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
                                         const InterpreterOptions& options) {
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kFullYear, true),
+          CreateDescriptor(cel::builtin::kFullYear, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -846,7 +839,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kFullYear, true),
+          cel::builtin::kFullYear, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetFullYear(value_factory, ts, "");
@@ -854,7 +847,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kMonth, true),
+          CreateDescriptor(cel::builtin::kMonth, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -863,7 +856,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kMonth, true),
+          cel::builtin::kMonth, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetMonth(value_factory, ts, "");
@@ -871,7 +864,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kDayOfYear, true),
+          CreateDescriptor(cel::builtin::kDayOfYear, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -880,7 +873,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kDayOfYear, true),
+          cel::builtin::kDayOfYear, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetDayOfYear(value_factory, ts, "");
@@ -888,7 +881,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kDayOfMonth, true),
+          CreateDescriptor(cel::builtin::kDayOfMonth, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -897,7 +890,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kDayOfMonth, true),
+          cel::builtin::kDayOfMonth, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetDayOfMonth(value_factory, ts, "");
@@ -905,7 +898,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kDate, true),
+          CreateDescriptor(cel::builtin::kDate, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -914,7 +907,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kDate, true),
+          cel::builtin::kDate, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetDate(value_factory, ts, "");
@@ -922,7 +915,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kDayOfWeek, true),
+          CreateDescriptor(cel::builtin::kDayOfWeek, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -931,7 +924,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kDayOfWeek, true),
+          cel::builtin::kDayOfWeek, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetDayOfWeek(value_factory, ts, "");
@@ -939,7 +932,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kHours, true),
+          CreateDescriptor(cel::builtin::kHours, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -948,7 +941,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kHours, true),
+          cel::builtin::kHours, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetHours(value_factory, ts, "");
@@ -956,7 +949,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kMinutes, true),
+          CreateDescriptor(cel::builtin::kMinutes, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -965,7 +958,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kMinutes, true),
+          cel::builtin::kMinutes, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetMinutes(value_factory, ts, "");
@@ -973,7 +966,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kSeconds, true),
+          CreateDescriptor(cel::builtin::kSeconds, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -982,7 +975,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kSeconds, true),
+          cel::builtin::kSeconds, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetSeconds(value_factory, ts, "");
@@ -990,7 +983,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
-          CreateDescriptor(builtin::kMilliseconds, true),
+          CreateDescriptor(cel::builtin::kMilliseconds, true),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, const StringValue&>::
           WrapFunction([](ValueFactory& value_factory, absl::Time ts,
                           const StringValue& tz) -> Handle<Value> {
@@ -999,7 +992,7 @@ absl::Status RegisterTimestampFunctions(CelFunctionRegistry* registry,
 
   return registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kMilliseconds, true),
+          cel::builtin::kMilliseconds, true),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time ts) -> Handle<Value> {
             return GetMilliseconds(value_factory, ts, "");
@@ -1011,7 +1004,7 @@ absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
   // bytes -> bytes
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<BytesValue>, Handle<BytesValue>>::
-          CreateDescriptor(builtin::kBytes, false),
+          CreateDescriptor(cel::builtin::kBytes, false),
       UnaryFunctionAdapter<Handle<BytesValue>, Handle<BytesValue>>::
           WrapFunction([](ValueFactory&, Handle<BytesValue> value)
                            -> Handle<BytesValue> { return value; })));
@@ -1020,7 +1013,7 @@ absl::Status RegisterBytesConversionFunctions(CelFunctionRegistry* registry,
   return registry->Register(
       UnaryFunctionAdapter<
           absl::StatusOr<Handle<BytesValue>>,
-          const StringValue&>::CreateDescriptor(builtin::kBytes, false),
+          const StringValue&>::CreateDescriptor(cel::builtin::kBytes, false),
       UnaryFunctionAdapter<
           absl::StatusOr<Handle<BytesValue>>,
           const StringValue&>::WrapFunction([](ValueFactory& value_factory,
@@ -1034,21 +1027,21 @@ absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
   // double -> double
   CEL_RETURN_IF_ERROR(
       registry->Register(UnaryFunctionAdapter<double, double>::CreateDescriptor(
-                             builtin::kDouble, false),
+                             cel::builtin::kDouble, false),
                          UnaryFunctionAdapter<double, double>::WrapFunction(
                              [](ValueFactory&, double v) { return v; })));
 
   // int -> double
   CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<double, int64_t>::CreateDescriptor(builtin::kDouble,
-                                                              false),
+      UnaryFunctionAdapter<double, int64_t>::CreateDescriptor(
+          cel::builtin::kDouble, false),
       UnaryFunctionAdapter<double, int64_t>::WrapFunction(
           [](ValueFactory&, int64_t v) { return static_cast<double>(v); })));
 
   // string -> double
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
-          builtin::kDouble, false),
+          cel::builtin::kDouble, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
           [](ValueFactory& value_factory,
              const StringValue& s) -> Handle<Value> {
@@ -1063,8 +1056,8 @@ absl::Status RegisterDoubleConversionFunctions(CelFunctionRegistry* registry,
 
   // uint -> double
   return registry->Register(
-      UnaryFunctionAdapter<double, uint64_t>::CreateDescriptor(builtin::kDouble,
-                                                               false),
+      UnaryFunctionAdapter<double, uint64_t>::CreateDescriptor(
+          cel::builtin::kDouble, false),
       UnaryFunctionAdapter<double, uint64_t>::WrapFunction(
           [](ValueFactory&, uint64_t v) { return static_cast<double>(v); }));
 }
@@ -1073,7 +1066,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
                                             const InterpreterOptions&) {
   // bool -> int
   CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<int64_t, bool>::CreateDescriptor(builtin::kInt,
+      UnaryFunctionAdapter<int64_t, bool>::CreateDescriptor(cel::builtin::kInt,
                                                             false),
       UnaryFunctionAdapter<int64_t, bool>::WrapFunction(
           [](ValueFactory&, bool v) { return static_cast<int64_t>(v); })));
@@ -1081,7 +1074,7 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
   // double -> int
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, double>::CreateDescriptor(
-          builtin::kInt, false),
+          cel::builtin::kInt, false),
       UnaryFunctionAdapter<Handle<Value>, double>::WrapFunction(
           [](ValueFactory& value_factory, double v) -> Handle<Value> {
             auto conv = cel::internal::CheckedDoubleToInt64(v);
@@ -1093,15 +1086,15 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
 
   // int -> int
   CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(builtin::kInt,
-                                                               false),
+      UnaryFunctionAdapter<int64_t, int64_t>::CreateDescriptor(
+          cel::builtin::kInt, false),
       UnaryFunctionAdapter<int64_t, int64_t>::WrapFunction(
           [](ValueFactory&, int64_t v) { return v; })));
 
   // string -> int
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
-          builtin::kInt, false),
+          cel::builtin::kInt, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
           [](ValueFactory& value_factory,
              const StringValue& s) -> Handle<Value> {
@@ -1115,15 +1108,15 @@ absl::Status RegisterIntConversionFunctions(CelFunctionRegistry* registry,
 
   // time -> int
   CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<int64_t, absl::Time>::CreateDescriptor(builtin::kInt,
-                                                                  false),
+      UnaryFunctionAdapter<int64_t, absl::Time>::CreateDescriptor(
+          cel::builtin::kInt, false),
       UnaryFunctionAdapter<int64_t, absl::Time>::WrapFunction(
           [](ValueFactory&, absl::Time t) { return absl::ToUnixSeconds(t); })));
 
   // uint -> int
   return registry->Register(
       UnaryFunctionAdapter<Handle<Value>, uint64_t>::CreateDescriptor(
-          builtin::kInt, false),
+          cel::builtin::kInt, false),
       UnaryFunctionAdapter<Handle<Value>, uint64_t>::WrapFunction(
           [](ValueFactory& value_factory, uint64_t v) -> Handle<Value> {
             auto conv = cel::internal::CheckedUint64ToInt64(v);
@@ -1143,7 +1136,7 @@ absl::Status RegisterStringConversionFunctions(
 
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, const BytesValue&>::CreateDescriptor(
-          builtin::kString, false),
+          cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, const BytesValue&>::WrapFunction(
           [](ValueFactory& value_factory,
              const BytesValue& value) -> Handle<Value> {
@@ -1157,7 +1150,7 @@ absl::Status RegisterStringConversionFunctions(
   // double -> string
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<StringValue>, double>::CreateDescriptor(
-          builtin::kString, false),
+          cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, double>::WrapFunction(
           [](ValueFactory& value_factory, double value) -> Handle<StringValue> {
             return value_factory.CreateUncheckedStringValue(
@@ -1167,7 +1160,7 @@ absl::Status RegisterStringConversionFunctions(
   // int -> string
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<StringValue>, int64_t>::CreateDescriptor(
-          builtin::kString, false),
+          cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, int64_t>::WrapFunction(
           [](ValueFactory& value_factory,
              int64_t value) -> Handle<StringValue> {
@@ -1178,7 +1171,7 @@ absl::Status RegisterStringConversionFunctions(
   // string -> string
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<StringValue>, Handle<StringValue>>::
-          CreateDescriptor(builtin::kString, false),
+          CreateDescriptor(cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, Handle<StringValue>>::
           WrapFunction([](ValueFactory&, Handle<StringValue> value)
                            -> Handle<StringValue> { return value; })));
@@ -1186,7 +1179,7 @@ absl::Status RegisterStringConversionFunctions(
   // uint -> string
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<StringValue>, uint64_t>::CreateDescriptor(
-          builtin::kString, false),
+          cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<StringValue>, uint64_t>::WrapFunction(
           [](ValueFactory& value_factory,
              uint64_t value) -> Handle<StringValue> {
@@ -1197,7 +1190,7 @@ absl::Status RegisterStringConversionFunctions(
   // duration -> string
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Duration>::CreateDescriptor(
-          builtin::kString, false),
+          cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, absl::Duration>::WrapFunction(
           [](ValueFactory& value_factory,
              absl::Duration value) -> Handle<Value> {
@@ -1211,7 +1204,7 @@ absl::Status RegisterStringConversionFunctions(
   // timestamp -> string
   return registry->Register(
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::CreateDescriptor(
-          builtin::kString, false),
+          cel::builtin::kString, false),
       UnaryFunctionAdapter<Handle<Value>, absl::Time>::WrapFunction(
           [](ValueFactory& value_factory, absl::Time value) -> Handle<Value> {
             auto encode = EncodeTimeToString(value);
@@ -1227,7 +1220,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   // double -> uint
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, double>::CreateDescriptor(
-          builtin::kUint, false),
+          cel::builtin::kUint, false),
       UnaryFunctionAdapter<Handle<Value>, double>::WrapFunction(
           [](ValueFactory& value_factory, double v) -> Handle<Value> {
             auto conv = cel::internal::CheckedDoubleToUint64(v);
@@ -1240,7 +1233,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   // int -> uint
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
-          builtin::kUint, false),
+          cel::builtin::kUint, false),
       UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
           [](ValueFactory& value_factory, int64_t v) -> Handle<Value> {
             auto conv = cel::internal::CheckedInt64ToUint64(v);
@@ -1253,7 +1246,7 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
   // string -> uint
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
-          builtin::kUint, false),
+          cel::builtin::kUint, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
           [](ValueFactory& value_factory,
              const StringValue& s) -> Handle<Value> {
@@ -1267,8 +1260,8 @@ absl::Status RegisterUintConversionFunctions(CelFunctionRegistry* registry,
 
   // uint -> uint
   return registry->Register(
-      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(builtin::kUint,
-                                                                 false),
+      UnaryFunctionAdapter<uint64_t, uint64_t>::CreateDescriptor(
+          cel::builtin::kUint, false),
       UnaryFunctionAdapter<uint64_t, uint64_t>::WrapFunction(
           [](ValueFactory&, uint64_t v) { return v; }));
 }
@@ -1282,16 +1275,15 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   // duration() conversion from string.
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
-          builtin::kDuration, false),
+          cel::builtin::kDuration, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
           CreateDurationFromString)));
 
   // dyn() identity function.
   // TODO(issues/102): strip dyn() function references at type-check time.
   CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<
-          Handle<Value>, const Handle<Value>&>::CreateDescriptor(builtin::kDyn,
-                                                                 false),
+      UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::
+          CreateDescriptor(cel::builtin::kDyn, false),
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::WrapFunction(
           [](ValueFactory&, const Handle<Value>& value) -> Handle<Value> {
             return value;
@@ -1304,7 +1296,7 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
   // timestamp conversion from int.
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, int64_t>::CreateDescriptor(
-          builtin::kTimestamp, false),
+          cel::builtin::kTimestamp, false),
       UnaryFunctionAdapter<Handle<Value>, int64_t>::WrapFunction(
           [](ValueFactory&, int64_t epoch_seconds) -> Handle<Value> {
             return cel::interop_internal::CreateTimestampValue(
@@ -1316,7 +1308,7 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
       options.enable_timestamp_duration_overflow_errors;
   CEL_RETURN_IF_ERROR(registry->Register(
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::CreateDescriptor(
-          builtin::kTimestamp, false),
+          cel::builtin::kTimestamp, false),
       UnaryFunctionAdapter<Handle<Value>, const StringValue&>::WrapFunction(
           [=](ValueFactory& value_factory,
               const StringValue& time_str) -> Handle<Value> {
@@ -1341,9 +1333,8 @@ absl::Status RegisterConversionFunctions(CelFunctionRegistry* registry,
 absl::Status RegisterCheckedTimeArithmeticFunctions(
     CelFunctionRegistry* registry) {
   CEL_RETURN_IF_ERROR(registry->Register(
-      BinaryFunctionAdapter<Handle<Value>, absl::Time,
-                            absl::Duration>::CreateDescriptor(builtin::kAdd,
-                                                              false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
+          CreateDescriptor(cel::builtin::kAdd, false),
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
                             absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Time t1,
@@ -1357,7 +1348,8 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
-                            absl::Time>::CreateDescriptor(builtin::kAdd, false),
+                            absl::Time>::CreateDescriptor(cel::builtin::kAdd,
+                                                          false),
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
                             absl::Time>::
           WrapFunction([](ValueFactory& value_factory, absl::Duration d2,
@@ -1370,9 +1362,9 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
           })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
-                            absl::Duration>::CreateDescriptor(builtin::kAdd,
-                                                              false),
+      BinaryFunctionAdapter<
+          absl::StatusOr<Handle<Value>>, absl::Duration,
+          absl::Duration>::CreateDescriptor(cel::builtin::kAdd, false),
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
                             absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Duration d1,
@@ -1387,7 +1379,7 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<
           absl::StatusOr<Handle<Value>>, absl::Time,
-          absl::Duration>::CreateDescriptor(builtin::kSubtract, false),
+          absl::Duration>::CreateDescriptor(cel::builtin::kSubtract, false),
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
                             absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Time t1,
@@ -1400,9 +1392,9 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
           })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
-                            absl::Time>::CreateDescriptor(builtin::kSubtract,
-                                                          false),
+      BinaryFunctionAdapter<
+          absl::StatusOr<Handle<Value>>, absl::Time,
+          absl::Time>::CreateDescriptor(cel::builtin::kSubtract, false),
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Time,
                             absl::Time>::
           WrapFunction([](ValueFactory& value_factory, absl::Time t1,
@@ -1417,7 +1409,7 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<
           absl::StatusOr<Handle<Value>>, absl::Duration,
-          absl::Duration>::CreateDescriptor(builtin::kSubtract, false),
+          absl::Duration>::CreateDescriptor(cel::builtin::kSubtract, false),
       BinaryFunctionAdapter<absl::StatusOr<Handle<Value>>, absl::Duration,
                             absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Duration d1,
@@ -1437,9 +1429,8 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
   // TODO(issues/5): deprecate unchecked time math functions when clients no
   // longer depend on them.
   CEL_RETURN_IF_ERROR(registry->Register(
-      BinaryFunctionAdapter<Handle<Value>, absl::Time,
-                            absl::Duration>::CreateDescriptor(builtin::kAdd,
-                                                              false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
+          CreateDescriptor(cel::builtin::kAdd, false),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Time t1,
                           absl::Duration d2) -> Handle<Value> {
@@ -1448,7 +1439,8 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Duration,
-                            absl::Time>::CreateDescriptor(builtin::kAdd, false),
+                            absl::Time>::CreateDescriptor(cel::builtin::kAdd,
+                                                          false),
       BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Time>::
           WrapFunction([](ValueFactory& value_factory, absl::Duration d2,
                           absl::Time t1) -> Handle<Value> {
@@ -1456,9 +1448,8 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
           })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      BinaryFunctionAdapter<Handle<Value>, absl::Duration,
-                            absl::Duration>::CreateDescriptor(builtin::kAdd,
-                                                              false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
+          CreateDescriptor(cel::builtin::kAdd, false),
       BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Duration d1,
                           absl::Duration d2) -> Handle<Value> {
@@ -1467,7 +1458,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
-          CreateDescriptor(builtin::kSubtract, false),
+          CreateDescriptor(cel::builtin::kSubtract, false),
 
       BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::
           WrapFunction(
@@ -1478,9 +1469,8 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
               })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      BinaryFunctionAdapter<Handle<Value>, absl::Time,
-                            absl::Time>::CreateDescriptor(builtin::kSubtract,
-                                                          false),
+      BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Time>::
+          CreateDescriptor(cel::builtin::kSubtract, false),
       BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Time>::
           WrapFunction(
 
@@ -1491,7 +1481,7 @@ absl::Status RegisterUncheckedTimeArithmeticFunctions(
 
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
-          CreateDescriptor(builtin::kSubtract, false),
+          CreateDescriptor(cel::builtin::kSubtract, false),
       BinaryFunctionAdapter<Handle<Value>, absl::Duration, absl::Duration>::
           WrapFunction([](ValueFactory& value_factory, absl::Duration d1,
                           absl::Duration d2) -> Handle<Value> {
@@ -1516,28 +1506,29 @@ absl::Status RegisterTimeFunctions(CelFunctionRegistry* registry,
   using DurationAccessorFunction =
       UnaryFunctionAdapter<int64_t, absl::Duration>;
   CEL_RETURN_IF_ERROR(registry->Register(
-      DurationAccessorFunction::CreateDescriptor(builtin::kHours, true),
+      DurationAccessorFunction::CreateDescriptor(cel::builtin::kHours, true),
       DurationAccessorFunction::WrapFunction(
           [](ValueFactory&, absl::Duration d) -> int64_t {
             return absl::ToInt64Hours(d);
           })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      DurationAccessorFunction::CreateDescriptor(builtin::kMinutes, true),
+      DurationAccessorFunction::CreateDescriptor(cel::builtin::kMinutes, true),
       DurationAccessorFunction::WrapFunction(
           [](ValueFactory&, absl::Duration d) -> int64_t {
             return absl::ToInt64Minutes(d);
           })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      DurationAccessorFunction::CreateDescriptor(builtin::kSeconds, true),
+      DurationAccessorFunction::CreateDescriptor(cel::builtin::kSeconds, true),
       DurationAccessorFunction::WrapFunction(
           [](ValueFactory&, absl::Duration d) -> int64_t {
             return absl::ToInt64Seconds(d);
           })));
 
   CEL_RETURN_IF_ERROR(registry->Register(
-      DurationAccessorFunction::CreateDescriptor(builtin::kMilliseconds, true),
+      DurationAccessorFunction::CreateDescriptor(cel::builtin::kMilliseconds,
+                                                 true),
       DurationAccessorFunction::WrapFunction(
           [](ValueFactory&, absl::Duration d) -> int64_t {
             constexpr int64_t millis_per_second = 1000L;
@@ -1566,23 +1557,11 @@ absl::Status RegisterBuiltinFunctions(CelFunctionRegistry* registry,
       options));
 
   return registry->Register(
-      UnaryFunctionAdapter<
-          Handle<Value>, const Handle<Value>&>::CreateDescriptor(builtin::kType,
-                                                                 false),
+      UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::
+          CreateDescriptor(cel::builtin::kType, false),
       UnaryFunctionAdapter<Handle<Value>, const Handle<Value>&>::WrapFunction(
           [](ValueFactory& factory, const Handle<Value>& value) {
-            // TODO(issues/5): legacy types don't interop with type values
-            // from factory. This should simply be:
-            //
-            // return factory.CreateTypeValue(value->type());
-            Arena* arena =
-                cel::extensions::ProtoMemoryManager::CastToProtoArena(
-                    factory.memory_manager());
-            CelValue legacy_value =
-                cel::interop_internal::ModernValueToLegacyValueOrDie(arena,
-                                                                     value);
-            return cel::interop_internal::CreateTypeValueFromView(
-                legacy_value.ObtainCelType().CelTypeOrDie().value());
+            return factory.CreateTypeValue(value->type());
           }));
 }
 

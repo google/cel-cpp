@@ -27,6 +27,7 @@
 #include "absl/types/variant.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/type_value.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
 
@@ -131,7 +132,7 @@ Handle<UnknownValue> CreateUnknownValueFromView(
     const base_internal::UnknownSet* value);
 
 // Convert a legacy value to a modern value, CHECK failing if its not possible.
-// This should only be used during rewritting of the evaluator when it is
+// This should only be used during rewriting of the evaluator when it is
 // guaranteed that all modern and legacy values are interoperable, and the
 // memory manager is google::protobuf::Arena.
 Handle<Value> LegacyValueToModernValueOrDie(
@@ -150,7 +151,7 @@ std::vector<Handle<Value>> LegacyValueToModernValueOrDie(
     bool unchecked = false);
 
 // Convert a modern value to a legacy value, CHECK failing if its not possible.
-// This should only be used during rewritting of the evaluator when it is
+// This should only be used during rewriting of the evaluator when it is
 // guaranteed that all modern and legacy values are interoperable, and the
 // memory manager is google::protobuf::Arena.
 google::api::expr::runtime::CelValue ModernValueToLegacyValueOrDie(

@@ -1,6 +1,7 @@
-# bazel produces these as symlinks, not directories
 bazel-bin
-bazel-cel-cpp
+bazel-eval
 bazel-genfiles
 bazel-out
 bazel-testlogs
+bazel-cel-cpp
+*~
