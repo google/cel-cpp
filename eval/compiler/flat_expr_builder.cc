@@ -1074,6 +1074,7 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
   const auto* comprehension = &expr->comprehension_expr();
   const auto& accu_var = comprehension->accu_var();
   const auto& iter_var = comprehension->iter_var();
+  abort();
   // TODO(issues/20): Consider refactoring the comprehension prologue step.
   switch (arg_num) {
     case cel::ast::internal::ITER_RANGE: {
