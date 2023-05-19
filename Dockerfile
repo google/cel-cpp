@@ -13,5 +13,8 @@ ENV CC=clang-12
 ENV CXX=clang++-12
 
 RUN mkdir -p /workspace
+RUN mkdir -p /bazel-test
+RUN mkdir -p /bazel-asan
+RUN mkdir -p /bazel-gcc
 
 ENTRYPOINT ["/bin/bazel"]
