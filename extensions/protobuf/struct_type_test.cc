@@ -26,6 +26,8 @@
 #include "base/type_manager.h"
 #include "base/types/list_type.h"
 #include "base/types/map_type.h"
+#include "base/value_factory.h"
+#include "base/values/struct_value_builder.h"
 #include "extensions/protobuf/internal/testing.h"
 #include "extensions/protobuf/type.h"
 #include "extensions/protobuf/type_provider.h"
@@ -261,6 +263,17 @@ TEST_P(ProtoStructTypeTest, NewFieldIteratorTypes) {
   // We cannot really test actual_types, as hand translating TestAllTypes would
   // be obnoxious. Otherwise we would simply be testing the same logic against
   // itself, which would not be useful.
+}
+
+TEST_P(ProtoStructTypeTest, NewValueBuilderUnimplemented) {
+  TypeFactory type_factory(memory_manager());
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       ProtoType::Resolve<TestAllTypes>(type_manager));
+  EXPECT_THAT(type->NewValueBuilder(value_factory),
+              StatusIs(absl::StatusCode::kUnimplemented));
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoStructTypeTest, ProtoStructTypeTest,

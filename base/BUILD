@@ -46,6 +46,7 @@ cc_library(
     deps = [
         "//base/internal:data",
         "//base/internal:handle",
+        "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:absl_check",
     ],

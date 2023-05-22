@@ -22,7 +22,12 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/internal/data.h"
+#include "base/kind.h"
+#include "base/memory.h"
 #include "base/types/dyn_type.h"
+#include "base/value_factory.h"
+#include "base/values/list_value.h"
+#include "base/values/list_value_builder.h"
 
 namespace cel {
 
@@ -46,6 +51,40 @@ const Handle<Type>& ListType::element() const {
     return static_cast<const base_internal::LegacyListType&>(*this).element();
   }
   return static_cast<const base_internal::ModernListType&>(*this).element();
+}
+
+absl::StatusOr<UniqueRef<ListValueBuilderInterface>> ListType::NewValueBuilder(
+    ValueFactory& value_factory) const {
+  switch (element()->kind()) {
+    case Kind::kBool:
+      return MakeUnique<ListValueBuilder<BoolValue>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+    case Kind::kInt:
+      return MakeUnique<ListValueBuilder<IntValue>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+    case Kind::kUint:
+      return MakeUnique<ListValueBuilder<UintValue>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+    case Kind::kDouble:
+      return MakeUnique<ListValueBuilder<DoubleValue>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+    case Kind::kDuration:
+      return MakeUnique<ListValueBuilder<DurationValue>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+    case Kind::kTimestamp:
+      return MakeUnique<ListValueBuilder<TimestampValue>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+    default:
+      return MakeUnique<ListValueBuilder<Value>>(
+          value_factory.memory_manager(), base_internal::kComposedListType,
+          value_factory, handle_from_this());
+  }
 }
 
 namespace base_internal {

@@ -22,7 +22,12 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "base/internal/data.h"
+#include "base/kind.h"
+#include "base/memory.h"
 #include "base/types/dyn_type.h"
+#include "base/value_factory.h"
+#include "base/values/map_value.h"
+#include "base/values/map_value_builder.h"
 
 namespace cel {
 
@@ -54,6 +59,54 @@ const Handle<Type>& MapType::value() const {
     return static_cast<const base_internal::LegacyMapType&>(*this).value();
   }
   return static_cast<const base_internal::ModernMapType&>(*this).value();
+}
+
+namespace {
+
+template <typename K>
+absl::StatusOr<UniqueRef<MapValueBuilderInterface>> NewMapValueBuilderFor(
+    ValueFactory& value_factory, Handle<MapType> type) {
+  switch (type->value()->kind()) {
+    case Kind::kBool:
+      return MakeUnique<MapValueBuilder<K, BoolValue>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+    case Kind::kInt:
+      return MakeUnique<MapValueBuilder<K, IntValue>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+    case Kind::kUint:
+      return MakeUnique<MapValueBuilder<K, UintValue>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+    case Kind::kDouble:
+      return MakeUnique<MapValueBuilder<K, DoubleValue>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+    case Kind::kDuration:
+      return MakeUnique<MapValueBuilder<K, DurationValue>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+    case Kind::kTimestamp:
+      return MakeUnique<MapValueBuilder<K, TimestampValue>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+    default:
+      return MakeUnique<MapValueBuilder<K, Value>>(
+          value_factory.memory_manager(), value_factory, std::move(type));
+  }
+}
+
+}  // namespace
+
+absl::StatusOr<UniqueRef<MapValueBuilderInterface>> MapType::NewValueBuilder(
+    ValueFactory& value_factory) const {
+  switch (key()->kind()) {
+    case Kind::kBool:
+      return NewMapValueBuilderFor<BoolValue>(value_factory,
+                                              handle_from_this());
+    case Kind::kInt:
+      return NewMapValueBuilderFor<IntValue>(value_factory, handle_from_this());
+    case Kind::kUint:
+      return NewMapValueBuilderFor<UintValue>(value_factory,
+                                              handle_from_this());
+    default:
+      return NewMapValueBuilderFor<Value>(value_factory, handle_from_this());
+  }
 }
 
 namespace base_internal {

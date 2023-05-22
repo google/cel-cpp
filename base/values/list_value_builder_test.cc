@@ -23,6 +23,9 @@
 namespace cel {
 namespace {
 
+using testing::NotNull;
+using testing::WhenDynamicCastTo;
+
 TEST(ListValueBuilder, Unspecialized) {
   TypeFactory type_factory(MemoryManager::Global());
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
@@ -255,6 +258,44 @@ TEST(ListValueBuilder, Timestamp) {
   EXPECT_TRUE(element->Is<TimestampValue>());
   EXPECT_EQ(element.As<TimestampValue>()->value(),
             absl::UnixEpoch() + absl::Minutes(1));
+}
+template <typename I, typename T>
+void TestListValueBuilderImpl(ValueFactory& value_factory,
+                              const Handle<T>& element) {
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       value_factory.type_factory().CreateListType(element));
+  ASSERT_OK_AND_ASSIGN(auto builder, type->NewValueBuilder(value_factory));
+  EXPECT_THAT((&builder.get()), WhenDynamicCastTo<I*>(NotNull()));
+}
+
+TEST(ListValueBuilder, Dynamic) {
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+#ifdef ABSL_INTERNAL_HAS_RTTI
+  ASSERT_NO_FATAL_FAILURE(
+      ((TestListValueBuilderImpl<ListValueBuilder<BoolValue>>(
+          value_factory, type_factory.GetBoolType()))));
+  ASSERT_NO_FATAL_FAILURE(
+      ((TestListValueBuilderImpl<ListValueBuilder<IntValue>>(
+          value_factory, type_factory.GetIntType()))));
+  ASSERT_NO_FATAL_FAILURE(
+      ((TestListValueBuilderImpl<ListValueBuilder<UintValue>>(
+          value_factory, type_factory.GetUintType()))));
+  ASSERT_NO_FATAL_FAILURE(
+      ((TestListValueBuilderImpl<ListValueBuilder<DoubleValue>>(
+          value_factory, type_factory.GetDoubleType()))));
+  ASSERT_NO_FATAL_FAILURE(
+      ((TestListValueBuilderImpl<ListValueBuilder<DurationValue>>(
+          value_factory, type_factory.GetDurationType()))));
+  ASSERT_NO_FATAL_FAILURE(
+      ((TestListValueBuilderImpl<ListValueBuilder<TimestampValue>>(
+          value_factory, type_factory.GetTimestampType()))));
+  ASSERT_NO_FATAL_FAILURE(((TestListValueBuilderImpl<ListValueBuilder<Value>>(
+      value_factory, type_factory.GetDynType()))));
+#else
+  GTEST_SKIP() << "RTTI unavailable";
+#endif
 }
 
 }  // namespace

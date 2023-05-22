@@ -19,9 +19,12 @@
 #include <cstdint>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/memory.h"
@@ -31,10 +34,14 @@ namespace cel {
 
 class MemoryManager;
 class ListValue;
+class ValueFactory;
+class ListValueBuilderInterface;
 
 // ListType represents a list type. A list is a sequential container where each
 // element is the same type.
-class ListType : public Type {
+class ListType
+    : public Type,
+      public base_internal::EnableHandleFromThis<ListType, ListType> {
  public:
   static constexpr Kind kKind = Kind::kList;
 
@@ -55,6 +62,10 @@ class ListType : public Type {
     ABSL_DCHECK(Is(type)) << "cannot cast " << type.name() << " to list";
     return static_cast<const ListType&>(type);
   }
+
+  absl::StatusOr<UniqueRef<ListValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class Type;

@@ -15,10 +15,14 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_
 #define THIRD_PARTY_CEL_CPP_BASE_HANDLE_H_
 
+#include <memory>
+#include <string>
 #include <type_traits>
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/base/casts.h"
+#include "absl/base/macros.h"
 #include "absl/log/absl_check.h"
 #include "base/internal/data.h"
 #include "base/internal/handle.h"  // IWYU pragma: export
@@ -302,6 +306,52 @@ struct HandleFactory {
   template <typename F, typename... Args>
   static std::enable_if_t<IsDerivedHeapDataV<F>, Handle<T>> Make(
       MemoryManager& memory_manager, Args&&... args);
+
+  // Constructs a handle from `*this` for classes which extend `Type` and
+  // `Value`.
+  template <typename F>
+  static Handle<T> FromThis(F& self) {
+    if constexpr (std::is_base_of_v<InlineData, F>) {
+      // If F is derived from InlineData, we don't need to perform runtime
+      // checks. This is selected at compile time.
+      return Handle<T>(*absl::bit_cast<const Handle<F>*>(
+          static_cast<Data*>(std::addressof(self))));
+    }
+    if constexpr (std::is_base_of_v<HeapData, F>) {
+      // If F is derived from HeapData, we don't need to perform runtime checks.
+      // This is selected at compile time.
+      if (Metadata::IsReferenceCounted(self)) {
+        Metadata::Ref(self);
+        return Handle<T>(kInPlaceReferenceCounted, self);
+      }
+      // Must be arena allocated.
+      ABSL_ASSERT(Metadata::IsArenaAllocated(self));
+      return Handle<T>(kInPlaceArenaAllocated, self);
+    }
+    // Perform runtime checks, F is not derived from InlineData or HeapData so
+    // it must be a abstract base class.
+    if (Metadata::IsStoredInline(self)) {
+      return Handle<T>(*absl::bit_cast<const Handle<F>*>(
+          static_cast<Data*>(std::addressof(self))));
+    }
+    // Must be heap allocated.
+    if (Metadata::IsReferenceCounted(self)) {
+      Metadata::Ref(self);
+      return Handle<T>(kInPlaceReferenceCounted, self);
+    }
+    // Must be arena allocated.
+    ABSL_ASSERT(Metadata::IsArenaAllocated(self));
+    return Handle<T>(kInPlaceArenaAllocated, self);
+  }
+};
+
+template <typename BaseT, typename DerivedT>
+struct EnableHandleFromThis {
+ protected:
+  Handle<BaseT> handle_from_this() const {
+    return HandleFactory<BaseT>::FromThis(
+        const_cast<DerivedT&>(*reinterpret_cast<const DerivedT*>(this)));
+  }
 };
 
 }  // namespace cel::base_internal

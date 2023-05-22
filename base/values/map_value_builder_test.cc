@@ -25,6 +25,8 @@ namespace {
 
 using testing::IsFalse;
 using testing::IsTrue;
+using testing::NotNull;
+using testing::WhenDynamicCastTo;
 using cel::internal::IsOkAndHolds;
 
 TEST(MapValueBuilder, UnspecializedUnspecialized) {
@@ -766,6 +768,141 @@ TEST(MapValueBuilder, UintTimestamp) {
       "{0u: 1970-01-01T00:00:00Z, 1u: 1970-01-01T00:00:00Z, 2u: "
       "1970-01-01T00:00:01Z}",
       "[0u, 1u, 2u]");
+}
+
+template <typename I, typename K, typename V>
+void TestMapValueBuilderImpl(ValueFactory& value_factory, const Handle<K>& key,
+                             const Handle<V>& value) {
+  ASSERT_OK_AND_ASSIGN(auto type,
+                       value_factory.type_factory().CreateMapType(key, value));
+  ASSERT_OK_AND_ASSIGN(auto builder, type->NewValueBuilder(value_factory));
+  EXPECT_THAT((&builder.get()), WhenDynamicCastTo<I*>(NotNull()));
+}
+
+TEST(MapValueBuilder, Dynamic) {
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+#ifdef ABSL_INTERNAL_HAS_RTTI
+  // (BoolValue, ...)
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, BoolValue>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetBoolType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, IntValue>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetIntType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, UintValue>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetUintType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, DoubleValue>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetDoubleType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, DurationValue>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetDurationType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, TimestampValue>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetTimestampType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<BoolValue, Value>>(
+          value_factory, type_factory.GetBoolType(),
+          type_factory.GetDynType())));
+  // (IntValue, ...)
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, BoolValue>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetBoolType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, IntValue>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetIntType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, UintValue>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetUintType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, DoubleValue>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetDoubleType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, DurationValue>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetDurationType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, TimestampValue>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetTimestampType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<IntValue, Value>>(
+          value_factory, type_factory.GetIntType(),
+          type_factory.GetDynType())));
+  // (UintValue, ...)
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, BoolValue>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetBoolType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, IntValue>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetIntType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, UintValue>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetUintType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, DoubleValue>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetDoubleType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, DurationValue>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetDurationType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, TimestampValue>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetTimestampType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<UintValue, Value>>(
+          value_factory, type_factory.GetUintType(),
+          type_factory.GetDynType())));
+  // (StringValue, ...)
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, BoolValue>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetBoolType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, IntValue>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetIntType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, UintValue>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetUintType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, DoubleValue>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetDoubleType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, DurationValue>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetDurationType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, TimestampValue>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetTimestampType())));
+  ASSERT_NO_FATAL_FAILURE(
+      (TestMapValueBuilderImpl<MapValueBuilder<Value, Value>>(
+          value_factory, type_factory.GetStringType(),
+          type_factory.GetDynType())));
+#else
+  GTEST_SKIP() << "RTTI unavailable";
+#endif
 }
 
 }  // namespace

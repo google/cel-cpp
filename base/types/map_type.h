@@ -19,9 +19,12 @@
 #include <cstdint>
 #include <string>
 
+#include "absl/base/attributes.h"
 #include "absl/log/absl_check.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/memory.h"
@@ -32,10 +35,13 @@ namespace cel {
 class MemoryManager;
 class TypeFactory;
 class MapValue;
+class ValueFactory;
+class MapValueBuilderInterface;
 
 // MapType represents a map type. A map is container of key and value pairs
 // where each key appears at most once.
-class MapType : public Type {
+class MapType : public Type,
+                public base_internal::EnableHandleFromThis<MapType, MapType> {
  public:
   static constexpr Kind kKind = Kind::kMap;
 
@@ -59,6 +65,10 @@ class MapType : public Type {
 
   // Returns the type of the values in the map.
   const Handle<Type>& value() const;
+
+  absl::StatusOr<UniqueRef<MapValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
   friend class Type;

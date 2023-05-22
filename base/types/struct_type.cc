@@ -23,6 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
+#include "base/values/struct_value_builder.h"
 #include "internal/overloaded.h"
 #include "internal/status_macros.h"
 
@@ -105,6 +106,11 @@ StructType::NewFieldIterator(MemoryManager& memory_manager) const {
   return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewFieldIterator, memory_manager);
 }
 
+absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+StructType::NewValueBuilder(ValueFactory& value_factory) const {
+  return CEL_INTERNAL_STRUCT_TYPE_DISPATCH(NewValueBuilder, value_factory);
+}
+
 #undef CEL_INTERNAL_STRUCT_TYPE_DISPATCH
 
 struct StructType::FindFieldVisitor final {
@@ -182,12 +188,28 @@ LegacyStructType::FindFieldByNumber(TypeManager& type_manager,
       "Legacy struct type does not support type introspection");
 }
 
+absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+LegacyStructType::NewValueBuilder(ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "StructType::NewValueBuilder is unimplemented. Perhaps the value library "
+      "is not linked into your binary or StructType::NewValueBuilder was not "
+      "overridden?");
+}
+
 AbstractStructType::AbstractStructType()
     : StructType(), base_internal::HeapData(kKind) {
   // Ensure `Type*` and `base_internal::HeapData*` are not thunked.
   ABSL_ASSERT(
       reinterpret_cast<uintptr_t>(static_cast<Type*>(this)) ==
       reinterpret_cast<uintptr_t>(static_cast<base_internal::HeapData*>(this)));
+}
+
+absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+AbstractStructType::NewValueBuilder(ValueFactory& value_factory) const {
+  return absl::UnimplementedError(
+      "StructType::NewValueBuilder is unimplemented. Perhaps the value library "
+      "is not linked into your binary or StructType::NewValueBuilder was not "
+      "overridden?");
 }
 
 }  // namespace base_internal

@@ -43,6 +43,8 @@ struct LegacyStructValueAccess;
 }
 
 class ValueFactory;
+class StructValueBuilder;
+class StructValueBuilderInterface;
 
 // StructValue represents an instance of cel::StructType.
 class StructValue : public Value {

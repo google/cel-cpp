@@ -27,6 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
+#include "base/handle.h"
 #include "base/internal/data.h"
 #include "base/kind.h"
 #include "base/memory.h"
@@ -43,6 +44,8 @@ class MemoryManager;
 class StructValue;
 class TypedStructValueFactory;
 class TypeManager;
+class StructValueBuilderInterface;
+class ValueFactory;
 
 // StructType represents an struct type. An struct is a set of fields
 // that can be looked up by name and/or number.
@@ -132,6 +135,10 @@ class StructType : public Type {
 
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
+  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
   static FieldId MakeFieldId(absl::string_view name) { return FieldId(name); }
@@ -256,6 +263,10 @@ class LegacyStructType final : public StructType, public InlineData {
   absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
+  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
+
  private:
   static constexpr uintptr_t kMetadata =
       kStoredInline | kTrivial | (static_cast<uintptr_t>(kKind) << kKindShift);
@@ -279,7 +290,10 @@ class LegacyStructType final : public StructType, public InlineData {
   uintptr_t msg_;
 };
 
-class AbstractStructType : public StructType, public HeapData {
+class AbstractStructType
+    : public StructType,
+      public HeapData,
+      public EnableHandleFromThis<StructType, AbstractStructType> {
  public:
   static bool Is(const Type& type) {
     return StructType::Is(type) &&
@@ -312,6 +326,10 @@ class AbstractStructType : public StructType, public HeapData {
 
   virtual absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
+
+  virtual absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+  NewValueBuilder(ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND)
+      const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  protected:
   AbstractStructType();

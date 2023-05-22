@@ -119,9 +119,9 @@ cc_test(
     ],
     deps = [
         ":type",
+        "//base:data",
         "//base:kind",
         "//base:memory",
-        "//base:type",
         "//base/internal:memory_manager_testing",
         "//base/testing:type_matchers",
         "//extensions/protobuf/internal:testing",
