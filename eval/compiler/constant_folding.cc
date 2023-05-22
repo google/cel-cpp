@@ -73,7 +73,7 @@ Handle<Value> CreateLegacyListBackedHandle(
 }
 
 struct MakeConstantArenaSafeVisitor {
-  // TODO(issues/5): make the AST to runtime Value conversion work with
+  // TODO(uncreated-issue/33): make the AST to runtime Value conversion work with
   // non-arena based cel::MemoryManager.
   google::protobuf::Arena* arena;
 
@@ -165,7 +165,7 @@ class ConstantFoldingTransform {
     }
 
     bool operator()(const Ident& ident) {
-      // TODO(issues/5): this could be updated to use the rewrite visitor
+      // TODO(uncreated-issue/34): this could be updated to use the rewrite visitor
       // to make changes in-place instead of manually copy. This would avoid
       // having to understand how to copy all of the information in the original
       // AST.
@@ -281,7 +281,7 @@ class ConstantFoldingTransform {
       bool all_constant = true;
       for (int i = 0; i < list_size; i++) {
         auto& element = list_expr.mutable_elements().emplace_back();
-        // TODO(issues/5): Add support for CEL optional.
+        // TODO(uncreated-issue/34): Add support for CEL optional.
         all_constant =
             transform_.Transform(expr_.list_expr().elements()[i], element) &&
             all_constant;
@@ -292,7 +292,7 @@ class ConstantFoldingTransform {
       }
 
       if (list_size == 0) {
-        // TODO(issues/5): need a more robust fix to support generic
+        // TODO(uncreated-issue/35): need a more robust fix to support generic
         // comprehensions, but this will allow comprehension list append
         // optimization to work to prevent quadratic memory consumption for
         // map/filter.
@@ -320,7 +320,7 @@ class ConstantFoldingTransform {
         auto& new_entry = struct_expr.mutable_entries().emplace_back();
         new_entry.set_id(entry.id());
         struct {
-          // TODO(issues/5): Add support for CEL optional.
+          // TODO(uncreated-issue/34): Add support for CEL optional.
           ConstantFoldingTransform& transform;
           const CreateStruct::Entry& entry;
           CreateStruct::Entry& new_entry;
@@ -372,7 +372,7 @@ class ConstantFoldingTransform {
 
   // Owns constant values created during folding
   Arena* arena_;
-  // TODO(issues/5): make this support generic memory manager and value
+  // TODO(uncreated-issue/33): make this support generic memory manager and value
   // factory. This is only safe for interop where we know an arena is always
   // available.
   extensions::ProtoMemoryManager memory_manager_;
@@ -433,7 +433,7 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
     }
     IsConst operator()(const CreateList& create_list) {
       if (create_list.elements().empty()) {
-        // TODO(issues/5): Don't fold for empty list to allow comprehension
+        // TODO(uncreated-issue/35): Don't fold for empty list to allow comprehension
         // list append optimization.
         return IsConst::kNonConst;
       }

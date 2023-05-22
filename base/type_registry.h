@@ -19,7 +19,7 @@
 
 namespace cel {
 
-// TODO(issues/5): define interface and consolidate with CelTypeRegistry
+// TODO(uncreated-issue/8): define interface and consolidate with CelTypeRegistry
 class TypeRegistry : public TypeProvider {};
 
 }  // namespace cel

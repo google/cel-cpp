@@ -656,7 +656,7 @@ INSTANTIATE_TEST_SUITE_P(
                  // This should fail before getting to the equal operator.
                  {"no_such_identifier == 1",
                   EqualityTestCase::ErrorKind::kMissingIdentifier},
-                 // TODO(issues/5): The C++ evaluator allows creating maps
+                 // TODO(uncreated-issue/6): The C++ evaluator allows creating maps
                  // with error values. Propagate an error instead of a false
                  // result.
                  {"{1: no_such_identifier} == {1: 1}",
@@ -684,7 +684,7 @@ INSTANTIATE_TEST_SUITE_P(
                  // This should fail before getting to the equal operator.
                  {"no_such_identifier != 1",
                   EqualityTestCase::ErrorKind::kMissingIdentifier},
-                 // TODO(issues/5): The C++ evaluator allows creating maps
+                 // TODO(uncreated-issue/6): The C++ evaluator allows creating maps
                  // with error values. Propagate an error instead of a false
                  // result.
                  {"{1: no_such_identifier} != {1: 1}",

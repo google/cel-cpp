@@ -121,7 +121,7 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   cel::ValueFactory& value_factory() { return value_factory_; }
 
  private:
-  // TODO(issues/5): State owns a ProtoMemoryManager to adapt from the client
+  // TODO(uncreated-issue/1): State owns a ProtoMemoryManager to adapt from the client
   // provided arena. In the future, clients will have to maintain the particular
   // manager they want to use for evaluation.
   cel::extensions::ProtoMemoryManager memory_manager_;

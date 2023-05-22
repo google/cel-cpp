@@ -12,7 +12,7 @@
 
 namespace google::api::expr::runtime {
 
-// TODO(issues/5): move this somewhere else
+// TODO(uncreated-issue/29): move this somewhere else
 cel::Handle<cel::Value> ConvertConstant(
     const cel::ast::internal::Constant& const_expr);
 

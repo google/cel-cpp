@@ -14,7 +14,7 @@
 //
 // Definitions for template helpers to wrap C++ functions as CEL extension
 // function implementations.
-// TODO(issues/5): Add generalized version in addition to the common cases
+// TODO(uncreated-issue/20): Add generalized version in addition to the common cases
 // of unary/binary functions.
 
 #ifndef THIRD_PARTY_CEL_CPP_BASE_FUNCTION_ADAPTER_H_

@@ -21,7 +21,7 @@
 namespace google::api::expr::runtime {
 
 // Register string related widely used extension functions.
-// TODO(issues/5): Move String extension function to
+// TODO(uncreated-issue/22): Move String extension function to
 // extensions
 absl::Status RegisterStringExtensionFunctions(
     CelFunctionRegistry* registry,

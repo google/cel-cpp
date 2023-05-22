@@ -94,7 +94,7 @@ class MapValueBuilder;
 
 namespace base_internal {
 
-// TODO(issues/5): add checks ensuring keys and values match their expected
+// TODO(uncreated-issue/21): add checks ensuring keys and values match their expected
 // types for all operations.
 
 template <typename T>

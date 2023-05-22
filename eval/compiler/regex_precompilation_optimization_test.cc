@@ -166,7 +166,7 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeCompoundExpr) {
 class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
  public:
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
-    // TODO(issues/5): This applies to either version of const folding.
+    // TODO(uncreated-issue/27): This applies to either version of const folding.
     // Update when default is changed to new version.
     builder_.set_constant_folding(true, &arena_);
   }

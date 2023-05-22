@@ -146,7 +146,7 @@ void ArenaBlockFree(void* pointer, size_t size) {
 #else
   static_cast<void>(size);
   if (ABSL_PREDICT_FALSE(!VirtualFree(pointer, 0, MEM_RELEASE))) {
-    // TODO(issues/5): print the error
+    // TODO(uncreated-issue/8): print the error
     std::abort();
   }
 #endif
@@ -220,7 +220,7 @@ class DefaultArenaMemoryManager final : public ArenaMemoryManager {
   absl::Mutex mutex_;
   std::vector<ArenaBlock> blocks_ ABSL_GUARDED_BY(mutex_);
   std::vector<std::pair<void*, void (*)(void*)>> owned_ ABSL_GUARDED_BY(mutex_);
-  // TODO(issues/5): we could use a priority queue to keep track of any
+  // TODO(uncreated-issue/8): we could use a priority queue to keep track of any
   // unallocated space at the end blocks.
 };
 

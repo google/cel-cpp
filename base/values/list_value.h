@@ -61,7 +61,7 @@ class ListValue : public Value {
     return static_cast<const ListValue&>(value);
   }
 
-  // TODO(issues/5): implement iterators so we can have cheap concated lists
+  // TODO(uncreated-issue/10): implement iterators so we can have cheap concated lists
 
   Handle<ListType> type() const;
 

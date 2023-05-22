@@ -538,7 +538,7 @@ bool MergeFromWithSerializeFallback(const google::protobuf::Message& value,
     field.MergeFrom(value);
     return true;
   }
-  // TODO(issues/5): this indicates means we're mixing dynamic messages with
+  // TODO(uncreated-issue/26): this indicates means we're mixing dynamic messages with
   // generated messages. This is expected for WKTs where CEL explicitly requires
   // wire format compatibility, but this may not be the expected behavior for
   // other types.

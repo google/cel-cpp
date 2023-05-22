@@ -79,7 +79,7 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMessage::DoEvaluate(
     }
   }
 
-  // TODO(issues/5): switch to new cel::StructValue in phase 2
+  // TODO(uncreated-issue/32): switch to new cel::StructValue in phase 2
   CEL_ASSIGN_OR_RETURN(MessageWrapper::Builder instance,
                        type_adapter_->NewInstance(frame->memory_manager()));
 
@@ -131,7 +131,7 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
     }
   }
 
-  // TODO(issues/5): switch to new cel::MapValue in phase 2
+  // TODO(uncreated-issue/32): switch to new cel::MapValue in phase 2
   auto* map_builder = google::protobuf::Arena::Create<CelMapBuilder>(
       cel::extensions::ProtoMemoryManager::CastToProtoArena(
           frame->memory_manager()));

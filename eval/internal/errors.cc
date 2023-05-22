@@ -88,7 +88,7 @@ const absl::Status* CreateMissingAttributeError(
 
 const absl::Status* CreateMissingAttributeError(
     cel::MemoryManager& manager, absl::string_view missing_attribute_path) {
-  // TODO(issues/5): assume arena-style allocator while migrating
+  // TODO(uncreated-issue/1): assume arena-style allocator while migrating
   // to new value type.
   return CreateMissingAttributeError(
       extensions::ProtoMemoryManager::CastToProtoArena(manager),

@@ -14,7 +14,7 @@
 //
 // Type definitions for internal AST representation.
 // CEL users should not directly depend on the definitions here.
-// TODO(issues/5): move to base/internal
+// TODO(uncreated-issue/31): move to base/internal
 #ifndef THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_
 #define THIRD_PARTY_CEL_CPP_BASE_AST_INTERNAL_H_
 
@@ -54,7 +54,7 @@ struct Bytes {
 // `true`, `null`.
 //
 // (--
-// TODO(issues/5): Extend or replace the constant with a canonical Value
+// TODO(uncreated-issue/9): Extend or replace the constant with a canonical Value
 // message that can hold any constant object representation supplied or
 // produced at evaluation time.
 // --)
@@ -302,7 +302,7 @@ class Select {
 // A call expression, including calls to predefined functions and operators.
 //
 // For example, `value == 10`, `size(map_value)`.
-// (-- TODO(issues/5): Convert built-in globals to instance methods --)
+// (-- TODO(uncreated-issue/11): Convert built-in globals to instance methods --)
 class Call {
  public:
   Call() = default;
@@ -349,7 +349,7 @@ class Call {
 // Lists may either be homogenous, e.g. `[1, 2, 3]`, or heterogeneous, e.g.
 // `dyn([1, 'hello', 2.0])`
 // (--
-// TODO(issues/5): Determine how to disable heterogeneous types as a feature
+// TODO(uncreated-issue/12): Determine how to disable heterogeneous types as a feature
 // of type-checking rather than through the language construct 'dyn'.
 // --)
 class CreateList {
@@ -527,7 +527,7 @@ class CreateStruct {
 // ```
 //
 // (--
-// TODO(issues/5): ensure comprehensions work equally well on maps and
+// TODO(uncreated-issue/13): ensure comprehensions work equally well on maps and
 // messages.
 // --)
 class Comprehension {
@@ -942,7 +942,7 @@ class SourceInfo {
   // `id` the `line_offsets[i] < id_positions[id] < line_offsets[i+1]`. The
   // column may be derivd from `id_positions[id] - line_offsets[i]`.
   //
-  // TODO(issues/5): clarify this documentation
+  // TODO(uncreated-issue/14): clarify this documentation
   std::vector<int32_t> line_offsets_;
 
   // A map from the parse node id (e.g. `Expr.id`) to the code point offset
@@ -1019,7 +1019,7 @@ enum class PrimitiveType {
 
 // Well-known protobuf types treated with first-class support in CEL.
 //
-// TODO(issues/5): represent well-known via abstract types (or however)
+// TODO(uncreated-issue/15): represent well-known via abstract types (or however)
 //   they will be named.
 enum class WellKnownType {
   // Unspecified type.
@@ -1157,7 +1157,7 @@ class FunctionType {
 
 // Application defined abstract type.
 //
-// TODO(issues/5): decide on final naming for this.
+// TODO(uncreated-issue/15): decide on final naming for this.
 class AbstractType {
  public:
   AbstractType() = default;
@@ -1260,7 +1260,7 @@ using TypeKind =
 // Analogous to google::api::expr::v1alpha1::Type.
 // Represents a CEL type.
 //
-// TODO(issues/5): align with value.proto
+// TODO(uncreated-issue/15): align with value.proto
 class Type {
  public:
   Type() = default;

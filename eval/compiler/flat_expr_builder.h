@@ -44,7 +44,7 @@ class FlatExprBuilder : public CelExpressionBuilder {
 
   // Toggle constant folding optimization. By default it is not enabled.
   // The provided arena is used to hold the generated constants.
-  // TODO(issues/5): default enable the updated version then deprecate this
+  // TODO(uncreated-issue/27): default enable the updated version then deprecate this
   // function.
   void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
     constant_folding_ = enabled;

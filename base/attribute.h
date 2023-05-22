@@ -185,7 +185,7 @@ class Attribute final {
       : impl_(std::make_shared<Impl>(std::move(variable_name),
                                      std::move(qualifier_path))) {}
 
-  // TODO(issues/5): remove this constructor as it pulls in proto deps
+  // TODO(uncreated-issue/16): remove this constructor as it pulls in proto deps
   Attribute(const google::api::expr::v1alpha1::Expr& variable,
             std::vector<AttributeQualifier> qualifier_path);
 

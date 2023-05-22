@@ -31,7 +31,7 @@ namespace cel {
 // the instantiation of type implementations, loading of type implementations,
 // and registering type implementations.
 //
-// TODO(issues/5): more comments after solidifying role
+// TODO(uncreated-issue/8): more comments after solidifying role
 class TypeManager final {
  public:
   TypeManager(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,

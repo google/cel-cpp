@@ -47,7 +47,7 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
       (options.enable_qualified_identifier_rewrites)
           ? ReferenceResolverOption::kAlways
           : ReferenceResolverOption::kCheckedOnly));
-  // TODO(issues/5): These need to be abstracted to avoid bringing in too
+  // TODO(uncreated-issue/27): These need to be abstracted to avoid bringing in too
   // many build dependencies by default.
   builder->set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);

@@ -31,7 +31,7 @@ namespace cel {
 //
 // Clients should prefer to use one of the concrete implementations provided by
 // the CEL library rather than implementing this interface directly.
-// TODO(issues/5): After finalizing, make this public and add instructions
+// TODO(uncreated-issue/40): After finalizing, make this public and add instructions
 // for clients to migrate.
 class ActivationInterface {
  public:

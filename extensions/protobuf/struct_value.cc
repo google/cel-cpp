@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO(issues/5): get test coverage closer to 100% before using
+// TODO(uncreated-issue/30): get test coverage closer to 100% before using
 
 #include "extensions/protobuf/struct_value.h"
 

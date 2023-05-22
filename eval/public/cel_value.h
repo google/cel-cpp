@@ -394,7 +394,7 @@ class CelValue {
 
   // Invokes op() with the active value, and returns the result.
   // All overloads of op() must have the same return type.
-  // TODO(issues/5): Move to CelProtoWrapper to retain the assumed
+  // TODO(uncreated-issue/2): Move to CelProtoWrapper to retain the assumed
   // google::protobuf::Message variant version behavior for client code.
   template <class ReturnType, class Op>
   ReturnType Visit(Op&& op) const {
@@ -414,7 +414,7 @@ class CelValue {
 
   // Factory for message wrapper. This should only be used by internal
   // libraries.
-  // TODO(issues/5): exposed for testing while wiring adapter APIs. Should
+  // TODO(uncreated-issue/2): exposed for testing while wiring adapter APIs. Should
   // make private visibility after refactors are done.
   static CelValue CreateMessageWrapper(MessageWrapper value) {
     CheckNullPointer(value.message_ptr(), Type::kMessage);
@@ -444,7 +444,7 @@ class CelValue {
 
   // Specialization for MessageWrapper to support legacy behavior while
   // migrating off hard dependency on google::protobuf::Message.
-  // TODO(issues/5): Move to CelProtoWrapper.
+  // TODO(uncreated-issue/2): Move to CelProtoWrapper.
   template <typename T>
   struct AssignerOp<
       T, std::enable_if_t<std::is_same_v<T, const google::protobuf::Message*>>> {

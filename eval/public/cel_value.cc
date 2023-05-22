@@ -227,7 +227,7 @@ const std::string CelValue::DebugString() const {
 CelValue CreateErrorValue(cel::MemoryManager& manager,
                           absl::string_view message,
                           absl::StatusCode error_code) {
-  // TODO(issues/5): assume arena-style allocator while migrating to new
+  // TODO(uncreated-issue/1): assume arena-style allocator while migrating to new
   // value type.
   Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(manager);
   return CreateErrorValue(arena, message, error_code);
@@ -235,7 +235,7 @@ CelValue CreateErrorValue(cel::MemoryManager& manager,
 
 CelValue CreateErrorValue(cel::MemoryManager& manager,
                           const absl::Status& status) {
-  // TODO(issues/5): assume arena-style allocator while migrating to new
+  // TODO(uncreated-issue/1): assume arena-style allocator while migrating to new
   // value type.
   Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(manager);
   return CreateErrorValue(arena, status);
@@ -302,7 +302,7 @@ CelValue CreateMissingAttributeError(google::protobuf::Arena* arena,
 
 CelValue CreateMissingAttributeError(cel::MemoryManager& manager,
                                      absl::string_view missing_attribute_path) {
-  // TODO(issues/5): assume arena-style allocator while migrating
+  // TODO(uncreated-issue/1): assume arena-style allocator while migrating
   // to new value type.
   return CelValue::CreateError(
       interop::CreateMissingAttributeError(manager, missing_attribute_path));

@@ -76,13 +76,13 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
       frame->memory_manager());
 
   if (immutable_) {
-    // TODO(issues/5): switch to new cel::ListValue in phase 2
+    // TODO(uncreated-issue/23): switch to new cel::ListValue in phase 2
     result =
         CreateLegacyListValue(google::protobuf::Arena::Create<ContainerBackedListImpl>(
             arena,
             ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
   } else {
-    // TODO(issues/5): switch to new cel::ListValue in phase 2
+    // TODO(uncreated-issue/23): switch to new cel::ListValue in phase 2
     result = CreateLegacyListValue(google::protobuf::Arena::Create<MutableListImpl>(
         arena, ModernValueToLegacyValueOrDie(frame->memory_manager(), args)));
   }

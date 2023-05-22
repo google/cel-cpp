@@ -135,7 +135,7 @@ class ResolveableEnumType final : public cel::EnumType {
   }
 
   std::string name_;
-  // TODO(issues/5): this could be indexed by name and/or number if strong
+  // TODO(uncreated-issue/42): this could be indexed by name and/or number if strong
   // enum typing is needed at runtime.
   std::vector<Enumerator> enumerators_;
 };

@@ -31,7 +31,7 @@ absl::Status InvalidIterationStateError() {
 
 }  // namespace
 
-// TODO(issues/5): cel::TypeFactory and family are setup here assuming legacy
+// TODO(uncreated-issue/28): cel::TypeFactory and family are setup here assuming legacy
 // value interop. Later, these will need to be configurable by clients.
 CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
     size_t value_stack_size, google::protobuf::Arena* arena)

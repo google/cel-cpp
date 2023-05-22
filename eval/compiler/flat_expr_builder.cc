@@ -267,7 +267,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     if (!progress_status_.ok()) {
       return;
     }
-    // TODO(issues/5): this will be generalized later.
+    // TODO(uncreated-issue/27): this will be generalized later.
     if (program_optimizers_.empty()) {
       return;
     }
@@ -1177,7 +1177,7 @@ FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr) const {
   return CreateExpression(checked_expr, /*warnings=*/nullptr);
 }
 
-// TODO(issues/5): move ast conversion to client responsibility and
+// TODO(uncreated-issue/31): move ast conversion to client responsibility and
 // update pre-processing steps to work without mutating the input AST.
 absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpressionImpl(

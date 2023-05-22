@@ -705,7 +705,7 @@ absl::Status RegisterSetMembershipFunctions(CelFunctionRegistry* registry,
   return absl::OkStatus();
 }
 
-// TODO(issues/5): after refactors for the new value type are done, move this
+// TODO(uncreated-issue/36): after refactors for the new value type are done, move this
 // to a separate build target to enable subset environments to not depend on
 // RE2.
 absl::Status RegisterRegexFunctions(CelFunctionRegistry* registry,
@@ -1426,7 +1426,7 @@ absl::Status RegisterCheckedTimeArithmeticFunctions(
 
 absl::Status RegisterUncheckedTimeArithmeticFunctions(
     CelFunctionRegistry* registry) {
-  // TODO(issues/5): deprecate unchecked time math functions when clients no
+  // TODO(uncreated-issue/37): deprecate unchecked time math functions when clients no
   // longer depend on them.
   CEL_RETURN_IF_ERROR(registry->Register(
       BinaryFunctionAdapter<Handle<Value>, absl::Time, absl::Duration>::

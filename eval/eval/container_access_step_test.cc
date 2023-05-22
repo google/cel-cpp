@@ -425,7 +425,7 @@ TEST_F(ContainerAccessHeterogeneousLookupsTest, DoubleListIndexNotAnInt) {
 
 // treat uint as uint before trying coercion to signed int.
 TEST_F(ContainerAccessHeterogeneousLookupsTest, UintKeyAsUint) {
-  // TODO(issues/5): Map creation should error here instead of permitting
+  // TODO(uncreated-issue/4): Map creation should error here instead of permitting
   // mixed key types with equivalent values.
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u, 1: 2}[1u]"));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(
@@ -554,7 +554,7 @@ TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest,
 }
 
 TEST_F(ContainerAccessHeterogeneousLookupsDisabledTest, UintKeyAsUint) {
-  // TODO(issues/5): Map creation should error here instead of permitting
+  // TODO(uncreated-issue/4): Map creation should error here instead of permitting
   // mixed key types with equivalent values.
   ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse("{1u: 2u, 1: 2}[1u]"));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder_->CreateExpression(

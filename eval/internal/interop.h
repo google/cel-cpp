@@ -122,7 +122,7 @@ Handle<Value> CreateDurationValue(absl::Duration value, bool unchecked = false);
 
 // Create a modern timestamp value, without validation. Should only be used
 // during interoperation.
-// TODO(issues/5): Consider adding a check that the timestamp is in the
+// TODO(uncreated-issue/39): Consider adding a check that the timestamp is in the
 // supported range for CEL.
 Handle<TimestampValue> CreateTimestampValue(absl::Time value);
 

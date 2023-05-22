@@ -52,7 +52,7 @@ struct UnhandledType : std::false_type {};
 // Adapts the type param Type to the appropriate Kind.
 // A static assertion fails if the provided type does not map to a cel::Value
 // kind.
-// TODO(issues/5): Add support for remaining kinds.
+// TODO(uncreated-issue/20): Add support for remaining kinds.
 template <typename Type>
 constexpr Kind AdaptedKind() {
   static_assert(UnhandledType<Type>::value,
