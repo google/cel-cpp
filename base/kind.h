@@ -15,14 +15,18 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 #define THIRD_PARTY_CEL_CPP_BASE_KIND_H_
 
+#include <type_traits>
+
 #include "absl/base/attributes.h"
+#include "absl/base/casts.h"
+#include "absl/log/absl_check.h"
 #include "absl/strings/string_view.h"
 
 namespace cel {
 
 enum class Kind /* : uint8_t */ {
   // Must match legacy CelValue::Type.
-  kNullType = 0,
+  kNull = 0,
   kBool,
   kInt,
   kUint,
@@ -46,6 +50,7 @@ enum class Kind /* : uint8_t */ {
   kOpaque,
 
   // Legacy aliases, deprecated do not use.
+  kNullType = kNull,
   kInt64 = kInt,
   kUint64 = kUint,
   kMessage = kStruct,
@@ -58,6 +63,155 @@ enum class Kind /* : uint8_t */ {
 };
 
 ABSL_ATTRIBUTE_PURE_FUNCTION absl::string_view KindToString(Kind kind);
+
+// `TypeKind` is a subset of `Kind`, representing all valid `Kind` for `Type`.
+// All `TypeKind` are valid `Kind`, but it is not guaranteed that all `Kind` are
+// valid `TypeKind`.
+enum class TypeKind : std::underlying_type_t<Kind> {
+  kNull = static_cast<int>(Kind::kNull),
+  kBool = static_cast<int>(Kind::kBool),
+  kInt = static_cast<int>(Kind::kInt),
+  kUint = static_cast<int>(Kind::kUint),
+  kDouble = static_cast<int>(Kind::kDouble),
+  kString = static_cast<int>(Kind::kString),
+  kBytes = static_cast<int>(Kind::kBytes),
+  kStruct = static_cast<int>(Kind::kStruct),
+  kDuration = static_cast<int>(Kind::kDuration),
+  kTimestamp = static_cast<int>(Kind::kTimestamp),
+  kList = static_cast<int>(Kind::kList),
+  kMap = static_cast<int>(Kind::kMap),
+  kUnknown = static_cast<int>(Kind::kUnknown),
+  kType = static_cast<int>(Kind::kType),
+  kError = static_cast<int>(Kind::kError),
+  kAny = static_cast<int>(Kind::kAny),
+  kEnum = static_cast<int>(Kind::kEnum),
+  kDyn = static_cast<int>(Kind::kDyn),
+  kWrapper = static_cast<int>(Kind::kWrapper),
+  kOpaque = static_cast<int>(Kind::kOpaque),
+
+  // Legacy aliases, deprecated do not use.
+  kNullType = kNull,
+  kInt64 = kInt,
+  kUint64 = kUint,
+  kMessage = kStruct,
+  kUnknownSet = kUnknown,
+  kCelType = kType,
+
+  // INTERNAL: Do not exceed 63. Implementation details rely on the fact that
+  // we can store `Kind` using 6 bits.
+  kNotForUseWithExhaustiveSwitchStatements =
+      static_cast<int>(Kind::kNotForUseWithExhaustiveSwitchStatements),
+};
+
+inline Kind TypeKindToKind(TypeKind kind) { return absl::bit_cast<Kind>(kind); }
+
+ABSL_ATTRIBUTE_PURE_FUNCTION bool KindIsTypeKind(Kind kind);
+
+inline bool operator==(Kind lhs, TypeKind rhs) {
+  return lhs == TypeKindToKind(rhs);
+}
+
+inline bool operator==(TypeKind lhs, Kind rhs) {
+  return TypeKindToKind(lhs) == rhs;
+}
+
+inline bool operator!=(Kind lhs, TypeKind rhs) { return !operator==(lhs, rhs); }
+
+inline bool operator!=(TypeKind lhs, Kind rhs) { return !operator==(lhs, rhs); }
+
+// `ValueKind` is a subset of `Kind`, representing all valid `Kind` for `Value`.
+// All `ValueKind` are valid `Kind`, but it is not guaranteed that all `Kind`
+// are valid `ValueKind`.
+enum class ValueKind : std::underlying_type_t<Kind> {
+  kNull = static_cast<int>(Kind::kNull),
+  kBool = static_cast<int>(Kind::kBool),
+  kInt = static_cast<int>(Kind::kInt),
+  kUint = static_cast<int>(Kind::kUint),
+  kDouble = static_cast<int>(Kind::kDouble),
+  kString = static_cast<int>(Kind::kString),
+  kBytes = static_cast<int>(Kind::kBytes),
+  kStruct = static_cast<int>(Kind::kStruct),
+  kDuration = static_cast<int>(Kind::kDuration),
+  kTimestamp = static_cast<int>(Kind::kTimestamp),
+  kList = static_cast<int>(Kind::kList),
+  kMap = static_cast<int>(Kind::kMap),
+  kUnknown = static_cast<int>(Kind::kUnknown),
+  kType = static_cast<int>(Kind::kType),
+  kError = static_cast<int>(Kind::kError),
+  kEnum = static_cast<int>(Kind::kEnum),
+  kOpaque = static_cast<int>(Kind::kOpaque),
+
+  // Legacy aliases, deprecated do not use.
+  kNullType = kNull,
+  kInt64 = kInt,
+  kUint64 = kUint,
+  kMessage = kStruct,
+  kUnknownSet = kUnknown,
+  kCelType = kType,
+
+  // INTERNAL: Do not exceed 63. Implementation details rely on the fact that
+  // we can store `Kind` using 6 bits.
+  kNotForUseWithExhaustiveSwitchStatements =
+      static_cast<int>(Kind::kNotForUseWithExhaustiveSwitchStatements),
+};
+
+inline Kind ValueKindToKind(ValueKind kind) {
+  return absl::bit_cast<Kind>(kind);
+}
+
+ABSL_ATTRIBUTE_PURE_FUNCTION bool KindIsValueKind(Kind kind);
+
+inline bool operator==(Kind lhs, ValueKind rhs) {
+  return lhs == ValueKindToKind(rhs);
+}
+
+inline bool operator==(ValueKind lhs, Kind rhs) {
+  return ValueKindToKind(lhs) == rhs;
+}
+
+inline bool operator==(TypeKind lhs, ValueKind rhs) {
+  return TypeKindToKind(lhs) == ValueKindToKind(rhs);
+}
+
+inline bool operator==(ValueKind lhs, TypeKind rhs) {
+  return ValueKindToKind(lhs) == TypeKindToKind(rhs);
+}
+
+inline bool operator!=(Kind lhs, ValueKind rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(ValueKind lhs, Kind rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(TypeKind lhs, ValueKind rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline bool operator!=(ValueKind lhs, TypeKind rhs) {
+  return !operator==(lhs, rhs);
+}
+
+inline absl::string_view TypeKindToString(TypeKind kind) {
+  // All TypeKind are valid Kind.
+  return KindToString(TypeKindToKind(kind));
+}
+
+inline absl::string_view ValueKindToString(ValueKind kind) {
+  // All ValueKind are valid Kind.
+  return KindToString(ValueKindToKind(kind));
+}
+
+inline TypeKind KindToTypeKind(Kind kind) {
+  ABSL_DCHECK(KindIsTypeKind(kind)) << KindToString(kind);
+  return absl::bit_cast<TypeKind>(kind);
+}
+
+inline ValueKind KindToValueKind(Kind kind) {
+  ABSL_DCHECK(KindIsValueKind(kind)) << KindToString(kind);
+  return absl::bit_cast<ValueKind>(kind);
+}
 
 }  // namespace cel
 

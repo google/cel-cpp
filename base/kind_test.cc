@@ -46,5 +46,55 @@ TEST(Kind, ToString) {
             "*error*");
 }
 
+TEST(Kind, TypeKindRoundtrip) {
+  EXPECT_EQ(TypeKindToKind(KindToTypeKind(Kind::kBool)), Kind::kBool);
+}
+
+TEST(Kind, ValueKindRoundtrip) {
+  EXPECT_EQ(ValueKindToKind(KindToValueKind(Kind::kBool)), Kind::kBool);
+}
+
+TEST(Kind, IsTypeKind) {
+  EXPECT_TRUE(KindIsTypeKind(Kind::kBool));
+  EXPECT_TRUE(KindIsTypeKind(Kind::kAny));
+  EXPECT_TRUE(KindIsTypeKind(Kind::kDyn));
+  EXPECT_TRUE(KindIsTypeKind(Kind::kWrapper));
+}
+
+TEST(Kind, IsValueKind) {
+  EXPECT_TRUE(KindIsValueKind(Kind::kBool));
+  EXPECT_FALSE(KindIsValueKind(Kind::kAny));
+  EXPECT_FALSE(KindIsValueKind(Kind::kDyn));
+  EXPECT_FALSE(KindIsValueKind(Kind::kWrapper));
+}
+
+TEST(Kind, Equality) {
+  EXPECT_EQ(Kind::kBool, TypeKind::kBool);
+  EXPECT_EQ(TypeKind::kBool, Kind::kBool);
+
+  EXPECT_EQ(Kind::kBool, ValueKind::kBool);
+  EXPECT_EQ(ValueKind::kBool, Kind::kBool);
+
+  EXPECT_EQ(TypeKind::kBool, ValueKind::kBool);
+  EXPECT_EQ(ValueKind::kBool, TypeKind::kBool);
+
+  EXPECT_NE(Kind::kBool, TypeKind::kInt);
+  EXPECT_NE(TypeKind::kInt, Kind::kBool);
+
+  EXPECT_NE(Kind::kBool, ValueKind::kInt);
+  EXPECT_NE(ValueKind::kInt, Kind::kBool);
+
+  EXPECT_NE(TypeKind::kBool, ValueKind::kInt);
+  EXPECT_NE(ValueKind::kInt, TypeKind::kBool);
+}
+
+TEST(TypeKind, ToString) {
+  EXPECT_EQ(TypeKindToString(TypeKind::kBool), KindToString(Kind::kBool));
+}
+
+TEST(ValueKind, ToString) {
+  EXPECT_EQ(ValueKindToString(ValueKind::kBool), KindToString(Kind::kBool));
+}
+
 }  // namespace
 }  // namespace cel
