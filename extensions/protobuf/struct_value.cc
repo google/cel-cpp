@@ -1552,9 +1552,9 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
             ProtoType::Resolve(context.value_factory().type_manager(),
                                *value_desc->enum_type()));
         switch (type->kind()) {
-          case Kind::kNullType:
+          case TypeKind::kNullType:
             return context.value_factory().GetNullValue();
-          case Kind::kEnum:
+          case TypeKind::kEnum:
             return context.value_factory().CreateEnumValue(
                 std::move(type).As<ProtoEnumType>(),
                 proto_value.GetEnumValue());
@@ -1571,40 +1571,40 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
             ProtoType::Resolve(context.value_factory().type_manager(),
                                *value_desc->message_type()));
         switch (type->kind()) {
-          case Kind::kDuration: {
+          case TypeKind::kDuration: {
             CEL_ASSIGN_OR_RETURN(
                 auto duration, protobuf_internal::AbslDurationFromDurationProto(
                                    proto_value.GetMessageValue()));
             return context.value_factory().CreateUncheckedDurationValue(
                 duration);
           }
-          case Kind::kTimestamp: {
+          case TypeKind::kTimestamp: {
             CEL_ASSIGN_OR_RETURN(auto time,
                                  protobuf_internal::AbslTimeFromTimestampProto(
                                      proto_value.GetMessageValue()));
             return context.value_factory().CreateUncheckedTimestampValue(time);
           }
-          case Kind::kList:
+          case TypeKind::kList:
             // google.protobuf.ListValue
             return protobuf_internal::CreateBorrowedListValue(
                 owner_from_this(), context.value_factory(),
                 proto_value.GetMessageValue());
-          case Kind::kMap:
+          case TypeKind::kMap:
             // google.protobuf.Struct
             return protobuf_internal::CreateBorrowedStruct(
                 owner_from_this(), context.value_factory(),
                 proto_value.GetMessageValue());
-          case Kind::kDyn:
+          case TypeKind::kDyn:
             // google.protobuf.Value
             return protobuf_internal::CreateBorrowedValue(
                 owner_from_this(), context.value_factory(),
                 proto_value.GetMessageValue());
-          case Kind::kAny:
+          case TypeKind::kAny:
             return ProtoValue::Create(context.value_factory(),
                                       proto_value.GetMessageValue());
-          case Kind::kWrapper:
+          case TypeKind::kWrapper:
             switch (type->As<WrapperType>().wrapped()->kind()) {
-              case Kind::kBool: {
+              case TypeKind::kBool: {
                 // google.protobuf.BoolValue, mapped to CEL primitive bool type
                 // for map values.
                 CEL_ASSIGN_OR_RETURN(auto wrapped,
@@ -1612,7 +1612,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                          proto_value.GetMessageValue()));
                 return context.value_factory().CreateBoolValue(wrapped);
               }
-              case Kind::kBytes: {
+              case TypeKind::kBytes: {
                 // google.protobuf.BytesValue, mapped to CEL primitive bytes
                 // type for map values.
                 CEL_ASSIGN_OR_RETURN(auto wrapped,
@@ -1621,7 +1621,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                 return context.value_factory().CreateBytesValue(
                     std::move(wrapped));
               }
-              case Kind::kDouble: {
+              case TypeKind::kDouble: {
                 // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL
                 // primitive double type for map values.
                 CEL_ASSIGN_OR_RETURN(auto wrapped,
@@ -1629,7 +1629,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                          proto_value.GetMessageValue()));
                 return context.value_factory().CreateDoubleValue(wrapped);
               }
-              case Kind::kInt: {
+              case TypeKind::kInt: {
                 // google.protobuf.{Int32Value,Int64Value}, mapped to CEL
                 // primitive int type for map values.
                 CEL_ASSIGN_OR_RETURN(auto wrapped,
@@ -1637,7 +1637,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                                          proto_value.GetMessageValue()));
                 return context.value_factory().CreateIntValue(wrapped);
               }
-              case Kind::kString: {
+              case TypeKind::kString: {
                 // google.protobuf.StringValue, mapped to CEL primitive bytes
                 // type for map values.
                 CEL_ASSIGN_OR_RETURN(auto wrapped,
@@ -1646,7 +1646,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
                 return context.value_factory().CreateUncheckedStringValue(
                     std::move(wrapped));
               }
-              case Kind::kUint: {
+              case TypeKind::kUint: {
                 // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL
                 // primitive uint type for map values.
                 CEL_ASSIGN_OR_RETURN(auto wrapped,
@@ -1657,7 +1657,7 @@ class ParsedProtoMapValue : public CEL_MAP_VALUE_CLASS {
               default:
                 ABSL_UNREACHABLE();
             }
-          case Kind::kStruct:
+          case TypeKind::kStruct:
             return context.value_factory()
                 .CreateBorrowedStructValue<
                     protobuf_internal::DynamicMemberParsedProtoStructValue>(
@@ -2341,21 +2341,21 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
       switch (field.type.As<ListType>()->element()->kind()) {
-        case Kind::kDuration:
+        case TypeKind::kDuration:
           return context.value_factory()
               .CreateBorrowedListValue<
                   ParsedProtoListValue<DurationValue, google::protobuf::Message>>(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kTimestamp:
+        case TypeKind::kTimestamp:
           return context.value_factory()
               .CreateBorrowedListValue<
                   ParsedProtoListValue<TimestampValue, google::protobuf::Message>>(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kList:
+        case TypeKind::kList:
           // google.protobuf.ListValue
           return context.value_factory()
               .CreateBorrowedListValue<
@@ -2363,7 +2363,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kMap:
+        case TypeKind::kMap:
           // google.protobuf.Struct
           return context.value_factory()
               .CreateBorrowedListValue<
@@ -2371,7 +2371,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kDyn:
+        case TypeKind::kDyn:
           // google.protobuf.Value.
           return context.value_factory()
               .CreateBorrowedListValue<
@@ -2379,14 +2379,14 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kAny:
+        case TypeKind::kAny:
           return context.value_factory()
               .CreateBorrowedListValue<
                   ParsedProtoListValue<AnyType, google::protobuf::Message>>(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kBool:
+        case TypeKind::kBool:
           // google.protobuf.BoolValue, mapped to CEL primitive bool type for
           // list elements.
           return context.value_factory()
@@ -2395,7 +2395,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kBytes:
+        case TypeKind::kBytes:
           // google.protobuf.BytesValue, mapped to CEL primitive bytes type for
           // list elements.
           return context.value_factory()
@@ -2404,7 +2404,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kDouble:
+        case TypeKind::kDouble:
           // google.protobuf.{FloatValue,DoubleValue}, mapped to CEL primitive
           // double type for list elements.
           return context.value_factory()
@@ -2413,7 +2413,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kInt:
+        case TypeKind::kInt:
           // google.protobuf.{Int32Value,Int64Value}, mapped to CEL primitive
           // int type for list elements.
           return context.value_factory()
@@ -2422,7 +2422,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kString:
+        case TypeKind::kString:
           // google.protobuf.StringValue, mapped to CEL primitive bytes type for
           // list elements.
           return context.value_factory()
@@ -2431,7 +2431,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kUint:
+        case TypeKind::kUint:
           // google.protobuf.{UInt32Value,UInt64Value}, mapped to CEL primitive
           // uint type for list elements.
           return context.value_factory()
@@ -2440,7 +2440,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
                   owner_from_this(), field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<google::protobuf::Message>(value(),
                                                                &field_desc));
-        case Kind::kStruct:
+        case TypeKind::kStruct:
           return context.value_factory()
               .CreateBorrowedListValue<
                   ParsedProtoListValue<ProtoStructValue, google::protobuf::Message>>(
@@ -2458,13 +2458,13 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetRepeatedField(
               reflect.GetRepeatedFieldRef<std::string>(value(), &field_desc));
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
       switch (field.type.As<ListType>()->element()->kind()) {
-        case Kind::kNullType:
+        case TypeKind::kNullType:
           return context.value_factory()
               .CreateListValue<ParsedProtoListValue<NullValue>>(
                   field.type.As<ListType>(),
                   reflect.GetRepeatedFieldRef<int32_t>(value(), &field_desc)
                       .size());
-        case Kind::kEnum:
+        case TypeKind::kEnum:
           return context.value_factory()
               .CreateBorrowedListValue<
                   ParsedProtoListValue<EnumValue, int32_t>>(
@@ -2522,14 +2522,14 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
       ABSL_FALLTHROUGH_INTENDED;
     case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
       switch (field.type->kind()) {
-        case Kind::kDuration: {
+        case TypeKind::kDuration: {
           CEL_ASSIGN_OR_RETURN(
               auto duration,
               protobuf_internal::AbslDurationFromDurationProto(
                   reflect.GetMessage(value(), &field_desc, type()->factory_)));
           return context.value_factory().CreateUncheckedDurationValue(duration);
         }
-        case Kind::kTimestamp: {
+        case TypeKind::kTimestamp: {
           CEL_ASSIGN_OR_RETURN(
               auto timestamp,
               protobuf_internal::AbslTimeFromTimestampProto(
@@ -2537,39 +2537,39 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
           return context.value_factory().CreateUncheckedTimestampValue(
               timestamp);
         }
-        case Kind::kList:
+        case TypeKind::kList:
           // google.protobuf.ListValue
           return protobuf_internal::CreateBorrowedListValue(
               owner_from_this(), context.value_factory(),
               reflect.GetMessage(value(), &field_desc));
-        case Kind::kMap:
+        case TypeKind::kMap:
           // google.protobuf.Struct
           return protobuf_internal::CreateBorrowedStruct(
               owner_from_this(), context.value_factory(),
               reflect.GetMessage(value(), &field_desc));
-        case Kind::kDyn:
+        case TypeKind::kDyn:
           // google.protobuf.Value
           return protobuf_internal::CreateBorrowedValue(
               owner_from_this(), context.value_factory(),
               reflect.GetMessage(value(), &field_desc));
-        case Kind::kAny:
+        case TypeKind::kAny:
           // google.protobuf.Any
           return ProtoValue::Create(context.value_factory(),
                                     reflect.GetMessage(value(), &field_desc));
-        case Kind::kWrapper: {
+        case TypeKind::kWrapper: {
           if (context.unbox_null_wrapper_types() &&
               !reflect.HasField(value(), &field_desc)) {
             return context.value_factory().GetNullValue();
           }
           switch (field.type.As<WrapperType>()->wrapped()->kind()) {
-            case Kind::kBool: {
+            case TypeKind::kBool: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
                   protobuf_internal::UnwrapBoolValueProto(reflect.GetMessage(
                       value(), &field_desc, type()->factory_)));
               return context.value_factory().CreateBoolValue(wrapped);
             }
-            case Kind::kBytes: {
+            case TypeKind::kBytes: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
                   protobuf_internal::UnwrapBytesValueProto(reflect.GetMessage(
@@ -2577,21 +2577,21 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
               return context.value_factory().CreateBytesValue(
                   std::move(wrapped));
             }
-            case Kind::kDouble: {
+            case TypeKind::kDouble: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
                   protobuf_internal::UnwrapDoubleValueProto(reflect.GetMessage(
                       value(), &field_desc, type()->factory_)));
               return context.value_factory().CreateDoubleValue(wrapped);
             }
-            case Kind::kInt: {
+            case TypeKind::kInt: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
                   protobuf_internal::UnwrapIntValueProto(reflect.GetMessage(
                       value(), &field_desc, type()->factory_)));
               return context.value_factory().CreateIntValue(wrapped);
             }
-            case Kind::kString: {
+            case TypeKind::kString: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
                   protobuf_internal::UnwrapStringValueProto(reflect.GetMessage(
@@ -2599,7 +2599,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
               return context.value_factory().CreateUncheckedStringValue(
                   std::move(wrapped));
             }
-            case Kind::kUint: {
+            case TypeKind::kUint: {
               CEL_ASSIGN_OR_RETURN(
                   auto wrapped,
                   protobuf_internal::UnwrapUIntValueProto(reflect.GetMessage(
@@ -2611,7 +2611,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
               ABSL_UNREACHABLE();
           }
         }
-        case Kind::kStruct:
+        case TypeKind::kStruct:
           return context.value_factory()
               .CreateBorrowedStructValue<DynamicMemberParsedProtoStructValue>(
                   owner_from_this(), field.type.As<ProtoStructType>(),
@@ -2625,9 +2625,9 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetSingularField(
           &field_desc);
     case google::protobuf::FieldDescriptor::TYPE_ENUM:
       switch (field.type->kind()) {
-        case Kind::kNullType:
+        case TypeKind::kNullType:
           return context.value_factory().GetNullValue();
-        case Kind::kEnum:
+        case TypeKind::kEnum:
           return context.value_factory().CreateEnumValue(
               field.type.As<ProtoEnumType>(),
               reflect.GetEnumValue(value(), &field_desc));

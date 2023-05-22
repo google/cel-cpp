@@ -45,7 +45,7 @@ class LegacyMapType;
 class ModernMapType;
 struct FieldIdFactory;
 
-template <Kind K>
+template <TypeKind K>
 class SimpleType;
 template <typename T, typename U>
 class SimpleValue;
@@ -108,7 +108,7 @@ struct TypeTraits;
   static_assert(!::std::is_abstract_v<derived>, "this must not be abstract"); \
                                                                               \
   bool derived::Is(const ::cel::Type& type) {                                 \
-    return type.kind() == ::cel::Kind::k##base &&                             \
+    return type.kind() == ::cel::TypeKind::k##base &&                         \
            ::cel::base_internal::Get##base##TypeTypeId(                       \
                static_cast<const ::cel::base##Type&>(type)) ==                \
                ::cel::internal::TypeId<derived>();                            \

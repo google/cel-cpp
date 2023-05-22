@@ -26,8 +26,6 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value.h"
-#include "base/values/enum_value.h"
-#include "base/values/struct_value.h"
 #include "internal/testing.h"
 
 namespace cel {
@@ -296,84 +294,84 @@ void TestTypeIs(const Handle<T>& type) {
 
 TEST_P(TypeTest, Null) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetNullType()->kind(), Kind::kNullType);
+  EXPECT_EQ(type_factory.GetNullType()->kind(), TypeKind::kNullType);
   EXPECT_EQ(type_factory.GetNullType()->name(), "null_type");
   TestTypeIs(type_factory.GetNullType());
 }
 
 TEST_P(TypeTest, Error) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetErrorType()->kind(), Kind::kError);
+  EXPECT_EQ(type_factory.GetErrorType()->kind(), TypeKind::kError);
   EXPECT_EQ(type_factory.GetErrorType()->name(), "*error*");
   TestTypeIs(type_factory.GetErrorType());
 }
 
 TEST_P(TypeTest, Dyn) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetDynType()->kind(), Kind::kDyn);
+  EXPECT_EQ(type_factory.GetDynType()->kind(), TypeKind::kDyn);
   EXPECT_EQ(type_factory.GetDynType()->name(), "dyn");
   TestTypeIs(type_factory.GetDynType());
 }
 
 TEST_P(TypeTest, Any) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetAnyType()->kind(), Kind::kAny);
+  EXPECT_EQ(type_factory.GetAnyType()->kind(), TypeKind::kAny);
   EXPECT_EQ(type_factory.GetAnyType()->name(), "google.protobuf.Any");
   TestTypeIs(type_factory.GetAnyType());
 }
 
 TEST_P(TypeTest, Bool) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetBoolType()->kind(), Kind::kBool);
+  EXPECT_EQ(type_factory.GetBoolType()->kind(), TypeKind::kBool);
   EXPECT_EQ(type_factory.GetBoolType()->name(), "bool");
   TestTypeIs(type_factory.GetBoolType());
 }
 
 TEST_P(TypeTest, Int) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetIntType()->kind(), Kind::kInt);
+  EXPECT_EQ(type_factory.GetIntType()->kind(), TypeKind::kInt);
   EXPECT_EQ(type_factory.GetIntType()->name(), "int");
   TestTypeIs(type_factory.GetIntType());
 }
 
 TEST_P(TypeTest, Uint) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetUintType()->kind(), Kind::kUint);
+  EXPECT_EQ(type_factory.GetUintType()->kind(), TypeKind::kUint);
   EXPECT_EQ(type_factory.GetUintType()->name(), "uint");
   TestTypeIs(type_factory.GetUintType());
 }
 
 TEST_P(TypeTest, Double) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetDoubleType()->kind(), Kind::kDouble);
+  EXPECT_EQ(type_factory.GetDoubleType()->kind(), TypeKind::kDouble);
   EXPECT_EQ(type_factory.GetDoubleType()->name(), "double");
   TestTypeIs(type_factory.GetDoubleType());
 }
 
 TEST_P(TypeTest, String) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetStringType()->kind(), Kind::kString);
+  EXPECT_EQ(type_factory.GetStringType()->kind(), TypeKind::kString);
   EXPECT_EQ(type_factory.GetStringType()->name(), "string");
   TestTypeIs(type_factory.GetStringType());
 }
 
 TEST_P(TypeTest, Bytes) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetBytesType()->kind(), Kind::kBytes);
+  EXPECT_EQ(type_factory.GetBytesType()->kind(), TypeKind::kBytes);
   EXPECT_EQ(type_factory.GetBytesType()->name(), "bytes");
   TestTypeIs(type_factory.GetBytesType());
 }
 
 TEST_P(TypeTest, Duration) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetDurationType()->kind(), Kind::kDuration);
+  EXPECT_EQ(type_factory.GetDurationType()->kind(), TypeKind::kDuration);
   EXPECT_EQ(type_factory.GetDurationType()->name(), "google.protobuf.Duration");
   TestTypeIs(type_factory.GetDurationType());
 }
 
 TEST_P(TypeTest, Timestamp) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetTimestampType()->kind(), Kind::kTimestamp);
+  EXPECT_EQ(type_factory.GetTimestampType()->kind(), TypeKind::kTimestamp);
   EXPECT_EQ(type_factory.GetTimestampType()->name(),
             "google.protobuf.Timestamp");
   TestTypeIs(type_factory.GetTimestampType());
@@ -383,7 +381,7 @@ TEST_P(TypeTest, Enum) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto enum_type,
                        type_factory.CreateEnumType<TestEnumType>());
-  EXPECT_EQ(enum_type->kind(), Kind::kEnum);
+  EXPECT_EQ(enum_type->kind(), TypeKind::kEnum);
   EXPECT_EQ(enum_type->name(), "test_enum.TestEnum");
   TestTypeIs(enum_type);
 }
@@ -394,7 +392,7 @@ TEST_P(TypeTest, Struct) {
   ASSERT_OK_AND_ASSIGN(
       auto struct_type,
       type_manager.type_factory().CreateStructType<TestStructType>());
-  EXPECT_EQ(struct_type->kind(), Kind::kStruct);
+  EXPECT_EQ(struct_type->kind(), TypeKind::kStruct);
   EXPECT_EQ(struct_type->name(), "test_struct.TestStruct");
   TestTypeIs(struct_type);
 }
@@ -405,7 +403,7 @@ TEST_P(TypeTest, List) {
                        type_factory.CreateListType(type_factory.GetBoolType()));
   EXPECT_EQ(list_type,
             Must(type_factory.CreateListType(type_factory.GetBoolType())));
-  EXPECT_EQ(list_type->kind(), Kind::kList);
+  EXPECT_EQ(list_type->kind(), TypeKind::kList);
   EXPECT_EQ(list_type->name(), "list");
   EXPECT_EQ(list_type->element(), type_factory.GetBoolType());
   TestTypeIs(list_type);
@@ -422,7 +420,7 @@ TEST_P(TypeTest, Map) {
   EXPECT_NE(map_type,
             Must(type_factory.CreateMapType(type_factory.GetBoolType(),
                                             type_factory.GetStringType())));
-  EXPECT_EQ(map_type->kind(), Kind::kMap);
+  EXPECT_EQ(map_type->kind(), TypeKind::kMap);
   EXPECT_EQ(map_type->name(), "map");
   EXPECT_EQ(map_type->key(), type_factory.GetStringType());
   EXPECT_EQ(map_type->value(), type_factory.GetBoolType());
@@ -431,14 +429,14 @@ TEST_P(TypeTest, Map) {
 
 TEST_P(TypeTest, TypeType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetTypeType()->kind(), Kind::kType);
+  EXPECT_EQ(type_factory.GetTypeType()->kind(), TypeKind::kType);
   EXPECT_EQ(type_factory.GetTypeType()->name(), "type");
   TestTypeIs(type_factory.GetTypeType());
 }
 
 TEST_P(TypeTest, UnknownType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetUnknownType()->kind(), Kind::kUnknown);
+  EXPECT_EQ(type_factory.GetUnknownType()->kind(), TypeKind::kUnknown);
   EXPECT_EQ(type_factory.GetUnknownType()->name(), "*unknown*");
   TestTypeIs(type_factory.GetUnknownType());
 }
@@ -447,7 +445,7 @@ TEST_P(TypeTest, OptionalType) {
   TypeFactory type_factory(memory_manager());
   ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
                                                type_factory.GetStringType()));
-  EXPECT_EQ(optional_type->kind(), Kind::kOpaque);
+  EXPECT_EQ(optional_type->kind(), TypeKind::kOpaque);
   EXPECT_EQ(optional_type->name(), "optional");
   TestTypeIs(optional_type);
   TestTypeIs<StringType>(optional_type->type().As<StringType>());
@@ -455,7 +453,7 @@ TEST_P(TypeTest, OptionalType) {
 
 TEST_P(TypeTest, BoolWrapperType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetBoolWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetBoolWrapperType()->kind(), TypeKind::kWrapper);
   EXPECT_EQ(type_factory.GetBoolWrapperType()->name(),
             "google.protobuf.BoolValue");
   TestTypeIs(type_factory.GetBoolWrapperType());
@@ -463,7 +461,7 @@ TEST_P(TypeTest, BoolWrapperType) {
 
 TEST_P(TypeTest, ByteWrapperType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetBytesWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetBytesWrapperType()->kind(), TypeKind::kWrapper);
   EXPECT_EQ(type_factory.GetBytesWrapperType()->name(),
             "google.protobuf.BytesValue");
   TestTypeIs(type_factory.GetBytesWrapperType());
@@ -471,7 +469,7 @@ TEST_P(TypeTest, ByteWrapperType) {
 
 TEST_P(TypeTest, DoubleWrapperType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetDoubleWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetDoubleWrapperType()->kind(), TypeKind::kWrapper);
   EXPECT_EQ(type_factory.GetDoubleWrapperType()->name(),
             "google.protobuf.DoubleValue");
   TestTypeIs(type_factory.GetDoubleWrapperType());
@@ -479,7 +477,7 @@ TEST_P(TypeTest, DoubleWrapperType) {
 
 TEST_P(TypeTest, IntWrapperType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetIntWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetIntWrapperType()->kind(), TypeKind::kWrapper);
   EXPECT_EQ(type_factory.GetIntWrapperType()->name(),
             "google.protobuf.Int64Value");
   TestTypeIs(type_factory.GetIntWrapperType());
@@ -487,7 +485,7 @@ TEST_P(TypeTest, IntWrapperType) {
 
 TEST_P(TypeTest, StringWrapperType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetStringWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetStringWrapperType()->kind(), TypeKind::kWrapper);
   EXPECT_EQ(type_factory.GetStringWrapperType()->name(),
             "google.protobuf.StringValue");
   TestTypeIs(type_factory.GetStringWrapperType());
@@ -495,7 +493,7 @@ TEST_P(TypeTest, StringWrapperType) {
 
 TEST_P(TypeTest, UintWrapperType) {
   TypeFactory type_factory(memory_manager());
-  EXPECT_EQ(type_factory.GetUintWrapperType()->kind(), Kind::kWrapper);
+  EXPECT_EQ(type_factory.GetUintWrapperType()->kind(), TypeKind::kWrapper);
   EXPECT_EQ(type_factory.GetUintWrapperType()->name(),
             "google.protobuf.UInt64Value");
   TestTypeIs(type_factory.GetUintWrapperType());

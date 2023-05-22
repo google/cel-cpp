@@ -23,9 +23,10 @@ namespace cel {
 
 class TimestampValue;
 
-class TimestampType final : public base_internal::SimpleType<Kind::kTimestamp> {
+class TimestampType final
+    : public base_internal::SimpleType<TypeKind::kTimestamp> {
  private:
-  using Base = base_internal::SimpleType<Kind::kTimestamp>;
+  using Base = base_internal::SimpleType<TypeKind::kTimestamp>;
 
  public:
   using Base::kKind;

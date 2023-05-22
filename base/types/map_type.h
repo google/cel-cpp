@@ -43,7 +43,7 @@ class MapValueBuilderInterface;
 class MapType : public Type,
                 public base_internal::EnableHandleFromThis<MapType, MapType> {
  public:
-  static constexpr Kind kKind = Kind::kMap;
+  static constexpr TypeKind kKind = TypeKind::kMap;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
@@ -54,9 +54,9 @@ class MapType : public Type,
     return static_cast<const MapType&>(type);
   }
 
-  Kind kind() const { return kKind; }
+  TypeKind kind() const { return kKind; }
 
-  absl::string_view name() const { return KindToString(kind()); }
+  absl::string_view name() const { return TypeKindToString(kind()); }
 
   std::string DebugString() const;
 

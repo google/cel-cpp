@@ -94,7 +94,7 @@ class StructType : public Type {
     absl::variant<absl::string_view, int64_t> data_;
   };
 
-  static constexpr Kind kKind = Kind::kStruct;
+  static constexpr TypeKind kKind = TypeKind::kStruct;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
@@ -105,7 +105,7 @@ class StructType : public Type {
     return static_cast<const StructType&>(type);
   }
 
-  Kind kind() const { return kKind; }
+  TypeKind kind() const { return kKind; }
 
   absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 

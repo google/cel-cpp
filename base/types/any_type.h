@@ -23,9 +23,9 @@ namespace cel {
 
 class AnyValue;
 
-class AnyType final : public base_internal::SimpleType<Kind::kAny> {
+class AnyType final : public base_internal::SimpleType<TypeKind::kAny> {
  private:
-  using Base = base_internal::SimpleType<Kind::kAny>;
+  using Base = base_internal::SimpleType<TypeKind::kAny>;
 
  public:
   using Base::kKind;

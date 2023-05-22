@@ -54,7 +54,9 @@ class Type : public base_internal::Data {
   static const Type& Cast(const Type& type) { return type; }
 
   // Returns the type kind.
-  Kind kind() const { return base_internal::Metadata::Kind(*this); }
+  TypeKind kind() const {
+    return KindToTypeKind(base_internal::Metadata::Kind(*this));
+  }
 
   // Returns the type name, i.e. "list".
   absl::string_view name() const;
@@ -96,7 +98,7 @@ class Type : public base_internal::Data {
   friend class StructType;
   friend class ListType;
   friend class MapType;
-  template <Kind K>
+  template <TypeKind K>
   friend class base_internal::SimpleType;
   friend class WrapperType;
   friend class base_internal::TypeHandle;
@@ -107,17 +109,17 @@ class Type : public base_internal::Data {
   // doesn't exist.
   absl::Span<const absl::string_view> aliases() const;
 
-  static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
+  static bool Equals(const Type& lhs, const Type& rhs, TypeKind kind);
 
   static bool Equals(const Type& lhs, const Type& rhs) {
     if (&lhs == &rhs) {
       return true;
     }
-    Kind lhs_kind = lhs.kind();
+    TypeKind lhs_kind = lhs.kind();
     return lhs_kind == rhs.kind() && Equals(lhs, rhs, lhs_kind);
   }
 
-  static void HashValue(const Type& type, Kind kind, absl::HashState state);
+  static void HashValue(const Type& type, TypeKind kind, absl::HashState state);
 
   static void HashValue(const Type& type, absl::HashState state) {
     HashValue(type, type.kind(), std::move(state));
@@ -198,9 +200,9 @@ class TypeHandle final {
   void HashValue(absl::HashState state) const;
 
  private:
-  static bool Equals(const Type& lhs, const Type& rhs, Kind kind);
+  static bool Equals(const Type& lhs, const Type& rhs, TypeKind kind);
 
-  static void HashValue(const Type& type, Kind kind, absl::HashState state);
+  static void HashValue(const Type& type, TypeKind kind, absl::HashState state);
 
   void CopyFrom(const TypeHandle& other);
 
@@ -251,83 +253,83 @@ struct HandleTraits<T, std::enable_if_t<(std::is_base_of_v<Type, T> &&
                                          !std::is_same_v<Type, T>)>>
     final : public HandleTraits<Type> {};
 
-template <Kind K>
+template <TypeKind K>
 struct SimpleTypeName;
 
 template <>
-struct SimpleTypeName<Kind::kNullType> {
+struct SimpleTypeName<TypeKind::kNullType> {
   static constexpr absl::string_view value = "null_type";
 };
 
 template <>
-struct SimpleTypeName<Kind::kError> {
+struct SimpleTypeName<TypeKind::kError> {
   static constexpr absl::string_view value = "*error*";
 };
 
 template <>
-struct SimpleTypeName<Kind::kDyn> {
+struct SimpleTypeName<TypeKind::kDyn> {
   static constexpr absl::string_view value = "dyn";
 };
 
 template <>
-struct SimpleTypeName<Kind::kAny> {
+struct SimpleTypeName<TypeKind::kAny> {
   static constexpr absl::string_view value = "google.protobuf.Any";
 };
 
 template <>
-struct SimpleTypeName<Kind::kBool> {
+struct SimpleTypeName<TypeKind::kBool> {
   static constexpr absl::string_view value = "bool";
 };
 
 template <>
-struct SimpleTypeName<Kind::kInt> {
+struct SimpleTypeName<TypeKind::kInt> {
   static constexpr absl::string_view value = "int";
 };
 
 template <>
-struct SimpleTypeName<Kind::kUint> {
+struct SimpleTypeName<TypeKind::kUint> {
   static constexpr absl::string_view value = "uint";
 };
 
 template <>
-struct SimpleTypeName<Kind::kDouble> {
+struct SimpleTypeName<TypeKind::kDouble> {
   static constexpr absl::string_view value = "double";
 };
 
 template <>
-struct SimpleTypeName<Kind::kBytes> {
+struct SimpleTypeName<TypeKind::kBytes> {
   static constexpr absl::string_view value = "bytes";
 };
 
 template <>
-struct SimpleTypeName<Kind::kString> {
+struct SimpleTypeName<TypeKind::kString> {
   static constexpr absl::string_view value = "string";
 };
 
 template <>
-struct SimpleTypeName<Kind::kDuration> {
+struct SimpleTypeName<TypeKind::kDuration> {
   static constexpr absl::string_view value = "google.protobuf.Duration";
 };
 
 template <>
-struct SimpleTypeName<Kind::kTimestamp> {
+struct SimpleTypeName<TypeKind::kTimestamp> {
   static constexpr absl::string_view value = "google.protobuf.Timestamp";
 };
 
 template <>
-struct SimpleTypeName<Kind::kType> {
+struct SimpleTypeName<TypeKind::kType> {
   static constexpr absl::string_view value = "type";
 };
 
 template <>
-struct SimpleTypeName<Kind::kUnknown> {
+struct SimpleTypeName<TypeKind::kUnknown> {
   static constexpr absl::string_view value = "*unknown*";
 };
 
-template <Kind K>
+template <TypeKind K>
 class SimpleType : public Type, public InlineData {
  public:
-  static constexpr Kind kKind = K;
+  static constexpr TypeKind kKind = K;
   static constexpr absl::string_view kName = SimpleTypeName<K>::value;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
@@ -341,7 +343,7 @@ class SimpleType : public Type, public InlineData {
   SimpleType& operator=(const SimpleType&) = default;
   SimpleType& operator=(SimpleType&&) = default;
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr TypeKind kind() const { return kKind; }
 
   constexpr absl::string_view name() const { return kName; }
 

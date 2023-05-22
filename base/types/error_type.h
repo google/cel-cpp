@@ -23,9 +23,9 @@ namespace cel {
 
 class ErrorValue;
 
-class ErrorType final : public base_internal::SimpleType<Kind::kError> {
+class ErrorType final : public base_internal::SimpleType<TypeKind::kError> {
  private:
-  using Base = base_internal::SimpleType<Kind::kError>;
+  using Base = base_internal::SimpleType<TypeKind::kError>;
 
  public:
   using Base::kKind;

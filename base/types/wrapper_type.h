@@ -50,9 +50,9 @@ class WrapperType : public Type, base_internal::InlineData {
   using Base = base_internal::InlineData;
 
  public:
-  static constexpr Kind kKind = Kind::kWrapper;
+  static constexpr TypeKind kKind = TypeKind::kWrapper;
 
-  static bool Is(const Type& type) { return type.kind() == Kind::kWrapper; }
+  static bool Is(const Type& type) { return type.kind() == TypeKind::kWrapper; }
 
   using Type::Is;
 
@@ -61,7 +61,7 @@ class WrapperType : public Type, base_internal::InlineData {
     return static_cast<const WrapperType&>(type);
   }
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr TypeKind kind() const { return kKind; }
 
   absl::string_view name() const;
 
@@ -105,7 +105,7 @@ class BoolWrapperType final : public WrapperType {
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
-               Kind::kBool;
+               TypeKind::kBool;
   }
 
   using WrapperType::Is;
@@ -142,7 +142,7 @@ class BytesWrapperType final : public WrapperType {
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
-               Kind::kBytes;
+               TypeKind::kBytes;
   }
 
   using WrapperType::Is;
@@ -179,7 +179,7 @@ class DoubleWrapperType final : public WrapperType {
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
-               Kind::kDouble;
+               TypeKind::kDouble;
   }
 
   using WrapperType::Is;
@@ -220,7 +220,7 @@ class IntWrapperType final : public WrapperType {
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
-               Kind::kInt;
+               TypeKind::kInt;
   }
 
   using WrapperType::Is;
@@ -261,7 +261,7 @@ class StringWrapperType final : public WrapperType {
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
-               Kind::kString;
+               TypeKind::kString;
   }
 
   using WrapperType::Is;
@@ -298,7 +298,7 @@ class UintWrapperType final : public WrapperType {
   static bool Is(const Type& type) {
     return WrapperType::Is(type) &&
            static_cast<const WrapperType&>(type).wrapped()->kind() ==
-               Kind::kUint;
+               TypeKind::kUint;
   }
 
   using WrapperType::Is;

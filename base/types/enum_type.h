@@ -85,7 +85,7 @@ class EnumType : public Type, public base_internal::HeapData {
     absl::variant<absl::string_view, int64_t> data_;
   };
 
-  static constexpr Kind kKind = Kind::kEnum;
+  static constexpr TypeKind kKind = TypeKind::kEnum;
 
   using Type::Is;
 
@@ -96,7 +96,7 @@ class EnumType : public Type, public base_internal::HeapData {
     return static_cast<const EnumType&>(type);
   }
 
-  Kind kind() const { return kKind; }
+  TypeKind kind() const { return kKind; }
 
   virtual absl::string_view name() const ABSL_ATTRIBUTE_LIFETIME_BOUND = 0;
 

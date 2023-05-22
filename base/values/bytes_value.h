@@ -38,7 +38,7 @@ class ValueFactory;
 
 class BytesValue : public Value {
  public:
-  static constexpr Kind kKind = BytesType::kKind;
+  static constexpr Kind kKind = Kind::kBytes;
 
   static Handle<BytesValue> Empty(ValueFactory& value_factory);
 

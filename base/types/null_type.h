@@ -23,9 +23,9 @@ namespace cel {
 
 class NullValue;
 
-class NullType final : public base_internal::SimpleType<Kind::kNullType> {
+class NullType final : public base_internal::SimpleType<TypeKind::kNullType> {
  private:
-  using Base = base_internal::SimpleType<Kind::kNullType>;
+  using Base = base_internal::SimpleType<TypeKind::kNullType>;
 
  public:
   using Base::kKind;

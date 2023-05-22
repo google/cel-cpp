@@ -43,13 +43,13 @@ class ListType
     : public Type,
       public base_internal::EnableHandleFromThis<ListType, ListType> {
  public:
-  static constexpr Kind kKind = Kind::kList;
+  static constexpr TypeKind kKind = TypeKind::kList;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
-  Kind kind() const { return kKind; }
+  TypeKind kind() const { return kKind; }
 
-  absl::string_view name() const { return KindToString(kind()); }
+  absl::string_view name() const { return TypeKindToString(kind()); }
 
   std::string DebugString() const;
 

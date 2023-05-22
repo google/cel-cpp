@@ -24,9 +24,9 @@ namespace cel {
 class BytesValue;
 class BytesWrapperType;
 
-class BytesType final : public base_internal::SimpleType<Kind::kBytes> {
+class BytesType final : public base_internal::SimpleType<TypeKind::kBytes> {
  private:
-  using Base = base_internal::SimpleType<Kind::kBytes>;
+  using Base = base_internal::SimpleType<TypeKind::kBytes>;
 
  public:
   using Base::kKind;

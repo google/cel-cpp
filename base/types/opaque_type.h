@@ -28,7 +28,7 @@ namespace cel {
 
 class OpaqueType : public Type, public base_internal::HeapData {
  public:
-  static constexpr Kind kKind = Kind::kOpaque;
+  static constexpr TypeKind kKind = TypeKind::kOpaque;
 
   static bool Is(const Type& type) { return type.kind() == kKind; }
 
@@ -39,7 +39,7 @@ class OpaqueType : public Type, public base_internal::HeapData {
     return static_cast<const OpaqueType&>(type);
   }
 
-  Kind kind() const { return kKind; }
+  TypeKind kind() const { return kKind; }
 
   virtual absl::string_view name() const = 0;
 

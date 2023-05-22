@@ -29,7 +29,7 @@ namespace cel {
 
 class UnknownValue final : public Value, public base_internal::InlineData {
  public:
-  static constexpr Kind kKind = UnknownType::kKind;
+  static constexpr Kind kKind = Kind::kUnknown;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 

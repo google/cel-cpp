@@ -24,9 +24,9 @@ namespace cel {
 class DoubleValue;
 class DoubleWrapperType;
 
-class DoubleType final : public base_internal::SimpleType<Kind::kDouble> {
+class DoubleType final : public base_internal::SimpleType<TypeKind::kDouble> {
  private:
-  using Base = base_internal::SimpleType<Kind::kDouble>;
+  using Base = base_internal::SimpleType<TypeKind::kDouble>;
 
  public:
   using Base::kKind;

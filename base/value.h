@@ -231,7 +231,7 @@ struct HandleTraits<T, std::enable_if_t<(std::is_base_of_v<Value, T> &&
 template <typename T, typename U>
 class SimpleValue : public Value, InlineData {
  public:
-  static constexpr Kind kKind = T::kKind;
+  static constexpr Kind kKind = static_cast<Kind>(T::kKind);
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 

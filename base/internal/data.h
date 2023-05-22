@@ -184,6 +184,8 @@ class HeapData /* : public Data */ {
       : metadata_and_reference_count_(static_cast<uintptr_t>(kind)
                                       << kKindShift) {}
 
+  explicit HeapData(TypeKind kind) : HeapData(TypeKindToKind(kind)) {}
+
  private:
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called. Subclasses should override this if they want their

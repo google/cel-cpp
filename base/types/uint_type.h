@@ -24,9 +24,9 @@ namespace cel {
 class UintValue;
 class UintWrapperType;
 
-class UintType final : public base_internal::SimpleType<Kind::kUint> {
+class UintType final : public base_internal::SimpleType<TypeKind::kUint> {
  private:
-  using Base = base_internal::SimpleType<Kind::kUint>;
+  using Base = base_internal::SimpleType<TypeKind::kUint>;
 
  public:
   using Base::kKind;

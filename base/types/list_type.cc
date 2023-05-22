@@ -56,27 +56,27 @@ const Handle<Type>& ListType::element() const {
 absl::StatusOr<UniqueRef<ListValueBuilderInterface>> ListType::NewValueBuilder(
     ValueFactory& value_factory) const {
   switch (element()->kind()) {
-    case Kind::kBool:
+    case TypeKind::kBool:
       return MakeUnique<ListValueBuilder<BoolValue>>(
           value_factory.memory_manager(), base_internal::kComposedListType,
           value_factory, handle_from_this());
-    case Kind::kInt:
+    case TypeKind::kInt:
       return MakeUnique<ListValueBuilder<IntValue>>(
           value_factory.memory_manager(), base_internal::kComposedListType,
           value_factory, handle_from_this());
-    case Kind::kUint:
+    case TypeKind::kUint:
       return MakeUnique<ListValueBuilder<UintValue>>(
           value_factory.memory_manager(), base_internal::kComposedListType,
           value_factory, handle_from_this());
-    case Kind::kDouble:
+    case TypeKind::kDouble:
       return MakeUnique<ListValueBuilder<DoubleValue>>(
           value_factory.memory_manager(), base_internal::kComposedListType,
           value_factory, handle_from_this());
-    case Kind::kDuration:
+    case TypeKind::kDuration:
       return MakeUnique<ListValueBuilder<DurationValue>>(
           value_factory.memory_manager(), base_internal::kComposedListType,
           value_factory, handle_from_this());
-    case Kind::kTimestamp:
+    case TypeKind::kTimestamp:
       return MakeUnique<ListValueBuilder<TimestampValue>>(
           value_factory.memory_manager(), base_internal::kComposedListType,
           value_factory, handle_from_this());

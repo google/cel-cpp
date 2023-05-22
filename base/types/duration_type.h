@@ -23,9 +23,10 @@ namespace cel {
 
 class DurationValue;
 
-class DurationType final : public base_internal::SimpleType<Kind::kDuration> {
+class DurationType final
+    : public base_internal::SimpleType<TypeKind::kDuration> {
  private:
-  using Base = base_internal::SimpleType<Kind::kDuration>;
+  using Base = base_internal::SimpleType<TypeKind::kDuration>;
 
  public:
   using Base::kKind;

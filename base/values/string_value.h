@@ -39,7 +39,7 @@ class ValueFactory;
 
 class StringValue : public Value {
  public:
-  static constexpr Kind kKind = StringType::kKind;
+  static constexpr Kind kKind = Kind::kString;
 
   static Handle<StringValue> Empty(ValueFactory& value_factory);
 

@@ -1507,10 +1507,10 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(
   CEL_ASSIGN_OR_RETURN(
       auto type, ProtoType::Resolve(value_factory.type_manager(), descriptor));
   switch (type->kind()) {
-    case Kind::kNullType:
+    case TypeKind::kNullType:
       // google.protobuf.NullValue is an enum, which represents JSON null.
       return value_factory.GetNullValue();
-    case Kind::kEnum:
+    case TypeKind::kEnum:
       return value_factory.CreateEnumValue(std::move(type).As<ProtoEnumType>(),
                                            value);
     default:
@@ -1548,14 +1548,14 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
         absl::NotFoundError(absl::StrCat("type not found: ", type_url)));
   }
   switch ((*type)->kind()) {
-    case Kind::kAny:
+    case TypeKind::kAny:
       ABSL_DCHECK(type_name == "google.protobuf.Any") << type_name;
       // google.protobuf.Any
       //
       // We refuse google.protobuf.Any wrapped in google.protobuf.Any.
       return absl::InvalidArgumentError(
           "refusing to unpack google.protobuf.Any to google.protobuf.Any");
-    case Kind::kStruct: {
+    case TypeKind::kStruct: {
       if (!ProtoStructType::Is(**type)) {
         return absl::FailedPreconditionError(
             "google.protobuf.Any can only be unpacked to protocol "
@@ -1577,15 +1577,15 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
       }
       return ProtoStructValue::Create(value_factory, std::move(*proto));
     }
-    case Kind::kWrapper: {
+    case TypeKind::kWrapper: {
       switch ((*type)->As<WrapperType>().wrapped()->kind()) {
-        case Kind::kBool: {
+        case TypeKind::kBool: {
           // google.protobuf.BoolValue
           CEL_ASSIGN_OR_RETURN(auto proto,
                                UnpackTo<google::protobuf::BoolValue>(payload));
           return Create(value_factory, proto);
         }
-        case Kind::kInt: {
+        case TypeKind::kInt: {
           // google.protobuf.{Int32Value,Int64Value}
           if (type_name == "google.protobuf.Int32Value") {
             CEL_ASSIGN_OR_RETURN(
@@ -1598,7 +1598,7 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
             return Create(value_factory, std::move(proto));
           }
         } break;
-        case Kind::kUint: {
+        case TypeKind::kUint: {
           // google.protobuf.{UInt32Value,UInt64Value}
           if (type_name == "google.protobuf.UInt32Value") {
             CEL_ASSIGN_OR_RETURN(
@@ -1611,7 +1611,7 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
             return Create(value_factory, std::move(proto));
           }
         } break;
-        case Kind::kDouble: {
+        case TypeKind::kDouble: {
           // google.protobuf.{FloatValue,DoubleValue}
           if (type_name == "google.protobuf.FloatValue") {
             CEL_ASSIGN_OR_RETURN(
@@ -1624,13 +1624,13 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
             return Create(value_factory, std::move(proto));
           }
         } break;
-        case Kind::kBytes: {
+        case TypeKind::kBytes: {
           // google.protobuf.BytesValue
           CEL_ASSIGN_OR_RETURN(auto proto,
                                UnpackTo<google::protobuf::BytesValue>(payload));
           return Create(value_factory, std::move(proto));
         }
-        case Kind::kString: {
+        case TypeKind::kString: {
           // google.protobuf.StringValue
           CEL_ASSIGN_OR_RETURN(
               auto proto, UnpackTo<google::protobuf::StringValue>(payload));
@@ -1640,35 +1640,35 @@ absl::StatusOr<Handle<Value>> ProtoValue::Create(ValueFactory& value_factory,
           ABSL_UNREACHABLE();
       }
     } break;
-    case Kind::kList: {
+    case TypeKind::kList: {
       // google.protobuf.ListValue
       ABSL_DCHECK(type_name == "google.protobuf.ListValue") << type_name;
       CEL_ASSIGN_OR_RETURN(auto proto,
                            UnpackTo<google::protobuf::ListValue>(payload));
       return Create(value_factory, std::move(proto));
     }
-    case Kind::kMap: {
+    case TypeKind::kMap: {
       // google.protobuf.Struct
       ABSL_DCHECK(type_name == "google.protobuf.Struct") << type_name;
       CEL_ASSIGN_OR_RETURN(auto proto,
                            UnpackTo<google::protobuf::Struct>(payload));
       return Create(value_factory, std::move(proto));
     }
-    case Kind::kDyn: {
+    case TypeKind::kDyn: {
       // google.protobuf.Value
       ABSL_DCHECK(type_name == "google.protobuf.Value") << type_name;
       CEL_ASSIGN_OR_RETURN(auto proto,
                            UnpackTo<google::protobuf::Value>(payload));
       return Create(value_factory, std::move(proto));
     }
-    case Kind::kDuration: {
+    case TypeKind::kDuration: {
       // google.protobuf.Duration
       ABSL_DCHECK(type_name == "google.protobuf.Duration") << type_name;
       CEL_ASSIGN_OR_RETURN(auto proto,
                            UnpackTo<google::protobuf::Duration>(payload));
       return Create(value_factory, proto);
     }
-    case Kind::kTimestamp: {
+    case TypeKind::kTimestamp: {
       // google.protobuf.Timestamp
       ABSL_DCHECK(type_name == "google.protobuf.Timestamp") << type_name;
       CEL_ASSIGN_OR_RETURN(auto proto,

@@ -24,9 +24,9 @@ namespace cel {
 class StringValue;
 class StringWrapperType;
 
-class StringType final : public base_internal::SimpleType<Kind::kString> {
+class StringType final : public base_internal::SimpleType<TypeKind::kString> {
  private:
-  using Base = base_internal::SimpleType<Kind::kString>;
+  using Base = base_internal::SimpleType<TypeKind::kString>;
 
  public:
   using Base::kKind;

@@ -16,15 +16,6 @@
 
 namespace cel {
 
-bool KindIsTypeKind(Kind kind) {
-  // Currently all Kind are valid TypeKind.
-  return true;
-}
-
-bool KindIsValueKind(Kind kind) {
-  return kind != Kind::kWrapper && kind != Kind::kDyn && kind != Kind::kAny;
-}
-
 absl::string_view KindToString(Kind kind) {
   switch (kind) {
     case Kind::kNullType:

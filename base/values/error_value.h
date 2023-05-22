@@ -35,7 +35,7 @@ class ErrorValue final : public Value, public base_internal::InlineData {
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
       const absl::Status& value);
 
-  static constexpr Kind kKind = ErrorType::kKind;
+  static constexpr Kind kKind = Kind::kError;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 

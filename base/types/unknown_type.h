@@ -23,9 +23,9 @@ namespace cel {
 
 class UnknownValue;
 
-class UnknownType final : public base_internal::SimpleType<Kind::kUnknown> {
+class UnknownType final : public base_internal::SimpleType<TypeKind::kUnknown> {
  private:
-  using Base = base_internal::SimpleType<Kind::kUnknown>;
+  using Base = base_internal::SimpleType<TypeKind::kUnknown>;
 
  public:
   using Base::kKind;

@@ -49,7 +49,7 @@ class ListValue : public Value {
   template <typename T>
   using Builder = ListValueBuilder<T>;
 
-  static constexpr Kind kKind = ListType::kKind;
+  static constexpr Kind kKind = Kind::kList;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 

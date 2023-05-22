@@ -25,9 +25,9 @@ namespace cel {
 
 class DynValue;
 
-class DynType final : public base_internal::SimpleType<Kind::kDyn> {
+class DynType final : public base_internal::SimpleType<TypeKind::kDyn> {
  private:
-  using Base = base_internal::SimpleType<Kind::kDyn>;
+  using Base = base_internal::SimpleType<TypeKind::kDyn>;
 
  public:
   using Base::kKind;

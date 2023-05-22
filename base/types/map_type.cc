@@ -67,22 +67,22 @@ template <typename K>
 absl::StatusOr<UniqueRef<MapValueBuilderInterface>> NewMapValueBuilderFor(
     ValueFactory& value_factory, Handle<MapType> type) {
   switch (type->value()->kind()) {
-    case Kind::kBool:
+    case TypeKind::kBool:
       return MakeUnique<MapValueBuilder<K, BoolValue>>(
           value_factory.memory_manager(), value_factory, std::move(type));
-    case Kind::kInt:
+    case TypeKind::kInt:
       return MakeUnique<MapValueBuilder<K, IntValue>>(
           value_factory.memory_manager(), value_factory, std::move(type));
-    case Kind::kUint:
+    case TypeKind::kUint:
       return MakeUnique<MapValueBuilder<K, UintValue>>(
           value_factory.memory_manager(), value_factory, std::move(type));
-    case Kind::kDouble:
+    case TypeKind::kDouble:
       return MakeUnique<MapValueBuilder<K, DoubleValue>>(
           value_factory.memory_manager(), value_factory, std::move(type));
-    case Kind::kDuration:
+    case TypeKind::kDuration:
       return MakeUnique<MapValueBuilder<K, DurationValue>>(
           value_factory.memory_manager(), value_factory, std::move(type));
-    case Kind::kTimestamp:
+    case TypeKind::kTimestamp:
       return MakeUnique<MapValueBuilder<K, TimestampValue>>(
           value_factory.memory_manager(), value_factory, std::move(type));
     default:
@@ -96,12 +96,12 @@ absl::StatusOr<UniqueRef<MapValueBuilderInterface>> NewMapValueBuilderFor(
 absl::StatusOr<UniqueRef<MapValueBuilderInterface>> MapType::NewValueBuilder(
     ValueFactory& value_factory) const {
   switch (key()->kind()) {
-    case Kind::kBool:
+    case TypeKind::kBool:
       return NewMapValueBuilderFor<BoolValue>(value_factory,
                                               handle_from_this());
-    case Kind::kInt:
+    case TypeKind::kInt:
       return NewMapValueBuilderFor<IntValue>(value_factory, handle_from_this());
-    case Kind::kUint:
+    case TypeKind::kUint:
       return NewMapValueBuilderFor<UintValue>(value_factory,
                                               handle_from_this());
     default:

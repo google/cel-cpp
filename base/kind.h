@@ -18,8 +18,7 @@
 #include <type_traits>
 
 #include "absl/base/attributes.h"
-#include "absl/base/casts.h"
-#include "absl/log/absl_check.h"
+#include "absl/base/macros.h"
 #include "absl/strings/string_view.h"
 
 namespace cel {
@@ -103,21 +102,30 @@ enum class TypeKind : std::underlying_type_t<Kind> {
       static_cast<int>(Kind::kNotForUseWithExhaustiveSwitchStatements),
 };
 
-inline Kind TypeKindToKind(TypeKind kind) { return absl::bit_cast<Kind>(kind); }
+constexpr Kind TypeKindToKind(TypeKind kind) {
+  return static_cast<Kind>(static_cast<std::underlying_type_t<TypeKind>>(kind));
+}
 
-ABSL_ATTRIBUTE_PURE_FUNCTION bool KindIsTypeKind(Kind kind);
+constexpr bool KindIsTypeKind(Kind kind ABSL_ATTRIBUTE_UNUSED) {
+  // Currently all Kind are valid TypeKind.
+  return true;
+}
 
-inline bool operator==(Kind lhs, TypeKind rhs) {
+constexpr bool operator==(Kind lhs, TypeKind rhs) {
   return lhs == TypeKindToKind(rhs);
 }
 
-inline bool operator==(TypeKind lhs, Kind rhs) {
+constexpr bool operator==(TypeKind lhs, Kind rhs) {
   return TypeKindToKind(lhs) == rhs;
 }
 
-inline bool operator!=(Kind lhs, TypeKind rhs) { return !operator==(lhs, rhs); }
+constexpr bool operator!=(Kind lhs, TypeKind rhs) {
+  return !operator==(lhs, rhs);
+}
 
-inline bool operator!=(TypeKind lhs, Kind rhs) { return !operator==(lhs, rhs); }
+constexpr bool operator!=(TypeKind lhs, Kind rhs) {
+  return !operator==(lhs, rhs);
+}
 
 // `ValueKind` is a subset of `Kind`, representing all valid `Kind` for `Value`.
 // All `ValueKind` are valid `Kind`, but it is not guaranteed that all `Kind`
@@ -155,41 +163,44 @@ enum class ValueKind : std::underlying_type_t<Kind> {
       static_cast<int>(Kind::kNotForUseWithExhaustiveSwitchStatements),
 };
 
-inline Kind ValueKindToKind(ValueKind kind) {
-  return absl::bit_cast<Kind>(kind);
+constexpr Kind ValueKindToKind(ValueKind kind) {
+  return static_cast<Kind>(
+      static_cast<std::underlying_type_t<ValueKind>>(kind));
 }
 
-ABSL_ATTRIBUTE_PURE_FUNCTION bool KindIsValueKind(Kind kind);
+constexpr bool KindIsValueKind(Kind kind) {
+  return kind != Kind::kWrapper && kind != Kind::kDyn && kind != Kind::kAny;
+}
 
-inline bool operator==(Kind lhs, ValueKind rhs) {
+constexpr bool operator==(Kind lhs, ValueKind rhs) {
   return lhs == ValueKindToKind(rhs);
 }
 
-inline bool operator==(ValueKind lhs, Kind rhs) {
+constexpr bool operator==(ValueKind lhs, Kind rhs) {
   return ValueKindToKind(lhs) == rhs;
 }
 
-inline bool operator==(TypeKind lhs, ValueKind rhs) {
+constexpr bool operator==(TypeKind lhs, ValueKind rhs) {
   return TypeKindToKind(lhs) == ValueKindToKind(rhs);
 }
 
-inline bool operator==(ValueKind lhs, TypeKind rhs) {
+constexpr bool operator==(ValueKind lhs, TypeKind rhs) {
   return ValueKindToKind(lhs) == TypeKindToKind(rhs);
 }
 
-inline bool operator!=(Kind lhs, ValueKind rhs) {
+constexpr bool operator!=(Kind lhs, ValueKind rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator!=(ValueKind lhs, Kind rhs) {
+constexpr bool operator!=(ValueKind lhs, Kind rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator!=(TypeKind lhs, ValueKind rhs) {
+constexpr bool operator!=(TypeKind lhs, ValueKind rhs) {
   return !operator==(lhs, rhs);
 }
 
-inline bool operator!=(ValueKind lhs, TypeKind rhs) {
+constexpr bool operator!=(ValueKind lhs, TypeKind rhs) {
   return !operator==(lhs, rhs);
 }
 
@@ -203,14 +214,15 @@ inline absl::string_view ValueKindToString(ValueKind kind) {
   return KindToString(ValueKindToKind(kind));
 }
 
-inline TypeKind KindToTypeKind(Kind kind) {
-  ABSL_DCHECK(KindIsTypeKind(kind)) << KindToString(kind);
-  return absl::bit_cast<TypeKind>(kind);
+constexpr TypeKind KindToTypeKind(Kind kind) {
+  ABSL_ASSERT(KindIsTypeKind(kind));
+  return static_cast<TypeKind>(static_cast<std::underlying_type_t<Kind>>(kind));
 }
 
-inline ValueKind KindToValueKind(Kind kind) {
-  ABSL_DCHECK(KindIsValueKind(kind)) << KindToString(kind);
-  return absl::bit_cast<ValueKind>(kind);
+constexpr ValueKind KindToValueKind(Kind kind) {
+  ABSL_ASSERT(KindIsValueKind(kind));
+  return static_cast<ValueKind>(
+      static_cast<std::underlying_type_t<Kind>>(kind));
 }
 
 }  // namespace cel

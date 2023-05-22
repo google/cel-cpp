@@ -31,7 +31,7 @@ namespace cel {
 
 class TypeValue : public Value {
  public:
-  static constexpr Kind kKind = TypeType::kKind;
+  static constexpr Kind kKind = Kind::kType;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 

@@ -24,9 +24,9 @@ namespace cel {
 class BoolValue;
 class BoolWrapperType;
 
-class BoolType final : public base_internal::SimpleType<Kind::kBool> {
+class BoolType final : public base_internal::SimpleType<TypeKind::kBool> {
  private:
-  using Base = base_internal::SimpleType<Kind::kBool>;
+  using Base = base_internal::SimpleType<TypeKind::kBool>;
 
  public:
   using Base::kKind;

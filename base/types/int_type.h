@@ -24,9 +24,9 @@ namespace cel {
 class IntValue;
 class IntWrapperType;
 
-class IntType final : public base_internal::SimpleType<Kind::kInt> {
+class IntType final : public base_internal::SimpleType<TypeKind::kInt> {
  private:
-  using Base = base_internal::SimpleType<Kind::kInt>;
+  using Base = base_internal::SimpleType<TypeKind::kInt>;
 
  public:
   using Base::kKind;

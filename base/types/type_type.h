@@ -23,9 +23,9 @@ namespace cel {
 
 class TypeValue;
 
-class TypeType final : public base_internal::SimpleType<Kind::kType> {
+class TypeType final : public base_internal::SimpleType<TypeKind::kType> {
  private:
-  using Base = base_internal::SimpleType<Kind::kType>;
+  using Base = base_internal::SimpleType<TypeKind::kType>;
 
  public:
   using Base::kKind;

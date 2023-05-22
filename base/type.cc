@@ -48,45 +48,45 @@ CEL_INTERNAL_TYPE_IMPL(Type);
 
 absl::string_view Type::name() const {
   switch (kind()) {
-    case Kind::kNullType:
+    case TypeKind::kNullType:
       return static_cast<const NullType*>(this)->name();
-    case Kind::kError:
+    case TypeKind::kError:
       return static_cast<const ErrorType*>(this)->name();
-    case Kind::kDyn:
+    case TypeKind::kDyn:
       return static_cast<const DynType*>(this)->name();
-    case Kind::kAny:
+    case TypeKind::kAny:
       return static_cast<const AnyType*>(this)->name();
-    case Kind::kType:
+    case TypeKind::kType:
       return static_cast<const TypeType*>(this)->name();
-    case Kind::kBool:
+    case TypeKind::kBool:
       return static_cast<const BoolType*>(this)->name();
-    case Kind::kInt:
+    case TypeKind::kInt:
       return static_cast<const IntType*>(this)->name();
-    case Kind::kUint:
+    case TypeKind::kUint:
       return static_cast<const UintType*>(this)->name();
-    case Kind::kDouble:
+    case TypeKind::kDouble:
       return static_cast<const DoubleType*>(this)->name();
-    case Kind::kString:
+    case TypeKind::kString:
       return static_cast<const StringType*>(this)->name();
-    case Kind::kBytes:
+    case TypeKind::kBytes:
       return static_cast<const BytesType*>(this)->name();
-    case Kind::kEnum:
+    case TypeKind::kEnum:
       return static_cast<const EnumType*>(this)->name();
-    case Kind::kDuration:
+    case TypeKind::kDuration:
       return static_cast<const DurationType*>(this)->name();
-    case Kind::kTimestamp:
+    case TypeKind::kTimestamp:
       return static_cast<const TimestampType*>(this)->name();
-    case Kind::kList:
+    case TypeKind::kList:
       return static_cast<const ListType*>(this)->name();
-    case Kind::kMap:
+    case TypeKind::kMap:
       return static_cast<const MapType*>(this)->name();
-    case Kind::kStruct:
+    case TypeKind::kStruct:
       return static_cast<const StructType*>(this)->name();
-    case Kind::kUnknown:
+    case TypeKind::kUnknown:
       return static_cast<const UnknownType*>(this)->name();
-    case Kind::kWrapper:
+    case TypeKind::kWrapper:
       return static_cast<const WrapperType*>(this)->name();
-    case Kind::kOpaque:
+    case TypeKind::kOpaque:
       return static_cast<const OpaqueType*>(this)->name();
     default:
       return "*unreachable*";
@@ -95,13 +95,13 @@ absl::string_view Type::name() const {
 
 absl::Span<const absl::string_view> Type::aliases() const {
   switch (kind()) {
-    case Kind::kDyn:
+    case TypeKind::kDyn:
       return static_cast<const DynType*>(this)->aliases();
-    case Kind::kList:
+    case TypeKind::kList:
       return static_cast<const ListType*>(this)->aliases();
-    case Kind::kMap:
+    case TypeKind::kMap:
       return static_cast<const MapType*>(this)->aliases();
-    case Kind::kWrapper:
+    case TypeKind::kWrapper:
       return static_cast<const WrapperType*>(this)->aliases();
     default:
       // Everything else does not support aliases.
@@ -111,102 +111,102 @@ absl::Span<const absl::string_view> Type::aliases() const {
 
 std::string Type::DebugString() const {
   switch (kind()) {
-    case Kind::kNullType:
+    case TypeKind::kNullType:
       return static_cast<const NullType*>(this)->DebugString();
-    case Kind::kError:
+    case TypeKind::kError:
       return static_cast<const ErrorType*>(this)->DebugString();
-    case Kind::kDyn:
+    case TypeKind::kDyn:
       return static_cast<const DynType*>(this)->DebugString();
-    case Kind::kAny:
+    case TypeKind::kAny:
       return static_cast<const AnyType*>(this)->DebugString();
-    case Kind::kType:
+    case TypeKind::kType:
       return static_cast<const TypeType*>(this)->DebugString();
-    case Kind::kBool:
+    case TypeKind::kBool:
       return static_cast<const BoolType*>(this)->DebugString();
-    case Kind::kInt:
+    case TypeKind::kInt:
       return static_cast<const IntType*>(this)->DebugString();
-    case Kind::kUint:
+    case TypeKind::kUint:
       return static_cast<const UintType*>(this)->DebugString();
-    case Kind::kDouble:
+    case TypeKind::kDouble:
       return static_cast<const DoubleType*>(this)->DebugString();
-    case Kind::kString:
+    case TypeKind::kString:
       return static_cast<const StringType*>(this)->DebugString();
-    case Kind::kBytes:
+    case TypeKind::kBytes:
       return static_cast<const BytesType*>(this)->DebugString();
-    case Kind::kEnum:
+    case TypeKind::kEnum:
       return static_cast<const EnumType*>(this)->DebugString();
-    case Kind::kDuration:
+    case TypeKind::kDuration:
       return static_cast<const DurationType*>(this)->DebugString();
-    case Kind::kTimestamp:
+    case TypeKind::kTimestamp:
       return static_cast<const TimestampType*>(this)->DebugString();
-    case Kind::kList:
+    case TypeKind::kList:
       return static_cast<const ListType*>(this)->DebugString();
-    case Kind::kMap:
+    case TypeKind::kMap:
       return static_cast<const MapType*>(this)->DebugString();
-    case Kind::kStruct:
+    case TypeKind::kStruct:
       return static_cast<const StructType*>(this)->DebugString();
-    case Kind::kUnknown:
+    case TypeKind::kUnknown:
       return static_cast<const UnknownType*>(this)->DebugString();
-    case Kind::kWrapper:
+    case TypeKind::kWrapper:
       return static_cast<const WrapperType*>(this)->DebugString();
-    case Kind::kOpaque:
+    case TypeKind::kOpaque:
       return static_cast<const OpaqueType*>(this)->DebugString();
     default:
       return "*unreachable*";
   }
 }
 
-bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
+bool Type::Equals(const Type& lhs, const Type& rhs, TypeKind kind) {
   if (&lhs == &rhs) {
     return true;
   }
   switch (kind) {
-    case Kind::kNullType:
+    case TypeKind::kNullType:
       return true;
-    case Kind::kError:
+    case TypeKind::kError:
       return true;
-    case Kind::kDyn:
+    case TypeKind::kDyn:
       return true;
-    case Kind::kAny:
+    case TypeKind::kAny:
       return true;
-    case Kind::kType:
+    case TypeKind::kType:
       return true;
-    case Kind::kBool:
+    case TypeKind::kBool:
       return true;
-    case Kind::kInt:
+    case TypeKind::kInt:
       return true;
-    case Kind::kUint:
+    case TypeKind::kUint:
       return true;
-    case Kind::kDouble:
+    case TypeKind::kDouble:
       return true;
-    case Kind::kString:
+    case TypeKind::kString:
       return true;
-    case Kind::kBytes:
+    case TypeKind::kBytes:
       return true;
-    case Kind::kEnum:
+    case TypeKind::kEnum:
       return static_cast<const EnumType&>(lhs).name() ==
              static_cast<const EnumType&>(rhs).name();
-    case Kind::kDuration:
+    case TypeKind::kDuration:
       return true;
-    case Kind::kTimestamp:
+    case TypeKind::kTimestamp:
       return true;
-    case Kind::kList:
+    case TypeKind::kList:
       return static_cast<const ListType&>(lhs).element() ==
              static_cast<const ListType&>(rhs).element();
-    case Kind::kMap:
+    case TypeKind::kMap:
       return static_cast<const MapType&>(lhs).key() ==
                  static_cast<const MapType&>(rhs).key() &&
              static_cast<const MapType&>(lhs).value() ==
                  static_cast<const MapType&>(rhs).value();
-    case Kind::kStruct:
+    case TypeKind::kStruct:
       return static_cast<const StructType&>(lhs).name() ==
              static_cast<const StructType&>(rhs).name();
-    case Kind::kUnknown:
+    case TypeKind::kUnknown:
       return true;
-    case Kind::kWrapper:
+    case TypeKind::kWrapper:
       return static_cast<const WrapperType&>(lhs).wrapped() ==
              static_cast<const WrapperType&>(rhs).wrapped();
-    case Kind::kOpaque: {
+    case TypeKind::kOpaque: {
       if (static_cast<const OpaqueType&>(lhs).name() !=
           static_cast<const OpaqueType&>(rhs).name()) {
         return false;
@@ -224,89 +224,89 @@ bool Type::Equals(const Type& lhs, const Type& rhs, Kind kind) {
   }
 }
 
-void Type::HashValue(const Type& type, Kind kind, absl::HashState state) {
+void Type::HashValue(const Type& type, TypeKind kind, absl::HashState state) {
   switch (kind) {
-    case Kind::kNullType:
+    case TypeKind::kNullType:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const NullType&>(type).name());
       return;
-    case Kind::kError:
+    case TypeKind::kError:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const ErrorType&>(type).name());
       return;
-    case Kind::kDyn:
+    case TypeKind::kDyn:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const DynType&>(type).name());
       return;
-    case Kind::kAny:
+    case TypeKind::kAny:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const AnyType&>(type).name());
       return;
-    case Kind::kType:
+    case TypeKind::kType:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const TypeType&>(type).name());
       return;
-    case Kind::kBool:
+    case TypeKind::kBool:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const BoolType&>(type).name());
       return;
-    case Kind::kInt:
+    case TypeKind::kInt:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const IntType&>(type).name());
       return;
-    case Kind::kUint:
+    case TypeKind::kUint:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const UintType&>(type).name());
       return;
-    case Kind::kDouble:
+    case TypeKind::kDouble:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const DoubleType&>(type).name());
       return;
-    case Kind::kString:
+    case TypeKind::kString:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const StringType&>(type).name());
       return;
-    case Kind::kBytes:
+    case TypeKind::kBytes:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const BytesType&>(type).name());
       return;
-    case Kind::kEnum:
+    case TypeKind::kEnum:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const EnumType&>(type).name());
       return;
-    case Kind::kDuration:
+    case TypeKind::kDuration:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const DurationType&>(type).name());
       return;
-    case Kind::kTimestamp:
+    case TypeKind::kTimestamp:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const TimestampType&>(type).name());
       return;
-    case Kind::kList:
+    case TypeKind::kList:
       absl::HashState::combine(std::move(state),
                                static_cast<const ListType&>(type).element(),
                                kind, static_cast<const ListType&>(type).name());
       return;
-    case Kind::kMap:
+    case TypeKind::kMap:
       absl::HashState::combine(std::move(state),
                                static_cast<const MapType&>(type).key(),
                                static_cast<const MapType&>(type).value(), kind,
                                static_cast<const MapType&>(type).name());
       return;
-    case Kind::kStruct:
+    case TypeKind::kStruct:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const StructType&>(type).name());
       return;
-    case Kind::kUnknown:
+    case TypeKind::kUnknown:
       absl::HashState::combine(std::move(state), kind,
                                static_cast<const UnknownType&>(type).name());
       return;
-    case Kind::kWrapper:
+    case TypeKind::kWrapper:
       absl::HashState::combine(
           std::move(state), static_cast<const WrapperType&>(type).wrapped(),
           kind, static_cast<const WrapperType&>(type).name());
       return;
-    case Kind::kOpaque: {
+    case TypeKind::kOpaque: {
       const auto& parameters =
           static_cast<const OpaqueType&>(type).parameters();
       for (const auto& parameter : parameters) {
@@ -338,7 +338,7 @@ bool TypeHandle::Equals(const TypeHandle& other) const {
   if (self == nullptr || that == nullptr) {
     return false;
   }
-  Kind kind = self->kind();
+  TypeKind kind = self->kind();
   return kind == that->kind() && Type::Equals(*self, *that, kind);
 }
 
@@ -418,23 +418,23 @@ void TypeHandle::Destruct() {
 }
 
 void TypeHandle::Delete() const {
-  switch (data_.kind_heap()) {
-    case Kind::kList:
+  switch (KindToTypeKind(data_.kind_heap())) {
+    case TypeKind::kList:
       delete static_cast<ModernListType*>(
           static_cast<ListType*>(static_cast<Type*>(data_.get_heap())));
       return;
-    case Kind::kMap:
+    case TypeKind::kMap:
       delete static_cast<ModernMapType*>(
           static_cast<MapType*>(static_cast<Type*>(data_.get_heap())));
       return;
-    case Kind::kEnum:
+    case TypeKind::kEnum:
       delete static_cast<EnumType*>(static_cast<Type*>(data_.get_heap()));
       return;
-    case Kind::kStruct:
+    case TypeKind::kStruct:
       delete static_cast<AbstractStructType*>(
           static_cast<Type*>(data_.get_heap()));
       return;
-    case Kind::kOpaque:
+    case TypeKind::kOpaque:
       delete static_cast<OpaqueType*>(static_cast<Type*>(data_.get_heap()));
       return;
     default:

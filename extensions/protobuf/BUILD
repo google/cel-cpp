@@ -148,12 +148,11 @@ cc_library(
     deps = [
         ":memory_manager",
         ":type",
+        "//base:data",
         "//base:handle",
         "//base:kind",
         "//base:memory",
         "//base:owner",
-        "//base:type",
-        "//base:value",
         "//eval/internal:errors",
         "//eval/internal:interop",
         "//eval/public:message_wrapper",
