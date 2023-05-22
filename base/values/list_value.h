@@ -177,7 +177,7 @@ class LegacyListValue final : public ListValue, public InlineData {
       MemoryManager& memory_manager) const ABSL_ATTRIBUTE_LIFETIME_BOUND;
 
  private:
-  friend class base_internal::ValueHandle;
+  friend class ValueHandle;
   friend class cel::ListValue;
   template <size_t Size, size_t Align>
   friend struct AnyData;
@@ -232,11 +232,9 @@ class AbstractListValue : public ListValue,
 
  private:
   friend class cel::ListValue;
-  friend class base_internal::LegacyListValue;
-  friend class base_internal::AbstractListValue;
-  friend internal::TypeInfo base_internal::GetListValueTypeId(
-      const ListValue& list_value);
-  friend class base_internal::ValueHandle;
+  friend class LegacyListValue;
+  friend internal::TypeInfo GetListValueTypeId(const ListValue& list_value);
+  friend class ValueHandle;
 
   // Called by CEL_IMPLEMENT_LIST_VALUE() and Is() to perform type checking.
   virtual internal::TypeInfo TypeId() const = 0;
