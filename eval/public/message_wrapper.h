@@ -45,18 +45,22 @@ class MessageWrapper {
    public:
     explicit Builder(google::protobuf::MessageLite* message)
         : message_ptr_(reinterpret_cast<uintptr_t>(message)) {
-      ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+      ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >=
+                  kTagSize);
     }
     explicit Builder(google::protobuf::Message* message)
-        : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask) {
-      ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+        : message_ptr_(reinterpret_cast<uintptr_t>(message) | kMessageTag) {
+      ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >=
+                  kTagSize);
     }
 
     google::protobuf::MessageLite* message_ptr() const {
       return reinterpret_cast<google::protobuf::MessageLite*>(message_ptr_ & kPtrMask);
     }
 
-    bool HasFullProto() const { return (message_ptr_ & kTagMask) == kTagMask; }
+    bool HasFullProto() const {
+      return (message_ptr_ & kTagMask) == kMessageTag;
+    }
 
     MessageWrapper Build(const LegacyTypeInfoApis* type_info) {
       return MessageWrapper(message_ptr_, type_info);
@@ -78,19 +82,21 @@ class MessageWrapper {
                  const LegacyTypeInfoApis* legacy_type_info)
       : message_ptr_(reinterpret_cast<uintptr_t>(message)),
         legacy_type_info_(legacy_type_info) {
-    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >=
+                kTagSize);
   }
 
   MessageWrapper(const google::protobuf::Message* message,
                  const LegacyTypeInfoApis* legacy_type_info)
-      : message_ptr_(reinterpret_cast<uintptr_t>(message) | kTagMask),
+      : message_ptr_(reinterpret_cast<uintptr_t>(message) | kMessageTag),
         legacy_type_info_(legacy_type_info) {
-    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >= 1);
+    ABSL_ASSERT(absl::countr_zero(reinterpret_cast<uintptr_t>(message)) >=
+                kTagSize);
   }
 
   // If true, the message is using the full proto runtime and downcasting to
   // message should be safe.
-  bool HasFullProto() const { return (message_ptr_ & kTagMask) == kTagMask; }
+  bool HasFullProto() const { return (message_ptr_ & kTagMask) == kMessageTag; }
 
   // Returns the underlying message.
   //
@@ -114,10 +120,14 @@ class MessageWrapper {
 
   Builder ToBuilder() { return Builder(message_ptr_); }
 
+  static constexpr uintptr_t kTagSize =
+      ::cel::base_internal::kMessageWrapperTagSize;
   static constexpr uintptr_t kTagMask =
       ::cel::base_internal::kMessageWrapperTagMask;
   static constexpr uintptr_t kPtrMask =
       ::cel::base_internal::kMessageWrapperPtrMask;
+  static constexpr uintptr_t kMessageTag =
+      ::cel::base_internal::kMessageWrapperTagMessageValue;
   uintptr_t message_ptr_;
   const LegacyTypeInfoApis* legacy_type_info_;
 };

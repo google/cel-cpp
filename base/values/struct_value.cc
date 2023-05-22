@@ -179,11 +179,13 @@ class LegacyStructValueFieldIterator final : public StructValue::FieldIterator {
 };
 
 Handle<StructType> LegacyStructValue::type() const {
-  if ((msg_ & kMessageWrapperTagMask) == kMessageWrapperTagMask) {
+  uintptr_t tag = msg_ & kMessageWrapperTagMask;
+  if (tag == kMessageWrapperTagMessageValue) {
     // google::protobuf::Message
     return HandleFactory<StructType>::Make<LegacyStructType>(msg_);
   }
   // LegacyTypeInfoApis
+  ABSL_ASSERT(tag == kMessageWrapperTagTypeInfoValue);
   return HandleFactory<StructType>::Make<LegacyStructType>(type_info_);
 }
 

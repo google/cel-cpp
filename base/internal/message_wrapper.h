@@ -19,8 +19,11 @@
 
 namespace cel::base_internal {
 
-inline constexpr uintptr_t kMessageWrapperTagMask = 1 << 0;
+inline constexpr uintptr_t kMessageWrapperTagMask = 0b1;
 inline constexpr uintptr_t kMessageWrapperPtrMask = ~kMessageWrapperTagMask;
+inline constexpr uintptr_t kMessageWrapperTagSize = 1;
+inline constexpr uintptr_t kMessageWrapperTagTypeInfoValue = 0b0;
+inline constexpr uintptr_t kMessageWrapperTagMessageValue = 0b1;
 
 }  // namespace cel::base_internal
 

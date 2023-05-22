@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "google/protobuf/api.pb.h"
+#include "google/protobuf/empty.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/strings/escaping.h"
@@ -36,7 +37,9 @@
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/type_provider.h"
@@ -49,6 +52,7 @@ namespace {
 using ::google::api::expr::runtime::CelProtoWrapper;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
+using ::google::api::expr::runtime::MessageWrapper;
 using ::google::api::expr::runtime::UnknownSet;
 using testing::Eq;
 using testing::HasSubstr;
@@ -754,6 +758,38 @@ TEST(ValueInterop, StructFromLegacy) {
   EXPECT_THAT(value.As<StructValue>()->GetFieldByNumber(
                   StructValue::GetFieldContext(value_factory), 1),
               StatusIs(absl::StatusCode::kUnimplemented));
+  auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
+      *value.As<base_internal::LegacyStructValue>());
+  auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();
+  EXPECT_EQ(legacy_value_wrapper.HasFullProto(), value_wrapper.HasFullProto());
+  EXPECT_EQ(legacy_value_wrapper.message_ptr(), value_wrapper.message_ptr());
+  EXPECT_EQ(legacy_value_wrapper.legacy_type_info(),
+            value_wrapper.legacy_type_info());
+}
+
+TEST(ValueInterop, StructFromLegacyMessageLite) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::Empty opaque;
+  MessageWrapper wrapper(
+      static_cast<const google::protobuf::MessageLite*>(&opaque),
+      google::api::expr::runtime::TrivialTypeInfo::GetInstance());
+  CelValue legacy_value = CelValue::CreateMessageWrapper(wrapper);
+  ASSERT_OK_AND_ASSIGN(auto value, FromLegacyValue(&arena, legacy_value));
+  EXPECT_EQ(value->kind(), Kind::kStruct);
+  EXPECT_EQ(value->type()->kind(), Kind::kStruct);
+  EXPECT_EQ(value->type()->name(), "opaque type");
+  EXPECT_THAT(
+      value.As<StructValue>()->HasFieldByName(
+          StructValue::HasFieldContext(type_manager), "name"),
+      StatusIs(absl::StatusCode::kNotFound, HasSubstr("no_such_field")));
+  EXPECT_THAT(value.As<StructValue>()->HasFieldByNumber(
+                  StructValue::HasFieldContext(type_manager), 1),
+              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_EQ(value.As<StructValue>()->DebugString(), "opaque type");
   auto value_wrapper = LegacyStructValueAccess::ToMessageWrapper(
       *value.As<base_internal::LegacyStructValue>());
   auto legacy_value_wrapper = legacy_value.MessageWrapperOrDie();

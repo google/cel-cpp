@@ -14,6 +14,7 @@
 
 #include "eval/internal/interop.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -43,6 +44,7 @@
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "google/protobuf/message.h"
 
 namespace cel::interop_internal {
 
@@ -667,12 +669,17 @@ using ::google::api::expr::runtime::MessageWrapper;
 }  // namespace
 
 absl::string_view MessageTypeName(uintptr_t msg) {
-  if ((msg & kMessageWrapperTagMask) != kMessageWrapperTagMask) {
+  uintptr_t tag = (msg & kMessageWrapperTagMask);
+  uintptr_t ptr = (msg & kMessageWrapperPtrMask);
+
+  if (tag == kMessageWrapperTagTypeInfoValue) {
     // For google::protobuf::MessageLite, this is actually LegacyTypeInfoApis.
-    return reinterpret_cast<const LegacyTypeInfoApis*>(msg)->GetTypename(
+    return reinterpret_cast<const LegacyTypeInfoApis*>(ptr)->GetTypename(
         MessageWrapper());
   }
-  return reinterpret_cast<const google::protobuf::Message*>(msg & kMessageWrapperPtrMask)
+  ABSL_ASSERT(tag == kMessageWrapperTagMessageValue);
+
+  return reinterpret_cast<const google::protobuf::Message*>(ptr)
       ->GetDescriptor()
       ->full_name();
 }
