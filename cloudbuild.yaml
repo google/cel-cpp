@@ -8,6 +8,7 @@ steps:
   - '--test_output=errors'
   - '--distdir=/bazel-distdir'
   - '--show_timestamps'
+  - '--test_tag_filters=-benchmark'
   id: gcc-9
   waitFor: ['-']
 - name: 'gcr.io/cel-analysis/gcc-9:latest'
@@ -22,6 +23,7 @@ steps:
   - '--test_output=errors'
   - '--distdir=/bazel-distdir'
   - '--show_timestamps'
+  - '--test_tag_filters=-benchmark'
   id: clang-11
   waitFor: ['-']
 timeout: 1h

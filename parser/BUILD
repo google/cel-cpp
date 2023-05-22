@@ -112,6 +112,7 @@ cc_library(
 cc_test(
     name = "parser_test",
     srcs = ["parser_test.cc"],
+    tags = ["benchmark"],
     deps = [
         ":options",
         ":parser",

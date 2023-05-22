@@ -45,6 +45,7 @@ cc_library(
 cc_test(
     name = "benchmark_test",
     size = "small",
+    tags = ["benchmark"],
     deps = [
         ":benchmark_testlib",
         "@com_github_google_benchmark//:benchmark",
@@ -59,6 +60,7 @@ cc_test(
     name = "const_folding_benchmark_test",
     size = "small",
     args = ["--enable_optimizations"],
+    tags = ["benchmark"],
     deps = [
         ":benchmark_testlib",
         "@com_github_google_benchmark//:benchmark",
@@ -72,6 +74,7 @@ cc_test(
     srcs = [
         "allocation_benchmark_test.cc",
     ],
+    tags = ["benchmark"],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:activation",
@@ -130,6 +133,7 @@ cc_test(
     srcs = [
         "expression_builder_benchmark_test.cc",
     ],
+    tags = ["benchmark"],
     deps = [
         ":request_context_cc_proto",
         "//eval/public:builtin_func_registrar",
