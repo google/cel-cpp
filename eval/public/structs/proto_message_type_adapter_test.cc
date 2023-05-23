@@ -20,6 +20,7 @@
 #include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 #include "absl/status/status.h"
+#include "eval/public/cel_options.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "eval/public/containers/container_backed_map_impl.h"
@@ -669,6 +670,71 @@ TEST(ProtoMessageTypeAdapter, AdaptFromWellKnownTypeNotAMessageError) {
   // something has broken.
   EXPECT_THAT(adapter.AdaptFromWellKnownType(manager, instance),
               StatusIs(absl::StatusCode::kInternal));
+}
+
+TEST(ProtoMesssageTypeAdapter, TypeInfoDebug) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage message;
+  message.set_int64_value(42);
+  EXPECT_THAT(adapter.DebugString(MessageWrapper(&message, &adapter)),
+              HasSubstr(message.ShortDebugString()));
+
+  EXPECT_THAT(adapter.DebugString(MessageWrapper()),
+              HasSubstr("<unknown message>"));
+}
+
+TEST(ProtoMesssageTypeAdapter, TypeInfoName) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  EXPECT_EQ(adapter.GetTypename(MessageWrapper()),
+            "google.api.expr.runtime.TestMessage");
+}
+
+TEST(ProtoMesssageTypeAdapter, TypeInfoMutator) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  const LegacyTypeMutationApis* api = adapter.GetMutationApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  ASSERT_OK_AND_ASSIGN(MessageWrapper::Builder builder,
+                       api->NewInstance(manager));
+  EXPECT_NE(dynamic_cast<TestMessage*>(builder.message_ptr()), nullptr);
+}
+
+TEST(ProtoMesssageTypeAdapter, TypeInfoAccesor) {
+  google::protobuf::Arena arena;
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+  ProtoMemoryManager manager(&arena);
+
+  TestMessage message;
+  message.set_int64_value(42);
+  CelValue::MessageWrapper wrapped(&message, &adapter);
+
+  const LegacyTypeAccessApis* api = adapter.GetAccessApis(MessageWrapper());
+  ASSERT_NE(api, nullptr);
+
+  EXPECT_THAT(api->GetField("int64_value", wrapped,
+                            ProtoWrapperTypeOptions::kUnsetNull, manager),
+              IsOkAndHolds(test::IsCelInt64(42)));
 }
 
 }  // namespace

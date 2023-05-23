@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_PROTO_MESSAGE_TYPE_ADAPTER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_STRUCTS_PROTO_MESSAGE_TYPE_ADAPTER_H_
 
+#include <string>
 #include <vector>
 
 #include "google/protobuf/descriptor.h"
@@ -29,7 +30,13 @@
 
 namespace google::api::expr::runtime {
 
-class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
+// Implementation for legacy struct (message) type apis using reflection.
+//
+// Note: The type info API implementation attached to message values is
+// generally the duck-typed instance to support the default behavior of
+// deferring to the protobuf reflection apis on the message instance.
+class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
+                                public LegacyTypeAccessApis,
                                 public LegacyTypeMutationApis {
  public:
   ProtoMessageTypeAdapter(const google::protobuf::Descriptor* descriptor,
@@ -38,6 +45,19 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
 
   ~ProtoMessageTypeAdapter() override = default;
 
+  // Implement LegacyTypeInfoApis
+  std::string DebugString(const MessageWrapper& wrapped_message) const override;
+
+  const std::string& GetTypename(
+      const MessageWrapper& wrapped_message) const override;
+
+  const LegacyTypeAccessApis* GetAccessApis(
+      const MessageWrapper& wrapped_message) const override;
+
+  const LegacyTypeMutationApis* GetMutationApis(
+      const MessageWrapper& wrapped_message) const override;
+
+  // Implement LegacyTypeMutation APIs.
   absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
       cel::MemoryManager& memory_manager) const override;
 
@@ -52,6 +72,7 @@ class ProtoMessageTypeAdapter : public LegacyTypeAccessApis,
       cel::MemoryManager& memory_manager,
       CelValue::MessageWrapper::Builder instance) const override;
 
+  // Implement LegacyTypeAccessAPIs.
   absl::StatusOr<CelValue> GetField(
       absl::string_view field_name, const CelValue::MessageWrapper& instance,
       ProtoWrapperTypeOptions unboxing_option,

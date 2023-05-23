@@ -45,10 +45,12 @@ class ProtobufDescriptorProvider : public LegacyTypeProvider {
       absl::string_view name) const override;
 
  private:
-  // Run a lookup if the type adapter hasn't already been built.
-  // returns nullptr if not found.
-  std::unique_ptr<ProtoMessageTypeAdapter> GetType(
+  // Create a new type instance if found in the registered descriptor pool.
+  // Otherwise, returns nullptr.
+  std::unique_ptr<ProtoMessageTypeAdapter> CreateTypeAdapter(
       absl::string_view name) const;
+
+  const ProtoMessageTypeAdapter* GetTypeAdapter(absl::string_view name) const;
 
   const google::protobuf::DescriptorPool* descriptor_pool_;
   google::protobuf::MessageFactory* message_factory_;

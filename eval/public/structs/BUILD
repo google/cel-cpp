@@ -259,6 +259,7 @@ cc_test(
         ":legacy_type_adapter",
         ":legacy_type_info_apis",
         ":proto_message_type_adapter",
+        "//eval/public:cel_options",
         "//eval/public:cel_value",
         "//eval/public:message_wrapper",
         "//eval/public/containers:container_backed_list_impl",

@@ -25,18 +25,7 @@ namespace google::api::expr::runtime {
 
 absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
     absl::string_view name) const {
-  const ProtoMessageTypeAdapter* result = nullptr;
-  {
-    absl::MutexLock lock(&mu_);
-    auto it = type_cache_.find(name);
-    if (it != type_cache_.end()) {
-      result = it->second.get();
-    } else {
-      auto type_provider = GetType(name);
-      result = type_provider.get();
-      type_cache_[name] = std::move(type_provider);
-    }
-  }
+  const ProtoMessageTypeAdapter* result = GetTypeAdapter(name);
   if (result == nullptr) {
     return absl::nullopt;
   }
@@ -47,11 +36,11 @@ absl::optional<LegacyTypeAdapter> ProtobufDescriptorProvider::ProvideLegacyType(
 absl::optional<const LegacyTypeInfoApis*>
 ProtobufDescriptorProvider::ProvideLegacyTypeInfo(
     absl::string_view name) const {
-  return &GetGenericProtoTypeInfoInstance();
+  return GetTypeAdapter(name);
 }
 
-std::unique_ptr<ProtoMessageTypeAdapter> ProtobufDescriptorProvider::GetType(
-    absl::string_view name) const {
+std::unique_ptr<ProtoMessageTypeAdapter>
+ProtobufDescriptorProvider::CreateTypeAdapter(absl::string_view name) const {
   const google::protobuf::Descriptor* descriptor =
       descriptor_pool_->FindMessageTypeByName(name);
   if (descriptor == nullptr) {
@@ -60,5 +49,18 @@ std::unique_ptr<ProtoMessageTypeAdapter> ProtobufDescriptorProvider::GetType(
 
   return std::make_unique<ProtoMessageTypeAdapter>(descriptor,
                                                    message_factory_);
+}
+
+const ProtoMessageTypeAdapter* ProtobufDescriptorProvider::GetTypeAdapter(
+    absl::string_view name) const {
+  absl::MutexLock lock(&mu_);
+  auto it = type_cache_.find(name);
+  if (it != type_cache_.end()) {
+    return it->second.get();
+  }
+  auto type_provider = CreateTypeAdapter(name);
+  const ProtoMessageTypeAdapter* result = type_provider.get();
+  type_cache_[name] = std::move(type_provider);
+  return result;
 }
 }  // namespace google::api::expr::runtime

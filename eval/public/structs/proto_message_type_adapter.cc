@@ -301,6 +301,34 @@ CelValue MessageCelValueFactory(const google::protobuf::Message* message) {
 
 }  // namespace
 
+std::string ProtoMessageTypeAdapter::DebugString(
+    const MessageWrapper& wrapped_message) const {
+  if (!wrapped_message.HasFullProto() ||
+      wrapped_message.message_ptr() == nullptr) {
+    return UnsupportedTypeName();
+  }
+  auto* message = cel::internal::down_cast<const google::protobuf::Message*>(
+      wrapped_message.message_ptr());
+  return message->ShortDebugString();
+}
+
+const std::string& ProtoMessageTypeAdapter::GetTypename(
+    const MessageWrapper& wrapped_message) const {
+  return descriptor_->full_name();
+}
+
+const LegacyTypeMutationApis* ProtoMessageTypeAdapter::GetMutationApis(
+    const MessageWrapper& wrapped_message) const {
+  // Defer checks for misuse on wrong message kind in the accessor calls.
+  return this;
+}
+
+const LegacyTypeAccessApis* ProtoMessageTypeAdapter::GetAccessApis(
+    const MessageWrapper& wrapped_message) const {
+  // Defer checks for misuse on wrong message kind in the builder calls.
+  return this;
+}
+
 absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
     bool assertion, absl::string_view field, absl::string_view detail) const {
   if (!assertion) {

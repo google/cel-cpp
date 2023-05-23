@@ -31,6 +31,9 @@ class LegacyTypeMutationApis;
 // Provides ability to obtain field access apis, type info, and debug
 // representation of a message.
 //
+// The message parameter may wrap a nullptr to request generic accessors /
+// mutators for the TypeInfo instance if it is available.
+//
 // This is implemented as a separate class from LegacyTypeAccessApis to resolve
 // cyclic dependency between CelValue (which needs to access these apis to
 // provide DebugString and ObtainCelTypename) and LegacyTypeAccessApis (which
