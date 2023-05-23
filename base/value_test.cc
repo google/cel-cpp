@@ -753,7 +753,7 @@ TEST_P(ValueTest, Bool) {
   EXPECT_FALSE(false_value->Is<NullValue>());
   EXPECT_EQ(false_value, false_value);
   EXPECT_EQ(false_value, value_factory.CreateBoolValue(false));
-  EXPECT_EQ(false_value->kind(), Kind::kBool);
+  EXPECT_EQ(false_value->kind(), ValueKind::kBool);
   EXPECT_EQ(false_value->type(), type_factory.GetBoolType());
   EXPECT_FALSE(false_value->value());
 
@@ -762,7 +762,7 @@ TEST_P(ValueTest, Bool) {
   EXPECT_FALSE(true_value->Is<NullValue>());
   EXPECT_EQ(true_value, true_value);
   EXPECT_EQ(true_value, value_factory.CreateBoolValue(true));
-  EXPECT_EQ(true_value->kind(), Kind::kBool);
+  EXPECT_EQ(true_value->kind(), ValueKind::kBool);
   EXPECT_EQ(true_value->type(), type_factory.GetBoolType());
   EXPECT_TRUE(true_value->value());
 
@@ -779,7 +779,7 @@ TEST_P(ValueTest, Int) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateIntValue(0));
-  EXPECT_EQ(zero_value->kind(), Kind::kInt);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kInt);
   EXPECT_EQ(zero_value->type(), type_factory.GetIntType());
   EXPECT_EQ(zero_value->value(), 0);
 
@@ -788,7 +788,7 @@ TEST_P(ValueTest, Int) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, value_factory.CreateIntValue(1));
-  EXPECT_EQ(one_value->kind(), Kind::kInt);
+  EXPECT_EQ(one_value->kind(), ValueKind::kInt);
   EXPECT_EQ(one_value->type(), type_factory.GetIntType());
   EXPECT_EQ(one_value->value(), 1);
 
@@ -805,7 +805,7 @@ TEST_P(ValueTest, Uint) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateUintValue(0));
-  EXPECT_EQ(zero_value->kind(), Kind::kUint);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kUint);
   EXPECT_EQ(zero_value->type(), type_factory.GetUintType());
   EXPECT_EQ(zero_value->value(), 0);
 
@@ -814,7 +814,7 @@ TEST_P(ValueTest, Uint) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, value_factory.CreateUintValue(1));
-  EXPECT_EQ(one_value->kind(), Kind::kUint);
+  EXPECT_EQ(one_value->kind(), ValueKind::kUint);
   EXPECT_EQ(one_value->type(), type_factory.GetUintType());
   EXPECT_EQ(one_value->value(), 1);
 
@@ -831,7 +831,7 @@ TEST_P(ValueTest, Double) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateDoubleValue(0.0));
-  EXPECT_EQ(zero_value->kind(), Kind::kDouble);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kDouble);
   EXPECT_EQ(zero_value->type(), type_factory.GetDoubleType());
   EXPECT_EQ(zero_value->value(), 0.0);
 
@@ -840,7 +840,7 @@ TEST_P(ValueTest, Double) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, value_factory.CreateDoubleValue(1.0));
-  EXPECT_EQ(one_value->kind(), Kind::kDouble);
+  EXPECT_EQ(one_value->kind(), ValueKind::kDouble);
   EXPECT_EQ(one_value->type(), type_factory.GetDoubleType());
   EXPECT_EQ(one_value->value(), 1.0);
 
@@ -859,7 +859,7 @@ TEST_P(ValueTest, Duration) {
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateDurationValue(absl::ZeroDuration())));
-  EXPECT_EQ(zero_value->kind(), Kind::kDuration);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kDuration);
   EXPECT_EQ(zero_value->type(), type_factory.GetDurationType());
   EXPECT_EQ(zero_value->value(), absl::ZeroDuration());
 
@@ -868,7 +868,7 @@ TEST_P(ValueTest, Duration) {
   EXPECT_TRUE(one_value->Is<DurationValue>());
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value->kind(), Kind::kDuration);
+  EXPECT_EQ(one_value->kind(), ValueKind::kDuration);
   EXPECT_EQ(one_value->type(), type_factory.GetDurationType());
   EXPECT_EQ(one_value->value(), absl::ZeroDuration() + absl::Nanoseconds(1));
 
@@ -889,7 +889,7 @@ TEST_P(ValueTest, Timestamp) {
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateTimestampValue(absl::UnixEpoch())));
-  EXPECT_EQ(zero_value->kind(), Kind::kTimestamp);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kTimestamp);
   EXPECT_EQ(zero_value->type(), type_factory.GetTimestampType());
   EXPECT_EQ(zero_value->value(), absl::UnixEpoch());
 
@@ -898,7 +898,7 @@ TEST_P(ValueTest, Timestamp) {
   EXPECT_TRUE(one_value->Is<TimestampValue>());
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value->kind(), Kind::kTimestamp);
+  EXPECT_EQ(one_value->kind(), ValueKind::kTimestamp);
   EXPECT_EQ(one_value->type(), type_factory.GetTimestampType());
   EXPECT_EQ(one_value->value(), absl::UnixEpoch() + absl::Nanoseconds(1));
 
@@ -918,7 +918,7 @@ TEST_P(ValueTest, BytesFromString) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue(std::string("0"))));
-  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -927,7 +927,7 @@ TEST_P(ValueTest, BytesFromString) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue(std::string("1"))));
-  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -946,7 +946,7 @@ TEST_P(ValueTest, BytesFromStringView) {
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateBytesValue(absl::string_view("0"))));
-  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -956,7 +956,7 @@ TEST_P(ValueTest, BytesFromStringView) {
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value,
             Must(value_factory.CreateBytesValue(absl::string_view("1"))));
-  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -973,7 +973,7 @@ TEST_P(ValueTest, BytesFromCord) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue(absl::Cord("0"))));
-  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(zero_value->ToCord(), "0");
 
@@ -982,7 +982,7 @@ TEST_P(ValueTest, BytesFromCord) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue(absl::Cord("1"))));
-  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(one_value->ToCord(), "1");
 
@@ -999,7 +999,7 @@ TEST_P(ValueTest, BytesFromLiteral) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue("0")));
-  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -1008,7 +1008,7 @@ TEST_P(ValueTest, BytesFromLiteral) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue("1")));
-  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -1025,7 +1025,7 @@ TEST_P(ValueTest, BytesFromExternal) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateBytesValue("0", []() {})));
-  EXPECT_EQ(zero_value->kind(), Kind::kBytes);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(zero_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -1034,7 +1034,7 @@ TEST_P(ValueTest, BytesFromExternal) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateBytesValue("1", []() {})));
-  EXPECT_EQ(one_value->kind(), Kind::kBytes);
+  EXPECT_EQ(one_value->kind(), ValueKind::kBytes);
   EXPECT_EQ(one_value->type(), type_factory.GetBytesType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -1052,7 +1052,7 @@ TEST_P(ValueTest, StringFromString) {
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateStringValue(std::string("0"))));
-  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kString);
   EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -1061,7 +1061,7 @@ TEST_P(ValueTest, StringFromString) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue(std::string("1"))));
-  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->kind(), ValueKind::kString);
   EXPECT_EQ(one_value->type(), type_factory.GetStringType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -1080,7 +1080,7 @@ TEST_P(ValueTest, StringFromStringView) {
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value,
             Must(value_factory.CreateStringValue(absl::string_view("0"))));
-  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kString);
   EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -1091,7 +1091,7 @@ TEST_P(ValueTest, StringFromStringView) {
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value,
             Must(value_factory.CreateStringValue(absl::string_view("1"))));
-  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->kind(), ValueKind::kString);
   EXPECT_EQ(one_value->type(), type_factory.GetStringType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -1108,7 +1108,7 @@ TEST_P(ValueTest, StringFromCord) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue(absl::Cord("0"))));
-  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kString);
   EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
   EXPECT_EQ(zero_value->ToCord(), "0");
 
@@ -1117,7 +1117,7 @@ TEST_P(ValueTest, StringFromCord) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue(absl::Cord("1"))));
-  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->kind(), ValueKind::kString);
   EXPECT_EQ(one_value->type(), type_factory.GetStringType());
   EXPECT_EQ(one_value->ToCord(), "1");
 
@@ -1134,7 +1134,7 @@ TEST_P(ValueTest, StringFromLiteral) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue("0")));
-  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kString);
   EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -1143,7 +1143,7 @@ TEST_P(ValueTest, StringFromLiteral) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue("1")));
-  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->kind(), ValueKind::kString);
   EXPECT_EQ(one_value->type(), type_factory.GetStringType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -1160,7 +1160,7 @@ TEST_P(ValueTest, StringFromExternal) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, Must(value_factory.CreateStringValue("0", []() {})));
-  EXPECT_EQ(zero_value->kind(), Kind::kString);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kString);
   EXPECT_EQ(zero_value->type(), type_factory.GetStringType());
   EXPECT_EQ(zero_value->ToString(), "0");
 
@@ -1169,7 +1169,7 @@ TEST_P(ValueTest, StringFromExternal) {
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value, Must(value_factory.CreateStringValue("1", []() {})));
-  EXPECT_EQ(one_value->kind(), Kind::kString);
+  EXPECT_EQ(one_value->kind(), ValueKind::kString);
   EXPECT_EQ(one_value->type(), type_factory.GetStringType());
   EXPECT_EQ(one_value->ToString(), "1");
 
@@ -1187,7 +1187,7 @@ TEST_P(ValueTest, Type) {
   EXPECT_EQ(null_value, null_value);
   EXPECT_EQ(null_value,
             value_factory.CreateTypeValue(type_factory.GetNullType()));
-  EXPECT_EQ(null_value->kind(), Kind::kType);
+  EXPECT_EQ(null_value->kind(), ValueKind::kType);
   EXPECT_EQ(null_value->type(), type_factory.GetTypeType());
   EXPECT_EQ(null_value->name(), "null_type");
 
@@ -1197,7 +1197,7 @@ TEST_P(ValueTest, Type) {
   EXPECT_EQ(int_value, int_value);
   EXPECT_EQ(int_value,
             value_factory.CreateTypeValue(type_factory.GetIntType()));
-  EXPECT_EQ(int_value->kind(), Kind::kType);
+  EXPECT_EQ(int_value->kind(), ValueKind::kType);
   EXPECT_EQ(int_value->type(), type_factory.GetTypeType());
   EXPECT_EQ(int_value->name(), "int");
 
@@ -1214,7 +1214,7 @@ TEST_P(ValueTest, Unknown) {
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
   EXPECT_EQ(zero_value, value_factory.CreateUnknownValue());
-  EXPECT_EQ(zero_value->kind(), Kind::kUnknown);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kUnknown);
   EXPECT_EQ(zero_value->type(), type_factory.GetUnknownType());
 }
 
@@ -1229,7 +1229,7 @@ TEST_P(ValueTest, Optional) {
   EXPECT_TRUE(none_optional->Is<OptionalValue>());
   EXPECT_FALSE(none_optional->Is<NullValue>());
   EXPECT_EQ(none_optional, none_optional);
-  EXPECT_EQ(none_optional->kind(), Kind::kOpaque);
+  EXPECT_EQ(none_optional->kind(), ValueKind::kOpaque);
   ASSERT_OK_AND_ASSIGN(auto optional_type, type_factory.CreateOptionalType(
                                                type_factory.GetStringType()));
   EXPECT_EQ(none_optional->type(), optional_type);
@@ -1243,7 +1243,7 @@ TEST_P(ValueTest, Optional) {
   EXPECT_TRUE(full_optional->Is<OptionalValue>());
   EXPECT_FALSE(full_optional->Is<NullValue>());
   EXPECT_EQ(full_optional, full_optional);
-  EXPECT_EQ(full_optional->kind(), Kind::kOpaque);
+  EXPECT_EQ(full_optional->kind(), ValueKind::kOpaque);
   EXPECT_EQ(full_optional->type(), optional_type);
   EXPECT_TRUE(full_optional->has_value());
   EXPECT_EQ(full_optional->value(), value_factory.GetStringValue());
@@ -2015,7 +2015,7 @@ TEST_P(ValueTest, Enum) {
   EXPECT_EQ(one_value, one_value);
   EXPECT_EQ(one_value,
             Must(value_factory.CreateEnumValue(enum_type, "VALUE1")));
-  EXPECT_EQ(one_value->kind(), Kind::kEnum);
+  EXPECT_EQ(one_value->kind(), ValueKind::kEnum);
   EXPECT_EQ(one_value->type(), enum_type);
   EXPECT_EQ(one_value->name(), "VALUE1");
   EXPECT_EQ(one_value->number(), 1);
@@ -2025,7 +2025,7 @@ TEST_P(ValueTest, Enum) {
   EXPECT_TRUE(two_value->Is<EnumValue>());
   EXPECT_FALSE(two_value->Is<NullValue>());
   EXPECT_EQ(two_value, two_value);
-  EXPECT_EQ(two_value->kind(), Kind::kEnum);
+  EXPECT_EQ(two_value->kind(), ValueKind::kEnum);
   EXPECT_EQ(two_value->type(), enum_type);
   EXPECT_EQ(two_value->name(), "VALUE2");
   EXPECT_EQ(two_value->number(), 2);
@@ -2085,7 +2085,7 @@ TEST_P(ValueTest, Struct) {
   EXPECT_TRUE(zero_value->Is<TestStructValue>());
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value->kind(), Kind::kStruct);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kStruct);
   EXPECT_EQ(zero_value->type(), struct_type);
   EXPECT_EQ(zero_value.As<TestStructValue>()->value(), TestStruct{});
 
@@ -2096,7 +2096,7 @@ TEST_P(ValueTest, Struct) {
   EXPECT_TRUE(one_value->Is<TestStructValue>());
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value->kind(), Kind::kStruct);
+  EXPECT_EQ(one_value->kind(), ValueKind::kStruct);
   EXPECT_EQ(one_value->type(), struct_type);
   EXPECT_EQ(one_value.As<TestStructValue>()->value(),
             (TestStruct{true, 1, 1, 1.0}));
@@ -2185,7 +2185,7 @@ TEST_P(ValueTest, List) {
   EXPECT_TRUE(zero_value->Is<TestListValue>());
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value->kind(), Kind::kList);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kList);
   EXPECT_EQ(zero_value->type(), list_type);
   EXPECT_EQ(zero_value.As<TestListValue>()->value(), std::vector<int64_t>{});
 
@@ -2196,7 +2196,7 @@ TEST_P(ValueTest, List) {
   EXPECT_TRUE(one_value->Is<TestListValue>());
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value->kind(), Kind::kList);
+  EXPECT_EQ(one_value->kind(), ValueKind::kList);
   EXPECT_EQ(one_value->type(), list_type);
   EXPECT_EQ(one_value.As<TestListValue>()->value(), std::vector<int64_t>{1});
 
@@ -2311,7 +2311,7 @@ TEST_P(ValueTest, Map) {
   EXPECT_TRUE(zero_value->Is<TestMapValue>());
   EXPECT_FALSE(zero_value->Is<NullValue>());
   EXPECT_EQ(zero_value, zero_value);
-  EXPECT_EQ(zero_value->kind(), Kind::kMap);
+  EXPECT_EQ(zero_value->kind(), ValueKind::kMap);
   EXPECT_EQ(zero_value->type(), map_type);
   EXPECT_EQ(zero_value.As<TestMapValue>()->value(),
             (std::map<std::string, int64_t>{}));
@@ -2324,7 +2324,7 @@ TEST_P(ValueTest, Map) {
   EXPECT_TRUE(one_value->Is<TestMapValue>());
   EXPECT_FALSE(one_value->Is<NullValue>());
   EXPECT_EQ(one_value, one_value);
-  EXPECT_EQ(one_value->kind(), Kind::kMap);
+  EXPECT_EQ(one_value->kind(), ValueKind::kMap);
   EXPECT_EQ(one_value->type(), map_type);
   EXPECT_EQ(one_value.As<TestMapValue>()->value(),
             (std::map<std::string, int64_t>{{"foo", 1}}));

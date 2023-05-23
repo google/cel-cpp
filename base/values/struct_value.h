@@ -49,7 +49,7 @@ class StructValueBuilderInterface;
 // StructValue represents an instance of cel::StructType.
 class StructValue : public Value {
  public:
-  static constexpr Kind kKind = Kind::kStruct;
+  static constexpr ValueKind kKind = ValueKind::kStruct;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
@@ -63,7 +63,7 @@ class StructValue : public Value {
 
   using FieldId = StructType::FieldId;
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   Handle<StructType> type() const;
 

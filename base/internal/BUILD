@@ -152,9 +152,9 @@ cc_library(
         "function_adapter.h",
     ],
     deps = [
+        "//base:data",
         "//base:handle",
         "//base:kind",
-        "//base:value",
         "//internal:status_macros",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

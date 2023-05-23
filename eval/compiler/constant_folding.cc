@@ -226,11 +226,11 @@ class ConstantFoldingTransform {
       arg_kinds.reserve(arg_size);
       if (receiver_style) {
         arg_values.push_back(transform_.RemoveConstant(call_expr.target()));
-        arg_kinds.push_back(arg_values.back()->kind());
+        arg_kinds.push_back(ValueKindToKind(arg_values.back()->kind()));
       }
       for (int i = 0; i < arg_num; i++) {
         arg_values.push_back(transform_.RemoveConstant(call_expr.args()[i]));
-        arg_kinds.push_back(arg_values.back()->kind());
+        arg_kinds.push_back(ValueKindToKind(arg_values.back()->kind()));
       }
 
       // compute function overload

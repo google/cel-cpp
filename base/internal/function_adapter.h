@@ -184,7 +184,7 @@ struct HandleToAdaptedVisitor {
   absl::Status operator()(const Handle<T>** out) {
     if (!input->Is<T>()) {
       return absl::InvalidArgumentError(
-          absl::StrCat("expected ", KindToString(T::kKind), " value"));
+          absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));
     }
     *out = &(input.As<T>());
     return absl::OkStatus();
@@ -194,7 +194,7 @@ struct HandleToAdaptedVisitor {
   absl::Status operator()(const T** out) {
     if (!input->Is<T>()) {
       return absl::InvalidArgumentError(
-          absl::StrCat("expected ", KindToString(T::kKind), " value"));
+          absl::StrCat("expected ", ValueKindToString(T::kKind), " value"));
     }
     *out = &(*input.As<T>());
     return absl::OkStatus();

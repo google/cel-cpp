@@ -112,9 +112,9 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   // Get the current index off the stack.
   const auto& current_index_value = state[POS_CURRENT_INDEX];
   if (!current_index_value->Is<cel::IntValue>()) {
-    return absl::InternalError(
-        absl::StrCat("ComprehensionNextStep: want int64_t, got ",
-                     CelValue::TypeName(current_index_value->kind())));
+    return absl::InternalError(absl::StrCat(
+        "ComprehensionNextStep: want int64_t, got ",
+        CelValue::TypeName(ValueKindToKind(current_index_value->kind()))));
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 

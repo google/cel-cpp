@@ -43,6 +43,7 @@ namespace {
 using ::cel::FunctionEvaluationContext;
 using ::cel::Handle;
 using ::cel::Value;
+using ::cel::ValueKindToKind;
 
 // Determine if the overload should be considered. Overloads that can consume
 // errors or unknown sets must be allowed as a non-strict function.
@@ -215,7 +216,8 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
     if (!arg_types.empty()) {
       absl::StrAppend(&arg_types, ", ");
     }
-    absl::StrAppend(&arg_types, CelValue::TypeName(arg->kind()));
+    absl::StrAppend(&arg_types,
+                    CelValue::TypeName(ValueKindToKind(arg->kind())));
   }
 
   // If no errors or unknowns in input args, create new CelError for missing
@@ -301,11 +303,12 @@ absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
     const ExecutionFrame* frame) const {
   ResolveResult result = absl::nullopt;
 
-  std::vector<CelValue::Type> arg_types(num_arguments_);
+  std::vector<cel::Kind> arg_types(num_arguments_);
 
-  std::transform(
-      input_args.begin(), input_args.end(), arg_types.begin(),
-      [](const cel::Handle<cel::Value>& value) { return value->kind(); });
+  std::transform(input_args.begin(), input_args.end(), arg_types.begin(),
+                 [](const cel::Handle<cel::Value>& value) {
+                   return ValueKindToKind(value->kind());
+                 });
 
   CelFunctionDescriptor matcher{name_, receiver_style_, arg_types};
 

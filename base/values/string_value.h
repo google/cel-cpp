@@ -39,7 +39,7 @@ class ValueFactory;
 
 class StringValue : public Value {
  public:
-  static constexpr Kind kKind = Kind::kString;
+  static constexpr ValueKind kKind = ValueKind::kString;
 
   static Handle<StringValue> Empty(ValueFactory& value_factory);
 
@@ -66,7 +66,7 @@ class StringValue : public Value {
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
       const absl::Cord& value);
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   Handle<StringType> type() const { return StringType::Get(); }
 

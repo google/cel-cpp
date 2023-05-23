@@ -36,7 +36,7 @@ class ValueFactory;
 // EnumValue represents a single constant belonging to cel::EnumType.
 class EnumValue final : public Value, public base_internal::InlineData {
  public:
-  static constexpr Kind kKind = Kind::kEnum;
+  static constexpr ValueKind kKind = ValueKind::kEnum;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
@@ -55,7 +55,7 @@ class EnumValue final : public Value, public base_internal::InlineData {
 
   using ConstantId = EnumType::ConstantId;
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   const Handle<EnumType>& type() const { return type_; }
 

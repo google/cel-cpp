@@ -49,7 +49,7 @@ class ListValue : public Value {
   template <typename T>
   using Builder = ListValueBuilder<T>;
 
-  static constexpr Kind kKind = Kind::kList;
+  static constexpr ValueKind kKind = ValueKind::kList;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
@@ -61,11 +61,11 @@ class ListValue : public Value {
     return static_cast<const ListValue&>(value);
   }
 
-  // TODO(uncreated-issue/10): implement iterators so we can have cheap concated lists
+  // TODO(uncreated-issue/10): implement iterators so we can have cheap concat lists
 
   Handle<ListType> type() const;
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   std::string DebugString() const;
 

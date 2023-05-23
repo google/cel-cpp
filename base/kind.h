@@ -225,6 +225,22 @@ constexpr ValueKind KindToValueKind(Kind kind) {
       static_cast<std::underlying_type_t<Kind>>(kind));
 }
 
+constexpr ValueKind TypeKindToValueKind(TypeKind kind) {
+  ABSL_ASSERT(KindIsValueKind(TypeKindToKind(kind)));
+  return static_cast<ValueKind>(
+      static_cast<std::underlying_type_t<TypeKind>>(kind));
+}
+
+constexpr TypeKind ValueKindToTypeKind(ValueKind kind) {
+  ABSL_ASSERT(KindIsTypeKind(ValueKindToKind(kind)));
+  return static_cast<TypeKind>(
+      static_cast<std::underlying_type_t<ValueKind>>(kind));
+}
+
+static_assert(std::is_same_v<std::underlying_type_t<TypeKind>,
+                             std::underlying_type_t<ValueKind>>,
+              "TypeKind and ValueKind must have the same underlying type");
+
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_KIND_H_

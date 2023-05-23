@@ -38,7 +38,7 @@ class ValueFactory;
 
 class BytesValue : public Value {
  public:
-  static constexpr Kind kKind = Kind::kBytes;
+  static constexpr ValueKind kKind = ValueKind::kBytes;
 
   static Handle<BytesValue> Empty(ValueFactory& value_factory);
 
@@ -65,7 +65,7 @@ class BytesValue : public Value {
   ABSL_ATTRIBUTE_PURE_FUNCTION static std::string DebugString(
       const absl::Cord& value);
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   Handle<BytesType> type() const { return BytesType::Get(); }
 
@@ -139,7 +139,7 @@ class InlinedCordBytesValue final : public BytesValue, public InlineData {
 };
 
 // Implementation of BytesValue that is stored inlined within a handle. This
-// class is inheritently unsafe and care should be taken when using it.
+// class is inherently unsafe and care should be taken when using it.
 class InlinedStringViewBytesValue final : public BytesValue, public InlineData {
  private:
   friend class BytesValue;

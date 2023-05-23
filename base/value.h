@@ -55,7 +55,9 @@ class Value : public base_internal::Data {
   // Returns the kind of the value. This is equivalent to `type().kind()` but
   // faster in many scenarios. As such it should be preferred when only the kind
   // is required.
-  Kind kind() const { return base_internal::Metadata::Kind(*this); }
+  ValueKind kind() const {
+    return KindToValueKind(base_internal::Metadata::Kind(*this));
+  }
 
   // Returns the type of the value. If you only need the kind, prefer `kind()`.
   Handle<Type> type() const;
@@ -181,7 +183,7 @@ class ValueHandle final {
  private:
   friend class ValueMetadata;
 
-  static bool Equals(const Value& lhs, const Value& rhs, Kind kind);
+  static bool Equals(const Value& lhs, const Value& rhs, ValueKind kind);
 
   void CopyFrom(const ValueHandle& other);
 
@@ -203,7 +205,7 @@ class ValueHandle final {
 
   void Delete() const;
 
-  static void Delete(Kind kind, const Value& value);
+  static void Delete(ValueKind kind, const Value& value);
 
   AnyValue data_;
 };
@@ -231,7 +233,7 @@ struct HandleTraits<T, std::enable_if_t<(std::is_base_of_v<Value, T> &&
 template <typename T, typename U>
 class SimpleValue : public Value, InlineData {
  public:
-  static constexpr Kind kKind = static_cast<Kind>(T::kKind);
+  static constexpr ValueKind kKind = TypeKindToValueKind(T::kKind);
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
@@ -242,7 +244,7 @@ class SimpleValue : public Value, InlineData {
   SimpleValue& operator=(const SimpleValue&) = default;
   SimpleValue& operator=(SimpleValue&&) = default;
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   const Handle<T>& type() const { return T::Get(); }
 
@@ -267,7 +269,7 @@ class SimpleValue : public Value, InlineData {
 template <>
 class SimpleValue<NullType, void> : public Value, InlineData {
  public:
-  static constexpr Kind kKind = Kind::kNullType;
+  static constexpr ValueKind kKind = ValueKind::kNullType;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
@@ -278,7 +280,7 @@ class SimpleValue<NullType, void> : public Value, InlineData {
   SimpleValue& operator=(const SimpleValue&) = default;
   SimpleValue& operator=(SimpleValue&&) = default;
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   const Handle<NullType>& type() const { return NullType::Get(); }
 

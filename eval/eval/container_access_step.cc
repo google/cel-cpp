@@ -37,13 +37,13 @@ using ::cel::BoolValue;
 using ::cel::DoubleValue;
 using ::cel::Handle;
 using ::cel::IntValue;
-using ::cel::Kind;
-using ::cel::KindToString;
 using ::cel::ListValue;
 using ::cel::MapValue;
 using ::cel::StringValue;
 using ::cel::UintValue;
 using ::cel::Value;
+using ::cel::ValueKind;
+using ::cel::ValueKindToString;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateIntValue;
@@ -79,11 +79,11 @@ class ContainerAccessStep : public ExpressionStepBase {
 
 absl::optional<CelNumber> CelNumberFromValue(const Handle<Value>& value) {
   switch (value->kind()) {
-    case Kind::kInt64:
+    case ValueKind::kInt64:
       return CelNumber::FromInt64(value.As<IntValue>()->value());
-    case Kind::kUint64:
+    case ValueKind::kUint64:
       return CelNumber::FromUint64(value.As<UintValue>()->value());
-    case Kind::kDouble:
+    case ValueKind::kDouble:
       return CelNumber::FromDouble(value.As<DoubleValue>()->value());
     default:
       return absl::nullopt;
@@ -91,28 +91,28 @@ absl::optional<CelNumber> CelNumberFromValue(const Handle<Value>& value) {
 }
 
 absl::Status CheckMapKeyType(const Handle<Value>& key) {
-  Kind kind = key->kind();
+  ValueKind kind = key->kind();
   switch (kind) {
-    case Kind::kString:
-    case Kind::kInt64:
-    case Kind::kUint64:
-    case Kind::kBool:
+    case ValueKind::kString:
+    case ValueKind::kInt64:
+    case ValueKind::kUint64:
+    case ValueKind::kBool:
       return absl::OkStatus();
     default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Invalid map key type: '", KindToString(kind), "'"));
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid map key type: '", ValueKindToString(kind), "'"));
   }
 }
 
 AttributeQualifier AttributeQualifierFromValue(const Handle<Value>& v) {
   switch (v->kind()) {
-    case Kind::kString:
+    case ValueKind::kString:
       return AttributeQualifier::OfString(v.As<StringValue>()->ToString());
-    case Kind::kInt64:
+    case ValueKind::kInt64:
       return AttributeQualifier::OfInt(v.As<IntValue>()->value());
-    case Kind::kUint64:
+    case ValueKind::kUint64:
       return AttributeQualifier::OfUint(v.As<UintValue>()->value());
-    case Kind::kBool:
+    case ValueKind::kBool:
       return AttributeQualifier::OfBool(v.As<BoolValue>()->value());
     default:
       // Non-matching qualifier.
@@ -199,7 +199,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
 
   return absl::UnknownError(
       absl::StrCat("Index error: expected integer type, got ",
-                   CelValue::TypeName(key->kind())));
+                   CelValue::TypeName(ValueKindToKind(key->kind()))));
 }
 
 ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
@@ -244,7 +244,7 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
 
   // Select steps can be applied to either maps or messages
   switch (container->kind()) {
-    case Kind::kMap: {
+    case ValueKind::kMap: {
       auto result = LookupInMap(container.As<MapValue>(), key, frame);
       if (!result.ok()) {
         return {CreateErrorValueFromView(Arena::Create<absl::Status>(
@@ -253,7 +253,7 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
       }
       return {std::move(result).value(), std::move(trail)};
     }
-    case CelValue::Type::kList: {
+    case ValueKind::kList: {
       auto result = LookupInList(container.As<ListValue>(), key, frame);
       if (!result.ok()) {
         return {CreateErrorValueFromView(Arena::Create<absl::Status>(
@@ -266,7 +266,7 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
       return {CreateErrorValueFromView(Arena::Create<absl::Status>(
                   arena, absl::StatusCode::kInvalidArgument,
                   absl::StrCat("Invalid container type: '",
-                               KindToString(container->kind()), "'"))),
+                               ValueKindToString(container->kind()), "'"))),
               std::move(trail)};
   }
 }

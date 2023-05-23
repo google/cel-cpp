@@ -46,39 +46,39 @@ CEL_INTERNAL_VALUE_IMPL(Value);
 
 Handle<Type> Value::type() const {
   switch (kind()) {
-    case Kind::kNullType:
+    case ValueKind::kNullType:
       return static_cast<const NullValue*>(this)->type().As<Type>();
-    case Kind::kError:
+    case ValueKind::kError:
       return static_cast<const ErrorValue*>(this)->type().As<Type>();
-    case Kind::kType:
+    case ValueKind::kType:
       return static_cast<const TypeValue*>(this)->type().As<Type>();
-    case Kind::kBool:
+    case ValueKind::kBool:
       return static_cast<const BoolValue*>(this)->type().As<Type>();
-    case Kind::kInt:
+    case ValueKind::kInt:
       return static_cast<const IntValue*>(this)->type().As<Type>();
-    case Kind::kUint:
+    case ValueKind::kUint:
       return static_cast<const UintValue*>(this)->type().As<Type>();
-    case Kind::kDouble:
+    case ValueKind::kDouble:
       return static_cast<const DoubleValue*>(this)->type().As<Type>();
-    case Kind::kString:
+    case ValueKind::kString:
       return static_cast<const StringValue*>(this)->type().As<Type>();
-    case Kind::kBytes:
+    case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->type().As<Type>();
-    case Kind::kEnum:
+    case ValueKind::kEnum:
       return static_cast<const EnumValue*>(this)->type().As<Type>();
-    case Kind::kDuration:
+    case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->type().As<Type>();
-    case Kind::kTimestamp:
+    case ValueKind::kTimestamp:
       return static_cast<const TimestampValue*>(this)->type().As<Type>();
-    case Kind::kList:
+    case ValueKind::kList:
       return static_cast<const ListValue*>(this)->type().As<Type>();
-    case Kind::kMap:
+    case ValueKind::kMap:
       return static_cast<const MapValue*>(this)->type().As<Type>();
-    case Kind::kStruct:
+    case ValueKind::kStruct:
       return static_cast<const StructValue*>(this)->type().As<Type>();
-    case Kind::kUnknown:
+    case ValueKind::kUnknown:
       return static_cast<const UnknownValue*>(this)->type().As<Type>();
-    case Kind::kOpaque:
+    case ValueKind::kOpaque:
       return static_cast<const OpaqueValue*>(this)->type().As<Type>();
     default:
       ABSL_UNREACHABLE();
@@ -87,39 +87,39 @@ Handle<Type> Value::type() const {
 
 std::string Value::DebugString() const {
   switch (kind()) {
-    case Kind::kNullType:
+    case ValueKind::kNullType:
       return static_cast<const NullValue*>(this)->DebugString();
-    case Kind::kError:
+    case ValueKind::kError:
       return static_cast<const ErrorValue*>(this)->DebugString();
-    case Kind::kType:
+    case ValueKind::kType:
       return static_cast<const TypeValue*>(this)->DebugString();
-    case Kind::kBool:
+    case ValueKind::kBool:
       return static_cast<const BoolValue*>(this)->DebugString();
-    case Kind::kInt:
+    case ValueKind::kInt:
       return static_cast<const IntValue*>(this)->DebugString();
-    case Kind::kUint:
+    case ValueKind::kUint:
       return static_cast<const UintValue*>(this)->DebugString();
-    case Kind::kDouble:
+    case ValueKind::kDouble:
       return static_cast<const DoubleValue*>(this)->DebugString();
-    case Kind::kString:
+    case ValueKind::kString:
       return static_cast<const StringValue*>(this)->DebugString();
-    case Kind::kBytes:
+    case ValueKind::kBytes:
       return static_cast<const BytesValue*>(this)->DebugString();
-    case Kind::kEnum:
+    case ValueKind::kEnum:
       return static_cast<const EnumValue*>(this)->DebugString();
-    case Kind::kDuration:
+    case ValueKind::kDuration:
       return static_cast<const DurationValue*>(this)->DebugString();
-    case Kind::kTimestamp:
+    case ValueKind::kTimestamp:
       return static_cast<const TimestampValue*>(this)->DebugString();
-    case Kind::kList:
+    case ValueKind::kList:
       return static_cast<const ListValue*>(this)->DebugString();
-    case Kind::kMap:
+    case ValueKind::kMap:
       return static_cast<const MapValue*>(this)->DebugString();
-    case Kind::kStruct:
+    case ValueKind::kStruct:
       return static_cast<const StructValue*>(this)->DebugString();
-    case Kind::kUnknown:
+    case ValueKind::kUnknown:
       return static_cast<const UnknownValue*>(this)->DebugString();
-    case Kind::kOpaque:
+    case ValueKind::kOpaque:
       return static_cast<const OpaqueValue*>(this)->DebugString();
     default:
       ABSL_UNREACHABLE();
@@ -128,46 +128,46 @@ std::string Value::DebugString() const {
 
 namespace base_internal {
 
-bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
+bool ValueHandle::Equals(const Value& lhs, const Value& rhs, ValueKind kind) {
   switch (kind) {
-    case Kind::kNullType:
+    case ValueKind::kNullType:
       return true;
-    case Kind::kError:
+    case ValueKind::kError:
       return static_cast<const ErrorValue&>(lhs).value() ==
              static_cast<const ErrorValue&>(rhs).value();
-    case Kind::kType:
+    case ValueKind::kType:
       return static_cast<const TypeValue&>(lhs).Equals(
           static_cast<const TypeValue&>(rhs));
-    case Kind::kBool:
+    case ValueKind::kBool:
       return static_cast<const BoolValue&>(lhs).value() ==
              static_cast<const BoolValue&>(rhs).value();
-    case Kind::kInt:
+    case ValueKind::kInt:
       return static_cast<const IntValue&>(lhs).value() ==
              static_cast<const IntValue&>(rhs).value();
-    case Kind::kUint:
+    case ValueKind::kUint:
       return static_cast<const UintValue&>(lhs).value() ==
              static_cast<const UintValue&>(rhs).value();
-    case Kind::kDouble:
+    case ValueKind::kDouble:
       return static_cast<const DoubleValue&>(lhs).value() ==
              static_cast<const DoubleValue&>(rhs).value();
-    case Kind::kString:
+    case ValueKind::kString:
       return static_cast<const StringValue&>(lhs).Equals(
           static_cast<const StringValue&>(rhs));
-    case Kind::kBytes:
+    case ValueKind::kBytes:
       return static_cast<const BytesValue&>(lhs).Equals(
           static_cast<const BytesValue&>(rhs));
-    case Kind::kEnum:
+    case ValueKind::kEnum:
       return static_cast<const EnumValue&>(lhs).number() ==
                  static_cast<const EnumValue&>(rhs).number() &&
              static_cast<const EnumValue&>(lhs).type() ==
                  static_cast<const EnumValue&>(rhs).type();
-    case Kind::kDuration:
+    case ValueKind::kDuration:
       return static_cast<const DurationValue&>(lhs).value() ==
              static_cast<const DurationValue&>(rhs).value();
-    case Kind::kTimestamp:
+    case ValueKind::kTimestamp:
       return static_cast<const TimestampValue&>(lhs).value() ==
              static_cast<const TimestampValue&>(rhs).value();
-    case Kind::kList: {
+    case ValueKind::kList: {
       bool stored_inline = Metadata::IsStoredInline(lhs);
       if (stored_inline != Metadata::IsStoredInline(rhs)) {
         return false;
@@ -178,7 +178,7 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
       }
       return &lhs == &rhs;
     }
-    case Kind::kMap: {
+    case ValueKind::kMap: {
       bool stored_inline = Metadata::IsStoredInline(lhs);
       if (stored_inline != Metadata::IsStoredInline(rhs)) {
         return false;
@@ -189,7 +189,7 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
       }
       return &lhs == &rhs;
     }
-    case Kind::kStruct: {
+    case ValueKind::kStruct: {
       bool stored_inline = Metadata::IsStoredInline(lhs);
       if (stored_inline != Metadata::IsStoredInline(rhs)) {
         return false;
@@ -202,12 +202,12 @@ bool ValueHandle::Equals(const Value& lhs, const Value& rhs, Kind kind) {
       }
       return &lhs == &rhs;
     }
-    case Kind::kUnknown:
+    case ValueKind::kUnknown:
       return static_cast<const UnknownValue&>(lhs).attribute_set() ==
                  static_cast<const UnknownValue&>(rhs).attribute_set() &&
              static_cast<const UnknownValue&>(lhs).function_result_set() ==
                  static_cast<const UnknownValue&>(rhs).function_result_set();
-    case Kind::kOpaque:
+    case ValueKind::kOpaque:
       return &lhs == &rhs;
     default:
       ABSL_UNREACHABLE();
@@ -223,7 +223,7 @@ bool ValueHandle::Equals(const ValueHandle& other) const {
   if (self == nullptr || that == nullptr) {
     return false;
   }
-  Kind kind = self->kind();
+  ValueKind kind = self->kind();
   return kind == that->kind() && Equals(*self, *that, kind);
 }
 
@@ -232,16 +232,16 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
   auto locality = other.data_.locality();
   if (locality == DataLocality::kStoredInline) {
     if (!other.data_.IsTrivial()) {
-      switch (other.data_.kind_inline()) {
-        case Kind::kError:
+      switch (KindToValueKind(other.data_.kind_inline())) {
+        case ValueKind::kError:
           data_.ConstructInline<ErrorValue>(
               *static_cast<const ErrorValue*>(other.data_.get_inline()));
           return;
-        case Kind::kUnknown:
+        case ValueKind::kUnknown:
           data_.ConstructInline<UnknownValue>(
               *static_cast<const UnknownValue*>(other.data_.get_inline()));
           return;
-        case Kind::kString:
+        case ValueKind::kString:
           switch (other.data_.inline_variant<InlinedStringValueVariant>()) {
             case InlinedStringValueVariant::kCord:
               data_.ConstructInline<InlinedCordStringValue>(
@@ -255,7 +255,7 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
               break;
           }
           return;
-        case Kind::kBytes:
+        case ValueKind::kBytes:
           switch (other.data_.inline_variant<InlinedBytesValueVariant>()) {
             case InlinedBytesValueVariant::kCord:
               data_.ConstructInline<InlinedCordBytesValue>(
@@ -269,12 +269,12 @@ void ValueHandle::CopyFrom(const ValueHandle& other) {
               break;
           }
           return;
-        case Kind::kType:
+        case ValueKind::kType:
           data_.ConstructInline<base_internal::ModernTypeValue>(
               *static_cast<const base_internal::ModernTypeValue*>(
                   other.data_.get_inline()));
           return;
-        case Kind::kEnum:
+        case ValueKind::kEnum:
           data_.ConstructInline<EnumValue>(
               *static_cast<const EnumValue*>(other.data_.get_inline()));
           return;
@@ -297,18 +297,18 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
   // data_ is currently uninitialized.
   if (other.data_.IsStoredInline()) {
     if (!other.data_.IsTrivial()) {
-      switch (other.data_.kind_inline()) {
-        case Kind::kError:
+      switch (KindToValueKind(other.data_.kind_inline())) {
+        case ValueKind::kError:
           data_.ConstructInline<ErrorValue>(
               std::move(*static_cast<ErrorValue*>(other.data_.get_inline())));
           other.data_.Destruct<ErrorValue>();
           break;
-        case Kind::kUnknown:
+        case ValueKind::kUnknown:
           data_.ConstructInline<UnknownValue>(
               std::move(*static_cast<UnknownValue*>(other.data_.get_inline())));
           other.data_.Destruct<UnknownValue>();
           break;
-        case Kind::kString:
+        case ValueKind::kString:
           switch (other.data_.inline_variant<InlinedStringValueVariant>()) {
             case InlinedStringValueVariant::kCord:
               data_.ConstructInline<InlinedCordStringValue>(
@@ -324,7 +324,7 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
               break;
           }
           break;
-        case Kind::kBytes:
+        case ValueKind::kBytes:
           switch (other.data_.inline_variant<InlinedBytesValueVariant>()) {
             case InlinedBytesValueVariant::kCord:
               data_.ConstructInline<InlinedCordBytesValue>(
@@ -340,12 +340,12 @@ void ValueHandle::MoveFrom(ValueHandle& other) {
               break;
           }
           break;
-        case Kind::kType:
+        case ValueKind::kType:
           data_.ConstructInline<ModernTypeValue>(std::move(
               *static_cast<const ModernTypeValue*>(other.data_.get_inline())));
           other.data_.Destruct<ModernTypeValue>();
           break;
-        case Kind::kEnum:
+        case ValueKind::kEnum:
           data_.ConstructInline<EnumValue>(std::move(
               *static_cast<const EnumValue*>(other.data_.get_inline())));
           other.data_.Destruct<EnumValue>();
@@ -381,14 +381,14 @@ void ValueHandle::Destruct() {
       return;
     case DataLocality::kStoredInline:
       if (!data_.IsTrivial()) {
-        switch (data_.kind_inline()) {
-          case Kind::kError:
+        switch (KindToValueKind(data_.kind_inline())) {
+          case ValueKind::kError:
             data_.Destruct<ErrorValue>();
             return;
-          case Kind::kUnknown:
+          case ValueKind::kUnknown:
             data_.Destruct<UnknownValue>();
             return;
-          case Kind::kString:
+          case ValueKind::kString:
             switch (data_.inline_variant<InlinedStringValueVariant>()) {
               case InlinedStringValueVariant::kCord:
                 data_.Destruct<InlinedCordStringValue>();
@@ -398,7 +398,7 @@ void ValueHandle::Destruct() {
                 break;
             }
             return;
-          case Kind::kBytes:
+          case ValueKind::kBytes:
             switch (data_.inline_variant<InlinedBytesValueVariant>()) {
               case InlinedBytesValueVariant::kCord:
                 data_.Destruct<InlinedCordBytesValue>();
@@ -408,10 +408,10 @@ void ValueHandle::Destruct() {
                 break;
             }
             return;
-          case Kind::kType:
+          case ValueKind::kType:
             data_.Destruct<ModernTypeValue>();
             return;
-          case Kind::kEnum:
+          case ValueKind::kEnum:
             data_.Destruct<EnumValue>();
             return;
           default:
@@ -428,27 +428,28 @@ void ValueHandle::Destruct() {
 }
 
 void ValueHandle::Delete() const {
-  Delete(data_.kind_heap(), *static_cast<const Value*>(data_.get_heap()));
+  Delete(KindToValueKind(data_.kind_heap()),
+         *static_cast<const Value*>(data_.get_heap()));
 }
 
-void ValueHandle::Delete(Kind kind, const Value& value) {
+void ValueHandle::Delete(ValueKind kind, const Value& value) {
   switch (kind) {
-    case Kind::kList:
+    case ValueKind::kList:
       delete static_cast<const AbstractListValue*>(&value);
       return;
-    case Kind::kMap:
+    case ValueKind::kMap:
       delete static_cast<const AbstractMapValue*>(&value);
       return;
-    case Kind::kStruct:
+    case ValueKind::kStruct:
       delete static_cast<const AbstractStructValue*>(&value);
       return;
-    case Kind::kString:
+    case ValueKind::kString:
       delete static_cast<const StringStringValue*>(&value);
       return;
-    case Kind::kBytes:
+    case ValueKind::kBytes:
       delete static_cast<const StringBytesValue*>(&value);
       return;
-    case Kind::kOpaque:
+    case ValueKind::kOpaque:
       delete static_cast<const OpaqueValue*>(&value);
       return;
     default:
@@ -458,7 +459,7 @@ void ValueHandle::Delete(Kind kind, const Value& value) {
 
 void ValueMetadata::Unref(const Value& value) {
   if (Metadata::Unref(value)) {
-    ValueHandle::Delete(Metadata::KindHeap(value), value);
+    ValueHandle::Delete(KindToValueKind(Metadata::KindHeap(value)), value);
   }
 }
 

@@ -425,9 +425,9 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
                                        const Handle<Value>& value,
                                        bool unchecked) {
   switch (value->kind()) {
-    case Kind::kNullType:
+    case ValueKind::kNullType:
       return CelValue::CreateNull();
-    case Kind::kError: {
+    case ValueKind::kError: {
       if (base_internal::Metadata::IsTrivial(*value)) {
         return CelValue::CreateError(
             ErrorValueAccess::value_ptr(*value.As<ErrorValue>()));
@@ -435,11 +435,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       return CelValue::CreateError(google::protobuf::Arena::Create<absl::Status>(
           arena, value.As<ErrorValue>()->value()));
     }
-    case Kind::kDyn:
-      break;
-    case Kind::kAny:
-      break;
-    case Kind::kType: {
+    case ValueKind::kType: {
       // Should be fine, so long as we are using an arena allocator.
       // We can only transport legacy type values.
       if (base_internal::Metadata::GetInlineVariant<
@@ -452,30 +448,30 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
 
       return CelValue::CreateCelTypeView(*type_name);
     }
-    case Kind::kBool:
+    case ValueKind::kBool:
       return CelValue::CreateBool(value.As<BoolValue>()->value());
-    case Kind::kInt:
+    case ValueKind::kInt:
       return CelValue::CreateInt64(value.As<IntValue>()->value());
-    case Kind::kUint:
+    case ValueKind::kUint:
       return CelValue::CreateUint64(value.As<UintValue>()->value());
-    case Kind::kDouble:
+    case ValueKind::kDouble:
       return CelValue::CreateDouble(value.As<DoubleValue>()->value());
-    case Kind::kString:
+    case ValueKind::kString:
       return absl::visit(StringValueToLegacyVisitor{arena},
                          GetStringValueRep(value.As<StringValue>()));
-    case Kind::kBytes:
+    case ValueKind::kBytes:
       return absl::visit(BytesValueToLegacyVisitor{arena},
                          GetBytesValueRep(value.As<BytesValue>()));
-    case Kind::kEnum:
+    case ValueKind::kEnum:
       break;
-    case Kind::kDuration:
+    case ValueKind::kDuration:
       return unchecked
                  ? CelValue::CreateUncheckedDuration(
                        value.As<DurationValue>()->value())
                  : CelValue::CreateDuration(value.As<DurationValue>()->value());
-    case Kind::kTimestamp:
+    case ValueKind::kTimestamp:
       return CelValue::CreateTimestamp(value.As<TimestampValue>()->value());
-    case Kind::kList: {
+    case ValueKind::kList: {
       if (value->Is<base_internal::LegacyListValue>()) {
         // Fast path.
         return CelValue::CreateList(reinterpret_cast<const CelList*>(
@@ -484,7 +480,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       return CelValue::CreateList(
           google::protobuf::Arena::Create<LegacyCelList>(arena, value.As<ListValue>()));
     }
-    case Kind::kMap: {
+    case ValueKind::kMap: {
       if (value->Is<base_internal::LegacyMapValue>()) {
         // Fast path.
         return CelValue::CreateMap(reinterpret_cast<const CelMap*>(
@@ -493,7 +489,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       return CelValue::CreateMap(
           google::protobuf::Arena::Create<LegacyCelMap>(arena, value.As<MapValue>()));
     }
-    case Kind::kStruct: {
+    case ValueKind::kStruct: {
       if (value->Is<base_internal::LegacyStructValue>()) {
         // "Legacy".
         uintptr_t message = LegacyStructValueAccess::Message(
@@ -513,7 +509,7 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       return absl::UnimplementedError(
           "only legacy struct types and values can be used for interop");
     }
-    case Kind::kUnknown: {
+    case ValueKind::kUnknown: {
       if (base_internal::Metadata::IsTrivial(*value)) {
         return CelValue::CreateUnknownSet(
             UnknownValueAccess::value_ptr(*value.As<UnknownValue>()));
@@ -525,9 +521,9 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
     default:
       break;
   }
-  return absl::UnimplementedError(
-      absl::StrCat("conversion from cel::Value to CelValue for type ",
-                   KindToString(value->kind()), " is not yet implemented"));
+  return absl::UnimplementedError(absl::StrCat(
+      "conversion from cel::Value to CelValue for type ",
+      ValueKindToString(value->kind()), " is not yet implemented"));
 }
 
 Handle<NullValue> CreateNullValue() {

@@ -1373,10 +1373,10 @@ void ProtoDebugStringMap(std::string& out, const google::protobuf::Message& mess
 bool ToProtoMapKey(google::protobuf::MapKey& key, const Handle<Value>& value,
                    const google::protobuf::FieldDescriptor& field) {
   switch (value->kind()) {
-    case Kind::kBool:
+    case ValueKind::kBool:
       key.SetBoolValue(value.As<BoolValue>()->value());
       break;
-    case Kind::kInt: {
+    case ValueKind::kInt: {
       int64_t cpp_key = value.As<IntValue>()->value();
       const auto* key_desc = field.message_type()->map_key();
       switch (key_desc->cpp_type()) {
@@ -1394,7 +1394,7 @@ bool ToProtoMapKey(google::protobuf::MapKey& key, const Handle<Value>& value,
           ABSL_UNREACHABLE();
       }
     } break;
-    case Kind::kUint: {
+    case ValueKind::kUint: {
       uint64_t cpp_key = value.As<UintValue>()->value();
       const auto* key_desc = field.message_type()->map_key();
       switch (key_desc->cpp_type()) {
@@ -1411,7 +1411,7 @@ bool ToProtoMapKey(google::protobuf::MapKey& key, const Handle<Value>& value,
           ABSL_UNREACHABLE();
       }
     } break;
-    case Kind::kString:
+    case ValueKind::kString:
       key.SetStringValue(value.As<StringValue>()->ToString());
       break;
     default:

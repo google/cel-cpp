@@ -28,9 +28,9 @@ namespace cel {
 
 class OpaqueValue : public Value, public base_internal::HeapData {
  public:
-  static constexpr Kind kKind = Kind::kOpaque;
+  static constexpr ValueKind kKind = ValueKind::kOpaque;
 
-  static bool Is(const Value& value) { return value.kind() == Kind::kOpaque; }
+  static bool Is(const Value& value) { return value.kind() == kKind; }
 
   using Value::Is;
 
@@ -39,6 +39,8 @@ class OpaqueValue : public Value, public base_internal::HeapData {
                            << " to opaque";
     return static_cast<const OpaqueValue&>(value);
   }
+
+  constexpr ValueKind kind() const { return kKind; }
 
   const Handle<OpaqueType>& type() const { return type_; }
 

@@ -186,6 +186,8 @@ class HeapData /* : public Data */ {
 
   explicit HeapData(TypeKind kind) : HeapData(TypeKindToKind(kind)) {}
 
+  explicit HeapData(ValueKind kind) : HeapData(ValueKindToKind(kind)) {}
+
  private:
   // Called by Arena-based memory managers to determine whether we actually need
   // our destructor called. Subclasses should override this if they want their

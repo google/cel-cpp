@@ -113,13 +113,13 @@ template <>
 struct MapKeyHasher<Handle<Value>> {
   inline size_t operator()(const Handle<Value>& key) const {
     switch (key->kind()) {
-      case Kind::kBool:
+      case ValueKind::kBool:
         return absl::Hash<BoolValue>{}(*key.As<BoolValue>());
-      case Kind::kInt:
+      case ValueKind::kInt:
         return absl::Hash<IntValue>{}(*key.As<IntValue>());
-      case Kind::kUint:
+      case ValueKind::kUint:
         return absl::Hash<UintValue>{}(*key.As<UintValue>());
-      case Kind::kString:
+      case ValueKind::kString:
         return absl::Hash<StringValue>{}(*key.As<StringValue>());
       default:
         ABSL_UNREACHABLE();
@@ -147,13 +147,13 @@ struct MapKeyEqualer<Handle<Value>> {
                          const Handle<Value>& rhs) const {
     ABSL_ASSERT(lhs->kind() == rhs->kind());
     switch (lhs->kind()) {
-      case Kind::kBool:
+      case ValueKind::kBool:
         return *lhs.As<BoolValue>() == *rhs.As<BoolValue>();
-      case Kind::kInt:
+      case ValueKind::kInt:
         return *lhs.As<IntValue>() == *rhs.As<IntValue>();
-      case Kind::kUint:
+      case ValueKind::kUint:
         return *lhs.As<UintValue>() == *rhs.As<UintValue>();
-      case Kind::kString:
+      case ValueKind::kString:
         return *lhs.As<StringValue>() == *rhs.As<StringValue>();
       default:
         ABSL_UNREACHABLE();

@@ -33,12 +33,12 @@ namespace {
 
 using ::cel::ErrorValue;
 using ::cel::Handle;
-using ::cel::Kind;
 using ::cel::MapValue;
 using ::cel::NullValue;
 using ::cel::StructValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
+using ::cel::ValueKind;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateBoolValue;
 using ::cel::interop_internal::CreateError;
@@ -204,11 +204,11 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   // Handle test only Select.
   if (test_field_presence_) {
     switch (arg->kind()) {
-      case Kind::kMap:
+      case ValueKind::kMap:
         frame->value_stack().PopAndPush(TestOnlySelect(
             arg.As<MapValue>(), field_, frame->memory_manager()));
         return absl::OkStatus();
-      case Kind::kMessage:
+      case ValueKind::kMessage:
         frame->value_stack().PopAndPush(
             TestOnlySelect(arg.As<StructValue>(), field_,
                            frame->memory_manager(), frame->type_manager()));
@@ -221,7 +221,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   // Normal select path.
   // Select steps can be applied to either maps or messages
   switch (arg->kind()) {
-    case Kind::kStruct: {
+    case ValueKind::kStruct: {
       CEL_ASSIGN_OR_RETURN(Handle<Value> result,
                            CreateValueFromField(arg.As<StructValue>(), frame));
       frame->value_stack().PopAndPush(std::move(result),
@@ -229,7 +229,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
       return absl::OkStatus();
     }
-    case CelValue::Type::kMap: {
+    case ValueKind::kMap: {
       const auto& cel_map = arg.As<MapValue>();
       auto cel_field = CreateStringValueFromView(field_);
       CEL_ASSIGN_OR_RETURN(

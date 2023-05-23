@@ -51,7 +51,7 @@ class MapValue : public Value {
   template <typename K, typename V>
   using Builder = MapValueBuilder<K, V>;
 
-  static constexpr Kind kKind = Kind::kMap;
+  static constexpr ValueKind kKind = ValueKind::kMap;
 
   static bool Is(const Value& value) { return value.kind() == kKind; }
 
@@ -63,7 +63,7 @@ class MapValue : public Value {
     return static_cast<const MapValue&>(value);
   }
 
-  constexpr Kind kind() const { return kKind; }
+  constexpr ValueKind kind() const { return kKind; }
 
   Handle<MapType> type() const;
 
