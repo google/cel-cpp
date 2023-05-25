@@ -21,14 +21,10 @@
 
 namespace cel::extensions::protobuf_internal {
 
-namespace {
-
 bool IsCordField(const google::protobuf::FieldDescriptor& field) {
   return !field.is_extension() &&
          field.options().ctype() == google::protobuf::FieldOptions::CORD;
 }
-
-}  // namespace
 
 absl::StatusOr<Handle<StringValue>> GetStringField(
     ValueFactory& value_factory, const google::protobuf::Message& message,

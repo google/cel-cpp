@@ -25,6 +25,8 @@
 
 namespace cel::extensions::protobuf_internal {
 
+bool IsCordField(const google::protobuf::FieldDescriptor& field);
+
 absl::StatusOr<Handle<StringValue>> GetStringField(
     ValueFactory& value_factory, const google::protobuf::Message& message,
     const google::protobuf::Reflection* reflection, const google::protobuf::FieldDescriptor* field)
