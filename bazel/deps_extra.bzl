@@ -12,7 +12,7 @@ def cel_spec_deps_extra():
     go_repository(
         name = "org_golang_google_genproto",
         build_file_proto_mode = "disable_global",
-        commit = "62d171c70ae133bd47722027b62f8820407cf744",
+        commit = "69f6226f97e558dbaa68715071622af0d86b3a17",
         importpath = "google.golang.org/genproto",
     )
 
@@ -20,7 +20,7 @@ def cel_spec_deps_extra():
         name = "org_golang_google_grpc",
         build_file_proto_mode = "disable_global",
         importpath = "google.golang.org/grpc",
-        tag = "v1.33.2",
+        tag = "v1.49.0",
     )
 
     go_repository(
@@ -33,17 +33,17 @@ def cel_spec_deps_extra():
     go_repository(
         name = "org_golang_x_text",
         importpath = "golang.org/x/text",
-        sum = "h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=",
-        version = "v0.3.0",
+        sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
+        version = "v0.3.2",
     )
 
     go_rules_dependencies()
-    go_register_toolchains()
+    go_register_toolchains(version = "1.19.1")
     gazelle_dependencies()
+    protobuf_deps()
 
 def cel_cpp_deps_extra():
     """All transitive dependencies."""
-    protobuf_deps()
     switched_rules_by_language(
         name = "com_google_googleapis_imports",
         cc = True,
