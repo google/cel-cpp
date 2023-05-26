@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_WRAPPERS_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_WRAPPERS_H_
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
 #include "google/protobuf/message.h"
@@ -44,6 +45,30 @@ absl::StatusOr<uint64_t> UnwrapUIntValueProto(const google::protobuf::Message& m
 absl::StatusOr<uint64_t> UnwrapUInt32ValueProto(const google::protobuf::Message& message);
 
 absl::StatusOr<uint64_t> UnwrapUInt64ValueProto(const google::protobuf::Message& message);
+
+absl::Status WrapBoolValueProto(google::protobuf::Message& message, bool value);
+
+absl::Status WrapBytesValueProto(google::protobuf::Message& message,
+                                 const absl::Cord& value);
+
+absl::Status WrapFloatValueProto(google::protobuf::Message& message, float value);
+
+absl::Status WrapDoubleValueProto(google::protobuf::Message& message, double value);
+
+absl::Status WrapIntValueProto(google::protobuf::Message& message, int64_t value);
+
+absl::Status WrapInt32ValueProto(google::protobuf::Message& message, int32_t value);
+
+absl::Status WrapInt64ValueProto(google::protobuf::Message& message, int64_t value);
+
+absl::Status WrapUIntValueProto(google::protobuf::Message& message, uint64_t value);
+
+absl::Status WrapUInt32ValueProto(google::protobuf::Message& message, uint32_t value);
+
+absl::Status WrapUInt64ValueProto(google::protobuf::Message& message, uint64_t value);
+
+absl::Status WrapStringValueProto(google::protobuf::Message& message,
+                                  const absl::Cord& value);
 
 }  // namespace cel::extensions::protobuf_internal
 

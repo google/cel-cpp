@@ -21,6 +21,7 @@ def cel_spec_deps_extra():
         build_file_proto_mode = "disable_global",
         importpath = "google.golang.org/grpc",
         tag = "v1.49.0",
+        build_directives = ["gazelle:resolve go google.golang.org/genproto/googleapis/rpc/status @org_golang_google_genproto//googleapis/rpc/status:status"],
     )
 
     go_repository(

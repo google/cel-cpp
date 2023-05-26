@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIME_H_
 #define THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_TIME_H_
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "google/protobuf/message.h"
@@ -30,6 +31,16 @@ absl::StatusOr<absl::Duration> AbslDurationFromDurationProto(
 // checking.
 absl::StatusOr<absl::Time> AbslTimeFromTimestampProto(
     const google::protobuf::Message& message);
+
+// Convert absl::Duration to google.protobuf.Duration. Does not perform range
+// checking.
+absl::Status AbslDurationToDurationProto(google::protobuf::Message& message,
+                                         absl::Duration duration);
+
+// Convert absl::Time to google.protobuf.Timestamp. Does not perform range
+// checking.
+absl::Status AbslTimeToTimestampProto(google::protobuf::Message& message,
+                                      absl::Time time);
 
 }  // namespace cel::extensions::protobuf_internal
 

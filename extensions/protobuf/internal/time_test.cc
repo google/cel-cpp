@@ -14,9 +14,13 @@
 
 #include "extensions/protobuf/internal/time.h"
 
+#include <memory>
+
 #include "google/protobuf/duration.pb.h"
 #include "google/protobuf/timestamp.pb.h"
 #include "google/protobuf/descriptor.pb.h"
+#include "absl/memory/memory.h"
+#include "absl/time/time.h"
 #include "internal/testing.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/descriptor_database.h"
@@ -28,12 +32,12 @@ namespace {
 using testing::Eq;
 using cel::internal::IsOkAndHolds;
 
-TEST(Duration, Generated) {
+TEST(Duration, GeneratedFromProto) {
   EXPECT_THAT(AbslDurationFromDurationProto(google::protobuf::Duration()),
               IsOkAndHolds(Eq(absl::ZeroDuration())));
 }
 
-TEST(Duration, Custom) {
+TEST(Duration, CustomFromProto) {
   google::protobuf::SimpleDescriptorDatabase database;
   {
     google::protobuf::FileDescriptorProto fd;
@@ -49,12 +53,49 @@ TEST(Duration, Custom) {
               IsOkAndHolds(Eq(absl::ZeroDuration())));
 }
 
-TEST(Timestamp, Generated) {
+TEST(Duration, GeneratedToProto) {
+  google::protobuf::Duration proto;
+  ASSERT_OK(AbslDurationToDurationProto(
+      proto, absl::Seconds(1) + absl::Nanoseconds(2)));
+  EXPECT_EQ(proto.seconds(), 1);
+  EXPECT_EQ(proto.nanos(), 2);
+}
+
+TEST(Duration, CustomToProto) {
+  google::protobuf::SimpleDescriptorDatabase database;
+  {
+    google::protobuf::FileDescriptorProto fd;
+    google::protobuf::Duration::descriptor()->file()->CopyTo(&fd);
+    ASSERT_TRUE(database.Add(fd));
+  }
+  google::protobuf::DescriptorPool pool(&database);
+  pool.AllowUnknownDependencies();
+  google::protobuf::DynamicMessageFactory factory(&pool);
+  factory.SetDelegateToGeneratedFactory(false);
+  std::unique_ptr<google::protobuf::Message> proto = absl::WrapUnique(
+      factory
+          .GetPrototype(pool.FindMessageTypeByName("google.protobuf.Duration"))
+          ->New());
+  const auto* descriptor = proto->GetDescriptor();
+  const auto* reflection = proto->GetReflection();
+  const auto* seconds_field = descriptor->FindFieldByName("seconds");
+  ASSERT_NE(seconds_field, nullptr);
+  const auto* nanos_field = descriptor->FindFieldByName("nanos");
+  ASSERT_NE(nanos_field, nullptr);
+
+  ASSERT_OK(AbslDurationToDurationProto(
+      *proto, absl::Seconds(1) + absl::Nanoseconds(2)));
+
+  EXPECT_EQ(reflection->GetInt64(*proto, seconds_field), 1);
+  EXPECT_EQ(reflection->GetInt32(*proto, nanos_field), 2);
+}
+
+TEST(Timestamp, GeneratedFromProto) {
   EXPECT_THAT(AbslDurationFromDurationProto(google::protobuf::Duration()),
               IsOkAndHolds(Eq(absl::ZeroDuration())));
 }
 
-TEST(Timestamp, Custom) {
+TEST(Timestamp, CustomFromProto) {
   google::protobuf::SimpleDescriptorDatabase database;
   {
     google::protobuf::FileDescriptorProto fd;
@@ -68,6 +109,43 @@ TEST(Timestamp, Custom) {
   EXPECT_THAT(AbslTimeFromTimestampProto(*factory.GetPrototype(
                   pool.FindMessageTypeByName("google.protobuf.Timestamp"))),
               IsOkAndHolds(Eq(absl::UnixEpoch())));
+}
+
+TEST(Timestamp, GeneratedToProto) {
+  google::protobuf::Timestamp proto;
+  ASSERT_OK(AbslTimeToTimestampProto(
+      proto, absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(2)));
+  EXPECT_EQ(proto.seconds(), 1);
+  EXPECT_EQ(proto.nanos(), 2);
+}
+
+TEST(Timestamp, CustomToProto) {
+  google::protobuf::SimpleDescriptorDatabase database;
+  {
+    google::protobuf::FileDescriptorProto fd;
+    google::protobuf::Timestamp::descriptor()->file()->CopyTo(&fd);
+    ASSERT_TRUE(database.Add(fd));
+  }
+  google::protobuf::DescriptorPool pool(&database);
+  pool.AllowUnknownDependencies();
+  google::protobuf::DynamicMessageFactory factory(&pool);
+  factory.SetDelegateToGeneratedFactory(false);
+  std::unique_ptr<google::protobuf::Message> proto = absl::WrapUnique(
+      factory
+          .GetPrototype(pool.FindMessageTypeByName("google.protobuf.Timestamp"))
+          ->New());
+  const auto* descriptor = proto->GetDescriptor();
+  const auto* reflection = proto->GetReflection();
+  const auto* seconds_field = descriptor->FindFieldByName("seconds");
+  ASSERT_NE(seconds_field, nullptr);
+  const auto* nanos_field = descriptor->FindFieldByName("nanos");
+  ASSERT_NE(nanos_field, nullptr);
+
+  ASSERT_OK(AbslTimeToTimestampProto(
+      *proto, absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(2)));
+
+  EXPECT_EQ(reflection->GetInt64(*proto, seconds_field), 1);
+  EXPECT_EQ(reflection->GetInt32(*proto, nanos_field), 2);
 }
 
 }  // namespace

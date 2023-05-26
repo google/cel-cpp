@@ -80,6 +80,7 @@ cc_library(
         "//internal:casts",
         "//internal:status_macros",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -94,6 +95,8 @@ cc_test(
     deps = [
         ":time",
         "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/time",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -104,6 +107,7 @@ cc_library(
     hdrs = ["wrappers.h"],
     deps = [
         "//internal:casts",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -118,6 +122,8 @@ cc_test(
     deps = [
         ":wrappers",
         "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
         "@com_google_protobuf//:protobuf",
     ],
 )
