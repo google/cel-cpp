@@ -35,7 +35,7 @@ namespace cel {
 class TypeManager final {
  public:
   TypeManager(TypeFactory& type_factory ABSL_ATTRIBUTE_LIFETIME_BOUND,
-              TypeProvider& type_provider ABSL_ATTRIBUTE_LIFETIME_BOUND)
+              const TypeProvider& type_provider ABSL_ATTRIBUTE_LIFETIME_BOUND)
       : type_factory_(type_factory), type_provider_(type_provider) {}
 
   MemoryManager& memory_manager() const {

@@ -10,11 +10,15 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "base/memory.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/types/enum_type.h"
 #include "base/values/type_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/testing.h"
+#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -23,11 +27,12 @@ namespace {
 using ::cel::EnumType;
 using ::cel::Handle;
 using ::cel::MemoryManager;
+using ::cel::Type;
 using ::cel::TypeValue;
 using testing::AllOf;
 using testing::Contains;
 using testing::Eq;
-using testing::IsEmpty;
+using testing::Field;
 using testing::Key;
 using testing::Optional;
 using testing::Pair;
@@ -56,89 +61,6 @@ class TestTypeProvider : public LegacyTypeProvider {
  private:
   std::vector<std::string> types_;
 };
-
-MATCHER_P(MatchesEnumDescriptor, desc, "") {
-  const Handle<cel::EnumType>& enum_type = arg;
-
-  if (enum_type->constant_count() != desc->value_count()) {
-    return false;
-  }
-
-  auto iter_or = enum_type->NewConstantIterator(MemoryManager::Global());
-  if (!iter_or.ok()) {
-    return false;
-  }
-
-  auto iter = std::move(iter_or).value();
-
-  for (int i = 0; i < desc->value_count(); i++) {
-    absl::StatusOr<EnumType::Constant> constant = iter->Next();
-    if (!constant.ok()) {
-      return false;
-    }
-
-    const auto* value_desc = desc->value(i);
-
-    if (value_desc->name() != constant->name) {
-      return false;
-    }
-    if (value_desc->number() != constant->number) {
-      return false;
-    }
-  }
-  return true;
-}
-
-MATCHER_P2(EqualsEnumerator, name, number, "") {
-  const CelTypeRegistry::Enumerator& enumerator = arg;
-  return enumerator.name == name && enumerator.number == number;
-}
-
-// Portable build version.
-// Full template specification. Default in case of substitution failure below.
-template <typename T, typename U = void>
-struct RegisterEnumDescriptorTestT {
-  void Test() {
-    // Portable version doesn't support registering at this time.
-    CelTypeRegistry registry;
-
-    EXPECT_THAT(registry.ListResolveableEnums(),
-                UnorderedElementsAre("google.protobuf.NullValue"));
-  }
-};
-
-// Full proto runtime version.
-template <typename T>
-struct RegisterEnumDescriptorTestT<
-    T, typename std::enable_if<std::is_base_of_v<google::protobuf::Message, T>>::type> {
-  void Test() {
-    CelTypeRegistry registry;
-    registry.Register(google::protobuf::GetEnumDescriptor<TestMessage::TestEnum>());
-
-    EXPECT_THAT(
-        registry.ListResolveableEnums(),
-        UnorderedElementsAre("google.protobuf.NullValue",
-                             "google.api.expr.runtime.TestMessage.TestEnum"));
-
-    EXPECT_THAT(
-        registry.resolveable_enums(),
-        AllOf(
-            Contains(Pair(
-                "google.protobuf.NullValue",
-                MatchesEnumDescriptor(
-                    google::protobuf::GetEnumDescriptor<google::protobuf::NullValue>()))),
-            Contains(Pair(
-                "google.api.expr.runtime.TestMessage.TestEnum",
-                MatchesEnumDescriptor(
-                    google::protobuf::GetEnumDescriptor<TestMessage::TestEnum>())))));
-  }
-};
-
-using RegisterEnumDescriptorTest = RegisterEnumDescriptorTestT<TestMessage>;
-
-TEST(CelTypeRegistryTest, RegisterEnumDescriptor) {
-  RegisterEnumDescriptorTest().Test();
-}
 
 TEST(CelTypeRegistryTest, RegisterEnum) {
   CelTypeRegistry registry;
@@ -321,6 +243,65 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterTypeFound) {
   ASSERT_TRUE(type);
   EXPECT_TRUE(type->Is<TypeValue>());
   EXPECT_THAT(type.As<TypeValue>()->name(), Eq("google.protobuf.Any"));
+}
+
+MATCHER_P(TypeNameIs, name, "") {
+  const Handle<Type>& type = arg;
+  *result_listener << "got typename: " << type->name();
+  return type->name() == name;
+}
+
+TEST(CelTypeRegistryTypeProviderTest, Builtins) {
+  CelTypeRegistry registry;
+
+  cel::TypeFactory type_factory(MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
+
+  // simple
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> bool_type,
+                       type_manager.ResolveType("bool"));
+  EXPECT_THAT(bool_type, Optional(TypeNameIs("bool")));
+  // opaque
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> timestamp_type,
+                       type_manager.ResolveType("google.protobuf.Timestamp"));
+  EXPECT_THAT(timestamp_type,
+              Optional(TypeNameIs("google.protobuf.Timestamp")));
+  // wrapper
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> int_wrapper_type,
+                       type_manager.ResolveType("google.protobuf.Int64Value"));
+  EXPECT_THAT(int_wrapper_type,
+              Optional(TypeNameIs("google.protobuf.Int64Value")));
+  // json
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> json_struct_type,
+                       type_manager.ResolveType("google.protobuf.Struct"));
+  EXPECT_THAT(json_struct_type, Optional(TypeNameIs("map")));
+  // special
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> any_type,
+                       type_manager.ResolveType("google.protobuf.Any"));
+  EXPECT_THAT(any_type, Optional(TypeNameIs("google.protobuf.Any")));
+}
+
+TEST(CelTypeRegistryTypeProviderTest, Enums) {
+  CelTypeRegistry registry;
+
+  registry.RegisterEnum("com.example.MyEnum", {{"MY_ENUM_VALUE1", 1}});
+  registry.RegisterEnum("google.protobuf.Struct", {});
+
+  cel::TypeFactory type_factory(MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, registry.GetTypeProvider());
+
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> enum_type,
+                       type_manager.ResolveType("com.example.MyEnum"));
+  EXPECT_THAT(enum_type, Optional(TypeNameIs("com.example.MyEnum")));
+  ASSERT_TRUE((*enum_type)->Is<EnumType>());
+  EXPECT_THAT((*enum_type)->As<EnumType>().FindConstantByNumber(1),
+              IsOkAndHolds(Optional(
+                  Field((&EnumType::Constant::name), Eq("MY_ENUM_VALUE1")))));
+
+  // Can't override builtins.
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> struct_type,
+                       type_manager.ResolveType("google.protobuf.Struct"));
+  EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
 }
 
 TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {

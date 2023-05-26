@@ -68,6 +68,9 @@ struct MessageWrapperAccess final {
       google::api::expr::runtime::MessageWrapper& wrapper);
 };
 
+Handle<StructType> CreateStructTypeFromLegacyTypeInfo(
+    const google::api::expr::runtime::LegacyTypeInfoApis* type_info);
+
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
 Handle<StringValue> CreateStringValueFromView(absl::string_view value);

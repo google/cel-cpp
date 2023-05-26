@@ -37,3 +37,16 @@ cc_test(
         "@com_google_absl//absl/types:optional",
     ],
 )
+
+cc_library(
+    name = "composed_type_provider",
+    srcs = ["composed_type_provider.cc"],
+    hdrs = ["composed_type_provider.h"],
+    deps = [
+        "//base:handle",
+        "//base:type",
+        "//internal:status_macros",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
+    ],
+)

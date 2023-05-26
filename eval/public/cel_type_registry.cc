@@ -7,15 +7,22 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_set.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/memory.h"
+#include "base/type.h"
 #include "base/type_factory.h"
+#include "base/type_provider.h"
 #include "base/types/enum_type.h"
+#include "base/types/struct_type.h"
 #include "base/value.h"
 #include "eval/internal/interop.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
+#include "eval/public/structs/legacy_type_provider.h"
+#include "internal/casts.h"
 #include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
@@ -24,6 +31,7 @@ namespace {
 
 using cel::Handle;
 using cel::MemoryManager;
+using cel::Type;
 using cel::TypeFactory;
 using cel::UniqueRef;
 using cel::Value;
@@ -53,6 +61,51 @@ cel::TypeFactory& GetDefaultTypeFactory() {
   static TypeFactory* factory = new TypeFactory(cel::MemoryManager::Global());
   return *factory;
 }
+
+class LegacyToModernTypeProviderAdapter : public cel::TypeProvider {
+ public:
+  explicit LegacyToModernTypeProviderAdapter(const LegacyTypeProvider& provider)
+      : provider_(provider) {}
+
+  absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
+      TypeFactory& factory, absl::string_view name) const override {
+    absl::optional<const LegacyTypeInfoApis*> type_info =
+        provider_.ProvideLegacyTypeInfo(name);
+
+    if (!type_info.has_value() || *type_info == nullptr) {
+      return absl::nullopt;
+    }
+
+    return cel::interop_internal::CreateStructTypeFromLegacyTypeInfo(
+        *type_info);
+  }
+
+ private:
+  const LegacyTypeProvider& provider_;
+};
+
+// A trivial type provider for registered Enums.
+//
+// Clients manually register the expected enums available to reference in the
+// input expressions. These may mask other defined enumerators (e.g. reference
+// by a protobuf message).
+class EnumTypeProvider : public cel::TypeProvider {
+ public:
+  explicit EnumTypeProvider(const EnumMap& enum_map) : enum_map_(enum_map) {}
+
+  absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
+      TypeFactory&, absl::string_view name) const override {
+    auto iter = enum_map_.find(name);
+    if (iter != enum_map_.end()) {
+      return iter->second;
+    }
+
+    return absl::nullopt;
+  }
+
+ private:
+  const EnumMap& enum_map_;
+};
 
 // EnumType implementation for generic enums that are defined at runtime that
 // can be resolved in expressions.
@@ -176,6 +229,8 @@ ResolveableEnumType::FindConstantByNumber(int64_t number) const {
 
 CelTypeRegistry::CelTypeRegistry() : types_(GetCoreTypes()) {
   RegisterEnum("google.protobuf.NullValue", {{"NULL_VALUE", 0}});
+  type_provider_impl_.AddTypeProvider(
+      std::make_unique<EnumTypeProvider>(resolveable_enums_));
 }
 
 void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
@@ -198,18 +253,27 @@ void CelTypeRegistry::RegisterEnum(absl::string_view enum_name,
   resolveable_enums_[enum_name] = std::move(result_or).value();
 }
 
+void CelTypeRegistry::RegisterTypeProvider(
+    std::unique_ptr<LegacyTypeProvider> provider) {
+  legacy_type_providers_.push_back(
+      std::shared_ptr<const LegacyTypeProvider>(std::move(provider)));
+  type_provider_impl_.AddTypeProvider(
+      std::make_unique<LegacyToModernTypeProviderAdapter>(
+          *legacy_type_providers_.back()));
+}
+
 std::shared_ptr<const LegacyTypeProvider>
 CelTypeRegistry::GetFirstTypeProvider() const {
-  if (type_providers_.empty()) {
+  if (legacy_type_providers_.empty()) {
     return nullptr;
   }
-  return type_providers_[0];
+  return legacy_type_providers_[0];
 }
 
 // Find a type's CelValue instance by its fully qualified name.
 absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
     absl::string_view fully_qualified_type_name) const {
-  for (const auto& provider : type_providers_) {
+  for (const auto& provider : legacy_type_providers_) {
     auto maybe_adapter = provider->ProvideLegacyType(fully_qualified_type_name);
     if (maybe_adapter.has_value()) {
       return maybe_adapter;

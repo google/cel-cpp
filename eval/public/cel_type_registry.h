@@ -1,6 +1,7 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -16,6 +17,7 @@
 #include "base/types/enum_type.h"
 #include "base/value.h"
 #include "eval/public/structs/legacy_type_provider.h"
+#include "runtime/internal/composed_type_provider.h"
 
 namespace google::api::expr::runtime {
 
@@ -67,12 +69,30 @@ class CelTypeRegistry {
   // Register a new type provider.
   //
   // Type providers are consulted in the order they are added.
-  void RegisterTypeProvider(std::unique_ptr<LegacyTypeProvider> provider) {
-    type_providers_.push_back(std::move(provider));
-  }
+  void RegisterTypeProvider(std::unique_ptr<LegacyTypeProvider> provider);
 
   // Get the first registered type provider.
   std::shared_ptr<const LegacyTypeProvider> GetFirstTypeProvider() const;
+
+  // Returns the effective type provider that has been configured with the
+  // registry.
+  //
+  // This is a composited type provider that should check in order:
+  // - builtins (via TypeManager)
+  // - custom enumerations
+  // - registered extension type providers in the order registered.
+  const cel::TypeProvider& GetTypeProvider() const {
+    return type_provider_impl_;
+  }
+
+  // Register an additional type provider with the registry.
+  //
+  // A pointer to the registered provider is returned to support testing,
+  // but users should prefer to use the composed type provider from
+  // GetTypeProvider()
+  void RegisterModernTypeProvider(std::unique_ptr<cel::TypeProvider> provider) {
+    return type_provider_impl_.AddTypeProvider(std::move(provider));
+  }
 
   // Find a type adapter given a fully qualified type name.
   // Adapter provides a generic interface for the reflection operations the
@@ -117,7 +137,11 @@ class CelTypeRegistry {
   // Internal representation for enums.
   absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>
       resolveable_enums_;
-  std::vector<std::shared_ptr<LegacyTypeProvider>> type_providers_;
+  cel::runtime_internal::ComposedTypeProvider type_provider_impl_;
+  // TODO(uncreated-issue/44): This is needed to inspect the registered legacy type
+  // providers for client tests. This can be removed when they are migrated to
+  // use the modern APIs.
+  std::vector<std::shared_ptr<const LegacyTypeProvider>> legacy_type_providers_;
 };
 
 }  // namespace google::api::expr::runtime

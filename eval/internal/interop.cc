@@ -526,6 +526,11 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
       ValueKindToString(value->kind()), " is not yet implemented"));
 }
 
+Handle<StructType> CreateStructTypeFromLegacyTypeInfo(
+    const LegacyTypeInfoApis* type_info) {
+  return LegacyStructTypeAccess::Create(reinterpret_cast<uintptr_t>(type_info));
+}
+
 Handle<NullValue> CreateNullValue() {
   return HandleFactory<NullValue>::Make<NullValue>();
 }
