@@ -39,12 +39,16 @@
 #include "eval/public/containers/container_backed_map_impl.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
+#include "eval/public/structs/proto_message_type_adapter.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/unknown_set.h"
+#include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "extensions/protobuf/type_provider.h"
 #include "extensions/protobuf/value.h"
 #include "internal/testing.h"
+#include "google/protobuf/message.h"
 
 namespace cel::interop_internal {
 namespace {
@@ -52,7 +56,9 @@ namespace {
 using ::google::api::expr::runtime::CelProtoWrapper;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
+using ::google::api::expr::runtime::LegacyTypeInfoApis;
 using ::google::api::expr::runtime::MessageWrapper;
+using ::google::api::expr::runtime::TestMessage;
 using ::google::api::expr::runtime::UnknownSet;
 using testing::Eq;
 using testing::HasSubstr;
@@ -797,6 +803,42 @@ TEST(ValueInterop, StructFromLegacyMessageLite) {
   EXPECT_EQ(legacy_value_wrapper.message_ptr(), value_wrapper.message_ptr());
   EXPECT_EQ(legacy_value_wrapper.legacy_type_info(),
             value_wrapper.legacy_type_info());
+}
+
+TEST(ValueInterop, StructTypeFromLegacyTypeInfo) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
+
+  google::api::expr::runtime::ProtoMessageTypeAdapter adapter(
+      TestMessage::descriptor(), google::protobuf::MessageFactory::generated_factory());
+
+  Handle<Type> type = CreateStructTypeFromLegacyTypeInfo(
+      static_cast<const LegacyTypeInfoApis*>(&adapter));
+
+  EXPECT_EQ(type->name(), "google.api.expr.runtime.TestMessage");
+}
+
+TEST(ValueInterop, StructTypeLegacyTypeInfoRoundTrip) {
+  google::protobuf::Arena arena;
+  extensions::ProtoMemoryManager memory_manager(&arena);
+  TypeFactory type_factory(memory_manager);
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
+
+  google::api::expr::runtime::ProtoMessageTypeAdapter adapter(
+      TestMessage::descriptor(), google::protobuf::MessageFactory::generated_factory());
+
+  Handle<Type> type = CreateStructTypeFromLegacyTypeInfo(
+      static_cast<const LegacyTypeInfoApis*>(&adapter));
+
+  EXPECT_EQ(LegacyTypeInfoFromType(type),
+            static_cast<const LegacyTypeInfoApis*>(&adapter));
+  EXPECT_EQ(LegacyTypeInfoFromType(type_factory.GetBoolType()), nullptr);
 }
 
 TEST(ValueInterop, LegacyStructRoundtrip) {

@@ -248,6 +248,11 @@ Handle<StructType> LegacyStructTypeAccess::Create(uintptr_t message) {
       base_internal::LegacyStructType>(message);
 }
 
+uintptr_t LegacyStructTypeAccess::GetStorage(
+    const base_internal::LegacyStructType& type) {
+  return type.msg_;
+}
+
 Handle<StructValue> LegacyStructValueAccess::Create(
     const MessageWrapper& wrapper) {
   return Create(MessageWrapperAccess::Message(wrapper),
@@ -529,6 +534,22 @@ absl::StatusOr<CelValue> ToLegacyValue(google::protobuf::Arena* arena,
 Handle<StructType> CreateStructTypeFromLegacyTypeInfo(
     const LegacyTypeInfoApis* type_info) {
   return LegacyStructTypeAccess::Create(reinterpret_cast<uintptr_t>(type_info));
+}
+
+const google::api::expr::runtime::LegacyTypeInfoApis* LegacyTypeInfoFromType(
+    const Handle<Type>& type) {
+  if (!type->Is<base_internal::LegacyStructType>()) {
+    return nullptr;
+  }
+  uintptr_t representation = LegacyStructTypeAccess::GetStorage(
+      type->As<base_internal::LegacyStructType>());
+  if ((representation & base_internal::kMessageWrapperTagMask) !=
+      base_internal::kMessageWrapperTagTypeInfoValue) {
+    return nullptr;
+  }
+
+  return reinterpret_cast<google::api::expr::runtime::LegacyTypeInfoApis*>(
+      representation & base_internal::kMessageWrapperPtrMask);
 }
 
 Handle<NullValue> CreateNullValue() {

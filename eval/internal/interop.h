@@ -30,6 +30,7 @@
 #include "base/values/type_value.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
+#include "eval/public/structs/legacy_type_info_apis.h"
 
 namespace cel::interop_internal {
 
@@ -45,6 +46,7 @@ struct CelMapAccess final {
 
 struct LegacyStructTypeAccess final {
   static Handle<StructType> Create(uintptr_t message);
+  static uintptr_t GetStorage(const base_internal::LegacyStructType& type);
 };
 
 struct LegacyStructValueAccess final {
@@ -70,6 +72,10 @@ struct MessageWrapperAccess final {
 
 Handle<StructType> CreateStructTypeFromLegacyTypeInfo(
     const google::api::expr::runtime::LegacyTypeInfoApis* type_info);
+
+// Nullptr is returned if this is not a legacy message type.
+const google::api::expr::runtime::LegacyTypeInfoApis* LegacyTypeInfoFromType(
+    const Handle<Type>& type);
 
 // Unlike ValueFactory::CreateStringValue, this does not copy input and instead
 // wraps it. It should only be used for interop with the legacy CelValue.
