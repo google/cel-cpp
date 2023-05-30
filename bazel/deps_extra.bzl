@@ -9,11 +9,22 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def cel_spec_deps_extra():
     """CEL Spec dependencies."""
+    # Generated Google APIs protos for Golang 05/25/2023
     go_repository(
-        name = "org_golang_google_genproto",
+        name = "org_golang_google_genproto_googleapis_api",
         build_file_proto_mode = "disable_global",
-        commit = "69f6226f97e558dbaa68715071622af0d86b3a17",
-        importpath = "google.golang.org/genproto",
+        importpath = "google.golang.org/genproto/googleapis/api",
+        sum = "h1:m8v1xLLLzMe1m5P+gCTF8nJB9epwZQUBERm20Oy1poQ=",
+        version = "v0.0.0-20230525234035-dd9d682886f9",
+    )
+
+    # Generated Google APIs protos for Golang 05/25/2023
+    go_repository(
+        name = "org_golang_google_genproto_googleapis_rpc",
+        build_file_proto_mode = "disable_global",
+        importpath = "google.golang.org/genproto/googleapis/rpc",
+        sum = "h1:0nDDozoAU19Qb2HwhXadU8OcsiO/09cnTqhUtq2MEOM=",
+        version = "v0.0.0-20230525234030-28d5490b6b19",
     )
 
     go_repository(
@@ -21,7 +32,7 @@ def cel_spec_deps_extra():
         build_file_proto_mode = "disable_global",
         importpath = "google.golang.org/grpc",
         tag = "v1.49.0",
-        build_directives = ["gazelle:resolve go google.golang.org/genproto/googleapis/rpc/status @org_golang_google_genproto//googleapis/rpc/status:status"],
+        build_directives = ["gazelle:resolve go google.golang.org/genproto/googleapis/rpc/status @org_golang_google_genproto_googleapis_rpc//status:status"],
     )
 
     go_repository(
@@ -34,8 +45,8 @@ def cel_spec_deps_extra():
     go_repository(
         name = "org_golang_x_text",
         importpath = "golang.org/x/text",
-        sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
-        version = "v0.3.2",
+        sum = "h1:olpwvP2KacW1ZWvsR7uQhoyTYvKAupfQrRGBFM352Gk=",
+        version = "v0.3.7",
     )
 
     go_rules_dependencies()
