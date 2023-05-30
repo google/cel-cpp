@@ -100,8 +100,7 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
     runtime_options.unknown_processing =
         cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 runtime_options);
+  CelExpressionFlatImpl cel_expr(std::move(path), runtime_options);
   Activation activation;
   activation.InsertValue("target", target);
 
@@ -286,8 +285,7 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 cel::RuntimeOptions{});
+  CelExpressionFlatImpl cel_expr(std::move(path), cel::RuntimeOptions{});
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -821,7 +819,7 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   if (GetParam()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
+  CelExpressionFlatImpl cel_expr(std::move(path), options);
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -854,8 +852,7 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(),
-                                 cel::RuntimeOptions{});
+  CelExpressionFlatImpl cel_expr(std::move(path), cel::RuntimeOptions{});
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -897,7 +894,7 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
 
   cel::RuntimeOptions options;
   options.enable_missing_attribute_errors = true;
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
+  CelExpressionFlatImpl cel_expr(std::move(path), options);
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -945,7 +942,7 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
 
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  CelExpressionFlatImpl cel_expr(std::move(path), &TestTypeRegistry(), options);
+  CelExpressionFlatImpl cel_expr(std::move(path), options);
 
   {
     std::vector<CelAttributePattern> unknown_patterns;

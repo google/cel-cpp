@@ -1232,7 +1232,7 @@ FlatExprBuilder::CreateExpressionImpl(
 
   std::unique_ptr<CelExpression> expression_impl =
       std::make_unique<CelExpressionFlatImpl>(std::move(execution_path),
-                                              GetTypeRegistry(), options_);
+                                              options_);
 
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();

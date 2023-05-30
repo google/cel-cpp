@@ -141,14 +141,12 @@ class ExecutionFrame {
   // arena serves as allocation manager during the expression evaluation.
 
   ExecutionFrame(ExecutionPathView flat, const BaseActivation& activation,
-                 const CelTypeRegistry* type_registry,
                  const cel::RuntimeOptions& options,
                  CelExpressionFlatEvaluationState* state)
       : pc_(0UL),
         execution_path_(flat),
         activation_(activation),
         modern_activation_(activation),
-        type_registry_(*type_registry),
         options_(options),
         attribute_utility_(modern_activation_.GetUnknownAttributes(),
                            modern_activation_.GetMissingAttributes(),
@@ -204,8 +202,6 @@ class ExecutionFrame {
   cel::TypeManager& type_manager() { return state_->type_manager(); }
 
   cel::ValueFactory& value_factory() { return state_->value_factory(); }
-
-  const CelTypeRegistry& type_registry() { return type_registry_; }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
@@ -267,7 +263,6 @@ class ExecutionFrame {
   ExecutionPathView execution_path_;
   const BaseActivation& activation_;
   cel::interop_internal::AdapterActivationImpl modern_activation_;
-  const CelTypeRegistry& type_registry_;
   const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
   AttributeUtility attribute_utility_;
   const int max_iterations_;
@@ -285,10 +280,8 @@ class CelExpressionFlatImpl : public CelExpression {
   // iterations in the comprehension expressions (use 0 to disable the upper
   // bound).
   CelExpressionFlatImpl(ExecutionPath path,
-                        const CelTypeRegistry* type_registry,
                         const cel::RuntimeOptions& options)
       : path_(std::move(path)),
-        type_registry_(*type_registry),
         options_(options) {}
 
   // Move-only
@@ -322,7 +315,6 @@ class CelExpressionFlatImpl : public CelExpression {
 
  private:
   const ExecutionPath path_;
-  const CelTypeRegistry& type_registry_;
   cel::RuntimeOptions options_;
 };
 

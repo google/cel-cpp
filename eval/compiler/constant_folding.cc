@@ -498,8 +498,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
                         node.const_expr().constant_kind());
   } else {
     ExecutionPathView subplan = context.GetSubplan(node);
-    ExecutionFrame frame(subplan, empty_, &context.type_registry(),
-                         context.options(), &state_);
+    ExecutionFrame frame(subplan, empty_, context.options(), &state_);
     state_.Reset();
     // Update stack size to accommodate sub expression.
     // This only results in a vector resize if the new maxsize is greater than

@@ -195,7 +195,7 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
       ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
   state->Reset();
 
-  ExecutionFrame frame(path_, activation, &type_registry_, options_, state);
+  ExecutionFrame frame(path_, activation, options_, state);
 
   CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> value, frame.Evaluate(callback));
 

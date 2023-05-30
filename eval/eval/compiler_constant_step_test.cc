@@ -59,8 +59,7 @@ TEST_F(CompilerConstantStepTest, Evaluate) {
   path.push_back(std::make_unique<CompilerConstantStep>(
       value_factory_.CreateIntValue(42), -1, false));
 
-  ExecutionFrame frame(path, empty_activation_, &TestTypeRegistry(), options_,
-                       &state_);
+  ExecutionFrame frame(path, empty_activation_, options_, &state_);
 
   ASSERT_OK_AND_ASSIGN(cel::Handle<cel::Value> result,
                        frame.Evaluate(CelEvaluationListener()));

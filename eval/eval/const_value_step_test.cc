@@ -37,7 +37,7 @@ absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
   path.push_back(std::move(step));
 
   CelExpressionFlatImpl impl(std::move(path),
-                             &google::api::expr::runtime::TestTypeRegistry(),
+
                              cel::RuntimeOptions{});
 
   google::api::expr::runtime::Activation activation;

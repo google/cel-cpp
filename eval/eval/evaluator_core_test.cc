@@ -84,7 +84,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   Activation activation;
   CelExpressionFlatEvaluationState state(path.size(), nullptr);
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(), options, &state);
+  ExecutionFrame frame(path, activation, options, &state);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -105,7 +105,7 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   CelExpressionFlatEvaluationState state(path.size(), nullptr);
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  ExecutionFrame frame(path, activation, &TestTypeRegistry(), options, &state);
+  ExecutionFrame frame(path, activation, options, &state);
 
   auto original = cel::interop_internal::CreateIntValue(test_value);
   Expr ident;
@@ -164,8 +164,7 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  CelExpressionFlatImpl impl(std::move(path), &TestTypeRegistry(),
-                             cel::RuntimeOptions{});
+  CelExpressionFlatImpl impl(std::move(path), cel::RuntimeOptions{});
 
   Activation activation;
   google::protobuf::Arena arena;

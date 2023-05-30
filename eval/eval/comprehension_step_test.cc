@@ -48,8 +48,7 @@ class ListKeysStepTest : public testing::Test {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
-    return std::make_unique<CelExpressionFlatImpl>(
-        std::move(path), &TestTypeRegistry(), options);
+    return std::make_unique<CelExpressionFlatImpl>(std::move(path), options);
   }
 
  private:
