@@ -63,6 +63,7 @@ InterpreterOptions OptionsForParam(BenchmarkParam param, google::protobuf::Arena
     case BenchmarkParam::kFoldConstants:
       options.constant_arena = &arena;
       options.constant_folding = true;
+      options.enable_updated_constant_folding = false;
       break;
     case BenchmarkParam::kUpdatedFoldConstants:
       options.constant_arena = &arena;

@@ -211,6 +211,7 @@ int RunServer(bool optimize, bool base64_encoded, bool updated_optimize) {
   if (optimize || updated_optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
     options.constant_folding = true;
+    options.enable_updated_constant_folding = false;
     options.constant_arena = &arena;
   }
   if (updated_optimize) {
