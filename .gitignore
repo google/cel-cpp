@@ -8,3 +8,4 @@ bazel-cel-cpp
 clang.bazelrc
 user.bazelrc
 local_tsan.bazelrc
+.vscode
