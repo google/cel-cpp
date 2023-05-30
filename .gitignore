@@ -5,3 +5,6 @@ bazel-out
 bazel-testlogs
 bazel-cel-cpp
 *~
+clang.bazelrc
+user.bazelrc
+local_tsan.bazelrc
