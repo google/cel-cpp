@@ -2,8 +2,8 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_CONTAINER_ACCESS_STEP_H_
 
 #include <cstdint>
+#include <memory>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "eval/eval/evaluator_core.h"
 

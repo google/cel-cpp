@@ -4,14 +4,12 @@
 #include <memory>
 #include <utility>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "base/attribute.h"
 #include "base/kind.h"
-#include "base/memory.h"
 #include "base/value.h"
 #include "base/values/bool_value.h"
 #include "base/values/double_value.h"
@@ -23,10 +21,8 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_number.h"
-#include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/internal/number.h"
 
 namespace google::api::expr::runtime {
 
@@ -44,13 +40,9 @@ using ::cel::UintValue;
 using ::cel::Value;
 using ::cel::ValueKind;
 using ::cel::ValueKindToString;
-using ::cel::extensions::ProtoMemoryManager;
-using ::cel::interop_internal::CreateErrorValueFromView;
-using ::cel::interop_internal::CreateIntValue;
 using ::cel::interop_internal::CreateNoSuchKeyError;
-using ::cel::interop_internal::CreateUintValue;
 using ::cel::interop_internal::CreateUnknownValueFromView;
-using ::google::protobuf::Arena;
+using ::cel::runtime_internal::Number;
 
 inline constexpr int kNumContainerAccessArguments = 2;
 
@@ -77,14 +69,14 @@ class ContainerAccessStep : public ExpressionStepBase {
                                              ExecutionFrame* frame) const;
 };
 
-absl::optional<CelNumber> CelNumberFromValue(const Handle<Value>& value) {
+absl::optional<Number> CelNumberFromValue(const Handle<Value>& value) {
   switch (value->kind()) {
     case ValueKind::kInt64:
-      return CelNumber::FromInt64(value.As<IntValue>()->value());
+      return Number::FromInt64(value.As<IntValue>()->value());
     case ValueKind::kUint64:
-      return CelNumber::FromUint64(value.As<UintValue>()->value());
+      return Number::FromUint64(value.As<UintValue>()->value());
     case ValueKind::kDouble:
-      return CelNumber::FromDouble(value.As<DoubleValue>()->value());
+      return Number::FromDouble(value.As<DoubleValue>()->value());
     default:
       return absl::nullopt;
   }
@@ -125,7 +117,7 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
     ExecutionFrame* frame) const {
   if (frame->enable_heterogeneous_numeric_lookups()) {
     // Double isn't a supported key type but may be convertible to an integer.
-    absl::optional<CelNumber> number = CelNumberFromValue(key);
+    absl::optional<Number> number = CelNumberFromValue(key);
     if (number.has_value()) {
       // Consider uint as uint first then try coercion (prefer matching the
       // original type of the key value).
@@ -141,8 +133,9 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
       if (number->LosslessConvertibleToInt()) {
         CEL_ASSIGN_OR_RETURN(
             auto maybe_value,
-            cel_map->Get(MapValue::GetContext(frame->value_factory()),
-                         CreateIntValue(number->AsInt())));
+            cel_map->Get(
+                MapValue::GetContext(frame->value_factory()),
+                frame->value_factory().CreateIntValue(number->AsInt())));
         if (maybe_value.has_value()) {
           return std::move(maybe_value).value();
         }
@@ -151,14 +144,15 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
       if (number->LosslessConvertibleToUint()) {
         CEL_ASSIGN_OR_RETURN(
             auto maybe_value,
-            cel_map->Get(MapValue::GetContext(frame->value_factory()),
-                         CreateUintValue(number->AsUint())));
+            cel_map->Get(
+                MapValue::GetContext(frame->value_factory()),
+                frame->value_factory().CreateUintValue(number->AsUint())));
         if (maybe_value.has_value()) {
           return std::move(maybe_value).value();
         }
       }
-      return CreateErrorValueFromView(
-          CreateNoSuchKeyError(frame->memory_manager(), key->DebugString()));
+      return frame->value_factory().CreateErrorValue(
+          CreateNoSuchKeyError(key->DebugString()));
     }
   }
 
@@ -171,8 +165,8 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInMap(
     return std::move(maybe_value).value();
   }
 
-  return CreateErrorValueFromView(
-      CreateNoSuchKeyError(frame->memory_manager(), key->DebugString()));
+  return frame->value_factory().CreateErrorValue(
+      CreateNoSuchKeyError(key->DebugString()));
 }
 
 absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
@@ -199,13 +193,11 @@ absl::StatusOr<Handle<Value>> ContainerAccessStep::LookupInList(
 
   return absl::UnknownError(
       absl::StrCat("Index error: expected integer type, got ",
-                   CelValue::TypeName(ValueKindToKind(key->kind()))));
+                   cel::KindToString(ValueKindToKind(key->kind()))));
 }
 
 ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     ExecutionFrame* frame) const {
-  google::protobuf::Arena* arena =
-      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
   auto input_args = frame->value_stack().GetSpan(kNumContainerAccessArguments);
   AttributeTrail trail;
 
@@ -220,7 +212,7 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
       return {CreateUnknownValueFromView(unknown_set), std::move(trail)};
     }
 
-    // We guarantee that GetAttributeSpan can aquire this number of arguments
+    // We guarantee that GetAttributeSpan can acquire this number of arguments
     // by calling HasEnough() at the beginning of Execute() method.
     absl::Span<const AttributeTrail> input_attrs =
         frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments);
@@ -247,27 +239,27 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     case ValueKind::kMap: {
       auto result = LookupInMap(container.As<MapValue>(), key, frame);
       if (!result.ok()) {
-        return {CreateErrorValueFromView(Arena::Create<absl::Status>(
-                    arena, std::move(result).status())),
-                std::move(trail)};
+        return {
+            frame->value_factory().CreateErrorValue(std::move(result).status()),
+            std::move(trail)};
       }
       return {std::move(result).value(), std::move(trail)};
     }
     case ValueKind::kList: {
       auto result = LookupInList(container.As<ListValue>(), key, frame);
       if (!result.ok()) {
-        return {CreateErrorValueFromView(Arena::Create<absl::Status>(
-                    arena, std::move(result).status())),
-                std::move(trail)};
+        return {
+            frame->value_factory().CreateErrorValue(std::move(result).status()),
+            std::move(trail)};
       }
       return {std::move(result).value(), std::move(trail)};
     }
     default:
-      return {CreateErrorValueFromView(Arena::Create<absl::Status>(
-                  arena, absl::StatusCode::kInvalidArgument,
-                  absl::StrCat("Invalid container type: '",
-                               ValueKindToString(container->kind()), "'"))),
-              std::move(trail)};
+      return {
+          frame->value_factory().CreateErrorValue(absl::InvalidArgumentError(
+              absl::StrCat("Invalid container type: '",
+                           ValueKindToString(container->kind()), "'"))),
+          std::move(trail)};
   }
 }
 

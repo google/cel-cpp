@@ -64,6 +64,10 @@ absl::Status CreateNoSuchFieldError(absl::string_view field) {
       absl::StrCat(kErrNoSuchField, field.empty() ? "" : " : ", field));
 }
 
+absl::Status CreateNoSuchKeyError(absl::string_view key) {
+  return absl::NotFoundError(absl::StrCat(kErrNoSuchKey, " : ", key));
+}
+
 const absl::Status* CreateNoSuchKeyError(cel::MemoryManager& manager,
                                          absl::string_view key) {
   return CreateNoSuchKeyError(
@@ -72,8 +76,7 @@ const absl::Status* CreateNoSuchKeyError(cel::MemoryManager& manager,
 
 const absl::Status* CreateNoSuchKeyError(google::protobuf::Arena* arena,
                                          absl::string_view key) {
-  return Arena::Create<absl::Status>(arena, absl::StatusCode::kNotFound,
-                                     absl::StrCat(kErrNoSuchKey, " : ", key));
+  return Arena::Create<absl::Status>(arena, CreateNoSuchKeyError(key));
 }
 
 const absl::Status* CreateMissingAttributeError(

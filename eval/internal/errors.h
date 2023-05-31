@@ -65,6 +65,8 @@ const absl::Status* CreateNoSuchKeyError(cel::MemoryManager& manager,
 const absl::Status* CreateNoSuchKeyError(google::protobuf::Arena* arena,
                                          absl::string_view key);
 
+absl::Status CreateNoSuchKeyError(absl::string_view key);
+
 const absl::Status* CreateUnknownValueError(google::protobuf::Arena* arena,
                                             absl::string_view unknown_path);
 
