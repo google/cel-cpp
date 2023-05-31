@@ -21,6 +21,10 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "base/ast_internal.h"
 #include "base/internal/ast_impl.h"
+#include "base/memory.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
+#include "base/value_factory.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
@@ -43,8 +47,11 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   RegexPrecompilationExtensionTest()
       : type_registry_(*builder_.GetTypeRegistry()),
         function_registry_(*builder_.GetRegistry()),
-        resolver_("", function_registry_.InternalGetRegistry(),
-                  &type_registry_) {
+        type_factory_(cel::MemoryManager::Global()),
+        type_manager_(type_factory_, type_registry_.GetTypeProvider()),
+        value_factory_(type_manager_),
+        resolver_("", function_registry_.InternalGetRegistry(), &type_registry_,
+                  value_factory_, type_registry_.resolveable_enums()) {
     options_.enable_regex = true;
     options_.regex_max_program_size = 100;
     options_.enable_regex_precompilation = true;
@@ -61,6 +68,9 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   CelFunctionRegistry& function_registry_;
   InterpreterOptions options_;
   cel::RuntimeOptions runtime_options_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
   Resolver resolver_;
   BuilderWarnings builder_warnings_;
 };

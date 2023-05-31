@@ -99,7 +99,11 @@ TEST(ResolveReferences, Basic) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
 
   auto result = ResolveReferences(registry, warnings, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(true));
@@ -127,7 +131,11 @@ TEST(ResolveReferences, ReturnsFalseIfNoChanges) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
 
   auto result = ResolveReferences(registry, warnings, *expr_ast);
   ASSERT_THAT(result, IsOkAndHolds(false));
@@ -146,7 +154,11 @@ TEST(ResolveReferences, NamespacedIdent) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[7].set_name("namespace_x.bar");
 
@@ -206,7 +218,11 @@ TEST(ResolveReferences, WarningOnPresenceTest) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].set_name("foo.bar.var1");
 
   auto result = ResolveReferences(registry, warnings, *expr_ast);
@@ -254,7 +270,11 @@ TEST(ResolveReferences, EnumConstReferenceUsed) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
   expr_ast->reference_map()[5].mutable_value().set_int64_value(9);
@@ -289,7 +309,11 @@ TEST(ResolveReferences, EnumConstReferenceUsedSelect) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[2].mutable_value().set_int64_value(2);
   expr_ast->reference_map()[5].set_name("bar.foo.Enum.ENUM_VAL1");
@@ -325,7 +349,11 @@ TEST(ResolveReferences, ConstReferenceSkipped) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].set_name("foo.bar.var1");
   expr_ast->reference_map()[2].mutable_value().set_bool_value(true);
   expr_ast->reference_map()[5].set_name("bar.foo.var2");
@@ -395,7 +423,11 @@ TEST(ResolveReferences, FunctionReferenceBasic) {
                                 CelValue::Type::kBool,
                             })));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   BuilderWarnings warnings;
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
@@ -411,7 +443,11 @@ TEST(ResolveReferences, FunctionReferenceMissingOverloadDetected) {
 
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   BuilderWarnings warnings;
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
@@ -445,7 +481,12 @@ TEST(ResolveReferences, SpecialBuiltinsNotWarned) {
     // Builtins aren't in the function registry.
     CelFunctionRegistry func_registry;
     CelTypeRegistry type_registry;
-    Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+    cel::TypeFactory type_factory(cel::MemoryManager::Global());
+    cel::TypeManager type_manager(type_factory,
+                                  type_registry.GetTypeProvider());
+    cel::ValueFactory value_factory(type_manager);
+    Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                      value_factory, type_registry.resolveable_enums());
     BuilderWarnings warnings;
     expr_ast->reference_map()[1].mutable_overload_id().push_back(
         absl::StrCat("builtin.", builtin_fn));
@@ -465,7 +506,11 @@ TEST(ResolveReferences,
 
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   BuilderWarnings warnings;
   expr_ast->reference_map()[1].set_name("udf_boolean_and");
 
@@ -487,7 +532,11 @@ TEST(ResolveReferences, EmulatesEagerFailing) {
 
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   BuilderWarnings warnings(/*fail_eagerly=*/true);
   expr_ast->reference_map()[1].set_name("udf_boolean_and");
 
@@ -504,7 +553,11 @@ TEST(ResolveReferences, FunctionReferenceToWrongExprKind) {
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[2].mutable_overload_id().push_back(
       "udf_boolean_and");
 
@@ -543,7 +596,11 @@ TEST(ResolveReferences, FunctionReferenceWithTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "boolean_and", true, {CelValue::Type::kBool, CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
@@ -562,7 +619,11 @@ TEST(ResolveReferences,
   BuilderWarnings warnings;
   CelFunctionRegistry func_registry;
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
@@ -583,7 +644,11 @@ TEST(ResolveReferences, FunctionReferenceWithTargetToNamespacedFunction) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.boolean_and", false, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
@@ -620,8 +685,12 @@ TEST(ResolveReferences,
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "com.google.ext.boolean_and", false, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
   Resolver registry("com.google", func_registry.InternalGetRegistry(),
-                    &type_registry);
+                    &type_registry, value_factory,
+                    type_registry.resolveable_enums());
   auto result = ResolveReferences(registry, warnings, *expr_ast);
 
   ASSERT_THAT(result, IsOkAndHolds(true));
@@ -680,7 +749,11 @@ TEST(ResolveReferences, FunctionReferenceWithHasTargetNoChange) {
   ASSERT_OK(func_registry.RegisterLazyFunction(CelFunctionDescriptor(
       "ext.option.boolean_and", true, {CelValue::Type::kBool})));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[1].mutable_overload_id().push_back(
       "udf_boolean_and");
 
@@ -771,7 +844,11 @@ TEST(ResolveReferences, EnumConstReferenceUsedInComprehension) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[3].set_name("ENUM");
   expr_ast->reference_map()[3].mutable_value().set_int64_value(2);
   expr_ast->reference_map()[7].set_name("ENUM");
@@ -877,7 +954,11 @@ TEST(ResolveReferences, ReferenceToId0Warns) {
   CelFunctionRegistry func_registry;
   ASSERT_OK(RegisterBuiltinFunctions(&func_registry));
   CelTypeRegistry type_registry;
-  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry);
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory, type_registry.GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+  Resolver registry("", func_registry.InternalGetRegistry(), &type_registry,
+                    value_factory, type_registry.resolveable_enums());
   expr_ast->reference_map()[0].set_name("pkg.var");
   BuilderWarnings warnings;
 

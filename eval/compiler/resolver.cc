@@ -9,9 +9,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "base/types/struct_type.h"
+#include "base/value_factory.h"
 #include "base/values/enum_value.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_type_registry.h"
+#include "eval/public/structs/legacy_type_adapter.h"
 #include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
@@ -22,14 +24,18 @@ using ::cel::MemoryManager;
 using ::cel::Value;
 using ::cel::interop_internal::CreateIntValue;
 
-Resolver::Resolver(absl::string_view container,
-                   const cel::FunctionRegistry& function_registry,
-                   const CelTypeRegistry* type_registry,
-                   bool resolve_qualified_type_identifiers)
+Resolver::Resolver(
+    absl::string_view container, const cel::FunctionRegistry& function_registry,
+    const CelTypeRegistry* type_registry, cel::ValueFactory& value_factory,
+    const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+        resolveable_enums,
+    bool resolve_qualified_type_identifiers)
     : namespace_prefixes_(),
       enum_value_map_(),
       function_registry_(function_registry),
       type_registry_(type_registry),
+      value_factory_(value_factory),
+      resolveable_enums_(resolveable_enums),
       resolve_qualified_type_identifiers_(resolve_qualified_type_identifiers) {
   // The constructor for the registry determines the set of possible namespace
   // prefixes which may appear within the given expression container, and also
@@ -48,8 +54,8 @@ Resolver::Resolver(absl::string_view container,
   }
 
   for (const auto& prefix : namespace_prefixes_) {
-    for (auto iter = type_registry->resolveable_enums().begin();
-         iter != type_registry->resolveable_enums().end(); ++iter) {
+    for (auto iter = resolveable_enums_.begin();
+         iter != resolveable_enums_.end(); ++iter) {
       absl::string_view enum_name = iter->first;
       if (!absl::StartsWith(enum_name, prefix)) {
         continue;
@@ -122,9 +128,9 @@ Handle<Value> Resolver::FindConstant(absl::string_view name,
     // to do so is configured in the expression builder. If the type name is
     // not qualified, then it too may be returned as a constant value.
     if (resolve_qualified_type_identifiers_ || !absl::StrContains(name, ".")) {
-      auto type_value = type_registry_->FindType(name);
-      if (type_value) {
-        return type_value;
+      auto type_value = value_factory_.type_manager().ResolveType(name);
+      if (type_value.ok() && type_value->has_value()) {
+        return value_factory_.CreateTypeValue(**type_value);
       }
     }
   }
@@ -173,6 +179,8 @@ absl::optional<LegacyTypeAdapter> Resolver::FindTypeAdapter(
     absl::string_view name, int64_t expr_id) const {
   // Resolve the fully qualified names and then defer to the type registry
   // for possible matches.
+  // TODO(uncreated-issue/44): update to modern apis when wrapper type creation is
+  // supported.
   auto names = FullyQualifiedNames(name, expr_id);
   for (const auto& name : names) {
     auto maybe_adapter = type_registry_->FindTypeAdapter(name);

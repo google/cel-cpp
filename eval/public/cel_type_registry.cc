@@ -22,7 +22,6 @@
 #include "eval/internal/interop.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/structs/legacy_type_provider.h"
-#include "internal/casts.h"
 #include "google/protobuf/descriptor.h"
 
 namespace google::api::expr::runtime {
