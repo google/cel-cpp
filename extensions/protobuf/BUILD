@@ -81,73 +81,27 @@ cc_test(
 )
 
 cc_library(
-    name = "type",
+    name = "data",
     srcs = [
         "enum_type.cc",
+        "enum_value.cc",
         "struct_type.cc",
+        "struct_value.cc",
         "type.cc",
         "type_provider.cc",
-    ],
-    hdrs = [
-        "enum_type.h",
-        "struct_type.h",
-        "type.h",
-        "type_provider.h",
-    ],
-    deps = [
-        "//base:data",
-        "//base:handle",
-        "//base:memory",
-        "//internal:status_macros",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log:die_if_null",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "type_test",
-    srcs = [
-        "enum_type_test.cc",
-        "struct_type_test.cc",
-        "type_provider_test.cc",
-        "type_test.cc",
-    ],
-    deps = [
-        ":type",
-        "//base:data",
-        "//base:kind",
-        "//base:memory",
-        "//base/internal:memory_manager_testing",
-        "//base/testing:type_matchers",
-        "//extensions/protobuf/internal:testing",
-        "//internal:testing",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/status",
-        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "value",
-    srcs = [
-        "enum_value.cc",
-        "struct_value.cc",
         "value.cc",
     ],
     hdrs = [
+        "enum_type.h",
         "enum_value.h",
+        "struct_type.h",
         "struct_value.h",
+        "type.h",
+        "type_provider.h",
         "value.h",
     ],
     deps = [
         ":memory_manager",
-        ":type",
         "//base:data",
         "//base:handle",
         "//base:kind",
@@ -177,6 +131,46 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
     ],
+)
+
+alias(
+    name = "type",
+    actual = ":data",
+    deprecation = "Use :data instead.",
+)
+
+cc_test(
+    name = "type_test",
+    srcs = [
+        "enum_type_test.cc",
+        "struct_type_test.cc",
+        "type_provider_test.cc",
+        "type_test.cc",
+    ],
+    deps = [
+        ":data",
+        "//base:data",
+        "//base:kind",
+        "//base:memory",
+        "//base/internal:memory_manager_testing",
+        "//base/testing:type_matchers",
+        "//extensions/protobuf/internal:testing",
+        "//internal:testing",
+        "//testutil:util",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/time",
+        "@com_google_cel_spec//proto/test/v1/proto3:test_all_types_cc_proto",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+alias(
+    name = "value",
+    actual = ":data",
+    deprecation = "Use :data instead.",
 )
 
 cc_test(

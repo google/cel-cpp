@@ -48,6 +48,7 @@
 namespace cel::extensions {
 
 class ProtoValue;
+class ProtoStructValueBuilder;
 
 // ProtoStructValue is an implementation of StructValue using protocol buffer
 // messages. ProtoStructValue can represented parsed or
@@ -128,6 +129,8 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
   google::protobuf::Message* value(
       ABSL_ATTRIBUTE_LIFETIME_BOUND google::protobuf::Arena& arena) const;
 
+  virtual absl::Status CopyTo(google::protobuf::Message& message) const = 0;
+
  protected:
   explicit ProtoStructValue(Handle<StructType> type)
       : CEL_STRUCT_VALUE_CLASS(std::move(type)) {}
@@ -144,6 +147,7 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
 
  private:
   friend class ProtoValue;
+  friend class ProtoStructValueBuilder;
 
   template <typename T>
   static EnableIfDerivedMessage<T, absl::StatusOr<Handle<ProtoStructValue>>>
@@ -259,6 +263,8 @@ class ParsedProtoStructValue : public ProtoStructValue {
   using ProtoStructValue::value;
 
   virtual const google::protobuf::Message& value() const = 0;
+
+  absl::Status CopyTo(google::protobuf::Message& that) const final;
 
  protected:
   explicit ParsedProtoStructValue(Handle<StructType> type)

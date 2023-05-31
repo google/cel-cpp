@@ -83,6 +83,7 @@ class StructType : public Type {
    private:
     friend class StructType;
     friend class StructValue;
+    friend class StructValueBuilderInterface;
     friend struct base_internal::FieldIdFactory;
 
     explicit FieldId(absl::string_view name)

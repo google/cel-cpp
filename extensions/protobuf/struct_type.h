@@ -33,6 +33,7 @@ namespace cel::extensions {
 
 class ProtoTypeProvider;
 class ProtoStructValue;
+class ProtoStructValueBuilder;
 class ProtoType;
 class ProtoValue;
 namespace protobuf_internal {
@@ -71,6 +72,9 @@ class ProtoStructType final : public CEL_STRUCT_TYPE_CLASS {
   // Called by FindField.
   absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
       TypeManager& type_manager, int64_t number) const override;
+
+  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory) const override;
 
   const google::protobuf::Descriptor& descriptor() const { return *descriptor_; }
 

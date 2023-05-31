@@ -30,6 +30,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/time.h"
@@ -2724,6 +2725,32 @@ ParsedProtoStructValue::NewFieldIterator(MemoryManager& memory_manager) const {
   }
   return MakeUnique<ParsedProtoStructValueFieldIterator>(memory_manager, this,
                                                          std::move(fields));
+}
+
+absl::Status ParsedProtoStructValue::CopyTo(google::protobuf::Message& that) const {
+  const auto* this_desc = value().GetDescriptor();
+  const auto* that_desc = that.GetDescriptor();
+  if (ABSL_PREDICT_TRUE(this_desc == that_desc)) {
+    that.CopyFrom(value());
+    return absl::OkStatus();
+  }
+  if (this_desc->full_name() == that_desc->full_name()) {
+    // Same type, different descriptors. We need to serialize and deserialize.
+    absl::Cord serialized;
+    if (ABSL_PREDICT_FALSE(!value().SerializeToCord(&serialized))) {
+      return absl::InternalError(
+          absl::StrCat("failed to serialize protocol buffer message ",
+                       this_desc->full_name()));
+    }
+    if (ABSL_PREDICT_FALSE(!that.ParseFromCord(serialized))) {
+      return absl::InternalError(absl::StrCat(
+          "failed to parse protocol buffer message ", that_desc->full_name()));
+    }
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(
+      absl::StrCat("cannot copy protocol buffer message ",
+                   this_desc->full_name(), " to ", that_desc->full_name()));
 }
 
 }  // namespace protobuf_internal
