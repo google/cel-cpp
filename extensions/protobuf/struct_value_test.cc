@@ -4069,6 +4069,26 @@ TEST_P(ProtoStructValueTest, DynamicLValueDifferentDescriptors) {
   EXPECT_TRUE(value->Is<ProtoStructValue>());
 }
 
+TEST_P(ProtoStructValueTest, CopyTo) {
+  TypeFactory type_factory(memory_manager());
+  google::protobuf::SimpleDescriptorDatabase database;
+  BuildDescriptorDatabase(&database);
+  google::protobuf::DescriptorPool pool(&database);
+  google::protobuf::DynamicMessageFactory factory(&pool);
+  ProtoTypeProvider type_provider;
+  TypeManager type_manager(type_factory, type_provider);
+  ValueFactory value_factory(type_manager);
+  const auto* desc =
+      pool.FindMessageTypeByName(TestAllTypes::descriptor()->full_name());
+  ASSERT_TRUE(desc != nullptr);
+  const auto* prototype = factory.GetPrototype(desc);
+  ASSERT_TRUE(prototype != nullptr);
+  ASSERT_OK_AND_ASSIGN(auto value,
+                       ProtoValue::Create(value_factory, *prototype));
+  TestAllTypes message;
+  EXPECT_OK(value->As<ProtoStructValue>().CopyTo(message));
+}
+
 TEST_P(ProtoStructValueTest, DynamicRValueDifferentDescriptors) {
   TypeFactory type_factory(memory_manager());
   google::protobuf::SimpleDescriptorDatabase database;
