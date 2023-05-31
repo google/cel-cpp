@@ -9,7 +9,6 @@
 #include "absl/container/node_hash_set.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
 #include "base/memory.h"
@@ -33,25 +32,6 @@ using cel::MemoryManager;
 using cel::Type;
 using cel::TypeFactory;
 using cel::UniqueRef;
-using cel::Value;
-using cel::interop_internal::CreateTypeValueFromView;
-
-const absl::node_hash_set<std::string>& GetCoreTypes() {
-  static const auto* const kCoreTypes =
-      new absl::node_hash_set<std::string>{{"bool"},
-                                           {"bytes"},
-                                           {"double"},
-                                           {"google.protobuf.Duration"},
-                                           {"google.protobuf.Timestamp"},
-                                           {"int"},
-                                           {"list"},
-                                           {"map"},
-                                           {"null_type"},
-                                           {"string"},
-                                           {"type"},
-                                           {"uint"}};
-  return *kCoreTypes;
-}
 
 using EnumMap = absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>;
 
@@ -226,16 +206,10 @@ ResolveableEnumType::FindConstantByNumber(int64_t number) const {
   return absl::nullopt;
 }
 
-CelTypeRegistry::CelTypeRegistry() : types_(GetCoreTypes()) {
+CelTypeRegistry::CelTypeRegistry() {
   RegisterEnum("google.protobuf.NullValue", {{"NULL_VALUE", 0}});
   type_provider_impl_.AddTypeProvider(
       std::make_unique<EnumTypeProvider>(resolveable_enums_));
-}
-
-void CelTypeRegistry::Register(std::string fully_qualified_type_name) {
-  // Registers the fully qualified type name as a CEL type.
-  absl::MutexLock lock(&mutex_);
-  types_.insert(std::move(fully_qualified_type_name));
 }
 
 void CelTypeRegistry::Register(const google::protobuf::EnumDescriptor* enum_descriptor) {
@@ -280,33 +254,6 @@ absl::optional<LegacyTypeAdapter> CelTypeRegistry::FindTypeAdapter(
   }
 
   return absl::nullopt;
-}
-
-cel::Handle<cel::Value> CelTypeRegistry::FindType(
-    absl::string_view fully_qualified_type_name) const {
-  // String canonical type names are interned in the node hash set.
-  // Some types are lazily provided by the registered type providers, so
-  // synchronization is needed to preserve const correctness.
-  absl::MutexLock lock(&mutex_);
-  // Searches through explicitly registered type names first.
-  auto type = types_.find(fully_qualified_type_name);
-  // The CelValue returned by this call will remain valid as long as the
-  // CelExpression and associated builder stay in scope.
-  if (type != types_.end()) {
-    return CreateTypeValueFromView(*type);
-  }
-
-  // By default falls back to looking at whether the type is provided by one
-  // of the registered providers (generally, one backed by the generated
-  // DescriptorPool).
-  auto adapter = FindTypeAdapter(fully_qualified_type_name);
-  if (adapter.has_value()) {
-    auto [iter, inserted] =
-        types_.insert(std::string(fully_qualified_type_name));
-    return CreateTypeValueFromView(*iter);
-  }
-
-  return cel::Handle<Value>();
 }
 
 }  // namespace google::api::expr::runtime

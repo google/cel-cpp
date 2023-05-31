@@ -1,21 +1,16 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_CEL_TYPE_REGISTRY_H_
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/container/node_hash_set.h"
 #include "absl/strings/string_view.h"
-#include "absl/synchronization/mutex.h"
 #include "base/handle.h"
 #include "base/types/enum_type.h"
-#include "base/value.h"
 #include "eval/public/structs/legacy_type_provider.h"
 #include "runtime/internal/composed_type_provider.h"
 
@@ -44,16 +39,6 @@ class CelTypeRegistry {
   CelTypeRegistry();
 
   ~CelTypeRegistry() = default;
-
-  // Register a fully qualified type name as a valid type for use within CEL
-  // expressions.
-  //
-  // This call establishes a CelValue type instance that can be used in runtime
-  // comparisons, and may have implications in the future about which protobuf
-  // message types linked into the binary may also be used by CEL.
-  //
-  // Type registration must be performed prior to CelExpression creation.
-  void Register(std::string fully_qualified_type_name);
 
   // Register an enum whose values may be used within CEL expressions.
   //
@@ -100,11 +85,6 @@ class CelTypeRegistry {
   absl::optional<LegacyTypeAdapter> FindTypeAdapter(
       absl::string_view fully_qualified_type_name) const;
 
-  // Find a type's CelValue instance by its fully qualified name.
-  // An empty handle is returned if not found.
-  cel::Handle<cel::Value> FindType(
-      absl::string_view fully_qualified_type_name) const;
-
   // Return the registered enums configured within the type registry in the
   // internal format that can be identified as int constants at plan time.
   const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
@@ -130,10 +110,6 @@ class CelTypeRegistry {
   }
 
  private:
-  mutable absl::Mutex mutex_;
-  // node_hash_set provides pointer-stability, which is required for the
-  // strings backing CelType objects.
-  mutable absl::node_hash_set<std::string> types_ ABSL_GUARDED_BY(mutex_);
   // Internal representation for enums.
   absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>
       resolveable_enums_;

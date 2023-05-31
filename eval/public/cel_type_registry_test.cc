@@ -282,26 +282,6 @@ TEST(CelTypeRegistryTest, TestFindTypeAdapterNotFound) {
   EXPECT_FALSE(desc.has_value());
 }
 
-TEST(CelTypeRegistryTest, TestFindTypeCoreTypeFound) {
-  CelTypeRegistry registry;
-  auto type = registry.FindType("int");
-  ASSERT_TRUE(type);
-  EXPECT_TRUE(type->Is<TypeValue>());
-  EXPECT_THAT(type.As<TypeValue>()->name(), Eq("int"));
-}
-
-TEST(CelTypeRegistryTest, TestFindTypeAdapterTypeFound) {
-  CelTypeRegistry registry;
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Int64"}));
-  registry.RegisterTypeProvider(std::make_unique<TestTypeProvider>(
-      std::vector<std::string>{"google.protobuf.Any"}));
-  auto type = registry.FindType("google.protobuf.Any");
-  ASSERT_TRUE(type);
-  EXPECT_TRUE(type->Is<TypeValue>());
-  EXPECT_THAT(type.As<TypeValue>()->name(), Eq("google.protobuf.Any"));
-}
-
 MATCHER_P(TypeNameIs, name, "") {
   const Handle<Type>& type = arg;
   *result_listener << "got typename: " << type->name();
@@ -359,12 +339,6 @@ TEST(CelTypeRegistryTypeProviderTest, Enums) {
   ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> struct_type,
                        type_manager.ResolveType("google.protobuf.Struct"));
   EXPECT_THAT(struct_type, Optional(TypeNameIs("map")));
-}
-
-TEST(CelTypeRegistryTest, TestFindTypeNotRegisteredTypeNotFound) {
-  CelTypeRegistry registry;
-  auto type = registry.FindType("missing.MessageType");
-  EXPECT_FALSE(type);
 }
 
 }  // namespace
