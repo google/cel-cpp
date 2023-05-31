@@ -41,6 +41,9 @@
 #include "base/ast.h"
 #include "base/ast_internal.h"
 #include "base/internal/ast_impl.h"
+#include "base/memory.h"
+#include "base/type_factory.h"
+#include "base/value_factory.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
@@ -1183,9 +1186,18 @@ absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpressionImpl(
     cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
+
+  // These objects are expected to remain scoped to one build call -- references
+  // to them shouldn't be persisted in any part of the result expression.
+  cel::TypeFactory type_factory(cel::MemoryManager::Global());
+  cel::TypeManager type_manager(type_factory,
+                                GetTypeRegistry()->GetTypeProvider());
+  cel::ValueFactory value_factory(type_manager);
+
   BuilderWarnings warnings_builder(options_.fail_on_warnings);
   Resolver resolver(container(), GetRegistry()->InternalGetRegistry(),
-                    GetTypeRegistry(),
+                    GetTypeRegistry(), value_factory,
+                    GetTypeRegistry()->resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
   absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
 

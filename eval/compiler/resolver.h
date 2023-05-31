@@ -9,6 +9,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/kind.h"
+#include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "eval/public/cel_type_registry.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
@@ -28,6 +30,9 @@ class Resolver {
   Resolver(absl::string_view container,
            const cel::FunctionRegistry& function_registry,
            const CelTypeRegistry* type_registry,
+           cel::ValueFactory& value_factory,
+           const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+               resolveable_enums,
            bool resolve_qualified_type_identifiers = true);
 
   ~Resolver() = default;
@@ -71,6 +76,10 @@ class Resolver {
   absl::flat_hash_map<std::string, cel::Handle<cel::Value>> enum_value_map_;
   const cel::FunctionRegistry& function_registry_;
   const CelTypeRegistry* type_registry_;
+  cel::ValueFactory& value_factory_;
+  const absl::flat_hash_map<std::string, cel::Handle<cel::EnumType>>&
+      resolveable_enums_;
+
   bool resolve_qualified_type_identifiers_;
 };
 

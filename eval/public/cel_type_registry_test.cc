@@ -2,23 +2,28 @@
 
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/struct.pb.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/memory.h"
+#include "base/type.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "base/type_provider.h"
 #include "base/types/enum_type.h"
+#include "base/types/struct_type.h"
+#include "base/value_factory.h"
+#include "base/values/struct_value.h"
+#include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
 #include "eval/public/structs/legacy_type_provider.h"
-#include "eval/testutil/test_message.pb.h"
+#include "internal/rtti.h"
 #include "internal/testing.h"
-#include "google/protobuf/message.h"
 
 namespace google::api::expr::runtime {
 
@@ -28,8 +33,12 @@ using ::cel::EnumType;
 using ::cel::Handle;
 using ::cel::MemoryManager;
 using ::cel::Type;
+using ::cel::TypeFactory;
+using ::cel::TypeManager;
+using ::cel::TypeProvider;
 using ::cel::TypeValue;
-using testing::AllOf;
+using ::cel::UniqueRef;
+using ::cel::ValueFactory;
 using testing::Contains;
 using testing::Eq;
 using testing::Field;
@@ -166,19 +175,67 @@ TEST(CelTypeRegistryTest, TestRegisterBuiltInEnum) {
                   [](const EnumType::Constant& c) { return c.number == 0; }))));
 }
 
-TEST(CelTypeRegistryTest, TestRegisterTypeName) {
-  CelTypeRegistry registry;
+class TestStructType : public cel::base_internal::AbstractStructType {
+ public:
+  explicit TestStructType(absl::string_view name) : name_(name) {}
 
-  // Register the type, scoping the type name lifecycle to the nested block.
-  {
-    std::string custom_type = "custom_type";
-    registry.Register(custom_type);
+  absl::string_view name() const override { return name_; }
+
+  size_t field_count() const override { return 0; }
+
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const override {
+    return absl::nullopt;
   }
 
-  auto type = registry.FindType("custom_type");
-  ASSERT_TRUE(type);
-  EXPECT_TRUE(type->Is<TypeValue>());
-  EXPECT_THAT(type.As<TypeValue>()->name(), Eq("custom_type"));
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const override {
+    return absl::nullopt;
+  }
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const override {
+    return absl::UnimplementedError("");
+  }
+
+  absl::StatusOr<UniqueRef<cel::StructValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory
+          ABSL_ATTRIBUTE_LIFETIME_BOUND) const override {
+    return absl::UnimplementedError("");
+  }
+
+  cel::internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeId<TestStructType>();
+  }
+
+ private:
+  std::string name_;
+};
+
+TEST(CelTypeRegistryTest, RegisterModernProvider) {
+  CelTypeRegistry registry;
+
+  class ExampleTypeProvider : public TypeProvider {
+    absl::StatusOr<absl::optional<Handle<Type>>> ProvideType(
+        TypeFactory& factory, absl::string_view name) const override {
+      if (name == "custom_type") {
+        return factory.CreateStructType<TestStructType>("custom_type");
+      }
+      return absl::nullopt;
+    }
+  };
+
+  registry.RegisterModernTypeProvider(std::make_unique<ExampleTypeProvider>());
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, registry.GetTypeProvider());
+
+  ASSERT_OK_AND_ASSIGN(absl::optional<Handle<Type>> type_value,
+                       type_manager.ResolveType("custom_type"));
+  ASSERT_TRUE(type_value.has_value());
+  EXPECT_EQ((*type_value)->name(), "custom_type");
+
+  ASSERT_OK_AND_ASSIGN(type_value, type_manager.ResolveType("custom_type2"));
+  EXPECT_EQ(type_value, absl::nullopt);
 }
 
 TEST(CelTypeRegistryTest, TestGetFirstTypeProviderSuccess) {

@@ -6,6 +6,7 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "base/ast_internal.h"
 #include "base/internal/ast_impl.h"
+#include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
@@ -530,11 +531,18 @@ TEST(ConstantFoldingTest, MapComprehension) {
 class UpdatedConstantFoldingTest : public testing::Test {
  public:
   UpdatedConstantFoldingTest()
-      : resolver_("", function_registry_, &type_registry_) {}
+      : type_factory_(MemoryManager::Global()),
+        type_manager_(type_factory_, type_registry_.GetTypeProvider()),
+        value_factory_(type_manager_),
+        resolver_("", function_registry_, &type_registry_, value_factory_,
+                  type_registry_.resolveable_enums()) {}
 
  protected:
   cel::FunctionRegistry function_registry_;
   CelTypeRegistry type_registry_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
   cel::RuntimeOptions options_;
   BuilderWarnings builder_warnings_;
   Resolver resolver_;

@@ -946,7 +946,6 @@ cc_library(
         "//eval/internal:interop",
         "//eval/public/structs:legacy_type_info_apis",
         "//eval/public/structs:legacy_type_provider",
-        "//internal:casts",
         "//runtime/internal:composed_type_provider",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -968,12 +967,13 @@ cc_test(
         "//base:data",
         "//base:memory",
         "//eval/public/structs:legacy_type_provider",
-        "//eval/testutil:test_message_cc_proto",
+        "//internal:rtti",
         "//internal:testing",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
