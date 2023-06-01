@@ -58,9 +58,8 @@ cc_library(
     ],
     deps = [
         ":attribute_trail",
+        "//base:data",
         "//base:handle",
-        "//base:value",
-        "//eval/internal:interop",
         "@com_google_absl//absl/types:span",
     ],
 )

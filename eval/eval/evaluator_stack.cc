@@ -1,7 +1,5 @@
 #include "eval/eval/evaluator_stack.h"
 
-#include "eval/internal/interop.h"
-
 namespace google::api::expr::runtime {
 
 void EvaluatorStack::Clear() {

@@ -1,7 +1,6 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_EVALUATOR_STACK_H_
 
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -9,7 +8,6 @@
 #include "base/handle.h"
 #include "base/value.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
 
