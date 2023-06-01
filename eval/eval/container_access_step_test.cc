@@ -12,7 +12,6 @@
 #include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "eval/eval/ident_step.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_builtins.h"

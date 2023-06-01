@@ -4,10 +4,7 @@
 #include <string>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"

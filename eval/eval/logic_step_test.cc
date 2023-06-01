@@ -5,7 +5,6 @@
 
 #include "google/protobuf/descriptor.h"
 #include "eval/eval/ident_step.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
 #include "eval/public/unknown_set.h"

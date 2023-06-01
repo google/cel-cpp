@@ -9,7 +9,6 @@
 #include "absl/strings/str_cat.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/ident_step.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/unknown_attribute_set.h"

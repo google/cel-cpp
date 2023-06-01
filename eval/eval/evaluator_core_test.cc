@@ -5,10 +5,8 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"

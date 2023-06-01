@@ -9,7 +9,6 @@
 #include "base/handle.h"
 #include "base/value.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_value.h"

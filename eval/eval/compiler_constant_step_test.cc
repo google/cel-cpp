@@ -20,7 +20,6 @@
 #include "base/value_factory.h"
 #include "base/values/int_value.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/eval/test_type_registry.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_expression.h"
 #include "extensions/protobuf/memory_manager.h"
