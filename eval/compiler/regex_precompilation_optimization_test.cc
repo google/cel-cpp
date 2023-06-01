@@ -25,6 +25,7 @@
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/value_factory.h"
+#include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/evaluator_core.h"
@@ -63,7 +64,7 @@ class RegexPrecompilationExtensionTest : public testing::Test {
   }
 
  protected:
-  FlatExprBuilder builder_;
+  CelExpressionBuilderFlatImpl builder_;
   CelTypeRegistry& type_registry_;
   CelFunctionRegistry& function_registry_;
   InterpreterOptions options_;
@@ -103,7 +104,7 @@ MATCHER_P(ExpressionPlanSizeIs, size, "") {
 }
 
 TEST_F(RegexPrecompilationExtensionTest, OptimizeableExpression) {
-  builder_.AddProgramOptimizer(
+  builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(exprpb::ParsedExpr parsed_expr,
@@ -122,7 +123,7 @@ TEST_F(RegexPrecompilationExtensionTest, OptimizeableExpression) {
 }
 
 TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeParsedExpr) {
-  builder_.AddProgramOptimizer(
+  builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(exprpb::ParsedExpr expr,
@@ -136,7 +137,7 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeParsedExpr) {
 }
 
 TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeNonConstRegex) {
-  builder_.AddProgramOptimizer(
+  builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(exprpb::ParsedExpr parsed_expr,
@@ -155,7 +156,7 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeNonConstRegex) {
 }
 
 TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeCompoundExpr) {
-  builder_.AddProgramOptimizer(
+  builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(exprpb::ParsedExpr parsed_expr,
@@ -178,7 +179,7 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
     // TODO(uncreated-issue/27): This applies to either version of const folding.
     // Update when default is changed to new version.
-    builder_.set_constant_folding(true, &arena_);
+    builder_.flat_expr_builder().set_constant_folding(true, &arena_);
   }
 
  protected:
@@ -186,7 +187,7 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
 };
 
 TEST_F(RegexConstFoldInteropTest, StringConstantOptimizeable) {
-  builder_.AddProgramOptimizer(
+  builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(exprpb::ParsedExpr parsed_expr,
@@ -205,7 +206,7 @@ TEST_F(RegexConstFoldInteropTest, StringConstantOptimizeable) {
 }
 
 TEST_F(RegexConstFoldInteropTest, WrongTypeNotOptimized) {
-  builder_.AddProgramOptimizer(
+  builder_.flat_expr_builder().AddProgramOptimizer(
       CreateRegexPrecompilationExtension(options_.regex_max_program_size));
 
   ASSERT_OK_AND_ASSIGN(exprpb::ParsedExpr parsed_expr,

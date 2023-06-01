@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "eval/compiler/flat_expr_builder.h"
+#include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
@@ -240,7 +240,7 @@ TEST(EvaluatorCoreTest, TraceTest) {
 
   cel::RuntimeOptions options;
   options.short_circuiting = false;
-  FlatExprBuilder builder(options);
+  CelExpressionBuilderFlatImpl builder(options);
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr,
                        builder.CreateExpression(&expr, &source_info));

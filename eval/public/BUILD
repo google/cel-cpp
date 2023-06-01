@@ -545,7 +545,6 @@ cc_library(
     ],
     deps = [
         ":base_activation",
-        ":cel_function",
         ":cel_function_registry",
         ":cel_type_registry",
         ":cel_value",
@@ -1259,6 +1258,7 @@ cc_library(
     deps = [
         ":cel_expression",
         ":cel_options",
+        "//eval/compiler:cel_expression_builder_flat_impl",
         "//eval/compiler:constant_folding",
         "//eval/compiler:flat_expr_builder",
         "//eval/compiler:qualified_reference_resolver",

@@ -380,7 +380,7 @@ cc_test(
     deps = [
         ":attribute_trail",
         ":evaluator_core",
-        "//eval/compiler:flat_expr_builder",
+        "//eval/compiler:cel_expression_builder_flat_impl",
         "//eval/internal:interop",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",

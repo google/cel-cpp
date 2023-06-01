@@ -58,6 +58,7 @@ cc_library(
         ":resolver",
         "//base:ast",
         "//base:ast_internal",
+        "//base:builtins",
         "//base:data",
         "//base:memory",
         "//base/internal:ast_impl",
@@ -78,13 +79,10 @@ cc_library(
         "//eval/internal:interop",
         "//eval/public:ast_traverse_native",
         "//eval/public:ast_visitor_native",
-        "//eval/public:cel_builtins",
         "//eval/public:cel_expression",
-        "//eval/public:cel_function_registry",
-        "//eval/public:source_position",
         "//eval/public:source_position_native",
-        "//extensions/protobuf:ast_converters",
         "//internal:status_macros",
+        "//runtime:function_registry",
         "//runtime:runtime_options",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -94,8 +92,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:variant",
-        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -109,6 +105,7 @@ cc_test(
         "//eval/testutil:simple_test_message_proto",
     ],
     deps = [
+        ":cel_expression_builder_flat_impl",
         ":flat_expr_builder",
         ":qualified_reference_resolver",
         "//base:function",
@@ -154,6 +151,7 @@ cc_test(
         "flat_expr_builder_comprehensions_test.cc",
     ],
     deps = [
+        ":cel_expression_builder_flat_impl",
         ":flat_expr_builder",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",
@@ -175,6 +173,50 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "cel_expression_builder_flat_impl",
+    srcs = [
+        "cel_expression_builder_flat_impl.cc",
+    ],
+    hdrs = [
+        "cel_expression_builder_flat_impl.h",
+    ],
+    deps = [
+        ":flat_expr_builder",
+        "//base:ast",
+        "//eval/eval:evaluator_core",
+        "//eval/public:cel_expression",
+        "//extensions/protobuf:ast_converters",
+        "//internal:status_macros",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
+    ],
+)
+
+cc_test(
+    name = "cel_expression_builder_flat_impl_test",
+    srcs = [
+        "cel_expression_builder_flat_impl_test.cc",
+    ],
+    deps = [
+        ":cel_expression_builder_flat_impl",
+        "//eval/public:activation",
+        "//eval/public:builtin_func_registrar",
+        "//eval/public/testing:matchers",
+        "//internal:testing",
+        "//parser",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
+        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -327,6 +369,7 @@ cc_test(
         "flat_expr_builder_short_circuiting_conformance_test.cc",
     ],
     deps = [
+        ":cel_expression_builder_flat_impl",
         ":flat_expr_builder",
         "//eval/public:activation",
         "//eval/public:cel_attribute",
@@ -387,6 +430,7 @@ cc_test(
     name = "regex_precompilation_optimization_test",
     srcs = ["regex_precompilation_optimization_test.cc"],
     deps = [
+        ":cel_expression_builder_flat_impl",
         ":flat_expr_builder",
         ":flat_expr_builder_extensions",
         ":regex_precompilation_optimization",

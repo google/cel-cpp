@@ -4,13 +4,14 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
+#include <utility>
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "eval/public/base_activation.h"
-#include "eval/public/cel_function.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
 #include "eval/public/cel_value.h"
@@ -80,7 +81,7 @@ class CelExpressionBuilder {
         type_registry_(std::make_unique<CelTypeRegistry>()),
         container_("") {}
 
-  virtual ~CelExpressionBuilder() {}
+  virtual ~CelExpressionBuilder() = default;
 
   // Creates CelExpression object from AST tree.
   // expr specifies root of AST tree
@@ -135,7 +136,7 @@ class CelExpressionBuilder {
   // expressions by registering them ahead of time.
   CelTypeRegistry* GetTypeRegistry() const { return type_registry_.get(); }
 
-  void set_container(std::string container) {
+  virtual void set_container(std::string container) {
     container_ = std::move(container);
   }
 

@@ -18,15 +18,15 @@
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_FLAT_EXPR_BUILDER_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/public/cel_expression.h"
+#include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 #include "google/protobuf/arena.h"
 
@@ -34,13 +34,21 @@ namespace google::api::expr::runtime {
 
 // CelExpressionBuilder implementation.
 // Builds instances of CelExpressionFlatImpl.
-class FlatExprBuilder : public CelExpressionBuilder {
+class FlatExprBuilder {
  public:
-  explicit FlatExprBuilder(const cel::RuntimeOptions& options)
-      : CelExpressionBuilder(), options_(options) {}
+  FlatExprBuilder(const cel::FunctionRegistry& function_registry,
+                  const CelTypeRegistry& type_registry,
+                  const cel::RuntimeOptions& options)
+      : options_(options),
+        function_registry_(function_registry),
+        type_registry_(type_registry) {}
 
   // Create a flat expr builder with defaulted options.
-  FlatExprBuilder() : CelExpressionBuilder() {}
+  FlatExprBuilder(const cel::FunctionRegistry& function_registry,
+                  const CelTypeRegistry& type_registry)
+      : options_(cel::RuntimeOptions()),
+        function_registry_(function_registry),
+        type_registry_(type_registry) {}
 
   // Toggle constant folding optimization. By default it is not enabled.
   // The provided arena is used to hold the generated constants.
@@ -71,33 +79,23 @@ class FlatExprBuilder : public CelExpressionBuilder {
     program_optimizers_.push_back(std::move(optimizer));
   }
 
-  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info) const override;
+  void set_container(std::string container) {
+    container_ = std::move(container);
+  }
 
-  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info,
-      std::vector<absl::Status>* warnings) const override;
-
-  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::CheckedExpr* checked_expr) const override;
-
-  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpression(
-      const google::api::expr::v1alpha1::CheckedExpr* checked_expr,
-      std::vector<absl::Status>* warnings) const override;
-
- private:
+  // TODO(uncreated-issue/45): Add overload for cref AST. At the moment, all the users
+  // can pass ownership of a freshly converted AST.
   absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
-      const google::api::expr::v1alpha1::Expr* expr,
-      const google::api::expr::v1alpha1::SourceInfo* source_info,
-      const google::protobuf::Map<int64_t, google::api::expr::v1alpha1::Reference>* reference_map,
+      std::unique_ptr<cel::ast::Ast> ast,
       std::vector<absl::Status>* warnings) const;
 
-  absl::StatusOr<std::unique_ptr<CelExpression>> CreateExpressionImpl(
-      cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const;
-
+ private:
   cel::RuntimeOptions options_;
+  std::string container_;
+  // TODO(uncreated-issue/45): evaluate whether we should use a shared_ptr here to
+  // allow built expressions to keep the registries alive.
+  const cel::FunctionRegistry& function_registry_;
+  const CelTypeRegistry& type_registry_;
   std::vector<std::unique_ptr<AstTransform>> ast_transforms_;
   std::vector<ProgramOptimizerFactory> program_optimizers_;
 

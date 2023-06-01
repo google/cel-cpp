@@ -6,6 +6,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/strings/substitute.h"
+#include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
@@ -95,7 +96,6 @@ void BuildAndEval(CelExpressionBuilder* builder, const Expr& expr,
 
 class ShortCircuitingTest : public testing::TestWithParam<bool> {
  public:
-  ShortCircuitingTest() {}
   std::unique_ptr<CelExpressionBuilder> GetBuilder(
       bool enable_unknowns = false) {
     cel::RuntimeOptions options;
@@ -104,7 +104,7 @@ class ShortCircuitingTest : public testing::TestWithParam<bool> {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
-    auto result = std::make_unique<FlatExprBuilder>(options);
+    auto result = std::make_unique<CelExpressionBuilderFlatImpl>(options);
     return result;
   }
 };

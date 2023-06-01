@@ -20,14 +20,12 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
-#include <set>
 #include <stack>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/checked.pb.h"
 #include "absl/base/macros.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
@@ -40,9 +38,11 @@
 #include "absl/types/variant.h"
 #include "base/ast.h"
 #include "base/ast_internal.h"
+#include "base/builtins.h"
 #include "base/internal/ast_impl.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
+#include "base/type_provider.h"
 #include "base/value_factory.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
@@ -64,11 +64,7 @@
 #include "eval/internal/interop.h"
 #include "eval/public/ast_traverse_native.h"
 #include "eval/public/ast_visitor_native.h"
-#include "eval/public/cel_builtins.h"
-#include "eval/public/cel_function_registry.h"
-#include "eval/public/source_position.h"
 #include "eval/public/source_position_native.h"
-#include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -76,19 +72,13 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Handle;
+using ::cel::TypeFactory;
+using ::cel::TypeManager;
 using ::cel::Value;
+using ::cel::ValueFactory;
 using ::cel::ast::Ast;
 using ::cel::ast::internal::AstImpl;
 using ::cel::interop_internal::CreateIntValue;
-using ::google::api::expr::v1alpha1::CheckedExpr;
-using ::google::api::expr::v1alpha1::SourceInfo;
-
-using Ident = ::google::api::expr::v1alpha1::Expr::Ident;
-using Select = ::google::api::expr::v1alpha1::Expr::Select;
-using Call = ::google::api::expr::v1alpha1::Expr::Call;
-using CreateList = ::google::api::expr::v1alpha1::Expr::CreateList;
-using CreateStruct = ::google::api::expr::v1alpha1::Expr::CreateStruct;
-using Comprehension = ::google::api::expr::v1alpha1::Expr::Comprehension;
 
 constexpr int64_t kExprIdNotFromAst = -1;
 
@@ -99,8 +89,7 @@ class FlatExprVisitor;
 class Jump {
  public:
   explicit Jump() : self_index_(-1), jump_step_(nullptr) {}
-  explicit Jump(int self_index,
-                google::api::expr::runtime::JumpStepBase* jump_step)
+  explicit Jump(int self_index, JumpStepBase* jump_step)
       : self_index_(self_index), jump_step_(jump_step) {}
   void set_target(int index) {
     // 0 offset means no-op.
@@ -110,7 +99,7 @@ class Jump {
 
  private:
   int self_index_;
-  google::api::expr::runtime::JumpStepBase* jump_step_;
+  JumpStepBase* jump_step_;
 };
 
 class CondVisitor {
@@ -200,8 +189,8 @@ class ComprehensionVisitor : public CondVisitor {
 
  private:
   FlatExprVisitor* visitor_;
-  google::api::expr::runtime::ComprehensionNextStep* next_step_;
-  google::api::expr::runtime::ComprehensionCondStep* cond_step_;
+  ComprehensionNextStep* next_step_;
+  ComprehensionCondStep* cond_step_;
   int next_step_pos_;
   int cond_step_pos_;
   bool short_circuiting_;
@@ -211,15 +200,13 @@ class ComprehensionVisitor : public CondVisitor {
 class FlatExprVisitor : public cel::ast::internal::AstVisitor {
  public:
   FlatExprVisitor(
-      const google::api::expr::runtime::Resolver& resolver,
-      const cel::RuntimeOptions& options,
+      const Resolver& resolver, const cel::RuntimeOptions& options,
       const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
       bool enable_comprehension_vulnerability_check,
       absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
-      const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>*
+      const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
           reference_map,
-      google::api::expr::runtime::ExecutionPath* path,
-      google::api::expr::runtime::BuilderWarnings* warnings,
+      ExecutionPath& path, BuilderWarnings& warnings,
       PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
@@ -249,7 +236,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       return;
     }
     PlannerContext::ProgramInfo& info = program_tree_[expr];
-    info.range_start = execution_path_->size();
+    info.range_start = execution_path_.size();
     info.parent = parent_expr_;
     if (parent_expr_ != nullptr) {
       program_tree_[parent_expr_].children.push_back(expr);
@@ -275,7 +262,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       return;
     }
     PlannerContext::ProgramInfo& info = program_tree_[expr];
-    info.range_len = execution_path_->size() - info.range_start;
+    info.range_len = execution_path_.size() - info.range_start;
     parent_expr_ = info.parent;
 
     for (const std::unique_ptr<ProgramOptimizer>& optimizer :
@@ -352,8 +339,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       return;
     }
 
-    AddStep(
-        google::api::expr::runtime::CreateIdentStep(*ident_expr, expr->id()));
+    AddStep(CreateIdentStep(*ident_expr, expr->id()));
   }
 
   void PreVisitSelect(const cel::ast::internal::Select* select_expr,
@@ -438,15 +424,13 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
 
     std::unique_ptr<CondVisitor> cond_visitor;
-    if (call_expr->function() == google::api::expr::runtime::builtin::kAnd) {
+    if (call_expr->function() == cel::builtin::kAnd) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, /* cond_value= */ false, options_.short_circuiting);
-    } else if (call_expr->function() ==
-               google::api::expr::runtime::builtin::kOr) {
+    } else if (call_expr->function() == cel::builtin::kOr) {
       cond_visitor = std::make_unique<BinaryCondVisitor>(
           this, /* cond_value= */ true, options_.short_circuiting);
-    } else if (call_expr->function() ==
-               google::api::expr::runtime::builtin::kTernary) {
+    } else if (call_expr->function() == cel::builtin::kTernary) {
       if (options_.short_circuiting) {
         cond_visitor = std::make_unique<TernaryCondVisitor>(this);
       } else {
@@ -478,7 +462,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
 
     // Special case for "_[_]".
-    if (call_expr->function() == google::api::expr::runtime::builtin::kIndex) {
+    if (call_expr->function() == cel::builtin::kIndex) {
       AddStep(CreateContainerAccessStep(*call_expr, expr->id()));
       return;
     }
@@ -492,7 +476,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     // Check to see if this is a special case of add that should really be
     // treated as a list append
     if (options_.enable_comprehension_list_append &&
-        call_expr->function() == google::api::expr::runtime::builtin::kAdd &&
+        call_expr->function() == cel::builtin::kAdd &&
         call_expr->args().size() == 2 && !comprehension_stack_.empty()) {
       const cel::ast::internal::Comprehension* comprehension =
           comprehension_stack_.top();
@@ -504,16 +488,15 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         // Macro loop_step for a map() will contain a list concat operation:
         //   accu_var + [elem]
         if (&loop_step == expr) {
-          function = google::api::expr::runtime::builtin::kRuntimeListAppend;
+          function = cel::builtin::kRuntimeListAppend;
         }
         // Macro loop_step for a filter() will contain a ternary:
         //   filter ? result + [elem] : result
         if (loop_step.has_call_expr() &&
-            loop_step.call_expr().function() ==
-                google::api::expr::runtime::builtin::kTernary &&
+            loop_step.call_expr().function() == cel::builtin::kTernary &&
             loop_step.call_expr().args().size() == 3 &&
             &(loop_step.call_expr().args()[1]) == expr) {
-          function = google::api::expr::runtime::builtin::kRuntimeListAppend;
+          function = cel::builtin::kRuntimeListAppend;
         }
       }
     }
@@ -536,7 +519,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       // builder_warnings configuration, this could result in termination of the
       // CelExpression creation or an inspectable warning for use within runtime
       // logging.
-      auto status = builder_warnings_->AddWarning(absl::InvalidArgumentError(
+      auto status = builder_warnings_.AddWarning(absl::InvalidArgumentError(
           "No overloads provided for FunctionStep creation"));
       if (!status.ok()) {
         SetProgressStatusError(status);
@@ -672,20 +655,17 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
-  void AddStep(absl::StatusOr<
-               std::unique_ptr<google::api::expr::runtime::ExpressionStep>>
-                   step) {
+  void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
     if (step.ok() && progress_status_.ok()) {
-      execution_path_->push_back(*std::move(step));
+      execution_path_.push_back(*std::move(step));
     } else {
       SetProgressStatusError(step.status());
     }
   }
 
-  void AddStep(
-      std::unique_ptr<google::api::expr::runtime::ExpressionStep> step) {
+  void AddStep(std::unique_ptr<ExpressionStep> step) {
     if (progress_status_.ok()) {
-      execution_path_->push_back(std::move(step));
+      execution_path_.push_back(std::move(step));
     }
   }
 
@@ -696,7 +676,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   // Index of the next step to be inserted.
-  int GetCurrentIndex() const { return execution_path_->size(); }
+  int GetCurrentIndex() const { return execution_path_.size(); }
 
   CondVisitor* FindCondVisitor(const cel::ast::internal::Expr* expr) const {
     if (cond_visitor_stack_.empty()) {
@@ -723,8 +703,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
  private:
-  const google::api::expr::runtime::Resolver& resolver_;
-  google::api::expr::runtime::ExecutionPath* execution_path_;
+  const Resolver& resolver_;
+  ExecutionPath& execution_path_;
   absl::Status progress_status_;
 
   std::stack<
@@ -756,9 +736,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   bool enable_comprehension_vulnerability_check_;
 
   absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
-  google::api::expr::runtime::BuilderWarnings* builder_warnings_;
+  BuilderWarnings& builder_warnings_;
 
-  const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>* const
+  const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
       reference_map_;
 
   PlannerContext::ProgramTree& program_tree_;
@@ -939,8 +919,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       int references = 0;
       absl::string_view function = call.function();
       // Return the maximum reference count of each side of the ternary branch.
-      if (function == google::api::expr::runtime::builtin::kTernary &&
-          call.args().size() == 3) {
+      if (function == cel::builtin::kTernary && call.args().size() == 3) {
         return std::max(
             ComprehensionAccumulationReferences(call.args()[1], var_name),
             ComprehensionAccumulationReferences(call.args()[2], var_name));
@@ -948,7 +927,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       // Return the number of times the accumulator var_name appears in the add
       // expression. There's no arg size check on the add as it may become a
       // variadic add at a future date.
-      if (function == google::api::expr::runtime::builtin::kAdd) {
+      if (function == cel::builtin::kAdd) {
         for (int i = 0; i < call.args().size(); i++) {
           references +=
               ComprehensionAccumulationReferences(call.args()[i], var_name);
@@ -958,10 +937,8 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       }
       // Return whether the accumulator var_name is used as the operand in an
       // index expression or in the identity `dyn` function.
-      if ((function == google::api::expr::runtime::builtin::kIndex &&
-           call.args().size() == 2) ||
-          (function == google::api::expr::runtime::builtin::kDyn &&
-           call.args().size() == 1)) {
+      if ((function == cel::builtin::kIndex && call.args().size() == 2) ||
+          (function == cel::builtin::kDyn && call.args().size() == 1)) {
         return ComprehensionAccumulationReferences(call.args()[0], var_name);
       }
       return 0;
@@ -1094,18 +1071,14 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
     case cel::ast::internal::ACCU_INIT: {
       next_step_pos_ = visitor_->GetCurrentIndex();
       next_step_ = new ComprehensionNextStep(accu_var, iter_var, expr->id());
-      visitor_->AddStep(
-          std::unique_ptr<google::api::expr::runtime::ExpressionStep>(
-              next_step_));
+      visitor_->AddStep(std::unique_ptr<ExpressionStep>(next_step_));
       break;
     }
     case cel::ast::internal::LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
       cond_step_ = new ComprehensionCondStep(accu_var, iter_var,
                                              short_circuiting_, expr->id());
-      visitor_->AddStep(
-          std::unique_ptr<google::api::expr::runtime::ExpressionStep>(
-              cond_step_));
+      visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
       break;
     }
     case cel::ast::internal::LOOP_STEP: {
@@ -1122,9 +1095,8 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
       break;
     }
     case cel::ast::internal::RESULT: {
-      visitor_->AddStep(
-          std::unique_ptr<google::api::expr::runtime::ExpressionStep>(
-              new ComprehensionFinish(accu_var, iter_var, expr->id())));
+      visitor_->AddStep(std::unique_ptr<ExpressionStep>(
+          new ComprehensionFinish(accu_var, iter_var, expr->id())));
       next_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
                                         next_step_pos_ - 1);
       cond_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
@@ -1147,71 +1119,36 @@ void ComprehensionVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
 
 }  // namespace
 
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const Expr* expr,
-                                  const SourceInfo* source_info,
-                                  std::vector<absl::Status>* warnings) const {
-  ABSL_ASSERT(expr != nullptr);
-  CEL_ASSIGN_OR_RETURN(
-      std::unique_ptr<Ast> converted_ast,
-      cel::extensions::CreateAstFromParsedExpr(*expr, source_info));
-  return CreateExpressionImpl(*converted_ast, warnings);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const Expr* expr,
-                                  const SourceInfo* source_info) const {
-  return CreateExpression(expr, source_info,
-                          /*warnings=*/nullptr);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr,
-                                  std::vector<absl::Status>* warnings) const {
-  ABSL_ASSERT(checked_expr != nullptr);
-  CEL_ASSIGN_OR_RETURN(
-      std::unique_ptr<Ast> converted_ast,
-      cel::extensions::CreateAstFromCheckedExpr(*checked_expr));
-  return CreateExpressionImpl(*converted_ast, warnings);
-}
-
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpression(const CheckedExpr* checked_expr) const {
-  return CreateExpression(checked_expr, /*warnings=*/nullptr);
-}
-
 // TODO(uncreated-issue/31): move ast conversion to client responsibility and
 // update pre-processing steps to work without mutating the input AST.
 absl::StatusOr<std::unique_ptr<CelExpression>>
 FlatExprBuilder::CreateExpressionImpl(
-    cel::ast::Ast& ast, std::vector<absl::Status>* warnings) const {
+    std::unique_ptr<Ast> ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
 
   // These objects are expected to remain scoped to one build call -- references
   // to them shouldn't be persisted in any part of the result expression.
-  cel::TypeFactory type_factory(cel::MemoryManager::Global());
-  cel::TypeManager type_manager(type_factory,
-                                GetTypeRegistry()->GetTypeProvider());
-  cel::ValueFactory value_factory(type_manager);
+  TypeFactory type_factory(cel::MemoryManager::Global());
+  TypeManager type_manager(type_factory, type_registry_.GetTypeProvider());
+  ValueFactory value_factory(type_manager);
 
   BuilderWarnings warnings_builder(options_.fail_on_warnings);
-  Resolver resolver(container(), GetRegistry()->InternalGetRegistry(),
-                    GetTypeRegistry(), value_factory,
-                    GetTypeRegistry()->resolveable_enums(),
+  Resolver resolver(container_, function_registry_, &type_registry_,
+                    value_factory, type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
   absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
 
   PlannerContext::ProgramTree program_tree;
-  PlannerContext extension_context(resolver, *GetTypeRegistry(), options_,
+  PlannerContext extension_context(resolver, type_registry_, options_,
                                    warnings_builder, execution_path,
                                    program_tree);
 
-  auto& ast_impl = AstImpl::CastFromPublicAst(ast);
+  auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
   const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
 
-  if (absl::StartsWith(container(), ".") || absl::EndsWith(container(), ".")) {
+  if (absl::StartsWith(container_, ".") || absl::EndsWith(container_, ".")) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Invalid expression container: '", container(), "'"));
+        absl::StrCat("Invalid expression container: '", container_, "'"));
   }
 
   for (const std::unique_ptr<AstTransform>& transform : ast_transforms_) {
@@ -1220,9 +1157,9 @@ FlatExprBuilder::CreateExpressionImpl(
 
   cel::ast::internal::Expr const_fold_buffer;
   if (constant_folding_) {
-    cel::ast::internal::FoldConstants(
-        ast_impl.root_expr(), this->GetRegistry()->InternalGetRegistry(),
-        constant_arena_, constant_idents, const_fold_buffer);
+    cel::ast::internal::FoldConstants(ast_impl.root_expr(), function_registry_,
+                                      constant_arena_, constant_idents,
+                                      const_fold_buffer);
     effective_expr = &const_fold_buffer;
   }
 
@@ -1233,8 +1170,8 @@ FlatExprBuilder::CreateExpressionImpl(
   }
   FlatExprVisitor visitor(resolver, options_, constant_idents,
                           enable_comprehension_vulnerability_check_, optimizers,
-                          &ast_impl.reference_map(), &execution_path,
-                          &warnings_builder, program_tree, extension_context);
+                          ast_impl.reference_map(), execution_path,
+                          warnings_builder, program_tree, extension_context);
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 

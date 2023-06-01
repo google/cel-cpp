@@ -21,10 +21,12 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/compiler/regex_precompilation_optimization.h"
+#include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
 #include "runtime/runtime_options.h"
 
@@ -39,30 +41,33 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
     return nullptr;
   }
   cel::RuntimeOptions runtime_options = ConvertToRuntimeOptions(options);
-  auto builder = std::make_unique<FlatExprBuilder>(runtime_options);
+  auto builder =
+      std::make_unique<CelExpressionBuilderFlatImpl>(runtime_options);
 
   builder->GetTypeRegistry()->RegisterTypeProvider(std::move(type_provider));
 
-  builder->AddAstTransform(NewReferenceResolverExtension(
+  FlatExprBuilder& flat_expr_builder = builder->flat_expr_builder();
+
+  flat_expr_builder.AddAstTransform(NewReferenceResolverExtension(
       (options.enable_qualified_identifier_rewrites)
           ? ReferenceResolverOption::kAlways
           : ReferenceResolverOption::kCheckedOnly));
   // TODO(uncreated-issue/27): These need to be abstracted to avoid bringing in too
   // many build dependencies by default.
-  builder->set_enable_comprehension_vulnerability_check(
+  flat_expr_builder.set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);
 
   if (options.constant_folding && options.enable_updated_constant_folding) {
-    builder->AddProgramOptimizer(
+    flat_expr_builder.AddProgramOptimizer(
         cel::ast::internal::CreateConstantFoldingExtension(
             options.constant_arena));
   } else {
-    builder->set_constant_folding(options.constant_folding,
-                                  options.constant_arena);
+    flat_expr_builder.set_constant_folding(options.constant_folding,
+                                           options.constant_arena);
   }
 
   if (options.enable_regex_precompilation) {
-    builder->AddProgramOptimizer(
+    flat_expr_builder.AddProgramOptimizer(
         CreateRegexPrecompilationExtension(options.regex_max_program_size));
   }
 
