@@ -120,8 +120,7 @@ class MessageWrapper {
 
   Builder ToBuilder() { return Builder(message_ptr_); }
 
-  static constexpr uintptr_t kTagSize =
-      ::cel::base_internal::kMessageWrapperTagSize;
+  static constexpr int kTagSize = ::cel::base_internal::kMessageWrapperTagSize;
   static constexpr uintptr_t kTagMask =
       ::cel::base_internal::kMessageWrapperTagMask;
   static constexpr uintptr_t kPtrMask =
