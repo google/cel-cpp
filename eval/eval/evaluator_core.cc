@@ -199,8 +199,9 @@ absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
 
   CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> value, frame.Evaluate(callback));
 
-  return cel::interop_internal::ModernValueToLegacyValueOrDie(state->arena(),
-                                                              value);
+  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
+      state->memory_manager());
+  return cel::interop_internal::ModernValueToLegacyValueOrDie(arena, value);
 }
 
 }  // namespace google::api::expr::runtime

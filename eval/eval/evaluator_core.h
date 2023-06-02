@@ -110,8 +110,6 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   IterFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
-  google::protobuf::Arena* arena() { return memory_manager_.arena(); }
-
   cel::MemoryManager& memory_manager() { return memory_manager_; }
 
   cel::TypeFactory& type_factory() { return type_factory_; }
@@ -145,7 +143,6 @@ class ExecutionFrame {
                  CelExpressionFlatEvaluationState* state)
       : pc_(0UL),
         execution_path_(flat),
-        activation_(activation),
         modern_activation_(activation),
         options_(options),
         attribute_utility_(modern_activation_.GetUnknownAttributes(),
@@ -207,9 +204,6 @@ class ExecutionFrame {
     return attribute_utility_;
   }
 
-  // Returns reference to Activation
-  const BaseActivation& activation() const { return activation_; }
-
   // Returns reference to the modern API activation.
   const cel::ActivationInterface& modern_activation() const {
     return modern_activation_;
@@ -223,7 +217,7 @@ class ExecutionFrame {
   // Discards the top frame for iteration variables.
   absl::Status PopIterFrame();
 
-  // Sets the value of the accumuation variable
+  // Sets the value of the accumulation variable
   absl::Status SetAccuVar(cel::Handle<cel::Value> value);
 
   // Sets the value of the accumulation variable
@@ -261,7 +255,6 @@ class ExecutionFrame {
  private:
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
-  const BaseActivation& activation_;
   cel::interop_internal::AdapterActivationImpl modern_activation_;
   const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
   AttributeUtility attribute_utility_;
