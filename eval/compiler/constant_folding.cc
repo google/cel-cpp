@@ -72,6 +72,24 @@ Handle<Value> CreateLegacyListBackedHandle(
   return CreateLegacyListValue(legacy_list);
 }
 
+absl::optional<std::string> ToQualifiedIdentifier(const Select& select) {
+  if (select.test_only()) {
+    return absl::nullopt;
+  }
+  if (select.operand().has_select_expr()) {
+    auto op_name = ToQualifiedIdentifier(select.operand().select_expr());
+    if (op_name.has_value()) {
+      return absl::StrCat(*std::move(op_name), ".", select.field());
+    }
+    return absl::nullopt;
+  }
+  if (select.operand().has_ident_expr()) {
+    return absl::StrCat(select.operand().ident_expr().name(), ".",
+                        select.field());
+  }
+  return absl::nullopt;
+}
+
 struct MakeConstantArenaSafeVisitor {
   // TODO(uncreated-issue/33): make the AST to runtime Value conversion work with
   // non-arena based cel::MemoryManager.
@@ -337,7 +355,7 @@ class ConstantFoldingTransform {
     }
 
     bool operator()(const Comprehension& comprehension) {
-      // do not fold comprehensions for now: would require significal
+      // do not fold comprehensions for now: would require significant
       // factoring out of comprehension semantics from the evaluator
       auto& input_expr = expr_.comprehension_expr();
       auto& out_expr = out_.mutable_comprehension_expr();
@@ -404,6 +422,7 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   enum class IsConst {
     kConditional,
     kNonConst,
+    kConst,
   };
   // Most constant folding evaluations are simple
   // binary operators.
@@ -421,8 +440,13 @@ class ConstantFoldingExtension : public ProgramOptimizer {
 absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
                                                   const Expr& node) {
   struct IsConstVisitor {
-    IsConst operator()(const Constant&) { return IsConst::kConditional; }
-    IsConst operator()(const Ident&) { return IsConst::kNonConst; }
+    IsConst operator()(const Constant&) { return IsConst::kConst; }
+    IsConst operator()(const Ident& ident) {
+      if (resolver.FindConstant(ident.name(), expr_id)) {
+        return IsConst::kConst;
+      }
+      return IsConst::kNonConst;
+    }
     IsConst operator()(const Comprehension&) {
       // Not yet supported, need to identify whether range and
       // iter vars are compatible with const folding.
@@ -441,7 +465,13 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
       return IsConst::kConditional;
     }
 
-    IsConst operator()(const Select&) { return IsConst::kConditional; }
+    IsConst operator()(const Select& select) {
+      auto qual_id = ToQualifiedIdentifier(select);
+      if (qual_id.has_value() && resolver.FindConstant(*qual_id, expr_id)) {
+        return IsConst::kConst;
+      }
+      return IsConst::kConditional;
+    }
 
     IsConst operator()(absl::monostate) { return IsConst::kNonConst; }
 
@@ -466,10 +496,11 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
     }
 
     const Resolver& resolver;
+    const int64_t expr_id;
   };
 
-  IsConst is_const =
-      absl::visit(IsConstVisitor{context.resolver()}, node.expr_kind());
+  IsConst is_const = absl::visit(IsConstVisitor{context.resolver(), node.id()},
+                                 node.expr_kind());
   is_const_.push_back(is_const);
 
   return absl::OkStatus();
@@ -486,7 +517,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
 
   if (is_const == IsConst::kNonConst) {
     // update parent
-    if (!is_const_.empty()) {
+    if (!is_const_.empty() && is_const_.back() == IsConst::kConditional) {
       is_const_.back() = IsConst::kNonConst;
     }
     return absl::OkStatus();
@@ -497,7 +528,16 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
   if (node.has_const_expr()) {
     value = absl::visit(MakeConstantArenaSafeVisitor{arena_},
                         node.const_expr().constant_kind());
-  } else {
+  } else if (node.has_ident_expr()) {
+    value =
+        context.resolver().FindConstant(node.ident_expr().name(), node.id());
+  } else if (node.has_select_expr()) {
+    auto qual_id = ToQualifiedIdentifier(node.select_expr());
+    if (qual_id.has_value()) {
+      value = context.resolver().FindConstant(qual_id.value(), node.id());
+    }
+  }
+  if (!value) {
     ExecutionPathView subplan = context.GetSubplan(node);
     ExecutionFrame frame(subplan, empty_, context.options(), state_);
     state_.Reset();

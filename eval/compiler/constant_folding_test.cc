@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "base/ast_internal.h"
@@ -18,11 +20,15 @@
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/create_list_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
+#include "eval/eval/ident_step.h"
+#include "eval/eval/select_step.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_type_registry.h"
+#include "eval/testutil/test_message.pb.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
@@ -46,6 +52,9 @@ using ::google::api::expr::runtime::BuilderWarnings;
 using ::google::api::expr::runtime::CelFunctionRegistry;
 using ::google::api::expr::runtime::CelTypeRegistry;
 using ::google::api::expr::runtime::CreateConstValueStep;
+using ::google::api::expr::runtime::CreateCreateListStep;
+using ::google::api::expr::runtime::CreateIdentStep;
+using ::google::api::expr::runtime::CreateSelectStep;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
@@ -533,11 +542,14 @@ class UpdatedConstantFoldingTest : public testing::Test {
   UpdatedConstantFoldingTest()
       : type_factory_(MemoryManager::Global()),
         type_manager_(type_factory_, type_registry_.GetTypeProvider()),
-        value_factory_(type_manager_),
-        resolver_("", function_registry_, &type_registry_, value_factory_,
-                  type_registry_.resolveable_enums()) {}
+        value_factory_(type_manager_) {}
 
  protected:
+  Resolver resolver(absl::string_view container = "") {
+    return Resolver(container, function_registry_, &type_registry_,
+                    value_factory_, type_registry_.resolveable_enums());
+  }
+
   cel::FunctionRegistry function_registry_;
   CelTypeRegistry type_registry_;
   cel::TypeFactory type_factory_;
@@ -545,7 +557,6 @@ class UpdatedConstantFoldingTest : public testing::Test {
   cel::ValueFactory value_factory_;
   cel::RuntimeOptions options_;
   BuilderWarnings builder_warnings_;
-  Resolver resolver_;
 };
 
 absl::StatusOr<std::unique_ptr<cel::ast::Ast>> ParseFromCel(
@@ -610,8 +621,9 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
       path.emplace_back(),
       CreateConstValueStep(Constant(NullValue::kNullValue), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
-                         path, tree);
+  Resolver r(resolver());
+  PlannerContext context(r, type_registry_, options_, builder_warnings_, path,
+                         tree);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -648,7 +660,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   PlannerContext::ProgramTree tree;
   PlannerContext::ProgramInfo& call_info = tree[&call];
   call_info.range_start = 0;
-  call_info.range_len = 4;
+  call_info.range_len = 3;
   call_info.children = {&left_condition, &right_condition};
 
   PlannerContext::ProgramInfo& left_condition_info = tree[&left_condition];
@@ -676,8 +688,9 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
       path.emplace_back(),
       CreateConstValueStep(Constant(NullValue::kNullValue), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
-                         path, tree);
+  Resolver r(resolver());
+  PlannerContext context(r, type_registry_, options_, builder_warnings_, path,
+                         tree);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -712,7 +725,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   PlannerContext::ProgramTree tree;
   PlannerContext::ProgramInfo& call_info = tree[&call];
   call_info.range_start = 0;
-  call_info.range_len = 4;
+  call_info.range_len = 3;
   call_info.children = {&left_condition, &right_condition};
 
   PlannerContext::ProgramInfo& left_condition_info = tree[&left_condition];
@@ -740,8 +753,9 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
       path.emplace_back(),
       CreateConstValueStep(Constant(NullValue::kNullValue), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
-                         path, tree);
+  Resolver r(resolver());
+  PlannerContext context(r, type_registry_, options_, builder_warnings_, path,
+                         tree);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
@@ -761,6 +775,167 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   // Assert
   // No changes attempted.
   EXPECT_THAT(path, SizeIs(3));
+}
+
+TEST_F(UpdatedConstantFoldingTest, CreatesList) {
+  // Arrange
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+                       ParseFromCel("[1, 2]"));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  const Expr& create_list = ast_impl.root_expr();
+  const Expr& elem_one = create_list.list_expr().elements()[0];
+  const Expr& elem_two = create_list.list_expr().elements()[1];
+
+  PlannerContext::ProgramTree tree;
+  PlannerContext::ProgramInfo& create_list_info = tree[&create_list];
+  create_list_info.range_start = 0;
+  create_list_info.range_len = 3;
+  create_list_info.children = {&elem_one, &elem_two};
+
+  PlannerContext::ProgramInfo& elem_one_info = tree[&elem_one];
+  elem_one_info.range_start = 0;
+  elem_one_info.range_len = 1;
+  elem_one_info.parent = &create_list;
+
+  PlannerContext::ProgramInfo& elem_two_info = tree[&elem_two];
+  elem_two_info.range_start = 1;
+  elem_two_info.range_len = 1;
+  elem_two_info.parent = &create_list;
+
+  ExecutionPath path;
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(1L)), 1));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+
+  // Insert the list creation step
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       google::api::expr::runtime::CreateCreateListStep(
+                           create_list.list_expr(), 3));
+
+  Resolver r(resolver());
+  PlannerContext context(r, type_registry_, options_, builder_warnings_, path,
+                         tree);
+
+  google::protobuf::Arena arena;
+  ProgramOptimizerFactory constant_folder_factory =
+      CreateConstantFoldingExtension(&arena);
+
+  // Act
+  // Issue the visitation calls.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, create_list));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_one));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_one));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_two));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_two));
+  ASSERT_OK(constant_folder->OnPostVisit(context, create_list));
+
+  // Assert
+  // Single constant value for the two element list.
+  EXPECT_THAT(path, SizeIs(1));
+}
+
+TEST_F(UpdatedConstantFoldingTest, CreatesListWithEnums) {
+  // Configure enums
+  type_registry_.Register(google::api::expr::runtime::TestEnum_descriptor());
+  // Arrange
+  // "[.google.api.expr.runtime.TestEnum.TEST_ENUM_1,
+  //    google.api.expr.runtime.TestEnum.TEST_ENUM_2,
+  //    TestEnum.TEST_ENUM_3,
+  //  ]"
+  cel::ast::internal::ParsedExpr parsed_expr;
+  Expr& expr = parsed_expr.mutable_expr();
+  std::vector<Expr>& elements = expr.mutable_list_expr().mutable_elements();
+  elements.emplace_back().mutable_ident_expr().set_name(
+      ".google.api.expr.runtime.TestEnum.TEST_ENUM_1");
+  elements.emplace_back().mutable_ident_expr().set_name(
+      "google.api.expr.runtime.TestEnum.TEST_ENUM_2");
+  Select& enum_three = elements.emplace_back().mutable_select_expr();
+  enum_three.mutable_operand().mutable_ident_expr().set_name("TestEnum");
+  enum_three.set_field("TEST_ENUM_3");
+  AstImpl ast_impl(std::move(parsed_expr));
+
+  const Expr& create_list = ast_impl.root_expr();
+  const Expr& elem_one = create_list.list_expr().elements()[0];
+  const Expr& elem_two = create_list.list_expr().elements()[1];
+  const Expr& elem_three = create_list.list_expr().elements()[2];
+  const Expr& elem_three_ident = elem_three.select_expr().operand();
+
+  PlannerContext::ProgramTree tree;
+  PlannerContext::ProgramInfo& create_list_info = tree[&create_list];
+  create_list_info.range_start = 0;
+  create_list_info.range_len = 5;
+  create_list_info.children = {&elem_one, &elem_two, &elem_three};
+
+  PlannerContext::ProgramInfo& elem_one_info = tree[&elem_one];
+  elem_one_info.range_start = 0;
+  elem_one_info.range_len = 1;
+  elem_one_info.parent = &create_list;
+
+  PlannerContext::ProgramInfo& elem_two_info = tree[&elem_two];
+  elem_two_info.range_start = 1;
+  elem_two_info.range_len = 1;
+  elem_two_info.parent = &create_list;
+
+  PlannerContext::ProgramInfo& elem_three_info = tree[&elem_three];
+  elem_three_info.range_start = 2;
+  elem_three_info.range_len = 2;
+  elem_three_info.parent = &create_list;
+  elem_three_info.children = {&elem_three_ident};
+
+  PlannerContext::ProgramInfo& elem_three_ident_info = tree[&elem_three_ident];
+  elem_three_ident_info.range_start = 3;
+  elem_three_ident_info.range_len = 1;
+  elem_three_ident_info.parent = &elem_three;
+
+  ExecutionPath path;
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateIdentStep(elem_one.ident_expr(), 1));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateIdentStep(elem_two.ident_expr(), 2));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateIdentStep(elem_three_ident.ident_expr(), 3));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateSelectStep(elem_three.select_expr(), 4,
+                                        "TestEnum.TEST_ENUM_3", true));
+
+  // Insert the list creation step
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateCreateListStep(create_list.list_expr(), 5));
+
+  Resolver r(resolver("google.api.expr.runtime"));
+  PlannerContext context(r, type_registry_, options_, builder_warnings_, path,
+                         tree);
+
+  google::protobuf::Arena arena;
+  ProgramOptimizerFactory constant_folder_factory =
+      CreateConstantFoldingExtension(&arena);
+
+  // Act
+  // Issue the visitation calls.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, create_list));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_one));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_one));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_two));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_two));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_three));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_three_ident));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_three_ident));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_three));
+  ASSERT_OK(constant_folder->OnPostVisit(context, create_list));
+
+  // Assert
+  // Single constant value for the enum list.
+  EXPECT_THAT(path, SizeIs(1));
 }
 
 TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
@@ -804,8 +979,9 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
       path.emplace_back(),
       CreateConstValueStep(Constant(NullValue::kNullValue), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
-                         path, tree);
+  Resolver r(resolver());
+  PlannerContext context(r, type_registry_, options_, builder_warnings_, path,
+                         tree);
 
   google::protobuf::Arena arena;
   ProgramOptimizerFactory constant_folder_factory =
