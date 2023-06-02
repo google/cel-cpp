@@ -5,6 +5,7 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
+#include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {

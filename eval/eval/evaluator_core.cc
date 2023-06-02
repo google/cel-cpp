@@ -1,23 +1,15 @@
 #include "eval/eval/evaluator_core.h"
 
 #include <memory>
-#include <set>
-#include <string>
 #include <utility>
 
-#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
+#include "base/memory.h"
 #include "base/type_provider.h"
 #include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
-#include "eval/internal/interop.h"
-#include "eval/public/cel_expression.h"
-#include "eval/public/cel_value.h"
-#include "extensions/protobuf/memory_manager.h"
-#include "internal/casts.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -31,19 +23,17 @@ absl::Status InvalidIterationStateError() {
 
 }  // namespace
 
-// TODO(uncreated-issue/28): cel::TypeFactory and family are setup here assuming legacy
-// value interop. Later, these will need to be configurable by clients.
-CelExpressionFlatEvaluationState::CelExpressionFlatEvaluationState(
-    size_t value_stack_size, google::protobuf::Arena* arena)
-    : memory_manager_(arena),
-      value_stack_(value_stack_size),
-      type_factory_(memory_manager_),
-      type_manager_(type_factory_, cel::TypeProvider::Builtin()),
+FlatExpressionEvaluatorState::FlatExpressionEvaluatorState(
+    size_t value_stack_size, const cel::TypeProvider& type_provider,
+    cel::MemoryManager& memory_manager)
+    : value_stack_(value_stack_size),
+      type_factory_(memory_manager),
+      type_manager_(type_factory_, type_provider),
       value_factory_(type_manager_) {}
 
-void CelExpressionFlatEvaluationState::Reset() {
-  iter_stack_.clear();
+void FlatExpressionEvaluatorState::Reset() {
   value_stack_.Clear();
+  iter_stack_.clear();
 }
 
 const ExpressionStep* ExecutionFrame::Next() {
@@ -58,18 +48,18 @@ const ExpressionStep* ExecutionFrame::Next() {
 
 absl::Status ExecutionFrame::PushIterFrame(absl::string_view iter_var_name,
                                            absl::string_view accu_var_name) {
-  CelExpressionFlatEvaluationState::IterFrame frame;
+  FlatExpressionEvaluatorState::IterFrame frame;
   frame.iter_var = {iter_var_name, cel::Handle<cel::Value>(), AttributeTrail()};
   frame.accu_var = {accu_var_name, cel::Handle<cel::Value>(), AttributeTrail()};
-  state_->iter_stack().push_back(std::move(frame));
+  state_.iter_stack().push_back(std::move(frame));
   return absl::OkStatus();
 }
 
 absl::Status ExecutionFrame::PopIterFrame() {
-  if (state_->iter_stack().empty()) {
+  if (state_.iter_stack().empty()) {
     return absl::InternalError("Loop stack underflow.");
   }
-  state_->iter_stack().pop_back();
+  state_.iter_stack().pop_back();
   return absl::OkStatus();
 }
 
@@ -79,10 +69,10 @@ absl::Status ExecutionFrame::SetAccuVar(cel::Handle<cel::Value> value) {
 
 absl::Status ExecutionFrame::SetAccuVar(cel::Handle<cel::Value> value,
                                         AttributeTrail trail) {
-  if (state_->iter_stack().empty()) {
+  if (state_.iter_stack().empty()) {
     return InvalidIterationStateError();
   }
-  auto& iter = state_->IterStackTop();
+  auto& iter = state_.IterStackTop();
   iter.accu_var.value = std::move(value);
   iter.accu_var.attr_trail = std::move(trail);
   return absl::OkStatus();
@@ -90,10 +80,10 @@ absl::Status ExecutionFrame::SetAccuVar(cel::Handle<cel::Value> value,
 
 absl::Status ExecutionFrame::SetIterVar(cel::Handle<cel::Value> value,
                                         AttributeTrail trail) {
-  if (state_->iter_stack().empty()) {
+  if (state_.iter_stack().empty()) {
     return InvalidIterationStateError();
   }
-  auto& iter = state_->IterStackTop();
+  auto& iter = state_.IterStackTop();
   iter.iter_var.value = std::move(value);
   iter.iter_var.attr_trail = std::move(trail);
   return absl::OkStatus();
@@ -104,18 +94,18 @@ absl::Status ExecutionFrame::SetIterVar(cel::Handle<cel::Value> value) {
 }
 
 absl::Status ExecutionFrame::ClearIterVar() {
-  if (state_->iter_stack().empty()) {
+  if (state_.iter_stack().empty()) {
     return InvalidIterationStateError();
   }
-  state_->IterStackTop().iter_var.value = cel::Handle<cel::Value>();
+  state_.IterStackTop().iter_var.value = cel::Handle<cel::Value>();
   return absl::OkStatus();
 }
 
 bool ExecutionFrame::GetIterVar(absl::string_view name,
                                 cel::Handle<cel::Value>* value,
                                 AttributeTrail* trail) const {
-  for (auto iter = state_->iter_stack().rbegin();
-       iter != state_->iter_stack().rend(); ++iter) {
+  for (auto iter = state_.iter_stack().rbegin();
+       iter != state_.iter_stack().rend(); ++iter) {
     auto& frame = *iter;
     if (frame.iter_var.value && name == frame.iter_var.name) {
       if (value != nullptr) {
@@ -140,23 +130,11 @@ bool ExecutionFrame::GetIterVar(absl::string_view name,
   return false;
 }
 
-std::unique_ptr<CelEvaluationState> CelExpressionFlatImpl::InitializeState(
-    google::protobuf::Arena* arena) const {
-  return std::make_unique<CelExpressionFlatEvaluationState>(path_.size(),
-                                                            arena);
-}
-
-absl::StatusOr<CelValue> CelExpressionFlatImpl::Evaluate(
-    const BaseActivation& activation, CelEvaluationState* state) const {
-  return Trace(activation, state, CelEvaluationListener());
-}
-
 absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
-    const CelEvaluationListener& listener) {
+    const EvaluationListener& listener) {
   size_t initial_stack_size = value_stack().size();
   const ExpressionStep* expr;
-  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
-      value_factory().memory_manager());
+
   while ((expr = Next()) != nullptr) {
     CEL_RETURN_IF_ERROR(expr->Evaluate(this));
 
@@ -172,10 +150,7 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
       continue;
     }
     CEL_RETURN_IF_ERROR(
-        listener(expr->id(),
-                 cel::interop_internal::ModernValueToLegacyValueOrDie(
-                     arena, value_stack().Peek()),
-                 arena));
+        listener(expr->id(), value_stack().Peek(), value_factory()));
   }
 
   size_t final_stack_size = value_stack().size();
@@ -188,20 +163,20 @@ absl::StatusOr<cel::Handle<cel::Value>> ExecutionFrame::Evaluate(
   return value;
 }
 
-absl::StatusOr<CelValue> CelExpressionFlatImpl::Trace(
-    const BaseActivation& activation, CelEvaluationState* _state,
-    CelEvaluationListener callback) const {
-  auto state =
-      ::cel::internal::down_cast<CelExpressionFlatEvaluationState*>(_state);
-  state->Reset();
+FlatExpressionEvaluatorState FlatExpression::MakeEvaluatorState(
+    cel::MemoryManager& manager) const {
+  return FlatExpressionEvaluatorState(path_.size(), type_provider_, manager);
+}
+
+absl::StatusOr<cel::Handle<cel::Value>> FlatExpression::EvaluateWithCallback(
+    const cel::ActivationInterface& activation,
+    const EvaluationListener& listener,
+    FlatExpressionEvaluatorState& state) const {
+  state.Reset();
 
   ExecutionFrame frame(path_, activation, options_, state);
 
-  CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> value, frame.Evaluate(callback));
-
-  google::protobuf::Arena* arena = cel::extensions::ProtoMemoryManager::CastToProtoArena(
-      state->memory_manager());
-  return cel::interop_internal::ModernValueToLegacyValueOrDie(arena, value);
+  return frame.Evaluate(listener);
 }
 
 }  // namespace google::api::expr::runtime

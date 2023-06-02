@@ -9,12 +9,14 @@
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
 #include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
+#include "base/builtins.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_expr_builder_factory.h"
 #include "eval/public/cel_expression.h"
 #include "eval/public/cel_options.h"
@@ -30,6 +32,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::SourceInfo;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -51,7 +54,7 @@ CelValue EvaluateAttributeHelper(
   SourceInfo source_info;
   auto& call = expr.mutable_call_expr();
 
-  call.set_function(builtin::kIndex);
+  call.set_function(cel::builtin::kIndex);
 
   call.mutable_args().reserve(2);
   Expr& container_expr = (receiver_style) ? call.mutable_target()
@@ -69,7 +72,8 @@ CelValue EvaluateAttributeHelper(
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   options.enable_heterogeneous_equality = false;
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
 
   activation.InsertValue("container", container);
@@ -225,7 +229,7 @@ TEST_P(ContainerAccessStepUniformityTest, TestMapKeyAccessNotFound) {
 TEST_F(ContainerAccessStepTest, TestInvalidReceiverCreateContainerAccessStep) {
   Expr expr;
   auto& call = expr.mutable_call_expr();
-  call.set_function(builtin::kIndex);
+  call.set_function(cel::builtin::kIndex);
   Expr& container_expr = call.mutable_target();
   container_expr.mutable_ident_expr().set_name("container");
 
@@ -243,7 +247,7 @@ TEST_F(ContainerAccessStepTest, TestInvalidReceiverCreateContainerAccessStep) {
 TEST_F(ContainerAccessStepTest, TestInvalidGlobalCreateContainerAccessStep) {
   Expr expr;
   auto& call = expr.mutable_call_expr();
-  call.set_function(builtin::kIndex);
+  call.set_function(cel::builtin::kIndex);
   call.mutable_args().reserve(3);
   Expr& container_expr = call.mutable_args().emplace_back();
   container_expr.mutable_ident_expr().set_name("container");

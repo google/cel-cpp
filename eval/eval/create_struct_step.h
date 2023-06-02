@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 

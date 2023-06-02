@@ -8,9 +8,10 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/struct.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
@@ -22,6 +23,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::Ident;
 using ::google::protobuf::ListValue;
@@ -47,7 +49,8 @@ class ListKeysStepTest : public testing::Test {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeAndFunction;
     }
-    return std::make_unique<CelExpressionFlatImpl>(std::move(path), options);
+    return std::make_unique<CelExpressionFlatImpl>(
+        FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   }
 
  private:

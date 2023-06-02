@@ -10,10 +10,12 @@
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
 #include "base/ast_internal.h"
+#include "base/builtins.h"
 #include "base/function.h"
 #include "base/handle.h"
 #include "base/internal/ast_impl.h"
 #include "base/kind.h"
+#include "base/type_provider.h"
 #include "base/value.h"
 #include "base/values/bytes_value.h"
 #include "base/values/error_value.h"
@@ -25,13 +27,11 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "eval/public/activation.h"
-#include "eval/public/cel_builtins.h"
-#include "eval/public/cel_expression.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_list_impl.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/activation.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_registry.h"
 
@@ -39,24 +39,24 @@ namespace cel::ast::internal {
 
 namespace {
 
+using ::cel::builtin::kAnd;
+using ::cel::builtin::kOr;
+using ::cel::builtin::kTernary;
+using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateLegacyListValue;
 using ::cel::interop_internal::CreateNoMatchingOverloadError;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
-using ::google::api::expr::runtime::Activation;
-using ::google::api::expr::runtime::CelEvaluationListener;
-using ::google::api::expr::runtime::CelExpressionFlatEvaluationState;
 using ::google::api::expr::runtime::CelValue;
 using ::google::api::expr::runtime::ContainerBackedListImpl;
+using ::google::api::expr::runtime::EvaluationListener;
 using ::google::api::expr::runtime::ExecutionFrame;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::ExecutionPathView;
+using ::google::api::expr::runtime::FlatExpressionEvaluatorState;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
 using ::google::api::expr::runtime::Resolver;
-using ::google::api::expr::runtime::builtin::kAnd;
-using ::google::api::expr::runtime::builtin::kOr;
-using ::google::api::expr::runtime::builtin::kTernary;
 
 using ::google::protobuf::Arena;
 
@@ -201,11 +201,8 @@ class ConstantFoldingTransform {
       }
       // short-circuiting affects evaluation of logic combinators, so we do
       // not fold them here
-      if (!all_constant ||
-          call_expr.function() == google::api::expr::runtime::builtin::kAnd ||
-          call_expr.function() == google::api::expr::runtime::builtin::kOr ||
-          call_expr.function() ==
-              google::api::expr::runtime::builtin::kTernary) {
+      if (!all_constant || call_expr.function() == cel::builtin::kAnd ||
+          call_expr.function() == kOr || call_expr.function() == kTernary) {
         return false;
       }
 
@@ -392,8 +389,11 @@ bool ConstantFoldingTransform::Transform(const Expr& expr, Expr& out_) {
 
 class ConstantFoldingExtension : public ProgramOptimizer {
  public:
-  explicit ConstantFoldingExtension(google::protobuf::Arena* arena)
-      : arena_(arena), state_(kDefaultStackLimit, arena) {}
+  explicit ConstantFoldingExtension(google::protobuf::Arena* arena,
+                                    const TypeProvider& type_provider)
+      : arena_(arena),
+        memory_manager_(arena),
+        state_(kDefaultStackLimit, type_provider, memory_manager_) {}
 
   absl::Status OnPreVisit(google::api::expr::runtime::PlannerContext& context,
                           const Expr& node) override;
@@ -410,9 +410,10 @@ class ConstantFoldingExtension : public ProgramOptimizer {
   static constexpr size_t kDefaultStackLimit = 4;
 
   google::protobuf::Arena* arena_;
+  ProtoMemoryManager memory_manager_;
   Activation empty_;
-  CelEvaluationListener null_listener_;
-  CelExpressionFlatEvaluationState state_;
+  EvaluationListener null_listener_;
+  FlatExpressionEvaluatorState state_;
 
   std::vector<IsConst> is_const_;
 };
@@ -498,7 +499,7 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
                         node.const_expr().constant_kind());
   } else {
     ExecutionPathView subplan = context.GetSubplan(node);
-    ExecutionFrame frame(subplan, empty_, context.options(), &state_);
+    ExecutionFrame frame(subplan, empty_, context.options(), state_);
     state_.Reset();
     // Update stack size to accommodate sub expression.
     // This only results in a vector resize if the new maxsize is greater than
@@ -531,8 +532,9 @@ void FoldConstants(
 
 google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingExtension(google::protobuf::Arena* arena) {
-  return [=](PlannerContext&, const AstImpl&) {
-    return std::make_unique<ConstantFoldingExtension>(arena);
+  return [=](PlannerContext& ctx, const AstImpl&) {
+    return std::make_unique<ConstantFoldingExtension>(
+        arena, ctx.type_registry().GetTypeProvider());
   };
 }
 

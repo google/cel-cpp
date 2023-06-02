@@ -5,40 +5,25 @@
 #include <stdint.h>
 
 #include <cstdint>
-#include <map>
+#include <functional>
 #include <memory>
-#include <set>
-#include <string>
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/arena.h"
-#include "google/protobuf/descriptor.h"
-#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "base/ast_internal.h"
 #include "base/handle.h"
 #include "base/memory.h"
+#include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "base/type_provider.h"
 #include "base/value.h"
 #include "base/value_factory.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/attribute_utility.h"
 #include "eval/eval/evaluator_stack.h"
-#include "eval/internal/adapter_activation_impl.h"
-#include "eval/internal/interop.h"
-#include "eval/public/base_activation.h"
-#include "eval/public/cel_attribute.h"
-#include "eval/public/cel_expression.h"
-#include "eval/public/cel_type_registry.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/unknown_attribute_set.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/rtti.h"
 #include "runtime/activation_interface.h"
 #include "runtime/runtime_options.h"
@@ -48,7 +33,8 @@ namespace google::api::expr::runtime {
 // Forward declaration of ExecutionFrame, to resolve circular dependency.
 class ExecutionFrame;
 
-using Expr = ::google::api::expr::v1alpha1::Expr;
+using EvaluationListener = std::function<absl::Status(
+    int64_t expr_id, const cel::Handle<cel::Value>&, cel::ValueFactory&)>;
 
 // Class Expression represents single execution step.
 class ExpressionStep {
@@ -85,11 +71,10 @@ using ExecutionPath = std::vector<std::unique_ptr<const ExpressionStep>>;
 using ExecutionPathView =
     absl::Span<const std::unique_ptr<const ExpressionStep>>;
 
-class CelExpressionFlatEvaluationState : public CelEvaluationState {
+// Class that wraps the state that needs to be allocated for expression
+// evaluation. This can be reused to save on allocations.
+class FlatExpressionEvaluatorState {
  public:
-  CelExpressionFlatEvaluationState(size_t value_stack_size,
-                                   google::protobuf::Arena* arena);
-
   struct ComprehensionVarEntry {
     absl::string_view name;
     // present if we're in part of the loop context where this can be accessed.
@@ -102,6 +87,10 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
     ComprehensionVarEntry accu_var;
   };
 
+  FlatExpressionEvaluatorState(size_t value_stack_size,
+                               const cel::TypeProvider& type_provider,
+                               cel::MemoryManager& memory_manager);
+
   void Reset();
 
   EvaluatorStack& value_stack() { return value_stack_; }
@@ -110,7 +99,9 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
 
   IterFrame& IterStackTop() { return iter_stack_[iter_stack().size() - 1]; }
 
-  cel::MemoryManager& memory_manager() { return memory_manager_; }
+  cel::MemoryManager& memory_manager() {
+    return value_factory_.memory_manager();
+  }
 
   cel::TypeFactory& type_factory() { return type_factory_; }
 
@@ -119,10 +110,6 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   cel::ValueFactory& value_factory() { return value_factory_; }
 
  private:
-  // TODO(uncreated-issue/1): State owns a ProtoMemoryManager to adapt from the client
-  // provided arena. In the future, clients will have to maintain the particular
-  // manager they want to use for evaluation.
-  cel::extensions::ProtoMemoryManager memory_manager_;
   EvaluatorStack value_stack_;
   std::vector<IterFrame> iter_stack_;
   cel::TypeFactory type_factory_;
@@ -130,34 +117,36 @@ class CelExpressionFlatEvaluationState : public CelEvaluationState {
   cel::ValueFactory value_factory_;
 };
 
-// ExecutionFrame provides context for expression evaluation.
-// The lifecycle of the object is bound to CelExpression Evaluate(...) call.
+// ExecutionFrame manages the context needed for expression evaluation.
+// The lifecycle of the object is bound to a FlateExpression::Evaluate*(...)
+// call.
 class ExecutionFrame {
  public:
   // flat is the flattened sequence of execution steps that will be evaluated.
   // activation provides bindings between parameter names and values.
-  // arena serves as allocation manager during the expression evaluation.
-
-  ExecutionFrame(ExecutionPathView flat, const BaseActivation& activation,
+  // state contains the value factory for evaluation and the allocated data
+  //   structures needed for evaluation.
+  ExecutionFrame(ExecutionPathView flat,
+                 const cel::ActivationInterface& activation,
                  const cel::RuntimeOptions& options,
-                 CelExpressionFlatEvaluationState* state)
+                 FlatExpressionEvaluatorState& state)
       : pc_(0UL),
         execution_path_(flat),
-        modern_activation_(activation),
+        activation_(activation),
         options_(options),
-        attribute_utility_(modern_activation_.GetUnknownAttributes(),
-                           modern_activation_.GetMissingAttributes(),
-                           state->memory_manager()),
+        state_(state),
+        attribute_utility_(activation_.GetUnknownAttributes(),
+                           activation_.GetMissingAttributes(),
+                           state_.memory_manager()),
         max_iterations_(options_.comprehension_max_iterations),
-        iterations_(0),
-        state_(state) {}
+        iterations_(0) {}
 
   // Returns next expression to evaluate.
   const ExpressionStep* Next();
 
   // Evaluate the execution frame to completion.
   absl::StatusOr<cel::Handle<cel::Value>> Evaluate(
-      const CelEvaluationListener& listener);
+      const EvaluationListener& listener);
 
   // Intended for use only in conditionals.
   absl::Status JumpTo(int offset) {
@@ -172,7 +161,7 @@ class ExecutionFrame {
     return absl::OkStatus();
   }
 
-  EvaluatorStack& value_stack() { return state_->value_stack(); }
+  EvaluatorStack& value_stack() { return state_.value_stack(); }
 
   bool enable_unknowns() const {
     return options_.unknown_processing !=
@@ -192,13 +181,13 @@ class ExecutionFrame {
     return options_.enable_heterogeneous_equality;
   }
 
-  cel::MemoryManager& memory_manager() { return state_->memory_manager(); }
+  cel::MemoryManager& memory_manager() { return state_.memory_manager(); }
 
-  cel::TypeFactory& type_factory() { return state_->type_factory(); }
+  cel::TypeFactory& type_factory() { return state_.type_factory(); }
 
-  cel::TypeManager& type_manager() { return state_->type_manager(); }
+  cel::TypeManager& type_manager() { return state_.type_manager(); }
 
-  cel::ValueFactory& value_factory() { return state_->value_factory(); }
+  cel::ValueFactory& value_factory() { return state_.value_factory(); }
 
   const AttributeUtility& attribute_utility() const {
     return attribute_utility_;
@@ -206,7 +195,7 @@ class ExecutionFrame {
 
   // Returns reference to the modern API activation.
   const cel::ActivationInterface& modern_activation() const {
-    return modern_activation_;
+    return activation_;
   }
 
   // Creates a new frame for the iteration variables identified by iter_var_name
@@ -255,59 +244,53 @@ class ExecutionFrame {
  private:
   size_t pc_;  // pc_ - Program Counter. Current position on execution path.
   ExecutionPathView execution_path_;
-  cel::interop_internal::AdapterActivationImpl modern_activation_;
+  const cel::ActivationInterface& activation_;
   const cel::RuntimeOptions& options_;  // owned by the FlatExpr instance
+  FlatExpressionEvaluatorState& state_;
   AttributeUtility attribute_utility_;
   const int max_iterations_;
   int iterations_;
-  CelExpressionFlatEvaluationState* state_;
 };
 
-// Implementation of the CelExpression that utilizes flattening
-// of the expression tree.
-class CelExpressionFlatImpl : public CelExpression {
+// A flattened representation of the input CEL AST.
+class FlatExpression {
  public:
-  // Constructs CelExpressionFlatImpl instance.
-  // path is flat execution path that is based upon
-  // flattened AST tree. Max iterations dictates the maximum number of
-  // iterations in the comprehension expressions (use 0 to disable the upper
-  // bound).
-  CelExpressionFlatImpl(ExecutionPath path,
-                        const cel::RuntimeOptions& options)
+  // path is flat execution path that is based upon the flattened AST tree
+  // type_provider is the configured type system that should be used for
+  //   value creation in evaluation
+  FlatExpression(ExecutionPath path, const cel::TypeProvider& type_provider,
+                 const cel::RuntimeOptions& options)
       : path_(std::move(path)),
+        type_provider_(type_provider),
         options_(options) {}
 
   // Move-only
-  CelExpressionFlatImpl(const CelExpressionFlatImpl&) = delete;
-  CelExpressionFlatImpl& operator=(const CelExpressionFlatImpl&) = delete;
+  FlatExpression(FlatExpression&&) = default;
+  FlatExpression& operator=(FlatExpression&&) = default;
 
-  std::unique_ptr<CelEvaluationState> InitializeState(
-      google::protobuf::Arena* arena) const override;
+  // Create new evaluator state instance with the configured options and type
+  // provider.
+  FlatExpressionEvaluatorState MakeEvaluatorState(
+      cel::MemoryManager& memory_manager) const;
 
-  // Implementation of CelExpression evaluate method.
-  absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
-                                    google::protobuf::Arena* arena) const override {
-    return Evaluate(activation, InitializeState(arena).get());
-  }
-
-  absl::StatusOr<CelValue> Evaluate(const BaseActivation& activation,
-                                    CelEvaluationState* state) const override;
-
-  // Implementation of CelExpression trace method.
-  absl::StatusOr<CelValue> Trace(
-      const BaseActivation& activation, google::protobuf::Arena* arena,
-      CelEvaluationListener callback) const override {
-    return Trace(activation, InitializeState(arena).get(), callback);
-  }
-
-  absl::StatusOr<CelValue> Trace(const BaseActivation& activation,
-                                 CelEvaluationState* state,
-                                 CelEvaluationListener callback) const override;
+  // Evaluate the expression.
+  //
+  // A status may be returned if an unexpected error occurs. Recoverable errors
+  // will be represented as a cel::ErrorValue result.
+  //
+  // If the listener is not empty, it will be called after each evaluation step
+  // that correlates to an AST node. The value passed to the will be the top of
+  // the evaluation stack, corresponding to the result of the subexpression.
+  absl::StatusOr<cel::Handle<cel::Value>> EvaluateWithCallback(
+      const cel::ActivationInterface& activation,
+      const EvaluationListener& listener,
+      FlatExpressionEvaluatorState& state) const;
 
   const ExecutionPath& path() const { return path_; }
 
  private:
-  const ExecutionPath path_;
+  ExecutionPath path_;
+  const cel::TypeProvider& type_provider_;
   cel::RuntimeOptions options_;
 };
 

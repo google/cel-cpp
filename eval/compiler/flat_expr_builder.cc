@@ -26,7 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/base/macros.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/log/check.h"
@@ -1121,8 +1120,7 @@ void ComprehensionVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
 
 // TODO(uncreated-issue/31): move ast conversion to client responsibility and
 // update pre-processing steps to work without mutating the input AST.
-absl::StatusOr<std::unique_ptr<CelExpression>>
-FlatExprBuilder::CreateExpressionImpl(
+absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     std::unique_ptr<Ast> ast, std::vector<absl::Status>* warnings) const {
   ExecutionPath execution_path;
 
@@ -1179,14 +1177,12 @@ FlatExprBuilder::CreateExpressionImpl(
     return visitor.progress_status();
   }
 
-  std::unique_ptr<CelExpression> expression_impl =
-      std::make_unique<CelExpressionFlatImpl>(std::move(execution_path),
-                                              options_);
-
   if (warnings != nullptr) {
     *warnings = std::move(warnings_builder).warnings();
   }
-  return expression_impl;
+
+  return FlatExpression(std::move(execution_path),
+                        type_registry_.GetTypeProvider(), options_);
 }
 
 }  // namespace google::api::expr::runtime

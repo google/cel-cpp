@@ -4,6 +4,9 @@
 #include <utility>
 
 #include "google/protobuf/descriptor.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -16,6 +19,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using ::google::protobuf::Arena;
 using testing::Eq;
@@ -58,7 +62,8 @@ class LogicStepTest : public testing::TestWithParam<bool> {
       options.unknown_processing =
           cel::UnknownProcessingOptions::kAttributeOnly;
     }
-    CelExpressionFlatImpl impl(std::move(path), options);
+    CelExpressionFlatImpl impl(
+        FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
     Activation activation;
     std::string value("test");

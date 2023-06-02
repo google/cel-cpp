@@ -17,15 +17,15 @@
 
 #include "base/type_factory.h"
 #include "base/type_manager.h"
+#include "base/type_provider.h"
 #include "base/value_factory.h"
 #include "base/values/int_value.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/activation.h"
-#include "eval/public/cel_expression.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/rtti.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "runtime/activation.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -39,7 +39,7 @@ class CompilerConstantStepTest : public testing::Test {
         type_factory_(memory_manager_),
         type_manager_(type_factory_, cel::TypeProvider::Builtin()),
         value_factory_(type_manager_),
-        state_(2, &arena_) {}
+        state_(2, cel::TypeProvider::Builtin(), memory_manager_) {}
 
  protected:
   google::protobuf::Arena arena_;
@@ -48,8 +48,8 @@ class CompilerConstantStepTest : public testing::Test {
   cel::TypeManager type_manager_;
   cel::ValueFactory value_factory_;
 
-  CelExpressionFlatEvaluationState state_;
-  Activation empty_activation_;
+  FlatExpressionEvaluatorState state_;
+  cel::Activation empty_activation_;
   cel::RuntimeOptions options_;
 };
 
@@ -58,10 +58,10 @@ TEST_F(CompilerConstantStepTest, Evaluate) {
   path.push_back(std::make_unique<CompilerConstantStep>(
       value_factory_.CreateIntValue(42), -1, false));
 
-  ExecutionFrame frame(path, empty_activation_, options_, &state_);
+  ExecutionFrame frame(path, empty_activation_, options_, state_);
 
   ASSERT_OK_AND_ASSIGN(cel::Handle<cel::Value> result,
-                       frame.Evaluate(CelEvaluationListener()));
+                       frame.Evaluate(EvaluationListener()));
 
   EXPECT_EQ(result->As<cel::IntValue>().value(), 42);
 }

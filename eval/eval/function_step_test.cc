@@ -10,6 +10,8 @@
 #include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
 #include "base/ast_internal.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
@@ -33,6 +35,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Call;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::Ident;
@@ -220,7 +223,8 @@ class FunctionStepTest
     cel::RuntimeOptions options;
     options.unknown_processing = GetParam();
 
-    return std::make_unique<CelExpressionFlatImpl>(std::move(path), options);
+    return std::make_unique<CelExpressionFlatImpl>(
+        FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   }
 };
 
@@ -566,7 +570,8 @@ class FunctionStepTestUnknowns
     cel::RuntimeOptions options;
     options.unknown_processing = GetParam();
 
-    return std::make_unique<CelExpressionFlatImpl>(std::move(path), options);
+    return std::make_unique<CelExpressionFlatImpl>(
+        FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   }
 };
 
@@ -702,7 +707,8 @@ TEST(FunctionStepTestUnknownFunctionResults, CaptureArgs) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -747,7 +753,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeDownCaptureArgs) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -792,7 +799,8 @@ TEST(FunctionStepTestUnknownFunctionResults, MergeCaptureArgs) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -832,7 +840,8 @@ TEST(FunctionStepTestUnknownFunctionResults, UnknownVsErrorPrecedenceTest) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   google::protobuf::Arena arena;
@@ -917,7 +926,8 @@ TEST(FunctionStepStrictnessTest,
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));
@@ -944,7 +954,8 @@ TEST(FunctionStepStrictnessTest, IfFunctionNonStrictAndGivenUnknownInvokesIt) {
   cel::RuntimeOptions options;
   options.unknown_processing =
       cel::UnknownProcessingOptions::kAttributeAndFunction;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
   google::protobuf::Arena arena;
   ASSERT_OK_AND_ASSIGN(CelValue value, impl.Evaluate(activation, &arena));

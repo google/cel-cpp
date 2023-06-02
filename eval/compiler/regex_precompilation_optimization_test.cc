@@ -28,6 +28,7 @@
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_options.h"
@@ -99,8 +100,8 @@ MATCHER_P(ExpressionPlanSizeIs, size, "") {
       dynamic_cast<CelExpressionFlatImpl*>(plan.get());
 
   if (impl == nullptr) return false;
-  *result_listener << "got size " << impl->path().size();
-  return impl->path().size() == size;
+  *result_listener << "got size " << impl->flat_expression().path().size();
+  return impl->flat_expression().path().size() == size;
 }
 
 TEST_F(RegexPrecompilationExtensionTest, OptimizeableExpression) {

@@ -7,7 +7,9 @@
 #include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
@@ -20,6 +22,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using testing::Eq;
 using testing::Not;
@@ -49,7 +52,9 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
 
   return cel_expr.Evaluate(activation, arena);
@@ -86,7 +91,8 @@ absl::StatusOr<CelValue> RunExpressionWithCelValues(
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
 
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   return cel_expr.Evaluate(activation, arena);
 }
@@ -107,7 +113,8 @@ TEST(CreateListStepTest, TestCreateListStackUnderflow) {
                        CreateCreateListStep(create_list, dummy_expr.id()));
   path.push_back(std::move(step0));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
 
   google::protobuf::Arena arena;

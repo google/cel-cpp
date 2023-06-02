@@ -9,6 +9,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_type_registry.h"
@@ -27,6 +30,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using ::google::protobuf::Arena;
 using ::google::protobuf::Message;
@@ -79,7 +83,8 @@ absl::StatusOr<CelValue> RunExpression(absl::string_view field,
   if (enable_unknowns) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message", value);
 
@@ -170,7 +175,8 @@ absl::StatusOr<CelValue> RunCreateMapExpression(
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
 
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   return cel_expr.Evaluate(activation, arena);
 }
 
@@ -199,7 +205,8 @@ TEST_P(CreateCreateStructStepTest, TestEmptyMessageCreation) {
   if (GetParam()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
 
   google::protobuf::Arena arena;

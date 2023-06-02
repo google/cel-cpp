@@ -5,8 +5,10 @@
 #include <utility>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
+#include "base/type_provider.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
 #include "eval/eval/attribute_trail.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -14,10 +16,12 @@
 #include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/testing.h"
+#include "runtime/activation.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
+using ::cel::TypeProvider;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateIntValue;
 using ::google::api::expr::v1alpha1::Expr;
@@ -68,6 +72,8 @@ class FakeIncrementExpressionStep : public ExpressionStep {
 
 TEST(EvaluatorCoreTest, ExecutionFrameNext) {
   ExecutionPath path;
+  google::protobuf::Arena arena;
+  ProtoMemoryManager manager(&arena);
   auto const_step = std::make_unique<const FakeConstExpressionStep>();
   auto incr_step1 = std::make_unique<const FakeIncrementExpressionStep>();
   auto incr_step2 = std::make_unique<const FakeIncrementExpressionStep>();
@@ -80,9 +86,10 @@ TEST(EvaluatorCoreTest, ExecutionFrameNext) {
 
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  Activation activation;
-  CelExpressionFlatEvaluationState state(path.size(), nullptr);
-  ExecutionFrame frame(path, activation, options, &state);
+  cel::Activation activation;
+  FlatExpressionEvaluatorState state(path.size(), TypeProvider::Builtin(),
+                                     manager);
+  ExecutionFrame frame(path, activation, options, state);
 
   EXPECT_THAT(frame.Next(), Eq(path[0].get()));
   EXPECT_THAT(frame.Next(), Eq(path[1].get()));
@@ -96,14 +103,15 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   const std::string test_accu_var = "test_accu_var";
   const int64_t test_value = 0xF00F00;
 
-  Activation activation;
+  cel::Activation activation;
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
   ExecutionPath path;
-  CelExpressionFlatEvaluationState state(path.size(), nullptr);
+  FlatExpressionEvaluatorState state(path.size(), TypeProvider::Builtin(),
+                                     manager);
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  ExecutionFrame frame(path, activation, options, &state);
+  ExecutionFrame frame(path, activation, options, state);
 
   auto original = cel::interop_internal::CreateIntValue(test_value);
   Expr ident;
@@ -162,7 +170,8 @@ TEST(EvaluatorCoreTest, SimpleEvaluatorTest) {
   path.push_back(std::move(incr_step1));
   path.push_back(std::move(incr_step2));
 
-  CelExpressionFlatImpl impl(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl impl(FlatExpression(
+      std::move(path), cel::TypeProvider::Builtin(), cel::RuntimeOptions{}));
 
   Activation activation;
   google::protobuf::Arena arena;

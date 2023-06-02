@@ -27,6 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/ast.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "extensions/protobuf/ast_converters.h"
 #include "internal/status_macros.h"
@@ -46,8 +47,10 @@ CelExpressionBuilderFlatImpl::CreateExpression(
   CEL_ASSIGN_OR_RETURN(
       std::unique_ptr<Ast> converted_ast,
       cel::extensions::CreateAstFromParsedExpr(*expr, source_info));
-  return flat_expr_builder_.CreateExpressionImpl(std::move(converted_ast),
-                                                 warnings);
+  CEL_ASSIGN_OR_RETURN(FlatExpression impl,
+                       flat_expr_builder_.CreateExpressionImpl(
+                           std::move(converted_ast), warnings));
+  return std::make_unique<CelExpressionFlatImpl>(std::move(impl));
 }
 
 absl::StatusOr<std::unique_ptr<CelExpression>>
@@ -65,8 +68,11 @@ CelExpressionBuilderFlatImpl::CreateExpression(
   CEL_ASSIGN_OR_RETURN(
       std::unique_ptr<Ast> converted_ast,
       cel::extensions::CreateAstFromCheckedExpr(*checked_expr));
-  return flat_expr_builder_.CreateExpressionImpl(std::move(converted_ast),
-                                                 warnings);
+
+  CEL_ASSIGN_OR_RETURN(FlatExpression impl,
+                       flat_expr_builder_.CreateExpressionImpl(
+                           std::move(converted_ast), warnings));
+  return std::make_unique<CelExpressionFlatImpl>(std::move(impl));
 }
 
 absl::StatusOr<std::unique_ptr<CelExpression>>

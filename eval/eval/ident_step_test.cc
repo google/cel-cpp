@@ -4,9 +4,10 @@
 #include <string>
 #include <utility>
 
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
-#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/runtime_options.h"
 
@@ -14,6 +15,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using ::google::protobuf::Arena;
 using testing::Eq;
@@ -28,7 +30,8 @@ TEST(IdentStepTest, TestIdentStep) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl impl(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
 
   Activation activation;
   Arena arena;
@@ -54,7 +57,8 @@ TEST(IdentStepTest, TestIdentStepNameNotFound) {
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl impl(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
 
   Activation activation;
   Arena arena;
@@ -78,7 +82,8 @@ TEST(IdentStepTest, DisableMissingAttributeErrorsOK) {
   path.push_back(std::move(step));
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   Arena arena;
@@ -116,7 +121,8 @@ TEST(IdentStepTest, TestIdentStepMissingAttributeErrors) {
   options.unknown_processing = cel::UnknownProcessingOptions::kDisabled;
   options.enable_missing_attribute_errors = true;
 
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   Arena arena;
@@ -154,7 +160,8 @@ TEST(IdentStepTest, TestIdentStepUnknownAttribute) {
   // Expression with unknowns enabled.
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  CelExpressionFlatImpl impl(std::move(path), options);
+  CelExpressionFlatImpl impl(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   Activation activation;
   Arena arena;

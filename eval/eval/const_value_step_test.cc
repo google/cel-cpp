@@ -2,11 +2,11 @@
 
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/ast_internal.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_value.h"
@@ -18,6 +18,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Constant;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::NullValue;
@@ -35,9 +36,8 @@ absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path),
-
-                             cel::RuntimeOptions{});
+  CelExpressionFlatImpl impl(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
 
   google::api::expr::runtime::Activation activation;
 

@@ -3,11 +3,11 @@
 #include <string>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "base/handle.h"
+#include "base/type_provider.h"
 #include "base/value.h"
+#include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/interop.h"
 #include "eval/public/activation.h"
@@ -19,6 +19,8 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
+using ::cel::interop_internal::CreateTypeValueFromView;
 using ::google::protobuf::Arena;
 using testing::Eq;
 
@@ -32,7 +34,8 @@ absl::StatusOr<CelValue> RunShadowableExpression(std::string identifier,
   ExecutionPath path;
   path.push_back(std::move(step));
 
-  CelExpressionFlatImpl impl(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl impl(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
   return impl.Evaluate(activation, arena);
 }
 
@@ -42,7 +45,7 @@ TEST(ShadowableValueStepTest, TestEvaluateNoShadowing) {
   Activation activation;
   Arena arena;
 
-  auto type_value = cel::interop_internal::CreateTypeValueFromView(type_name);
+  auto type_value = CreateTypeValueFromView(type_name);
   auto status =
       RunShadowableExpression(type_name, type_value, activation, &arena);
   ASSERT_OK(status);
@@ -60,7 +63,7 @@ TEST(ShadowableValueStepTest, TestEvaluateShadowedIdentifier) {
   activation.InsertValue(type_name, shadow_value);
   Arena arena;
 
-  auto type_value = cel::interop_internal::CreateTypeValueFromView(type_name);
+  auto type_value = CreateTypeValueFromView(type_name);
   auto status =
       RunShadowableExpression(type_name, type_value, activation, &arena);
   ASSERT_OK(status);

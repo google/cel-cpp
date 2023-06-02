@@ -9,6 +9,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/type_provider.h"
+#include "eval/eval/cel_expression_flat_impl.h"
+#include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
@@ -30,6 +33,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::TypeProvider;
 using ::cel::ast::internal::Expr;
 using testing::_;
 using testing::Eq;
@@ -99,7 +103,8 @@ absl::StatusOr<CelValue> RunExpression(const CelValue target,
     runtime_options.unknown_processing =
         cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), runtime_options);
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), runtime_options));
   Activation activation;
   activation.InsertValue("target", target);
 
@@ -284,7 +289,8 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
   path.push_back(std::move(step2));
-  CelExpressionFlatImpl cel_expr(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("target",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -818,7 +824,8 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   if (GetParam()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
   }
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
@@ -851,7 +858,8 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
-  CelExpressionFlatImpl cel_expr(std::move(path), cel::RuntimeOptions{});
+  CelExpressionFlatImpl cel_expr(FlatExpression(
+      std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -893,7 +901,8 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
 
   cel::RuntimeOptions options;
   options.enable_missing_attribute_errors = true;
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message",
                          CelProtoWrapper::CreateMessage(&message, &arena));
@@ -941,7 +950,8 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
 
   cel::RuntimeOptions options;
   options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
-  CelExpressionFlatImpl cel_expr(std::move(path), options);
+  CelExpressionFlatImpl cel_expr(
+      FlatExpression(std::move(path), TypeProvider::Builtin(), options));
 
   {
     std::vector<CelAttributePattern> unknown_patterns;
