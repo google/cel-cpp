@@ -428,9 +428,16 @@ absl::Status ConstantFoldingExtension::OnPreVisit(PlannerContext& context,
       // iter vars are compatible with const folding.
       return IsConst::kNonConst;
     }
-    IsConst operator()(const CreateStruct&) {
+    IsConst operator()(const CreateStruct& create_struct) {
       // Not yet supported but should be possible in the future.
-      return IsConst::kNonConst;
+      // Empty maps are rare and not currently supported as they may eventually
+      // have similar issues to empty list when used within comprehensions or
+      // macros.
+      if (create_struct.entries().empty() ||
+          !create_struct.message_name().empty()) {
+        return IsConst::kNonConst;
+      }
+      return IsConst::kConditional;
     }
     IsConst operator()(const CreateList& create_list) {
       if (create_list.elements().empty()) {
@@ -506,7 +513,14 @@ absl::Status ConstantFoldingExtension::OnPostVisit(PlannerContext& context,
     // the current capacity.
     state_.value_stack().SetMaxSize(subplan.size());
 
-    CEL_ASSIGN_OR_RETURN(value, frame.Evaluate(null_listener_));
+    auto result = frame.Evaluate(null_listener_);
+    // If this would be a runtime error, then don't adjust the program plan, but
+    // rather allow the error to occur at runtime to preserve the evaluation
+    // contract with non-constant folding use cases.
+    if (!result.ok()) {
+      return absl::OkStatus();
+    }
+    value = *result;
     if (value->Is<UnknownValue>()) {
       return absl::OkStatus();
     }

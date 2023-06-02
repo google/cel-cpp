@@ -271,6 +271,8 @@ cc_test(
         "//base:memory",
         "//base/internal:ast_impl",
         "//eval/eval:const_value_step",
+        "//eval/eval:create_list_step",
+        "//eval/eval:create_struct_step",
         "//eval/eval:evaluator_core",
         "//eval/eval:expression_build_warning",
         "//eval/public:builtin_func_registrar",

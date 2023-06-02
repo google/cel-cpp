@@ -18,6 +18,8 @@
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
+#include "eval/eval/create_list_step.h"
+#include "eval/eval/create_struct_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -46,6 +48,8 @@ using ::google::api::expr::runtime::BuilderWarnings;
 using ::google::api::expr::runtime::CelFunctionRegistry;
 using ::google::api::expr::runtime::CelTypeRegistry;
 using ::google::api::expr::runtime::CreateConstValueStep;
+using ::google::api::expr::runtime::CreateCreateListStep;
+using ::google::api::expr::runtime::CreateCreateStructStep;
 using ::google::api::expr::runtime::ExecutionPath;
 using ::google::api::expr::runtime::PlannerContext;
 using ::google::api::expr::runtime::ProgramOptimizer;
@@ -760,6 +764,186 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
   // Assert
   // No changes attempted.
+  EXPECT_THAT(path, SizeIs(3));
+}
+
+TEST_F(UpdatedConstantFoldingTest, CreatesList) {
+  // Arrange
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+                       ParseFromCel("[1, 2]"));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  const Expr& create_list = ast_impl.root_expr();
+  const Expr& elem_one = create_list.list_expr().elements()[0];
+  const Expr& elem_two = create_list.list_expr().elements()[1];
+
+  PlannerContext::ProgramTree tree;
+  PlannerContext::ProgramInfo& create_list_info = tree[&create_list];
+  create_list_info.range_start = 0;
+  create_list_info.range_len = 3;
+  create_list_info.children = {&elem_one, &elem_two};
+
+  PlannerContext::ProgramInfo& elem_one_info = tree[&elem_one];
+  elem_one_info.range_start = 0;
+  elem_one_info.range_len = 1;
+  elem_one_info.parent = &create_list;
+
+  PlannerContext::ProgramInfo& elem_two_info = tree[&elem_two];
+  elem_two_info.range_start = 1;
+  elem_two_info.range_len = 1;
+  elem_two_info.parent = &create_list;
+
+  ExecutionPath path;
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(1L)), 1));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+
+  // Insert the list creation step
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateCreateListStep(create_list.list_expr(), 3));
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  google::protobuf::Arena arena;
+  ProgramOptimizerFactory constant_folder_factory =
+      CreateConstantFoldingExtension(&arena);
+
+  // Act
+  // Issue the visitation calls.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, create_list));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_one));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_one));
+  ASSERT_OK(constant_folder->OnPreVisit(context, elem_two));
+  ASSERT_OK(constant_folder->OnPostVisit(context, elem_two));
+  ASSERT_OK(constant_folder->OnPostVisit(context, create_list));
+
+  // Assert
+  // Single constant value for the two element list.
+  EXPECT_THAT(path, SizeIs(1));
+}
+
+TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
+  // Arrange
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+                       ParseFromCel("{1: 2}"));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  const Expr& create_map = ast_impl.root_expr();
+  const Expr& key = create_map.struct_expr().entries()[0].map_key();
+  const Expr& value = create_map.struct_expr().entries()[0].value();
+
+  PlannerContext::ProgramTree tree;
+  PlannerContext::ProgramInfo& create_list_info = tree[&create_map];
+  create_list_info.range_start = 0;
+  create_list_info.range_len = 3;
+  create_list_info.children = {&key, &value};
+
+  PlannerContext::ProgramInfo& key_info = tree[&key];
+  key_info.range_start = 0;
+  key_info.range_len = 1;
+  key_info.parent = &create_map;
+
+  PlannerContext::ProgramInfo& value_info = tree[&value];
+  value_info.range_start = 1;
+  value_info.range_len = 1;
+  value_info.parent = &create_map;
+
+  ExecutionPath path;
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(1L)), 1));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+
+  // Insert the map creation step
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateCreateStructStep(create_map.struct_expr(), 3));
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  google::protobuf::Arena arena;
+  ProgramOptimizerFactory constant_folder_factory =
+      CreateConstantFoldingExtension(&arena);
+
+  // Act
+  // Issue the visitation calls.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, create_map));
+  ASSERT_OK(constant_folder->OnPreVisit(context, key));
+  ASSERT_OK(constant_folder->OnPostVisit(context, key));
+  ASSERT_OK(constant_folder->OnPreVisit(context, value));
+  ASSERT_OK(constant_folder->OnPostVisit(context, value));
+  ASSERT_OK(constant_folder->OnPostVisit(context, create_map));
+
+  // Assert
+  // Single constant value for the map.
+  EXPECT_THAT(path, SizeIs(1));
+}
+
+TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
+  // Arrange
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+                       ParseFromCel("{1.0: 2}"));
+  AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
+
+  const Expr& create_map = ast_impl.root_expr();
+  const Expr& key = create_map.struct_expr().entries()[0].map_key();
+  const Expr& value = create_map.struct_expr().entries()[0].value();
+
+  PlannerContext::ProgramTree tree;
+  PlannerContext::ProgramInfo& create_list_info = tree[&create_map];
+  create_list_info.range_start = 0;
+  create_list_info.range_len = 3;
+  create_list_info.children = {&key, &value};
+
+  PlannerContext::ProgramInfo& key_info = tree[&key];
+  key_info.range_start = 0;
+  key_info.range_len = 1;
+  key_info.parent = &create_map;
+
+  PlannerContext::ProgramInfo& value_info = tree[&value];
+  value_info.range_start = 1;
+  value_info.range_len = 1;
+  value_info.parent = &create_map;
+
+  ExecutionPath path;
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(1.0)), 1));
+
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+
+  // Insert the map creation step
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateCreateStructStep(create_map.struct_expr(), 3));
+
+  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+                         path, tree);
+
+  google::protobuf::Arena arena;
+  ProgramOptimizerFactory constant_folder_factory =
+      CreateConstantFoldingExtension(&arena);
+
+  // Act
+  // Issue the visitation calls.
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> constant_folder,
+                       constant_folder_factory(context, ast_impl));
+  ASSERT_OK(constant_folder->OnPreVisit(context, create_map));
+  ASSERT_OK(constant_folder->OnPreVisit(context, key));
+  ASSERT_OK(constant_folder->OnPostVisit(context, key));
+  ASSERT_OK(constant_folder->OnPreVisit(context, value));
+  ASSERT_OK(constant_folder->OnPostVisit(context, value));
+  ASSERT_OK(constant_folder->OnPostVisit(context, create_map));
+
+  // Assert
+  // No change in the map layout since it will generate a runtime error.
   EXPECT_THAT(path, SizeIs(3));
 }
 
