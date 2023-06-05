@@ -7,6 +7,7 @@
 #include "absl/status/statusor.h"
 #include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/public/structs/legacy_type_adapter.h"
 
 namespace google::api::expr::runtime {
 

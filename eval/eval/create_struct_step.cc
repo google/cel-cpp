@@ -6,7 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -14,6 +13,7 @@
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/containers/container_backed_map_impl.h"
+#include "eval/public/structs/legacy_type_adapter.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 

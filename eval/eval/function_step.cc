@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -26,15 +25,13 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_function.h"
-#include "eval/public/cel_function_registry.h"
-#include "eval/public/cel_value.h"
 #include "eval/public/unknown_set.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
 #include "runtime/function_provider.h"
+#include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -69,7 +66,7 @@ bool ArgumentKindsMatch(const cel::FunctionDescriptor& descriptor,
   for (size_t i = 0; i < types_size; i++) {
     const auto& arg = arguments[i];
     cel::Kind param_kind = descriptor.types()[i];
-    if (arg->kind() != param_kind && param_kind != CelValue::Type::kAny) {
+    if (arg->kind() != param_kind && param_kind != cel::Kind::kAny) {
       return false;
     }
   }
@@ -118,6 +115,17 @@ bool IsUnknownFunctionResultError(const Handle<Value>& result) {
   auto payload = status.GetPayload(
       cel::interop_internal::kPayloadUrlUnknownFunctionResult);
   return payload.has_value() && payload.value() == "true";
+}
+
+// Adjust new type names to legacy equivalent. int -> int64_t.
+// Temporary fix to migrate value types without breaking clients.
+// TODO(uncreated-issue/46): Update client tests that depend on this value.
+std::string ToLegacyKindName(absl::string_view type_name) {
+  if (type_name == "int" || type_name == "uint") {
+    return absl::StrCat(type_name, "64");
+  }
+
+  return std::string(type_name);
 }
 
 // Simple wrapper around a function resolution result. A function call should
@@ -216,15 +224,16 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
     if (!arg_types.empty()) {
       absl::StrAppend(&arg_types, ", ");
     }
-    absl::StrAppend(&arg_types,
-                    CelValue::TypeName(ValueKindToKind(arg->kind())));
+    absl::StrAppend(
+        &arg_types,
+        ToLegacyKindName(cel::KindToString(ValueKindToKind(arg->kind()))));
   }
 
   // If no errors or unknowns in input args, create new CelError for missing
-  // overlaod.
-  return cel::interop_internal::CreateErrorValueFromView(
+  // overload.
+  return frame->value_factory().CreateErrorValue(
       cel::interop_internal::CreateNoMatchingOverloadError(
-          frame->memory_manager(), absl::StrCat(name_, "(", arg_types, ")")));
+          absl::StrCat(name_, "(", arg_types, ")")));
 }
 
 absl::Status AbstractFunctionStep::Evaluate(ExecutionFrame* frame) const {
@@ -283,7 +292,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
   // at runtime.
   LazyFunctionStep(const std::string& name, size_t num_args,
                    bool receiver_style,
-                   std::vector<CelFunctionRegistry::LazyOverload> providers,
+                   std::vector<cel::FunctionRegistry::LazyOverload> providers,
                    int64_t expr_id)
       : AbstractFunctionStep(name, num_args, expr_id),
         receiver_style_(receiver_style),
@@ -295,7 +304,7 @@ class LazyFunctionStep : public AbstractFunctionStep {
 
  private:
   bool receiver_style_;
-  std::vector<CelFunctionRegistry::LazyOverload> providers_;
+  std::vector<cel::FunctionRegistry::LazyOverload> providers_;
 };
 
 absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
@@ -310,7 +319,7 @@ absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
                    return ValueKindToKind(value->kind());
                  });
 
-  CelFunctionDescriptor matcher{name_, receiver_style_, arg_types};
+  cel::FunctionDescriptor matcher{name_, receiver_style_, arg_types};
 
   const cel::ActivationInterface& activation = frame->modern_activation();
   for (auto provider : providers_) {
@@ -341,7 +350,7 @@ absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call_expr, int64_t expr_id,
-    std::vector<CelFunctionRegistry::LazyOverload> lazy_overloads) {
+    std::vector<cel::FunctionRegistry::LazyOverload> lazy_overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
   const std::string& name = call_expr.function();

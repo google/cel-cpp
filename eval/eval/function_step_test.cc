@@ -6,8 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
 #include "base/ast_internal.h"
 #include "base/type_provider.h"
@@ -25,7 +23,6 @@
 #include "eval/public/portable_cel_function_adapter.h"
 #include "eval/public/structs/cel_proto_wrapper.h"
 #include "eval/public/testing/matchers.h"
-#include "eval/public/unknown_function_result_set.h"
 #include "eval/testutil/test_message.pb.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
@@ -39,10 +36,8 @@ using ::cel::TypeProvider;
 using ::cel::ast::internal::Call;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::Ident;
-using testing::ElementsAre;
 using testing::Eq;
 using testing::Not;
-using testing::UnorderedElementsAre;
 using cel::internal::IsOk;
 using cel::internal::StatusIs;
 

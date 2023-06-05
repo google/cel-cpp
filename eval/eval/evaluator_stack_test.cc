@@ -1,5 +1,6 @@
 #include "eval/eval/evaluator_stack.h"
 
+#include "base/attribute.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
@@ -26,7 +27,7 @@ TEST(EvaluatorStackTest, StackPushPop) {
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
 
-  CelAttribute attribute("name", {});
+  cel::Attribute attribute("name", {});
   EvaluatorStack stack(10);
   stack.Push(value_factory.CreateIntValue(1));
   stack.Push(value_factory.CreateIntValue(2), AttributeTrail());

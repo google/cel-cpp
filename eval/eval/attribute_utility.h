@@ -1,14 +1,8 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_EVAL_UNKNOWNS_UTILITY_H_
 
-#include <utility>
-#include <vector>
-
-#include "google/protobuf/arena.h"
-#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "base/function_descriptor.h"
-#include "base/function_result.h"
 #include "base/function_result_set.h"
 #include "base/handle.h"
 #include "base/memory.h"

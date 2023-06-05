@@ -5,10 +5,10 @@
 #include <memory>
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/status/statusor.h"
 #include "base/ast_internal.h"
 #include "eval/eval/evaluator_core.h"
+#include "runtime/function_registry.h"
 
 namespace google::api::expr::runtime {
 
@@ -16,7 +16,7 @@ namespace google::api::expr::runtime {
 // resolved at runtime (lazily) from an input Activation.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
     const cel::ast::internal::Call& call, int64_t expr_id,
-    std::vector<CelFunctionRegistry::LazyOverload> lazy_overloads);
+    std::vector<cel::FunctionRegistry::LazyOverload> lazy_overloads);
 
 // Factory method for Call-based execution step where the function has been
 // statically resolved from a set of eagerly functions configured in the

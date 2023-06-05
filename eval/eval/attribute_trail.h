@@ -3,17 +3,12 @@
 
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/arena.h"
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
+#include "base/attribute.h"
 #include "base/memory.h"
-#include "eval/public/cel_attribute.h"
-#include "eval/public/cel_expression.h"
-#include "eval/public/cel_value.h"
-#include "eval/public/unknown_attribute_set.h"
 
 namespace google::api::expr::runtime {
 
@@ -34,7 +29,7 @@ class AttributeTrail {
       : attribute_(absl::in_place, std::move(variable_name)) {}
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
-  AttributeTrail Step(CelAttributeQualifier qualifier) const;
+  AttributeTrail Step(cel::AttributeQualifier qualifier) const;
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
   AttributeTrail Step(const std::string* qualifier) const {
@@ -42,14 +37,14 @@ class AttributeTrail {
   }
 
   // Returns CelAttribute that corresponds to content of AttributeTrail.
-  const CelAttribute& attribute() const { return attribute_.value(); }
+  const cel::Attribute& attribute() const { return attribute_.value(); }
 
   bool empty() const { return !attribute_.has_value(); }
 
  private:
-  explicit AttributeTrail(CelAttribute attribute)
+  explicit AttributeTrail(cel::Attribute attribute)
       : attribute_(std::move(attribute)) {}
-  absl::optional<CelAttribute> attribute_;
+  absl::optional<cel::Attribute> attribute_;
 };
 
 }  // namespace google::api::expr::runtime
