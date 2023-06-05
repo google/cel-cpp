@@ -706,6 +706,8 @@ absl::string_view MessageTypeName(uintptr_t msg) {
       ->full_name();
 }
 
+size_t MessageTypeFieldCount(uintptr_t msg) { return 0; }
+
 void MessageValueHash(uintptr_t msg, uintptr_t type_info,
                       absl::HashState state) {
   // Getting rid of hash, do nothing.
