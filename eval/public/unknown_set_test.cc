@@ -24,13 +24,10 @@ UnknownFunctionResultSet MakeFunctionResult(Arena* arena, int64_t id) {
 }
 
 UnknownAttributeSet MakeAttribute(Arena* arena, int64_t id) {
-  google::api::expr::v1alpha1::Expr expr;
-  expr.mutable_ident_expr()->set_name("x");
-
   std::vector<CelAttributeQualifier> attr_trail{
       CreateCelAttributeQualifier(CelValue::CreateInt64(id))};
 
-  return UnknownAttributeSet({CelAttribute(expr, std::move(attr_trail))});
+  return UnknownAttributeSet({CelAttribute("x", std::move(attr_trail))});
 }
 
 MATCHER_P(UnknownAttributeIs, id, "") {

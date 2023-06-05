@@ -30,19 +30,15 @@ class AttributeTrail {
  public:
   AttributeTrail() : attribute_(absl::nullopt) {}
 
-  AttributeTrail(google::api::expr::v1alpha1::Expr root, cel::MemoryManager& manager);
-
   explicit AttributeTrail(std::string variable_name)
       : attribute_(absl::in_place, std::move(variable_name)) {}
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
-  AttributeTrail Step(CelAttributeQualifier qualifier,
-                      cel::MemoryManager& manager) const;
+  AttributeTrail Step(CelAttributeQualifier qualifier) const;
 
   // Creates AttributeTrail with attribute path incremented by "qualifier".
-  AttributeTrail Step(const std::string* qualifier,
-                      cel::MemoryManager& manager) const {
-    return Step(cel::AttributeQualifier::OfString(*qualifier), manager);
+  AttributeTrail Step(const std::string* qualifier) const {
+    return Step(cel::AttributeQualifier::OfString(*qualifier));
   }
 
   // Returns CelAttribute that corresponds to content of AttributeTrail.

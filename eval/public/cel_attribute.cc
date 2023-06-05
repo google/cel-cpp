@@ -9,14 +9,6 @@
 #include "absl/strings/string_view.h"
 #include "eval/public/cel_value.h"
 
-namespace cel {
-
-Attribute::Attribute(const google::api::expr::v1alpha1::Expr& variable,
-                     std::vector<AttributeQualifier> qualifier_path)
-    : Attribute(variable.ident_expr().name(), std::move(qualifier_path)) {}
-
-}  // namespace cel
-
 namespace google::api::expr::runtime {
 
 namespace {

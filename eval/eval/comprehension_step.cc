@@ -129,8 +129,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
     auto attr = frame->value_stack().GetAttributeSpan(5);
     iter_range_attr = attr[POS_ITER_RANGE];
     iter_trail =
-        iter_range_attr.Step(cel::AttributeQualifier::OfInt(current_index + 1),
-                             frame->memory_manager());
+        iter_range_attr.Step(cel::AttributeQualifier::OfInt(current_index + 1));
   }
 
   // Update stack for breaking out of loop or next round.

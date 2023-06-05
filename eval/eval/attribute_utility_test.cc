@@ -43,10 +43,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), true));
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), false));
 
-  google::api::expr::v1alpha1::Expr unknown_expr0;
-  unknown_expr0.mutable_ident_expr()->set_name("unknown0");
-
-  AttributeTrail unknown_trail0(unknown_expr0, manager);
+  AttributeTrail unknown_trail0("unknown0");
 
   { ASSERT_FALSE(utility.CheckForUnknown(unknown_trail0, false)); }
 
@@ -55,14 +52,14 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   {
     ASSERT_TRUE(utility.CheckForUnknown(
         unknown_trail0.Step(
-            CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager),
+            CreateCelAttributeQualifier(CelValue::CreateInt64(1))),
         false));
   }
 
   {
     ASSERT_TRUE(utility.CheckForUnknown(
         unknown_trail0.Step(
-            CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager),
+            CreateCelAttributeQualifier(CelValue::CreateInt64(1))),
         true));
   }
 }
@@ -71,22 +68,13 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
 
-  google::api::expr::v1alpha1::Expr unknown_expr0;
-  unknown_expr0.mutable_ident_expr()->set_name("unknown0");
-
-  google::api::expr::v1alpha1::Expr unknown_expr1;
-  unknown_expr1.mutable_ident_expr()->set_name("unknown1");
-
-  google::api::expr::v1alpha1::Expr unknown_expr2;
-  unknown_expr2.mutable_ident_expr()->set_name("unknown2");
-
   std::vector<CelAttributePattern> unknown_patterns;
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
-  CelAttribute attribute0(unknown_expr0, {});
-  CelAttribute attribute1(unknown_expr1, {});
-  CelAttribute attribute2(unknown_expr2, {});
+  CelAttribute attribute0("unknown0", {});
+  CelAttribute attribute1("unknown1", {});
+  CelAttribute attribute2("unknown2", {});
 
   AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
                            manager);
@@ -126,16 +114,10 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
-  google::api::expr::v1alpha1::Expr unknown_expr0;
-  unknown_expr0.mutable_ident_expr()->set_name("unknown0");
+  AttributeTrail trail0("unknown0");
+  AttributeTrail trail1("unknown1");
 
-  google::api::expr::v1alpha1::Expr unknown_expr1;
-  unknown_expr1.mutable_ident_expr()->set_name("unknown1");
-
-  AttributeTrail trail0(unknown_expr0, manager);
-  AttributeTrail trail1(unknown_expr1, manager);
-
-  CelAttribute attribute1(unknown_expr1, {});
+  CelAttribute attribute1("unknown1", {});
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
 
   AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
@@ -144,10 +126,8 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   UnknownSet unknown_attr_set(utility.CheckForUnknowns(
       {
           AttributeTrail(),  // To make sure we handle empty trail gracefully.
-          trail0.Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1)),
-                      manager),
-          trail0.Step(CreateCelAttributeQualifier(CelValue::CreateInt64(2)),
-                      manager),
+          trail0.Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1))),
+          trail0.Step(CreateCelAttributeQualifier(CelValue::CreateInt64(2))),
       },
       false));
 
@@ -171,9 +151,9 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
   Expr* ident_expr = select_expr->mutable_operand();
   ident_expr->mutable_ident_expr()->set_name("destination");
 
-  AttributeTrail trail(*ident_expr, manager);
-  trail = trail.Step(
-      CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
+  AttributeTrail trail("destination");
+  trail =
+      trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
   AttributeUtility utility0(unknown_patterns, missing_attribute_patterns,
                             manager);
@@ -199,9 +179,9 @@ TEST(AttributeUtilityTest, CreateUnknownSet) {
   Expr* ident_expr = select_expr->mutable_operand();
   ident_expr->mutable_ident_expr()->set_name("destination");
 
-  AttributeTrail trail(*ident_expr, manager);
-  trail = trail.Step(
-      CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
+  AttributeTrail trail("destination");
+  trail =
+      trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
   std::vector<CelAttributePattern> empty_patterns;
   AttributeUtility utility(empty_patterns, empty_patterns, manager);

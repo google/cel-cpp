@@ -233,10 +233,8 @@ TEST(CreateCelAttributePattern, Wildcards) {
 }
 
 TEST(CelAttribute, AsStringBasic) {
-  Expr expr;
-  expr.mutable_ident_expr()->set_name("var");
   CelAttribute attr(
-      expr,
+      "var",
       {
           CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
           CreateCelAttributeQualifier(CelValue::CreateStringView("qual2")),
@@ -249,16 +247,12 @@ TEST(CelAttribute, AsStringBasic) {
 }
 
 TEST(CelAttribute, AsStringInvalidRoot) {
-  Expr expr;
-  expr.mutable_const_expr()->set_int64_value(1);
-
   CelAttribute attr(
-      expr,
-      {
-          CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
-          CreateCelAttributeQualifier(CelValue::CreateStringView("qual2")),
-          CreateCelAttributeQualifier(CelValue::CreateStringView("qual3")),
-      });
+      "", {
+              CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
+              CreateCelAttributeQualifier(CelValue::CreateStringView("qual2")),
+              CreateCelAttributeQualifier(CelValue::CreateStringView("qual3")),
+          });
 
   EXPECT_EQ(attr.AsString().status().code(),
             absl::StatusCode::kInvalidArgument);
@@ -269,19 +263,19 @@ TEST(CelAttribute, InvalidQualifiers) {
   expr.mutable_ident_expr()->set_name("var");
   google::protobuf::Arena arena;
 
-  CelAttribute attr1(expr, {
-                               CreateCelAttributeQualifier(
-                                   CelValue::CreateDuration(absl::Minutes(2))),
-                           });
-  CelAttribute attr2(expr,
+  CelAttribute attr1("var", {
+                                CreateCelAttributeQualifier(
+                                    CelValue::CreateDuration(absl::Minutes(2))),
+                            });
+  CelAttribute attr2("var",
                      {
                          CreateCelAttributeQualifier(
                              CelProtoWrapper::CreateMessage(&expr, &arena)),
                      });
   CelAttribute attr3(
-      expr, {
-                CreateCelAttributeQualifier(CelValue::CreateBool(false)),
-            });
+      "var", {
+                 CreateCelAttributeQualifier(CelValue::CreateBool(false)),
+             });
 
   // Implementation detail: Messages as attribute qualifiers are unsupported,
   // so the implementation treats them inequal to any other. This is included
@@ -301,10 +295,8 @@ TEST(CelAttribute, InvalidQualifiers) {
 }
 
 TEST(CelAttribute, AsStringQualiferTypes) {
-  Expr expr;
-  expr.mutable_ident_expr()->set_name("var");
   CelAttribute attr(
-      expr,
+      "var",
       {
           CreateCelAttributeQualifier(CelValue::CreateStringView("qual1")),
           CreateCelAttributeQualifier(CelValue::CreateUint64(1)),

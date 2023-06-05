@@ -25,13 +25,12 @@ TEST(EvaluatorStackTest, StackPushPop) {
   TypeFactory type_factory(manager);
   TypeManager type_manager(type_factory, TypeProvider::Builtin());
   ValueFactory value_factory(type_manager);
-  google::api::expr::v1alpha1::Expr expr;
-  expr.mutable_ident_expr()->set_name("name");
-  CelAttribute attribute(expr, {});
+
+  CelAttribute attribute("name", {});
   EvaluatorStack stack(10);
   stack.Push(value_factory.CreateIntValue(1));
   stack.Push(value_factory.CreateIntValue(2), AttributeTrail());
-  stack.Push(value_factory.CreateIntValue(3), AttributeTrail(expr, manager));
+  stack.Push(value_factory.CreateIntValue(3), AttributeTrail("name"));
 
   ASSERT_EQ(stack.Peek().As<cel::IntValue>()->value(), 3);
   ASSERT_FALSE(stack.PeekAttribute().empty());

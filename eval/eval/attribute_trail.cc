@@ -6,22 +6,12 @@
 #include <vector>
 
 #include "absl/base/attributes.h"
-#include "absl/status/status.h"
 #include "eval/public/cel_attribute.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
-AttributeTrail::AttributeTrail(google::api::expr::v1alpha1::Expr root,
-                               cel::MemoryManager& manager
-                                   ABSL_ATTRIBUTE_UNUSED) {
-  attribute_.emplace(std::move(root), std::vector<CelAttributeQualifier>());
-}
-
 // Creates AttributeTrail with attribute path incremented by "qualifier".
-AttributeTrail AttributeTrail::Step(CelAttributeQualifier qualifier,
-                                    cel::MemoryManager& manager
-                                        ABSL_ATTRIBUTE_UNUSED) const {
+AttributeTrail AttributeTrail::Step(CelAttributeQualifier qualifier) const {
   // Cannot continue void trail
   if (empty()) return AttributeTrail();
 

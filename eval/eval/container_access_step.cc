@@ -217,8 +217,7 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
     absl::Span<const AttributeTrail> input_attrs =
         frame->value_stack().GetAttributeSpan(kNumContainerAccessArguments);
     const auto& container_trail = input_attrs[0];
-    trail = container_trail.Step(AttributeQualifierFromValue(key),
-                                 frame->memory_manager());
+    trail = container_trail.Step(AttributeQualifierFromValue(key));
 
     if (frame->attribute_utility().CheckForUnknown(trail,
                                                    /*use_partial=*/false)) {

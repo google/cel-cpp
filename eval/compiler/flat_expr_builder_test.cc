@@ -1762,17 +1762,11 @@ TEST(FlatExprBuilderTest, Ternary) {
   }
   // We should not merge unknowns
   {
-    Expr selector;
-    selector.mutable_ident_expr()->set_name("selector");
-    CelAttribute selector_attr(selector, {});
+    CelAttribute selector_attr("selector", {});
 
-    Expr value1;
-    value1.mutable_ident_expr()->set_name("value1");
-    CelAttribute value1_attr(value1, {});
+    CelAttribute value1_attr("value1", {});
 
-    Expr value2;
-    value2.mutable_ident_expr()->set_name("value2");
-    CelAttribute value2_attr(value2, {});
+    CelAttribute value2_attr("value2", {});
 
     UnknownSet unknown_selector(UnknownAttributeSet({selector_attr}));
     UnknownSet unknown_value1(UnknownAttributeSet({value1_attr}));

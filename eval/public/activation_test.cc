@@ -220,9 +220,9 @@ TEST(ActivationTest, ErrorPathTest) {
       "destination",
       {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("ip"))});
 
-  AttributeTrail trail(*ident_expr, manager);
-  trail = trail.Step(
-      CreateCelAttributeQualifier(CelValue::CreateStringView("ip")), manager);
+  AttributeTrail trail("destination");
+  trail =
+      trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
   ASSERT_EQ(destination_ip_pattern.IsMatch(trail.attribute()),
             CelAttributePattern::MatchType::FULL);

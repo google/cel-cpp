@@ -178,7 +178,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   // Handle unknown resolution.
   if (frame->enable_unknowns() || frame->enable_missing_attribute_errors()) {
-    result_trail = trail.Step(&field_, frame->memory_manager());
+    result_trail = trail.Step(&field_);
   }
 
   if (arg->Is<NullValue>()) {

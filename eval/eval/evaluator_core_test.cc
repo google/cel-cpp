@@ -117,9 +117,8 @@ TEST(EvaluatorCoreTest, ExecutionFrameSetGetClearVar) {
   Expr ident;
   ident.mutable_ident_expr()->set_name("var");
 
-  AttributeTrail original_trail =
-      AttributeTrail(ident, manager)
-          .Step(CreateCelAttributeQualifier(CelValue::CreateInt64(1)), manager);
+  AttributeTrail original_trail = AttributeTrail("var").Step(
+      CreateCelAttributeQualifier(CelValue::CreateInt64(1)));
   cel::Handle<cel::Value> result;
   AttributeTrail trail;
 

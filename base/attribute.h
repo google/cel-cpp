@@ -27,10 +27,6 @@
 #include "absl/types/variant.h"
 #include "base/kind.h"
 
-namespace google::api::expr::v1alpha1 {
-class Expr;
-}  // namespace google::api::expr
-
 namespace cel {
 
 // AttributeQualifier represents a segment in
@@ -184,10 +180,6 @@ class Attribute final {
             std::vector<AttributeQualifier> qualifier_path)
       : impl_(std::make_shared<Impl>(std::move(variable_name),
                                      std::move(qualifier_path))) {}
-
-  // TODO(uncreated-issue/16): remove this constructor as it pulls in proto deps
-  Attribute(const google::api::expr::v1alpha1::Expr& variable,
-            std::vector<AttributeQualifier> qualifier_path);
 
   absl::string_view variable_name() const { return impl_->variable_name; }
 

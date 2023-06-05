@@ -72,8 +72,7 @@ cc_test(
     ],
     deps = [
         ":evaluator_stack",
-        "//base:type",
-        "//base:value",
+        "//base:data",
         "//extensions/protobuf:memory_manager",
         "//internal:testing",
     ],
@@ -679,7 +678,6 @@ cc_library(
         "//eval/public:cel_value",
         "//eval/public:unknown_attribute_set",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/utility",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",

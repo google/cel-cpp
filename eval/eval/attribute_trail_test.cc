@@ -21,9 +21,8 @@ TEST(AttributeTrailTest, AttributeTrailEmptyStep) {
   std::string step = "step";
   CelValue step_value = CelValue::CreateString(&step);
   AttributeTrail trail;
-  ASSERT_TRUE(trail.Step(&step, manager).empty());
-  ASSERT_TRUE(
-      trail.Step(CreateCelAttributeQualifier(step_value), manager).empty());
+  ASSERT_TRUE(trail.Step(&step).empty());
+  ASSERT_TRUE(trail.Step(CreateCelAttributeQualifier(step_value)).empty());
 }
 
 TEST(AttributeTrailTest, AttributeTrailStep) {
@@ -32,12 +31,11 @@ TEST(AttributeTrailTest, AttributeTrailStep) {
 
   std::string step = "step";
   CelValue step_value = CelValue::CreateString(&step);
-  Expr root;
-  root.mutable_ident_expr()->set_name("ident");
-  AttributeTrail trail = AttributeTrail(root, manager).Step(&step, manager);
+
+  AttributeTrail trail = AttributeTrail("ident").Step(&step);
 
   ASSERT_EQ(trail.attribute(),
-            CelAttribute(root, {CreateCelAttributeQualifier(step_value)}));
+            CelAttribute("ident", {CreateCelAttributeQualifier(step_value)}));
 }
 
 }  // namespace google::api::expr::runtime
