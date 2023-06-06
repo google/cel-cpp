@@ -15,11 +15,15 @@
 #include "extensions/protobuf/struct_type.h"
 
 #include <limits>
+#include <string>
 #include <utility>
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/function_ref.h"
+#include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -38,6 +42,7 @@
 #include "google/protobuf/arena.h"
 #include "google/protobuf/descriptor.h"
 #include "google/protobuf/message.h"
+#include "google/protobuf/reflection.h"
 
 namespace cel::extensions {
 
@@ -229,6 +234,52 @@ ProtoStructType::FindFieldByNumber(TypeManager& type_manager,
                field_desc->number(), std::move(type), field_desc);
 }
 
+absl::Status TypeConversionError(const Type& from, const Type& to) {
+  return absl::InvalidArgumentError(absl::StrCat("type conversion error from ",
+                                                 from.DebugString(), " to ",
+                                                 to.DebugString()));
+}
+
+template <typename F, typename T>
+struct CheckedCast;
+
+template <typename T>
+struct CheckedCast<T, T> {
+  static absl::StatusOr<T> Cast(T value) { return value; }
+};
+
+template <>
+struct CheckedCast<double, float> {
+  static absl::StatusOr<float> Cast(double value) {
+    if (ABSL_PREDICT_FALSE(static_cast<double>(static_cast<float>(value)) !=
+                           value)) {
+      return absl::OutOfRangeError("double to float overflow");
+    }
+    return static_cast<float>(value);
+  }
+};
+
+template <>
+struct CheckedCast<int64_t, int32_t> {
+  static absl::StatusOr<int32_t> Cast(int64_t value) {
+    if (ABSL_PREDICT_FALSE(value < std::numeric_limits<int32_t>::min() ||
+                           value > std::numeric_limits<int32_t>::max())) {
+      return absl::OutOfRangeError("int64 to int32_t overflow");
+    }
+    return static_cast<int32_t>(value);
+  }
+};
+
+template <>
+struct CheckedCast<uint64_t, uint32_t> {
+  static absl::StatusOr<uint32_t> Cast(uint64_t value) {
+    if (ABSL_PREDICT_FALSE(value > std::numeric_limits<int32_t>::max())) {
+      return absl::OutOfRangeError("uint64 to uint32_t overflow");
+    }
+    return static_cast<uint32_t>(value);
+  }
+};
+
 class ProtoStructValueBuilder final : public StructValueBuilderInterface {
  public:
   ProtoStructValueBuilder(ValueFactory& value_factory,
@@ -281,7 +332,11 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       return SetMapField(field, *reflect, *field_desc, std::move(value));
     }
     if (field_desc->is_repeated()) {
-      return SetRepeatedField(field, *reflect, *field_desc, std::move(value));
+      if (ABSL_PREDICT_FALSE(!value->Is<ListValue>())) {
+        return TypeConversionError(*field.type, *value->type());
+      }
+      return SetRepeatedField(field, *reflect, *field_desc,
+                              std::move(value).As<ListValue>());
     }
     return SetSingularField(field, *reflect, *field_desc, std::move(value));
   }
@@ -295,13 +350,346 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         "for setting map fields");
   }
 
+  // Sets a repeated scalar field. `T` is a subclass of `cel::Type`,
+  // `V` is a subclass of `cel::Value`, and `P` is the primitive C++ type.
+  template <typename T, typename V, typename P>
+  absl::Status SetRepeatedScalarField(
+      const ListType& from_list_type, const ListType& to_list_type,
+      const ListValue& value, const google::protobuf::Reflection& reflect,
+      const google::protobuf::FieldDescriptor& field_desc) {
+    const auto& to_element_type = *to_list_type.element();
+    const auto& from_element_type = *from_list_type.element();
+    ABSL_DCHECK(to_element_type.Is<T>());
+    if (ABSL_PREDICT_FALSE(!from_element_type.Is<T>() &&
+                           !from_element_type.Is<DynType>())) {
+      return TypeConversionError(from_list_type, to_list_type);
+    }
+    auto repeated_field_ref =
+        reflect.GetMutableRepeatedFieldRef<P>(message_, &field_desc);
+    repeated_field_ref.Clear();
+    CEL_ASSIGN_OR_RETURN(auto iterator,
+                         value.NewIterator(value_factory_.memory_manager()));
+    while (iterator->HasNext()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto element,
+          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      if (ABSL_PREDICT_FALSE(!element->Is<V>())) {
+        return TypeConversionError(*element->type(), to_element_type);
+      }
+      CEL_ASSIGN_OR_RETURN(
+          auto casted_element,
+          (CheckedCast<typename base_internal::ValueTraits<V>::underlying_type,
+                       P>::Cast(element->As<V>().value())));
+      repeated_field_ref.Add(std::move(casted_element));
+    }
+    return absl::OkStatus();
+  }
+
+  // Sets a repeated string field. `T` is a subclass of `cel::Type` and
+  // `V` is a subclass of `cel::Value`. This is used for bytes and strings.
+  template <typename T, typename V>
+  absl::Status SetRepeatedStringField(
+      const ListType& from_list_type, const ListType& to_list_type,
+      const ListValue& value, const google::protobuf::Reflection& reflect,
+      const google::protobuf::FieldDescriptor& field_desc) {
+    const auto& to_element_type = *to_list_type.element();
+    const auto& from_element_type = *from_list_type.element();
+    ABSL_DCHECK(to_element_type.Is<T>());
+    if (ABSL_PREDICT_FALSE(!from_element_type.Is<T>() &&
+                           !from_element_type.Is<DynType>())) {
+      return TypeConversionError(from_list_type, to_list_type);
+    }
+    auto repeated_field_ref =
+        reflect.GetMutableRepeatedFieldRef<std::string>(message_, &field_desc);
+    repeated_field_ref.Clear();
+    CEL_ASSIGN_OR_RETURN(auto iterator,
+                         value.NewIterator(value_factory_.memory_manager()));
+    while (iterator->HasNext()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto element,
+          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      if (ABSL_PREDICT_FALSE(!element->Is<V>())) {
+        return TypeConversionError(*element->type(), to_element_type);
+      }
+      repeated_field_ref.Add(element->As<V>().ToString());
+    }
+    return absl::OkStatus();
+  }
+
+  // Sets an enum repeated field.
+  absl::Status SetRepeatedEnumField(const ListType& from_list_type,
+                                    const ListType& to_list_type,
+                                    const ListValue& value,
+                                    const google::protobuf::Reflection& reflect,
+                                    const google::protobuf::FieldDescriptor& field_desc) {
+    const auto& to_element_type = *to_list_type.element();
+    const auto& from_element_type = *from_list_type.element();
+    if (to_element_type.Is<NullType>()) {
+      // google.protobuf.NullValue
+      if (ABSL_PREDICT_FALSE(!from_element_type.Is<NullType>() &&
+                             !from_element_type.Is<DynType>())) {
+        return TypeConversionError(from_list_type, to_list_type);
+      }
+      auto repeated_field_ref =
+          reflect.GetMutableRepeatedFieldRef<int32_t>(message_, &field_desc);
+      repeated_field_ref.Clear();
+      CEL_ASSIGN_OR_RETURN(auto iterator,
+                           value.NewIterator(value_factory_.memory_manager()));
+      while (iterator->HasNext()) {
+        CEL_ASSIGN_OR_RETURN(
+            auto element,
+            iterator->NextValue(ListValue::GetContext(value_factory_)));
+        if (ABSL_PREDICT_FALSE(!element->Is<NullValue>())) {
+          return TypeConversionError(*element->type(), to_element_type);
+        }
+        repeated_field_ref.Add(static_cast<int>(google::protobuf::NULL_VALUE));
+      }
+      return absl::OkStatus();
+    }
+    ABSL_DCHECK(to_element_type.Is<EnumType>());
+    if (ABSL_PREDICT_FALSE(!from_element_type.Is<EnumType>() &&
+                           !from_element_type.Is<IntType>() &&
+                           !from_element_type.Is<DynType>())) {
+      return TypeConversionError(from_list_type, to_list_type);
+    }
+    auto repeated_field_ref =
+        reflect.GetMutableRepeatedFieldRef<int32_t>(message_, &field_desc);
+    repeated_field_ref.Clear();
+    CEL_ASSIGN_OR_RETURN(auto iterator,
+                         value.NewIterator(value_factory_.memory_manager()));
+    while (iterator->HasNext()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto element,
+          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      if (element->Is<EnumValue>()) {
+        if (ABSL_PREDICT_FALSE(element->As<EnumValue>().type()->name() !=
+                               field_desc.enum_type()->full_name())) {
+          return TypeConversionError(*element->type(), to_element_type);
+        }
+        int64_t raw_value = element->As<EnumValue>().number();
+        if (ABSL_PREDICT_FALSE(raw_value < std::numeric_limits<int>::min() ||
+                               raw_value > std::numeric_limits<int>::max())) {
+          return absl::OutOfRangeError("int64 to int32_t overflow");
+        }
+        repeated_field_ref.Add(static_cast<int>(raw_value));
+      } else if (element->Is<IntValue>()) {
+        int64_t raw_value = element->As<IntValue>().value();
+        if (ABSL_PREDICT_FALSE(raw_value < std::numeric_limits<int>::min() ||
+                               raw_value > std::numeric_limits<int>::max())) {
+          return absl::OutOfRangeError("int64 to int32_t overflow");
+        }
+        repeated_field_ref.Add(static_cast<int>(raw_value));
+      } else {
+        return TypeConversionError(*element->type(), to_element_type);
+      }
+    }
+    return absl::OkStatus();
+  }
+
+  // Sets a `google::protobuf::Message` repeated field. `T` is a subclass of `cel::Type`,
+  // `V` is a subclass of `cel::Value`, and `P` is the primitive C++ type.
+  // `valuer` extracts the primitive C++ type from an instance of `V` and
+  // `wrapper` converts the C++ primitive type to the protobuf wrapper type.
+  template <typename T, typename V, typename P>
+  absl::Status SetRepeatedWrapperMessageField(
+      const ListType& from_list_type, const ListType& to_list_type,
+      const Type& to_element_type, const ListValue& value,
+      const google::protobuf::Reflection& reflect,
+      const google::protobuf::FieldDescriptor& field_desc,
+      absl::FunctionRef<std::decay_t<P>(const V&)> valuer,
+      absl::FunctionRef<absl::Status(google::protobuf::Message&, P)> wrapper) {
+    const auto& from_element_type = *from_list_type.element();
+    ABSL_DCHECK(to_element_type.Is<T>());
+    if (ABSL_PREDICT_FALSE(!from_element_type.Is<T>() &&
+                           !from_element_type.Is<DynType>())) {
+      return TypeConversionError(from_list_type, to_list_type);
+    }
+    auto repeated_field_ref =
+        reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
+                                                            &field_desc);
+    repeated_field_ref.Clear();
+    CEL_ASSIGN_OR_RETURN(auto iterator,
+                         value.NewIterator(value_factory_.memory_manager()));
+    auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
+    while (iterator->HasNext()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto element,
+          iterator->NextValue(ListValue::GetContext(value_factory_)));
+      if (ABSL_PREDICT_FALSE(!element->Is<V>())) {
+        return TypeConversionError(*element->type(), to_element_type);
+      }
+      scratch->Clear();
+      CEL_RETURN_IF_ERROR(wrapper(*scratch, valuer(element->As<V>())));
+      repeated_field_ref.Add(*scratch);
+    }
+    return absl::OkStatus();
+  }
+
+  absl::Status SetRepeatedMessageField(
+      const ListType& from_list_type, const ListType& to_list_type,
+      const ListValue& value, const google::protobuf::Reflection& reflect,
+      const google::protobuf::FieldDescriptor& field_desc) {
+    const auto& to_element_type = *to_list_type.element();
+    switch (to_element_type.kind()) {
+      case TypeKind::kAny: {
+        // google.protobuf.Any
+        return absl::UnimplementedError(
+            "StructValueBuilderInterface::SetField does not yet implement "
+            "google.protobuf.Any support");
+      }
+      case TypeKind::kDyn: {
+        // google.protobuf.Value
+        return absl::UnimplementedError(
+            "StructValueBuilderInterface::SetField does not yet implement "
+            "google.protobuf.Value support");
+      }
+      case TypeKind::kList: {
+        // google.protobuf.ListValue
+        return absl::UnimplementedError(
+            "StructValueBuilderInterface::SetField does not yet implement "
+            "google.protobuf.ListValue support");
+      }
+      case TypeKind::kMap: {
+        // google.protobuf.Struct
+        return absl::UnimplementedError(
+            "StructValueBuilderInterface::SetField does not yet implement "
+            "google.protobuf.Struct support");
+      }
+      case TypeKind::kDuration:
+        // google.protobuf.Duration
+        return SetRepeatedWrapperMessageField<DurationType, DurationValue,
+                                              absl::Duration>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc,
+            [](const DurationValue& value) { return value.value(); },
+            protobuf_internal::AbslDurationToDurationProto);
+      case TypeKind::kTimestamp:
+        // google.protobuf.Timestamp
+        return SetRepeatedWrapperMessageField<TimestampType, TimestampValue,
+                                              absl::Time>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc,
+            [](const TimestampValue& value) { return value.value(); },
+            protobuf_internal::AbslTimeToTimestampProto);
+      case TypeKind::kBool:
+        // google.protobuf.BoolValue
+        return SetRepeatedWrapperMessageField<BoolType, BoolValue, bool>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc, [](const BoolValue& value) { return value.value(); },
+            protobuf_internal::WrapBoolValueProto);
+      case TypeKind::kInt:
+        // google.protobuf.{Int32,Int64}Value
+        return SetRepeatedWrapperMessageField<IntType, IntValue, int64_t>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc, [](const IntValue& value) { return value.value(); },
+            protobuf_internal::WrapIntValueProto);
+      case TypeKind::kUint:
+        // google.protobuf.{UInt32,UInt64}Value
+        return SetRepeatedWrapperMessageField<UintType, UintValue, uint64_t>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc, [](const UintValue& value) { return value.value(); },
+            protobuf_internal::WrapUIntValueProto);
+      case TypeKind::kDouble:
+        // google.protobuf.{Float,Double}Value
+        return SetRepeatedWrapperMessageField<DoubleType, DoubleValue, double>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc, [](const DoubleValue& value) { return value.value(); },
+            protobuf_internal::WrapDoubleValueProto);
+      case TypeKind::kBytes:
+        // google.protobuf.BytesValue
+        return SetRepeatedWrapperMessageField<BytesType, BytesValue,
+                                              const absl::Cord&>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc, [](const BytesValue& value) { return value.ToCord(); },
+            protobuf_internal::WrapBytesValueProto);
+      case TypeKind::kString:
+        // google.protobuf.StringValue
+        return SetRepeatedWrapperMessageField<StringType, StringValue,
+                                              const absl::Cord&>(
+            from_list_type, to_list_type, to_element_type, value, reflect,
+            field_desc, [](const StringValue& value) { return value.ToCord(); },
+            protobuf_internal::WrapStringValueProto);
+      case TypeKind::kStruct: {
+        auto repeated_field_ref =
+            reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
+                                                                &field_desc);
+        repeated_field_ref.Clear();
+        CEL_ASSIGN_OR_RETURN(
+            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
+        while (iterator->HasNext()) {
+          CEL_ASSIGN_OR_RETURN(
+              auto element,
+              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          if (ABSL_PREDICT_FALSE(!element->Is<ProtoStructValue>())) {
+            return TypeConversionError(*element->type(), to_element_type);
+          }
+          scratch->Clear();
+          CEL_RETURN_IF_ERROR(element->As<ProtoStructValue>().CopyTo(*scratch));
+          repeated_field_ref.Add(*scratch);
+        }
+        return absl::OkStatus();
+      }
+      default:
+        return TypeConversionError(from_list_type, to_list_type);
+    }
+  }
+
   absl::Status SetRepeatedField(const StructType::Field& field,
                                 const google::protobuf::Reflection& reflect,
                                 const google::protobuf::FieldDescriptor& field_desc,
-                                Handle<Value>&& value) {
-    return absl::UnimplementedError(
-        "StructValueBuilderInterface::SetField does not yet implement support "
-        "for setting list fields");
+                                Handle<ListValue>&& value) {
+    const auto& to_list_type = field.type->As<ListType>();
+    auto from_list_type = value->type();
+    switch (field_desc.type()) {
+      case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+        return SetRepeatedScalarField<DoubleType, DoubleValue, double>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+        return SetRepeatedScalarField<DoubleType, DoubleValue, float>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_UINT64:
+        return SetRepeatedScalarField<UintType, UintValue, uint64_t>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_BOOL:
+        return SetRepeatedScalarField<BoolType, BoolValue, bool>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_STRING:
+        return SetRepeatedStringField<StringType, StringValue>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_GROUP:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+        return SetRepeatedMessageField(*from_list_type, to_list_type, *value,
+                                       reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_BYTES:
+        return SetRepeatedStringField<BytesType, BytesValue>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_UINT32:
+        return SetRepeatedScalarField<UintType, UintValue, uint32_t>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_ENUM:
+        return SetRepeatedEnumField(*from_list_type, to_list_type, *value,
+                                    reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_SINT32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_INT32:
+        return SetRepeatedScalarField<IntType, IntValue, int32_t>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+      case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_SINT64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_INT64:
+        return SetRepeatedScalarField<IntType, IntValue, int64_t>(
+            *from_list_type, to_list_type, *value, reflect, field_desc);
+    }
   }
 
   absl::Status SetSingularMessageField(

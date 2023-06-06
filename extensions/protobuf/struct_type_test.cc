@@ -30,12 +30,14 @@
 #include "base/types/list_type.h"
 #include "base/types/map_type.h"
 #include "base/value_factory.h"
+#include "base/values/list_value_builder.h"
 #include "base/values/struct_value_builder.h"
 #include "extensions/protobuf/internal/testing.h"
 #include "extensions/protobuf/struct_value.h"
 #include "extensions/protobuf/type.h"
 #include "extensions/protobuf/type_provider.h"
 #include "extensions/protobuf/value.h"
+#include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "testutil/util.h"
 #include "proto/test/v1/proto3/test_all_types.pb.h"
@@ -536,6 +538,336 @@ TEST_P(ProtoStructValueBuilderTest, BytesWrapper) {
         return value_factory.CreateBytesValue("foo");
       },
       R"pb(single_bytes_wrapper: { value: "foo" })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedBool) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_bool",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<BoolValue> builder(
+            value_factory, value_factory.type_factory().GetBoolType());
+        CEL_RETURN_IF_ERROR(builder.Add(true));
+        CEL_RETURN_IF_ERROR(builder.Add(false));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_bool: true, repeated_bool: false)pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedInt) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_int32",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_int32: 1, repeated_int32: 0)pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_int64",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_int64: 1, repeated_int64: 0)pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedUint) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_uint32",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<UintValue> builder(
+            value_factory, value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_uint32: 1, repeated_uint32: 0)pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_uint64",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<UintValue> builder(
+            value_factory, value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_uint64: 1, repeated_uint64: 0)pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedDouble) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_float",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_float: 1, repeated_float: 0)pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_double",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_double: 1, repeated_double: 0)pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedString) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_string",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<StringValue> builder(
+            value_factory, value_factory.type_factory().GetStringType());
+        CEL_RETURN_IF_ERROR(
+            builder.Add(value_factory.CreateUncheckedStringValue("foo")));
+        CEL_RETURN_IF_ERROR(
+            builder.Add(value_factory.CreateUncheckedStringValue("bar")));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_string: "foo", repeated_string: "bar")pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedBytes) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_bytes",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<BytesValue> builder(
+            value_factory, value_factory.type_factory().GetBytesType());
+        CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue("foo"));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        CEL_ASSIGN_OR_RETURN(value, value_factory.CreateBytesValue("bar"));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_bytes: "foo", repeated_bytes: "bar")pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedEnum) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_nested_enum",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
+                                 value_factory.type_manager()));
+        ListValueBuilder<EnumValue> builder(value_factory, std::move(type));
+        CEL_ASSIGN_OR_RETURN(
+            auto value, ProtoValue::Create(value_factory, TestAllTypes::FOO));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        CEL_ASSIGN_OR_RETURN(
+            value, ProtoValue::Create(value_factory, TestAllTypes::BAR));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_nested_enum: 0, repeated_nested_enum: 1)pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedCoercedEnum) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_nested_enum",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
+                                 value_factory.type_manager()));
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(TestAllTypes::FOO));
+        CEL_RETURN_IF_ERROR(builder.Add(TestAllTypes::BAR));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_nested_enum: 0, repeated_nested_enum: 1)pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedStruct) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_nested_message",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedMessage>(
+                                 value_factory.type_manager()));
+        ListValueBuilder<StructValue> builder(value_factory, std::move(type));
+        TestAllTypes::NestedMessage proto_value;
+        proto_value.set_bb(1);
+        CEL_ASSIGN_OR_RETURN(auto value,
+                             ProtoValue::Create(value_factory, proto_value));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value).As<StructValue>()));
+        proto_value.Clear();
+        CEL_ASSIGN_OR_RETURN(value,
+                             ProtoValue::Create(value_factory, proto_value));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value).As<StructValue>()));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_nested_message: { bb: 1 },
+           repeated_nested_message: {})pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedDuration) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_duration",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<DurationValue> builder(
+            value_factory, value_factory.type_factory().GetDurationType());
+        CEL_ASSIGN_OR_RETURN(auto value,
+                             value_factory.CreateDurationValue(
+                                 absl::Seconds(1) + absl::Nanoseconds(1)));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        CEL_ASSIGN_OR_RETURN(
+            value, value_factory.CreateDurationValue(absl::ZeroDuration()));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_duration: { seconds: 1, nanos: 1 },
+           repeated_duration: {})pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedTimestamp) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_timestamp",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<TimestampValue> builder(
+            value_factory, value_factory.type_factory().GetTimestampType());
+        CEL_ASSIGN_OR_RETURN(
+            auto value,
+            value_factory.CreateTimestampValue(
+                absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1)));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        CEL_ASSIGN_OR_RETURN(
+            value, value_factory.CreateTimestampValue(absl::UnixEpoch()));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_timestamp: { seconds: 1, nanos: 1 },
+           repeated_timestamp: {})pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedBoolWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_bool_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<BoolValue> builder(
+            value_factory, value_factory.type_factory().GetBoolType());
+        CEL_RETURN_IF_ERROR(builder.Add(true));
+        CEL_RETURN_IF_ERROR(builder.Add(false));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_bool_wrapper: { value: true },
+           repeated_bool_wrapper: { value: false })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedIntWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_int32_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_int32_wrapper: { value: 1 },
+           repeated_int32_wrapper: { value: 0 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_int64_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_int64_wrapper: { value: 1 },
+           repeated_int64_wrapper: { value: 0 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedUintWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_uint32_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<UintValue> builder(
+            value_factory, value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_uint32_wrapper: { value: 1 },
+           repeated_uint32_wrapper: { value: 0 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_uint64_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<UintValue> builder(
+            value_factory, value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_uint64_wrapper: { value: 1 },
+           repeated_uint64_wrapper: { value: 0 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedDoubleWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_float_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_float_wrapper: { value: 1 },
+           repeated_float_wrapper: { value: 0 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_double_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_double_wrapper: { value: 1 },
+           repeated_double_wrapper: { value: 0 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedStringWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_string_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<StringValue> builder(
+            value_factory, value_factory.type_factory().GetStringType());
+        CEL_RETURN_IF_ERROR(
+            builder.Add(value_factory.CreateUncheckedStringValue("foo")));
+        CEL_RETURN_IF_ERROR(
+            builder.Add(value_factory.CreateUncheckedStringValue("bar")));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_string_wrapper: { value: "foo" },
+           repeated_string_wrapper: { value: "bar" })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, RepeatedBytesWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_bytes_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<BytesValue> builder(
+            value_factory, value_factory.type_factory().GetBytesType());
+        CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue("foo"));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        CEL_ASSIGN_OR_RETURN(value, value_factory.CreateBytesValue("bar"));
+        CEL_RETURN_IF_ERROR(builder.Add(std::move(value)));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_bytes_wrapper: { value: "foo" },
+           repeated_bytes_wrapper: { value: "bar" })pb");
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoStructValueBuilderTest,
