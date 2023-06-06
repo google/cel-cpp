@@ -7,6 +7,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "base/builtins.h"
 #include "base/handle.h"
 #include "base/value.h"
 #include "base/values/bool_value.h"
@@ -14,7 +15,6 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_builtins.h"
 
 namespace google::api::expr::runtime {
 
@@ -26,7 +26,6 @@ using ::cel::Value;
 using ::cel::interop_internal::CreateBoolValue;
 using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateNoMatchingOverloadError;
-using ::cel::interop_internal::CreateUnknownValueFromView;
 
 class LogicalOpStep : public ExpressionStepBase {
  public:
@@ -67,14 +66,14 @@ class LogicalOpStep : public ExpressionStepBase {
 
     // As opposed to regular function, logical operation treat Unknowns with
     // higher precedence than error. This is due to the fact that after Unknown
-    // is resolved to actual value, it may shortcircuit and thus hide the error.
+    // is resolved to actual value, it may short-circuit and thus hide the
+    // error.
     if (frame->enable_unknowns()) {
       // Check if unknown?
-      const UnknownSet* unknown_set =
-          frame->attribute_utility().MergeUnknowns(args,
-                                                   /*initial_set=*/nullptr);
-      if (unknown_set) {
-        return CreateUnknownValueFromView(unknown_set);
+      absl::optional<Handle<cel::UnknownValue>> unknown_set =
+          frame->attribute_utility().MergeUnknowns(args);
+      if (unknown_set.has_value()) {
+        return *unknown_set;
       }
     }
 
@@ -87,7 +86,7 @@ class LogicalOpStep : public ExpressionStepBase {
     // Fallback.
     return CreateErrorValueFromView(CreateNoMatchingOverloadError(
         frame->memory_manager(),
-        (op_type_ == OpType::OR) ? builtin::kOr : builtin::kAnd));
+        (op_type_ == OpType::OR) ? cel::builtin::kOr : cel::builtin::kAnd));
   }
 
   const OpType op_type_;

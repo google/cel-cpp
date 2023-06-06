@@ -56,13 +56,16 @@ class UnknownSet final {
   using Rep = UnknownSetRep;
 
  public:
+  // Construct the empty set.
+  // Uses singletons instead of allocating new containers.
   UnknownSet() = default;
+
   UnknownSet(const UnknownSet&) = default;
   UnknownSet(UnknownSet&&) = default;
   UnknownSet& operator=(const UnknownSet&) = default;
   UnknownSet& operator=(UnknownSet&&) = default;
 
-  // Initilization specifying subcontainers
+  // Initialization specifying subcontainers
   explicit UnknownSet(AttributeSet attributes)
       : rep_(std::make_shared<Rep>(std::move(attributes))) {}
 
@@ -73,7 +76,6 @@ class UnknownSet final {
       : rep_(std::make_shared<Rep>(std::move(attributes),
                                    std::move(function_results))) {}
 
-  // Initialization for empty set
   // Merge constructor
   UnknownSet(const UnknownSet& set1, const UnknownSet& set2)
       : UnknownSet(

@@ -7,6 +7,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
@@ -15,11 +16,9 @@
 
 namespace google::api::expr::runtime {
 
-namespace {
-
+using ::cel::Handle;
+using ::cel::UnknownValue;
 using ::cel::interop_internal::CreateErrorValueFromView;
-
-}  // namespace
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var
@@ -242,13 +241,13 @@ absl::Status ListKeysStep::ProjectKeys(ExecutionFrame* frame) const {
   // Top of stack is map, but could be partially unknown. To tolerate cases when
   // keys are not set for declared unknown values, convert to an unknown set.
   if (frame->enable_unknowns()) {
-    const UnknownSet* unknown = frame->attribute_utility().MergeUnknowns(
-        frame->value_stack().GetSpan(1),
-        frame->value_stack().GetAttributeSpan(1), nullptr,
-        /*use_partial=*/true);
-    if (unknown) {
-      frame->value_stack().PopAndPush(
-          cel::interop_internal::CreateUnknownValueFromView(unknown));
+    absl::optional<Handle<UnknownValue>> unknown =
+        frame->attribute_utility().IdentifyAndMergeUnknowns(
+            frame->value_stack().GetSpan(1),
+            frame->value_stack().GetAttributeSpan(1),
+            /*use_partial=*/true);
+    if (unknown.has_value()) {
+      frame->value_stack().PopAndPush(*std::move(unknown));
       return absl::OkStatus();
     }
   }

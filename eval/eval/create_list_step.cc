@@ -17,8 +17,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Handle;
+using ::cel::UnknownValue;
 using ::cel::interop_internal::CreateLegacyListValue;
-using ::cel::interop_internal::CreateUnknownValueFromView;
 using ::cel::interop_internal::ModernValueToLegacyValueOrDie;
 
 class CreateListStep : public ExpressionStepBase {
@@ -58,16 +59,14 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
     }
   }
 
-  const UnknownSet* unknown_set = nullptr;
   if (frame->enable_unknowns()) {
-    unknown_set = frame->attribute_utility().MergeUnknowns(
-        args, frame->value_stack().GetAttributeSpan(list_size_),
-        /*initial_set=*/nullptr,
-        /*use_partial=*/true);
-    if (unknown_set != nullptr) {
-      result = CreateUnknownValueFromView(unknown_set);
+    absl::optional<Handle<UnknownValue>> unknown_set =
+        frame->attribute_utility().IdentifyAndMergeUnknowns(
+            args, frame->value_stack().GetAttributeSpan(list_size_),
+            /*use_partial=*/true);
+    if (unknown_set.has_value()) {
       frame->value_stack().Pop(list_size_);
-      frame->value_stack().Push(std::move(result));
+      frame->value_stack().Push(std::move(unknown_set).value());
       return absl::OkStatus();
     }
   }

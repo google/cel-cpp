@@ -205,11 +205,10 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
   const Handle<Value> key = input_args[1];
 
   if (frame->enable_unknowns()) {
-    auto unknown_set =
-        frame->attribute_utility().MergeUnknowns(input_args, nullptr);
+    auto unknown_set = frame->attribute_utility().MergeUnknowns(input_args);
 
     if (unknown_set) {
-      return {CreateUnknownValueFromView(unknown_set), std::move(trail)};
+      return {std::move(unknown_set).value(), std::move(trail)};
     }
 
     // We guarantee that GetAttributeSpan can acquire this number of arguments
@@ -221,9 +220,9 @@ ContainerAccessStep::LookupResult ContainerAccessStep::PerformLookup(
 
     if (frame->attribute_utility().CheckForUnknown(trail,
                                                    /*use_partial=*/false)) {
-      auto unknown_set =
-          frame->attribute_utility().CreateUnknownSet(trail.attribute());
-      return {CreateUnknownValueFromView(unknown_set), std::move(trail)};
+      cel::Attribute attr = trail.attribute();
+      return {frame->attribute_utility().CreateUnknownSet(attr),
+              std::move(trail)};
     }
   }
 

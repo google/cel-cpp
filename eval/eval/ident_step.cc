@@ -25,7 +25,6 @@ using ::cel::Handle;
 using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::interop_internal::CreateMissingAttributeError;
-using ::cel::interop_internal::CreateUnknownValueFromView;
 using ::google::protobuf::Arena;
 
 class IdentStep : public ExpressionStepBase {
@@ -74,7 +73,7 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
     if (frame->attribute_utility().CheckForUnknown(result.trail, false)) {
       auto unknown_set =
           frame->attribute_utility().CreateUnknownSet(result.trail.attribute());
-      result.value = CreateUnknownValueFromView(unknown_set);
+      result.value = std::move(unknown_set);
       return result;
     }
   }

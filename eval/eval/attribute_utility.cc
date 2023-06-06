@@ -3,10 +3,17 @@
 #include <utility>
 
 #include "base/attribute_set.h"
+#include "base/handle.h"
+#include "base/internal/unknown_set.h"
 #include "base/values/unknown_value.h"
 #include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
+
+using ::cel::AttributeSet;
+using ::cel::Handle;
+using ::cel::UnknownValue;
+using ::cel::base_internal::UnknownSet;
 
 bool AttributeUtility::CheckForMissingAttribute(
     const AttributeTrail& trail) const {
@@ -47,34 +54,30 @@ bool AttributeUtility::CheckForUnknown(const AttributeTrail& trail,
 // Scans over the args collection, merges any UnknownSets found in
 // it together with initial_set (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-const UnknownSet* AttributeUtility::MergeUnknowns(
-    absl::Span<const cel::Handle<cel::Value>> args,
-    const UnknownSet* initial_set) const {
+absl::optional<Handle<UnknownValue>> AttributeUtility::MergeUnknowns(
+    absl::Span<const cel::Handle<cel::Value>> args) const {
+  // Empty unknown value may be used as a sentinel in some tests so need to
+  // distinguish unset (nullopt) and empty(engaged empty value).
   absl::optional<UnknownSet> result_set;
 
   for (const auto& value : args) {
     if (!value->Is<cel::UnknownValue>()) continue;
-
-    const auto& current_set = value.As<cel::UnknownValue>();
     if (!result_set.has_value()) {
-      if (initial_set != nullptr) {
-        result_set.emplace(*initial_set);
-      } else {
-        result_set.emplace();
-      }
+      result_set.emplace();
     }
+    const auto& current_set = value.As<cel::UnknownValue>();
+
     cel::base_internal::UnknownSetAccess::Add(
         *result_set, UnknownSet(current_set->attribute_set(),
                                 current_set->function_result_set()));
   }
 
   if (!result_set.has_value()) {
-    return initial_set;
+    return absl::nullopt;
   }
 
-  return google::protobuf::Arena::Create<UnknownSet>(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
-      std::move(result_set).value());
+  return value_factory_.CreateUnknownValue(
+      result_set->unknown_attributes(), result_set->unknown_function_results());
 }
 
 // Creates merged UnknownAttributeSet.
@@ -101,44 +104,45 @@ cel::AttributeSet AttributeUtility::CheckForUnknowns(
 // patterns, and attributes from initial_set
 // (if initial_set is not null).
 // Returns pointer to merged set or nullptr, if there were no sets to merge.
-const UnknownSet* AttributeUtility::MergeUnknowns(
+absl::optional<Handle<UnknownValue>> AttributeUtility::IdentifyAndMergeUnknowns(
     absl::Span<const cel::Handle<cel::Value>> args,
-    absl::Span<const AttributeTrail> attrs, const UnknownSet* initial_set,
-    bool use_partial) const {
+    absl::Span<const AttributeTrail> attrs, bool use_partial) const {
+  absl::optional<UnknownSet> result_set;
+
+  // Identify new unknowns by attribute patterns.
   cel::AttributeSet attr_set = CheckForUnknowns(attrs, use_partial);
   if (!attr_set.empty()) {
-    UnknownSet result_set(std::move(attr_set));
-    if (initial_set != nullptr) {
-      cel::base_internal::UnknownSetAccess::Add(result_set, *initial_set);
-    }
-    for (const auto& value : args) {
-      if (!value->Is<cel::UnknownValue>()) {
-        continue;
-      }
-      const auto& unknown_value = value.As<cel::UnknownValue>();
-      cel::base_internal::UnknownSetAccess::Add(
-          result_set, UnknownSet(unknown_value->attribute_set(),
-                                 unknown_value->function_result_set()));
-    }
-    return google::protobuf::Arena::Create<UnknownSet>(
-        cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
-        std::move(result_set));
+    result_set.emplace(std::move(attr_set));
   }
-  return MergeUnknowns(args, initial_set);
+
+  // merge down existing unknown sets
+  absl::optional<Handle<UnknownValue>> arg_unknowns = MergeUnknowns(args);
+
+  if (!result_set.has_value()) {
+    // No new unknowns so no need to check for presence of existing unknowns --
+    // just forward.
+    return arg_unknowns;
+  }
+
+  if (arg_unknowns.has_value()) {
+    cel::base_internal::UnknownSetAccess::Add(
+        *result_set, UnknownSet((*arg_unknowns)->attribute_set(),
+                                (*arg_unknowns)->function_result_set()));
+  }
+
+  return value_factory_.CreateUnknownValue(
+      result_set->unknown_attributes(), result_set->unknown_function_results());
 }
 
-const UnknownSet* AttributeUtility::CreateUnknownSet(
+Handle<UnknownValue> AttributeUtility::CreateUnknownSet(
     cel::Attribute attr) const {
-  return google::protobuf::Arena::Create<UnknownSet>(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
-      UnknownAttributeSet({std::move(attr)}));
+  return value_factory_.CreateUnknownValue(AttributeSet({std::move(attr)}));
 }
 
-const UnknownSet* AttributeUtility::CreateUnknownSet(
+Handle<UnknownValue> AttributeUtility::CreateUnknownSet(
     const cel::FunctionDescriptor& fn_descriptor, int64_t expr_id,
     absl::Span<const cel::Handle<cel::Value>> args) const {
-  return google::protobuf::Arena::Create<UnknownSet>(
-      cel::extensions::ProtoMemoryManager::CastToProtoArena(memory_manager_),
+  return value_factory_.CreateUnknownValue(
       cel::FunctionResultSet(cel::FunctionResult(fn_descriptor, expr_id)));
 }
 

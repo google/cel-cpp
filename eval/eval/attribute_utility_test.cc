@@ -2,8 +2,10 @@
 
 #include <vector>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "eval/internal/interop.h"
+#include "base/attribute_set.h"
+#include "base/type_factory.h"
+#include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -13,17 +15,32 @@
 
 namespace google::api::expr::runtime {
 
+using ::cel::AttributeSet;
+using ::cel::Handle;
+using ::cel::UnknownValue;
+using ::cel::Value;
 using ::cel::extensions::ProtoMemoryManager;
-using ::cel::interop_internal::CreateBoolValue;
-using ::cel::interop_internal::CreateIntValue;
-using ::cel::interop_internal::CreateUnknownValueFromView;
-using ::google::api::expr::v1alpha1::Expr;
 using testing::Eq;
-using testing::NotNull;
 using testing::SizeIs;
 using testing::UnorderedPointwise;
 
-TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
+class AttributeUtilityTest : public ::testing::Test {
+ public:
+  AttributeUtilityTest()
+      : manager_(&arena_),
+        type_factory_(manager_),
+        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
+        value_factory_(type_manager_) {}
+
+ protected:
+  google::protobuf::Arena arena_;
+  ProtoMemoryManager manager_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
+};
+
+TEST_F(AttributeUtilityTest, UnknownsUtilityCheckUnknowns) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
   std::vector<CelAttributePattern> unknown_patterns = {
@@ -38,7 +55,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
   AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
-                           manager);
+                           value_factory_);
   // no match for void trail
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), true));
   ASSERT_FALSE(utility.CheckForUnknown(AttributeTrail(), false));
@@ -64,7 +81,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckUnknowns) {
   }
 }
 
-TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
+TEST_F(AttributeUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
 
@@ -74,36 +91,31 @@ TEST(UnknownsUtilityTest, UnknownsUtilityMergeUnknownsFromValues) {
 
   CelAttribute attribute0("unknown0", {});
   CelAttribute attribute1("unknown1", {});
-  CelAttribute attribute2("unknown2", {});
 
   AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
-                           manager);
+                           value_factory_);
 
-  UnknownSet unknown_set0(UnknownAttributeSet({attribute0}));
-  UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
-  UnknownSet unknown_set2(UnknownAttributeSet({attribute1, attribute2}));
+  Handle<UnknownValue> unknown_set0 =
+      value_factory_.CreateUnknownValue(AttributeSet({attribute0}));
+  Handle<UnknownValue> unknown_set1 =
+      value_factory_.CreateUnknownValue(AttributeSet({attribute1}));
+
   std::vector<cel::Handle<cel::Value>> values = {
-      CreateUnknownValueFromView(&unknown_set0),
-      CreateUnknownValueFromView(&unknown_set1),
-      CreateBoolValue(true),
-      CreateIntValue(1),
+      unknown_set0,
+      unknown_set1,
+      value_factory_.CreateBoolValue(true),
+      value_factory_.CreateIntValue(1),
   };
 
-  const UnknownSet* unknown_set = utility.MergeUnknowns(values, nullptr);
-  ASSERT_THAT(unknown_set, NotNull());
-  ASSERT_THAT(unknown_set->unknown_attributes(),
+  absl::optional<Handle<UnknownValue>> unknown_set =
+      utility.MergeUnknowns(values);
+  ASSERT_TRUE(unknown_set.has_value());
+  EXPECT_THAT((*unknown_set)->attribute_set(),
               UnorderedPointwise(
                   Eq(), std::vector<CelAttribute>{attribute0, attribute1}));
-
-  unknown_set = utility.MergeUnknowns(values, &unknown_set2);
-  ASSERT_THAT(unknown_set, NotNull());
-  ASSERT_THAT(
-      unknown_set->unknown_attributes(),
-      UnorderedPointwise(
-          Eq(), std::vector<CelAttribute>{attribute0, attribute1, attribute2}));
 }
 
-TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
+TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
 
@@ -121,7 +133,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   UnknownSet unknown_set1(UnknownAttributeSet({attribute1}));
 
   AttributeUtility utility(unknown_patterns, missing_attribute_patterns,
-                           manager);
+                           value_factory_);
 
   UnknownSet unknown_attr_set(utility.CheckForUnknowns(
       {
@@ -136,7 +148,7 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForUnknownsFromAttributes) {
   ASSERT_THAT(unknown_set.unknown_attributes(), SizeIs(3));
 }
 
-TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
+TEST_F(AttributeUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
 
@@ -144,19 +156,12 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
 
   std::vector<CelAttributePattern> missing_attribute_patterns;
 
-  Expr expr;
-  auto* select_expr = expr.mutable_select_expr();
-  select_expr->set_field("ip");
-
-  Expr* ident_expr = select_expr->mutable_operand();
-  ident_expr->mutable_ident_expr()->set_name("destination");
-
   AttributeTrail trail("destination");
   trail =
       trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
   AttributeUtility utility0(unknown_patterns, missing_attribute_patterns,
-                            manager);
+                            value_factory_);
   EXPECT_FALSE(utility0.CheckForMissingAttribute(trail));
 
   missing_attribute_patterns.push_back(CelAttributePattern(
@@ -164,30 +169,25 @@ TEST(UnknownsUtilityTest, UnknownsUtilityCheckForMissingAttributes) {
       {CreateCelAttributeQualifierPattern(CelValue::CreateStringView("ip"))}));
 
   AttributeUtility utility1(unknown_patterns, missing_attribute_patterns,
-                            manager);
+                            value_factory_);
   EXPECT_TRUE(utility1.CheckForMissingAttribute(trail));
 }
 
-TEST(AttributeUtilityTest, CreateUnknownSet) {
+TEST_F(AttributeUtilityTest, CreateUnknownSet) {
   google::protobuf::Arena arena;
   ProtoMemoryManager manager(&arena);
-
-  Expr expr;
-  auto* select_expr = expr.mutable_select_expr();
-  select_expr->set_field("ip");
-
-  Expr* ident_expr = select_expr->mutable_operand();
-  ident_expr->mutable_ident_expr()->set_name("destination");
 
   AttributeTrail trail("destination");
   trail =
       trail.Step(CreateCelAttributeQualifier(CelValue::CreateStringView("ip")));
 
   std::vector<CelAttributePattern> empty_patterns;
-  AttributeUtility utility(empty_patterns, empty_patterns, manager);
+  AttributeUtility utility(empty_patterns, empty_patterns, value_factory_);
 
-  const UnknownSet* set = utility.CreateUnknownSet(trail.attribute());
-  EXPECT_EQ(*set->unknown_attributes().begin()->AsString(), "destination.ip");
+  Handle<UnknownValue> set = utility.CreateUnknownSet(trail.attribute());
+  ASSERT_THAT(set->attribute_set(), SizeIs(1));
+  ASSERT_OK_AND_ASSIGN(auto elem, set->attribute_set().begin()->AsString());
+  EXPECT_EQ(elem, "destination.ip");
 }
 
 }  // namespace google::api::expr::runtime

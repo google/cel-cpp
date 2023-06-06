@@ -11,6 +11,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "base/attribute.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/public/activation.h"
 #include "eval/public/builtin_func_registrar.h"
@@ -162,12 +163,12 @@ class UnknownsTest : public testing::Test {
 };
 
 MATCHER_P(FunctionCallIs, fn_name, "") {
-  const UnknownFunctionResult& result = arg;
+  const cel::FunctionResult& result = arg;
   return result.descriptor().name() == fn_name;
 }
 
 MATCHER_P(AttributeIs, attr, "") {
-  const CelAttribute& result = arg;
+  const cel::Attribute& result = arg;
   return result.variable_name() == attr;
 }
 

@@ -27,6 +27,12 @@
 
 namespace cel {
 
+// Representation for unknown results in CEL.
+//
+// Unknown parts of the environment may be declared at evaluation time. If any
+// of the unknown inputs are determined to be required, they are accumulated in
+// UnknownValue with set semantics. See Attribute and FunctionResult for
+// the representation for unknown values.
 class UnknownValue final : public Value, public base_internal::InlineData {
  public:
   static constexpr ValueKind kKind = ValueKind::kUnknown;

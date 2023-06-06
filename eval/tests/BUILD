@@ -183,6 +183,7 @@ cc_test(
         "unknowns_end_to_end_test.cc",
     ],
     deps = [
+        "//base:attributes",
         "//eval/eval:evaluator_core",
         "//eval/public:activation",
         "//eval/public:builtin_func_registrar",

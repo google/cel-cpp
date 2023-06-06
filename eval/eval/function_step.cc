@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -20,13 +19,11 @@
 #include "base/kind.h"
 #include "base/value.h"
 #include "base/values/error_value.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
-#include "eval/public/unknown_set.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/activation_interface.h"
 #include "runtime/function_overload_reference.h"
@@ -39,6 +36,7 @@ namespace {
 
 using ::cel::FunctionEvaluationContext;
 using ::cel::Handle;
+using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKindToKind;
 
@@ -85,15 +83,12 @@ std::vector<cel::Handle<cel::Value>> CheckForPartialUnknowns(
   std::vector<cel::Handle<cel::Value>> result;
   result.reserve(args.size());
   for (size_t i = 0; i < args.size(); i++) {
-    auto attr_set = frame->attribute_utility().CheckForUnknowns(
-        attrs.subspan(i, 1), /*use_partial=*/true);
-    if (!attr_set.empty()) {
-      auto unknown_set = google::protobuf::Arena::Create<UnknownSet>(
-          cel::extensions::ProtoMemoryManager::CastToProtoArena(
-              frame->memory_manager()),
-          std::move(attr_set));
+    const AttributeTrail& trail = attrs.subspan(i, 1)[0];
+
+    if (frame->attribute_utility().CheckForUnknown(trail,
+                                                   /*use_partial=*/true)) {
       result.push_back(
-          cel::interop_internal::CreateUnknownValueFromView(unknown_set));
+          frame->attribute_utility().CreateUnknownSet(trail.attribute()));
     } else {
       result.push_back(args.at(i));
     }
@@ -193,9 +188,8 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
 
     if (frame->enable_unknown_function_results() &&
         IsUnknownFunctionResultError(result)) {
-      auto unknown_set = frame->attribute_utility().CreateUnknownSet(
+      return frame->attribute_utility().CreateUnknownSet(
           matched_function->descriptor, id(), input_args);
-      return cel::interop_internal::CreateUnknownValueFromView(unknown_set);
     }
     return result;
   }
@@ -212,10 +206,10 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
 
   if (frame->enable_unknowns()) {
     // Already converted partial unknowns to unknown sets so just merge.
-    auto unknown_set =
-        frame->attribute_utility().MergeUnknowns(input_args, nullptr);
-    if (unknown_set != nullptr) {
-      return cel::interop_internal::CreateUnknownValueFromView(unknown_set);
+    absl::optional<Handle<UnknownValue>> unknown_set =
+        frame->attribute_utility().MergeUnknowns(input_args);
+    if (unknown_set.has_value()) {
+      return *unknown_set;
     }
   }
 

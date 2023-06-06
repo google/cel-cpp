@@ -137,7 +137,7 @@ class ExecutionFrame {
         state_(state),
         attribute_utility_(activation_.GetUnknownAttributes(),
                            activation_.GetMissingAttributes(),
-                           state_.memory_manager()),
+                           state_.value_factory()),
         max_iterations_(options_.comprehension_max_iterations),
         iterations_(0) {}
 

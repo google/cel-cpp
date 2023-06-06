@@ -11,7 +11,6 @@
 #include "base/handle.h"
 #include "base/memory.h"
 #include "base/type_manager.h"
-#include "base/value_factory.h"
 #include "base/values/error_value.h"
 #include "base/values/map_value.h"
 #include "base/values/null_value.h"
@@ -22,10 +21,9 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "eval/public/cel_options.h"
-#include "eval/public/cel_value.h"
 #include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
+#include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
 
@@ -35,6 +33,7 @@ using ::cel::ErrorValue;
 using ::cel::Handle;
 using ::cel::MapValue;
 using ::cel::NullValue;
+using ::cel::ProtoWrapperTypeOptions;
 using ::cel::StructValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
@@ -46,7 +45,6 @@ using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateMissingAttributeError;
 using ::cel::interop_internal::CreateNoSuchKeyError;
 using ::cel::interop_internal::CreateStringValueFromView;
-using ::cel::interop_internal::CreateUnknownValueFromView;
 using ::google::protobuf::Arena;
 
 // Common error for cases where evaluation attempts to perform select operations
@@ -102,9 +100,7 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
   if (frame->enable_unknowns() &&
       frame->attribute_utility().CheckForUnknown(trail,
                                                  /*use_partial=*/false)) {
-    auto unknown_set = Arena::Create<UnknownSet>(
-        arena, UnknownAttributeSet({trail.attribute()}));
-    return CreateUnknownValueFromView(unknown_set);
+    return frame->attribute_utility().CreateUnknownSet(trail.attribute());
   }
 
   if (frame->enable_missing_attribute_errors() &&

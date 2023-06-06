@@ -9,6 +9,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/interop.h"
 #include "eval/public/cel_value.h"
@@ -22,10 +23,10 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::Handle;
+using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::interop_internal::CreateErrorValueFromView;
 using ::cel::interop_internal::CreateLegacyMapValue;
-using ::cel::interop_internal::CreateUnknownValueFromView;
 using ::cel::interop_internal::LegacyValueToModernValueOrDie;
 
 class CreateStructStepForMessage final : public ExpressionStepBase {
@@ -70,12 +71,12 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMessage::DoEvaluate(
   auto args = frame->value_stack().GetSpan(entries_size);
 
   if (frame->enable_unknowns()) {
-    auto unknown_set = frame->attribute_utility().MergeUnknowns(
-        args, frame->value_stack().GetAttributeSpan(entries_size),
-        /*initial_set=*/nullptr,
-        /*use_partial=*/true);
-    if (unknown_set != nullptr) {
-      return CreateUnknownValueFromView(unknown_set);
+    absl::optional<Handle<UnknownValue>> unknown_set =
+        frame->attribute_utility().IdentifyAndMergeUnknowns(
+            args, frame->value_stack().GetAttributeSpan(entries_size),
+            /*use_partial=*/true);
+    if (unknown_set.has_value()) {
+      return *unknown_set;
     }
   }
 
@@ -123,11 +124,11 @@ absl::StatusOr<Handle<Value>> CreateStructStepForMap::DoEvaluate(
   auto args = frame->value_stack().GetSpan(2 * entry_count_);
 
   if (frame->enable_unknowns()) {
-    const UnknownSet* unknown_set = frame->attribute_utility().MergeUnknowns(
-        args, frame->value_stack().GetAttributeSpan(args.size()),
-        /*initial_set=*/nullptr, true);
-    if (unknown_set != nullptr) {
-      return CreateUnknownValueFromView(unknown_set);
+    absl::optional<Handle<UnknownValue>> unknown_set =
+        frame->attribute_utility().IdentifyAndMergeUnknowns(
+            args, frame->value_stack().GetAttributeSpan(args.size()), true);
+    if (unknown_set.has_value()) {
+      return *unknown_set;
     }
   }
 

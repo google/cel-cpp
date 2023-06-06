@@ -1,12 +1,9 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_UNKNOWN_SET_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_UNKNOWN_SET_H_
 
-#include <memory>
-#include <utility>
-
 #include "base/internal/unknown_set.h"
-#include "eval/public/unknown_attribute_set.h"
-#include "eval/public/unknown_function_result_set.h"
+#include "eval/public/unknown_attribute_set.h"  // IWYU pragma: keep
+#include "eval/public/unknown_function_result_set.h"  // IWYU pragma: keep
 
 namespace google {
 namespace api {
