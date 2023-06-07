@@ -2239,7 +2239,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByName(
       auto field_type,
       type()->FindFieldByName(context.value_factory().type_manager(), name));
   if (ABSL_PREDICT_FALSE(!field_type)) {
-    return interop_internal::CreateNoSuchFieldError(name);
+    return runtime_internal::CreateNoSuchFieldError(name);
   }
   return GetField(context, *field_type);
 }
@@ -2250,7 +2250,7 @@ absl::StatusOr<Handle<Value>> ParsedProtoStructValue::GetFieldByNumber(
                        type()->FindFieldByNumber(
                            context.value_factory().type_manager(), number));
   if (ABSL_PREDICT_FALSE(!field_type)) {
-    return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
+    return runtime_internal::CreateNoSuchFieldError(absl::StrCat(number));
   }
   return GetField(context, *field_type);
 }
@@ -2643,7 +2643,7 @@ absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByName(
   CEL_ASSIGN_OR_RETURN(auto field,
                        type()->FindFieldByName(context.type_manager(), name));
   if (ABSL_PREDICT_FALSE(!field.has_value())) {
-    return interop_internal::CreateNoSuchFieldError(name);
+    return runtime_internal::CreateNoSuchFieldError(name);
   }
   return HasField(context.type_manager(), *field);
 }
@@ -2653,7 +2653,7 @@ absl::StatusOr<bool> ParsedProtoStructValue::HasFieldByNumber(
   CEL_ASSIGN_OR_RETURN(
       auto field, type()->FindFieldByNumber(context.type_manager(), number));
   if (ABSL_PREDICT_FALSE(!field.has_value())) {
-    return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
+    return runtime_internal::CreateNoSuchFieldError(absl::StrCat(number));
   }
   return HasField(context.type_manager(), *field);
 }

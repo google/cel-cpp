@@ -46,7 +46,7 @@ using ::cel::UnaryFunctionAdapter;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueFactory;
-using ::cel::interop_internal::CreateNoMatchingOverloadError;
+using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 Handle<Value> NotStrictlyFalseImpl(ValueFactory& value_factory,
                                    const Handle<Value>& value) {

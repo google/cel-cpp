@@ -108,7 +108,7 @@ bool IsUnknownFunctionResultError(const Handle<Value>& result) {
     return false;
   }
   auto payload = status.GetPayload(
-      cel::interop_internal::kPayloadUrlUnknownFunctionResult);
+      cel::runtime_internal::kPayloadUrlUnknownFunctionResult);
   return payload.has_value() && payload.value() == "true";
 }
 
@@ -226,7 +226,7 @@ absl::StatusOr<Handle<Value>> AbstractFunctionStep::DoEvaluate(
   // If no errors or unknowns in input args, create new CelError for missing
   // overload.
   return frame->value_factory().CreateErrorValue(
-      cel::interop_internal::CreateNoMatchingOverloadError(
+      cel::runtime_internal::CreateNoMatchingOverloadError(
           absl::StrCat(name_, "(", arg_types, ")")));
 }
 

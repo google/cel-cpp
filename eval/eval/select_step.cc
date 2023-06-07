@@ -9,8 +9,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "base/handle.h"
-#include "base/memory.h"
-#include "base/type_manager.h"
+#include "base/value_factory.h"
 #include "base/values/error_value.h"
 #include "base/values/map_value.h"
 #include "base/values/null_value.h"
@@ -21,7 +20,6 @@
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
 #include "eval/internal/interop.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 
@@ -38,14 +36,9 @@ using ::cel::StructValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
-using ::cel::extensions::ProtoMemoryManager;
-using ::cel::interop_internal::CreateBoolValue;
-using ::cel::interop_internal::CreateError;
-using ::cel::interop_internal::CreateErrorValueFromView;
-using ::cel::interop_internal::CreateMissingAttributeError;
-using ::cel::interop_internal::CreateNoSuchKeyError;
 using ::cel::interop_internal::CreateStringValueFromView;
-using ::google::protobuf::Arena;
+using ::cel::runtime_internal::CreateMissingAttributeError;
+using ::cel::runtime_internal::CreateNoSuchKeyError;
 
 // Common error for cases where evaluation attempts to perform select operations
 // on an unsupported type.
@@ -95,8 +88,6 @@ absl::StatusOr<Handle<Value>> SelectStep::CreateValueFromField(
 
 absl::optional<Handle<Value>> CheckForMarkedAttributes(
     const AttributeTrail& trail, ExecutionFrame* frame) {
-  Arena* arena = ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
-
   if (frame->enable_unknowns() &&
       frame->attribute_utility().CheckForUnknown(trail,
                                                  /*use_partial=*/false)) {
@@ -107,16 +98,16 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
       frame->attribute_utility().CheckForMissingAttribute(trail)) {
     auto attribute_string = trail.attribute().AsString();
     if (attribute_string.ok()) {
-      return CreateErrorValueFromView(CreateMissingAttributeError(
-          frame->memory_manager(), *attribute_string));
+      return frame->value_factory().CreateErrorValue(
+          CreateMissingAttributeError(*attribute_string));
     }
     // Invariant broken (an invalid CEL Attribute shouldn't match anything).
     // Log and return a CelError.
     ABSL_LOG(ERROR)
         << "Invalid attribute pattern matched select path: "
         << attribute_string.status().ToString();  // NOLINT: OSS compatibility
-    return CreateErrorValueFromView(Arena::Create<absl::Status>(
-        arena, std::move(attribute_string).status()));
+    return frame->value_factory().CreateErrorValue(
+        std::move(attribute_string).status());
   }
 
   return absl::nullopt;
@@ -124,36 +115,29 @@ absl::optional<Handle<Value>> CheckForMarkedAttributes(
 
 Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
                              const std::string& field,
-                             cel::MemoryManager& memory_manager,
-                             cel::TypeManager& type_manager) {
-  Arena* arena = ProtoMemoryManager::CastToProtoArena(memory_manager);
-
-  absl::StatusOr<bool> result =
-      msg->HasFieldByName(StructValue::HasFieldContext(type_manager), field);
+                             cel::ValueFactory& value_factory) {
+  absl::StatusOr<bool> result = msg->HasFieldByName(
+      StructValue::HasFieldContext(value_factory.type_manager()), field);
 
   if (!result.ok()) {
-    return CreateErrorValueFromView(
-        Arena::Create<absl::Status>(arena, std::move(result).status()));
+    return value_factory.CreateErrorValue(std::move(result).status());
   }
-  return CreateBoolValue(*result);
+  return value_factory.CreateBoolValue(*result);
 }
 
 Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
                              const std::string& field_name,
-                             cel::MemoryManager& manager) {
+                             cel::ValueFactory& value_factory) {
   // Field presence only supports string keys containing valid identifier
   // characters.
   auto presence =
       map->Has(MapValue::HasContext(), CreateStringValueFromView(field_name));
 
   if (!presence.ok()) {
-    Arena* arena = ProtoMemoryManager::CastToProtoArena(manager);
-    auto* status =
-        Arena::Create<absl::Status>(arena, std::move(presence).status());
-    return CreateErrorValueFromView(status);
+    return value_factory.CreateErrorValue(std::move(presence).status());
   }
 
-  return CreateBoolValue(*presence);
+  return value_factory.CreateBoolValue(*presence);
 }
 
 absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
@@ -179,8 +163,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
   if (arg->Is<NullValue>()) {
     frame->value_stack().PopAndPush(
-        CreateErrorValueFromView(
-            CreateError(frame->memory_manager(), "Message is NULL")),
+        frame->value_factory().CreateErrorValue(
+            cel::runtime_internal::CreateError("Message is NULL")),
         std::move(result_trail));
     return absl::OkStatus();
   }
@@ -201,13 +185,12 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   if (test_field_presence_) {
     switch (arg->kind()) {
       case ValueKind::kMap:
-        frame->value_stack().PopAndPush(TestOnlySelect(
-            arg.As<MapValue>(), field_, frame->memory_manager()));
+        frame->value_stack().PopAndPush(
+            TestOnlySelect(arg.As<MapValue>(), field_, frame->value_factory()));
         return absl::OkStatus();
       case ValueKind::kMessage:
-        frame->value_stack().PopAndPush(
-            TestOnlySelect(arg.As<StructValue>(), field_,
-                           frame->memory_manager(), frame->type_manager()));
+        frame->value_stack().PopAndPush(TestOnlySelect(
+            arg.As<StructValue>(), field_, frame->value_factory()));
         return absl::OkStatus();
       default:
         return InvalidSelectTargetError();
@@ -235,8 +218,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
       // If object is not found, we return Error, per CEL specification.
       if (!result.has_value()) {
-        result = CreateErrorValueFromView(
-            CreateNoSuchKeyError(frame->memory_manager(), field_));
+        result = frame->value_factory().CreateErrorValue(
+            CreateNoSuchKeyError(field_));
       }
       frame->value_stack().PopAndPush(std::move(result).value(),
                                       std::move(result_trail));

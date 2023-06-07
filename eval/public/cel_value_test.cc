@@ -21,8 +21,8 @@
 
 namespace google::api::expr::runtime {
 
-using ::cel::interop_internal::kDurationHigh;
-using ::cel::interop_internal::kDurationLow;
+using ::cel::runtime_internal::kDurationHigh;
+using ::cel::runtime_internal::kDurationLow;
 using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::StatusIs;

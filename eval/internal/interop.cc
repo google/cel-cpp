@@ -57,6 +57,9 @@ using ::cel::base_internal::HandleFactory;
 using ::cel::base_internal::InlinedStringViewBytesValue;
 using ::cel::base_internal::InlinedStringViewStringValue;
 using ::cel::base_internal::LegacyTypeValue;
+using ::cel::runtime_internal::DurationOverflowError;
+using ::cel::runtime_internal::kDurationHigh;
+using ::cel::runtime_internal::kDurationLow;
 using ::google::api::expr::runtime::CelList;
 using ::google::api::expr::runtime::CelMap;
 using ::google::api::expr::runtime::CelValue;
@@ -216,9 +219,11 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
   const LegacyTypeAccessApis* access_api =
       wrapper.legacy_type_info()->GetAccessApis(wrapper);
 
+  google::protobuf::Arena* arena =
+      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager);
   if (access_api == nullptr) {
     return interop_internal::CreateErrorValueFromView(
-        interop_internal::CreateNoSuchFieldError(memory_manager, field));
+        interop_internal::CreateNoSuchFieldError(arena, field));
   }
 
   CEL_ASSIGN_OR_RETURN(
@@ -228,9 +233,7 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
                                ? ProtoWrapperTypeOptions::kUnsetNull
                                : ProtoWrapperTypeOptions::kUnsetProtoDefault,
                            memory_manager));
-  return FromLegacyValue(
-      extensions::ProtoMemoryManager::CastToProtoArena(memory_manager),
-      legacy_value);
+  return FromLegacyValue(arena, legacy_value);
 }
 
 }  // namespace
@@ -771,7 +774,7 @@ absl::StatusOr<bool> MessageValueHasFieldByName(uintptr_t msg,
 
   if (access_api == nullptr) {
     return absl::NotFoundError(
-        absl::StrCat(interop_internal::kErrNoSuchField, ": ", name));
+        absl::StrCat(runtime_internal::kErrNoSuchField, ": ", name));
   }
 
   return access_api->HasField(name, wrapper);

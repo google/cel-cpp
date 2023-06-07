@@ -217,7 +217,7 @@ TEST(ValueInterop, CreateDurationOk) {
 }
 
 TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
-  Handle<Value> value = CreateDurationValue(kDurationHigh);
+  Handle<Value> value = CreateDurationValue(runtime_internal::kDurationHigh);
   EXPECT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(value.As<ErrorValue>()->value(),
               StatusIs(absl::StatusCode::kInvalidArgument,
@@ -225,7 +225,7 @@ TEST(ValueInterop, CreateDurationOutOfRangeHigh) {
 }
 
 TEST(ValueInterop, CreateDurationOutOfRangeLow) {
-  Handle<Value> value = CreateDurationValue(kDurationLow);
+  Handle<Value> value = CreateDurationValue(runtime_internal::kDurationLow);
   EXPECT_TRUE(value->Is<ErrorValue>());
   EXPECT_THAT(value.As<ErrorValue>()->value(),
               StatusIs(absl::StatusCode::kInvalidArgument,

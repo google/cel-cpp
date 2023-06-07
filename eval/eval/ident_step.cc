@@ -5,7 +5,6 @@
 #include <string>
 #include <utility>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -13,8 +12,6 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
-#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
@@ -23,9 +20,8 @@ namespace {
 
 using ::cel::Handle;
 using ::cel::Value;
-using ::cel::extensions::ProtoMemoryManager;
-using ::cel::interop_internal::CreateMissingAttributeError;
-using ::google::protobuf::Arena;
+using ::cel::runtime_internal::CreateError;
+using ::cel::runtime_internal::CreateMissingAttributeError;
 
 class IdentStep : public ExpressionStepBase {
  public:
@@ -48,8 +44,6 @@ class IdentStep : public ExpressionStepBase {
 absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
     ExecutionFrame* frame) const {
   IdentResult result;
-  google::protobuf::Arena* arena =
-      ProtoMemoryManager::CastToProtoArena(frame->memory_manager());
 
   // Special case - comprehension variables mask any activation vars.
   bool iter_var = frame->GetIterVar(name_, &result.value, &result.trail);
@@ -63,8 +57,8 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
 
     if (frame->enable_missing_attribute_errors() && !name_.empty() &&
         frame->attribute_utility().CheckForMissingAttribute(result.trail)) {
-      result.value = cel::interop_internal::CreateErrorValueFromView(
-          CreateMissingAttributeError(frame->memory_manager(), name_));
+      result.value = frame->value_factory().CreateErrorValue(
+          CreateMissingAttributeError(name_));
       return result;
     }
   }
@@ -89,10 +83,8 @@ absl::StatusOr<IdentStep::IdentResult> IdentStep::DoEvaluate(
     return result;
   }
 
-  result.value = cel::interop_internal::CreateErrorValueFromView(
-      Arena::Create<absl::Status>(arena, absl::StatusCode::kUnknown,
-                                  absl::StrCat("No value with name \"", name_,
-                                               "\" found in Activation")));
+  result.value = frame->value_factory().CreateErrorValue(CreateError(
+      absl::StrCat("No value with name \"", name_, "\" found in Activation")));
 
   return result;
 }

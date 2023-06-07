@@ -7,18 +7,19 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "base/kind.h"
 #include "base/values/unknown_value.h"
 #include "eval/eval/attribute_trail.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
 #include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
 using ::cel::Handle;
 using ::cel::UnknownValue;
-using ::cel::interop_internal::CreateErrorValueFromView;
+using ::cel::Value;
+using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 // Stack variables during comprehension evaluation:
 // 0. accu_init, then loop_step (any), available through accu_var
@@ -102,9 +103,8 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
       frame->value_stack().Push(std::move(iter_range));
       return frame->JumpTo(error_jump_offset_);
     }
-    frame->value_stack().Push(CreateErrorValueFromView(
-        ::cel::interop_internal::CreateNoMatchingOverloadError(
-            frame->memory_manager(), "<iter_range>")));
+    frame->value_stack().Push(frame->value_factory().CreateErrorValue(
+        CreateNoMatchingOverloadError("<iter_range>")));
     return frame->JumpTo(error_jump_offset_);
   }
 
@@ -112,8 +112,8 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
   const auto& current_index_value = state[POS_CURRENT_INDEX];
   if (!current_index_value->Is<cel::IntValue>()) {
     return absl::InternalError(absl::StrCat(
-        "ComprehensionNextStep: want int64_t, got ",
-        CelValue::TypeName(ValueKindToKind(current_index_value->kind()))));
+        "ComprehensionNextStep: want int, got ",
+        cel::KindToString(ValueKindToKind(current_index_value->kind()))));
   }
   CEL_RETURN_IF_ERROR(frame->IncrementIterations());
 
@@ -131,11 +131,11 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
         iter_range_attr.Step(cel::AttributeQualifier::OfInt(current_index + 1));
   }
 
-  // Update stack for breaking out of loop or next round.
-  auto loop_step = state[POS_LOOP_STEP];
+  // Pop invalidates references to the stack on the following line so copy.
+  Handle<Value> loop_step = state[POS_LOOP_STEP];
   frame->value_stack().Pop(5);
   frame->value_stack().Push(loop_step);
-  CEL_RETURN_IF_ERROR(frame->SetAccuVar(loop_step));
+  CEL_RETURN_IF_ERROR(frame->SetAccuVar(std::move(loop_step)));
   if (current_index >=
       static_cast<int64_t>(iter_range.As<cel::ListValue>()->size()) - 1) {
     CEL_RETURN_IF_ERROR(frame->ClearIterVar());
@@ -149,7 +149,7 @@ absl::Status ComprehensionNextStep::Evaluate(ExecutionFrame* frame) const {
                            cel::ListValue::GetContext(frame->value_factory()),
                            static_cast<size_t>(current_index)));
   frame->value_stack().Push(
-      cel::interop_internal::CreateIntValue(current_index));
+      frame->value_factory().CreateIntValue(current_index));
   frame->value_stack().Push(current_value, iter_trail);
   CEL_RETURN_IF_ERROR(frame->SetIterVar(current_value, std::move(iter_trail)));
   return absl::OkStatus();
@@ -187,9 +187,8 @@ absl::Status ComprehensionCondStep::Evaluate(ExecutionFrame* frame) const {
         loop_condition_value->Is<cel::UnknownValue>()) {
       frame->value_stack().Push(std::move(loop_condition_value));
     } else {
-      frame->value_stack().Push(CreateErrorValueFromView(
-          ::cel::interop_internal::CreateNoMatchingOverloadError(
-              frame->memory_manager(), "<loop_condition>")));
+      frame->value_stack().Push(frame->value_factory().CreateErrorValue(
+          CreateNoMatchingOverloadError("<loop_condition>")));
     }
     // The error jump skips the ComprehensionFinish clean-up step, so we
     // need to update the iteration variable stack here.

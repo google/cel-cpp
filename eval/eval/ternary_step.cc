@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "absl/status/statusor.h"
+#include "base/builtins.h"
 #include "base/handle.h"
 #include "base/value.h"
 #include "base/values/bool_value.h"
@@ -12,12 +13,13 @@
 #include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
-#include "eval/public/cel_builtins.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
+
+using ::cel::builtin::kTernary;
+using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 inline constexpr size_t kTernaryStepCondition = 0;
 inline constexpr size_t kTernaryStepTrue = 1;
@@ -59,9 +61,8 @@ absl::Status TernaryStep::Evaluate(ExecutionFrame* frame) const {
 
   cel::Handle<cel::Value> result;
   if (!condition->Is<cel::BoolValue>()) {
-    result = cel::interop_internal::CreateErrorValueFromView(
-        cel::interop_internal::CreateNoMatchingOverloadError(
-            frame->memory_manager(), builtin::kTernary));
+    result = frame->value_factory().CreateErrorValue(
+        CreateNoMatchingOverloadError(kTernary));
   } else if (condition.As<cel::BoolValue>()->value()) {
     result = args[kTernaryStepTrue];
   } else {

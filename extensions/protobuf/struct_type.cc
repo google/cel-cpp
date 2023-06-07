@@ -303,7 +303,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         auto field_type,
         type_->FindFieldByName(value_factory_.type_manager(), name));
     if (ABSL_PREDICT_FALSE(!field_type)) {
-      return interop_internal::CreateNoSuchFieldError(name);
+      return runtime_internal::CreateNoSuchFieldError(name);
     }
     return SetField(*field_type, std::move(value));
   }
@@ -313,7 +313,7 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         auto field_type,
         type_->FindFieldByNumber(value_factory_.type_manager(), number));
     if (ABSL_PREDICT_FALSE(!field_type)) {
-      return interop_internal::CreateNoSuchFieldError(absl::StrCat(number));
+      return runtime_internal::CreateNoSuchFieldError(absl::StrCat(number));
     }
     return SetField(*field_type, std::move(value));
   }

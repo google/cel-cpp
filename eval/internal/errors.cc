@@ -17,13 +17,10 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "base/memory.h"
-#include "extensions/protobuf/memory_manager.h"
+#include "google/protobuf/arena.h"
 
-namespace cel::interop_internal {
-
-using ::cel::extensions::ProtoMemoryManager;
-using ::google::protobuf::Arena;
+namespace cel {
+namespace runtime_internal {
 
 const absl::Status* DurationOverflowError() {
   static const auto* const kDurationOverflow = new absl::Status(
@@ -36,81 +33,71 @@ absl::Status CreateNoMatchingOverloadError(absl::string_view fn) {
       absl::StrCat(kErrNoMatchingOverload, fn.empty() ? "" : " : ", fn));
 }
 
-const absl::Status* CreateNoMatchingOverloadError(cel::MemoryManager& manager,
-                                                  absl::string_view fn) {
-  return CreateNoMatchingOverloadError(
-      ProtoMemoryManager::CastToProtoArena(manager), fn);
-}
-
-const absl::Status* CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
-                                                  absl::string_view fn) {
-  return Arena::Create<absl::Status>(arena, CreateNoMatchingOverloadError(fn));
-}
-
-const absl::Status* CreateNoSuchFieldError(cel::MemoryManager& manager,
-                                           absl::string_view field) {
-  return CreateNoSuchFieldError(
-      extensions::ProtoMemoryManager::CastToProtoArena(manager), field);
-}
-
-const absl::Status* CreateNoSuchFieldError(google::protobuf::Arena* arena,
-                                           absl::string_view field) {
-  return Arena::Create<absl::Status>(arena, CreateNoSuchFieldError(field));
-}
-
 absl::Status CreateNoSuchFieldError(absl::string_view field) {
   return absl::Status(
       absl::StatusCode::kNotFound,
       absl::StrCat(kErrNoSuchField, field.empty() ? "" : " : ", field));
 }
 
+absl::Status CreateMissingAttributeError(
+    absl::string_view missing_attribute_path) {
+  absl::Status result = absl::InvalidArgumentError(
+      absl::StrCat(kErrMissingAttribute, missing_attribute_path));
+  result.SetPayload(kPayloadUrlMissingAttributePath,
+                    absl::Cord(missing_attribute_path));
+  return result;
+}
+
 absl::Status CreateNoSuchKeyError(absl::string_view key) {
   return absl::NotFoundError(absl::StrCat(kErrNoSuchKey, " : ", key));
 }
 
-const absl::Status* CreateNoSuchKeyError(cel::MemoryManager& manager,
-                                         absl::string_view key) {
-  return CreateNoSuchKeyError(
-      extensions::ProtoMemoryManager::CastToProtoArena(manager), key);
+absl::Status CreateUnknownFunctionResultError(absl::string_view help_message) {
+  absl::Status result = absl::UnavailableError(
+      absl::StrCat("Unknown function result: ", help_message));
+  result.SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
+  return result;
+}
+
+absl::Status CreateError(absl::string_view message, absl::StatusCode code) {
+  return absl::Status(code, message);
+}
+
+}  // namespace runtime_internal
+
+namespace interop_internal {
+
+using ::google::protobuf::Arena;
+
+const absl::Status* CreateNoMatchingOverloadError(google::protobuf::Arena* arena,
+                                                  absl::string_view fn) {
+  return Arena::Create<absl::Status>(
+      arena, runtime_internal::CreateNoMatchingOverloadError(fn));
+}
+
+const absl::Status* CreateNoSuchFieldError(google::protobuf::Arena* arena,
+                                           absl::string_view field) {
+  return Arena::Create<absl::Status>(
+      arena, runtime_internal::CreateNoSuchFieldError(field));
 }
 
 const absl::Status* CreateNoSuchKeyError(google::protobuf::Arena* arena,
                                          absl::string_view key) {
-  return Arena::Create<absl::Status>(arena, CreateNoSuchKeyError(key));
+  return Arena::Create<absl::Status>(
+      arena, runtime_internal::CreateNoSuchKeyError(key));
 }
 
 const absl::Status* CreateMissingAttributeError(
     google::protobuf::Arena* arena, absl::string_view missing_attribute_path) {
-  auto* error = Arena::Create<absl::Status>(
-      arena, absl::StatusCode::kInvalidArgument,
-      absl::StrCat(kErrMissingAttribute, missing_attribute_path));
-  error->SetPayload(kPayloadUrlMissingAttributePath,
-                    absl::Cord(missing_attribute_path));
-  return error;
-}
-
-const absl::Status* CreateMissingAttributeError(
-    cel::MemoryManager& manager, absl::string_view missing_attribute_path) {
-  // TODO(uncreated-issue/1): assume arena-style allocator while migrating
-  // to new value type.
-  return CreateMissingAttributeError(
-      extensions::ProtoMemoryManager::CastToProtoArena(manager),
-      missing_attribute_path);
-}
-
-const absl::Status* CreateUnknownFunctionResultError(
-    cel::MemoryManager& manager, absl::string_view help_message) {
-  return CreateUnknownFunctionResultError(
-      extensions::ProtoMemoryManager::CastToProtoArena(manager), help_message);
+  return Arena::Create<absl::Status>(
+      arena,
+      runtime_internal::CreateMissingAttributeError(missing_attribute_path));
 }
 
 const absl::Status* CreateUnknownFunctionResultError(
     google::protobuf::Arena* arena, absl::string_view help_message) {
-  auto* error = Arena::Create<absl::Status>(
-      arena, absl::StatusCode::kUnavailable,
-      absl::StrCat("Unknown function result: ", help_message));
-  error->SetPayload(kPayloadUrlUnknownFunctionResult, absl::Cord("true"));
-  return error;
+  return Arena::Create<absl::Status>(
+      arena, runtime_internal::CreateUnknownFunctionResultError(help_message));
 }
 
 const absl::Status* CreateError(google::protobuf::Arena* arena, absl::string_view message,
@@ -118,11 +105,5 @@ const absl::Status* CreateError(google::protobuf::Arena* arena, absl::string_vie
   return Arena::Create<absl::Status>(arena, code, message);
 }
 
-const absl::Status* CreateError(cel::MemoryManager& manager,
-                                absl::string_view message,
-                                absl::StatusCode code) {
-  return CreateError(extensions::ProtoMemoryManager::CastToProtoArena(manager),
-                     message, code);
-}
-
-}  // namespace cel::interop_internal
+}  // namespace interop_internal
+}  // namespace cel

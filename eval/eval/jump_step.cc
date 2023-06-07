@@ -4,16 +4,13 @@
 #include <memory>
 #include <utility>
 
-#include "google/protobuf/arena.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
 #include "base/values/bool_value.h"
 #include "base/values/error_value.h"
 #include "base/values/unknown_value.h"
-#include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
 
@@ -23,8 +20,7 @@ using ::cel::ErrorValue;
 using ::cel::Handle;
 using ::cel::UnknownValue;
 using ::cel::Value;
-using ::cel::interop_internal::CreateErrorValueFromView;
-using ::cel::interop_internal::CreateNoMatchingOverloadError;
+using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 class JumpStep : public JumpStepBase {
  public:
@@ -99,9 +95,8 @@ class BoolCheckJumpStep : public JumpStepBase {
     }
 
     // Neither bool, error, nor unknown set.
-    Handle<Value> error_value =
-        CreateErrorValueFromView(CreateNoMatchingOverloadError(
-            frame->memory_manager(), "<jump_condition>"));
+    Handle<Value> error_value = frame->value_factory().CreateErrorValue(
+        CreateNoMatchingOverloadError("<jump_condition>"));
 
     frame->value_stack().PopAndPush(std::move(error_value));
     return Jump(frame);

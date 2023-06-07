@@ -14,7 +14,6 @@
 #include "base/values/unknown_value.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
 
 namespace google::api::expr::runtime {
 
@@ -23,9 +22,7 @@ namespace {
 using ::cel::BoolValue;
 using ::cel::Handle;
 using ::cel::Value;
-using ::cel::interop_internal::CreateBoolValue;
-using ::cel::interop_internal::CreateErrorValueFromView;
-using ::cel::interop_internal::CreateNoMatchingOverloadError;
+using ::cel::runtime_internal::CreateNoMatchingOverloadError;
 
 class LogicalOpStep : public ExpressionStepBase {
  public:
@@ -58,9 +55,11 @@ class LogicalOpStep : public ExpressionStepBase {
     if (has_bool_args[0] && has_bool_args[1]) {
       switch (op_type_) {
         case OpType::AND:
-          return CreateBoolValue(bool_args[0] && bool_args[1]);
+          return frame->value_factory().CreateBoolValue(bool_args[0] &&
+                                                        bool_args[1]);
         case OpType::OR:
-          return CreateBoolValue(bool_args[0] || bool_args[1]);
+          return frame->value_factory().CreateBoolValue(bool_args[0] ||
+                                                        bool_args[1]);
       }
     }
 
@@ -84,9 +83,9 @@ class LogicalOpStep : public ExpressionStepBase {
     }
 
     // Fallback.
-    return CreateErrorValueFromView(CreateNoMatchingOverloadError(
-        frame->memory_manager(),
-        (op_type_ == OpType::OR) ? cel::builtin::kOr : cel::builtin::kAnd));
+    return frame->value_factory().CreateErrorValue(
+        CreateNoMatchingOverloadError(
+            (op_type_ == OpType::OR) ? cel::builtin::kOr : cel::builtin::kAnd));
   }
 
   const OpType op_type_;

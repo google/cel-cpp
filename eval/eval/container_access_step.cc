@@ -20,7 +20,6 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
 #include "internal/status_macros.h"
 #include "runtime/internal/number.h"
 
@@ -40,8 +39,7 @@ using ::cel::UintValue;
 using ::cel::Value;
 using ::cel::ValueKind;
 using ::cel::ValueKindToString;
-using ::cel::interop_internal::CreateNoSuchKeyError;
-using ::cel::interop_internal::CreateUnknownValueFromView;
+using ::cel::runtime_internal::CreateNoSuchKeyError;
 using ::cel::runtime_internal::Number;
 
 inline constexpr int kNumContainerAccessArguments = 2;
