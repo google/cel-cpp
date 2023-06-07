@@ -4,20 +4,18 @@
 #include <string>
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "absl/types/optional.h"
 #include "absl/utility/utility.h"
 #include "base/attribute.h"
-#include "base/memory.h"
 
 namespace google::api::expr::runtime {
 
 // AttributeTrail reflects current attribute path.
-// It is functionally similar to CelAttribute, yet intended to have better
+// It is functionally similar to cel::Attribute, yet intended to have better
 // complexity on attribute path increment operations.
 // TODO(issues/41) Current AttributeTrail implementation is equivalent to
-// CelAttribute - improve it.
-// Intended to be used in conjunction with CelValue, describing the attribute
+// cel::Attribute - improve it.
+// Intended to be used in conjunction with cel::Value, describing the attribute
 // value originated from.
 // Empty AttributeTrail denotes object with attribute path not defined
 // or supported.

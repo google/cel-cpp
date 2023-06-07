@@ -6,7 +6,6 @@
 #include "base/handle.h"
 #include "base/internal/unknown_set.h"
 #include "base/values/unknown_value.h"
-#include "extensions/protobuf/memory_manager.h"
 
 namespace google::api::expr::runtime {
 

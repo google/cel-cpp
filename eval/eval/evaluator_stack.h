@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/log/absl_log.h"
 #include "absl/types/span.h"
 #include "base/handle.h"
 #include "base/value.h"

@@ -61,6 +61,7 @@ cc_library(
         ":attribute_trail",
         "//base:data",
         "//base:handle",
+        "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -664,14 +665,8 @@ cc_library(
     hdrs = ["attribute_trail.h"],
     deps = [
         "//base:attributes",
-        "//base:memory",
-        "//eval/public:cel_attribute",
-        "//eval/public:cel_value",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/utility",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
 
@@ -703,7 +698,6 @@ cc_library(
         "//base:function_result_set",
         "//base:handle",
         "//base/internal:unknown_set",
-        "//extensions/protobuf:memory_manager",
         "@com_google_absl//absl/types:span",
     ],
 )
