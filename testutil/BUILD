@@ -35,7 +35,10 @@ cc_library(
         "util.h",
     ],
     deps = [
+        "//internal:casts",
         "//internal:testing",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
     ],

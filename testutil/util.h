@@ -1,12 +1,19 @@
 #ifndef THIRD_PARTY_CEL_CPP_TESTUTIL_EXPECT_SAME_TYPE_H_
 #define THIRD_PARTY_CEL_CPP_TESTUTIL_EXPECT_SAME_TYPE_H_
 
+#include <memory>
+#include <ostream>
 #include <string>
 
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 #include "gmock/gmock.h"
+#include "absl/log/absl_check.h"
+#include "absl/memory/memory.h"
 #include "absl/strings/string_view.h"
+#include "internal/casts.h"
+#include "google/protobuf/text_format.h"
+#include "google/protobuf/util/message_differencer.h"
 
 namespace google {
 namespace api {
@@ -21,41 +28,43 @@ struct ExpectSameType;
 template <typename T>
 struct ExpectSameType<T, T> {};
 
-// Creates a proto message of type T from a textual representation.
-template <typename T>
-T CreateProto(const std::string& textual_proto);
-
 /**
  * Simple implementation of a proto matcher comparing string representations.
  *
  * IMPORTANT: Only use this for protos whose textual representation is
  * deterministic (that may not be the case for the map collection type).
  */
-class ProtoStringMatcher {
+class TextProtoMatcher {
  public:
-  explicit inline ProtoStringMatcher(absl::string_view expected)
+  explicit inline TextProtoMatcher(absl::string_view expected)
       : expected_(expected) {}
 
-  explicit inline ProtoStringMatcher(const google::protobuf::Message& expected)
-      : expected_(expected.DebugString()),
-        expected_bytes_(expected.SerializeAsString()) {}
-
-  template <typename Message>
-  bool MatchAndExplain(const Message& p,
-                       ::testing::MatchResultListener* /* listener */) const;
-
-  bool MatchAndExplain(const google::protobuf::Message& p,
-                       ::testing::MatchResultListener* /* listener */) const {
-    return p.SerializeAsString() == expected_bytes_;
+  bool MatchAndExplain(const google::protobuf::MessageLite& p,
+                       ::testing::MatchResultListener* listener) const {
+    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message&>(p),
+                           listener);
   }
 
-  template <typename Message>
-  bool MatchAndExplain(const Message* p,
-                       ::testing::MatchResultListener* /* listener */) const;
-
   bool MatchAndExplain(const google::protobuf::MessageLite* p,
-                       ::testing::MatchResultListener* /* listener */) const {
-    return p->SerializeAsString() == expected_bytes_;
+                       ::testing::MatchResultListener* listener) const {
+    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message*>(p),
+                           listener);
+  }
+
+  bool MatchAndExplain(const google::protobuf::Message& p,
+                       ::testing::MatchResultListener* listener) const {
+    auto message = absl::WrapUnique(p.New());
+    ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(expected_, message.get()));
+    return google::protobuf::util::MessageDifferencer::Equals(
+        *message, cel::internal::down_cast<const google::protobuf::Message&>(p));
+  }
+
+  bool MatchAndExplain(const google::protobuf::Message* p,
+                       ::testing::MatchResultListener* listener) const {
+    auto message = absl::WrapUnique(p->New());
+    ABSL_CHECK(google::protobuf::TextFormat::ParseFromString(expected_, message.get()));
+    return google::protobuf::util::MessageDifferencer::Equals(
+        *message, cel::internal::down_cast<const google::protobuf::Message&>(*p));
   }
 
   inline void DescribeTo(::std::ostream* os) const { *os << expected_; }
@@ -65,46 +74,64 @@ class ProtoStringMatcher {
 
  private:
   const std::string expected_;
-  const std::string expected_bytes_;
+};
+
+/**
+ * Simple implementation of a proto matcher comparing string representations.
+ *
+ * IMPORTANT: Only use this for protos whose textual representation is
+ * deterministic (that may not be the case for the map collection type).
+ */
+class ProtoMatcher {
+ public:
+  explicit inline ProtoMatcher(const google::protobuf::Message& expected)
+      : expected_(expected.New()) {
+    expected_->CopyFrom(expected);
+  }
+
+  bool MatchAndExplain(const google::protobuf::MessageLite& p,
+                       ::testing::MatchResultListener* listener) const {
+    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message&>(p),
+                           listener);
+  }
+
+  bool MatchAndExplain(const google::protobuf::MessageLite* p,
+                       ::testing::MatchResultListener* listener) const {
+    return MatchAndExplain(cel::internal::down_cast<const google::protobuf::Message*>(p),
+                           listener);
+  }
+
+  bool MatchAndExplain(const google::protobuf::Message& p,
+                       ::testing::MatchResultListener* /* listener */) const {
+    return google::protobuf::util::MessageDifferencer::Equals(*expected_, p);
+  }
+
+  bool MatchAndExplain(const google::protobuf::Message* p,
+                       ::testing::MatchResultListener* /* listener */) const {
+    return google::protobuf::util::MessageDifferencer::Equals(*expected_, *p);
+  }
+
+  inline void DescribeTo(::std::ostream* os) const {
+    *os << expected_->DebugString();
+  }
+  inline void DescribeNegationTo(::std::ostream* os) const {
+    *os << "not equal to expected message: " << expected_->DebugString();
+  }
+
+ private:
+  std::shared_ptr<google::protobuf::Message> expected_;
 };
 
 // Polymorphic matcher to compare any two protos.
-inline ::testing::PolymorphicMatcher<ProtoStringMatcher> EqualsProto(
+inline ::testing::PolymorphicMatcher<TextProtoMatcher> EqualsProto(
     absl::string_view x) {
-  return ::testing::MakePolymorphicMatcher(ProtoStringMatcher(x));
+  return ::testing::MakePolymorphicMatcher(TextProtoMatcher(x));
 }
 
 // Polymorphic matcher to compare any two protos.
-inline ::testing::PolymorphicMatcher<ProtoStringMatcher> EqualsProto(
+inline ::testing::PolymorphicMatcher<ProtoMatcher> EqualsProto(
     const google::protobuf::Message& x) {
-  return ::testing::MakePolymorphicMatcher(ProtoStringMatcher(x));
-}
-
-template <typename T>
-T CreateProto(const std::string& textual_proto) {
-  T proto;
-  google::protobuf::TextFormat::ParseFromString(textual_proto, &proto);
-  return proto;
-}
-
-template <typename Message>
-bool ProtoStringMatcher::MatchAndExplain(
-    const Message& p, ::testing::MatchResultListener* /* listener */) const {
-  // Need to CreateProto and then print as std::string so that the formatting
-  // matches exactly.
-  return p.SerializeAsString() ==
-         CreateProto<Message>(expected_).SerializeAsString();
-}
-
-template <typename Message>
-bool ProtoStringMatcher::MatchAndExplain(
-    const Message* p, ::testing::MatchResultListener* /* listener */) const {
-  // Need to CreateProto and then print as std::string so that the formatting
-  // matches exactly.
-  std::unique_ptr<google::protobuf::Message> value;
-  value.reset(p->New());
-  google::protobuf::TextFormat::ParseFromString(expected_, value.get());
-  return p->SerializeAsString() == value->SerializeAsString();
+  return ::testing::MakePolymorphicMatcher(ProtoMatcher(x));
 }
 
 }  // namespace testutil
