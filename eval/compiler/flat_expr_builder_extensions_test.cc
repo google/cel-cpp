@@ -29,9 +29,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::ast::internal::Constant;
 using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::NullValue;
 using testing::ElementsAre;
 using testing::IsEmpty;
 using cel::internal::StatusIs;
@@ -68,13 +66,14 @@ MATCHER_P(UniquePtrHolds, ptr, "") {
 //   / \
 //  b   c
 absl::StatusOr<ExecutionPath> InitSimpleTree(
-    const Expr& a, const Expr& b, Expr& c, PlannerContext::ProgramTree& tree) {
-  Constant null;
-  null.set_null_value(NullValue::kNullValue);
-
-  CEL_ASSIGN_OR_RETURN(auto a_step, CreateConstValueStep(null, -1));
-  CEL_ASSIGN_OR_RETURN(auto b_step, CreateConstValueStep(null, -1));
-  CEL_ASSIGN_OR_RETURN(auto c_step, CreateConstValueStep(null, -1));
+    const Expr& a, const Expr& b, const Expr& c,
+    cel::ValueFactory& value_factory, PlannerContext::ProgramTree& tree) {
+  CEL_ASSIGN_OR_RETURN(auto a_step,
+                       CreateConstValueStep(value_factory.GetNullValue(), -1));
+  CEL_ASSIGN_OR_RETURN(auto b_step,
+                       CreateConstValueStep(value_factory.GetNullValue(), -1));
+  CEL_ASSIGN_OR_RETURN(auto c_step,
+                       CreateConstValueStep(value_factory.GetNullValue(), -1));
 
   ExecutionPath path;
   path.push_back(std::move(b_step));
@@ -105,7 +104,8 @@ TEST_F(PlannerContextTest, GetPlan) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   const ExpressionStep* b_step_ptr = path[0].get();
   const ExpressionStep* c_step_ptr = path[1].get();
@@ -132,7 +132,8 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   const ExpressionStep* b_step_ptr = path[0].get();
   const ExpressionStep* c_step_ptr = path[1].get();
@@ -146,9 +147,9 @@ TEST_F(PlannerContextTest, ReplacePlan) {
                                                  UniquePtrHolds(a_step_ptr)));
 
   ExecutionPath new_a;
-  Constant null;
-  null.set_null_value(NullValue::kNullValue);
-  ASSERT_OK_AND_ASSIGN(auto new_a_step, CreateConstValueStep(null, -1));
+
+  ASSERT_OK_AND_ASSIGN(auto new_a_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
   const ExpressionStep* new_a_step_ptr = new_a_step.get();
   new_a.push_back(std::move(new_a_step));
 
@@ -165,7 +166,8 @@ TEST_F(PlannerContextTest, ExtractPlan) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   const ExpressionStep* b_step_ptr = path[0].get();
   const ExpressionStep* c_step_ptr = path[1].get();
@@ -191,7 +193,8 @@ TEST_F(PlannerContextTest, ExtractPlanFailsOnUnfinishedNode) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   // Mark a incomplete.
   tree[&a].range_len = -1;
@@ -208,7 +211,8 @@ TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
                          path, tree);
@@ -224,7 +228,8 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   const ExpressionStep* b_step_ptr = path[0].get();
   const ExpressionStep* c_step_ptr = path[1].get();
@@ -250,7 +255,8 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   const ExpressionStep* b_step_ptr = path[0].get();
   const ExpressionStep* c_step_ptr = path[1].get();
@@ -264,12 +270,13 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
                                                  UniquePtrHolds(a_step_ptr)));
 
   ExecutionPath new_b;
-  Constant null;
-  null.set_null_value(NullValue::kNullValue);
-  ASSERT_OK_AND_ASSIGN(auto b1_step, CreateConstValueStep(null, -1));
+
+  ASSERT_OK_AND_ASSIGN(auto b1_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
   const ExpressionStep* b1_step_ptr = b1_step.get();
   new_b.push_back(std::move(b1_step));
-  ASSERT_OK_AND_ASSIGN(auto b2_step, CreateConstValueStep(null, -1));
+  ASSERT_OK_AND_ASSIGN(auto b2_step,
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
   const ExpressionStep* b2_step_ptr = b2_step.get();
   new_b.push_back(std::move(b2_step));
 
@@ -290,7 +297,8 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   const ExpressionStep* b_step_ptr = path[0].get();
   const ExpressionStep* c_step_ptr = path[1].get();
@@ -314,7 +322,8 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUnfinishedNode) {
   Expr c;
   PlannerContext::ProgramTree tree;
 
-  ASSERT_OK_AND_ASSIGN(ExecutionPath path, InitSimpleTree(a, b, c, tree));
+  ASSERT_OK_AND_ASSIGN(ExecutionPath path,
+                       InitSimpleTree(a, b, c, value_factory_, tree));
 
   tree[&a].range_len = -1;
 

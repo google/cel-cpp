@@ -34,11 +34,11 @@ constexpr absl::string_view kPayloadUrlMissingAttributePath =
 constexpr absl::string_view kPayloadUrlUnknownFunctionResult =
     "cel_is_unknown_function_result";
 
-const absl::Status* DurationOverflowError();
-
 // Exclusive bounds for valid duration values.
 constexpr absl::Duration kDurationHigh = absl::Seconds(315576000001);
 constexpr absl::Duration kDurationLow = absl::Seconds(-315576000001);
+
+const absl::Status* DurationOverflowError();
 
 // At runtime, no matching overload could be found for a function invocation.
 absl::Status CreateNoMatchingOverloadError(absl::string_view fn);

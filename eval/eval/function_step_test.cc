@@ -14,6 +14,7 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/eval/ident_step.h"
+#include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/cel_function.h"
@@ -475,9 +476,13 @@ TEST_P(FunctionStepTest, LazyFunctionOverloadingTest) {
   lt_call.mutable_args().emplace_back();
   lt_call.set_function("_<_");
 
-  ASSERT_OK_AND_ASSIGN(auto step0, CreateConstValueStep(lhs, -1));
+  ASSERT_OK_AND_ASSIGN(
+      auto step0,
+      CreateConstValueStep(cel::interop_internal::CreateIntValue(20), -1));
   ASSERT_OK_AND_ASSIGN(auto step1, MakeTestFunctionStep(call1, registry));
-  ASSERT_OK_AND_ASSIGN(auto step2, CreateConstValueStep(rhs, -1));
+  ASSERT_OK_AND_ASSIGN(
+      auto step2,
+      CreateConstValueStep(cel::interop_internal::CreateDoubleValue(21.9), -1));
   ASSERT_OK_AND_ASSIGN(auto step3, MakeTestFunctionStep(call2, registry));
   ASSERT_OK_AND_ASSIGN(auto step4, MakeTestFunctionStep(lt_call, registry));
 

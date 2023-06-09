@@ -205,11 +205,12 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
           reference_map,
-      ExecutionPath& path, BuilderWarnings& warnings,
-      PlannerContext::ProgramTree& program_tree,
+      ExecutionPath& path, ValueFactory& value_factory,
+      BuilderWarnings& warnings, PlannerContext::ProgramTree& program_tree,
       PlannerContext& extension_context)
       : resolver_(resolver),
         execution_path_(path),
+        value_factory_(value_factory),
         progress_status_(absl::OkStatus()),
         resolved_select_expr_(nullptr),
         parent_expr_(nullptr),
@@ -280,7 +281,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
       return;
     }
 
-    AddStep(CreateConstValueStep(*const_expr, expr->id()));
+    AddStep(CreateConstValueStep(*const_expr, expr->id(), value_factory_));
   }
 
   // Ident node handler.
@@ -704,6 +705,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
  private:
   const Resolver& resolver_;
   ExecutionPath& execution_path_;
+  ValueFactory& value_factory_;
   absl::Status progress_status_;
 
   std::stack<
@@ -1169,7 +1171,8 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   FlatExprVisitor visitor(resolver, options_, constant_idents,
                           enable_comprehension_vulnerability_check_, optimizers,
                           ast_impl.reference_map(), execution_path,
-                          warnings_builder, program_tree, extension_context);
+                          value_factory, warnings_builder, program_tree,
+                          extension_context);
 
   AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
 

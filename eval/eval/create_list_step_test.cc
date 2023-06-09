@@ -4,13 +4,13 @@
 #include <utility>
 #include <vector>
 
-#include "google/protobuf/descriptor.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
+#include "eval/internal/interop.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_attribute.h"
 #include "eval/public/unknown_attribute_set.h"
@@ -41,7 +41,8 @@ absl::StatusOr<CelValue> RunExpression(const std::vector<int64_t>& values,
     expr0.mutable_const_expr().set_int64_value(value);
     CEL_ASSIGN_OR_RETURN(
         auto const_step,
-        CreateConstValueStep(ConvertConstant(expr0.const_expr()), expr0.id()));
+        CreateConstValueStep(cel::interop_internal::CreateIntValue(value),
+                             /*expr_id=*/-1));
     path.push_back(std::move(const_step));
   }
 

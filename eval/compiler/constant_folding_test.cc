@@ -38,8 +38,6 @@ namespace cel::ast::internal {
 
 namespace {
 
-using ::cel::ast::internal::Constant;
-using ::cel::ast::internal::ConstantKind;
 using ::cel::extensions::ProtoMemoryManager;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
 using ::google::api::expr::v1alpha1::ParsedExpr;
@@ -600,19 +598,21 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   // version of ternary.
   ExecutionPath path;
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(true)), -1));
-
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(true)), -1));
-
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(false)), -1));
-
-  // Just a placeholder.
   ASSERT_OK_AND_ASSIGN(
       path.emplace_back(),
-      CreateConstValueStep(Constant(NullValue::kNullValue), -1));
+      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+
+  // Just a placeholder.
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
   PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
                          path, tree);
@@ -669,16 +669,17 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   // version of ternary.
   ExecutionPath path;
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(false)), -1));
-
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(true)), -1));
-
-  // Just a placeholder.
   ASSERT_OK_AND_ASSIGN(
       path.emplace_back(),
-      CreateConstValueStep(Constant(NullValue::kNullValue), -1));
+      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+
+  // Just a placeholder.
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
   PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
                          path, tree);
@@ -733,16 +734,17 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   // version of ternary.
   ExecutionPath path;
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(true)), -1));
-
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(false)), -1));
-
-  // Just a placeholder.
   ASSERT_OK_AND_ASSIGN(
       path.emplace_back(),
-      CreateConstValueStep(Constant(NullValue::kNullValue), -1));
+      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+
+  // Just a placeholder.
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
   PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
                          path, tree);
@@ -794,11 +796,13 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   elem_two_info.parent = &create_list;
 
   ExecutionPath path;
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(1L)), 1));
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
 
   // Insert the list creation step
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
@@ -854,11 +858,13 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   value_info.parent = &create_map;
 
   ExecutionPath path;
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(1L)), 1));
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateIntValue(1L), 1));
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
 
   // Insert the map creation step
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
@@ -914,11 +920,13 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   value_info.parent = &create_map;
 
   ExecutionPath path;
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(1.0)), 1));
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateDoubleValue(1.0), 1));
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(2L)), 2));
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateIntValue(2L), 2));
 
   // Insert the map creation step
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
@@ -977,16 +985,17 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   // version of ternary.
   ExecutionPath path;
 
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(true)), -1));
-
-  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
-                       CreateConstValueStep(Constant(ConstantKind(false)), -1));
-
-  // Just a placeholder.
   ASSERT_OK_AND_ASSIGN(
       path.emplace_back(),
-      CreateConstValueStep(Constant(NullValue::kNullValue), -1));
+      CreateConstValueStep(value_factory_.CreateBoolValue(true), -1));
+
+  ASSERT_OK_AND_ASSIGN(
+      path.emplace_back(),
+      CreateConstValueStep(value_factory_.CreateBoolValue(false), -1));
+
+  // Just a placeholder.
+  ASSERT_OK_AND_ASSIGN(path.emplace_back(),
+                       CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
   PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
                          path, tree);

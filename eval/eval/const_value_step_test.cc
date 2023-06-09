@@ -2,17 +2,24 @@
 
 #include <utility>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/ast_internal.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
+#include "eval/internal/errors.h"
 #include "eval/public/activation.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/testing/matchers.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
+#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -22,16 +29,15 @@ using ::cel::TypeProvider;
 using ::cel::ast::internal::Constant;
 using ::cel::ast::internal::Expr;
 using ::cel::ast::internal::NullValue;
-using ::google::protobuf::Arena;
 using testing::Eq;
+using testing::HasSubstr;
+using cel::internal::StatusIs;
 
-absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
-                                               const Constant& const_expr,
-                                               Arena* arena) {
+absl::StatusOr<CelValue> RunConstantExpression(
+    const Expr* expr, const Constant& const_expr, google::protobuf::Arena* arena,
+    cel::ValueFactory& value_factory) {
   CEL_ASSIGN_OR_RETURN(
-      auto step,
-      CreateConstValueStep(
-          google::api::expr::runtime::ConvertConstant(const_expr), expr->id()));
+      auto step, CreateConstValueStep(const_expr, expr->id(), value_factory));
 
   google::api::expr::runtime::ExecutionPath path;
   path.push_back(std::move(step));
@@ -44,14 +50,29 @@ absl::StatusOr<CelValue> RunConstantExpression(const Expr* expr,
   return impl.Evaluate(activation, arena);
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstInt64) {
+class ConstValueStepTest : public ::testing::Test {
+ public:
+  ConstValueStepTest()
+      : manager_(&arena_),
+        type_factory_(manager_),
+        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
+        value_factory_(type_manager_) {}
+
+ protected:
+  google::protobuf::Arena arena_;
+  cel::extensions::ProtoMemoryManager manager_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
+};
+
+TEST_F(ConstValueStepTest, TestEvaluationConstInt64) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_int64_value(1);
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -61,14 +82,13 @@ TEST(ConstValueStepTest, TestEvaluationConstInt64) {
   EXPECT_THAT(value.Int64OrDie(), Eq(1));
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstUint64) {
+TEST_F(ConstValueStepTest, TestEvaluationConstUint64) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_uint64_value(1);
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -78,14 +98,13 @@ TEST(ConstValueStepTest, TestEvaluationConstUint64) {
   EXPECT_THAT(value.Uint64OrDie(), Eq(1));
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstBool) {
+TEST_F(ConstValueStepTest, TestEvaluationConstBool) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_bool_value(true);
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -95,14 +114,13 @@ TEST(ConstValueStepTest, TestEvaluationConstBool) {
   EXPECT_THAT(value.BoolOrDie(), Eq(true));
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstNull) {
+TEST_F(ConstValueStepTest, TestEvaluationConstNull) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_null_value(NullValue::kNullValue);
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -111,14 +129,13 @@ TEST(ConstValueStepTest, TestEvaluationConstNull) {
   EXPECT_TRUE(value.IsNull());
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstString) {
+TEST_F(ConstValueStepTest, TestEvaluationConstString) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_string_value("test");
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -128,14 +145,13 @@ TEST(ConstValueStepTest, TestEvaluationConstString) {
   EXPECT_THAT(value.StringOrDie().value(), Eq("test"));
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstDouble) {
+TEST_F(ConstValueStepTest, TestEvaluationConstDouble) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_double_value(1.0);
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -147,14 +163,13 @@ TEST(ConstValueStepTest, TestEvaluationConstDouble) {
 
 // Test Bytes constant
 // For now, bytes are equivalent to string.
-TEST(ConstValueStepTest, TestEvaluationConstBytes) {
+TEST_F(ConstValueStepTest, TestEvaluationConstBytes) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_bytes_value("test");
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -164,14 +179,13 @@ TEST(ConstValueStepTest, TestEvaluationConstBytes) {
   EXPECT_THAT(value.BytesOrDie().value(), Eq("test"));
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstDuration) {
+TEST_F(ConstValueStepTest, TestEvaluationConstDuration) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_duration_value(absl::Seconds(5) + absl::Nanoseconds(2000));
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 
@@ -181,15 +195,31 @@ TEST(ConstValueStepTest, TestEvaluationConstDuration) {
               test::IsCelDuration(absl::Seconds(5) + absl::Nanoseconds(2000)));
 }
 
-TEST(ConstValueStepTest, TestEvaluationConstTimestamp) {
+TEST_F(ConstValueStepTest, TestEvaluationConstDurationOutOfRange) {
+  Expr expr;
+  auto& const_expr = expr.mutable_const_expr();
+  const_expr.set_duration_value(cel::runtime_internal::kDurationHigh);
+
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
+
+  ASSERT_OK(status);
+
+  auto value = status.value();
+
+  EXPECT_THAT(value,
+              test::IsCelError(StatusIs(absl::StatusCode::kInvalidArgument,
+                                        HasSubstr("out of range"))));
+}
+
+TEST_F(ConstValueStepTest, TestEvaluationConstTimestamp) {
   Expr expr;
   auto& const_expr = expr.mutable_const_expr();
   const_expr.set_time_value(absl::FromUnixSeconds(3600) +
                             absl::Nanoseconds(1000));
 
-  google::protobuf::Arena arena;
-
-  auto status = RunConstantExpression(&expr, const_expr, &arena);
+  auto status =
+      RunConstantExpression(&expr, const_expr, &arena_, value_factory_);
 
   ASSERT_OK(status);
 

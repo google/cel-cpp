@@ -8,74 +8,73 @@
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
 #include "base/ast_internal.h"
+#include "base/value_factory.h"
 #include "eval/eval/compiler_constant_step.h"
-#include "eval/eval/expression_step_base.h"
-#include "eval/internal/interop.h"
+#include "eval/internal/errors.h"
 
 namespace google::api::expr::runtime {
 
 namespace {
 
 using ::cel::ast::internal::Constant;
+using ::cel::runtime_internal::DurationOverflowError;
+using ::cel::runtime_internal::kDurationHigh;
+using ::cel::runtime_internal::kDurationLow;
 
-class ConstValueStep : public ExpressionStepBase {
- public:
-  ConstValueStep(const Constant& expr, int64_t expr_id, bool comes_from_ast)
-      : ExpressionStepBase(expr_id, comes_from_ast),
-        const_expr_(expr),
-        value_(ConvertConstant(const_expr_)) {}
-
-  absl::Status Evaluate(ExecutionFrame* frame) const override;
-
- private:
-  // Maintain a copy of the source constant to avoid lifecycle dependence on the
-  // ast after planning.
-  cel::ast::internal::Constant const_expr_;
-  cel::Handle<cel::Value> value_;
-};
-
-absl::Status ConstValueStep::Evaluate(ExecutionFrame* frame) const {
-  frame->value_stack().Push(value_);
-
-  return absl::OkStatus();
+// Adapt AST constant to a handle.
+//
+// Underlying data is copied for string types to keep the program independent
+// from the input AST.
+//
+// The evaluator assumes most ast constants are valid so we use the unchecked
+// versions here.
+//
+// A status may still be returned if value creation fails according to the
+// value_factory policy.
+absl::StatusOr<cel::Handle<cel::Value>> ConvertConstant(
+    const Constant& const_expr, cel::ValueFactory& value_factory) {
+  struct {
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(
+        const cel::ast::internal::NullValue& value) {
+      return value_factory.GetNullValue();
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(bool value) {
+      return value_factory.CreateBoolValue(value);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(int64_t value) {
+      return value_factory.CreateIntValue(value);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(uint64_t value) {
+      return value_factory.CreateUintValue(value);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(double value) {
+      return value_factory.CreateDoubleValue(value);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(
+        const std::string& value) {
+      return value_factory.CreateUncheckedStringValue(value);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(
+        const cel::ast::internal::Bytes& value) {
+      return value_factory.CreateBytesValue(value.bytes);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(
+        const absl::Duration duration) {
+      if (duration >= kDurationHigh || duration <= kDurationLow) {
+        return value_factory.CreateErrorValue(*DurationOverflowError());
+      }
+      return value_factory.CreateUncheckedDurationValue(duration);
+    }
+    absl::StatusOr<cel::Handle<cel::Value>> operator()(
+        const absl::Time timestamp) {
+      return value_factory.CreateUncheckedTimestampValue(timestamp);
+    }
+    cel::ValueFactory& value_factory;
+  } handler{value_factory};
+  return absl::visit(handler, const_expr.constant_kind());
 }
 
 }  // namespace
-
-cel::Handle<cel::Value> ConvertConstant(
-    const cel::ast::internal::Constant& const_expr) {
-  struct {
-    cel::Handle<cel::Value> operator()(
-        const cel::ast::internal::NullValue& value) {
-      return cel::interop_internal::CreateNullValue();
-    }
-    cel::Handle<cel::Value> operator()(bool value) {
-      return cel::interop_internal::CreateBoolValue(value);
-    }
-    cel::Handle<cel::Value> operator()(int64_t value) {
-      return cel::interop_internal::CreateIntValue(value);
-    }
-    cel::Handle<cel::Value> operator()(uint64_t value) {
-      return cel::interop_internal::CreateUintValue(value);
-    }
-    cel::Handle<cel::Value> operator()(double value) {
-      return cel::interop_internal::CreateDoubleValue(value);
-    }
-    cel::Handle<cel::Value> operator()(const std::string& value) {
-      return cel::interop_internal::CreateStringValueFromView(value);
-    }
-    cel::Handle<cel::Value> operator()(const cel::ast::internal::Bytes& value) {
-      return cel::interop_internal::CreateBytesValueFromView(value.bytes);
-    }
-    cel::Handle<cel::Value> operator()(const absl::Duration duration) {
-      return cel::interop_internal::CreateDurationValue(duration);
-    }
-    cel::Handle<cel::Value> operator()(const absl::Time timestamp) {
-      return cel::interop_internal::CreateTimestampValue(timestamp);
-    }
-  } handler;
-  return absl::visit(handler, const_expr.constant_kind());
-}
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
     cel::Handle<cel::Value> value, int64_t expr_id, bool comes_from_ast) {
@@ -84,8 +83,13 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const Constant& value, int64_t expr_id, bool comes_from_ast) {
-  return std::make_unique<ConstValueStep>(value, expr_id, comes_from_ast);
+    const Constant& value, int64_t expr_id, cel::ValueFactory& value_factory,
+    bool comes_from_ast) {
+  CEL_ASSIGN_OR_RETURN(cel::Handle<cel::Value> converted_value,
+                       ConvertConstant(value, value_factory));
+
+  return std::make_unique<CompilerConstantStep>(std::move(converted_value),
+                                                expr_id, comes_from_ast);
 }
 
 }  // namespace google::api::expr::runtime
