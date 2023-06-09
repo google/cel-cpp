@@ -1,26 +1,23 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/ast.h"
+#include "base/builtins.h"
 #include "base/internal/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
-#include "eval/eval/const_value_step.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/source_position_native.h"
-#include "internal/status_macros.h"
 
 namespace google::api::expr::runtime {
 
@@ -33,8 +30,10 @@ using ::cel::ast::internal::SourcePosition;
 // Determines if function is implemented with custom evaluation step instead of
 // registered.
 bool IsSpecialFunction(absl::string_view function_name) {
-  return function_name == builtin::kAnd || function_name == builtin::kOr ||
-         function_name == builtin::kIndex || function_name == builtin::kTernary;
+  return function_name == cel::builtin::kAnd ||
+         function_name == cel::builtin::kOr ||
+         function_name == cel::builtin::kIndex ||
+         function_name == cel::builtin::kTernary;
 }
 
 bool OverloadExists(const Resolver& resolver, absl::string_view name,

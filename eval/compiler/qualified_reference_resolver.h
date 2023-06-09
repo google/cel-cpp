@@ -1,12 +1,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_COMPILER_QUALIFIED_REFERENCE_RESOLVER_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_COMPILER_QUALIFIED_REFERENCE_RESOLVER_H_
 
-#include <cstdint>
 #include <memory>
 
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "base/ast_internal.h"
+#include "base/internal/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"

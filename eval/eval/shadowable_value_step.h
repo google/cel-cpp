@@ -9,7 +9,6 @@
 #include "base/handle.h"
 #include "base/value.h"
 #include "eval/eval/evaluator_core.h"
-#include "eval/public/cel_value.h"
 
 namespace google::api::expr::runtime {
 
