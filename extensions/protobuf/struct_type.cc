@@ -20,6 +20,7 @@
 
 #include "absl/base/attributes.h"
 #include "absl/base/optimization.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/functional/function_ref.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/die_if_null.h"
@@ -32,6 +33,7 @@
 #include "base/values/struct_value_builder.h"
 #include "eval/internal/errors.h"
 #include "extensions/protobuf/enum_type.h"
+#include "extensions/protobuf/internal/map_reflection.h"
 #include "extensions/protobuf/internal/reflection.h"
 #include "extensions/protobuf/internal/time.h"
 #include "extensions/protobuf/internal/wrappers.h"
@@ -280,6 +282,7 @@ struct CheckedCast<uint64_t, uint32_t> {
   }
 };
 
+// TODO(uncreated-issue/47): handle subtle implicit conversions around mixed numeric
 class ProtoStructValueBuilder final : public StructValueBuilderInterface {
  public:
   ProtoStructValueBuilder(ValueFactory& value_factory,
@@ -329,7 +332,11 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         static_cast<const google::protobuf::FieldDescriptor*>(field.hint);
     const auto* reflect = message_->GetReflection();
     if (field_desc->is_map()) {
-      return SetMapField(field, *reflect, *field_desc, std::move(value));
+      if (ABSL_PREDICT_FALSE(!value->Is<MapValue>())) {
+        return TypeConversionError(*field.type, *value->type());
+      }
+      return SetMapField(field, *reflect, *field_desc,
+                         std::move(value).As<MapValue>());
     }
     if (field_desc->is_repeated()) {
       if (ABSL_PREDICT_FALSE(!value->Is<ListValue>())) {
@@ -341,13 +348,520 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     return SetSingularField(field, *reflect, *field_desc, std::move(value));
   }
 
+  static absl::StatusOr<
+      absl::AnyInvocable<absl::Status(const Value&, google::protobuf::MapKey&)>>
+  GetMapFieldKeyConverter(
+      const google::protobuf::FieldDescriptor& field_desc, const Type& from_key_type,
+      const Type& to_key_type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    switch (field_desc.type()) {
+      case google::protobuf::FieldDescriptor::TYPE_BOOL:
+        if (ABSL_PREDICT_FALSE(!from_key_type.Is<BoolType>() &&
+                               !from_key_type.Is<DynType>())) {
+          return TypeConversionError(from_key_type, to_key_type);
+        }
+        return [&to_key_type](const Value& value,
+                              google::protobuf::MapKey& key) -> absl::Status {
+          if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
+            return TypeConversionError(*value.type(), to_key_type);
+          }
+          key.SetBoolValue(value.As<BoolValue>().value());
+          return absl::OkStatus();
+        };
+      case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_SINT32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_INT32:
+        if (ABSL_PREDICT_FALSE(!from_key_type.Is<IntType>() &&
+                               !from_key_type.Is<DynType>())) {
+          return TypeConversionError(from_key_type, to_key_type);
+        }
+        return [&to_key_type](const Value& value,
+                              google::protobuf::MapKey& key) -> absl::Status {
+          if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
+            return TypeConversionError(*value.type(), to_key_type);
+          }
+          CEL_ASSIGN_OR_RETURN(auto raw_value,
+                               (CheckedCast<int64_t, int32_t>::Cast(
+                                   value.As<IntValue>().value())));
+          key.SetInt32Value(raw_value);
+          return absl::OkStatus();
+        };
+      case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_SINT64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_INT64:
+        if (ABSL_PREDICT_FALSE(!from_key_type.Is<IntType>() &&
+                               !from_key_type.Is<DynType>())) {
+          return TypeConversionError(from_key_type, to_key_type);
+        }
+        return [&to_key_type](const Value& value,
+                              google::protobuf::MapKey& key) -> absl::Status {
+          if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
+            return TypeConversionError(*value.type(), to_key_type);
+          }
+          key.SetInt64Value(value.As<IntValue>().value());
+          return absl::OkStatus();
+        };
+      case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_UINT32:
+        if (ABSL_PREDICT_FALSE(!from_key_type.Is<UintType>() &&
+                               !from_key_type.Is<DynType>())) {
+          return TypeConversionError(from_key_type, to_key_type);
+        }
+        return [&to_key_type](const Value& value,
+                              google::protobuf::MapKey& key) -> absl::Status {
+          if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
+            return TypeConversionError(*value.type(), to_key_type);
+          }
+          CEL_ASSIGN_OR_RETURN(auto raw_value,
+                               (CheckedCast<uint64_t, uint32_t>::Cast(
+                                   value.As<UintValue>().value())));
+          key.SetUInt32Value(raw_value);
+          return absl::OkStatus();
+        };
+      case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_UINT64:
+        if (ABSL_PREDICT_FALSE(!from_key_type.Is<UintType>() &&
+                               !from_key_type.Is<DynType>())) {
+          return TypeConversionError(from_key_type, to_key_type);
+        }
+        return [&to_key_type](const Value& value,
+                              google::protobuf::MapKey& key) -> absl::Status {
+          if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
+            return TypeConversionError(*value.type(), to_key_type);
+          }
+          key.SetUInt64Value(value.As<UintValue>().value());
+          return absl::OkStatus();
+        };
+      case google::protobuf::FieldDescriptor::TYPE_STRING:
+        if (ABSL_PREDICT_FALSE(!from_key_type.Is<StringType>() &&
+                               !from_key_type.Is<DynType>())) {
+          return TypeConversionError(from_key_type, to_key_type);
+        }
+        return [&to_key_type](const Value& value,
+                              google::protobuf::MapKey& key) -> absl::Status {
+          if (ABSL_PREDICT_FALSE(!value.Is<StringValue>())) {
+            return TypeConversionError(*value.type(), to_key_type);
+          }
+          key.SetStringValue(value.As<StringValue>().ToString());
+          return absl::OkStatus();
+        };
+      default:
+        return absl::InternalError(
+            absl::StrCat("unexpected protocol buffer map field key type: ",
+                         google::protobuf::FieldDescriptor::TypeName(field_desc.type())));
+    }
+  }
+
+  static absl::StatusOr<
+      absl::AnyInvocable<absl::Status(const Value&, google::protobuf::MapValueRef&)>>
+  GetMapFieldValueConverter(
+      const google::protobuf::FieldDescriptor& field_desc, const Type& from_value_type,
+      const Type& to_value_type ABSL_ATTRIBUTE_LIFETIME_BOUND) {
+    switch (field_desc.type()) {
+      case google::protobuf::FieldDescriptor::TYPE_BOOL:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<BoolType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              value_ref.SetBoolValue(value.As<BoolValue>().value());
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_SFIXED32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_SINT32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_INT32:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<IntType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              CEL_ASSIGN_OR_RETURN(auto raw_value,
+                                   (CheckedCast<int64_t, int32_t>::Cast(
+                                       value.As<IntValue>().value())));
+              value_ref.SetInt32Value(raw_value);
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_SFIXED64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_SINT64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_INT64:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<IntType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              value_ref.SetInt64Value(value.As<IntValue>().value());
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_FIXED32:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_UINT32:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<UintType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              CEL_ASSIGN_OR_RETURN(auto raw_value,
+                                   (CheckedCast<uint64_t, uint32_t>::Cast(
+                                       value.As<UintValue>().value())));
+              value_ref.SetUInt32Value(raw_value);
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_FIXED64:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_UINT64:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<UintType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              value_ref.SetUInt64Value(value.As<UintValue>().value());
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_STRING:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<StringType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<StringValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              value_ref.SetStringValue(value.As<StringValue>().ToString());
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_BYTES:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<BytesType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<BytesValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              value_ref.SetStringValue(value.As<BytesValue>().ToString());
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_FLOAT:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<DoubleType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              CEL_ASSIGN_OR_RETURN(auto raw_value,
+                                   (CheckedCast<double, float>::Cast(
+                                       value.As<DoubleValue>().value())));
+              value_ref.SetFloatValue(raw_value);
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_DOUBLE:
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<DoubleType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              value_ref.SetDoubleValue(value.As<DoubleValue>().value());
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_ENUM:
+        if (to_value_type.Is<NullType>()) {
+          if (ABSL_PREDICT_FALSE(!from_value_type.Is<NullType>() &&
+                                 !from_value_type.Is<DynType>())) {
+            return TypeConversionError(from_value_type, to_value_type);
+          }
+          return
+              [&to_value_type](const Value& value,
+                               google::protobuf::MapValueRef& value_ref) -> absl::Status {
+                if (ABSL_PREDICT_FALSE(!value.Is<NullValue>())) {
+                  return TypeConversionError(*value.type(), to_value_type);
+                }
+                value_ref.SetEnumValue(google::protobuf::NULL_VALUE);
+                return absl::OkStatus();
+              };
+        }
+        if (ABSL_PREDICT_FALSE(!from_value_type.Is<EnumType>() &&
+                               !from_value_type.Is<IntType>() &&
+                               !from_value_type.Is<DynType>())) {
+          return TypeConversionError(from_value_type, to_value_type);
+        }
+        return
+            [&to_value_type](const Value& value,
+                             google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (value.Is<IntValue>()) {
+                CEL_ASSIGN_OR_RETURN(auto raw_value,
+                                     (CheckedCast<int64_t, int32_t>::Cast(
+                                         value.As<IntValue>().value())));
+                value_ref.SetEnumValue(static_cast<int>(raw_value));
+              } else if (value.Is<EnumValue>()) {
+                CEL_ASSIGN_OR_RETURN(auto raw_value,
+                                     (CheckedCast<int64_t, int32_t>::Cast(
+                                         value.As<EnumValue>().number())));
+                value_ref.SetEnumValue(static_cast<int>(raw_value));
+              } else {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return absl::OkStatus();
+            };
+      case google::protobuf::FieldDescriptor::TYPE_GROUP:
+        ABSL_FALLTHROUGH_INTENDED;
+      case google::protobuf::FieldDescriptor::TYPE_MESSAGE:
+        switch (to_value_type.kind()) {
+          case TypeKind::kAny:
+            // google.protobuf.Any
+            return absl::UnimplementedError(
+                "StructValueBuilderInterface::SetField does not yet implement "
+                "google.protobuf.Any support");
+          case TypeKind::kDyn:
+            // google.protobuf.Value
+            return absl::UnimplementedError(
+                "StructValueBuilderInterface::SetField does not yet implement "
+                "google.protobuf.Value support");
+          case TypeKind::kMap:
+            // google.protobuf.Struct
+            return absl::UnimplementedError(
+                "StructValueBuilderInterface::SetField does not yet implement "
+                "google.protobuf.Struct support");
+          case TypeKind::kList:
+            // google.protobuf.ListValue
+            return absl::UnimplementedError(
+                "StructValueBuilderInterface::SetField does not yet implement "
+                "google.protobuf.ListValue support");
+          case TypeKind::kDuration:
+            // google.protobuf.Duration
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<DurationType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<DurationValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::AbslDurationToDurationProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<DurationValue>().value());
+            };
+          case TypeKind::kTimestamp:
+            // google.protobuf.Timestamp
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<TimestampType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<TimestampValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::AbslTimeToTimestampProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<TimestampValue>().value());
+            };
+          case TypeKind::kBool:
+            // google.protobuf.BoolValue
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<BoolType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<BoolValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::WrapBoolValueProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<BoolValue>().value());
+            };
+          case TypeKind::kInt:
+            // google.protobuf.{Int32,Int64}Value
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<IntType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<IntValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::WrapIntValueProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<IntValue>().value());
+            };
+          case TypeKind::kUint:
+            // google.protobuf.{UInt32,UInt64}Value
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<UintType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<UintValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::WrapUIntValueProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<UintValue>().value());
+            };
+          case TypeKind::kDouble:
+            // google.protobuf.{Float,Double}Value
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<DoubleType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<DoubleValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::WrapDoubleValueProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<DoubleValue>().value());
+            };
+          case TypeKind::kBytes:
+            // google.protobuf.BytesValue
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<BytesType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<BytesValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::WrapBytesValueProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<BytesValue>().ToCord());
+            };
+          case TypeKind::kString:
+            // google.protobuf.StringValue
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<StringType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<StringValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return protobuf_internal::WrapStringValueProto(
+                  *value_ref.MutableMessageValue(),
+                  value.As<StringValue>().ToCord());
+            };
+          case TypeKind::kStruct:
+            if (ABSL_PREDICT_FALSE(!from_value_type.Is<StructType>() &&
+                                   !from_value_type.Is<DynType>())) {
+              return TypeConversionError(from_value_type, to_value_type);
+            }
+            return [&to_value_type](
+                       const Value& value,
+                       google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              if (ABSL_PREDICT_FALSE(!value.Is<ProtoStructValue>())) {
+                return TypeConversionError(*value.type(), to_value_type);
+              }
+              return value.As<ProtoStructValue>().CopyTo(
+                  *value_ref.MutableMessageValue());
+            };
+          default:
+            return absl::InternalError(
+                absl::StrCat("unexpected map field value type: ",
+                             to_value_type.DebugString()));
+        }
+      default:
+        return absl::InternalError(
+            absl::StrCat("unexpected protocol buffer map field value type: ",
+                         google::protobuf::FieldDescriptor::TypeName(field_desc.type())));
+    }
+  }
+
   absl::Status SetMapField(const StructType::Field& field,
                            const google::protobuf::Reflection& reflect,
                            const google::protobuf::FieldDescriptor& field_desc,
-                           Handle<Value>&& value) {
-    return absl::UnimplementedError(
-        "StructValueBuilderInterface::SetField does not yet implement support "
-        "for setting map fields");
+                           Handle<MapValue>&& value) {
+    const auto* key_field_desc = field_desc.message_type()->map_key();
+    const auto* value_field_desc = field_desc.message_type()->map_value();
+    auto from_map_type_handle = value->type();
+    const auto& from_map_type = *from_map_type_handle;
+    const auto& from_key_type = *from_map_type.key();
+    const auto& from_value_type = *from_map_type.value();
+    const auto& to_map_type = field.type->As<MapType>();
+    const auto& to_key_type = *to_map_type.key();
+    const auto& to_value_type = *to_map_type.value();
+
+    CEL_ASSIGN_OR_RETURN(
+        auto key_converter,
+        GetMapFieldKeyConverter(*key_field_desc, from_key_type, to_key_type));
+    CEL_ASSIGN_OR_RETURN(
+        auto value_converter,
+        GetMapFieldValueConverter(*value_field_desc, from_value_type,
+                                  to_value_type));
+
+    CEL_ASSIGN_OR_RETURN(auto iterator,
+                         value->NewIterator(value_factory_.memory_manager()));
+    while (iterator->HasNext()) {
+      CEL_ASSIGN_OR_RETURN(
+          auto entry, iterator->Next(MapValue::GetContext(value_factory_)));
+      google::protobuf::MapKey map_key;
+      CEL_RETURN_IF_ERROR(key_converter(*entry.key, map_key));
+      google::protobuf::MapValueRef map_value;
+      protobuf_internal::InsertOrLookupMapValue(reflect, message_, field_desc,
+                                                map_key, &map_value);
+      CEL_RETURN_IF_ERROR(value_converter(*entry.value, map_value));
+    }
+    return absl::OkStatus();
   }
 
   // Sets a repeated scalar field. `T` is a subclass of `cel::Type`,
@@ -940,7 +1454,8 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
       case google::protobuf::FieldDescriptor::TYPE_ENUM: {
         if (value->Is<NullValue>()) {
           // google.protobuf.NullValue
-          reflect.ClearField(message_, &field_desc);
+          reflect.SetEnumValue(message_, &field_desc,
+                               google::protobuf::NULL_VALUE);
           return absl::OkStatus();
         }
         int64_t raw_value;

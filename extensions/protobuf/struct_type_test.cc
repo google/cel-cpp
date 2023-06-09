@@ -31,6 +31,7 @@
 #include "base/types/map_type.h"
 #include "base/value_factory.h"
 #include "base/values/list_value_builder.h"
+#include "base/values/map_value_builder.h"
 #include "base/values/struct_value_builder.h"
 #include "extensions/protobuf/internal/testing.h"
 #include "extensions/protobuf/struct_value.h"
@@ -356,6 +357,13 @@ void TestProtoStructValueBuilder(
 #define TEST_PROTO_STRUCT_VALUE_BUILDER(...) \
   ASSERT_NO_FATAL_FAILURE(TestProtoStructValueBuilder(__VA_ARGS__))
 
+TEST_P(ProtoStructValueBuilderTest, Null) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "optional_null_value",
+      [](ValueFactory& value_factory) { return value_factory.GetNullValue(); },
+      R"pb(optional_null_value: 0)pb");
+}
+
 TEST_P(ProtoStructValueBuilderTest, Bool) {
   TEST_PROTO_STRUCT_VALUE_BUILDER(
       memory_manager(), "single_bool",
@@ -540,6 +548,19 @@ TEST_P(ProtoStructValueBuilderTest, BytesWrapper) {
       R"pb(single_bytes_wrapper: { value: "foo" })pb");
 }
 
+TEST_P(ProtoStructValueBuilderTest, RepeatedNull) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_null_value",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<NullValue> builder(
+            value_factory, value_factory.type_factory().GetNullType());
+        CEL_RETURN_IF_ERROR(builder.Add(value_factory.GetNullValue()));
+        CEL_RETURN_IF_ERROR(builder.Add(value_factory.GetNullValue()));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_null_value: 0, repeated_null_value: 0)pb");
+}
+
 TEST_P(ProtoStructValueBuilderTest, RepeatedBool) {
   TEST_PROTO_STRUCT_VALUE_BUILDER(
       memory_manager(), "repeated_bool",
@@ -675,9 +696,6 @@ TEST_P(ProtoStructValueBuilderTest, RepeatedCoercedEnum) {
   TEST_PROTO_STRUCT_VALUE_BUILDER(
       memory_manager(), "repeated_nested_enum",
       [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
-        CEL_ASSIGN_OR_RETURN(auto type,
-                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
-                                 value_factory.type_manager()));
         ListValueBuilder<IntValue> builder(
             value_factory, value_factory.type_factory().GetIntType());
         CEL_RETURN_IF_ERROR(builder.Add(TestAllTypes::FOO));
@@ -868,6 +886,509 @@ TEST_P(ProtoStructValueBuilderTest, RepeatedBytesWrapper) {
       },
       R"pb(repeated_bytes_wrapper: { value: "foo" },
            repeated_bytes_wrapper: { value: "bar" })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapBoolInt) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_bool_int64",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<BoolValue, IntValue> builder(
+            value_factory, value_factory.type_factory().GetBoolType(),
+            value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(true, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(false, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_bool_int64: { key: true, value: 0 },
+           map_bool_int64: { key: false, value: 1 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_bool_int32",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<BoolValue, IntValue> builder(
+            value_factory, value_factory.type_factory().GetBoolType(),
+            value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(true, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(false, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_bool_int32: { key: true, value: 0 },
+           map_bool_int32: { key: false, value: 1 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntBool) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_bool",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, BoolValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetBoolType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, false).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, true).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_bool: { key: 1, value: false },
+           map_int64_bool: { key: 0, value: true })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int32_bool",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, BoolValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetBoolType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, false).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, true).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int32_bool: { key: 1, value: false },
+           map_int32_bool: { key: 0, value: true })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapUintDouble) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_uint64_double",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<UintValue, DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetUintType(),
+            value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_uint64_double: { key: 1, value: 0 },
+           map_uint64_double: { key: 0, value: 1 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_uint32_double",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<UintValue, DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetUintType(),
+            value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_uint32_double: { key: 1, value: 0 },
+           map_uint32_double: { key: 0, value: 1 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_uint64_float",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<UintValue, DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetUintType(),
+            value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_uint64_float: { key: 1, value: 0 },
+           map_uint64_float: { key: 0, value: 1 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapStringUint) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_string_uint64",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<StringValue, UintValue> builder(
+            value_factory, value_factory.type_factory().GetStringType(),
+            value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(
+            builder
+                .InsertOrAssign(value_factory.CreateUncheckedStringValue("bar"),
+                                0)
+                .status());
+        CEL_RETURN_IF_ERROR(
+            builder
+                .InsertOrAssign(value_factory.CreateUncheckedStringValue("foo"),
+                                1)
+                .status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_string_uint64: { key: "bar", value: 0 },
+           map_string_uint64: { key: "foo", value: 1 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_string_uint32",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<StringValue, UintValue> builder(
+            value_factory, value_factory.type_factory().GetStringType(),
+            value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(
+            builder
+                .InsertOrAssign(value_factory.CreateUncheckedStringValue("bar"),
+                                0)
+                .status());
+        CEL_RETURN_IF_ERROR(
+            builder
+                .InsertOrAssign(value_factory.CreateUncheckedStringValue("foo"),
+                                1)
+                .status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_string_uint32: { key: "bar", value: 0 },
+           map_string_uint32: { key: "foo", value: 1 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapStringString) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_string_string",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<StringValue, StringValue> builder(
+            value_factory, value_factory.type_factory().GetStringType(),
+            value_factory.type_factory().GetStringType());
+        CEL_RETURN_IF_ERROR(
+            builder
+                .InsertOrAssign(value_factory.CreateUncheckedStringValue("bar"),
+                                value_factory.CreateUncheckedStringValue("foo"))
+                .status());
+        CEL_RETURN_IF_ERROR(
+            builder
+                .InsertOrAssign(value_factory.CreateUncheckedStringValue("foo"),
+                                value_factory.CreateUncheckedStringValue("bar"))
+                .status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_string_string: { key: "bar", value: "foo" },
+           map_string_string: { key: "foo", value: "bar" })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntBytes) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_bytes",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, BytesValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetBytesType());
+        CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue("foo"));
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, value).status());
+        CEL_ASSIGN_OR_RETURN(value, value_factory.CreateBytesValue("bar"));
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, value).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_bytes: { key: 1, value: "foo" },
+           map_int64_bytes: { key: 0, value: "bar" })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntBoolWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_bool_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, BoolValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetBoolType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, false).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, true).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_bool_wrapper: {
+             key: 1,
+             value: { value: false }
+           },
+           map_int64_bool_wrapper: {
+             key: 0,
+             value: { value: true }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntIntWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_int64_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_int64_wrapper: {
+             key: 1,
+             value: { value: 0 }
+           },
+           map_int64_int64_wrapper: {
+             key: 0,
+             value: { value: 1 }
+           })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_int32_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_int32_wrapper: {
+             key: 1,
+             value: { value: 0 }
+           },
+           map_int64_int32_wrapper: {
+             key: 0,
+             value: { value: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntUintWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_uint64_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, UintValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_uint64_wrapper: {
+             key: 1,
+             value: { value: 0 }
+           },
+           map_int64_uint64_wrapper: {
+             key: 0,
+             value: { value: 1 }
+           })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_uint32_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, UintValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetUintType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_uint32_wrapper: {
+             key: 1,
+             value: { value: 0 }
+           },
+           map_int64_uint32_wrapper: {
+             key: 0,
+             value: { value: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntDoubleWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_double_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_double_wrapper: {
+             key: 1,
+             value: { value: 0 }
+           },
+           map_int64_double_wrapper: {
+             key: 0,
+             value: { value: 1 }
+           })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_float_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, DoubleValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetDoubleType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_float_wrapper: {
+             key: 1,
+             value: { value: 0 }
+           },
+           map_int64_float_wrapper: {
+             key: 0,
+             value: { value: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntBytesWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_bytes_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, BytesValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetBytesType());
+        CEL_ASSIGN_OR_RETURN(auto value, value_factory.CreateBytesValue("foo"));
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, value).status());
+        CEL_ASSIGN_OR_RETURN(value, value_factory.CreateBytesValue("bar"));
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, value).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_bytes_wrapper: {
+             key: 1,
+             value: { value: "foo" }
+           },
+           map_int64_bytes_wrapper: {
+             key: 0,
+             value: { value: "bar" }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntStringWrapper) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_string_wrapper",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, StringValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetStringType());
+        CEL_ASSIGN_OR_RETURN(auto value,
+                             value_factory.CreateStringValue("foo"));
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, value).status());
+        CEL_ASSIGN_OR_RETURN(value, value_factory.CreateStringValue("bar"));
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, value).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_string_wrapper: {
+             key: 1,
+             value: { value: "foo" }
+           },
+           map_int64_string_wrapper: {
+             key: 0,
+             value: { value: "bar" }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntDuration) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_duration",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, DurationValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetDurationType());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, absl::ZeroDuration()).status());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, absl::Seconds(1) + absl::Nanoseconds(1))
+                .status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_duration: {
+             key: 1,
+             value: { seconds: 0, nanos: 0 }
+           },
+           map_int64_duration: {
+             key: 0,
+             value: { seconds: 1, nanos: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntTimestamp) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_timestamp",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, TimestampValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetTimestampType());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, absl::UnixEpoch() + absl::ZeroDuration())
+                .status());
+        CEL_RETURN_IF_ERROR(builder
+                                .InsertOrAssign(0, absl::UnixEpoch() +
+                                                       absl::Seconds(1) +
+                                                       absl::Nanoseconds(1))
+                                .status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_timestamp: {
+             key: 1,
+             value: { seconds: 0, nanos: 0 }
+           },
+           map_int64_timestamp: {
+             key: 0,
+             value: { seconds: 1, nanos: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntNull) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_null_value",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
+                                 value_factory.type_manager()));
+        MapValueBuilder<IntValue, NullValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetNullType());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, value_factory.GetNullValue()).status());
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, value_factory.GetNullValue()).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_null_value: { key: 1, value: 0 },
+           map_int64_null_value: { key: 0, value: 0 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntEnum) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_enum",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
+                                 value_factory.type_manager()));
+        MapValueBuilder<IntValue, EnumValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            std::move(type));
+        CEL_ASSIGN_OR_RETURN(
+            auto value, ProtoValue::Create(value_factory, TestAllTypes::FOO));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, std::move(value)).status());
+        CEL_ASSIGN_OR_RETURN(
+            value, ProtoValue::Create(value_factory, TestAllTypes::BAR));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, std::move(value)).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_enum: { key: 1, value: 0 },
+           map_int64_enum: { key: 0, value: 1 })pb");
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_enum",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedEnum>(
+                                 value_factory.type_manager()));
+        MapValueBuilder<IntValue, IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_enum: { key: 1, value: 0 },
+           map_int64_enum: { key: 0, value: 1 })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntMessage) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_message",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        CEL_ASSIGN_OR_RETURN(auto type,
+                             ProtoType::Resolve<TestAllTypes::NestedMessage>(
+                                 value_factory.type_manager()));
+        MapValueBuilder<IntValue, StructValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            std::move(type));
+        TestAllTypes::NestedMessage message;
+        CEL_ASSIGN_OR_RETURN(auto value,
+                             ProtoValue::Create(value_factory, message));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(1, std::move(value)).status());
+        message.Clear();
+        message.set_bb(1);
+        CEL_ASSIGN_OR_RETURN(value, ProtoValue::Create(value_factory, message));
+        CEL_RETURN_IF_ERROR(
+            builder.InsertOrAssign(0, std::move(value)).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_message: {
+             key: 1,
+             value: { bb: 0 }
+           },
+           map_int64_message: {
+             key: 0,
+             value: { bb: 1 }
+           })pb");
 }
 
 INSTANTIATE_TEST_SUITE_P(ProtoStructValueBuilderTest,

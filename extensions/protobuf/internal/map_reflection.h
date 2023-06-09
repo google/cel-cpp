@@ -46,6 +46,12 @@ google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflect
                            const google::protobuf::Message& message,
                            const google::protobuf::FieldDescriptor& field);
 
+bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
+                            google::protobuf::Message* message,
+                            const google::protobuf::FieldDescriptor& field,
+                            const google::protobuf::MapKey& key,
+                            google::protobuf::MapValueRef* value);
+
 }  // namespace cel::extensions::protobuf_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EXTENSIONS_PROTOBUF_INTERNAL_MAP_REFLECTION_H_

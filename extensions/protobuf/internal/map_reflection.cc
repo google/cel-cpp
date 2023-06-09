@@ -54,6 +54,14 @@ class CelMapReflectionFriend final {
             google::protobuf::Message*>(&message),
         &field);
   }
+
+  static bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
+                                     google::protobuf::Message* message,
+                                     const google::protobuf::FieldDescriptor& field,
+                                     const google::protobuf::MapKey& key,
+                                     google::protobuf::MapValueRef* value) {
+    return reflection.InsertOrLookupMapValue(message, &field, key, value);
+  }
 };
 
 }  // namespace google::protobuf::expr
@@ -96,6 +104,15 @@ google::protobuf::MapIterator MapEnd(const google::protobuf::Reflection& reflect
                            const google::protobuf::FieldDescriptor& field) {
   return google::protobuf::expr::CelMapReflectionFriend::MapEnd(reflection, message,
                                                       field);
+}
+
+bool InsertOrLookupMapValue(const google::protobuf::Reflection& reflection,
+                            google::protobuf::Message* message,
+                            const google::protobuf::FieldDescriptor& field,
+                            const google::protobuf::MapKey& key,
+                            google::protobuf::MapValueRef* value) {
+  return google::protobuf::expr::CelMapReflectionFriend::InsertOrLookupMapValue(
+      reflection, message, field, key, value);
 }
 
 }  // namespace cel::extensions::protobuf_internal
