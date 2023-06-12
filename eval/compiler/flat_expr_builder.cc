@@ -409,7 +409,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
 
     AddStep(CreateSelectStep(*select_expr, expr->id(), select_path,
-                             options_.enable_empty_wrapper_null_unboxing));
+                             options_.enable_empty_wrapper_null_unboxing,
+                             value_factory_));
   }
 
   // Call node handler group.

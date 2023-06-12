@@ -5,11 +5,13 @@
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
 #include "google/protobuf/wrappers.pb.h"
-#include "google/protobuf/descriptor.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "base/type_factory.h"
+#include "base/type_manager.h"
 #include "base/type_provider.h"
+#include "base/value_factory.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/ident_step.h"
@@ -21,9 +23,9 @@
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/trivial_legacy_type_info.h"
 #include "eval/public/testing/matchers.h"
-#include "eval/public/unknown_attribute_set.h"
 #include "eval/testutil/test_extensions.pb.h"
 #include "eval/testutil/test_message.pb.h"
+#include "extensions/protobuf/memory_manager.h"
 #include "internal/status_macros.h"
 #include "internal/testing.h"
 #include "runtime/runtime_options.h"
@@ -74,157 +76,162 @@ class MockAccessor : public LegacyTypeAccessApis, public LegacyTypeInfoApis {
   }
 };
 
-// Helper method. Creates simple pipeline containing Select step and runs it.
-absl::StatusOr<CelValue> RunExpression(const CelValue target,
-                                       absl::string_view field, bool test,
-                                       google::protobuf::Arena* arena,
-                                       absl::string_view unknown_path,
-                                       RunExpressionOptions options) {
-  ExecutionPath path;
+class SelectStepTest : public testing::Test {
+ public:
+  SelectStepTest()
+      : memory_manager_(&arena_),
+        type_factory_(memory_manager_),
+        type_manager_(type_factory_, cel::TypeProvider::Builtin()),
+        value_factory_(type_manager_) {}
+  // Helper method. Creates simple pipeline containing Select step and runs it.
+  absl::StatusOr<CelValue> RunExpression(const CelValue target,
+                                         absl::string_view field, bool test,
+                                         absl::string_view unknown_path,
+                                         RunExpressionOptions options) {
+    ExecutionPath path;
 
-  Expr expr;
-  auto& select = expr.mutable_select_expr();
-  select.set_field(std::string(field));
-  select.set_test_only(test);
-  Expr& expr0 = select.mutable_operand();
+    Expr expr;
+    auto& select = expr.mutable_select_expr();
+    select.set_field(std::string(field));
+    select.set_test_only(test);
+    Expr& expr0 = select.mutable_operand();
 
-  auto& ident = expr0.mutable_ident_expr();
-  ident.set_name("target");
-  CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
-  CEL_ASSIGN_OR_RETURN(
-      auto step1, CreateSelectStep(select, expr.id(), unknown_path,
-                                   options.enable_wrapper_type_null_unboxing));
+    auto& ident = expr0.mutable_ident_expr();
+    ident.set_name("target");
+    CEL_ASSIGN_OR_RETURN(auto step0, CreateIdentStep(ident, expr0.id()));
+    CEL_ASSIGN_OR_RETURN(
+        auto step1, CreateSelectStep(select, expr.id(), unknown_path,
+                                     options.enable_wrapper_type_null_unboxing,
+                                     value_factory_));
 
-  path.push_back(std::move(step0));
-  path.push_back(std::move(step1));
+    path.push_back(std::move(step0));
+    path.push_back(std::move(step1));
 
-  cel::RuntimeOptions runtime_options;
-  if (options.enable_unknowns) {
-    runtime_options.unknown_processing =
-        cel::UnknownProcessingOptions::kAttributeOnly;
+    cel::RuntimeOptions runtime_options;
+    if (options.enable_unknowns) {
+      runtime_options.unknown_processing =
+          cel::UnknownProcessingOptions::kAttributeOnly;
+    }
+    CelExpressionFlatImpl cel_expr(FlatExpression(
+        std::move(path), TypeProvider::Builtin(), runtime_options));
+    Activation activation;
+    activation.InsertValue("target", target);
+
+    return cel_expr.Evaluate(activation, &arena_);
   }
-  CelExpressionFlatImpl cel_expr(FlatExpression(
-      std::move(path), TypeProvider::Builtin(), runtime_options));
-  Activation activation;
-  activation.InsertValue("target", target);
 
-  return cel_expr.Evaluate(activation, arena);
-}
+  absl::StatusOr<CelValue> RunExpression(const TestExtensions* message,
+                                         absl::string_view field, bool test,
+                                         RunExpressionOptions options) {
+    return RunExpression(CelProtoWrapper::CreateMessage(message, &arena_),
+                         field, test, "", options);
+  }
 
-absl::StatusOr<CelValue> RunExpression(const TestExtensions* message,
-                                       absl::string_view field, bool test,
-                                       google::protobuf::Arena* arena,
-                                       RunExpressionOptions options) {
-  return RunExpression(CelProtoWrapper::CreateMessage(message, arena), field,
-                       test, arena, "", options);
-}
+  absl::StatusOr<CelValue> RunExpression(const TestMessage* message,
+                                         absl::string_view field, bool test,
+                                         absl::string_view unknown_path,
+                                         RunExpressionOptions options) {
+    return RunExpression(CelProtoWrapper::CreateMessage(message, &arena_),
+                         field, test, unknown_path, options);
+  }
 
-absl::StatusOr<CelValue> RunExpression(const TestMessage* message,
-                                       absl::string_view field, bool test,
-                                       google::protobuf::Arena* arena,
-                                       absl::string_view unknown_path,
-                                       RunExpressionOptions options) {
-  return RunExpression(CelProtoWrapper::CreateMessage(message, arena), field,
-                       test, arena, unknown_path, options);
-}
+  absl::StatusOr<CelValue> RunExpression(const TestMessage* message,
+                                         absl::string_view field, bool test,
+                                         RunExpressionOptions options) {
+    return RunExpression(message, field, test, "", options);
+  }
 
-absl::StatusOr<CelValue> RunExpression(const TestMessage* message,
-                                       absl::string_view field, bool test,
-                                       google::protobuf::Arena* arena,
-                                       RunExpressionOptions options) {
-  return RunExpression(message, field, test, arena, "", options);
-}
+  absl::StatusOr<CelValue> RunExpression(const CelMap* map_value,
+                                         absl::string_view field, bool test,
+                                         absl::string_view unknown_path,
+                                         RunExpressionOptions options) {
+    return RunExpression(CelValue::CreateMap(map_value), field, test,
+                         unknown_path, options);
+  }
 
-absl::StatusOr<CelValue> RunExpression(const CelMap* map_value,
-                                       absl::string_view field, bool test,
-                                       google::protobuf::Arena* arena,
-                                       absl::string_view unknown_path,
-                                       RunExpressionOptions options) {
-  return RunExpression(CelValue::CreateMap(map_value), field, test, arena,
-                       unknown_path, options);
-}
+  absl::StatusOr<CelValue> RunExpression(const CelMap* map_value,
+                                         absl::string_view field, bool test,
+                                         RunExpressionOptions options) {
+    return RunExpression(map_value, field, test, "", options);
+  }
 
-absl::StatusOr<CelValue> RunExpression(const CelMap* map_value,
-                                       absl::string_view field, bool test,
-                                       google::protobuf::Arena* arena,
-                                       RunExpressionOptions options) {
-  return RunExpression(map_value, field, test, arena, "", options);
-}
+ protected:
+  google::protobuf::Arena arena_;
+  cel::extensions::ProtoMemoryManager memory_manager_;
+  cel::TypeFactory type_factory_;
+  cel::TypeManager type_manager_;
+  cel::ValueFactory value_factory_;
+};
 
-class SelectStepTest : public testing::TestWithParam<bool> {};
+class SelectStepConformanceTest : public SelectStepTest,
+                                  public testing::WithParamInterface<bool> {};
 
-TEST_P(SelectStepTest, SelectMessageIsNull) {
-  google::protobuf::Arena arena;
+TEST_P(SelectStepConformanceTest, SelectMessageIsNull) {
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(static_cast<const TestMessage*>(nullptr),
-                                     "bool_value", true, &arena, options));
+                                     "bool_value", true, options));
 
   ASSERT_TRUE(result.IsError());
 }
 
-TEST_P(SelectStepTest, PresenseIsFalseTest) {
+TEST_P(SelectStepConformanceTest, PresenseIsFalseTest) {
   TestMessage message;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "bool_value",
-                                                      true, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "bool_value", true, options));
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
 }
 
-TEST_P(SelectStepTest, PresenseIsTrueTest) {
-  google::protobuf::Arena arena;
+TEST_P(SelectStepConformanceTest, PresenseIsTrueTest) {
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   TestMessage message;
   message.set_bool_value(true);
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "bool_value",
-                                                      true, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "bool_value", true, options));
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
 }
 
-TEST_P(SelectStepTest, ExtensionsPresenceIsTrueTest) {
+TEST_P(SelectStepConformanceTest, ExtensionsPresenceIsTrueTest) {
   TestExtensions exts;
   TestExtensions* nested = exts.MutableExtension(nested_ext);
   nested->set_name("nested");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&exts, "google.api.expr.runtime.nested_ext", true, &arena,
+      RunExpression(&exts, "google.api.expr.runtime.nested_ext", true,
                     options));
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_TRUE(result.BoolOrDie());
 }
 
-TEST_P(SelectStepTest, ExtensionsPresenceIsFalseTest) {
+TEST_P(SelectStepConformanceTest, ExtensionsPresenceIsFalseTest) {
   TestExtensions exts;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&exts, "google.api.expr.runtime.nested_ext", true, &arena,
+      RunExpression(&exts, "google.api.expr.runtime.nested_ext", true,
                     options));
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_FALSE(result.BoolOrDie());
 }
 
-TEST_P(SelectStepTest, MapPresenseIsFalseTest) {
-  google::protobuf::Arena arena;
+TEST_P(SelectStepConformanceTest, MapPresenseIsFalseTest) {
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   std::string key1 = "key1";
@@ -235,14 +242,13 @@ TEST_P(SelectStepTest, MapPresenseIsFalseTest) {
                        absl::Span<std::pair<CelValue, CelValue>>(key_values))
                        .value();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(map_value.get(), "key2",
-                                                      true, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(map_value.get(), "key2", true, options));
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
 }
 
-TEST_P(SelectStepTest, MapPresenseIsTrueTest) {
-  google::protobuf::Arena arena;
+TEST_P(SelectStepConformanceTest, MapPresenseIsTrueTest) {
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   std::string key1 = "key1";
@@ -253,16 +259,15 @@ TEST_P(SelectStepTest, MapPresenseIsTrueTest) {
                        absl::Span<std::pair<CelValue, CelValue>>(key_values))
                        .value();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(map_value.get(), "key1",
-                                                      true, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(map_value.get(), "key1", true, options));
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
 }
 
-TEST(SelectStepTest, MapPresenseIsErrorTest) {
+TEST_F(SelectStepTest, MapPresenseIsErrorTest) {
   TestMessage message;
-  google::protobuf::Arena arena;
 
   Expr select_expr;
   auto& select = select_expr.mutable_select_expr();
@@ -277,13 +282,13 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
 
   ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
   ASSERT_OK_AND_ASSIGN(
-      auto step1,
-      CreateSelectStep(select_map, expr1.id(), "",
-                       /*enable_wrapper_type_null_unboxing=*/false));
+      auto step1, CreateSelectStep(select_map, expr1.id(), "",
+                                   /*enable_wrapper_type_null_unboxing=*/false,
+                                   value_factory_));
   ASSERT_OK_AND_ASSIGN(
-      auto step2,
-      CreateSelectStep(select, select_expr.id(), "",
-                       /*enable_wrapper_type_null_unboxing=*/false));
+      auto step2, CreateSelectStep(select, select_expr.id(), "",
+                                   /*enable_wrapper_type_null_unboxing=*/false,
+                                   value_factory_));
 
   ExecutionPath path;
   path.push_back(std::move(step0));
@@ -293,15 +298,14 @@ TEST(SelectStepTest, MapPresenseIsErrorTest) {
       std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("target",
-                         CelProtoWrapper::CreateMessage(&message, &arena));
+                         CelProtoWrapper::CreateMessage(&message, &arena_));
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena_));
   EXPECT_TRUE(result.IsError());
   EXPECT_EQ(result.ErrorOrDie()->code(), absl::StatusCode::kInvalidArgument);
 }
 
-TEST(SelectStepTest, MapPresenseIsTrueWithUnknownTest) {
-  google::protobuf::Arena arena;
+TEST_F(SelectStepTest, MapPresenseIsTrueWithUnknownTest) {
   UnknownSet unknown_set;
   std::string key1 = "key1";
   std::vector<std::pair<CelValue, CelValue>> key_values{
@@ -315,259 +319,242 @@ TEST(SelectStepTest, MapPresenseIsTrueWithUnknownTest) {
   RunExpressionOptions options;
   options.enable_unknowns = true;
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(map_value.get(), "key1",
-                                                      true, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(map_value.get(), "key1", true, options));
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
 }
 
-TEST_P(SelectStepTest, FieldIsNotPresentInProtoTest) {
+TEST_P(SelectStepConformanceTest, FieldIsNotPresentInProtoTest) {
   TestMessage message;
-  google::protobuf::Arena arena;
 
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "fake_field",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "fake_field", false, options));
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(result.ErrorOrDie()->code(), Eq(absl::StatusCode::kNotFound));
 }
 
-TEST_P(SelectStepTest, FieldIsNotSetTest) {
+TEST_P(SelectStepConformanceTest, FieldIsNotSetTest) {
   TestMessage message;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "bool_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "bool_value", false, options));
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), false);
 }
 
-TEST_P(SelectStepTest, SimpleBoolTest) {
+TEST_P(SelectStepConformanceTest, SimpleBoolTest) {
   TestMessage message;
   message.set_bool_value(true);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "bool_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "bool_value", false, options));
 
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
 }
 
-TEST_P(SelectStepTest, SimpleInt32Test) {
+TEST_P(SelectStepConformanceTest, SimpleInt32Test) {
   TestMessage message;
   message.set_int32_value(1);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "int32_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "int32_value", false, options));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 1);
 }
 
-TEST_P(SelectStepTest, SimpleInt64Test) {
+TEST_P(SelectStepConformanceTest, SimpleInt64Test) {
   TestMessage message;
   message.set_int64_value(1);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "int64_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "int64_value", false, options));
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 1);
 }
 
-TEST_P(SelectStepTest, SimpleUInt32Test) {
+TEST_P(SelectStepConformanceTest, SimpleUInt32Test) {
   TestMessage message;
   message.set_uint32_value(1);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "uint32_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "uint32_value", false, options));
 
   ASSERT_TRUE(result.IsUint64());
   EXPECT_EQ(result.Uint64OrDie(), 1);
 }
 
-TEST_P(SelectStepTest, SimpleUint64Test) {
+TEST_P(SelectStepConformanceTest, SimpleUint64Test) {
   TestMessage message;
   message.set_uint64_value(1);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "uint64_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "uint64_value", false, options));
 
   ASSERT_TRUE(result.IsUint64());
   EXPECT_EQ(result.Uint64OrDie(), 1);
 }
 
-TEST_P(SelectStepTest, SimpleStringTest) {
+TEST_P(SelectStepConformanceTest, SimpleStringTest) {
   TestMessage message;
   std::string value = "test";
   message.set_string_value(value);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "string_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "string_value", false, options));
 
   ASSERT_TRUE(result.IsString());
   EXPECT_EQ(result.StringOrDie().value(), "test");
 }
 
-TEST_P(SelectStepTest, WrapperTypeNullUnboxingEnabledTest) {
+TEST_P(SelectStepConformanceTest, WrapperTypeNullUnboxingEnabledTest) {
   TestMessage message;
   message.mutable_string_wrapper_value()->set_value("test");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   options.enable_wrapper_type_null_unboxing = true;
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&message, "string_wrapper_value", false, &arena, options));
+      RunExpression(&message, "string_wrapper_value", false, options));
 
   ASSERT_TRUE(result.IsString());
   EXPECT_EQ(result.StringOrDie().value(), "test");
-  ASSERT_OK_AND_ASSIGN(result, RunExpression(&message, "int32_wrapper_value",
-                                             false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(
+      result, RunExpression(&message, "int32_wrapper_value", false, options));
   EXPECT_TRUE(result.IsNull());
 }
 
-TEST_P(SelectStepTest, WrapperTypeNullUnboxingDisabledTest) {
+TEST_P(SelectStepConformanceTest, WrapperTypeNullUnboxingDisabledTest) {
   TestMessage message;
   message.mutable_string_wrapper_value()->set_value("test");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   options.enable_wrapper_type_null_unboxing = false;
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&message, "string_wrapper_value", false, &arena, options));
+      RunExpression(&message, "string_wrapper_value", false, options));
 
   ASSERT_TRUE(result.IsString());
   EXPECT_EQ(result.StringOrDie().value(), "test");
-  ASSERT_OK_AND_ASSIGN(result, RunExpression(&message, "int32_wrapper_value",
-                                             false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(
+      result, RunExpression(&message, "int32_wrapper_value", false, options));
   EXPECT_TRUE(result.IsInt64());
 }
 
 
-TEST_P(SelectStepTest, SimpleBytesTest) {
+TEST_P(SelectStepConformanceTest, SimpleBytesTest) {
   TestMessage message;
   std::string value = "test";
   message.set_bytes_value(value);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "bytes_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "bytes_value", false, options));
 
   ASSERT_TRUE(result.IsBytes());
   EXPECT_EQ(result.BytesOrDie().value(), "test");
 }
 
-TEST_P(SelectStepTest, SimpleMessageTest) {
+TEST_P(SelectStepConformanceTest, SimpleMessageTest) {
   TestMessage message;
   TestMessage* message2 = message.mutable_message_value();
   message2->set_int32_value(1);
   message2->set_string_value("test");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "message_value",
-                                                      false, &arena, options));
+                                                      false, options));
 
   ASSERT_TRUE(result.IsMessage());
   EXPECT_THAT(*message2, EqualsProto(*result.MessageOrDie()));
 }
 
-TEST_P(SelectStepTest, GlobalExtensionsIntTest) {
+TEST_P(SelectStepConformanceTest, GlobalExtensionsIntTest) {
   TestExtensions exts;
   exts.SetExtension(int32_ext, 42);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(&exts, "google.api.expr.runtime.int32_ext",
-                                     false, &arena, options));
+                                     false, options));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 42L);
 }
 
-TEST_P(SelectStepTest, GlobalExtensionsMessageTest) {
+TEST_P(SelectStepConformanceTest, GlobalExtensionsMessageTest) {
   TestExtensions exts;
   TestExtensions* nested = exts.MutableExtension(nested_ext);
   nested->set_name("nested");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&exts, "google.api.expr.runtime.nested_ext", false, &arena,
+      RunExpression(&exts, "google.api.expr.runtime.nested_ext", false,
                     options));
 
   ASSERT_TRUE(result.IsMessage());
   EXPECT_THAT(result.MessageOrDie(), Eq(nested));
 }
 
-TEST_P(SelectStepTest, GlobalExtensionsMessageUnsetTest) {
+TEST_P(SelectStepConformanceTest, GlobalExtensionsMessageUnsetTest) {
   TestExtensions exts;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&exts, "google.api.expr.runtime.nested_ext", false, &arena,
+      RunExpression(&exts, "google.api.expr.runtime.nested_ext", false,
                     options));
 
   ASSERT_TRUE(result.IsMessage());
   EXPECT_THAT(result.MessageOrDie(), Eq(&TestExtensions::default_instance()));
 }
 
-TEST_P(SelectStepTest, GlobalExtensionsWrapperTest) {
+TEST_P(SelectStepConformanceTest, GlobalExtensionsWrapperTest) {
   TestExtensions exts;
   google::protobuf::Int32Value* wrapper =
       exts.MutableExtension(int32_wrapper_ext);
   wrapper->set_value(42);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
       RunExpression(&exts, "google.api.expr.runtime.int32_wrapper_ext", false,
-                    &arena, options));
+                    options));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(42L));
 }
 
-TEST_P(SelectStepTest, GlobalExtensionsWrapperUnsetTest) {
+TEST_P(SelectStepConformanceTest, GlobalExtensionsWrapperUnsetTest) {
   TestExtensions exts;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_wrapper_type_null_unboxing = true;
   options.enable_unknowns = GetParam();
@@ -575,15 +562,14 @@ TEST_P(SelectStepTest, GlobalExtensionsWrapperUnsetTest) {
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
       RunExpression(&exts, "google.api.expr.runtime.int32_wrapper_ext", false,
-                    &arena, options));
+                    options));
 
   ASSERT_TRUE(result.IsNull());
 }
 
-TEST_P(SelectStepTest, MessageExtensionsEnumTest) {
+TEST_P(SelectStepConformanceTest, MessageExtensionsEnumTest) {
   TestExtensions exts;
   exts.SetExtension(TestMessageExtensions::enum_ext, TestExtEnum::TEST_EXT_1);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
@@ -591,17 +577,16 @@ TEST_P(SelectStepTest, MessageExtensionsEnumTest) {
       CelValue result,
       RunExpression(&exts,
                     "google.api.expr.runtime.TestMessageExtensions.enum_ext",
-                    false, &arena, options));
+                    false, options));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestExtEnum::TEST_EXT_1));
 }
 
-TEST_P(SelectStepTest, MessageExtensionsRepeatedStringTest) {
+TEST_P(SelectStepConformanceTest, MessageExtensionsRepeatedStringTest) {
   TestExtensions exts;
   exts.AddExtension(TestMessageExtensions::repeated_string_exts, "test1");
   exts.AddExtension(TestMessageExtensions::repeated_string_exts, "test2");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
@@ -610,16 +595,15 @@ TEST_P(SelectStepTest, MessageExtensionsRepeatedStringTest) {
       RunExpression(
           &exts,
           "google.api.expr.runtime.TestMessageExtensions.repeated_string_exts",
-          false, &arena, options));
+          false, options));
 
   ASSERT_TRUE(result.IsList());
   const CelList* cel_list = result.ListOrDie();
   EXPECT_THAT(cel_list->size(), Eq(2));
 }
 
-TEST_P(SelectStepTest, MessageExtensionsRepeatedStringUnsetTest) {
+TEST_P(SelectStepConformanceTest, MessageExtensionsRepeatedStringUnsetTest) {
   TestExtensions exts;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
@@ -628,19 +612,18 @@ TEST_P(SelectStepTest, MessageExtensionsRepeatedStringUnsetTest) {
       RunExpression(
           &exts,
           "google.api.expr.runtime.TestMessageExtensions.repeated_string_exts",
-          false, &arena, options));
+          false, options));
 
   ASSERT_TRUE(result.IsList());
   const CelList* cel_list = result.ListOrDie();
   EXPECT_THAT(cel_list->size(), Eq(0));
 }
 
-TEST_P(SelectStepTest, NullMessageAccessor) {
+TEST_P(SelectStepConformanceTest, NullMessageAccessor) {
   TestMessage message;
   TestMessage* message2 = message.mutable_message_value();
   message2->set_int32_value(1);
   message2->set_string_value("test");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   CelValue value = CelValue::CreateMessageWrapper(
@@ -648,7 +631,7 @@ TEST_P(SelectStepTest, NullMessageAccessor) {
 
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(value, "message_value",
-                                     /*test=*/false, &arena,
+                                     /*test=*/false,
                                      /*unknown_path=*/"", options));
 
   ASSERT_TRUE(result.IsError());
@@ -656,19 +639,18 @@ TEST_P(SelectStepTest, NullMessageAccessor) {
 
   // same for has
   ASSERT_OK_AND_ASSIGN(result, RunExpression(value, "message_value",
-                                             /*test=*/true, &arena,
+                                             /*test=*/true,
                                              /*unknown_path=*/"", options));
 
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(*result.ErrorOrDie(), StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST_P(SelectStepTest, CustomAccessor) {
+TEST_P(SelectStepConformanceTest, CustomAccessor) {
   TestMessage message;
   TestMessage* message2 = message.mutable_message_value();
   message2->set_int32_value(1);
   message2->set_string_value("test");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   testing::NiceMock<MockAccessor> accessor;
@@ -681,25 +663,24 @@ TEST_P(SelectStepTest, CustomAccessor) {
 
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(value, "message_value",
-                                     /*test=*/false, &arena,
+                                     /*test=*/false,
                                      /*unknown_path=*/"", options));
 
   EXPECT_THAT(result, test::IsCelInt64(2));
 
   // testonly select (has)
   ASSERT_OK_AND_ASSIGN(result, RunExpression(value, "message_value",
-                                             /*test=*/true, &arena,
+                                             /*test=*/true,
                                              /*unknown_path=*/"", options));
 
   EXPECT_THAT(result, test::IsCelBool(false));
 }
 
-TEST_P(SelectStepTest, CustomAccessorErrorHandling) {
+TEST_P(SelectStepConformanceTest, CustomAccessorErrorHandling) {
   TestMessage message;
   TestMessage* message2 = message.mutable_message_value();
   message2->set_int32_value(1);
   message2->set_string_value("test");
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
   testing::NiceMock<MockAccessor> accessor;
@@ -714,68 +695,65 @@ TEST_P(SelectStepTest, CustomAccessorErrorHandling) {
   // For get field, implementation may return an error-type cel value or a
   // status (e.g. broken assumption using a core type).
   ASSERT_THAT(RunExpression(value, "message_value",
-                            /*test=*/false, &arena,
+                            /*test=*/false,
                             /*unknown_path=*/"", options),
               StatusIs(absl::StatusCode::kInternal));
 
   // testonly select (has) errors are coerced to CelError.
   ASSERT_OK_AND_ASSIGN(CelValue result,
                        RunExpression(value, "message_value",
-                                     /*test=*/true, &arena,
+                                     /*test=*/true,
                                      /*unknown_path=*/"", options));
 
   EXPECT_THAT(result, test::IsCelError(StatusIs(absl::StatusCode::kNotFound)));
 }
 
-TEST_P(SelectStepTest, SimpleEnumTest) {
+TEST_P(SelectStepConformanceTest, SimpleEnumTest) {
   TestMessage message;
   message.set_enum_value(TestMessage::TEST_ENUM_1);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "enum_value",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "enum_value", false, options));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_THAT(result.Int64OrDie(), Eq(TestMessage::TEST_ENUM_1));
 }
 
-TEST_P(SelectStepTest, SimpleListTest) {
+TEST_P(SelectStepConformanceTest, SimpleListTest) {
   TestMessage message;
   message.add_int32_list(1);
   message.add_int32_list(2);
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(&message, "int32_list",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(&message, "int32_list", false, options));
 
   ASSERT_TRUE(result.IsList());
   const CelList* cel_list = result.ListOrDie();
   EXPECT_THAT(cel_list->size(), Eq(2));
 }
 
-TEST_P(SelectStepTest, SimpleMapTest) {
+TEST_P(SelectStepConformanceTest, SimpleMapTest) {
   TestMessage message;
   auto map_field = message.mutable_string_int32_map();
   (*map_field)["test0"] = 1;
   (*map_field)["test1"] = 2;
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
   ASSERT_OK_AND_ASSIGN(
       CelValue result,
-      RunExpression(&message, "string_int32_map", false, &arena, options));
+      RunExpression(&message, "string_int32_map", false, options));
   ASSERT_TRUE(result.IsMap());
 
   const CelMap* cel_map = result.MapOrDie();
   EXPECT_THAT(cel_map->size(), Eq(2));
 }
 
-TEST_P(SelectStepTest, MapSimpleInt32Test) {
+TEST_P(SelectStepConformanceTest, MapSimpleInt32Test) {
   std::string key1 = "key1";
   std::string key2 = "key2";
   std::vector<std::pair<CelValue, CelValue>> key_values{
@@ -784,19 +762,18 @@ TEST_P(SelectStepTest, MapSimpleInt32Test) {
   auto map_value = CreateContainerBackedMap(
                        absl::Span<std::pair<CelValue, CelValue>>(key_values))
                        .value();
-  google::protobuf::Arena arena;
   RunExpressionOptions options;
   options.enable_unknowns = GetParam();
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, RunExpression(map_value.get(), "key1",
-                                                      false, &arena, options));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       RunExpression(map_value.get(), "key1", false, options));
 
   ASSERT_TRUE(result.IsInt64());
   EXPECT_EQ(result.Int64OrDie(), 1);
 }
 
 // Test Select behavior, when expression to select from is an Error.
-TEST_P(SelectStepTest, CelErrorAsArgument) {
+TEST_P(SelectStepConformanceTest, CelErrorAsArgument) {
   ExecutionPath path;
 
   Expr dummy_expr;
@@ -810,16 +787,15 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   ident.set_name("message");
   ASSERT_OK_AND_ASSIGN(auto step0, CreateIdentStep(ident, expr0.id()));
   ASSERT_OK_AND_ASSIGN(
-      auto step1,
-      CreateSelectStep(select, dummy_expr.id(), "",
-                       /*enable_wrapper_type_null_unboxing=*/false));
+      auto step1, CreateSelectStep(select, dummy_expr.id(), "",
+                                   /*enable_wrapper_type_null_unboxing=*/false,
+                                   value_factory_));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
 
   CelError error;
 
-  google::protobuf::Arena arena;
   cel::RuntimeOptions options;
   if (GetParam()) {
     options.unknown_processing = cel::UnknownProcessingOptions::kAttributeOnly;
@@ -829,15 +805,14 @@ TEST_P(SelectStepTest, CelErrorAsArgument) {
   Activation activation;
   activation.InsertValue("message", CelValue::CreateError(&error));
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena_));
   ASSERT_TRUE(result.IsError());
   EXPECT_THAT(*result.ErrorOrDie(), Eq(error));
 }
 
-TEST(SelectStepTest, DisableMissingAttributeOK) {
+TEST_F(SelectStepTest, DisableMissingAttributeOK) {
   TestMessage message;
   message.set_bool_value(true);
-  google::protobuf::Arena arena;
   ExecutionPath path;
 
   Expr dummy_expr;
@@ -853,7 +828,8 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(), "message.bool_value",
-                       /*enable_wrapper_type_null_unboxing=*/false));
+                       /*enable_wrapper_type_null_unboxing=*/false,
+                       value_factory_));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -862,23 +838,22 @@ TEST(SelectStepTest, DisableMissingAttributeOK) {
       std::move(path), TypeProvider::Builtin(), cel::RuntimeOptions{}));
   Activation activation;
   activation.InsertValue("message",
-                         CelProtoWrapper::CreateMessage(&message, &arena));
+                         CelProtoWrapper::CreateMessage(&message, &arena_));
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena_));
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
 
   CelAttributePattern pattern("message", {});
   activation.set_missing_attribute_patterns({pattern});
 
-  ASSERT_OK_AND_ASSIGN(result, cel_expr.Evaluate(activation, &arena));
+  ASSERT_OK_AND_ASSIGN(result, cel_expr.Evaluate(activation, &arena_));
   EXPECT_EQ(result.BoolOrDie(), true);
 }
 
-TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
+TEST_F(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   TestMessage message;
   message.set_bool_value(true);
-  google::protobuf::Arena arena;
   ExecutionPath path;
 
   Expr dummy_expr;
@@ -894,7 +869,8 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
   ASSERT_OK_AND_ASSIGN(
       auto step1,
       CreateSelectStep(select, dummy_expr.id(), "message.bool_value",
-                       /*enable_wrapper_type_null_unboxing=*/false));
+                       /*enable_wrapper_type_null_unboxing=*/false,
+                       value_factory_));
 
   path.push_back(std::move(step0));
   path.push_back(std::move(step1));
@@ -905,9 +881,9 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
       FlatExpression(std::move(path), TypeProvider::Builtin(), options));
   Activation activation;
   activation.InsertValue("message",
-                         CelProtoWrapper::CreateMessage(&message, &arena));
+                         CelProtoWrapper::CreateMessage(&message, &arena_));
 
-  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result, cel_expr.Evaluate(activation, &arena_));
   ASSERT_TRUE(result.IsBool());
   EXPECT_EQ(result.BoolOrDie(), true);
 
@@ -916,16 +892,15 @@ TEST(SelectStepTest, UnrecoverableUnknownValueProducesError) {
                                   CelValue::CreateStringView("bool_value"))});
   activation.set_missing_attribute_patterns({pattern});
 
-  ASSERT_OK_AND_ASSIGN(result, cel_expr.Evaluate(activation, &arena));
+  ASSERT_OK_AND_ASSIGN(result, cel_expr.Evaluate(activation, &arena_));
   EXPECT_THAT(*result.ErrorOrDie(),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        HasSubstr("MissingAttributeError: message.bool_value")));
 }
 
-TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
+TEST_F(SelectStepTest, UnknownPatternResolvesToUnknown) {
   TestMessage message;
   message.set_bool_value(true);
-  google::protobuf::Arena arena;
   ExecutionPath path;
 
   Expr dummy_expr;
@@ -938,9 +913,9 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
   auto& ident = expr0.mutable_ident_expr();
   ident.set_name("message");
   auto step0_status = CreateIdentStep(ident, expr0.id());
-  auto step1_status =
-      CreateSelectStep(select, dummy_expr.id(), "message.bool_value",
-                       /*enable_wrapper_type_null_unboxing=*/false);
+  auto step1_status = CreateSelectStep(
+      select, dummy_expr.id(), "message.bool_value",
+      /*enable_wrapper_type_null_unboxing=*/false, value_factory_);
 
   ASSERT_OK(step0_status);
   ASSERT_OK(step1_status);
@@ -957,11 +932,11 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     std::vector<CelAttributePattern> unknown_patterns;
     Activation activation;
     activation.InsertValue("message",
-                           CelProtoWrapper::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena_));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     ASSERT_OK_AND_ASSIGN(CelValue result,
-                         cel_expr.Evaluate(activation, &arena));
+                         cel_expr.Evaluate(activation, &arena_));
     ASSERT_TRUE(result.IsBool());
     EXPECT_EQ(result.BoolOrDie(), true);
   }
@@ -974,11 +949,11 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
     unknown_patterns.push_back(CelAttributePattern("message", {}));
     Activation activation;
     activation.InsertValue("message",
-                           CelProtoWrapper::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena_));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     ASSERT_OK_AND_ASSIGN(CelValue result,
-                         cel_expr.Evaluate(activation, &arena));
+                         cel_expr.Evaluate(activation, &arena_));
     ASSERT_TRUE(result.IsUnknownSet());
   }
 
@@ -989,11 +964,11 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
                        CelValue::CreateString(&kSegmentCorrect1))}));
     Activation activation;
     activation.InsertValue("message",
-                           CelProtoWrapper::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena_));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     ASSERT_OK_AND_ASSIGN(CelValue result,
-                         cel_expr.Evaluate(activation, &arena));
+                         cel_expr.Evaluate(activation, &arena_));
     ASSERT_TRUE(result.IsUnknownSet());
   }
 
@@ -1003,11 +978,11 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
         "message", {CelAttributeQualifierPattern::CreateWildcard()}));
     Activation activation;
     activation.InsertValue("message",
-                           CelProtoWrapper::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena_));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     ASSERT_OK_AND_ASSIGN(CelValue result,
-                         cel_expr.Evaluate(activation, &arena));
+                         cel_expr.Evaluate(activation, &arena_));
     ASSERT_TRUE(result.IsUnknownSet());
   }
 
@@ -1018,17 +993,18 @@ TEST(SelectStepTest, UnknownPatternResolvesToUnknown) {
                        CelValue::CreateString(&kSegmentIncorrect))}));
     Activation activation;
     activation.InsertValue("message",
-                           CelProtoWrapper::CreateMessage(&message, &arena));
+                           CelProtoWrapper::CreateMessage(&message, &arena_));
     activation.set_unknown_attribute_patterns(unknown_patterns);
 
     ASSERT_OK_AND_ASSIGN(CelValue result,
-                         cel_expr.Evaluate(activation, &arena));
+                         cel_expr.Evaluate(activation, &arena_));
     ASSERT_TRUE(result.IsBool());
     EXPECT_EQ(result.BoolOrDie(), true);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(SelectStepTest, SelectStepTest, testing::Bool());
+INSTANTIATE_TEST_SUITE_P(UnknownsEnabled, SelectStepConformanceTest,
+                         testing::Bool());
 
 }  // namespace
 

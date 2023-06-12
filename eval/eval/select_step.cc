@@ -19,7 +19,6 @@
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_step_base.h"
 #include "eval/internal/errors.h"
-#include "eval/internal/interop.h"
 #include "internal/status_macros.h"
 #include "runtime/runtime_options.h"
 
@@ -32,11 +31,11 @@ using ::cel::Handle;
 using ::cel::MapValue;
 using ::cel::NullValue;
 using ::cel::ProtoWrapperTypeOptions;
+using ::cel::StringValue;
 using ::cel::StructValue;
 using ::cel::UnknownValue;
 using ::cel::Value;
 using ::cel::ValueKind;
-using ::cel::interop_internal::CreateStringValueFromView;
 using ::cel::runtime_internal::CreateMissingAttributeError;
 using ::cel::runtime_internal::CreateNoSuchKeyError;
 
@@ -54,11 +53,12 @@ absl::Status InvalidSelectTargetError() {
 // message.
 class SelectStep : public ExpressionStepBase {
  public:
-  SelectStep(absl::string_view field, bool test_field_presence, int64_t expr_id,
-             absl::string_view select_path,
+  SelectStep(Handle<StringValue> value, bool test_field_presence,
+             int64_t expr_id, absl::string_view select_path,
              bool enable_wrapper_type_null_unboxing)
       : ExpressionStepBase(expr_id),
-        field_(field),
+        field_value_(std::move(value)),
+        field_(field_value_->ToString()),
         test_field_presence_(test_field_presence),
         select_path_(select_path),
         unboxing_option_(enable_wrapper_type_null_unboxing
@@ -70,7 +70,7 @@ class SelectStep : public ExpressionStepBase {
  private:
   absl::StatusOr<Handle<Value>> CreateValueFromField(
       const Handle<StructValue>& msg, ExecutionFrame* frame) const;
-
+  cel::Handle<StringValue> field_value_;
   std::string field_;
   bool test_field_presence_;
   std::string select_path_;
@@ -126,12 +126,11 @@ Handle<Value> TestOnlySelect(const Handle<StructValue>& msg,
 }
 
 Handle<Value> TestOnlySelect(const Handle<MapValue>& map,
-                             const std::string& field_name,
+                             const Handle<StringValue>& field_name,
                              cel::ValueFactory& value_factory) {
   // Field presence only supports string keys containing valid identifier
   // characters.
-  auto presence =
-      map->Has(MapValue::HasContext(), CreateStringValueFromView(field_name));
+  auto presence = map->Has(MapValue::HasContext(), field_name);
 
   if (!presence.ok()) {
     return value_factory.CreateErrorValue(std::move(presence).status());
@@ -185,8 +184,8 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
   if (test_field_presence_) {
     switch (arg->kind()) {
       case ValueKind::kMap:
-        frame->value_stack().PopAndPush(
-            TestOnlySelect(arg.As<MapValue>(), field_, frame->value_factory()));
+        frame->value_stack().PopAndPush(TestOnlySelect(
+            arg.As<MapValue>(), field_value_, frame->value_factory()));
         return absl::OkStatus();
       case ValueKind::kMessage:
         frame->value_stack().PopAndPush(TestOnlySelect(
@@ -210,11 +209,10 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
     }
     case ValueKind::kMap: {
       const auto& cel_map = arg.As<MapValue>();
-      auto cel_field = CreateStringValueFromView(field_);
       CEL_ASSIGN_OR_RETURN(
           auto result,
           cel_map->Get(MapValue::GetContext(frame->value_factory()),
-                       cel_field));
+                       field_value_));
 
       // If object is not found, we return Error, per CEL specification.
       if (!result.has_value()) {
@@ -235,9 +233,11 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
     const cel::ast::internal::Select& select_expr, int64_t expr_id,
-    absl::string_view select_path, bool enable_wrapper_type_null_unboxing) {
+    absl::string_view select_path, bool enable_wrapper_type_null_unboxing,
+    cel::ValueFactory& value_factory) {
   return std::make_unique<SelectStep>(
-      select_expr.field(), select_expr.test_only(), expr_id, select_path,
+      value_factory.CreateUncheckedStringValue(select_expr.field()),
+      select_expr.test_only(), expr_id, select_path,
       enable_wrapper_type_null_unboxing);
 }
 
