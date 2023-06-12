@@ -60,7 +60,6 @@
 #include "eval/eval/select_step.h"
 #include "eval/eval/shadowable_value_step.h"
 #include "eval/eval/ternary_step.h"
-#include "eval/internal/interop.h"
 #include "eval/public/ast_traverse_native.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
@@ -77,7 +76,6 @@ using ::cel::Value;
 using ::cel::ValueFactory;
 using ::cel::ast::Ast;
 using ::cel::ast::internal::AstImpl;
-using ::cel::interop_internal::CreateIntValue;
 
 constexpr int64_t kExprIdNotFromAst = -1;
 
@@ -656,6 +654,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   absl::Status progress_status() const { return progress_status_; }
 
+  cel::ValueFactory& value_factory() { return value_factory_; }
+
   void AddStep(absl::StatusOr<std::unique_ptr<ExpressionStep>> step) {
     if (step.ok() && progress_status_.ok()) {
       execution_path_.push_back(*std::move(step));
@@ -1047,8 +1047,9 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
 
 void ComprehensionVisitor::PreVisit(const cel::ast::internal::Expr*) {
   constexpr int64_t kLoopStepPlaceholder = -10;
-  visitor_->AddStep(CreateConstValueStep(CreateIntValue(kLoopStepPlaceholder),
-                                         kExprIdNotFromAst, false));
+  visitor_->AddStep(CreateConstValueStep(
+      visitor_->value_factory().CreateIntValue(kLoopStepPlaceholder),
+      kExprIdNotFromAst, false));
 }
 
 void ComprehensionVisitor::PostVisitArg(int arg_num,
@@ -1063,11 +1064,13 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
       visitor_->AddStep(CreateListKeysStep(expr->id()));
       // Setup index stack position
       visitor_->AddStep(
-          CreateConstValueStep(CreateIntValue(-1), kExprIdNotFromAst, false));
+          CreateConstValueStep(visitor_->value_factory().CreateIntValue(-1),
+                               kExprIdNotFromAst, false));
       // Element at index.
       constexpr int64_t kCurrentValuePlaceholder = -20;
       visitor_->AddStep(CreateConstValueStep(
-          CreateIntValue(kCurrentValuePlaceholder), kExprIdNotFromAst, false));
+          visitor_->value_factory().CreateIntValue(kCurrentValuePlaceholder),
+          kExprIdNotFromAst, false));
       break;
     }
     case cel::ast::internal::ACCU_INIT: {
