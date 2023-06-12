@@ -1,6 +1,16 @@
-// Common Expression Language grammar for C++
-// Based on Java grammar with the following changes:
-// - rename grammar from CEL to Cel to generate C++ style compatible names.
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 grammar Cel;
 
@@ -35,47 +45,61 @@ calc
     ;
 
 unary
-    : member                                                      # MemberExpr
-    | (ops+='!')+ member                                          # LogicalNot
-    | (ops+='-')+ member                                          # Negate
+    : member                                                        # MemberExpr
+    | (ops+='!')+ member                                            # LogicalNot
+    | (ops+='-')+ member                                            # Negate
     ;
 
 member
-    : primary                                                     # PrimaryExpr
-    | member op='.' id=IDENTIFIER (open='(' args=exprList? ')')?  # SelectOrCall
-    | member op='[' index=expr ']'                                # Index
-    | member op='{' entries=fieldInitializerList? ','? '}'        # CreateMessage
+    : primary                                                       # PrimaryExpr
+    | member op='.' (opt='?')? id=IDENTIFIER                        # Select
+    | member op='.' id=IDENTIFIER open='(' args=exprList? ')'       # MemberCall
+    | member op='[' (opt='?')? index=expr ']'                       # Index
     ;
 
 primary
-    : leadingDot='.'? id=IDENTIFIER (op='(' args=exprList? ')')?  # IdentOrGlobalCall
-    | '(' e=expr ')'                                              # Nested
-    | op='[' elems=exprList? ','? ']'                             # CreateList
-    | op='{' entries=mapInitializerList? ','? '}'                 # CreateStruct
-    | literal                                                     # ConstantLiteral
+    : leadingDot='.'? id=IDENTIFIER (op='(' args=exprList? ')')?    # IdentOrGlobalCall
+    | '(' e=expr ')'                                                # Nested
+    | op='[' elems=listInit? ','? ']'                               # CreateList
+    | op='{' entries=mapInitializerList? ','? '}'                   # CreateStruct
+    | leadingDot='.'? ids+=IDENTIFIER (ops+='.' ids+=IDENTIFIER)*
+        op='{' entries=fieldInitializerList? ','? '}'               # CreateMessage
+    | literal                                                       # ConstantLiteral
     ;
 
 exprList
     : e+=expr (',' e+=expr)*
     ;
 
+listInit
+    : elems+=optExpr (',' elems+=optExpr)*
+    ;
+
 fieldInitializerList
-    : fields+=IDENTIFIER cols+=':' values+=expr (',' fields+=IDENTIFIER cols+=':' values+=expr)*
+    : fields+=optField cols+=':' values+=expr (',' fields+=optField cols+=':' values+=expr)*
+    ;
+
+optField
+    : (opt='?')? id=IDENTIFIER
     ;
 
 mapInitializerList
-    : keys+=expr cols+=':' values+=expr (',' keys+=expr cols+=':' values+=expr)*
+    : keys+=optExpr cols+=':' values+=expr (',' keys+=optExpr cols+=':' values+=expr)*
+    ;
+
+optExpr
+    : (opt='?')? e=expr
     ;
 
 literal
     : sign=MINUS? tok=NUM_INT   # Int
-    | tok=NUM_UINT  # Uint
+    | tok=NUM_UINT              # Uint
     | sign=MINUS? tok=NUM_FLOAT # Double
-    | tok=STRING    # String
-    | tok=BYTES     # Bytes
-    | tok=CEL_TRUE  # BoolTrue
-    | tok=CEL_FALSE # BoolFalse
-    | tok=NUL       # Null
+    | tok=STRING                # String
+    | tok=BYTES                 # Bytes
+    | tok=CEL_TRUE              # BoolTrue
+    | tok=CEL_FALSE             # BoolFalse
+    | tok=NUL                   # Null
     ;
 
 // Lexer Rules
@@ -83,6 +107,7 @@ literal
 
 EQUALS : '==';
 NOT_EQUALS : '!=';
+IN: 'in';
 LESS : '<';
 LESS_EQUALS : '<=';
 GREATER_EQUALS : '>=';

@@ -15,6 +15,7 @@
 #include "parser/parser.h"
 
 #include <algorithm>
+#include <iterator>
 #include <list>
 #include <string>
 #include <thread>
@@ -110,9 +111,9 @@ std::vector<TestInfo> test_cases = {
      ")^#2:Expr.Call#"},
     {"SomeMessage{foo: 5, bar: \"xyz\"}",
      "SomeMessage{\n"
-     "  foo:5^#4:int64#^#3:Expr.CreateStruct.Entry#,\n"
-     "  bar:\"xyz\"^#6:string#^#5:Expr.CreateStruct.Entry#\n"
-     "}^#2:Expr.CreateStruct#"},
+     "  foo:5^#3:int64#^#2:Expr.CreateStruct.Entry#,\n"
+     "  bar:\"xyz\"^#5:string#^#4:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
     {"[3, 4, 5]",
      "[\n"
      "  3^#2:int64#,\n"
@@ -149,7 +150,8 @@ std::vector<TestInfo> test_cases = {
     {"{", "",
      "ERROR: <input>:1:2: Syntax error: mismatched input '<EOF>' expecting "
      "{'[', "
-     "'{', '}', '(', '.', ',', '-', '!', 'true', 'false', 'null', NUM_FLOAT, "
+     "'{', '}', '(', '.', ',', '-', '!', '\\u003F', 'true', 'false', 'null', "
+     "NUM_FLOAT, "
      "NUM_INT, "
      "NUM_UINT, STRING, BYTES, IDENTIFIER}\n | {\n"
      " | .^"},
@@ -330,16 +332,16 @@ std::vector<TestInfo> test_cases = {
      "  a^#1:Expr.Ident#,\n"
      "  b^#3:Expr.Ident#\n"
      ")^#2:Expr.Call#"},
-    {"foo{ }", "foo{}^#2:Expr.CreateStruct#"},
+    {"foo{ }", "foo{}^#1:Expr.CreateStruct#"},
     {"foo{ a:b }",
      "foo{\n"
-     "  a:b^#4:Expr.Ident#^#3:Expr.CreateStruct.Entry#\n"
-     "}^#2:Expr.CreateStruct#"},
+     "  a:b^#3:Expr.Ident#^#2:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
     {"foo{ a:b, c:d }",
      "foo{\n"
-     "  a:b^#4:Expr.Ident#^#3:Expr.CreateStruct.Entry#,\n"
-     "  c:d^#6:Expr.Ident#^#5:Expr.CreateStruct.Entry#\n"
-     "}^#2:Expr.CreateStruct#"},
+     "  a:b^#3:Expr.Ident#^#2:Expr.CreateStruct.Entry#,\n"
+     "  c:d^#5:Expr.Ident#^#4:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
     {"{}", "{}^#1:Expr.CreateStruct#"},
     {"{a:b, c:d}",
      "{\n"
@@ -427,7 +429,8 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:4294967295:0: <<nil>> parsetree\n | \n | ^"},
     {"t{>C}", "",
      "ERROR: <input>:1:3: Syntax error: extraneous input '>' expecting {'}', "
-     "',', IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: Syntax error: "
+     "',', '\\u003F', IDENTIFIER}\n | t{>C}\n | ..^\nERROR: <input>:1:5: "
+     "Syntax error: "
      "mismatched input '}' expecting ':'\n | t{>C}\n | ....^"},
 
     // Macro tests
@@ -577,13 +580,13 @@ std::vector<TestInfo> test_cases = {
      "}^#1:Expr.CreateStruct#"},
     {"TestAllTypes{single_int32: 1, single_int64: 2}",
      "TestAllTypes{\n"
-     "  single_int32:1^#4:int64#^#3:Expr.CreateStruct.Entry#,\n"
-     "  single_int64:2^#6:int64#^#5:Expr.CreateStruct.Entry#\n"
-     "}^#2:Expr.CreateStruct#"},
+     "  single_int32:1^#3:int64#^#2:Expr.CreateStruct.Entry#,\n"
+     "  single_int64:2^#5:int64#^#4:Expr.CreateStruct.Entry#\n"
+     "}^#1:Expr.CreateStruct#"},
     {"TestAllTypes(){single_int32: 1, single_int64: 2}", "",
-     "ERROR: <input>:1:13: expected a qualified name\n"
+     "ERROR: <input>:1:15: Syntax error: mismatched input '{' expecting <EOF>\n"
      " | TestAllTypes(){single_int32: 1, single_int64: 2}\n"
-     " | ............^"},
+     " | ..............^"},
     {"size(x) == x.size()",
      "_==_(\n"
      "  size(\n"
@@ -697,8 +700,8 @@ std::vector<TestInfo> test_cases = {
      "  \"def\"^#3:string#\n"
      ")^#2:Expr.Call#"},
     {"{\"a\": 1}.\"a\"", "",
-     "ERROR: <input>:1:10: Syntax error: mismatched input '\"a\"' "
-     "expecting IDENTIFIER\n"
+     "ERROR: <input>:1:10: Syntax error: no viable alternative at input "
+     "'.\"a\"'\n"
      " | {\"a\": 1}.\"a\"\n"
      " | .........^"},
     {"\"\\xC3\\XBF\"", "\"Ã¿\"^#1:string#"},
@@ -781,7 +784,7 @@ std::vector<TestInfo> test_cases = {
      "ERROR: <input>:2:10: Syntax error: token recognition error at: '😁'\n"
      " |    && in.😁\n"
      " | .........^\n"
-     "ERROR: <input>:2:11: Syntax error: missing IDENTIFIER at '<EOF>'\n"
+     "ERROR: <input>:2:11: Syntax error: no viable alternative at input '.'\n"
      " |    && in.😁\n"
      " | ..........^"},
     {"as", "",
@@ -1173,7 +1176,22 @@ std::vector<TestInfo> test_cases = {
     {"b'\\UFFFFFFFF'", "",
      "ERROR: <input>:1:1: Invalid bytes literal: Illegal escape sequence: "
      "Unicode escape sequence \\U cannot be used in bytes literals\n | "
-     "b'\\UFFFFFFFF'\n | ^"}};
+     "b'\\UFFFFFFFF'\n | ^"},
+    {"foo.?bar", "",
+     "ERROR: <input>:1:1: support for optional is not yet implemented\n | "
+     "foo.?bar\n | ^"},
+    {"foo[?0]", "",
+     "ERROR: <input>:1:1: support for optional is not yet implemented\n | "
+     "foo[?0]\n | ^"},
+    {"foo.Bar{?foo: 'bar'}", "",
+     "ERROR: <input>:1:9: support for optional is not yet implemented\n | "
+     "foo.Bar{?foo: 'bar'}\n | ........^"},
+    {"{?'foo': 'bar'}", "",
+     "ERROR: <input>:1:2: support for optional is not yet implemented\n | "
+     "{?'foo': 'bar'}\n | .^"},
+    {"[?foo]", "",
+     "ERROR: <input>:1:2: support for optional is not yet implemented\n | "
+     "[?foo]\n | .^"}};
 
 class KindAndIdAdorner : public testutil::ExpressionAdorner {
  public:
@@ -1398,12 +1416,9 @@ TEST(ExpressionTest, ErrorRecoveryLimits) {
   auto result = Parse("......", "", options);
   EXPECT_THAT(result, Not(IsOk()));
   EXPECT_EQ(result.status().message(),
-            "ERROR: :1:2: Syntax error: missing IDENTIFIER at '.'\n"
-            " | ......\n"
-            " | .^\n"
-            "ERROR: :1:3: Syntax error: More than 1 parse errors.\n"
-            " | ......\n"
-            " | ..^");
+            "ERROR: :1:1: Syntax error: More than 1 parse errors.\n | ......\n "
+            "| ^\nERROR: :1:2: Syntax error: no viable alternative at input "
+            "'..'\n | ......\n | .^");
 }
 
 TEST(ExpressionTest, ExpressionSizeLimit) {

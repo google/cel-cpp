@@ -104,7 +104,7 @@ class SourceFactory {
                        const Expr& target, const std::vector<Expr>& args);
   Expr NewIdent(const antlr4::Token* token, const std::string& ident_name);
   Expr NewIdentForMacro(int64_t macro_id, const std::string& ident_name);
-  Expr NewSelect(::cel_parser_internal::CelParser::SelectOrCallContext* ctx,
+  Expr NewSelect(::cel_parser_internal::CelParser::SelectContext* ctx,
                  Expr& operand, const std::string& field);
   Expr NewSelectForMacro(int64_t macro_id, const Expr& operand,
                          const std::string& field);

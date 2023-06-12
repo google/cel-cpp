@@ -140,7 +140,7 @@ Expr SourceFactory::NewIdentForMacro(int64_t macro_id,
 }
 
 Expr SourceFactory::NewSelect(
-    ::cel_parser_internal::CelParser::SelectOrCallContext* ctx, Expr& operand,
+    ::cel_parser_internal::CelParser::SelectContext* ctx, Expr& operand,
     const std::string& field) {
   Expr expr = NewExpr(ctx->op);
   auto select_expr = expr.mutable_select_expr();

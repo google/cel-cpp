@@ -31,6 +31,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/match.h"
 #include "absl/strings/numbers.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
@@ -491,7 +492,8 @@ class ParserVisitor final : public CelBaseVisitor,
   antlrcpp::Any visitUnary(CelParser::UnaryContext* ctx);
   antlrcpp::Any visitLogicalNot(CelParser::LogicalNotContext* ctx) override;
   antlrcpp::Any visitNegate(CelParser::NegateContext* ctx) override;
-  antlrcpp::Any visitSelectOrCall(CelParser::SelectOrCallContext* ctx) override;
+  antlrcpp::Any visitSelect(CelParser::SelectContext* ctx) override;
+  antlrcpp::Any visitMemberCall(CelParser::MemberCallContext* ctx) override;
   antlrcpp::Any visitIndex(CelParser::IndexContext* ctx) override;
   antlrcpp::Any visitCreateMessage(
       CelParser::CreateMessageContext* ctx) override;
@@ -501,6 +503,8 @@ class ParserVisitor final : public CelBaseVisitor,
       CelParser::IdentOrGlobalCallContext* ctx) override;
   antlrcpp::Any visitNested(CelParser::NestedContext* ctx) override;
   antlrcpp::Any visitCreateList(CelParser::CreateListContext* ctx) override;
+  std::vector<google::api::expr::v1alpha1::Expr> visitList(
+      CelParser::ListInitContext* ctx);
   std::vector<google::api::expr::v1alpha1::Expr> visitList(
       CelParser::ExprListContext* ctx);
   antlrcpp::Any visitCreateStruct(CelParser::CreateStructContext* ctx) override;
@@ -599,8 +603,10 @@ antlrcpp::Any ParserVisitor::visit(antlr4::tree::ParseTree* tree) {
     return visitPrimaryExpr(ctx);
   } else if (auto* ctx = tree_as<CelParser::MemberExprContext>(tree)) {
     return visitMemberExpr(ctx);
-  } else if (auto* ctx = tree_as<CelParser::SelectOrCallContext>(tree)) {
-    return visitSelectOrCall(ctx);
+  } else if (auto* ctx = tree_as<CelParser::SelectContext>(tree)) {
+    return visitSelect(ctx);
+  } else if (auto* ctx = tree_as<CelParser::MemberCallContext>(tree)) {
+    return visitMemberCall(ctx);
   } else if (auto* ctx = tree_as<CelParser::MapInitializerListContext>(tree)) {
     return visitMapInitializerList(ctx);
   } else if (auto* ctx = tree_as<CelParser::NegateContext>(tree)) {
@@ -636,8 +642,16 @@ antlrcpp::Any ParserVisitor::visitPrimaryExpr(
     return visitCreateList(ctx);
   } else if (auto* ctx = tree_as<CelParser::CreateStructContext>(primary)) {
     return visitCreateStruct(ctx);
+  } else if (auto* ctx = tree_as<CelParser::CreateMessageContext>(primary)) {
+    return visitCreateMessage(ctx);
   } else if (auto* ctx = tree_as<CelParser::ConstantLiteralContext>(primary)) {
     return visitConstantLiteral(ctx);
+  }
+  if (!sf_->errors().empty()) {
+    // ANTLR creates PrimaryContext rather than a derived class during certain
+    // error conditions. This is odd, but we ignore it as we already have errors
+    // that occurred.
+    return sf_->NewExpr(sf_->Id(SourceFactory::NoLocation()));
   }
   return sf_->ReportError(pctx, "invalid primary expression");
 }
@@ -647,12 +661,12 @@ antlrcpp::Any ParserVisitor::visitMemberExpr(
   CelParser::MemberContext* member = mctx->member();
   if (auto* ctx = tree_as<CelParser::PrimaryExprContext>(member)) {
     return visitPrimaryExpr(ctx);
-  } else if (auto* ctx = tree_as<CelParser::SelectOrCallContext>(member)) {
-    return visitSelectOrCall(ctx);
+  } else if (auto* ctx = tree_as<CelParser::SelectContext>(member)) {
+    return visitSelect(ctx);
+  } else if (auto* ctx = tree_as<CelParser::MemberCallContext>(member)) {
+    return visitMemberCall(ctx);
   } else if (auto* ctx = tree_as<CelParser::IndexContext>(member)) {
     return visitIndex(ctx);
-  } else if (auto* ctx = tree_as<CelParser::CreateMessageContext>(member)) {
-    return visitCreateMessage(ctx);
   }
   return sf_->ReportError(mctx, "unsupported simple expression");
 }
@@ -771,22 +785,35 @@ antlrcpp::Any ParserVisitor::visitNegate(CelParser::NegateContext* ctx) {
   return GlobalCallOrMacro(op_id, CelOperator::NEGATE, {target});
 }
 
-antlrcpp::Any ParserVisitor::visitSelectOrCall(
-    CelParser::SelectOrCallContext* ctx) {
+antlrcpp::Any ParserVisitor::visitSelect(CelParser::SelectContext* ctx) {
+  if (ctx->opt) {
+    return sf_->ReportError(ctx, "support for optional is not yet implemented");
+  }
   auto operand = std::any_cast<Expr>(visit(ctx->member()));
   // Handle the error case where no valid identifier is specified.
   if (!ctx->id) {
     return sf_->NewExpr(ctx);
   }
   auto id = ctx->id->getText();
-  if (ctx->open) {
-    int64_t op_id = sf_->Id(ctx->open);
-    return ReceiverCallOrMacro(op_id, id, operand, visitList(ctx->args));
-  }
   return sf_->NewSelect(ctx, operand, id);
 }
 
+antlrcpp::Any ParserVisitor::visitMemberCall(
+    CelParser::MemberCallContext* ctx) {
+  auto operand = std::any_cast<Expr>(visit(ctx->member()));
+  // Handle the error case where no valid identifier is specified.
+  if (!ctx->id) {
+    return sf_->NewExpr(ctx);
+  }
+  auto id = ctx->id->getText();
+  int64_t op_id = sf_->Id(ctx->open);
+  return ReceiverCallOrMacro(op_id, id, operand, visitList(ctx->args));
+}
+
 antlrcpp::Any ParserVisitor::visitIndex(CelParser::IndexContext* ctx) {
+  if (ctx->opt) {
+    return sf_->ReportError(ctx, "support for optional is not yet implemented");
+  }
   auto target = std::any_cast<Expr>(visit(ctx->member()));
   int64_t op_id = sf_->Id(ctx->op);
   auto index = std::any_cast<Expr>(visit(ctx->index));
@@ -795,16 +822,22 @@ antlrcpp::Any ParserVisitor::visitIndex(CelParser::IndexContext* ctx) {
 
 antlrcpp::Any ParserVisitor::visitCreateMessage(
     CelParser::CreateMessageContext* ctx) {
-  auto target = std::any_cast<Expr>(visit(ctx->member()));
+  std::vector<std::string> parts;
+  parts.reserve(ctx->ids.size());
+  for (const auto* id : ctx->ids) {
+    parts.push_back(id->getText());
+  }
+  std::string name;
+  if (ctx->leadingDot) {
+    name.push_back('.');
+    name.append(absl::StrJoin(parts, "."));
+  } else {
+    name = absl::StrJoin(parts, ".");
+  }
   int64_t obj_id = sf_->Id(ctx->op);
-  std::string message_name = ExtractQualifiedName(ctx, &target);
-  if (!message_name.empty()) {
     auto entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
         visitFieldInitializerList(ctx->entries));
-    return sf_->NewObject(obj_id, message_name, entries);
-  } else {
-    return sf_->NewExpr(obj_id);
-  }
+    return sf_->NewObject(obj_id, name, entries);
 }
 
 antlrcpp::Any ParserVisitor::visitFieldInitializerList(
@@ -820,10 +853,16 @@ antlrcpp::Any ParserVisitor::visitFieldInitializerList(
       // This is the result of a syntax error detected elsewhere.
       return res;
     }
-    const auto& f = ctx->fields[i];
+    const auto* f = ctx->fields[i];
     int64_t init_id = sf_->Id(ctx->cols[i]);
-    auto value = std::any_cast<Expr>(visit(ctx->values[i]));
-    auto field = sf_->NewObjectField(init_id, f->getText(), value);
+    Expr value;
+    if (f->opt) {
+      value =
+          sf_->ReportError(ctx, "support for optional is not yet implemented");
+    } else {
+      value = std::any_cast<Expr>(visit(ctx->values[i]));
+    }
+    auto field = sf_->NewObjectField(init_id, f->id->getText(), value);
     res[i] = field;
   }
 
@@ -860,6 +899,21 @@ antlrcpp::Any ParserVisitor::visitCreateList(
     CelParser::CreateListContext* ctx) {
   int64_t list_id = sf_->Id(ctx->op);
   return sf_->NewList(list_id, visitList(ctx->elems));
+}
+
+std::vector<Expr> ParserVisitor::visitList(CelParser::ListInitContext* ctx) {
+  std::vector<Expr> rv;
+  if (!ctx) return rv;
+  std::transform(ctx->elems.begin(), ctx->elems.end(), std::back_inserter(rv),
+                 [this](CelParser::OptExprContext* expr_ctx) {
+                   if (expr_ctx->opt) {
+                     return sf_->ReportError(
+                         expr_ctx,
+                         "support for optional is not yet implemented");
+                   }
+                   return std::any_cast<Expr>(visitExpr(expr_ctx->e));
+                 });
+  return rv;
 }
 
 std::vector<Expr> ParserVisitor::visitList(CelParser::ExprListContext* ctx) {
@@ -916,7 +970,13 @@ antlrcpp::Any ParserVisitor::visitMapInitializerList(
   res.resize(ctx->cols.size());
   for (size_t i = 0; i < ctx->cols.size(); ++i) {
     int64_t col_id = sf_->Id(ctx->cols[i]);
-    auto key = std::any_cast<Expr>(visit(ctx->keys[i]));
+    Expr key;
+    if (ctx->keys[i]->opt) {
+      key =
+          sf_->ReportError(ctx, "support for optional is not yet implemented");
+    } else {
+      key = std::any_cast<Expr>(visit(ctx->keys[i]->e));
+    }
     auto value = std::any_cast<Expr>(visit(ctx->values[i]));
     res[i] = sf_->NewMapEntry(col_id, key, value);
   }
