@@ -105,7 +105,6 @@ cc_binary(
     for arg in [
         "",
         "--opt",
-        "--updated_opt",
     ]
 ]
 

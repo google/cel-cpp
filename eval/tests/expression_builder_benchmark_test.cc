@@ -43,7 +43,6 @@ using google::api::expr::v1alpha1::ParsedExpr;
 enum BenchmarkParam : int {
   kDefault = 0,
   kFoldConstants = 1,
-  kUpdatedFoldConstants = 2
 };
 
 void BM_RegisterBuiltins(benchmark::State& state) {
@@ -63,12 +62,6 @@ InterpreterOptions OptionsForParam(BenchmarkParam param, google::protobuf::Arena
     case BenchmarkParam::kFoldConstants:
       options.constant_arena = &arena;
       options.constant_folding = true;
-      options.enable_updated_constant_folding = false;
-      break;
-    case BenchmarkParam::kUpdatedFoldConstants:
-      options.constant_arena = &arena;
-      options.constant_folding = true;
-      options.enable_updated_constant_folding = true;
       break;
     case BenchmarkParam::kDefault:
       options.constant_folding = false;
@@ -105,8 +98,7 @@ void BM_SymbolicPolicy(benchmark::State& state) {
 
 BENCHMARK(BM_SymbolicPolicy)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants)
-    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants);
 
 void BM_NestedComprehension(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -132,8 +124,7 @@ void BM_NestedComprehension(benchmark::State& state) {
 
 BENCHMARK(BM_NestedComprehension)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants)
-    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants);
 
 void BM_Comparisons(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -162,8 +153,7 @@ void BM_Comparisons(benchmark::State& state) {
 
 BENCHMARK(BM_Comparisons)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants)
-    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants);
 
 void RegexPrecompilationBench(bool enabled, benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -202,8 +192,7 @@ void BM_RegexPrecompilationDisabled(benchmark::State& state) {
 
 BENCHMARK(BM_RegexPrecompilationDisabled)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants)
-    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants);
 
 void BM_RegexPrecompilationEnabled(benchmark::State& state) {
   RegexPrecompilationBench(true, state);
@@ -211,8 +200,7 @@ void BM_RegexPrecompilationEnabled(benchmark::State& state) {
 
 BENCHMARK(BM_RegexPrecompilationEnabled)
     ->Arg(BenchmarkParam::kDefault)
-    ->Arg(BenchmarkParam::kFoldConstants)
-    ->Arg(BenchmarkParam::kUpdatedFoldConstants);
+    ->Arg(BenchmarkParam::kFoldConstants);
 
 void BM_StringConcat(benchmark::State& state) {
   auto param = static_cast<BenchmarkParam>(state.range(0));
@@ -254,12 +242,7 @@ BENCHMARK(BM_StringConcat)
     ->Args({BenchmarkParam::kFoldConstants, 4})
     ->Args({BenchmarkParam::kFoldConstants, 8})
     ->Args({BenchmarkParam::kFoldConstants, 16})
-    ->Args({BenchmarkParam::kFoldConstants, 32})
-    ->Args({BenchmarkParam::kUpdatedFoldConstants, 2})
-    ->Args({BenchmarkParam::kUpdatedFoldConstants, 4})
-    ->Args({BenchmarkParam::kUpdatedFoldConstants, 8})
-    ->Args({BenchmarkParam::kUpdatedFoldConstants, 16})
-    ->Args({BenchmarkParam::kUpdatedFoldConstants, 32});
+    ->Args({BenchmarkParam::kFoldConstants, 32});
 
 }  // namespace
 }  // namespace google::api::expr::runtime

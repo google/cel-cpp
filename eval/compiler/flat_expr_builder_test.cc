@@ -38,6 +38,7 @@
 #include "base/function.h"
 #include "base/function_descriptor.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
+#include "eval/compiler/constant_folding.h"
 #include "eval/compiler/qualified_reference_resolver.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/activation.h"
@@ -1179,7 +1180,8 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
   builder.flat_expr_builder().AddAstTransform(
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   google::protobuf::Arena arena;
-  builder.flat_expr_builder().set_constant_folding(true, &arena);
+  builder.flat_expr_builder().AddProgramOptimizer(
+      cel::ast::internal::CreateConstantFoldingExtension(&arena));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 
@@ -2116,43 +2118,10 @@ class ConstantFoldingConformanceTest
   google::protobuf::Arena arena_;
 };
 
-TEST_P(ConstantFoldingConformanceTest, Legacy) {
-  InterpreterOptions options;
-  options.constant_folding = true;
-  options.constant_arena = &arena_;
-  options.enable_updated_constant_folding = false;
-  // Check interaction between const folding and list append optimizations.
-  options.enable_comprehension_list_append = true;
-
-  const ConstantFoldingTestCase& p = GetParam();
-
-  ASSERT_OK_AND_ASSIGN(
-      auto builder, CreateConstantFoldingConformanceTestExprBuilder(options));
-  ASSERT_OK_AND_ASSIGN(ParsedExpr expr, parser::Parse(p.expr));
-
-  ASSERT_OK_AND_ASSIGN(
-      auto plan, builder->CreateExpression(&expr.expr(), &expr.source_info()));
-
-  Activation activation;
-  ASSERT_OK(activation.InsertFunction(
-      PortableUnaryFunctionAdapter<bool, bool>::Create(
-          "LazyFunction", false,
-          [](google::protobuf::Arena* arena, bool val) { return val; })));
-  for (auto iter = p.values.begin(); iter != p.values.end(); ++iter) {
-    activation.InsertValue(iter->first, CelValue::CreateInt64(iter->second));
-  }
-
-  ASSERT_OK_AND_ASSIGN(CelValue result, plan->Evaluate(activation, &arena_));
-  // Check that none of the memoized constants are being mutated.
-  ASSERT_OK_AND_ASSIGN(result, plan->Evaluate(activation, &arena_));
-  EXPECT_THAT(result, p.matcher);
-}
-
 TEST_P(ConstantFoldingConformanceTest, Updated) {
   InterpreterOptions options;
   options.constant_folding = true;
   options.constant_arena = &arena_;
-  options.enable_updated_constant_folding = true;
   // Check interaction between const folding and list append optimizations.
   options.enable_comprehension_list_append = true;
 
@@ -2236,7 +2205,6 @@ TEST(UpdatedConstantFolding, FoldsLists) {
   google::protobuf::Arena arena;
   options.constant_folding = true;
   options.constant_arena = &arena;
-  options.enable_updated_constant_folding = true;
 
   ASSERT_OK_AND_ASSIGN(
       auto builder, CreateConstantFoldingConformanceTestExprBuilder(options));

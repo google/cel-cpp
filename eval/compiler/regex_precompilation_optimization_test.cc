@@ -26,6 +26,7 @@
 #include "base/type_manager.h"
 #include "base/value_factory.h"
 #include "eval/compiler/cel_expression_builder_flat_impl.h"
+#include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/cel_expression_flat_impl.h"
@@ -178,9 +179,8 @@ TEST_F(RegexPrecompilationExtensionTest, DoesNotOptimizeCompoundExpr) {
 class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
  public:
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
-    // TODO(uncreated-issue/27): This applies to either version of const folding.
-    // Update when default is changed to new version.
-    builder_.flat_expr_builder().set_constant_folding(true, &arena_);
+    builder_.flat_expr_builder().AddProgramOptimizer(
+        cel::ast::internal::CreateConstantFoldingExtension(&arena_));
   }
 
  protected:

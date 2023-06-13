@@ -52,7 +52,6 @@ struct InterpreterOptions {
   // Note that expression tracing applies a modified expression if this option
   // is enabled.
   bool constant_folding = false;
-  bool enable_updated_constant_folding = true;
   google::protobuf::Arena* constant_arena = nullptr;
 
   // Enable comprehension expressions (e.g. exists, all)

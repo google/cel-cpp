@@ -46,7 +46,6 @@ InterpreterOptions GetOptions(google::protobuf::Arena& arena) {
   InterpreterOptions options;
 
   if (absl::GetFlag(FLAGS_enable_optimizations)) {
-    options.enable_updated_constant_folding = true;
     options.constant_arena = &arena;
     options.constant_folding = true;
   }

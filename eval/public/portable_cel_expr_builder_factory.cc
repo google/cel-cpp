@@ -57,13 +57,10 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
   flat_expr_builder.set_enable_comprehension_vulnerability_check(
       options.enable_comprehension_vulnerability_check);
 
-  if (options.constant_folding && options.enable_updated_constant_folding) {
-    flat_expr_builder.AddProgramOptimizer(
+  if (options.constant_folding) {
+    builder->flat_expr_builder().AddProgramOptimizer(
         cel::ast::internal::CreateConstantFoldingExtension(
             options.constant_arena));
-  } else {
-    flat_expr_builder.set_constant_folding(options.constant_folding,
-                                           options.constant_arena);
   }
 
   if (options.enable_regex_precompilation) {

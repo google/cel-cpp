@@ -27,7 +27,6 @@
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
-#include "google/protobuf/arena.h"
 
 namespace google::api::expr::runtime {
 
@@ -48,15 +47,6 @@ class FlatExprBuilder {
       : options_(cel::RuntimeOptions()),
         function_registry_(function_registry),
         type_registry_(type_registry) {}
-
-  // Toggle constant folding optimization. By default it is not enabled.
-  // The provided arena is used to hold the generated constants.
-  // TODO(uncreated-issue/27): default enable the updated version then deprecate this
-  // function.
-  void set_constant_folding(bool enabled, google::protobuf::Arena* arena) {
-    constant_folding_ = enabled;
-    constant_arena_ = arena;
-  }
 
   // set_enable_comprehension_vulnerability_check inspects comprehension
   // sub-expressions for the presence of potential memory exhaustion.
@@ -99,8 +89,6 @@ class FlatExprBuilder {
   std::vector<ProgramOptimizerFactory> program_optimizers_;
 
   bool enable_comprehension_vulnerability_check_ = false;
-  bool constant_folding_ = false;
-  google::protobuf::Arena* constant_arena_ = nullptr;
 };
 
 }  // namespace google::api::expr::runtime

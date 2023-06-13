@@ -43,7 +43,6 @@
 #include "base/type_factory.h"
 #include "base/type_provider.h"
 #include "base/value_factory.h"
-#include "eval/compiler/constant_folding.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/comprehension_step.h"
@@ -198,7 +197,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
  public:
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
-      const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents,
       bool enable_comprehension_vulnerability_check,
       absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
       const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
@@ -213,7 +211,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         resolved_select_expr_(nullptr),
         parent_expr_(nullptr),
         options_(options),
-        constant_idents_(constant_idents),
         enable_comprehension_vulnerability_check_(
             enable_comprehension_vulnerability_check),
         program_optimizers_(program_optimizers),
@@ -294,13 +291,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     if (!ValidateOrError(
             !path.empty(),
             "Invalid expression: identifier 'name' must not be empty")) {
-      return;
-    }
-
-    // Automatically replace constant idents with the backing CEL values.
-    auto constant = constant_idents_.find(path);
-    if (constant != constant_idents_.end()) {
-      AddStep(CreateConstValueStep(constant->second, expr->id(), false));
       return;
     }
 
@@ -731,8 +721,6 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   const cel::RuntimeOptions& options_;
 
-  const absl::flat_hash_map<std::string, Handle<Value>>& constant_idents_;
-
   std::stack<const cel::ast::internal::Comprehension*> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
@@ -1140,7 +1128,6 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
   Resolver resolver(container_, function_registry_, &type_registry_,
                     value_factory, type_registry_.resolveable_enums(),
                     options_.enable_qualified_type_identifiers);
-  absl::flat_hash_map<std::string, Handle<Value>> constant_idents;
 
   PlannerContext::ProgramTree program_tree;
   PlannerContext extension_context(resolver, type_registry_, options_,
@@ -1148,7 +1135,6 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                                    program_tree);
 
   auto& ast_impl = AstImpl::CastFromPublicAst(*ast);
-  const cel::ast::internal::Expr* effective_expr = &ast_impl.root_expr();
 
   if (absl::StartsWith(container_, ".") || absl::EndsWith(container_, ".")) {
     return absl::InvalidArgumentError(
@@ -1159,26 +1145,17 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
     CEL_RETURN_IF_ERROR(transform->UpdateAst(extension_context, ast_impl));
   }
 
-  cel::ast::internal::Expr const_fold_buffer;
-  if (constant_folding_) {
-    cel::ast::internal::FoldConstants(ast_impl.root_expr(), function_registry_,
-                                      constant_arena_, constant_idents,
-                                      const_fold_buffer);
-    effective_expr = &const_fold_buffer;
-  }
-
   std::vector<std::unique_ptr<ProgramOptimizer>> optimizers;
   for (const ProgramOptimizerFactory& optimizer_factory : program_optimizers_) {
     CEL_ASSIGN_OR_RETURN(optimizers.emplace_back(),
                          optimizer_factory(extension_context, ast_impl));
   }
-  FlatExprVisitor visitor(resolver, options_, constant_idents,
-                          enable_comprehension_vulnerability_check_, optimizers,
-                          ast_impl.reference_map(), execution_path,
-                          value_factory, warnings_builder, program_tree,
-                          extension_context);
+  FlatExprVisitor visitor(
+      resolver, options_, enable_comprehension_vulnerability_check_, optimizers,
+      ast_impl.reference_map(), execution_path, value_factory, warnings_builder,
+      program_tree, extension_context);
 
-  AstTraverse(effective_expr, &ast_impl.source_info(), &visitor);
+  AstTraverse(&ast_impl.root_expr(), &ast_impl.source_info(), &visitor);
 
   if (!visitor.progress_status().ok()) {
     return visitor.progress_status();

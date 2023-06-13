@@ -35,8 +35,6 @@ using ::google::protobuf::util::JsonStringToMessage;
 using ::google::protobuf::util::MessageToJsonString;
 
 ABSL_FLAG(bool, opt, false, "Enable optimizations (constant folding)");
-ABSL_FLAG(bool, updated_opt, false,
-          "Enable optimizations (constant folding updated)");
 ABSL_FLAG(bool, base64_encode, false, "Enable base64 encoding in pipe mode.");
 
 namespace google::api::expr::runtime {
@@ -199,7 +197,7 @@ class PipeCodec {
   bool base64_encoded_;
 };
 
-int RunServer(bool optimize, bool base64_encoded, bool updated_optimize) {
+int RunServer(bool optimize, bool base64_encoded) {
   google::protobuf::Arena arena;
   PipeCodec pipe_codec(base64_encoded);
   InterpreterOptions options;
@@ -208,14 +206,10 @@ int RunServer(bool optimize, bool base64_encoded, bool updated_optimize) {
   options.enable_heterogeneous_equality = true;
   options.enable_empty_wrapper_null_unboxing = true;
 
-  if (optimize || updated_optimize) {
+  if (optimize) {
     std::cerr << "Enabling optimizations" << std::endl;
     options.constant_folding = true;
-    options.enable_updated_constant_folding = false;
     options.constant_arena = &arena;
-  }
-  if (updated_optimize) {
-    options.enable_updated_constant_folding = true;
   }
 
   std::unique_ptr<CelExpressionBuilder> builder =
@@ -288,6 +282,5 @@ int RunServer(bool optimize, bool base64_encoded, bool updated_optimize) {
 int main(int argc, char** argv) {
   absl::ParseCommandLine(argc, argv);
   return google::api::expr::runtime::RunServer(
-      absl::GetFlag(FLAGS_opt), absl::GetFlag(FLAGS_base64_encode),
-      absl::GetFlag(FLAGS_updated_opt));
+      absl::GetFlag(FLAGS_opt), absl::GetFlag(FLAGS_base64_encode));
 }
