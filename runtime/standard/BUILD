@@ -54,3 +54,50 @@ cc_test(
         "@com_google_absl//absl/strings",
     ],
 )
+
+cc_library(
+    name = "logical_functions",
+    srcs = [
+        "logical_functions.cc",
+    ],
+    hdrs = [
+        "logical_functions.h",
+    ],
+    deps = [
+        "//base:builtins",
+        "//base:data",
+        "//base:function_adapter",
+        "//base:handle",
+        "//eval/internal:errors",
+        "//internal:status_macros",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "logical_functions_test",
+    size = "small",
+    srcs = [
+        "logical_functions_test.cc",
+    ],
+    deps = [
+        ":logical_functions",
+        "//base:builtins",
+        "//base:data",
+        "//base:function",
+        "//base:function_descriptor",
+        "//base:handle",
+        "//base:kind",
+        "//internal:testing",
+        "//runtime:function_overload_reference",
+        "//runtime:function_registry",
+        "//runtime:runtime_options",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)

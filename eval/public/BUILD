@@ -477,17 +477,10 @@ cc_library(
         "logical_function_registrar.h",
     ],
     deps = [
-        ":cel_builtins",
         ":cel_function_registry",
         ":cel_options",
-        "//base:data",
-        "//base:function_adapter",
-        "//base:function_descriptor",
-        "//eval/internal:errors",
-        "//internal:status_macros",
+        "//runtime/standard:logical_functions",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
     ],
 )
 

@@ -14,82 +14,17 @@
 
 #include "eval/public/logical_function_registrar.h"
 
-#include <cmath>
-#include <cstdint>
-#include <functional>
-#include <limits>
-#include <string>
-#include <vector>
-
 #include "absl/status/status.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "base/function_adapter.h"
-#include "base/function_descriptor.h"
-#include "base/value_factory.h"
-#include "base/values/bool_value.h"
-#include "base/values/error_value.h"
-#include "base/values/unknown_value.h"
-#include "eval/internal/errors.h"
-#include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function_registry.h"
 #include "eval/public/cel_options.h"
-#include "internal/status_macros.h"
+#include "runtime/standard/logical_functions.h"
 
 namespace google::api::expr::runtime {
-namespace {
-
-using ::cel::BoolValue;
-using ::cel::ErrorValue;
-using ::cel::Handle;
-using ::cel::UnaryFunctionAdapter;
-using ::cel::UnknownValue;
-using ::cel::Value;
-using ::cel::ValueFactory;
-using ::cel::runtime_internal::CreateNoMatchingOverloadError;
-
-Handle<Value> NotStrictlyFalseImpl(ValueFactory& value_factory,
-                                   const Handle<Value>& value) {
-  if (value->Is<BoolValue>()) {
-    return value;
-  }
-
-  if (value->Is<ErrorValue>() || value->Is<UnknownValue>()) {
-    return value_factory.CreateBoolValue(true);
-  }
-
-  // Should only accept bool unknown or error.
-  return value_factory.CreateErrorValue(
-      CreateNoMatchingOverloadError(builtin::kNotStrictlyFalse));
-}
-
-}  // namespace
 
 absl::Status RegisterLogicalFunctions(CelFunctionRegistry* registry,
                                       const InterpreterOptions& options) {
-  // logical NOT
-  CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<bool, bool>::CreateDescriptor(builtin::kNot, false),
-      UnaryFunctionAdapter<bool, bool>::WrapFunction(
-          [](ValueFactory&, bool value) -> bool { return !value; })));
-
-  // Strictness
-  CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::CreateDescriptor(
-          builtin::kNotStrictlyFalse, /*receiver_style=*/false,
-          /*is_strict=*/false),
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::WrapFunction(
-          &NotStrictlyFalseImpl)));
-
-  CEL_RETURN_IF_ERROR(registry->Register(
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::CreateDescriptor(
-          builtin::kNotStrictlyFalseDeprecated, /*receiver_style=*/false,
-          /*is_strict=*/false),
-
-      UnaryFunctionAdapter<Handle<Value>, Handle<Value>>::WrapFunction(
-          &NotStrictlyFalseImpl)));
-
-  return absl::OkStatus();
+  return cel::RegisterLogicalFunctions(registry->InternalGetRegistry(),
+                                       ConvertToRuntimeOptions(options));
 }
 
 }  // namespace google::api::expr::runtime
