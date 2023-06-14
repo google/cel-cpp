@@ -241,7 +241,7 @@ google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingExtension(google::protobuf::Arena* arena) {
   return [=](PlannerContext& ctx, const AstImpl&) {
     return std::make_unique<ConstantFoldingExtension>(
-        arena, ctx.type_registry().GetTypeProvider());
+        arena, ctx.value_factory().type_provider());
   };
 }
 

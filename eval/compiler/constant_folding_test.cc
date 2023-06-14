@@ -148,7 +148,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -215,7 +215,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -280,7 +280,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -342,7 +342,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateCreateListStep(create_list.list_expr(), 3));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -404,7 +404,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateCreateStructStep(create_map.struct_expr(), 3));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -466,7 +466,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateCreateStructStep(create_map.struct_expr(), 3));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;
@@ -531,7 +531,7 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   ASSERT_OK_AND_ASSIGN(path.emplace_back(),
                        CreateConstValueStep(value_factory_.GetNullValue(), -1));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   google::protobuf::Arena arena;

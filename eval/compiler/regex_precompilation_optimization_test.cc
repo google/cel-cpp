@@ -85,7 +85,7 @@ TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
   PlannerContext::ProgramTree program_tree;
   CheckedExpr expr;
   cel::ast::internal::AstImpl ast_impl(std::move(expr));
-  PlannerContext context(resolver_, type_registry_, runtime_options_,
+  PlannerContext context(resolver_, runtime_options_, value_factory_,
                          builder_warnings_, path, program_tree);
 
   ASSERT_OK_AND_ASSIGN(std::unique_ptr<ProgramOptimizer> optimizer,

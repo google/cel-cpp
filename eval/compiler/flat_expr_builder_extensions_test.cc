@@ -111,7 +111,7 @@ TEST_F(PlannerContextTest, GetPlan) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -139,7 +139,7 @@ TEST_F(PlannerContextTest, ReplacePlan) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -173,7 +173,7 @@ TEST_F(PlannerContextTest, ExtractPlan) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -199,7 +199,7 @@ TEST_F(PlannerContextTest, ExtractPlanFailsOnUnfinishedNode) {
   // Mark a incomplete.
   tree[&a].range_len = -1;
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.ExtractSubplan(a), StatusIs(absl::StatusCode::kInternal));
@@ -214,7 +214,7 @@ TEST_F(PlannerContextTest, ExtractFailsOnReplacedNode) {
   ASSERT_OK_AND_ASSIGN(ExecutionPath path,
                        InitSimpleTree(a, b, c, value_factory_, tree));
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   ASSERT_OK(context.ReplaceSubplan(a, {}));
@@ -235,7 +235,7 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesParent) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -262,7 +262,7 @@ TEST_F(PlannerContextTest, ReplacePlanUpdatesSibling) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -304,7 +304,7 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUpdatedNode) {
   const ExpressionStep* c_step_ptr = path[1].get();
   const ExpressionStep* a_step_ptr = path[2].get();
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), ElementsAre(UniquePtrHolds(b_step_ptr),
@@ -327,7 +327,7 @@ TEST_F(PlannerContextTest, ReplacePlanFailsOnUnfinishedNode) {
 
   tree[&a].range_len = -1;
 
-  PlannerContext context(resolver_, type_registry_, options_, builder_warnings_,
+  PlannerContext context(resolver_, options_, value_factory_, builder_warnings_,
                          path, tree);
 
   EXPECT_THAT(context.GetSubplan(a), IsEmpty());

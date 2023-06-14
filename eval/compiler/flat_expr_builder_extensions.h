@@ -30,10 +30,10 @@
 #include "absl/status/status.h"
 #include "base/ast.h"
 #include "base/ast_internal.h"
+#include "base/value_factory.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/evaluator_core.h"
 #include "eval/eval/expression_build_warning.h"
-#include "eval/public/cel_type_registry.h"
 #include "runtime/runtime_options.h"
 
 namespace google::api::expr::runtime {
@@ -52,13 +52,13 @@ class PlannerContext {
       absl::flat_hash_map<const cel::ast::internal::Expr*, ProgramInfo>;
 
   explicit PlannerContext(const Resolver& resolver,
-                          const CelTypeRegistry& type_registry,
                           const cel::RuntimeOptions& options,
+                          cel::ValueFactory& value_factory,
                           BuilderWarnings& builder_warnings,
                           ExecutionPath& execution_path,
                           ProgramTree& program_tree)
       : resolver_(resolver),
-        type_registry_(type_registry),
+        value_factory_(value_factory),
         options_(options),
         builder_warnings_(builder_warnings),
         execution_path_(execution_path),
@@ -78,13 +78,13 @@ class PlannerContext {
                               ExecutionPath path);
 
   const Resolver& resolver() const { return resolver_; }
-  const CelTypeRegistry& type_registry() const { return type_registry_; }
+  cel::ValueFactory& value_factory() const { return value_factory_; }
   const cel::RuntimeOptions& options() const { return options_; }
   BuilderWarnings& builder_warnings() { return builder_warnings_; }
 
  private:
   const Resolver& resolver_;
-  const CelTypeRegistry& type_registry_;
+  cel::ValueFactory& value_factory_;
   const cel::RuntimeOptions& options_;
   BuilderWarnings& builder_warnings_;
   ExecutionPath& execution_path_;

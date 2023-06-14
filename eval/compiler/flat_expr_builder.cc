@@ -1130,7 +1130,7 @@ absl::StatusOr<FlatExpression> FlatExprBuilder::CreateExpressionImpl(
                     options_.enable_qualified_type_identifiers);
 
   PlannerContext::ProgramTree program_tree;
-  PlannerContext extension_context(resolver, type_registry_, options_,
+  PlannerContext extension_context(resolver, options_, value_factory,
                                    warnings_builder, execution_path,
                                    program_tree);
 
