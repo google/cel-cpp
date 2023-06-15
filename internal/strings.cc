@@ -251,7 +251,7 @@ bool UnescapeInternal(absl::string_view source, absl::string_view closing_str,
           if (is_bytes_literal) {
             dest->push_back(static_cast<char>(ch));
           } else {
-            Utf8Encode(dest, ch);
+            Utf8Encode(*dest, ch);
           }
           break;
         }
@@ -295,7 +295,7 @@ bool UnescapeInternal(absl::string_view source, absl::string_view closing_str,
           if (is_bytes_literal) {
             dest->push_back(static_cast<char>(ch));
           } else {
-            Utf8Encode(dest, ch);
+            Utf8Encode(*dest, ch);
           }
           break;
         }
@@ -348,7 +348,7 @@ bool UnescapeInternal(absl::string_view source, absl::string_view closing_str,
             // Error offset was set to the start of the escape above the switch.
             return false;
           }
-          Utf8Encode(dest, cp);
+          Utf8Encode(*dest, cp);
           break;
         }
         case 'U': {
@@ -410,7 +410,7 @@ bool UnescapeInternal(absl::string_view source, absl::string_view closing_str,
             // Error offset was set to the start of the escape above the switch.
             return false;
           }
-          Utf8Encode(dest, cp);
+          Utf8Encode(*dest, cp);
           break;
         }
         case '\r':

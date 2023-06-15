@@ -51,11 +51,12 @@ std::pair<size_t, bool> Utf8Validate(const absl::Cord& str);
 // code unit count of 1. As U+FFFD requires 3 code units when encoded, this can
 // be used to differentiate valid input from malformed input.
 std::pair<char32_t, size_t> Utf8Decode(absl::string_view str);
+std::pair<char32_t, size_t> Utf8Decode(const absl::Cord::CharIterator& it);
 
 // Encodes the given code point and appends it to the buffer. If the code point
 // is an unpaired surrogate or outside of the valid Unicode range it is replaced
 // with the replacement character, U+FFFD.
-std::string& Utf8Encode(std::string* buffer, char32_t code_point);
+size_t Utf8Encode(std::string& buffer, char32_t code_point);
 
 }  // namespace cel::internal
 

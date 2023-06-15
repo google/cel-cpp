@@ -151,8 +151,7 @@ class CodePointBuffer final {
                      2);  // Worst case is 2 code units per code point.
       for (size_t index = begin; index < end; index++) {
         cel::internal::Utf8Encode(
-            &result,
-            static_cast<char32_t>(static_cast<uint8_t>(latin1[index])));
+            result, static_cast<char32_t>(static_cast<uint8_t>(latin1[index])));
       }
       result.shrink_to_fit();
       return result;
@@ -163,7 +162,7 @@ class CodePointBuffer final {
       result.reserve((end - begin) *
                      3);  // Worst case is 3 code units per code point.
       for (size_t index = begin; index < end; index++) {
-        cel::internal::Utf8Encode(&result, static_cast<char32_t>(basic[index]));
+        cel::internal::Utf8Encode(result, static_cast<char32_t>(basic[index]));
       }
       result.shrink_to_fit();
       return result;
@@ -174,7 +173,7 @@ class CodePointBuffer final {
       result.reserve((end - begin) *
                      4);  // Worst case is 4 code units per code point.
       for (size_t index = begin; index < end; index++) {
-        cel::internal::Utf8Encode(&result, supplemental[index]);
+        cel::internal::Utf8Encode(result, supplemental[index]);
       }
       result.shrink_to_fit();
       return result;
@@ -835,9 +834,9 @@ antlrcpp::Any ParserVisitor::visitCreateMessage(
     name = absl::StrJoin(parts, ".");
   }
   int64_t obj_id = sf_->Id(ctx->op);
-    auto entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
-        visitFieldInitializerList(ctx->entries));
-    return sf_->NewObject(obj_id, name, entries);
+  auto entries = std::any_cast<std::vector<Expr::CreateStruct::Entry>>(
+      visitFieldInitializerList(ctx->entries));
+  return sf_->NewObject(obj_id, name, entries);
 }
 
 antlrcpp::Any ParserVisitor::visitFieldInitializerList(

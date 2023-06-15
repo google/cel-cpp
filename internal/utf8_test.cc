@@ -15,8 +15,10 @@
 #include "internal/utf8.h"
 
 #include <string>
+#include <vector>
 
 #include "absl/strings/cord.h"
+#include "absl/strings/cord_test_helpers.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"
 #include "internal/benchmark.h"
@@ -169,7 +171,9 @@ using Utf8EncodeTest = testing::TestWithParam<Utf8EncodeTestCase>;
 TEST_P(Utf8EncodeTest, Compliance) {
   const Utf8EncodeTestCase& test_case = GetParam();
   std::string result;
-  EXPECT_EQ(Utf8Encode(&result, test_case.code_point), test_case.code_units);
+  EXPECT_EQ(Utf8Encode(result, test_case.code_point),
+            test_case.code_units.size());
+  EXPECT_EQ(result, test_case.code_units);
 }
 
 INSTANTIATE_TEST_SUITE_P(Utf8EncodeTest, Utf8EncodeTest,
@@ -215,9 +219,44 @@ struct Utf8DecodeTestCase final {
 
 using Utf8DecodeTest = testing::TestWithParam<Utf8DecodeTestCase>;
 
-TEST_P(Utf8DecodeTest, Compliance) {
+TEST_P(Utf8DecodeTest, StringView) {
   const Utf8DecodeTestCase& test_case = GetParam();
   auto [code_point, code_units] = Utf8Decode(test_case.code_units);
+  EXPECT_EQ(code_units, test_case.code_units.size())
+      << absl::CHexEscape(test_case.code_units);
+  EXPECT_EQ(code_point, test_case.code_point)
+      << absl::CHexEscape(test_case.code_units);
+}
+
+TEST_P(Utf8DecodeTest, Cord) {
+  const Utf8DecodeTestCase& test_case = GetParam();
+  auto cord = absl::Cord(test_case.code_units);
+  auto it = cord.char_begin();
+  auto [code_point, code_units] = Utf8Decode(it);
+  absl::Cord::Advance(&it, code_units);
+  EXPECT_EQ(it, cord.char_end());
+  EXPECT_EQ(code_units, test_case.code_units.size())
+      << absl::CHexEscape(test_case.code_units);
+  EXPECT_EQ(code_point, test_case.code_point)
+      << absl::CHexEscape(test_case.code_units);
+}
+
+std::vector<std::string> FragmentString(absl::string_view text) {
+  std::vector<std::string> fragments;
+  fragments.reserve(text.size());
+  for (const auto& c : text) {
+    fragments.emplace_back().push_back(c);
+  }
+  return fragments;
+}
+
+TEST_P(Utf8DecodeTest, CordFragmented) {
+  const Utf8DecodeTestCase& test_case = GetParam();
+  auto cord = absl::MakeFragmentedCord(FragmentString(test_case.code_units));
+  auto it = cord.char_begin();
+  auto [code_point, code_units] = Utf8Decode(it);
+  absl::Cord::Advance(&it, code_units);
+  EXPECT_EQ(it, cord.char_end());
   EXPECT_EQ(code_units, test_case.code_units.size())
       << absl::CHexEscape(test_case.code_units);
   EXPECT_EQ(code_point, test_case.code_point)

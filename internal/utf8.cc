@@ -16,10 +16,14 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <string>
+#include <utility>
 
 #include "absl/base/macros.h"
 #include "absl/base/optimization.h"
+#include "absl/log/absl_check.h"
+#include "absl/strings/string_view.h"
 #include "internal/unicode.h"
 
 // Implementation is based on
@@ -347,25 +351,13 @@ std::pair<size_t, bool> Utf8Validate(const absl::Cord& str) {
   return result;
 }
 
-std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
-  ABSL_ASSERT(!str.empty());
-  const auto b = static_cast<uint8_t>(str.front());
-  str.remove_prefix(1);
-  if (b < kUtf8RuneSelf) {
-    return {static_cast<char32_t>(b), 1};
-  }
-  const auto leading = kLeading[b];
-  if (leading == kXX) {
-    return {kUnicodeReplacementCharacter, 1};
-  }
-  auto size = static_cast<size_t>(leading & 7) - 1;
-  if (size > str.size()) {
-    return {kUnicodeReplacementCharacter, 1};
-  }
+namespace {
+
+std::pair<char32_t, size_t> Utf8DecodeImpl(uint8_t b, uint8_t leading,
+                                           size_t size, absl::string_view str) {
   const auto& accept = kAccept[leading >> 4];
   const auto b1 = static_cast<uint8_t>(str.front());
-  str.remove_prefix(1);
-  if (b1 < accept.first || b1 > accept.second) {
+  if (ABSL_PREDICT_FALSE(b1 < accept.first || b1 > accept.second)) {
     return {kUnicodeReplacementCharacter, 1};
   }
   if (size <= 1) {
@@ -373,9 +365,9 @@ std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
                 static_cast<char32_t>(b1 & kMaskX),
             2};
   }
-  const auto b2 = static_cast<uint8_t>(str.front());
   str.remove_prefix(1);
-  if (b2 < kLow || b2 > kHigh) {
+  const auto b2 = static_cast<uint8_t>(str.front());
+  if (ABSL_PREDICT_FALSE(b2 < kLow || b2 > kHigh)) {
     return {kUnicodeReplacementCharacter, 1};
   }
   if (size <= 2) {
@@ -384,9 +376,9 @@ std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
                 static_cast<char32_t>(b2 & kMaskX),
             3};
   }
-  const auto b3 = static_cast<uint8_t>(str.front());
   str.remove_prefix(1);
-  if (b3 < kLow || b3 > kHigh) {
+  const auto b3 = static_cast<uint8_t>(str.front());
+  if (ABSL_PREDICT_FALSE(b3 < kLow || b3 > kHigh)) {
     return {kUnicodeReplacementCharacter, 1};
   }
   return {(static_cast<char32_t>(b & kMask4) << 18) |
@@ -396,36 +388,94 @@ std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
           4};
 }
 
-std::string& Utf8Encode(std::string* buffer, char32_t code_point) {
-  ABSL_ASSERT(buffer != nullptr);
-  if (!UnicodeIsValid(code_point)) {
+}  // namespace
+
+std::pair<char32_t, size_t> Utf8Decode(absl::string_view str) {
+  ABSL_DCHECK(!str.empty());
+  const auto b = static_cast<uint8_t>(str.front());
+  if (b < kUtf8RuneSelf) {
+    return {static_cast<char32_t>(b), 1};
+  }
+  const auto leading = kLeading[b];
+  if (ABSL_PREDICT_FALSE(leading == kXX)) {
+    return {kUnicodeReplacementCharacter, 1};
+  }
+  auto size = static_cast<size_t>(leading & 7) - 1;
+  str.remove_prefix(1);
+  if (ABSL_PREDICT_FALSE(size > str.size())) {
+    return {kUnicodeReplacementCharacter, 1};
+  }
+  return Utf8DecodeImpl(b, leading, size, str);
+}
+
+std::pair<char32_t, size_t> Utf8Decode(const absl::Cord::CharIterator& it) {
+  absl::string_view str = absl::Cord::ChunkRemaining(it);
+  ABSL_DCHECK(!str.empty());
+  const auto b = static_cast<uint8_t>(str.front());
+  if (b < kUtf8RuneSelf) {
+    return {static_cast<char32_t>(b), 1};
+  }
+  const auto leading = kLeading[b];
+  if (ABSL_PREDICT_FALSE(leading == kXX)) {
+    return {kUnicodeReplacementCharacter, 1};
+  }
+  auto size = static_cast<size_t>(leading & 7) - 1;
+  str.remove_prefix(1);
+  if (ABSL_PREDICT_TRUE(size <= str.size())) {
+    // Fast path.
+    return Utf8DecodeImpl(b, leading, size, str);
+  }
+  absl::Cord::CharIterator current = it;
+  absl::Cord::Advance(&current, 1);
+  char buffer[3];
+  size_t buffer_len = 0;
+  while (buffer_len < size) {
+    str = absl::Cord::ChunkRemaining(current);
+    if (ABSL_PREDICT_FALSE(str.empty())) {
+      return {kUnicodeReplacementCharacter, 1};
+    }
+    size_t to_copy = std::min(size_t{3} - buffer_len, str.size());
+    std::memcpy(buffer + buffer_len, str.data(), to_copy);
+    buffer_len += to_copy;
+    absl::Cord::Advance(&current, to_copy);
+  }
+  return Utf8DecodeImpl(b, leading, size,
+                        absl::string_view(buffer, buffer_len));
+}
+
+size_t Utf8Encode(std::string& buffer, char32_t code_point) {
+  if (ABSL_PREDICT_FALSE(!UnicodeIsValid(code_point))) {
     code_point = kUnicodeReplacementCharacter;
   }
+  char storage[4];
+  size_t storage_len = 0;
   if (code_point <= 0x7f) {
-    buffer->push_back(static_cast<char>(static_cast<uint8_t>(code_point)));
+    storage[storage_len++] =
+        static_cast<char>(static_cast<uint8_t>(code_point));
   } else if (code_point <= 0x7ff) {
-    buffer->push_back(
-        static_cast<char>(kT2 | static_cast<uint8_t>(code_point >> 6)));
-    buffer->push_back(
-        static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX)));
+    storage[storage_len++] =
+        static_cast<char>(kT2 | static_cast<uint8_t>(code_point >> 6));
+    storage[storage_len++] =
+        static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX));
   } else if (code_point <= 0xffff) {
-    buffer->push_back(
-        static_cast<char>(kT3 | static_cast<uint8_t>(code_point >> 12)));
-    buffer->push_back(static_cast<char>(
-        kTX | (static_cast<uint8_t>(code_point >> 6) & kMaskX)));
-    buffer->push_back(
-        static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX)));
+    storage[storage_len++] =
+        static_cast<char>(kT3 | static_cast<uint8_t>(code_point >> 12));
+    storage[storage_len++] = static_cast<char>(
+        kTX | (static_cast<uint8_t>(code_point >> 6) & kMaskX));
+    storage[storage_len++] =
+        static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX));
   } else {
-    buffer->push_back(
-        static_cast<char>(kT4 | static_cast<uint8_t>(code_point >> 18)));
-    buffer->push_back(static_cast<char>(
-        kTX | (static_cast<uint8_t>(code_point >> 12) & kMaskX)));
-    buffer->push_back(static_cast<char>(
-        kTX | (static_cast<uint8_t>(code_point >> 6) & kMaskX)));
-    buffer->push_back(
-        static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX)));
+    storage[storage_len++] =
+        static_cast<char>(kT4 | static_cast<uint8_t>(code_point >> 18));
+    storage[storage_len++] = static_cast<char>(
+        kTX | (static_cast<uint8_t>(code_point >> 12) & kMaskX));
+    storage[storage_len++] = static_cast<char>(
+        kTX | (static_cast<uint8_t>(code_point >> 6) & kMaskX));
+    storage[storage_len++] =
+        static_cast<char>(kTX | (static_cast<uint8_t>(code_point) & kMaskX));
   }
-  return *buffer;
+  buffer.append(storage, storage_len);
+  return storage_len;
 }
 
 }  // namespace cel::internal

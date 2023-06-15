@@ -268,6 +268,7 @@ cc_library(
     deps = [
         ":unicode",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
     ],
@@ -282,5 +283,6 @@ cc_test(
         ":utf8",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/strings:cord_test_helpers",
     ],
 )
