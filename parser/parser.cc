@@ -854,6 +854,11 @@ antlrcpp::Any ParserVisitor::visitFieldInitializerList(
       return res;
     }
     const auto* f = ctx->fields[i];
+    if (f->id == nullptr) {
+      ABSL_DCHECK(HasErrored());
+      // This is the result of a syntax error detected elsewhere.
+      return res;
+    }
     int64_t init_id = sf_->Id(ctx->cols[i]);
     Expr value;
     if (f->opt) {
