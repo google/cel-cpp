@@ -139,10 +139,6 @@ TEST_P(LogicalFunctionsTest, Runner) {
   absl::StatusOr<Handle<Value>> result = TestDispatchToFunction(
       registry, test_case.function, args, value_factory_);
 
-  // copybara:strip_begin(internal comment)
-  // TODO(uncreated-issue/49): fix statusor matcher to be convertible to
-  // Matcher<StatusOr<Handle<Value>>>.
-  // copybara:strip_end
   EXPECT_EQ(result.ok(), test_case.result_matcher.ok());
 
   if (!test_case.result_matcher.ok()) {

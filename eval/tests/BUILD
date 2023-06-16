@@ -53,9 +53,6 @@ cc_test(
     ],
 )
 
-# copybara:strip_begin
-# benchy will still need the enable_optimizations flag since it isn't using blaze run directly.
-# copybara:strip_end
 cc_test(
     name = "const_folding_benchmark_test",
     size = "small",
