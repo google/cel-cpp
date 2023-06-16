@@ -127,3 +127,31 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_library(
+    name = "any",
+    srcs = ["any.cc"],
+    hdrs = ["any.h"],
+    deps = [
+        "//internal:casts",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
+    name = "any_test",
+    srcs = ["any_test.cc"],
+    deps = [
+        ":any",
+        "//internal:testing",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_protobuf//:protobuf",
+    ],
+)

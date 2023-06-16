@@ -26,6 +26,7 @@
 #include "absl/base/optimization.h"
 #include "absl/log/die_if_null.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/handle.h"
@@ -130,6 +131,8 @@ class ProtoStructValue : public CEL_STRUCT_VALUE_CLASS {
       ABSL_ATTRIBUTE_LIFETIME_BOUND google::protobuf::Arena& arena) const;
 
   virtual absl::Status CopyTo(google::protobuf::Message& message) const = 0;
+
+  virtual absl::StatusOr<absl::Cord> SerializeAsCord() const = 0;
 
  protected:
   explicit ProtoStructValue(Handle<StructType> type)
@@ -265,6 +268,8 @@ class ParsedProtoStructValue : public ProtoStructValue {
   virtual const google::protobuf::Message& value() const = 0;
 
   absl::Status CopyTo(google::protobuf::Message& that) const final;
+
+  absl::StatusOr<absl::Cord> SerializeAsCord() const final;
 
  protected:
   explicit ParsedProtoStructValue(Handle<StructType> type)

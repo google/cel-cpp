@@ -548,6 +548,125 @@ TEST_P(ProtoStructValueBuilderTest, BytesWrapper) {
       R"pb(single_bytes_wrapper: { value: "foo" })pb");
 }
 
+TEST_P(ProtoStructValueBuilderTest, AnyNull) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) { return value_factory.GetNullValue(); },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.Value] {}
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyBool) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateBoolValue(true);
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.BoolValue] { value: true }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyInt) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateIntValue(1);
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.Int64Value] { value: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyUint) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateUintValue(1);
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.UInt64Value] { value: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyDouble) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateDoubleValue(1);
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.DoubleValue] { value: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyBytes) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateBytesValue("foo");
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.BytesValue] { value: "foo" }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyString) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateStringValue("foo");
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.StringValue] { value: "foo" }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyDuration) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateDurationValue(absl::Seconds(1) +
+                                                 absl::Nanoseconds(1));
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.Duration] {
+               seconds: 1,
+               nanos: 1
+             }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyTimestamp) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        return value_factory.CreateTimestampValue(
+            absl::UnixEpoch() + absl::Seconds(1) + absl::Nanoseconds(1));
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.protobuf.Timestamp] {
+               seconds: 1,
+               nanos: 1
+             }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, AnyMessage) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "single_any",
+      [](ValueFactory& value_factory) {
+        TestAllTypes::NestedMessage message;
+        message.set_bb(1);
+        return ProtoValue::Create(value_factory, message);
+      },
+      R"pb(single_any {
+             [type.googleapis.com/google.api.expr.test.v1.proto3.TestAllTypes
+                  .NestedMessage] { bb: 1 }
+           })pb");
+}
+
 TEST_P(ProtoStructValueBuilderTest, RepeatedNull) {
   TEST_PROTO_STRUCT_VALUE_BUILDER(
       memory_manager(), "repeated_null_value",

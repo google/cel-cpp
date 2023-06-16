@@ -2737,11 +2737,7 @@ absl::Status ParsedProtoStructValue::CopyTo(google::protobuf::Message& that) con
   if (this_desc->full_name() == that_desc->full_name()) {
     // Same type, different descriptors. We need to serialize and deserialize.
     absl::Cord serialized;
-    if (ABSL_PREDICT_FALSE(!value().SerializeToCord(&serialized))) {
-      return absl::InternalError(
-          absl::StrCat("failed to serialize protocol buffer message ",
-                       this_desc->full_name()));
-    }
+    CEL_ASSIGN_OR_RETURN(serialized, SerializeAsCord());
     if (ABSL_PREDICT_FALSE(!that.ParseFromCord(serialized))) {
       return absl::InternalError(absl::StrCat(
           "failed to parse protocol buffer message ", that_desc->full_name()));
@@ -2751,6 +2747,16 @@ absl::Status ParsedProtoStructValue::CopyTo(google::protobuf::Message& that) con
   return absl::InvalidArgumentError(
       absl::StrCat("cannot copy protocol buffer message ",
                    this_desc->full_name(), " to ", that_desc->full_name()));
+}
+
+absl::StatusOr<absl::Cord> ParsedProtoStructValue::SerializeAsCord() const {
+  absl::Cord serialized;
+  if (!ABSL_PREDICT_TRUE(value().SerializeToCord(&serialized))) {
+    return absl::InternalError(
+        absl::StrCat("failed to serialize protocol buffer message ",
+                     value().GetDescriptor()->full_name()));
+  }
+  return serialized;
 }
 
 }  // namespace protobuf_internal
