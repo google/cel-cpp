@@ -30,3 +30,36 @@ cc_library(
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
     ],
 )
+
+cc_library(
+    name = "source",
+    srcs = ["source.cc"],
+    hdrs = ["source.h"],
+    deps = [
+        "//internal:overloaded",
+        "//internal:unicode",
+        "//internal:utf8",
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/log:absl_check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "source_test",
+    srcs = ["source_test.cc"],
+    deps = [
+        ":source",
+        "//internal:testing",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
