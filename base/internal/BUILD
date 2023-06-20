@@ -150,11 +150,10 @@ cc_test(
     srcs = ["function_adapter_test.cc"],
     deps = [
         ":function_adapter",
+        "//base:data",
         "//base:handle",
         "//base:kind",
         "//base:memory",
-        "//base:type",
-        "//base:value",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

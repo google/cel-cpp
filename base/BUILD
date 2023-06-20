@@ -257,26 +257,11 @@ alias(
 
 cc_library(
     name = "ast_internal",
-    srcs = ["ast_internal.cc"],
     hdrs = [
         "ast_internal.h",
     ],
     deps = [
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/time",
-        "@com_google_absl//absl/types:variant",
-    ],
-)
-
-cc_test(
-    name = "ast_internal_test",
-    srcs = [
-        "ast_internal_test.cc",
-    ],
-    deps = [
-        ":ast_internal",
-        "//internal:testing",
-        "@com_google_absl//absl/time",
+        "//base/ast_internal:expr",
     ],
 )
 
@@ -286,8 +271,8 @@ cc_library(
         "function.h",
     ],
     deps = [
+        ":data",
         ":handle",
-        ":value",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
     ],
@@ -340,10 +325,10 @@ cc_library(
     name = "function_adapter",
     hdrs = ["function_adapter.h"],
     deps = [
+        ":data",
         ":function",
         ":function_descriptor",
         ":handle",
-        ":value",
         "//base/internal:function_adapter",
         "//internal:status_macros",
         "@com_google_absl//absl/log:die_if_null",
@@ -358,14 +343,13 @@ cc_test(
     name = "function_adapter_test",
     srcs = ["function_adapter_test.cc"],
     deps = [
+        ":data",
         ":function",
         ":function_adapter",
         ":function_descriptor",
         ":handle",
         ":kind",
         ":memory",
-        ":type",
-        ":value",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

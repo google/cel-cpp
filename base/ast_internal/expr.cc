@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 
-#include <cstdint>
 #include <memory>
-#include <string>
-#include <utility>
-#include <vector>
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 const Expr& default_expr() {
@@ -175,4 +171,4 @@ const Type& Type::type() const {
   return default_type();
 }
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

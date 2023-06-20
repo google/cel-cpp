@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 
 #include <memory>
 #include <utility>
@@ -21,8 +21,7 @@
 #include "internal/testing.h"
 
 namespace cel {
-namespace ast {
-namespace internal {
+namespace ast_internal {
 namespace {
 TEST(AstTest, ExprConstructionConstant) {
   Expr expr(1, Constant(true));
@@ -559,6 +558,5 @@ TEST(AstTest, ReferenceConstantDefaultValue) {
 }
 
 }  // namespace
-}  // namespace internal
-}  // namespace ast
+}  // namespace ast_internal
 }  // namespace cel

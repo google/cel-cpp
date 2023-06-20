@@ -20,7 +20,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/ast.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "internal/casts.h"
 
 namespace cel::ast_internal {
@@ -49,18 +49,17 @@ class AstImpl : public Ast {
     return cel::internal::down_cast<const AstImpl*>(ast);
   }
 
-  explicit AstImpl(ast::internal::Expr expr,
-                   ast::internal::SourceInfo source_info)
+  explicit AstImpl(Expr expr, SourceInfo source_info)
       : root_expr_(std::move(expr)),
         source_info_(std::move(source_info)),
         is_checked_(false) {}
 
-  explicit AstImpl(ast::internal::ParsedExpr expr)
+  explicit AstImpl(ParsedExpr expr)
       : root_expr_(std::move(expr.mutable_expr())),
         source_info_(std::move(expr.mutable_source_info())),
         is_checked_(false) {}
 
-  explicit AstImpl(ast::internal::CheckedExpr expr)
+  explicit AstImpl(CheckedExpr expr)
       : root_expr_(std::move(expr.mutable_expr())),
         source_info_(std::move(expr.mutable_source_info())),
         reference_map_(std::move(expr.mutable_reference_map())),
@@ -71,34 +70,33 @@ class AstImpl : public Ast {
   bool IsChecked() const override { return is_checked_; }
 
   // Private functions.
-  const ast::internal::Expr& root_expr() const { return root_expr_; }
-  ast::internal::Expr& root_expr() { return root_expr_; }
+  const Expr& root_expr() const { return root_expr_; }
+  Expr& root_expr() { return root_expr_; }
 
-  const ast::internal::SourceInfo& source_info() const { return source_info_; }
-  ast::internal::SourceInfo& source_info() { return source_info_; }
+  const SourceInfo& source_info() const { return source_info_; }
+  SourceInfo& source_info() { return source_info_; }
 
-  const ast::internal::Type& GetType(int64_t expr_id) const;
-  const ast::internal::Type& GetReturnType() const;
-  const ast::internal::Reference* GetReference(int64_t expr_id) const;
+  const Type& GetType(int64_t expr_id) const;
+  const Type& GetReturnType() const;
+  const Reference* GetReference(int64_t expr_id) const;
 
-  const absl::flat_hash_map<int64_t, ast::internal::Reference>& reference_map()
-      const {
+  const absl::flat_hash_map<int64_t, Reference>& reference_map() const {
     return reference_map_;
   }
 
-  absl::flat_hash_map<int64_t, ast::internal::Reference>& reference_map() {
+  absl::flat_hash_map<int64_t, Reference>& reference_map() {
     return reference_map_;
   }
 
-  const absl::flat_hash_map<int64_t, ast::internal::Type>& type_map() const {
+  const absl::flat_hash_map<int64_t, Type>& type_map() const {
     return type_map_;
   }
 
  private:
-  ast::internal::Expr root_expr_;
-  ast::internal::SourceInfo source_info_;
-  absl::flat_hash_map<int64_t, ast::internal::Reference> reference_map_;
-  absl::flat_hash_map<int64_t, ast::internal::Type> type_map_;
+  Expr root_expr_;
+  SourceInfo source_info_;
+  absl::flat_hash_map<int64_t, Reference> reference_map_;
+  absl::flat_hash_map<int64_t, Type> type_map_;
   bool is_checked_;
 };
 

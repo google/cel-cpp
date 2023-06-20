@@ -26,8 +26,8 @@ cc_library(
     srcs = ["ast_impl.cc"],
     hdrs = ["ast_impl.h"],
     deps = [
+        ":expr",
         "//base:ast",
-        "//base:ast_internal",
         "//internal:casts",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -38,11 +38,33 @@ cc_test(
     srcs = ["ast_impl_test.cc"],
     deps = [
         ":ast_impl",
+        ":expr",
         "//base:ast",
-        "//base:ast_internal",
-        "//extensions/protobuf:ast_converters",
         "//internal:testing",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
+    name = "expr",
+    srcs = ["expr.cc"],
+    hdrs = [
+        "expr.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:variant",
+    ],
+)
+
+cc_test(
+    name = "expr_test",
+    srcs = [
+        "expr_test.cc",
+    ],
+    deps = [
+        ":expr",
+        "//internal:testing",
+        "@com_google_absl//absl/time",
     ],
 )

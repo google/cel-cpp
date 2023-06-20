@@ -17,20 +17,12 @@
 #include <utility>
 
 #include "base/ast.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "internal/testing.h"
 
 namespace cel::ast_internal {
 namespace {
 
-using ::cel::ast::internal::CheckedExpr;
-using ::cel::ast::internal::DynamicType;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::ParsedExpr;
-using ::cel::ast::internal::PrimitiveType;
-using ::cel::ast::internal::Reference;
-using ::cel::ast::internal::SourceInfo;
-using ::cel::ast::internal::Type;
 using testing::Pointee;
 using testing::Truly;
 

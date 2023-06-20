@@ -21,11 +21,6 @@
 namespace cel::ast_internal {
 namespace {
 
-using ::cel::ast::internal::DynamicType;
-using ::cel::ast::internal::Reference;
-using ::cel::ast::internal::Type;
-using ::cel::ast::internal::TypeKind;
-
 const Type& DynSingleton() {
   static auto* singleton = new Type(TypeKind(DynamicType()));
   return *singleton;
