@@ -15,14 +15,12 @@
 #ifndef THIRD_PARTY_CEL_CPP_BASE_AST_H_
 #define THIRD_PARTY_CEL_CPP_BASE_AST_H_
 
-#include <string>
+namespace cel {
 
-namespace cel::ast {
-
-namespace internal {
+namespace ast_internal {
 // Forward declare supported implementations.
 class AstImpl;
-}  // namespace internal
+}  // namespace ast_internal
 
 // Runtime representation of a CEL expression's Abstract Syntax Tree.
 //
@@ -46,9 +44,14 @@ class Ast {
   // This interface should only be implemented by friend-visibility allowed
   // subclasses.
   Ast() = default;
-  friend class internal::AstImpl;
+  friend class ast_internal::AstImpl;
 };
 
-}  // namespace cel::ast
+namespace ast {
+// Alias while updating namespace.
+using Ast = ::cel::Ast;
+}  // namespace ast
+
+}  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_AST_H_

@@ -122,27 +122,9 @@ cc_library(
 
 cc_library(
     name = "ast_impl",
-    srcs = ["ast_impl.cc"],
     hdrs = ["ast_impl.h"],
     deps = [
-        "//base:ast",
-        "//base:ast_internal",
-        "//internal:casts",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_test(
-    name = "ast_impl_test",
-    srcs = ["ast_impl_test.cc"],
-    deps = [
-        ":ast_impl",
-        "//base:ast",
-        "//base:ast_internal",
-        "//extensions/protobuf:ast_converters",
-        "//internal:testing",
-        "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
-        "@com_google_protobuf//:protobuf",
+        "//base/ast_internal:ast_impl",
     ],
 )
 

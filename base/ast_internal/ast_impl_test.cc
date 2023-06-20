@@ -12,19 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
 
 #include <utility>
 
-#include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "google/protobuf/text_format.h"
 #include "base/ast.h"
 #include "base/ast_internal.h"
 #include "internal/testing.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 namespace {
 
+using ::cel::ast::internal::CheckedExpr;
+using ::cel::ast::internal::DynamicType;
+using ::cel::ast::internal::Expr;
+using ::cel::ast::internal::ParsedExpr;
+using ::cel::ast::internal::PrimitiveType;
+using ::cel::ast::internal::Reference;
+using ::cel::ast::internal::SourceInfo;
+using ::cel::ast::internal::Type;
 using testing::Pointee;
 using testing::Truly;
 
@@ -131,4 +137,4 @@ TEST(AstImpl, CheckedExprCtor) {
 }
 
 }  // namespace
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

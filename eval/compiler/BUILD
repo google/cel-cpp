@@ -15,6 +15,7 @@ cc_library(
         "//base:ast",
         "//base:ast_internal",
         "//base:data",
+        "//base/ast_internal:ast_impl",
         "//eval/eval:evaluator_core",
         "//eval/eval:expression_build_warning",
         "//runtime:runtime_options",

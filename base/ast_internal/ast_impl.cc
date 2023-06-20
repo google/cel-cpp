@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
 
 #include <cstdint>
 
 #include "absl/container/flat_hash_map.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 namespace {
+
+using ::cel::ast::internal::DynamicType;
+using ::cel::ast::internal::Reference;
+using ::cel::ast::internal::Type;
+using ::cel::ast::internal::TypeKind;
 
 const Type& DynSingleton() {
   static auto* singleton = new Type(TypeKind(DynamicType()));
@@ -46,4 +51,4 @@ const Reference* AstImpl::GetReference(int64_t expr_id) const {
   return &iter->second;
 }
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal
