@@ -16,15 +16,6 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-package_group(
-    name = "ast_visibility",
-    packages = [
-        "//base/...",
-        "//eval/...",
-        "//extensions/...",
-    ],
-)
-
 cc_library(
     name = "data",
     hdrs = ["data.h"],
@@ -117,14 +108,6 @@ cc_library(
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:variant",
-    ],
-)
-
-cc_library(
-    name = "ast_impl",
-    hdrs = ["ast_impl.h"],
-    deps = [
-        "//base/ast_internal:ast_impl",
     ],
 )
 

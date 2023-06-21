@@ -47,11 +47,6 @@ class Ast {
   friend class ast_internal::AstImpl;
 };
 
-namespace ast {
-// Alias while updating namespace.
-using Ast = ::cel::Ast;
-}  // namespace ast
-
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_BASE_AST_H_

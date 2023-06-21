@@ -256,16 +256,6 @@ alias(
 )
 
 cc_library(
-    name = "ast_internal",
-    hdrs = [
-        "ast_internal.h",
-    ],
-    deps = [
-        "//base/ast_internal:expr",
-    ],
-)
-
-cc_library(
     name = "function",
     hdrs = [
         "function.h",
