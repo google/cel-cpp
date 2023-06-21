@@ -20,8 +20,7 @@
 #include "eval/public/ast_visitor_native.h"
 
 namespace cel {
-namespace ast {
-namespace internal {
+namespace ast_internal {
 
 // Trivial base implementation of AstVisitor.
 class AstVisitorBase : public AstVisitor {
@@ -87,8 +86,7 @@ class AstVisitorBase : public AstVisitor {
                              const SourcePosition*) override {}
 };
 
-}  // namespace internal
-}  // namespace ast
+}  // namespace ast_internal
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_BASE_H_

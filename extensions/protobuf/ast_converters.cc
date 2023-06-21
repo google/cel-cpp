@@ -31,40 +31,40 @@
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
-#include "base/ast_internal.h"
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "internal/status_macros.h"
 
 namespace cel::extensions {
 namespace internal {
 namespace {
 
-using ::cel::ast::internal::AbstractType;
-using ::cel::ast::internal::Bytes;
-using ::cel::ast::internal::Call;
-using ::cel::ast::internal::CheckedExpr;
-using ::cel::ast::internal::Comprehension;
-using ::cel::ast::internal::Constant;
-using ::cel::ast::internal::CreateList;
-using ::cel::ast::internal::CreateStruct;
-using ::cel::ast::internal::DynamicType;
-using ::cel::ast::internal::ErrorType;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::FunctionType;
-using ::cel::ast::internal::Ident;
-using ::cel::ast::internal::ListType;
-using ::cel::ast::internal::MapType;
-using ::cel::ast::internal::MessageType;
-using ::cel::ast::internal::NullValue;
-using ::cel::ast::internal::ParamType;
-using ::cel::ast::internal::ParsedExpr;
-using ::cel::ast::internal::PrimitiveType;
-using ::cel::ast::internal::PrimitiveTypeWrapper;
-using ::cel::ast::internal::Reference;
-using ::cel::ast::internal::Select;
-using ::cel::ast::internal::SourceInfo;
-using ::cel::ast::internal::Type;
-using ::cel::ast::internal::WellKnownType;
+using ::cel::ast_internal::AbstractType;
+using ::cel::ast_internal::Bytes;
+using ::cel::ast_internal::Call;
+using ::cel::ast_internal::CheckedExpr;
+using ::cel::ast_internal::Comprehension;
+using ::cel::ast_internal::Constant;
+using ::cel::ast_internal::CreateList;
+using ::cel::ast_internal::CreateStruct;
+using ::cel::ast_internal::DynamicType;
+using ::cel::ast_internal::ErrorType;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::FunctionType;
+using ::cel::ast_internal::Ident;
+using ::cel::ast_internal::ListType;
+using ::cel::ast_internal::MapType;
+using ::cel::ast_internal::MessageType;
+using ::cel::ast_internal::NullValue;
+using ::cel::ast_internal::ParamType;
+using ::cel::ast_internal::ParsedExpr;
+using ::cel::ast_internal::PrimitiveType;
+using ::cel::ast_internal::PrimitiveTypeWrapper;
+using ::cel::ast_internal::Reference;
+using ::cel::ast_internal::Select;
+using ::cel::ast_internal::SourceInfo;
+using ::cel::ast_internal::Type;
+using ::cel::ast_internal::WellKnownType;
 
 constexpr int kMaxIterations = 1'000'000;
 
@@ -574,33 +574,33 @@ absl::StatusOr<CheckedExpr> ConvertProtoCheckedExprToNative(
 
 }  // namespace internal
 
-absl::StatusOr<std::unique_ptr<ast::Ast>> CreateAstFromParsedExpr(
+absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const google::api::expr::v1alpha1::Expr& expr,
     const google::api::expr::v1alpha1::SourceInfo* source_info) {
   CEL_ASSIGN_OR_RETURN(auto runtime_expr,
                        internal::ConvertProtoExprToNative(expr));
-  cel::ast::internal::SourceInfo runtime_source_info;
+  cel::ast_internal::SourceInfo runtime_source_info;
   if (source_info != nullptr) {
     CEL_ASSIGN_OR_RETURN(
         runtime_source_info,
         internal::ConvertProtoSourceInfoToNative(*source_info));
   }
-  return std::make_unique<cel::ast::internal::AstImpl>(
+  return std::make_unique<cel::ast_internal::AstImpl>(
       std::move(runtime_expr), std::move(runtime_source_info));
 }
 
-absl::StatusOr<std::unique_ptr<ast::Ast>> CreateAstFromParsedExpr(
+absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromParsedExpr(
     const google::api::expr::v1alpha1::ParsedExpr& parsed_expr) {
-  CEL_ASSIGN_OR_RETURN(cel::ast::internal::ParsedExpr expr,
+  CEL_ASSIGN_OR_RETURN(cel::ast_internal::ParsedExpr expr,
                        internal::ConvertProtoParsedExprToNative(parsed_expr));
-  return std::make_unique<cel::ast::internal::AstImpl>(std::move(expr));
+  return std::make_unique<cel::ast_internal::AstImpl>(std::move(expr));
 }
 
-absl::StatusOr<std::unique_ptr<ast::Ast>> CreateAstFromCheckedExpr(
+absl::StatusOr<std::unique_ptr<Ast>> CreateAstFromCheckedExpr(
     const google::api::expr::v1alpha1::CheckedExpr& checked_expr) {
-  CEL_ASSIGN_OR_RETURN(cel::ast::internal::CheckedExpr expr,
+  CEL_ASSIGN_OR_RETURN(cel::ast_internal::CheckedExpr expr,
                        internal::ConvertProtoCheckedExprToNative(checked_expr));
-  return std::make_unique<cel::ast::internal::AstImpl>(std::move(expr));
+  return std::make_unique<cel::ast_internal::AstImpl>(std::move(expr));
 }
 
 }  // namespace cel::extensions

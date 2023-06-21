@@ -17,12 +17,11 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_NATIVE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_NATIVE_H_
 
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "eval/public/source_position_native.h"
 
 namespace cel {
-namespace ast {
-namespace internal {
+namespace ast_internal {
 
 // ComprehensionArg specifies arg_num values passed to PostVisitArg
 // for subexpressions of Comprehension.
@@ -123,8 +122,7 @@ class AstVisitor {
                                      const SourcePosition*) = 0;
 };
 
-}  // namespace internal
-}  // namespace ast
+}  // namespace ast_internal
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_VISITOR_H_

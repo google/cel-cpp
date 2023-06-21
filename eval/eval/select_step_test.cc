@@ -36,7 +36,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::TypeProvider;
-using ::cel::ast::internal::Expr;
+using ::cel::ast_internal::Expr;
 using testing::_;
 using testing::Eq;
 using testing::HasSubstr;

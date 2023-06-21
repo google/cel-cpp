@@ -19,8 +19,8 @@
 
 #include "google/api/expr/v1alpha1/checked.pb.h"
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/ast_internal.h"
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -40,7 +40,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using cel::ast::internal::CheckedExpr;
+using cel::ast_internal::CheckedExpr;
 using google::api::expr::parser::Parse;
 
 namespace exprpb = google::api::expr::v1alpha1;
@@ -84,7 +84,7 @@ TEST_F(RegexPrecompilationExtensionTest, SmokeTest) {
   ExecutionPath path;
   PlannerContext::ProgramTree program_tree;
   CheckedExpr expr;
-  cel::ast::internal::AstImpl ast_impl(std::move(expr));
+  cel::ast_internal::AstImpl ast_impl(std::move(expr));
   PlannerContext context(resolver_, runtime_options_, value_factory_,
                          builder_warnings_, path, program_tree);
 
@@ -180,7 +180,7 @@ class RegexConstFoldInteropTest : public RegexPrecompilationExtensionTest {
  public:
   RegexConstFoldInteropTest() : RegexPrecompilationExtensionTest() {
     builder_.flat_expr_builder().AddProgramOptimizer(
-        cel::ast::internal::CreateConstantFoldingExtension(&arena_));
+        cel::ast_internal::CreateConstantFoldingExtension(&arena_));
   }
 
  protected:

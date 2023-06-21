@@ -18,13 +18,13 @@
 #include "absl/algorithm/container.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "eval/eval/evaluator_core.h"
 
 namespace google::api::expr::runtime {
 
 ExecutionPathView PlannerContext::GetSubplan(
-    const cel::ast::internal::Expr& node) const {
+    const cel::ast_internal::Expr& node) const {
   auto iter = program_tree_.find(&node);
   if (iter == program_tree_.end()) {
     return {};
@@ -42,7 +42,7 @@ ExecutionPathView PlannerContext::GetSubplan(
 }
 
 absl::StatusOr<ExecutionPath> PlannerContext::ExtractSubplan(
-    const cel::ast::internal::Expr& node) {
+    const cel::ast_internal::Expr& node) {
   auto iter = program_tree_.find(&node);
   if (iter == program_tree_.end()) {
     return absl::InternalError("attempted to rewrite unknown program step");
@@ -67,8 +67,8 @@ absl::StatusOr<ExecutionPath> PlannerContext::ExtractSubplan(
   return out;
 }
 
-absl::Status PlannerContext::ReplaceSubplan(
-    const cel::ast::internal::Expr& node, ExecutionPath path) {
+absl::Status PlannerContext::ReplaceSubplan(const cel::ast_internal::Expr& node,
+                                            ExecutionPath path) {
   auto iter = program_tree_.find(&node);
   if (iter == program_tree_.end()) {
     return absl::InternalError("attempted to rewrite unknown program step");
@@ -131,7 +131,7 @@ absl::Status PlannerContext::ReplaceSubplan(
 
   // Invalidate any program tree information for dependencies of the rewritten
   // node.
-  for (const cel::ast::internal::Expr* e : info.children) {
+  for (const cel::ast_internal::Expr* e : info.children) {
     program_tree_.erase(e);
   }
 

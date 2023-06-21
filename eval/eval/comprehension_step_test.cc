@@ -24,8 +24,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::TypeProvider;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::Ident;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Ident;
 using ::google::protobuf::ListValue;
 using ::google::protobuf::Struct;
 using ::google::protobuf::Arena;

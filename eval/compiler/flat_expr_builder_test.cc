@@ -1181,7 +1181,7 @@ TEST(FlatExprBuilderTest, CheckedExprWithReferenceMapAndConstantFolding) {
       NewReferenceResolverExtension(ReferenceResolverOption::kCheckedOnly));
   google::protobuf::Arena arena;
   builder.flat_expr_builder().AddProgramOptimizer(
-      cel::ast::internal::CreateConstantFoldingExtension(&arena));
+      cel::ast_internal::CreateConstantFoldingExtension(&arena));
   ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
   ASSERT_OK_AND_ASSIGN(auto cel_expr, builder.CreateExpression(&expr));
 

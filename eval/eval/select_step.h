@@ -6,7 +6,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "base/value_factory.h"
 #include "eval/eval/evaluator_core.h"
 
@@ -14,7 +14,7 @@ namespace google::api::expr::runtime {
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const cel::ast::internal::Select& select_expr, int64_t expr_id,
+    const cel::ast_internal::Select& select_expr, int64_t expr_id,
     absl::string_view select_path, bool enable_wrapper_type_null_unboxing,
     cel::ValueFactory& value_factory);
 

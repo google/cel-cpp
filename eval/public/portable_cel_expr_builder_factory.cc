@@ -59,7 +59,7 @@ std::unique_ptr<CelExpressionBuilder> CreatePortableExprBuilder(
 
   if (options.constant_folding) {
     builder->flat_expr_builder().AddProgramOptimizer(
-        cel::ast::internal::CreateConstantFoldingExtension(
+        cel::ast_internal::CreateConstantFoldingExtension(
             options.constant_arena));
   }
 

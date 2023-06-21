@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "absl/status/statusor.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "base/handle.h"
 #include "base/value.h"
 #include "base/value_factory.h"
@@ -21,7 +21,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
 // Copies the Constant Expr node to avoid lifecycle dependency on source
 // expression.
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateConstValueStep(
-    const cel::ast::internal::Constant&, int64_t expr_id,
+    const cel::ast_internal::Constant&, int64_t expr_id,
     cel::ValueFactory& value_factory, bool comes_from_ast = true);
 
 }  // namespace google::api::expr::runtime

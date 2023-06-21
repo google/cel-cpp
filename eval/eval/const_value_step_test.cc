@@ -5,7 +5,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
 #include "base/type_provider.h"
@@ -26,9 +26,9 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::TypeProvider;
-using ::cel::ast::internal::Constant;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::NullValue;
+using ::cel::ast_internal::Constant;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::NullValue;
 using testing::Eq;
 using testing::HasSubstr;
 using cel::internal::StatusIs;

@@ -15,8 +15,7 @@
 #include "eval/public/source_position_native.h"
 
 namespace cel {
-namespace ast {
-namespace internal {
+namespace ast_internal {
 
 namespace {
 
@@ -61,6 +60,5 @@ int32_t SourcePosition::character_offset() const {
                                                         : 0;
 }
 
-}  // namespace internal
-}  // namespace ast
+}  // namespace ast_internal
 }  // namespace cel

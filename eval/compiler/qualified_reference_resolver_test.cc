@@ -1,6 +1,5 @@
 #include "eval/compiler/qualified_reference_resolver.h"
 
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -8,9 +7,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
-#include "absl/types/optional.h"
 #include "base/ast.h"
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
 #include "eval/public/builtin_func_registrar.h"
 #include "eval/public/cel_builtins.h"
 #include "eval/public/cel_function.h"
@@ -26,11 +24,10 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::ast::Ast;
-using ::cel::ast::internal::AstImpl;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::Reference;
-using ::cel::ast::internal::SourceInfo;
+using ::cel::Ast;
+using ::cel::ast_internal::AstImpl;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::SourceInfo;
 using ::cel::extensions::internal::ConvertProtoExprToNative;
 using testing::Contains;
 using testing::ElementsAre;

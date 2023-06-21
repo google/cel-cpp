@@ -232,7 +232,7 @@ absl::Status SelectStep::Evaluate(ExecutionFrame* frame) const {
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateSelectStep(
-    const cel::ast::internal::Select& select_expr, int64_t expr_id,
+    const cel::ast_internal::Select& select_expr, int64_t expr_id,
     absl::string_view select_path, bool enable_wrapper_type_null_unboxing,
     cel::ValueFactory& value_factory) {
   return std::make_unique<SelectStep>(

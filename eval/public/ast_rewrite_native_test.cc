@@ -23,7 +23,7 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -604,4 +604,4 @@ TEST(AstRewrite, PreAndPostVisitExpample) {
 
 }  // namespace
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

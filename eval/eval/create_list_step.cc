@@ -93,13 +93,13 @@ absl::Status CreateListStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateListStep(
-    const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
+    const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
   return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(), /*immutable=*/true);
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateMutableListStep(
-    const cel::ast::internal::CreateList& create_list_expr, int64_t expr_id) {
+    const cel::ast_internal::CreateList& create_list_expr, int64_t expr_id) {
   return std::make_unique<CreateListStep>(
       expr_id, create_list_expr.elements().size(), /*immutable=*/false);
 }

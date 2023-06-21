@@ -36,9 +36,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/variant.h"
 #include "base/ast.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/builtins.h"
-#include "base/internal/ast_impl.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_provider.h"
@@ -68,13 +68,13 @@ namespace google::api::expr::runtime {
 
 namespace {
 
+using ::cel::Ast;
 using ::cel::Handle;
 using ::cel::TypeFactory;
 using ::cel::TypeManager;
 using ::cel::Value;
 using ::cel::ValueFactory;
-using ::cel::ast::Ast;
-using ::cel::ast::internal::AstImpl;
+using ::cel::ast_internal::AstImpl;
 
 constexpr int64_t kExprIdNotFromAst = -1;
 
@@ -101,10 +101,10 @@ class Jump {
 class CondVisitor {
  public:
   virtual ~CondVisitor() = default;
-  virtual void PreVisit(const cel::ast::internal::Expr* expr) = 0;
+  virtual void PreVisit(const cel::ast_internal::Expr* expr) = 0;
   virtual void PostVisitArg(int arg_num,
-                            const cel::ast::internal::Expr* expr) = 0;
-  virtual void PostVisit(const cel::ast::internal::Expr* expr) = 0;
+                            const cel::ast_internal::Expr* expr) = 0;
+  virtual void PostVisit(const cel::ast_internal::Expr* expr) = 0;
 };
 
 // Visitor managing the "&&" and "||" operatiions.
@@ -128,9 +128,9 @@ class BinaryCondVisitor : public CondVisitor {
         cond_value_(cond_value),
         short_circuiting_(short_circuiting) {}
 
-  void PreVisit(const cel::ast::internal::Expr* expr) override;
-  void PostVisitArg(int arg_num, const cel::ast::internal::Expr* expr) override;
-  void PostVisit(const cel::ast::internal::Expr* expr) override;
+  void PreVisit(const cel::ast_internal::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override;
+  void PostVisit(const cel::ast_internal::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -143,9 +143,9 @@ class TernaryCondVisitor : public CondVisitor {
  public:
   explicit TernaryCondVisitor(FlatExprVisitor* visitor) : visitor_(visitor) {}
 
-  void PreVisit(const cel::ast::internal::Expr* expr) override;
-  void PostVisitArg(int arg_num, const cel::ast::internal::Expr* expr) override;
-  void PostVisit(const cel::ast::internal::Expr* expr) override;
+  void PreVisit(const cel::ast_internal::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override;
+  void PostVisit(const cel::ast_internal::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -159,10 +159,10 @@ class ExhaustiveTernaryCondVisitor : public CondVisitor {
   explicit ExhaustiveTernaryCondVisitor(FlatExprVisitor* visitor)
       : visitor_(visitor) {}
 
-  void PreVisit(const cel::ast::internal::Expr* expr) override;
-  void PostVisitArg(int arg_num,
-                    const cel::ast::internal::Expr* expr) override {}
-  void PostVisit(const cel::ast::internal::Expr* expr) override;
+  void PreVisit(const cel::ast_internal::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override {
+  }
+  void PostVisit(const cel::ast_internal::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -179,9 +179,9 @@ class ComprehensionVisitor : public CondVisitor {
         short_circuiting_(short_circuiting),
         enable_vulnerability_check_(enable_vulnerability_check) {}
 
-  void PreVisit(const cel::ast::internal::Expr* expr) override;
-  void PostVisitArg(int arg_num, const cel::ast::internal::Expr* expr) override;
-  void PostVisit(const cel::ast::internal::Expr* expr) override;
+  void PreVisit(const cel::ast_internal::Expr* expr) override;
+  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr) override;
+  void PostVisit(const cel::ast_internal::Expr* expr) override;
 
  private:
   FlatExprVisitor* visitor_;
@@ -193,13 +193,13 @@ class ComprehensionVisitor : public CondVisitor {
   bool enable_vulnerability_check_;
 };
 
-class FlatExprVisitor : public cel::ast::internal::AstVisitor {
+class FlatExprVisitor : public cel::ast_internal::AstVisitor {
  public:
   FlatExprVisitor(
       const Resolver& resolver, const cel::RuntimeOptions& options,
       bool enable_comprehension_vulnerability_check,
       absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers,
-      const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
+      const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
           reference_map,
       ExecutionPath& path, ValueFactory& value_factory,
       BuilderWarnings& warnings, PlannerContext::ProgramTree& program_tree,
@@ -219,8 +219,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
         program_tree_(program_tree),
         extension_context_(extension_context) {}
 
-  void PreVisitExpr(const cel::ast::internal::Expr* expr,
-                    const cel::ast::internal::SourcePosition*) override {
+  void PreVisitExpr(const cel::ast_internal::Expr* expr,
+                    const cel::ast_internal::SourcePosition*) override {
     ValidateOrError(
         !absl::holds_alternative<absl::monostate>(expr->expr_kind()),
         "Invalid empty expression");
@@ -247,8 +247,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
   }
 
-  void PostVisitExpr(const cel::ast::internal::Expr* expr,
-                     const cel::ast::internal::SourcePosition*) override {
+  void PostVisitExpr(const cel::ast_internal::Expr* expr,
+                     const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -269,9 +269,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     }
   }
 
-  void PostVisitConst(const cel::ast::internal::Constant* const_expr,
-                      const cel::ast::internal::Expr* expr,
-                      const cel::ast::internal::SourcePosition*) override {
+  void PostVisitConst(const cel::ast_internal::Constant* const_expr,
+                      const cel::ast_internal::Expr* expr,
+                      const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -281,9 +281,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   // Ident node handler.
   // Invoked after child nodes are processed.
-  void PostVisitIdent(const cel::ast::internal::Ident* ident_expr,
-                      const cel::ast::internal::Expr* expr,
-                      const cel::ast::internal::SourcePosition*) override {
+  void PostVisitIdent(const cel::ast_internal::Ident* ident_expr,
+                      const cel::ast_internal::Expr* expr,
+                      const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -330,9 +330,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     AddStep(CreateIdentStep(*ident_expr, expr->id()));
   }
 
-  void PreVisitSelect(const cel::ast::internal::Select* select_expr,
-                      const cel::ast::internal::Expr* expr,
-                      const cel::ast::internal::SourcePosition*) override {
+  void PreVisitSelect(const cel::ast_internal::Select* select_expr,
+                      const cel::ast_internal::Expr* expr,
+                      const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -372,9 +372,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   // Select node handler.
   // Invoked after child nodes are processed.
-  void PostVisitSelect(const cel::ast::internal::Select* select_expr,
-                       const cel::ast::internal::Expr* expr,
-                       const cel::ast::internal::SourcePosition*) override {
+  void PostVisitSelect(const cel::ast_internal::Select* select_expr,
+                       const cel::ast_internal::Expr* expr,
+                       const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -405,9 +405,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   // We provide finer granularity for Call node callbacks to allow special
   // handling for short-circuiting
   // PreVisitCall is invoked before child nodes are processed.
-  void PreVisitCall(const cel::ast::internal::Call* call_expr,
-                    const cel::ast::internal::Expr* expr,
-                    const cel::ast::internal::SourcePosition*) override {
+  void PreVisitCall(const cel::ast_internal::Call* call_expr,
+                    const cel::ast_internal::Expr* expr,
+                    const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -436,9 +436,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   // Invoked after all child nodes are processed.
-  void PostVisitCall(const cel::ast::internal::Call* call_expr,
-                     const cel::ast::internal::Expr* expr,
-                     const cel::ast::internal::SourcePosition*) override {
+  void PostVisitCall(const cel::ast_internal::Call* call_expr,
+                     const cel::ast_internal::Expr* expr,
+                     const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -467,13 +467,13 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
     if (options_.enable_comprehension_list_append &&
         call_expr->function() == cel::builtin::kAdd &&
         call_expr->args().size() == 2 && !comprehension_stack_.empty()) {
-      const cel::ast::internal::Comprehension* comprehension =
+      const cel::ast_internal::Comprehension* comprehension =
           comprehension_stack_.top();
       absl::string_view accu_var = comprehension->accu_var();
       if (comprehension->accu_init().has_list_expr() &&
           call_expr->args()[0].has_ident_expr() &&
           call_expr->args()[0].ident_expr().name() == accu_var) {
-        const cel::ast::internal::Expr& loop_step = comprehension->loop_step();
+        const cel::ast_internal::Expr& loop_step = comprehension->loop_step();
         // Macro loop_step for a map() will contain a list concat operation:
         //   accu_var + [elem]
         if (&loop_step == expr) {
@@ -519,9 +519,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   void PreVisitComprehension(
-      const cel::ast::internal::Comprehension* comprehension,
-      const cel::ast::internal::Expr* expr,
-      const cel::ast::internal::SourcePosition*) override {
+      const cel::ast_internal::Comprehension* comprehension,
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -557,9 +557,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
 
   // Invoked after all child nodes are processed.
   void PostVisitComprehension(
-      const cel::ast::internal::Comprehension* comprehension_expr,
-      const cel::ast::internal::Expr* expr,
-      const cel::ast::internal::SourcePosition*) override {
+      const cel::ast_internal::Comprehension* comprehension_expr,
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -571,8 +571,8 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   // Invoked after each argument node processed.
-  void PostVisitArg(int arg_num, const cel::ast::internal::Expr* expr,
-                    const cel::ast::internal::SourcePosition*) override {
+  void PostVisitArg(int arg_num, const cel::ast_internal::Expr* expr,
+                    const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -583,14 +583,14 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   }
 
   // Nothing to do.
-  void PostVisitTarget(const cel::ast::internal::Expr* expr,
-                       const cel::ast::internal::SourcePosition*) override {}
+  void PostVisitTarget(const cel::ast_internal::Expr* expr,
+                       const cel::ast_internal::SourcePosition*) override {}
 
   // CreateList node handler.
   // Invoked after child nodes are processed.
-  void PostVisitCreateList(const cel::ast::internal::CreateList* list_expr,
-                           const cel::ast::internal::Expr* expr,
-                           const cel::ast::internal::SourcePosition*) override {
+  void PostVisitCreateList(const cel::ast_internal::CreateList* list_expr,
+                           const cel::ast_internal::Expr* expr,
+                           const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -606,9 +606,9 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   // CreateStruct node handler.
   // Invoked after child nodes are processed.
   void PostVisitCreateStruct(
-      const cel::ast::internal::CreateStruct* struct_expr,
-      const cel::ast::internal::Expr* expr,
-      const cel::ast::internal::SourcePosition*) override {
+      const cel::ast_internal::CreateStruct* struct_expr,
+      const cel::ast_internal::Expr* expr,
+      const cel::ast_internal::SourcePosition*) override {
     if (!progress_status_.ok()) {
       return;
     }
@@ -669,7 +669,7 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   // Index of the next step to be inserted.
   int GetCurrentIndex() const { return execution_path_.size(); }
 
-  CondVisitor* FindCondVisitor(const cel::ast::internal::Expr* expr) const {
+  CondVisitor* FindCondVisitor(const cel::ast_internal::Expr* expr) const {
     if (cond_visitor_stack_.empty()) {
       return nullptr;
     }
@@ -700,49 +700,49 @@ class FlatExprVisitor : public cel::ast::internal::AstVisitor {
   absl::Status progress_status_;
 
   std::stack<
-      std::pair<const cel::ast::internal::Expr*, std::unique_ptr<CondVisitor>>>
+      std::pair<const cel::ast_internal::Expr*, std::unique_ptr<CondVisitor>>>
       cond_visitor_stack_;
 
   // Maps effective namespace names to Expr objects (IDENTs/SELECTs) that
   // define scopes for those namespaces.
-  std::unordered_map<const cel::ast::internal::Expr*, std::string>
+  std::unordered_map<const cel::ast_internal::Expr*, std::string>
       namespace_map_;
   // Tracks SELECT-...SELECT-IDENT chains.
-  std::deque<std::pair<const cel::ast::internal::Expr*, std::string>>
+  std::deque<std::pair<const cel::ast_internal::Expr*, std::string>>
       namespace_stack_;
 
   // When multiple SELECT-...SELECT-IDENT chain is resolved as namespace, this
   // field is used as marker suppressing CelExpression creation for SELECTs.
-  const cel::ast::internal::Expr* resolved_select_expr_;
+  const cel::ast_internal::Expr* resolved_select_expr_;
 
   // Used for assembling a temporary tree mapping program segments
   // to source expr nodes.
-  const cel::ast::internal::Expr* parent_expr_;
+  const cel::ast_internal::Expr* parent_expr_;
 
   const cel::RuntimeOptions& options_;
 
-  std::stack<const cel::ast::internal::Comprehension*> comprehension_stack_;
+  std::stack<const cel::ast_internal::Comprehension*> comprehension_stack_;
 
   bool enable_comprehension_vulnerability_check_;
 
   absl::Span<const std::unique_ptr<ProgramOptimizer>> program_optimizers_;
   BuilderWarnings& builder_warnings_;
 
-  const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
+  const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
       reference_map_;
 
   PlannerContext::ProgramTree& program_tree_;
   PlannerContext extension_context_;
 };
 
-void BinaryCondVisitor::PreVisit(const cel::ast::internal::Expr* expr) {
+void BinaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
   visitor_->ValidateOrError(
       !expr->call_expr().has_target() && expr->call_expr().args().size() == 2,
       "Invalid argument count for a binary function call.");
 }
 
 void BinaryCondVisitor::PostVisitArg(int arg_num,
-                                     const cel::ast::internal::Expr* expr) {
+                                     const cel::ast_internal::Expr* expr) {
   if (short_circuiting_ && arg_num == 0) {
     // If first branch evaluation result is enough to determine output,
     // jump over the second branch and provide result of the first argument as
@@ -757,7 +757,7 @@ void BinaryCondVisitor::PostVisitArg(int arg_num,
   }
 }
 
-void BinaryCondVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
+void BinaryCondVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   visitor_->AddStep((cond_value_) ? CreateOrStep(expr->id())
                                   : CreateAndStep(expr->id()));
   if (short_circuiting_) {
@@ -767,14 +767,14 @@ void BinaryCondVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
   }
 }
 
-void TernaryCondVisitor::PreVisit(const cel::ast::internal::Expr* expr) {
+void TernaryCondVisitor::PreVisit(const cel::ast_internal::Expr* expr) {
   visitor_->ValidateOrError(
       !expr->call_expr().has_target() && expr->call_expr().args().size() == 3,
       "Invalid argument count for a ternary function call.");
 }
 
 void TernaryCondVisitor::PostVisitArg(int arg_num,
-                                      const cel::ast::internal::Expr* expr) {
+                                      const cel::ast_internal::Expr* expr) {
   // Ternary operator "_?_:_" requires a special handing.
   // In contrary to regular function call, its execution affects the control
   // flow of the overall CEL expression.
@@ -824,7 +824,7 @@ void TernaryCondVisitor::PostVisitArg(int arg_num,
   // clattered.
 }
 
-void TernaryCondVisitor::PostVisit(const cel::ast::internal::Expr*) {
+void TernaryCondVisitor::PostVisit(const cel::ast_internal::Expr*) {
   // Determine and set jump offset in jump instruction.
   if (visitor_->ValidateOrError(
           error_jump_.exists(),
@@ -839,14 +839,14 @@ void TernaryCondVisitor::PostVisit(const cel::ast::internal::Expr*) {
 }
 
 void ExhaustiveTernaryCondVisitor::PreVisit(
-    const cel::ast::internal::Expr* expr) {
+    const cel::ast_internal::Expr* expr) {
   visitor_->ValidateOrError(
       !expr->call_expr().has_target() && expr->call_expr().args().size() == 3,
       "Invalid argument count for a ternary function call.");
 }
 
 void ExhaustiveTernaryCondVisitor::PostVisit(
-    const cel::ast::internal::Expr* expr) {
+    const cel::ast_internal::Expr* expr) {
   visitor_->AddStep(CreateTernaryStep(expr->id()));
 }
 
@@ -899,13 +899,13 @@ void ExhaustiveTernaryCondVisitor::PostVisit(
 //
 // Since this behavior generally only occurs within hand-rolled ASTs, it is
 // very reasonable to opt-in to this check only when using human authored ASTs.
-int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
+int ComprehensionAccumulationReferences(const cel::ast_internal::Expr& expr,
                                         absl::string_view var_name) {
   struct Handler {
-    const cel::ast::internal::Expr& expr;
+    const cel::ast_internal::Expr& expr;
     absl::string_view var_name;
 
-    int operator()(const cel::ast::internal::Call& call) {
+    int operator()(const cel::ast_internal::Call& call) {
       int references = 0;
       absl::string_view function = call.function();
       // Return the maximum reference count of each side of the ternary branch.
@@ -933,7 +933,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       }
       return 0;
     }
-    int operator()(const cel::ast::internal::Comprehension& comprehension) {
+    int operator()(const cel::ast_internal::Comprehension& comprehension) {
       absl::string_view accu_var = comprehension.accu_var();
       absl::string_view iter_var = comprehension.iter_var();
 
@@ -985,7 +985,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
                        sum_of_accumulator_references});
     }
 
-    int operator()(const cel::ast::internal::CreateList& list) {
+    int operator()(const cel::ast_internal::CreateList& list) {
       // Count the number of times the accumulator var_name appears within a
       // create list expression's elements.
       int references = 0;
@@ -996,7 +996,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       return references;
     }
 
-    int operator()(const cel::ast::internal::CreateStruct& map) {
+    int operator()(const cel::ast_internal::CreateStruct& map) {
       // Count the number of times the accumulation variable occurs within
       // entry values.
       int references = 0;
@@ -1010,7 +1010,7 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       return references;
     }
 
-    int operator()(const cel::ast::internal::Select& select) {
+    int operator()(const cel::ast_internal::Select& select) {
       // Test only expressions have a boolean return and thus cannot easily
       // allocate large amounts of memory.
       if (select.test_only()) {
@@ -1021,19 +1021,19 @@ int ComprehensionAccumulationReferences(const cel::ast::internal::Expr& expr,
       return ComprehensionAccumulationReferences(select.operand(), var_name);
     }
 
-    int operator()(const cel::ast::internal::Ident& ident) {
+    int operator()(const cel::ast_internal::Ident& ident) {
       // Return whether the identifier name equals the accumulator var_name.
       return ident.name() == var_name ? 1 : 0;
     }
 
-    int operator()(const cel::ast::internal::Constant& constant) { return 0; }
+    int operator()(const cel::ast_internal::Constant& constant) { return 0; }
 
     int operator()(absl::monostate) { return 0; }
   } handler{expr, var_name};
   return absl::visit(handler, expr.expr_kind());
 }
 
-void ComprehensionVisitor::PreVisit(const cel::ast::internal::Expr*) {
+void ComprehensionVisitor::PreVisit(const cel::ast_internal::Expr*) {
   constexpr int64_t kLoopStepPlaceholder = -10;
   visitor_->AddStep(CreateConstValueStep(
       visitor_->value_factory().CreateIntValue(kLoopStepPlaceholder),
@@ -1041,13 +1041,13 @@ void ComprehensionVisitor::PreVisit(const cel::ast::internal::Expr*) {
 }
 
 void ComprehensionVisitor::PostVisitArg(int arg_num,
-                                        const cel::ast::internal::Expr* expr) {
+                                        const cel::ast_internal::Expr* expr) {
   const auto* comprehension = &expr->comprehension_expr();
   const auto& accu_var = comprehension->accu_var();
   const auto& iter_var = comprehension->iter_var();
   // TODO(issues/20): Consider refactoring the comprehension prologue step.
   switch (arg_num) {
-    case cel::ast::internal::ITER_RANGE: {
+    case cel::ast_internal::ITER_RANGE: {
       // Post-process iter_range to list its keys if it's a map.
       visitor_->AddStep(CreateListKeysStep(expr->id()));
       // Setup index stack position
@@ -1061,20 +1061,20 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
           kExprIdNotFromAst, false));
       break;
     }
-    case cel::ast::internal::ACCU_INIT: {
+    case cel::ast_internal::ACCU_INIT: {
       next_step_pos_ = visitor_->GetCurrentIndex();
       next_step_ = new ComprehensionNextStep(accu_var, iter_var, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(next_step_));
       break;
     }
-    case cel::ast::internal::LOOP_CONDITION: {
+    case cel::ast_internal::LOOP_CONDITION: {
       cond_step_pos_ = visitor_->GetCurrentIndex();
       cond_step_ = new ComprehensionCondStep(accu_var, iter_var,
                                              short_circuiting_, expr->id());
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(cond_step_));
       break;
     }
-    case cel::ast::internal::LOOP_STEP: {
+    case cel::ast_internal::LOOP_STEP: {
       auto jump_to_next = CreateJumpStep(
           next_step_pos_ - visitor_->GetCurrentIndex() - 1, expr->id());
       if (jump_to_next.ok()) {
@@ -1087,7 +1087,7 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
                                   1);
       break;
     }
-    case cel::ast::internal::RESULT: {
+    case cel::ast_internal::RESULT: {
       visitor_->AddStep(std::unique_ptr<ExpressionStep>(
           new ComprehensionFinish(accu_var, iter_var, expr->id())));
       next_step_->set_error_jump_offset(visitor_->GetCurrentIndex() -
@@ -1099,7 +1099,7 @@ void ComprehensionVisitor::PostVisitArg(int arg_num,
   }
 }
 
-void ComprehensionVisitor::PostVisit(const cel::ast::internal::Expr* expr) {
+void ComprehensionVisitor::PostVisit(const cel::ast_internal::Expr* expr) {
   if (enable_vulnerability_check_) {
     const auto* comprehension = &expr->comprehension_expr();
     absl::string_view accu_var = comprehension->accu_var();

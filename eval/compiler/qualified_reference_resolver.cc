@@ -12,8 +12,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "base/ast.h"
+#include "base/ast_internal/ast_impl.h"
 #include "base/builtins.h"
-#include "base/internal/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/expression_build_warning.h"
 #include "eval/public/ast_rewrite_native.h"
@@ -23,9 +23,9 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::Reference;
-using ::cel::ast::internal::SourcePosition;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Reference;
+using ::cel::ast_internal::SourcePosition;
 
 // Determines if function is implemented with custom evaluation step instead of
 // registered.
@@ -76,7 +76,7 @@ absl::optional<std::string> BestOverloadMatch(const Resolver& resolver,
 //
 // On post visit pass, update function calls to determine whether the function
 // target is a namespace for the function or a receiver for the call.
-class ReferenceResolver : public cel::ast::internal::AstRewriterBase {
+class ReferenceResolver : public cel::ast_internal::AstRewriterBase {
  public:
   ReferenceResolver(
       const absl::flat_hash_map<int64_t, Reference>& reference_map,
@@ -275,7 +275,7 @@ class ReferenceResolverExtension : public AstTransform {
   explicit ReferenceResolverExtension(ReferenceResolverOption opt)
       : opt_(opt) {}
   absl::Status UpdateAst(PlannerContext& context,
-                         cel::ast::internal::AstImpl& ast) const override {
+                         cel::ast_internal::AstImpl& ast) const override {
     if (opt_ == ReferenceResolverOption::kCheckedOnly &&
         ast.reference_map().empty()) {
       return absl::OkStatus();
@@ -293,12 +293,12 @@ class ReferenceResolverExtension : public AstTransform {
 
 absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
                                        BuilderWarnings& warnings,
-                                       cel::ast::internal::AstImpl& ast) {
+                                       cel::ast_internal::AstImpl& ast) {
   ReferenceResolver ref_resolver(ast.reference_map(), resolver, warnings);
 
   // Rewriting interface doesn't support failing mid traverse propagate first
   // error encountered if fail fast enabled.
-  bool was_rewritten = cel::ast::internal::AstRewrite(
+  bool was_rewritten = cel::ast_internal::AstRewrite(
       &ast.root_expr(), &ast.source_info(), &ref_resolver);
   if (warnings.fail_immediately() && !warnings.warnings().empty()) {
     return warnings.warnings().front();

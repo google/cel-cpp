@@ -17,11 +17,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_
 
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 
 namespace cel {
-namespace ast {
-namespace internal {
+namespace ast_internal {
 
 // Class representing the source position as well as line and column data for
 // a given expression id.
@@ -55,8 +54,7 @@ class SourcePosition {
   const SourceInfo* source_info_;
 };
 
-}  // namespace internal
-}  // namespace ast
+}  // namespace ast_internal
 }  // namespace cel
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_SOURCE_POSITION_H_

@@ -18,7 +18,7 @@
 #include "absl/types/span.h"
 #include "eval/public/ast_visitor_native.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 // Traversal options for AstRewrite.
 struct RewriteTraversalOptions {
@@ -150,6 +150,6 @@ bool AstRewrite(Expr* expr, const SourceInfo* source_info,
 bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
                 RewriteTraversalOptions options);
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_REWRITE_H_

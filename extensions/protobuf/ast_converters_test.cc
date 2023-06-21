@@ -27,16 +27,16 @@
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "internal/testing.h"
 
 namespace cel::extensions {
 namespace internal {
 namespace {
 
-using ::cel::ast::internal::NullValue;
-using ::cel::ast::internal::PrimitiveType;
-using ::cel::ast::internal::WellKnownType;
+using ::cel::ast_internal::NullValue;
+using ::cel::ast_internal::PrimitiveType;
+using ::cel::ast_internal::WellKnownType;
 using cel::internal::StatusIs;
 
 TEST(AstConvertersTest, IdentToNative) {

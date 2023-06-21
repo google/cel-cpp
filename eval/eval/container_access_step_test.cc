@@ -33,8 +33,8 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::TypeProvider;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::SourceInfo;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::SourceInfo;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::protobuf::Struct;
 using testing::_;

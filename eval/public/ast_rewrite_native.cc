@@ -22,7 +22,7 @@
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -401,4 +401,4 @@ bool AstRewrite(Expr* expr, const SourceInfo* source_info, AstRewriter* visitor,
   return rewritten;
 }
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

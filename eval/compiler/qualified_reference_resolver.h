@@ -5,7 +5,7 @@
 
 #include "absl/status/statusor.h"
 #include "base/ast.h"
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/expression_build_warning.h"
@@ -23,7 +23,7 @@ namespace google::api::expr::runtime {
 // points to an expr node that isn't a reference).
 absl::StatusOr<bool> ResolveReferences(const Resolver& resolver,
                                        BuilderWarnings& warnings,
-                                       cel::ast::internal::AstImpl& ast);
+                                       cel::ast_internal::AstImpl& ast);
 
 enum class ReferenceResolverOption {
   // Always attempt to resolve references based on runtime types and functions.

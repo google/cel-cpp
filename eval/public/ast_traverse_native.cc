@@ -18,11 +18,11 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/types/variant.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "eval/public/ast_visitor_native.h"
 #include "eval/public/source_position_native.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -347,4 +347,4 @@ void AstTraverse(const Expr* expr, const SourceInfo* source_info,
   }
 }
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

@@ -34,7 +34,7 @@
 
 namespace google::api::expr::runtime {
 
-using ::cel::ast::Ast;
+using ::cel::Ast;
 using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;  // NOLINT: adjusted in OSS
 using ::google::api::expr::v1alpha1::SourceInfo;

@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "absl/strings/string_view.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "base/type_provider.h"
 #include "eval/eval/cel_expression_flat_impl.h"
 #include "eval/eval/const_value_step.h"
@@ -34,9 +34,9 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::TypeProvider;
-using ::cel::ast::internal::Call;
-using ::cel::ast::internal::Expr;
-using ::cel::ast::internal::Ident;
+using ::cel::ast_internal::Call;
+using ::cel::ast_internal::Expr;
+using ::cel::ast_internal::Ident;
 using testing::Eq;
 using testing::Not;
 using cel::internal::IsOk;
@@ -459,19 +459,19 @@ TEST_P(FunctionStepTest, LazyFunctionOverloadingTest) {
             return lhs < rhs;
           })));
 
-  cel::ast::internal::Constant lhs;
+  cel::ast_internal::Constant lhs;
   lhs.set_int64_value(20);
-  cel::ast::internal::Constant rhs;
+  cel::ast_internal::Constant rhs;
   rhs.set_double_value(21.9);
 
-  cel::ast::internal::Call call1;
+  cel::ast_internal::Call call1;
   call1.mutable_args().emplace_back();
   call1.set_function("Floor");
-  cel::ast::internal::Call call2;
+  cel::ast_internal::Call call2;
   call2.mutable_args().emplace_back();
   call2.set_function("Floor");
 
-  cel::ast::internal::Call lt_call;
+  cel::ast_internal::Call lt_call;
   lt_call.mutable_args().emplace_back();
   lt_call.mutable_args().emplace_back();
   lt_call.set_function("_<_");

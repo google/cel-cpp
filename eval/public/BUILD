@@ -562,7 +562,7 @@ cc_library(
     srcs = ["source_position_native.cc"],
     hdrs = ["source_position_native.h"],
     deps = [
-        "//base:ast_internal",
+        "//base/ast_internal:expr",
     ],
 )
 
@@ -595,7 +595,7 @@ cc_library(
     ],
     deps = [
         ":source_position_native",
-        "//base:ast_internal",
+        "//base/ast_internal:expr",
     ],
 )
 
@@ -637,7 +637,7 @@ cc_library(
     deps = [
         ":ast_visitor_native",
         ":source_position_native",
-        "//base:ast_internal",
+        "//base/ast_internal:expr",
         "@com_google_absl//absl/log:absl_log",
         "@com_google_absl//absl/types:variant",
     ],

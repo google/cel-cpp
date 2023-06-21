@@ -23,7 +23,7 @@ namespace google::api::expr::runtime {
 namespace {
 
 using ::cel::TypeProvider;
-using ::cel::ast::internal::Expr;
+using ::cel::ast_internal::Expr;
 using testing::Eq;
 using testing::Not;
 using cel::internal::IsOk;

@@ -75,8 +75,7 @@ class FlatExprBuilder {
   // TODO(uncreated-issue/45): Add overload for cref AST. At the moment, all the users
   // can pass ownership of a freshly converted AST.
   absl::StatusOr<FlatExpression> CreateExpressionImpl(
-      std::unique_ptr<cel::ast::Ast> ast,
-      std::vector<absl::Status>* warnings) const;
+      std::unique_ptr<cel::Ast> ast, std::vector<absl::Status>* warnings) const;
 
  private:
   cel::RuntimeOptions options_;

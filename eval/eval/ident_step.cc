@@ -100,7 +100,7 @@ absl::Status IdentStep::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateIdentStep(
-    const cel::ast::internal::Ident& ident_expr, int64_t expr_id) {
+    const cel::ast_internal::Ident& ident_expr, int64_t expr_id) {
   return std::make_unique<IdentStep>(ident_expr.name(), expr_id);
 }
 

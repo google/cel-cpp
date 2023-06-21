@@ -174,7 +174,7 @@ absl::Status CreateStructStepForMap::Evaluate(ExecutionFrame* frame) const {
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateCreateStructStep(
-    const cel::ast::internal::CreateStruct& create_struct_expr,
+    const cel::ast_internal::CreateStruct& create_struct_expr,
     const LegacyTypeMutationApis* type_adapter, int64_t expr_id) {
   if (type_adapter != nullptr) {
     std::vector<CreateStructStepForMessage::FieldEntry> entries;

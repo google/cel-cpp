@@ -3,8 +3,8 @@
 #include <memory>
 
 #include "google/api/expr/v1alpha1/syntax.pb.h"
-#include "base/ast_internal.h"
-#include "base/internal/ast_impl.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/memory.h"
 #include "base/type_factory.h"
 #include "base/type_manager.h"
@@ -27,7 +27,7 @@
 #include "runtime/function_registry.h"
 #include "runtime/runtime_options.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -84,7 +84,7 @@ class UpdatedConstantFoldingTest : public testing::Test {
   Resolver resolver_;
 };
 
-absl::StatusOr<std::unique_ptr<cel::ast::Ast>> ParseFromCel(
+absl::StatusOr<std::unique_ptr<cel::Ast>> ParseFromCel(
     absl::string_view expression) {
   CEL_ASSIGN_OR_RETURN(ParsedExpr expr, Parse(expression));
   return cel::extensions::CreateAstFromParsedExpr(expr);
@@ -98,7 +98,7 @@ absl::StatusOr<std::unique_ptr<cel::ast::Ast>> ParseFromCel(
 // needed to simulate what the expression builder does.
 TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("true ? true : false"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
@@ -175,7 +175,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsTernary) {
 
 TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("false || true"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
@@ -240,7 +240,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsOr) {
 
 TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("true && false"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
@@ -305,8 +305,7 @@ TEST_F(UpdatedConstantFoldingTest, SkipsAnd) {
 
 TEST_F(UpdatedConstantFoldingTest, CreatesList) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
-                       ParseFromCel("[1, 2]"));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast, ParseFromCel("[1, 2]"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   const Expr& create_list = ast_impl.root_expr();
@@ -367,8 +366,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesList) {
 
 TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
-                       ParseFromCel("{1: 2}"));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast, ParseFromCel("{1: 2}"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   const Expr& create_map = ast_impl.root_expr();
@@ -429,8 +427,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesMap) {
 
 TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
-                       ParseFromCel("{1.0: 2}"));
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast, ParseFromCel("{1.0: 2}"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
   const Expr& create_map = ast_impl.root_expr();
@@ -491,7 +488,7 @@ TEST_F(UpdatedConstantFoldingTest, CreatesInvalidMap) {
 
 TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
   // Arrange
-  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::ast::Ast> ast,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<cel::Ast> ast,
                        ParseFromCel("true && false"));
   AstImpl& ast_impl = AstImpl::CastFromPublicAst(*ast);
 
@@ -547,4 +544,4 @@ TEST_F(UpdatedConstantFoldingTest, ErrorsOnUnexpectedOrder) {
 
 }  // namespace
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

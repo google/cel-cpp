@@ -48,8 +48,8 @@ cc_library(
     hdrs = ["ast_converters.h"],
     deps = [
         "//base:ast",
-        "//base:ast_internal",
-        "//base/internal:ast_impl",
+        "//base/ast_internal:ast_impl",
+        "//base/ast_internal:expr",
         "//internal:status_macros",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
@@ -69,7 +69,7 @@ cc_test(
     ],
     deps = [
         ":ast_converters",
-        "//base:ast_internal",
+        "//base/ast_internal:expr",
         "//internal:testing",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/time",

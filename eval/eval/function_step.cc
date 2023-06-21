@@ -343,7 +343,7 @@ absl::StatusOr<ResolveResult> LazyFunctionStep::ResolveFunction(
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const cel::ast::internal::Call& call_expr, int64_t expr_id,
+    const cel::ast_internal::Call& call_expr, int64_t expr_id,
     std::vector<cel::FunctionRegistry::LazyOverload> lazy_overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);
@@ -353,7 +353,7 @@ absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
 }
 
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateFunctionStep(
-    const cel::ast::internal::Call& call_expr, int64_t expr_id,
+    const cel::ast_internal::Call& call_expr, int64_t expr_id,
     std::vector<cel::FunctionOverloadReference> overloads) {
   bool receiver_style = call_expr.has_target();
   size_t num_args = call_expr.args().size() + (receiver_style ? 1 : 0);

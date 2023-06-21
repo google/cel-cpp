@@ -17,8 +17,7 @@
 #include "internal/testing.h"
 
 namespace cel {
-namespace ast {
-namespace internal {
+namespace ast_internal {
 
 namespace {
 
@@ -102,7 +101,5 @@ TEST_F(SourcePositionTest, TestColumn) {
 }
 
 }  // namespace
-
-}  // namespace internal
-}  // namespace ast
+}  // namespace ast_internal
 }  // namespace cel

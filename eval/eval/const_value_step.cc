@@ -7,7 +7,7 @@
 
 #include "absl/status/statusor.h"
 #include "absl/time/time.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "base/value_factory.h"
 #include "eval/eval/compiler_constant_step.h"
 #include "eval/internal/errors.h"
@@ -16,7 +16,7 @@ namespace google::api::expr::runtime {
 
 namespace {
 
-using ::cel::ast::internal::Constant;
+using ::cel::ast_internal::Constant;
 using ::cel::runtime_internal::DurationOverflowError;
 using ::cel::runtime_internal::kDurationHigh;
 using ::cel::runtime_internal::kDurationLow;
@@ -35,7 +35,7 @@ absl::StatusOr<cel::Handle<cel::Value>> ConvertConstant(
     const Constant& const_expr, cel::ValueFactory& value_factory) {
   struct {
     absl::StatusOr<cel::Handle<cel::Value>> operator()(
-        const cel::ast::internal::NullValue& value) {
+        const cel::ast_internal::NullValue& value) {
       return value_factory.GetNullValue();
     }
     absl::StatusOr<cel::Handle<cel::Value>> operator()(bool value) {
@@ -55,7 +55,7 @@ absl::StatusOr<cel::Handle<cel::Value>> ConvertConstant(
       return value_factory.CreateUncheckedStringValue(value);
     }
     absl::StatusOr<cel::Handle<cel::Value>> operator()(
-        const cel::ast::internal::Bytes& value) {
+        const cel::ast_internal::Bytes& value) {
       return value_factory.CreateBytesValue(value.bytes);
     }
     absl::StatusOr<cel::Handle<cel::Value>> operator()(

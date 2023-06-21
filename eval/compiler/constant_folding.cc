@@ -9,10 +9,10 @@
 #include "absl/status/status.h"
 #include "absl/time/time.h"
 #include "absl/types/variant.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/builtins.h"
 #include "base/handle.h"
-#include "base/internal/ast_impl.h"
 #include "base/kind.h"
 #include "base/type_provider.h"
 #include "base/value.h"
@@ -27,7 +27,7 @@
 #include "runtime/activation.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -51,7 +51,7 @@ struct MakeConstantArenaSafeVisitor {
   // non-arena based cel::MemoryManager.
   google::protobuf::Arena* arena;
 
-  Handle<Value> operator()(const cel::ast::internal::NullValue& value) {
+  Handle<Value> operator()(const cel::ast_internal::NullValue& value) {
     return cel::interop_internal::CreateNullValue();
   }
   Handle<Value> operator()(bool value) {
@@ -70,7 +70,7 @@ struct MakeConstantArenaSafeVisitor {
     const auto* arena_copy = Arena::Create<std::string>(arena, value);
     return cel::interop_internal::CreateStringValueFromView(*arena_copy);
   }
-  Handle<Value> operator()(const cel::ast::internal::Bytes& value) {
+  Handle<Value> operator()(const cel::ast_internal::Bytes& value) {
     const auto* arena_copy = Arena::Create<std::string>(arena, value.bytes);
     return cel::interop_internal::CreateBytesValueFromView(*arena_copy);
   }
@@ -83,7 +83,7 @@ struct MakeConstantArenaSafeVisitor {
 };
 
 Handle<Value> MakeConstantArenaSafe(
-    google::protobuf::Arena* arena, const cel::ast::internal::Constant& const_expr) {
+    google::protobuf::Arena* arena, const cel::ast_internal::Constant& const_expr) {
   return absl::visit(MakeConstantArenaSafeVisitor{arena},
                      const_expr.constant_kind());
 }
@@ -245,4 +245,4 @@ CreateConstantFoldingExtension(google::protobuf::Arena* arena) {
   };
 }
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

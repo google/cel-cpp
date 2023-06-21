@@ -29,8 +29,8 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "base/ast.h"
-#include "base/ast_internal.h"
 #include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/value_factory.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/evaluator_core.h"
@@ -45,12 +45,12 @@ class PlannerContext {
   struct ProgramInfo {
     int range_start;
     int range_len = -1;
-    const cel::ast::internal::Expr* parent = nullptr;
-    std::vector<const cel::ast::internal::Expr*> children;
+    const cel::ast_internal::Expr* parent = nullptr;
+    std::vector<const cel::ast_internal::Expr*> children;
   };
 
   using ProgramTree =
-      absl::flat_hash_map<const cel::ast::internal::Expr*, ProgramInfo>;
+      absl::flat_hash_map<const cel::ast_internal::Expr*, ProgramInfo>;
 
   explicit PlannerContext(const Resolver& resolver,
                           const cel::RuntimeOptions& options,
@@ -66,16 +66,16 @@ class PlannerContext {
         program_tree_(program_tree) {}
 
   // Note: this is invalidated after a sibling or parent is updated.
-  ExecutionPathView GetSubplan(const cel::ast::internal::Expr& node) const;
+  ExecutionPathView GetSubplan(const cel::ast_internal::Expr& node) const;
 
   // Extract the plan steps for the given expr.
   // The backing execution path is not resized -- a later call must
   // overwrite the extracted region.
   absl::StatusOr<ExecutionPath> ExtractSubplan(
-      const cel::ast::internal::Expr& node);
+      const cel::ast_internal::Expr& node);
 
   // Note: this can only safely be called on the node being visited.
-  absl::Status ReplaceSubplan(const cel::ast::internal::Expr& node,
+  absl::Status ReplaceSubplan(const cel::ast_internal::Expr& node,
                               ExecutionPath path);
 
   const Resolver& resolver() const { return resolver_; }
@@ -117,11 +117,11 @@ class ProgramOptimizer {
 
   // Called before planning the given expr node.
   virtual absl::Status OnPreVisit(PlannerContext& context,
-                                  const cel::ast::internal::Expr& node) = 0;
+                                  const cel::ast_internal::Expr& node) = 0;
 
   // Called after planning the given expr node.
   virtual absl::Status OnPostVisit(PlannerContext& context,
-                                   const cel::ast::internal::Expr& node) = 0;
+                                   const cel::ast_internal::Expr& node) = 0;
 };
 
 // Type definition for ProgramOptimizer factories.

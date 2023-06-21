@@ -276,7 +276,7 @@ absl::Status ContainerAccessStep::Evaluate(ExecutionFrame* frame) const {
 
 // Factory method for Select - based Execution step
 absl::StatusOr<std::unique_ptr<ExpressionStep>> CreateContainerAccessStep(
-    const cel::ast::internal::Call& call, int64_t expr_id) {
+    const cel::ast_internal::Call& call, int64_t expr_id) {
   int arg_count = call.args().size() + (call.has_target() ? 1 : 0);
   if (arg_count != kNumContainerAccessArguments) {
     return absl::InvalidArgumentError(absl::StrCat(

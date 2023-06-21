@@ -4,7 +4,7 @@
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "google/protobuf/arena.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 // Create a new constant folding extension.
 // Eagerly evaluates sub expressions with all constant inputs, and replaces said
@@ -12,6 +12,6 @@ namespace cel::ast::internal {
 google::api::expr::runtime::ProgramOptimizerFactory
 CreateConstantFoldingExtension(google::protobuf::Arena* arena);
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_COMPILER_CONSTANT_FOLDING_H_

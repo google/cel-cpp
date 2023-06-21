@@ -19,9 +19,9 @@
 
 #include "absl/status/status.h"
 #include "absl/types/optional.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/ast_impl.h"
+#include "base/ast_internal/expr.h"
 #include "base/builtins.h"
-#include "base/internal/ast_impl.h"
 #include "base/values/string_value.h"
 #include "eval/compiler/flat_expr_builder_extensions.h"
 #include "eval/eval/compiler_constant_step.h"
@@ -32,10 +32,10 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using cel::ast::internal::AstImpl;
-using cel::ast::internal::Call;
-using cel::ast::internal::Expr;
-using cel::ast::internal::Reference;
+using cel::ast_internal::AstImpl;
+using cel::ast_internal::Call;
+using cel::ast_internal::Expr;
+using cel::ast_internal::Reference;
 using cel::internal::down_cast;
 using cel::internal::TypeId;
 
@@ -44,7 +44,7 @@ using ReferenceMap = absl::flat_hash_map<int64_t, Reference>;
 bool IsFunctionOverload(
     const Expr& expr, absl::string_view function, absl::string_view overload,
     size_t arity,
-    const absl::flat_hash_map<int64_t, cel::ast::internal::Reference>&
+    const absl::flat_hash_map<int64_t, cel::ast_internal::Reference>&
         reference_map) {
   if (!expr.has_call_expr()) {
     return false;
@@ -146,7 +146,7 @@ class RegexPrecompilationOptimization : public ProgramOptimizer {
 
  private:
   absl::optional<std::string> GetConstantString(
-      PlannerContext& context, const cel::ast::internal::Expr& expr) const {
+      PlannerContext& context, const cel::ast_internal::Expr& expr) const {
     if (expr.has_const_expr() && expr.const_expr().has_string_value()) {
       return expr.const_expr().string_value();
     }

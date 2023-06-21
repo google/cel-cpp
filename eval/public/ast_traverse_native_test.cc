@@ -17,7 +17,7 @@
 #include "eval/public/ast_visitor_native.h"
 #include "internal/testing.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 namespace {
 
@@ -435,4 +435,4 @@ TEST(AstCrawlerTest, CheckExprHandlers) {
 
 }  // namespace
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal

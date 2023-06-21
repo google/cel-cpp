@@ -16,7 +16,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "eval/compiler/resolver.h"
 #include "eval/eval/const_value_step.h"
 #include "eval/eval/evaluator_core.h"
@@ -29,7 +29,7 @@
 namespace google::api::expr::runtime {
 namespace {
 
-using ::cel::ast::internal::Expr;
+using ::cel::ast_internal::Expr;
 using testing::ElementsAre;
 using testing::IsEmpty;
 using cel::internal::StatusIs;

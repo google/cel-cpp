@@ -17,10 +17,10 @@
 #ifndef THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_NATIVE_H_
 #define THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_NATIVE_H_
 
-#include "base/ast_internal.h"
+#include "base/ast_internal/expr.h"
 #include "eval/public/ast_visitor_native.h"
 
-namespace cel::ast::internal {
+namespace cel::ast_internal {
 
 struct TraversalOptions {
   bool use_comprehension_callbacks;
@@ -61,6 +61,6 @@ void AstTraverse(const Expr* expr, const SourceInfo* source_info,
                  AstVisitor* visitor,
                  TraversalOptions options = TraversalOptions());
 
-}  // namespace cel::ast::internal
+}  // namespace cel::ast_internal
 
 #endif  // THIRD_PARTY_CEL_CPP_EVAL_PUBLIC_AST_TRAVERSE_NATIVE_H_
