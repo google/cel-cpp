@@ -19,7 +19,7 @@
 namespace google::api::expr::runtime {
 
 // CelEvaluationListener is the callback that is passed to (and called by)
-// CelEvaluation::Trace. It gets an expression node ID from the original
+// CelExpression::Trace. It gets an expression node ID from the original
 // expression, its value and the arena object. If an expression node
 // is evaluated multiple times (e.g. as a part of Comprehension.loop_step)
 // then the order of the callback invocations is guaranteed to correspond
