@@ -64,7 +64,12 @@
 #include "internal/testing.h"
 #include "parser/parser.h"
 #include "runtime/runtime_options.h"
+#include "testutil/util.h"
+#include "proto/test/v1/proto3/test_all_types.pb.h"
+#include "google/protobuf/descriptor.h"
 #include "google/protobuf/dynamic_message.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace google::api::expr::runtime {
 
@@ -76,6 +81,8 @@ using ::google::api::expr::v1alpha1::CheckedExpr;
 using ::google::api::expr::v1alpha1::Expr;
 using ::google::api::expr::v1alpha1::ParsedExpr;
 using ::google::api::expr::v1alpha1::SourceInfo;
+using ::google::api::expr::test::v1::proto3::TestAllTypes;
+using ::google::api::expr::testutil::EqualsProto;
 using testing::_;
 using testing::Eq;
 using testing::HasSubstr;
@@ -1819,6 +1826,141 @@ TEST(FlatExprBuilderTest, NullUnboxingEnabled) {
                        expression->Evaluate(activation, &arena));
 
   EXPECT_TRUE(result.IsNull());
+}
+
+TEST(FlatExprBuilderTest, AnyPackingList) {
+  google::protobuf::LinkMessageReflection<TestAllTypes>();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("TestAllTypes{single_any: [1, 2, 3]}"));
+
+  cel::RuntimeOptions options;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  builder.set_container("google.api.expr.test.v1.proto3");
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result,
+              test::IsCelMessage(EqualsProto(
+                  R"pb(single_any {
+                         [type.googleapis.com/google.protobuf.ListValue] {
+                           values { number_value: 1 }
+                           values { number_value: 2 }
+                           values { number_value: 3 }
+                         }
+                       })pb")))
+      << result.DebugString();
+}
+
+TEST(FlatExprBuilderTest, AnyPackingNestedNumbers) {
+  google::protobuf::LinkMessageReflection<TestAllTypes>();
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("TestAllTypes{single_any: [1, 2.3]}"));
+
+  cel::RuntimeOptions options;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  builder.set_container("google.api.expr.test.v1.proto3");
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result,
+              test::IsCelMessage(EqualsProto(
+                  R"pb(single_any {
+                         [type.googleapis.com/google.protobuf.ListValue] {
+                           values { number_value: 1 }
+                           values { number_value: 2.3 }
+                         }
+                       })pb")))
+      << result.DebugString();
+}
+
+TEST(FlatExprBuilderTest, AnyPackingInt) {
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("TestAllTypes{single_any: 1}"));
+
+  cel::RuntimeOptions options;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  builder.set_container("google.api.expr.test.v1.proto3");
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(
+      result,
+      test::IsCelMessage(EqualsProto(
+          R"pb(single_any {
+                 [type.googleapis.com/google.protobuf.Int64Value] { value: 1 }
+               })pb")))
+      << result.DebugString();
+}
+
+TEST(FlatExprBuilderTest, AnyPackingMap) {
+  ASSERT_OK_AND_ASSIGN(
+      ParsedExpr parsed_expr,
+      parser::Parse("TestAllTypes{single_any: {'key': 'value'}}"));
+
+  cel::RuntimeOptions options;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  builder.set_container("google.api.expr.test.v1.proto3");
+
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  EXPECT_THAT(result, test::IsCelMessage(EqualsProto(
+                          R"pb(single_any {
+                                 [type.googleapis.com/google.protobuf.Struct] {
+                                   fields {
+                                     key: "key"
+                                     value { string_value: "value" }
+                                   }
+                                 }
+                               })pb")))
+      << result.DebugString();
 }
 
 TEST(FlatExprBuilderTest, NullUnboxingDisabled) {
