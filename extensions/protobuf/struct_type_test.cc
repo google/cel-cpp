@@ -1007,6 +1007,24 @@ TEST_P(ProtoStructValueBuilderTest, RepeatedBytesWrapper) {
            repeated_bytes_wrapper: { value: "bar" })pb");
 }
 
+TEST_P(ProtoStructValueBuilderTest, RepeatedAny) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "repeated_any",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        ListValueBuilder<IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.Add(1));
+        CEL_RETURN_IF_ERROR(builder.Add(0));
+        return std::move(builder).Build();
+      },
+      R"pb(repeated_any: {
+             [type.googleapis.com/google.protobuf.Int64Value] { value: 1 }
+           },
+           repeated_any: {
+             [type.googleapis.com/google.protobuf.Int64Value] { value: 0 }
+           })pb");
+}
+
 TEST_P(ProtoStructValueBuilderTest, MapBoolInt) {
   TEST_PROTO_STRUCT_VALUE_BUILDER(
       memory_manager(), "map_bool_int64",
@@ -1507,6 +1525,31 @@ TEST_P(ProtoStructValueBuilderTest, MapIntMessage) {
            map_int64_message: {
              key: 0,
              value: { bb: 1 }
+           })pb");
+}
+
+TEST_P(ProtoStructValueBuilderTest, MapIntAny) {
+  TEST_PROTO_STRUCT_VALUE_BUILDER(
+      memory_manager(), "map_int64_any",
+      [](ValueFactory& value_factory) -> absl::StatusOr<Handle<Value>> {
+        MapValueBuilder<IntValue, IntValue> builder(
+            value_factory, value_factory.type_factory().GetIntType(),
+            value_factory.type_factory().GetIntType());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(1, 0).status());
+        CEL_RETURN_IF_ERROR(builder.InsertOrAssign(0, 1).status());
+        return std::move(builder).Build();
+      },
+      R"pb(map_int64_any: {
+             key: 1,
+             value: {
+               [type.googleapis.com/google.protobuf.Int64Value] { value: 0 }
+             }
+           },
+           map_int64_any: {
+             key: 0,
+             value: {
+               [type.googleapis.com/google.protobuf.Int64Value] { value: 1 }
+             }
            })pb");
 }
 

@@ -145,6 +145,137 @@ absl::StatusOr<Handle<Type>> FieldDescriptorToType(
   return FieldDescriptorToTypeSingular(type_manager, field_desc);
 }
 
+template <typename F, typename T>
+struct CheckedCast;
+
+template <typename T>
+struct CheckedCast<T, T> {
+  static absl::StatusOr<T> Cast(T value) { return value; }
+};
+
+template <>
+struct CheckedCast<double, float> {
+  static absl::StatusOr<float> Cast(double value) {
+    if (ABSL_PREDICT_FALSE(static_cast<double>(static_cast<float>(value)) !=
+                           value)) {
+      return absl::OutOfRangeError("double to float overflow");
+    }
+    return static_cast<float>(value);
+  }
+};
+
+template <>
+struct CheckedCast<int64_t, int32_t> {
+  static absl::StatusOr<int32_t> Cast(int64_t value) {
+    if (ABSL_PREDICT_FALSE(value < std::numeric_limits<int32_t>::min() ||
+                           value > std::numeric_limits<int32_t>::max())) {
+      return absl::OutOfRangeError("int64 to int32_t overflow");
+    }
+    return static_cast<int32_t>(value);
+  }
+};
+
+template <>
+struct CheckedCast<uint64_t, uint32_t> {
+  static absl::StatusOr<uint32_t> Cast(uint64_t value) {
+    if (ABSL_PREDICT_FALSE(value > std::numeric_limits<int32_t>::max())) {
+      return absl::OutOfRangeError("uint64 to uint32_t overflow");
+    }
+    return static_cast<uint32_t>(value);
+  }
+};
+
+std::string MakeAnyTypeUrl(absl::string_view type_name) {
+  return absl::StrCat("type.googleapis.com/", type_name);
+}
+
+absl::Status SetAnyField(
+    const Value& value, absl::FunctionRef<google::protobuf::Message&()> mutable_message) {
+  std::string type_url;
+  absl::Cord payload;
+  switch (value.kind()) {
+    case ValueKind::kNull: {
+      google::protobuf::Value proto;
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kBool: {
+      google::protobuf::BoolValue proto;
+      proto.set_value(value.As<BoolValue>().value());
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kInt: {
+      google::protobuf::Int64Value proto;
+      proto.set_value(value.As<IntValue>().value());
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kUint: {
+      google::protobuf::UInt64Value proto;
+      proto.set_value(value.As<UintValue>().value());
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kDouble: {
+      google::protobuf::DoubleValue proto;
+      proto.set_value(value.As<DoubleValue>().value());
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kBytes: {
+      google::protobuf::BytesValue proto;
+      proto.set_value(value.As<BytesValue>().ToString());
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kString: {
+      google::protobuf::StringValue proto;
+      proto.set_value(value.As<StringValue>().ToString());
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kDuration: {
+      google::protobuf::Duration proto;
+      CEL_RETURN_IF_ERROR(
+          internal::EncodeDuration(value.As<DurationValue>().value(), &proto));
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kTimestamp: {
+      google::protobuf::Timestamp proto;
+      CEL_RETURN_IF_ERROR(
+          internal::EncodeTime(value.As<TimestampValue>().value(), &proto));
+      type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
+      payload = proto.SerializeAsCord();
+    } break;
+    case ValueKind::kStruct: {
+      if (ABSL_PREDICT_FALSE(!value.Is<ProtoStructValue>())) {
+        return absl::InvalidArgumentError(
+            "StructValueBuilderInterface::SetField does not yet support "
+            "converting custom types to "
+            "google.protobuf.Any");
+      }
+      type_url = MakeAnyTypeUrl(
+          value.type()->As<ProtoStructType>().descriptor().full_name());
+      CEL_ASSIGN_OR_RETURN(payload,
+                           value.As<ProtoStructValue>().SerializeAsCord());
+    } break;
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "StructValueBuilderInterface::SetField does not yet support "
+          "converting ",
+          value.type()->DebugString(), " to google.protobuf.Any"));
+  }
+  return protobuf_internal::SetAny(mutable_message(), type_url, payload);
+}
+
+absl::Status TypeConversionError(const Type& from, const Type& to) {
+  return absl::InvalidArgumentError(absl::StrCat("type conversion error from ",
+                                                 from.DebugString(), " to ",
+                                                 to.DebugString()));
+}
+
 }  // namespace
 
 class ProtoStructTypeFieldIterator final : public StructType::FieldIterator {
@@ -240,56 +371,6 @@ ProtoStructType::FindFieldByNumber(TypeManager& type_manager,
                        FieldDescriptorToType(type_manager, field_desc));
   return Field(MakeFieldId(field_desc->number()), field_desc->name(),
                field_desc->number(), std::move(type), field_desc);
-}
-
-absl::Status TypeConversionError(const Type& from, const Type& to) {
-  return absl::InvalidArgumentError(absl::StrCat("type conversion error from ",
-                                                 from.DebugString(), " to ",
-                                                 to.DebugString()));
-}
-
-template <typename F, typename T>
-struct CheckedCast;
-
-template <typename T>
-struct CheckedCast<T, T> {
-  static absl::StatusOr<T> Cast(T value) { return value; }
-};
-
-template <>
-struct CheckedCast<double, float> {
-  static absl::StatusOr<float> Cast(double value) {
-    if (ABSL_PREDICT_FALSE(static_cast<double>(static_cast<float>(value)) !=
-                           value)) {
-      return absl::OutOfRangeError("double to float overflow");
-    }
-    return static_cast<float>(value);
-  }
-};
-
-template <>
-struct CheckedCast<int64_t, int32_t> {
-  static absl::StatusOr<int32_t> Cast(int64_t value) {
-    if (ABSL_PREDICT_FALSE(value < std::numeric_limits<int32_t>::min() ||
-                           value > std::numeric_limits<int32_t>::max())) {
-      return absl::OutOfRangeError("int64 to int32_t overflow");
-    }
-    return static_cast<int32_t>(value);
-  }
-};
-
-template <>
-struct CheckedCast<uint64_t, uint32_t> {
-  static absl::StatusOr<uint32_t> Cast(uint64_t value) {
-    if (ABSL_PREDICT_FALSE(value > std::numeric_limits<int32_t>::max())) {
-      return absl::OutOfRangeError("uint64 to uint32_t overflow");
-    }
-    return static_cast<uint32_t>(value);
-  }
-};
-
-std::string MakeAnyTypeUrl(absl::string_view type_name) {
-  return absl::StrCat("type.googleapis.com/", type_name);
 }
 
 // TODO(uncreated-issue/47): handle subtle implicit conversions around mixed numeric
@@ -665,9 +746,12 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
         switch (to_value_type.kind()) {
           case TypeKind::kAny:
             // google.protobuf.Any
-            return absl::UnimplementedError(
-                "StructValueBuilderInterface::SetField does not yet implement "
-                "google.protobuf.Any support");
+            return [](const Value& value,
+                      google::protobuf::MapValueRef& value_ref) -> absl::Status {
+              return SetAnyField(value, [&value_ref]() -> google::protobuf::Message& {
+                return *value_ref.MutableMessageValue();
+              });
+            };
           case TypeKind::kDyn:
             // google.protobuf.Value
             return absl::UnimplementedError(
@@ -1057,9 +1141,23 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
     switch (to_element_type.kind()) {
       case TypeKind::kAny: {
         // google.protobuf.Any
-        return absl::UnimplementedError(
-            "StructValueBuilderInterface::SetField does not yet implement "
-            "google.protobuf.Any support");
+        auto repeated_field_ref =
+            reflect.GetMutableRepeatedFieldRef<google::protobuf::Message>(message_,
+                                                                &field_desc);
+        repeated_field_ref.Clear();
+        CEL_ASSIGN_OR_RETURN(
+            auto iterator, value.NewIterator(value_factory_.memory_manager()));
+        auto scratch = absl::WrapUnique(repeated_field_ref.NewMessage());
+        while (iterator->HasNext()) {
+          CEL_ASSIGN_OR_RETURN(
+              auto element,
+              iterator->NextValue(ListValue::GetContext(value_factory_)));
+          scratch->Clear();
+          CEL_RETURN_IF_ERROR(SetAnyField(
+              *element, [&scratch]() -> google::protobuf::Message& { return *scratch; }));
+          repeated_field_ref.Add(*scratch);
+        }
+        return absl::OkStatus();
       }
       case TypeKind::kDyn: {
         // google.protobuf.Value
@@ -1220,85 +1318,10 @@ class ProtoStructValueBuilder final : public StructValueBuilderInterface {
                                    const google::protobuf::Reflection& reflect,
                                    const google::protobuf::FieldDescriptor& field_desc,
                                    Handle<Value>&& value) {
-    std::string type_url;
-    absl::Cord payload;
-    switch (value->kind()) {
-      case ValueKind::kNull: {
-        google::protobuf::Value proto;
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kBool: {
-        google::protobuf::BoolValue proto;
-        proto.set_value(value->As<BoolValue>().value());
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kInt: {
-        google::protobuf::Int64Value proto;
-        proto.set_value(value->As<IntValue>().value());
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kUint: {
-        google::protobuf::UInt64Value proto;
-        proto.set_value(value->As<UintValue>().value());
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kDouble: {
-        google::protobuf::DoubleValue proto;
-        proto.set_value(value->As<DoubleValue>().value());
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kBytes: {
-        google::protobuf::BytesValue proto;
-        proto.set_value(value->As<BytesValue>().ToString());
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kString: {
-        google::protobuf::StringValue proto;
-        proto.set_value(value->As<StringValue>().ToString());
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kDuration: {
-        google::protobuf::Duration proto;
-        CEL_RETURN_IF_ERROR(internal::EncodeDuration(
-            value->As<DurationValue>().value(), &proto));
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kTimestamp: {
-        google::protobuf::Timestamp proto;
-        CEL_RETURN_IF_ERROR(
-            internal::EncodeTime(value->As<TimestampValue>().value(), &proto));
-        type_url = MakeAnyTypeUrl(proto.GetDescriptor()->full_name());
-        payload = proto.SerializeAsCord();
-      } break;
-      case ValueKind::kStruct: {
-        if (ABSL_PREDICT_FALSE(!value->Is<ProtoStructValue>())) {
-          return absl::InvalidArgumentError(
-              "StructValueBuilderInterface::SetField does not yet support "
-              "converting custom types to "
-              "google.protobuf.Any");
-        }
-        type_url = MakeAnyTypeUrl(
-            value->type()->As<ProtoStructType>().descriptor().full_name());
-        CEL_ASSIGN_OR_RETURN(payload,
-                             value->As<ProtoStructValue>().SerializeAsCord());
-      } break;
-      default:
-        return absl::InvalidArgumentError(absl::StrCat(
-            "StructValueBuilderInterface::SetField does not yet support "
-            "converting ",
-            value->type()->DebugString(), " to google.protobuf.Any"));
-    }
-    return protobuf_internal::SetAny(
-        *reflect.MutableMessage(message_, &field_desc, factory_), type_url,
-        payload);
+    return SetAnyField(
+        *value, [this, &reflect, &field_desc]() -> google::protobuf::Message& {
+          return *reflect.MutableMessage(message_, &field_desc, factory_);
+        });
   }
 
   absl::Status SetSingularMessageField(
