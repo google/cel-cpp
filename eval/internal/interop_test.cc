@@ -62,6 +62,8 @@ using ::google::api::expr::runtime::TestMessage;
 using ::google::api::expr::runtime::UnknownSet;
 using testing::Eq;
 using testing::HasSubstr;
+using testing::Optional;
+using testing::Truly;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 
@@ -820,6 +822,39 @@ TEST(ValueInterop, StructTypeFromLegacyTypeInfo) {
       static_cast<const LegacyTypeInfoApis*>(&adapter));
 
   EXPECT_EQ(type->name(), "google.api.expr.runtime.TestMessage");
+}
+
+TEST(ValueInterop, AbstractStructTypeFromLegacyTypeInfo) {
+  TypeFactory type_factory(MemoryManager::Global());
+  TypeManager type_manager(type_factory, TypeProvider::Builtin());
+  ValueFactory value_factory(type_manager);
+  google::protobuf::LinkMessageReflection<google::api::expr::runtime::TestMessage>();
+
+  google::api::expr::runtime::ProtoMessageTypeAdapter adapter(
+      TestMessage::descriptor(), google::protobuf::MessageFactory::generated_factory());
+
+  ASSERT_OK_AND_ASSIGN(Handle<Type> type,
+                       type_factory.CreateStructType<LegacyAbstractStructType>(
+                           static_cast<const LegacyTypeInfoApis&>(adapter)));
+
+  EXPECT_EQ(type->name(), "google.api.expr.runtime.TestMessage");
+  ASSERT_TRUE(type->Is<StructType>());
+
+  ASSERT_OK_AND_ASSIGN(auto field_or, type->As<StructType>().FindFieldByName(
+                                          type_manager, "string_value"));
+  EXPECT_THAT(field_or, Optional(Truly([](const StructType::Field& field) {
+                return field.name == "string_value" && field.number == 7;
+              })))
+      << "expected field string_value: 7";
+
+  EXPECT_THAT(type->As<StructType>().FindFieldByNumber(type_manager, 7),
+              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_THAT(type->As<StructType>().NewValueBuilder(value_factory),
+              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_EQ(type->As<StructType>().field_count(), 0);
+  EXPECT_THAT(type->As<StructType>().NewFieldIterator(MemoryManager::Global()),
+              StatusIs(absl::StatusCode::kUnimplemented));
+  EXPECT_TRUE(type->Is<LegacyAbstractStructType>());
 }
 
 TEST(ValueInterop, StructTypeLegacyTypeInfoRoundTrip) {

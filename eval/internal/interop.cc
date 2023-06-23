@@ -39,6 +39,7 @@
 #include "base/values/struct_value.h"
 #include "eval/internal/errors.h"
 #include "eval/public/cel_options.h"
+#include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_adapter.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
 #include "eval/public/unknown_set.h"
@@ -237,6 +238,52 @@ absl::StatusOr<Handle<Value>> LegacyStructGetFieldImpl(
 }
 
 }  // namespace
+
+absl::string_view LegacyAbstractStructType::name() const {
+  return type_info_.GetTypename(MessageWrapper());
+}
+
+size_t LegacyAbstractStructType::field_count() const {
+  // Field iteration is unsupported.
+  return 0;
+}
+
+// Called by FindField.
+absl::StatusOr<absl::optional<StructType::Field>>
+LegacyAbstractStructType::FindFieldByName(TypeManager& type_manager,
+                                          absl::string_view name) const {
+  absl::optional<LegacyTypeInfoApis::FieldDescription> maybe_field =
+      type_info_.FindFieldByName(name);
+
+  if (!maybe_field.has_value()) {
+    return absl::nullopt;
+  }
+
+  return StructType::Field(StructType::MakeFieldId(maybe_field->number),
+                           maybe_field->name, maybe_field->number,
+                           type_manager.type_factory().GetDynType());
+}
+
+absl::StatusOr<absl::optional<StructType::Field>>
+LegacyAbstractStructType::FindFieldByNumber(TypeManager& type_manager,
+                                            int64_t number) const {
+  return absl::UnimplementedError(
+      "FindFieldByNumber not implemented for legacy types.");
+}
+
+absl::StatusOr<UniqueRef<StructType::FieldIterator>>
+LegacyAbstractStructType::NewFieldIterator(
+    MemoryManager& memory_manager) const {
+  return absl::UnimplementedError(
+      "Field iteration not implemented for legacy types");
+}
+
+absl::StatusOr<UniqueRef<StructValueBuilderInterface>>
+LegacyAbstractStructType::NewValueBuilder(
+    ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const {
+  return absl::UnimplementedError(
+      "NewValueBuilder not implemented for legacy struct types");
+}
 
 internal::TypeInfo CelListAccess::TypeId(const CelList& list) {
   return list.TypeId();

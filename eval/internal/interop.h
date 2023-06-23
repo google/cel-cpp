@@ -21,18 +21,65 @@
 #include <vector>
 
 #include "google/protobuf/arena.h"
+#include "absl/log/die_if_null.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "base/types/struct_type.h"
 #include "base/value.h"
 #include "base/value_factory.h"
+#include "base/values/struct_value_builder.h"
 #include "base/values/type_value.h"
 #include "eval/public/cel_value.h"
 #include "eval/public/message_wrapper.h"
 #include "eval/public/structs/legacy_type_info_apis.h"
+#include "internal/rtti.h"
 
 namespace cel::interop_internal {
+
+// Implementation of cel::StructType that adapts modern APIs from legacy APIs.
+//
+// This implements a subset of type APIs needed for describing the type for
+// extensions. Value creation and field iteration are unsupported (return
+// absl::StatusCode::kUnimplemented or default values).
+//
+// This implementation is distinct from LegacyStructType (which supports
+// conversion to/from legacy type values without additional allocations).
+class LegacyAbstractStructType : public base_internal::AbstractStructType {
+ public:
+  // The provided LegacyTypeInfoApis reference must outlive any references to
+  // the constructed type instance. Normally, it should be owned by the
+  // type registry backing the expression builder.
+  explicit LegacyAbstractStructType(
+      const google::api::expr::runtime::LegacyTypeInfoApis& type_info)
+      : type_info_(type_info) {}
+
+  absl::string_view name() const override;
+
+  size_t field_count() const override;
+
+  // Called by FindField.
+  absl::StatusOr<absl::optional<Field>> FindFieldByName(
+      TypeManager& type_manager, absl::string_view name) const override;
+
+  // Called by FindField.
+  absl::StatusOr<absl::optional<Field>> FindFieldByNumber(
+      TypeManager& type_manager, int64_t number) const override;
+
+  absl::StatusOr<UniqueRef<FieldIterator>> NewFieldIterator(
+      MemoryManager& memory_manager) const override;
+
+  absl::StatusOr<UniqueRef<StructValueBuilderInterface>> NewValueBuilder(
+      ValueFactory& value_factory ABSL_ATTRIBUTE_LIFETIME_BOUND) const override;
+
+ private:
+  internal::TypeInfo TypeId() const override {
+    return cel::internal::TypeId<LegacyAbstractStructType>();
+  }
+
+  const google::api::expr::runtime::LegacyTypeInfoApis& type_info_;
+};
 
 struct CelListAccess final {
   static internal::TypeInfo TypeId(

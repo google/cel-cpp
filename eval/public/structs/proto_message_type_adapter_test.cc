@@ -44,6 +44,7 @@ using ::google::protobuf::Int64Value;
 using testing::_;
 using testing::HasSubstr;
 using testing::Optional;
+using testing::Truly;
 using cel::internal::IsOkAndHolds;
 using cel::internal::StatusIs;
 using testutil::EqualsProto;
@@ -699,6 +700,29 @@ TEST(ProtoMesssageTypeAdapter, TypeInfoName) {
 
   EXPECT_EQ(adapter.GetTypename(MessageWrapper()),
             "google.api.expr.runtime.TestMessage");
+}
+
+TEST(ProtoMesssageTypeAdapter, FindFieldFound) {
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+
+  EXPECT_THAT(
+      adapter.FindFieldByName("int64_value"),
+      Optional(Truly([](const LegacyTypeInfoApis::FieldDescription& desc) {
+        return desc.name == "int64_value" && desc.number == 2;
+      })))
+      << "expected field int64_value: 2";
+}
+
+TEST(ProtoMesssageTypeAdapter, FindFieldNotFound) {
+  ProtoMessageTypeAdapter adapter(
+      google::protobuf::DescriptorPool::generated_pool()->FindMessageTypeByName(
+          "google.api.expr.runtime.TestMessage"),
+      google::protobuf::MessageFactory::generated_factory());
+
+  EXPECT_EQ(adapter.FindFieldByName("foo_not_a_field"), absl::nullopt);
 }
 
 TEST(ProtoMesssageTypeAdapter, TypeInfoMutator) {

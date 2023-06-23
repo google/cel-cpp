@@ -329,6 +329,23 @@ const LegacyTypeAccessApis* ProtoMessageTypeAdapter::GetAccessApis(
   return this;
 }
 
+absl::optional<LegacyTypeInfoApis::FieldDescription>
+ProtoMessageTypeAdapter::FindFieldByName(absl::string_view field_name) const {
+  if (descriptor_ == nullptr) {
+    return absl::nullopt;
+  }
+
+  const google::protobuf::FieldDescriptor* field_descriptor =
+      descriptor_->FindFieldByName(field_name);
+
+  if (field_descriptor == nullptr) {
+    return absl::nullopt;
+  }
+
+  return LegacyTypeInfoApis::FieldDescription{field_descriptor->number(),
+                                              field_descriptor->name()};
+}
+
 absl::Status ProtoMessageTypeAdapter::ValidateSetFieldOp(
     bool assertion, absl::string_view field, absl::string_view detail) const {
   if (!assertion) {

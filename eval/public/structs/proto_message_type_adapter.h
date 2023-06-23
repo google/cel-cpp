@@ -57,6 +57,9 @@ class ProtoMessageTypeAdapter : public LegacyTypeInfoApis,
   const LegacyTypeMutationApis* GetMutationApis(
       const MessageWrapper& wrapped_message) const override;
 
+  absl::optional<LegacyTypeInfoApis::FieldDescription> FindFieldByName(
+      absl::string_view field_name) const override;
+
   // Implement LegacyTypeMutation APIs.
   absl::StatusOr<CelValue::MessageWrapper::Builder> NewInstance(
       cel::MemoryManager& memory_manager) const override;

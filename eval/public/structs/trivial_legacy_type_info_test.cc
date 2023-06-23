@@ -45,5 +45,22 @@ TEST(TrivialTypeInfo, GetAccessApis) {
   EXPECT_EQ(TrivialTypeInfo::GetInstance()->GetAccessApis(wrapper), nullptr);
 }
 
+TEST(TrivialTypeInfo, GetMutationApis) {
+  TrivialTypeInfo info;
+  MessageWrapper wrapper;
+
+  EXPECT_EQ(info.GetMutationApis(wrapper), nullptr);
+  EXPECT_EQ(TrivialTypeInfo::GetInstance()->GetMutationApis(wrapper), nullptr);
+}
+
+TEST(TrivialTypeInfo, FindFieldByName) {
+  TrivialTypeInfo info;
+  MessageWrapper wrapper;
+
+  EXPECT_EQ(info.FindFieldByName("foo"), absl::nullopt);
+  EXPECT_EQ(TrivialTypeInfo::GetInstance()->FindFieldByName("foo"),
+            absl::nullopt);
+}
+
 }  // namespace
 }  // namespace google::api::expr::runtime

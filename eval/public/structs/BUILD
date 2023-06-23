@@ -309,7 +309,10 @@ cc_test(
 cc_library(
     name = "legacy_type_info_apis",
     hdrs = ["legacy_type_info_apis.h"],
-    deps = ["//eval/public:message_wrapper"],
+    deps = [
+        "//eval/public:message_wrapper",
+        "@com_google_absl//absl/status",
+    ],
 )
 
 cc_library(

@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "absl/status/status.h"
 #include "eval/public/message_wrapper.h"
 
 namespace google::api::expr::runtime {
@@ -40,6 +41,11 @@ class LegacyTypeMutationApis;
 // needs to return CelValue type for field access).
 class LegacyTypeInfoApis {
  public:
+  struct FieldDescription {
+    int number;
+    absl::string_view name;
+  };
+
   virtual ~LegacyTypeInfoApis() = default;
 
   // Return a debug representation of the wrapped message.
@@ -72,6 +78,15 @@ class LegacyTypeInfoApis {
   virtual const LegacyTypeMutationApis* GetMutationApis(
       const MessageWrapper& wrapped_message) const {
     return nullptr;
+  }
+
+  // Return a description of the underlying field if defined.
+  //
+  // The underlying string is expected to remain valid as long as the
+  // LegacyTypeInfoApis instance.
+  virtual absl::optional<FieldDescription> FindFieldByName(
+      absl::string_view name) const {
+    return absl::nullopt;
   }
 };
 

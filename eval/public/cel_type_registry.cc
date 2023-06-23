@@ -55,8 +55,9 @@ class LegacyToModernTypeProviderAdapter : public cel::TypeProvider {
       return absl::nullopt;
     }
 
-    return cel::interop_internal::CreateStructTypeFromLegacyTypeInfo(
-        *type_info);
+    return factory
+        .CreateStructType<cel::interop_internal::LegacyAbstractStructType>(
+            **type_info);
   }
 
  private:
