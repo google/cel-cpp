@@ -1828,6 +1828,34 @@ TEST(FlatExprBuilderTest, NullUnboxingEnabled) {
   EXPECT_TRUE(result.IsNull());
 }
 
+TEST(FlatExprBuilderTest, TypeResolve) {
+  TestMessage message;
+  ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
+                       parser::Parse("type(message) == runtime.TestMessage"));
+  cel::RuntimeOptions options;
+  options.enable_qualified_type_identifiers = true;
+  CelExpressionBuilderFlatImpl builder(options);
+  builder.GetTypeRegistry()->RegisterTypeProvider(
+      std::make_unique<ProtobufDescriptorProvider>(
+          google::protobuf::DescriptorPool::generated_pool(),
+          google::protobuf::MessageFactory::generated_factory()));
+  builder.set_container("google.api.expr");
+  ASSERT_OK(RegisterBuiltinFunctions(builder.GetRegistry()));
+  ASSERT_OK_AND_ASSIGN(auto expression,
+                       builder.CreateExpression(&parsed_expr.expr(),
+                                                &parsed_expr.source_info()));
+
+  Activation activation;
+  google::protobuf::Arena arena;
+  activation.InsertValue("message",
+                         CelProtoWrapper::CreateMessage(&message, &arena));
+  ASSERT_OK_AND_ASSIGN(CelValue result,
+                       expression->Evaluate(activation, &arena));
+
+  ASSERT_TRUE(result.IsBool()) << result.DebugString();
+  EXPECT_TRUE(result.BoolOrDie());
+}
+
 TEST(FlatExprBuilderTest, AnyPackingList) {
   google::protobuf::LinkMessageReflection<TestAllTypes>();
   ASSERT_OK_AND_ASSIGN(ParsedExpr parsed_expr,
