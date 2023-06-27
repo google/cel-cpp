@@ -32,6 +32,26 @@ cc_library(
 )
 
 cc_library(
+    name = "any",
+    hdrs = ["any.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+    ],
+)
+
+cc_library(
+    name = "json",
+    hdrs = ["json.h"],
+    deps = [
+        "@com_google_absl//absl/functional:function_ref",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+    ],
+)
+
+cc_library(
     name = "source",
     srcs = ["source.cc"],
     hdrs = ["source.h"],
