@@ -1,3 +1,8 @@
+DEFAULT_VISIBILITY = [
+    "//eval:__subpackages__",
+    "//extensions:__subpackages__",
+]
+
 # This package contains code
 # that compiles Expr object into evaluatable CelExpression
 package(default_visibility = ["//visibility:public"])
@@ -435,12 +440,5 @@ cc_test(
         "@com_google_googleapis//google/api/expr/v1alpha1:checked_cc_proto",
         "@com_google_googleapis//google/api/expr/v1alpha1:syntax_cc_proto",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-package_group(
-    name = "native_api_users",
-    packages = [
-        "//eval/compiler",
     ],
 )

@@ -14,6 +14,14 @@
 
 package(default_visibility = ["//visibility:public"])
 
+package_group(
+    name = "ast_visibility",
+    packages = [
+        "//eval/compiler",
+        "//extensions",
+    ],
+)
+
 licenses(["notice"])
 
 exports_files(["LICENSE"])
