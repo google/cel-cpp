@@ -286,3 +286,24 @@ cc_test(
         "@com_google_absl//absl/strings:cord_test_helpers",
     ],
 )
+
+cc_library(
+    name = "proto_wire",
+    hdrs = ["proto_wire.h"],
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/strings:cord",
+    ],
+)
+
+cc_test(
+    name = "proto_wire_test",
+    srcs = ["proto_wire_test.cc"],
+    deps = [
+        ":proto_wire",
+        ":testing",
+        "@com_google_absl//absl/strings:cord",
+    ],
+)
